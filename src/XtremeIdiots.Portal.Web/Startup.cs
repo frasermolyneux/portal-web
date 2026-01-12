@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MX.GeoLocation.Api.Client.V1;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using XtremeIdiots.InvisionCommunity;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Forums.Extensions;
@@ -45,11 +46,12 @@ public class Startup(IConfiguration configuration)
         });
 
         services.AddServiceProfiler();
+        services.AddAzureAppConfiguration();
 
         services.AddInvisionApiClient(options =>
         {
-            options.BaseUrl = Configuration["xtremeidiots_forums_base_url"] ?? throw new InvalidOperationException("xtremeidiots_forums_base_url configuration is required");
-            options.ApiKey = Configuration["xtremeidiots_forums_api_key"] ?? throw new InvalidOperationException("xtremeidiots_forums_api_key configuration is required");
+            options.BaseUrl = Configuration["XtremeIdiots:Forums:BaseUrl"] ?? throw new InvalidOperationException("XtremeIdiots:Forums:BaseUrl configuration is required");
+            options.ApiKey = Configuration["XtremeIdiots:Forums:ApiKey"] ?? throw new InvalidOperationException("XtremeIdiots:Forums:ApiKey configuration is required");
         });
 
         services.AddAdminActionTopics();
@@ -57,12 +59,10 @@ public class Startup(IConfiguration configuration)
 
         services.AddRepositoryApiClient(options => options
             .WithBaseUrl(Configuration["RepositoryApi:BaseUrl"] ?? throw new InvalidOperationException("RepositoryApi:BaseUrl configuration is required"))
-            .WithApiKeyAuthentication(Configuration["RepositoryApi:ApiKey"] ?? throw new InvalidOperationException("RepositoryApi:ApiKey configuration is required"))
             .WithEntraIdAuthentication(Configuration["RepositoryApi:ApplicationAudience"] ?? throw new InvalidOperationException("RepositoryApi:ApplicationAudience configuration is required")));
 
         services.AddServersApiClient(options => options
             .WithBaseUrl(Configuration["ServersIntegrationApi:BaseUrl"] ?? throw new InvalidOperationException("ServersIntegrationApi:BaseUrl configuration is required"))
-            .WithApiKeyAuthentication(Configuration["ServersIntegrationApi:ApiKey"] ?? throw new InvalidOperationException("ServersIntegrationApi:ApiKey configuration is required"))
             .WithEntraIdAuthentication(Configuration["ServersIntegrationApi:ApplicationAudience"] ?? throw new InvalidOperationException("ServersIntegrationApi:ApplicationAudience configuration is required")));
 
         services.AddGeoLocationApiClient(options => options
@@ -75,7 +75,7 @@ public class Startup(IConfiguration configuration)
 
         services.AddCors(options =>
         {
-            var corsOrigin = Configuration["xtremeidiots_forums_base_url"] ?? throw new InvalidOperationException("xtremeidiots_forums_base_url configuration is required");
+            var corsOrigin = Configuration["XtremeIdiots:Forums:BaseUrl"] ?? throw new InvalidOperationException("XtremeIdiots:Forums:BaseUrl configuration is required");
             options.AddPolicy("CorsPolicy",
                 builder => builder
                     .WithOrigins(corsOrigin)
@@ -111,6 +111,7 @@ public class Startup(IConfiguration configuration)
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
         app.UseForwardedHeaders();
+        app.UseAzureAppConfiguration();
 
         if (env.IsDevelopment())
         {

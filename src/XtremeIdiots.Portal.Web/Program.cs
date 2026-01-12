@@ -1,4 +1,7 @@
-﻿namespace XtremeIdiots.Portal.Web;
+﻿using Azure.Identity;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+
+namespace XtremeIdiots.Portal.Web;
 
 /// <summary>
 /// Entry point for the XtremeIdiots Portal web application
@@ -22,6 +25,32 @@ public class Program
     public static IHostBuilder CreateHostBuilder(string[] args)
     {
         return Host.CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((context, configBuilder) =>
+            {
+                var builtConfig = configBuilder.Build();
+                var appConfigEndpoint = builtConfig["AzureAppConfiguration:Endpoint"];
+
+                if (string.IsNullOrWhiteSpace(appConfigEndpoint))
+                {
+                    return;
+                }
+
+                var managedIdentityClientId = builtConfig["AzureAppConfiguration:ManagedIdentityClientId"];
+                var environmentLabel = builtConfig["AzureAppConfiguration:Environment"] ?? context.HostingEnvironment.EnvironmentName;
+
+                var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                {
+                    ManagedIdentityClientId = managedIdentityClientId,
+                });
+
+                configBuilder.AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(new Uri(appConfigEndpoint), credential)
+                        .Select(KeyFilter.Any, environmentLabel)
+                        .Select(KeyFilter.Any, LabelFilter.Null)
+                        .ConfigureKeyVault(kv => kv.SetCredential(credential));
+                });
+            })
             .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Startup>());
     }
 }
