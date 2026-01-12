@@ -44,12 +44,6 @@ resource "azurerm_linux_web_app" "app" {
     "ASPNETCORE_ENVIRONMENT"                     = var.environment == "prd" ? "Production" : "Development"
     "WEBSITE_RUN_FROM_PACKAGE"                   = "1"
 
-    "RepositoryApi__BaseUrl"             = local.repository_api.api_management.endpoint
-    "RepositoryApi__ApplicationAudience" = local.repository_api.application.primary_identifier_uri
-
-    "ServersIntegrationApi__BaseUrl"             = local.servers_integration_api.api_management.endpoint
-    "ServersIntegrationApi__ApplicationAudience" = local.servers_integration_api.application.primary_identifier_uri
-
     "GeoLocationApi__BaseUrl"             = var.geo_location_api.base_url
     "GeoLocationApi__ApiKey"              = format("@Microsoft.KeyVault(SecretUri=%s)", var.geo_location_api.keyvault_primary_ref)
     "GeoLocationApi__ApplicationAudience" = var.geo_location_api.application_audience
