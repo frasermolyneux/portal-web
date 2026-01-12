@@ -19,6 +19,8 @@ public class IdentityHostingStartup : IHostingStartup
 {
     private const string AuthClientIdKey = "XtremeIdiots:Auth:ClientId";
     private const string AuthClientSecretKey = "XtremeIdiots:Auth:ClientSecret";
+    private const string AppConfigNamespacePrefix = "XtremeIdiots.Portal.Web:";
+    private const string SqlConnectionStringKey = "sql_connection_string";
 
     private const int SecurityStampValidationIntervalMinutes = 15;
     private const int CookieExpirationDays = 7;
@@ -45,12 +47,12 @@ public class IdentityHostingStartup : IHostingStartup
         {
             AuthClientIdKey,
             AuthClientSecretKey,
-            "sql_connection_string"
+            SqlConnectionStringKey
         };
 
         foreach (var key in requiredKeys)
         {
-            if (string.IsNullOrEmpty(configuration[key]))
+            if (string.IsNullOrEmpty(GetConfigurationValue(configuration, key)))
             {
                 throw new InvalidOperationException($"Required configuration key '{key}' is missing or empty");
             }
@@ -60,7 +62,7 @@ public class IdentityHostingStartup : IHostingStartup
     private static void ConfigureDatabase(IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<IdentityDataContext>(options =>
-            options.UseSqlServer(configuration["sql_connection_string"]));
+            options.UseSqlServer(GetConfigurationValue(configuration, SqlConnectionStringKey)));
     }
 
     private static void ConfigureIdentity(IServiceCollection services)
@@ -106,8 +108,8 @@ public class IdentityHostingStartup : IHostingStartup
         })
         .AddOAuth(OAuthSchemeName, options =>
         {
-            options.ClientId = configuration[AuthClientIdKey] ?? throw new InvalidOperationException("OAuth client ID is required");
-            options.ClientSecret = configuration[AuthClientSecretKey] ?? throw new InvalidOperationException("OAuth client secret is required");
+            options.ClientId = GetConfigurationValue(configuration, AuthClientIdKey) ?? throw new InvalidOperationException("OAuth client ID is required");
+            options.ClientSecret = GetConfigurationValue(configuration, AuthClientSecretKey) ?? throw new InvalidOperationException("OAuth client secret is required");
 
             options.CallbackPath = new PathString("/signin-xtremeidiots");
 
@@ -157,5 +159,10 @@ public class IdentityHostingStartup : IHostingStartup
         services.AddDataProtection()
             .SetApplicationName(ApplicationName)
             .PersistKeysToDbContext<IdentityDataContext>();
+    }
+
+    private static string? GetConfigurationValue(IConfiguration configuration, string key)
+    {
+        return configuration[key] ?? configuration[$"{AppConfigNamespacePrefix}{key}"];
     }
 }
