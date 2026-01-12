@@ -17,6 +17,9 @@ namespace XtremeIdiots.Portal.Web.Areas.Identity;
 
 public class IdentityHostingStartup : IHostingStartup
 {
+    private const string AuthClientIdKey = "XtremeIdiots:Auth:ClientId";
+    private const string AuthClientSecretKey = "XtremeIdiots:Auth:ClientSecret";
+
     private const int SecurityStampValidationIntervalMinutes = 15;
     private const int CookieExpirationDays = 7;
     private const string ApplicationName = "portal";
@@ -40,8 +43,8 @@ public class IdentityHostingStartup : IHostingStartup
     {
         var requiredKeys = new[]
         {
-            "xtremeidiots_auth_client_id",
-            "xtremeidiots_auth_client_secret",
+            AuthClientIdKey,
+            AuthClientSecretKey,
             "sql_connection_string"
         };
 
@@ -103,8 +106,8 @@ public class IdentityHostingStartup : IHostingStartup
         })
         .AddOAuth(OAuthSchemeName, options =>
         {
-            options.ClientId = configuration["xtremeidiots_auth_client_id"] ?? throw new InvalidOperationException("OAuth client ID is required");
-            options.ClientSecret = configuration["xtremeidiots_auth_client_secret"] ?? throw new InvalidOperationException("OAuth client secret is required");
+            options.ClientId = configuration[AuthClientIdKey] ?? throw new InvalidOperationException("OAuth client ID is required");
+            options.ClientSecret = configuration[AuthClientSecretKey] ?? throw new InvalidOperationException("OAuth client secret is required");
 
             options.CallbackPath = new PathString("/signin-xtremeidiots");
 
