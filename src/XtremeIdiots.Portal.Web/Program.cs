@@ -8,6 +8,14 @@ namespace XtremeIdiots.Portal.Web;
 /// </summary>
 public class Program
 {
+    private readonly static string[] appConfigurationKeyFilters =
+    [
+        "XtremeIdiots.Portal.Web:*",
+        "RepositoryApi:*",
+        "ServersIntegrationApi:*",
+        "FeatureManagement:*",
+    ];
+
     /// <summary>
     /// Main entry point for the application
     /// </summary>
@@ -43,11 +51,19 @@ public class Program
                     ManagedIdentityClientId = managedIdentityClientId,
                 });
 
-                configBuilder.AddAzureAppConfiguration(options => options
-                    .Connect(new Uri(appConfigEndpoint), credential)
-                    .Select(KeyFilter.Any, environmentLabel)
-                    .Select(KeyFilter.Any, LabelFilter.Null)
-                    .ConfigureKeyVault(kv => kv.SetCredential(credential)));
+                configBuilder.AddAzureAppConfiguration(options =>
+                {
+                    var appConfig = options
+                        .Connect(new Uri(appConfigEndpoint), credential)
+                        .ConfigureKeyVault(kv => kv.SetCredential(credential));
+
+                    foreach (var keyFilter in appConfigurationKeyFilters)
+                    {
+                        appConfig.Select(keyFilter, environmentLabel);
+                    }
+
+                    appConfig.Select(KeyFilter.Any, LabelFilter.Null);
+                });
             })
             .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Startup>());
     }
