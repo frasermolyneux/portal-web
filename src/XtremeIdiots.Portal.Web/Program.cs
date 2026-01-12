@@ -43,13 +43,11 @@ public class Program
                     ManagedIdentityClientId = managedIdentityClientId,
                 });
 
-                configBuilder.AddAzureAppConfiguration(options =>
-                {
-                    options.Connect(new Uri(appConfigEndpoint), credential)
-                        .Select(KeyFilter.Any, environmentLabel)
-                        .Select(KeyFilter.Any, LabelFilter.Null)
-                        .ConfigureKeyVault(kv => kv.SetCredential(credential));
-                });
+                configBuilder.AddAzureAppConfiguration(options => options
+                    .Connect(new Uri(appConfigEndpoint), credential)
+                    .Select(KeyFilter.Any, environmentLabel)
+                    .Select(KeyFilter.Any, LabelFilter.Null)
+                    .ConfigureKeyVault(kv => kv.SetCredential(credential)));
             })
             .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Startup>());
     }
