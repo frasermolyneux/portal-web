@@ -50,32 +50,32 @@ public class Startup(IConfiguration configuration)
 
         services.AddInvisionApiClient(options =>
         {
-            options.BaseUrl = Configuration["XtremeIdiots:Forums:BaseUrl"] ?? throw new InvalidOperationException("XtremeIdiots:Forums:BaseUrl configuration is required");
-            options.ApiKey = Configuration["XtremeIdiots:Forums:ApiKey"] ?? throw new InvalidOperationException("XtremeIdiots:Forums:ApiKey configuration is required");
+            options.BaseUrl = GetConfigValue("XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required");
+            options.ApiKey = GetConfigValue("XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required");
         });
 
         services.AddAdminActionTopics();
         services.AddScoped<IDemoManager, DemoManager>();
 
         services.AddRepositoryApiClient(options => options
-            .WithBaseUrl(Configuration["RepositoryApi:BaseUrl"] ?? throw new InvalidOperationException("RepositoryApi:BaseUrl configuration is required"))
-            .WithEntraIdAuthentication(Configuration["RepositoryApi:ApplicationAudience"] ?? throw new InvalidOperationException("RepositoryApi:ApplicationAudience configuration is required")));
+            .WithBaseUrl(GetConfigValue("RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))
+            .WithEntraIdAuthentication(GetConfigValue("RepositoryApi:ApplicationAudience", "RepositoryApi:ApplicationAudience configuration is required")));
 
         services.AddServersApiClient(options => options
-            .WithBaseUrl(Configuration["ServersIntegrationApi:BaseUrl"] ?? throw new InvalidOperationException("ServersIntegrationApi:BaseUrl configuration is required"))
-            .WithEntraIdAuthentication(Configuration["ServersIntegrationApi:ApplicationAudience"] ?? throw new InvalidOperationException("ServersIntegrationApi:ApplicationAudience configuration is required")));
+            .WithBaseUrl(GetConfigValue("ServersIntegrationApi:BaseUrl", "ServersIntegrationApi:BaseUrl configuration is required"))
+            .WithEntraIdAuthentication(GetConfigValue("ServersIntegrationApi:ApplicationAudience", "ServersIntegrationApi:ApplicationAudience configuration is required")));
 
         services.AddGeoLocationApiClient(options => options
-            .WithBaseUrl(Configuration["GeoLocationApi:BaseUrl"] ?? throw new InvalidOperationException("GeoLocationApi:BaseUrl configuration is required"))
-            .WithApiKeyAuthentication(Configuration["GeoLocationApi:ApiKey"] ?? throw new InvalidOperationException("GeoLocationApi:ApiKey configuration is required"))
-            .WithEntraIdAuthentication(Configuration["GeoLocationApi:ApplicationAudience"] ?? throw new InvalidOperationException("GeoLocationApi:ApplicationAudience configuration is required")));
+            .WithBaseUrl(GetConfigValue("GeoLocationApi:BaseUrl", "GeoLocationApi:BaseUrl configuration is required"))
+            .WithApiKeyAuthentication(GetConfigValue("GeoLocationApi:ApiKey", "GeoLocationApi:ApiKey configuration is required"))
+            .WithEntraIdAuthentication(GetConfigValue("GeoLocationApi:ApplicationAudience", "GeoLocationApi:ApplicationAudience configuration is required")));
 
         services.AddXtremeIdiotsAuth();
         services.AddAuthorization(options => options.AddXtremeIdiotsPolicies());
 
         services.AddCors(options =>
         {
-            var corsOrigin = Configuration["XtremeIdiots:Forums:BaseUrl"] ?? throw new InvalidOperationException("XtremeIdiots:Forums:BaseUrl configuration is required");
+            var corsOrigin = GetConfigValue("XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required");
             options.AddPolicy("CorsPolicy",
                 builder => builder
                     .WithOrigins(corsOrigin)
@@ -148,5 +148,12 @@ public class Startup(IConfiguration configuration)
         using var scope = app.ApplicationServices.CreateScope();
         var identityDataContext = scope.ServiceProvider.GetRequiredService<IdentityDataContext>();
         identityDataContext.Database.Migrate();
+    }
+
+    private string GetConfigValue(string key, string missingMessage)
+    {
+        return Configuration[key]
+            ?? Configuration[$"XtremeIdiots.Portal.Web:{key}"]
+            ?? throw new InvalidOperationException(missingMessage);
     }
 }
