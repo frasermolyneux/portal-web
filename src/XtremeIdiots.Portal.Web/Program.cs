@@ -59,7 +59,12 @@ public class Program
 
                     foreach (var keyFilter in appConfigurationKeyFilters)
                     {
-                        appConfig.Select(keyFilter, environmentLabel);
+                        var selection = appConfig.Select(keyFilter, environmentLabel);
+
+                        if (keyFilter == "XtremeIdiots.Portal.Web:*")
+                        {
+                            selection.TrimKeyPrefix("XtremeIdiots.Portal.Web:");
+                        }
                     }
 
                     appConfig.Select(KeyFilter.Any, LabelFilter.Null);
