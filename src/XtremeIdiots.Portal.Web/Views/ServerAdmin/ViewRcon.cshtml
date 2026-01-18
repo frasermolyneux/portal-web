@@ -26,8 +26,10 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Player</th>
+                                    <th>Username</th>
+                                    <th>Guid</th>
                                     <th>IP Address</th>
+                                    <th>Rate</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -207,30 +209,26 @@
                         width: '50px'
                     },
                     {
-                        data: null,
-                        name: 'player',
+                        data: 'name',
+                        name: 'name',
                         render: function (data, type, row) {
-                            var html = '<div>';
-                            
                             // Player name with profile link if available
                             if (row.playerId) {
-                                html += '<strong><a href="/Players/Details/' + row.playerId + '">' + escapeHtml(row.name) + '</a></strong><br/>';
+                                return '<a href="/Players/Details/' + row.playerId + '">' + escapeHtml(row.name) + '</a>';
                             } else {
-                                html += '<strong>' + escapeHtml(row.name) + '</strong><br/>';
+                                return escapeHtml(row.name);
                             }
-                            
-                            // GUID
-                            if (row.guid) {
-                                html += '<small class="text-muted">GUID: ' + escapeHtml(row.guid) + '</small>';
-                            }
-                            
-                            html += '</div>';
-                            return html;
                         }
+                    },
+                    {
+                        data: 'guid',
+                        name: 'guid',
+                        sortable: false
                     },
                     {
                         data: 'ipAddress',
                         name: 'ipAddress',
+                        sortable: false,
                         render: function (data, type, row) {
                             if (!data) return '';
                             return formatIPAddress(
@@ -245,9 +243,14 @@
                         }
                     },
                     {
+                        data: 'rate',
+                        name: 'rate',
+                        sortable: false
+                    },
+                    {
                         data: null,
                         sortable: false,
-                        width: '180px',
+                        width: '200px',
                         render: function (data, type, row) {
                             if (!row.num) return '';
                             
