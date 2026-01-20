@@ -16,7 +16,7 @@ jobs:
   quality:
     uses: frasermolyneux/actions/.github/workflows/codequality.yml@main
     with:
-      sonar-project-key: frasermolyneux_xtremeidiots-portal
+      sonar-project-key: frasermolyneux_portal-web
       sonar-organization: frasermolyneux
       sonar-host-url: https://sonarcloud.io
       build-target: dotnet-web-ci

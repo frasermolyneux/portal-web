@@ -9,38 +9,28 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <div class="alert alert-warning" role="alert">
-        <i class="fa fa-info-circle"></i> THIS FEATURE IS CURRENTLY UNDER DEVELOPMENT AND IS EXPERIMENTAL
+    <div class="alert alert-info" role="alert">
+        <i class="fa fa-info-circle"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
     </div>
 
     <row class="row">
 
-        <div class="col-8">
+        <div class="col-lg-8 col-md-12">
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        @ViewData["Title"]
+                        <h5>Connected Players</h5>
                     </div>
                     <div class="ibox-content">
-                        <table id="dataTable">
+                        <table id="dataTable" class="table table-striped table-hover" style="width:100%">
                             <thead>
                                 <tr>
-                                    <th>
-                                        #
-                                    </th>
-                                    <th>
-                                        Username
-                                    </th>
-                                    <th>
-                                        Guid
-                                    </th>
-                                    <th>
-                                        Ip Address
-                                    </th>
-                                    <th>
-                                        Rate
-                                    </th>
-                                    <th></th>
+                                    <th>#</th>
+                                    <th>Username</th>
+                                    <th>Guid</th>
+                                    <th>IP Address</th>
+                                    <th>Rate</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -48,37 +38,51 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Live Chat Log</h5>
+                        <div class="ibox-tools">
+                            <span class="badge badge-primary" id="chatMessageCount">0</span>
+                        </div>
+                    </div>
+                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto;" id="chatLogContainer">
+                        <div id="chatMessages">
+                            <p class="text-muted text-center">Loading chat messages...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="col-4">
+        <div class="col-lg-4 col-md-12">
 
-            <div class="ibox ">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>Server Control</h5>
                 </div>
                 <div class="ibox-content">
-                    <button id="restartServer" class="btn btn-primary" type="submit">
+                    <button id="restartServer" class="btn btn-primary btn-block" type="button" data-testid="rcon-btn-restart-server">
                         <i class="fa fa-refresh"></i> Restart Server
                     </button>
                 </div>
             </div>
 
-            <div class="ibox ">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>Map Control</h5>
                 </div>
                 <div class="ibox-content">
 
-                    <button id="restartMap" class="btn btn-primary" type="submit">
+                    <button id="restartMap" class="btn btn-primary btn-block mb-2" type="button" data-testid="rcon-btn-restart-map">
                         <i class="fa fa-refresh"></i> Restart Map
                     </button>
 
-                    <button id="fastRestartMap" class="btn btn-primary" type="submit">
+                    <button id="fastRestartMap" class="btn btn-primary btn-block mb-2" type="button" data-testid="rcon-btn-fast-restart-map">
                         <i class="fa fa-refresh"></i> Fast Restart Map
                     </button>
 
-                    <button id="nextMap" class="btn btn-primary" type="submit">
+                    <button id="nextMap" class="btn btn-primary btn-block" type="button" data-testid="rcon-btn-next-map">
                         <i class="fa fa-forward"></i> Next Map
                     </button>
 
@@ -117,78 +121,84 @@
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
     <script type="text/javascript">
 
+        var lastChatMessageId = null;
+        var chatRefreshInterval = 15000; // 15 seconds
+
         $(document).ready(function () {
+
+            var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
 
             $("#restartServer").click(function (e) {
                 e.preventDefault();
+                if (!confirm('Are you sure you want to restart the server?')) return;
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/RestartServer/@Model.GameServerId",
+                    headers: { 'RequestVerificationToken': antiForgeryToken },
                     success: function (result) {
-                        alert("Success: " + result.message);
+                        showToast('success', 'Server restart command sent successfully');
                     },
-                    error: function (result) {
-                        alert("Error: " + result.message);
+                    error: function (xhr) {
+                        showToast('error', 'Failed to restart server: ' + (xhr.responseText || 'Unknown error'));
                     }
                 });
             });
 
             $("#restartMap").click(function (e) {
                 e.preventDefault();
+                if (!confirm('Are you sure you want to restart the map?')) return;
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/RestartMap/@Model.GameServerId",
+                    headers: { 'RequestVerificationToken': antiForgeryToken },
                     success: function (result) {
-                        alert("Success: " + result.message);
+                        showToast('success', 'Map restart command sent successfully');
                     },
-                    error: function (result) {
-                        alert("Error: " + result.message);
+                    error: function (xhr) {
+                        showToast('error', 'Failed to restart map: ' + (xhr.responseText || 'Unknown error'));
                     }
                 });
             });
 
             $("#fastRestartMap").click(function (e) {
                 e.preventDefault();
+                if (!confirm('Are you sure you want to fast restart the map?')) return;
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/FastRestartMap/@Model.GameServerId",
+                    headers: { 'RequestVerificationToken': antiForgeryToken },
                     success: function (result) {
-                        alert("Success: " + result.message);
+                        showToast('success', 'Fast restart command sent successfully');
                     },
-                    error: function (result) {
-                        alert("Error: " + result.message);
+                    error: function (xhr) {
+                        showToast('error', 'Failed to fast restart map: ' + (xhr.responseText || 'Unknown error'));
                     }
                 });
             });
 
             $("#nextMap").click(function (e) {
                 e.preventDefault();
+                if (!confirm('Are you sure you want to load the next map?')) return;
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/NextMap/@Model.GameServerId",
+                    headers: { 'RequestVerificationToken': antiForgeryToken },
                     success: function (result) {
-                        alert("Success: " + result.message);
+                        showToast('success', 'Next map command sent successfully');
                     },
-                    error: function (result) {
-                        alert("Error: " + result.message);
+                    error: function (xhr) {
+                        showToast('error', 'Failed to load next map: ' + (xhr.responseText || 'Unknown error'));
                     }
                 });
             });
 
-            $('#dataTable').DataTable({
+            var playersTable = $('#dataTable').DataTable({
                 processing: true,
                 pageLength: 50,
                 stateSave: true,
                 order: [[0, "asc"]],
                 ajax: {
                     url: '/ServerAdmin/GetRconPlayers/@Model.GameServerId',
-                    beforeSend: function (xhr) {
-                        var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-                        var antiForgeryToken = tokenInput ? tokenInput.value : '';
-                        if (antiForgeryToken) {
-                            xhr.setRequestHeader('RequestVerificationToken', antiForgeryToken);
-                        }
-                    },
                     dataSrc: 'data',
                     error: handleAjaxError
                 },
@@ -196,14 +206,18 @@
                     {
                         data: 'num',
                         name: 'num',
-                        sortable: true
+                        width: '50px'
                     },
                     {
                         data: 'name',
                         name: 'name',
-                        sortable: true,
                         render: function (data, type, row) {
-                            return escapeHtml(row['name']);
+                            // Player name with profile link if available
+                            if (row.playerId) {
+                                return '<a href="/Players/Details/' + row.playerId + '">' + escapeHtml(row.name) + '</a>';
+                            } else {
+                                return escapeHtml(row.name);
+                            }
                         }
                     },
                     {
@@ -216,10 +230,16 @@
                         name: 'ipAddress',
                         sortable: false,
                         render: function (data, type, row) {
-                            // For RCON players, we'll need to make an API call to get ProxyCheck data
-                            // This will be implemented in the GetRconPlayers method in the ServerAdminController
-                            return formatIPAddress(row['ipAddress'], row['proxyCheckRiskScore'] || 0,
-                                row['isProxy'] === true, row['isVpn'] === true, row['proxyType'] || '', row['countryCode'] || '');
+                            if (!data) return '';
+                            return formatIPAddress(
+                                row.ipAddress,
+                                row.proxyCheckRiskScore || 0,
+                                row.isProxy === true,
+                                row.isVpn === true,
+                                row.proxyType || '',
+                                row.countryCode || '',
+                                true
+                            );
                         }
                     },
                     {
@@ -228,20 +248,198 @@
                         sortable: false
                     },
                     {
+                        data: null,
                         sortable: false,
+                        width: '200px',
                         render: function (data, type, row) {
-                            return "";
-                                                                    @*return '<a href="/ServerAdmin/KickPlayer/@Model.ServerId?num=' + row['num'] + '">Kick Player</a> | <a href="/ServerAdmin/BanPlayer/' + row['num'] + '">Ban Player</a>';*@
-                                                                }
+                            if (!row.num) return '';
+                            
+                            var playerSlot = row.num;
+                            var playerGuid = row.guid || '';
+                            var playerName = escapeHtml(row.name || 'Unknown');
+                            
+                            var kickBtn = '<button class="btn btn-sm btn-warning kick-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-kick"><i class="fa fa-user-times"></i> Kick</button> ';
+                            var tempBanBtn = '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-tempban"><i class="fa fa-clock-o"></i> TempBan</button> ';
+                            var banBtn = '<button class="btn btn-sm btn-danger ban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-ban"><i class="fa fa-ban"></i> Ban</button>';
+                            
+                            return '<div class="btn-group btn-group-sm" role="group">' + kickBtn + tempBanBtn + banBtn + '</div>';
+                        }
                     }
                 ]
             });
-        });
 
-        setInterval(function () {
-            $('#dataTable').DataTable().ajax.reload();
-        },
-            10000);
+            // Handle kick button clicks
+            $('#dataTable').on('click', '.kick-player', function() {
+                var playerSlot = $(this).data('slot');
+                var playerGuid = $(this).data('guid') || '';
+                var playerName = $(this).data('name') || 'this player';
+                
+                if (!confirm('Are you sure you want to kick ' + playerName + '?')) return;
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/ServerAdmin/KickRconPlayer/@Model.GameServerId',
+                    data: { 
+                        playerSlot: playerSlot,
+                        playerGuid: playerGuid,
+                        playerName: playerName,
+                        __RequestVerificationToken: antiForgeryToken 
+                    },
+                    success: function(result) {
+                        if (result.success) {
+                            showToast('success', result.message || 'Player kicked successfully');
+                            playersTable.ajax.reload();
+                        } else {
+                            showToast('error', result.message || 'Failed to kick player');
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast('error', 'Error kicking player: ' + (xhr.responseText || 'Unknown error'));
+                    }
+                });
+            });
+
+            // Handle temp ban button clicks
+            $('#dataTable').on('click', '.tempban-player', function() {
+                var playerSlot = $(this).data('slot');
+                var playerGuid = $(this).data('guid') || '';
+                var playerName = $(this).data('name') || 'this player';
+                
+                if (!confirm('Are you sure you want to temporarily ban ' + playerName + ' for 7 days?')) return;
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/ServerAdmin/TempBanRconPlayer/@Model.GameServerId',
+                    data: { 
+                        playerSlot: playerSlot,
+                        playerGuid: playerGuid,
+                        playerName: playerName,
+                        __RequestVerificationToken: antiForgeryToken 
+                    },
+                    success: function(result) {
+                        if (result.success) {
+                            showToast('warning', result.message || 'Player temp banned successfully');
+                            playersTable.ajax.reload();
+                        } else {
+                            showToast('error', result.message || 'Failed to temp ban player');
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast('error', 'Error temp banning player: ' + (xhr.responseText || 'Unknown error'));
+                    }
+                });
+            });
+
+            // Handle ban button clicks
+            $('#dataTable').on('click', '.ban-player', function() {
+                var playerSlot = $(this).data('slot');
+                var playerGuid = $(this).data('guid') || '';
+                var playerName = $(this).data('name') || 'this player';
+                
+                if (!confirm('Are you sure you want to permanently ban ' + playerName + '?')) return;
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/ServerAdmin/BanRconPlayer/@Model.GameServerId',
+                    data: { 
+                        playerSlot: playerSlot,
+                        playerGuid: playerGuid,
+                        playerName: playerName,
+                        __RequestVerificationToken: antiForgeryToken 
+                    },
+                    success: function(result) {
+                        if (result.success) {
+                            showToast('error', result.message || 'Player banned successfully', 'Player Banned');
+                            playersTable.ajax.reload();
+                        } else {
+                            showToast('error', result.message || 'Failed to ban player');
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast('error', 'Error banning player: ' + (xhr.responseText || 'Unknown error'));
+                    }
+                });
+            });
+
+            // Reload player data every 10 seconds
+            setInterval(function () {
+                playersTable.ajax.reload(null, false);
+            }, 10000);
+
+            // Load and refresh chat log
+            function loadChatLog() {
+                var url = '/ServerAdmin/GetServerLiveChatLog/@Model.GameServerId?minutes=30';
+                if (lastChatMessageId) {
+                    url += '&lastMessageId=' + lastChatMessageId;
+                }
+
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    success: function(result) {
+                        if (result.messages && result.messages.length > 0) {
+                            // Update the last message ID
+                            lastChatMessageId = result.messages[0].chatMessageId;
+                            
+                            // Prepend new messages
+                            var messagesHtml = '';
+                            for (var i = result.messages.length - 1; i >= 0; i--) {
+                                var msg = result.messages[i];
+                                var msgClass = msg.locked ? 'alert-warning' : 'alert-info';
+                                var lockedBadge = msg.locked ? '<span class="badge badge-warning ml-2">Locked</span>' : '';
+                                
+                                messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
+                                messagesHtml += '<small class="text-muted">' + formatDateTime(msg.timestamp) + '</small> ';
+                                
+                                if (msg.playerId) {
+                                    messagesHtml += '<strong><a href="/Players/Details/' + msg.playerId + '" class="alert-link">' + escapeHtml(msg.username) + '</a></strong>';
+                                } else {
+                                    messagesHtml += '<strong>' + escapeHtml(msg.username) + '</strong>';
+                                }
+                                
+                                messagesHtml += lockedBadge + ': ';
+                                messagesHtml += escapeHtml(msg.message);
+                                messagesHtml += '</div>';
+                            }
+                            
+                            var container = $('#chatMessages');
+                            if (container.find('p.text-muted').length > 0) {
+                                container.html(messagesHtml);
+                            } else {
+                                container.prepend(messagesHtml);
+                            }
+                            
+                            // Update message count
+                            $('#chatMessageCount').text(result.messages.length + ' new');
+                            
+                            // Auto-scroll to bottom only if we're near the bottom
+                            var chatContainer = $('#chatLogContainer');
+                            var isNearBottom = chatContainer[0].scrollHeight - chatContainer.scrollTop() - chatContainer.height() < 100;
+                            if (isNearBottom || !lastChatMessageId) {
+                                chatContainer.scrollTop(chatContainer[0].scrollHeight);
+                            }
+                        } else if (!lastChatMessageId) {
+                            $('#chatMessages').html('<p class="text-muted text-center">No recent chat messages</p>');
+                            $('#chatMessageCount').text('0');
+                        } else {
+                            $('#chatMessageCount').text('0 new');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to load chat log:', xhr);
+                        if (!lastChatMessageId) {
+                            $('#chatMessages').html('<p class="text-danger text-center">Failed to load chat messages</p>');
+                        }
+                    }
+                });
+            }
+
+            // Initial load
+            loadChatLog();
+
+            // Refresh chat log periodically
+            setInterval(loadChatLog, chatRefreshInterval);
+        });
 
     </script>
 }
