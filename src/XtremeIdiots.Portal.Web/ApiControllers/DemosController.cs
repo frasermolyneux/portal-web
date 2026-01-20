@@ -170,22 +170,42 @@ public class DemosController(
                 return Content("Error: Failed to retrieve demo list from server.");
             }
 
-            var demos = demosApiResponse.Result.Data.Items.Select(demo => new
-            {
-                demo.DemoId,
-                Version = demo.GameType.ToString(),
-                Name = demo.Title,
-                Date = demo.Created,
-                demo.Map,
-                demo.Mod,
-                GameType = demo.GameMode,
-                Server = demo.ServerName,
-                Size = demo.FileSize,
-                Identifier = demo.FileName,
-                demo.FileName
-            }).ToList();
+            var allDemos = demosApiResponse.Result.Data.Items.ToList();
+            var totalDemosRetrieved = allDemos.Count;
+            var demosWithoutCreatedDate = allDemos.Count(demo => !demo.Created.HasValue);
 
-            Logger.LogInformation("{MethodName} - Successfully provided {DemoCount} demos to client for user {UserId}", nameof(ClientDemoList), demos.Count, userIdFromProfile);
+            if (demosWithoutCreatedDate > 0)
+            {
+                Logger.LogWarning(
+                    "{MethodName} - Filtering out {FilteredCount} demos without Created date for user {UserId}",
+                    nameof(ClientDemoList),
+                    demosWithoutCreatedDate,
+                    userIdFromProfile);
+            }
+
+            var demos = allDemos
+                .Where(demo => demo.Created.HasValue)
+                .Select(demo => new
+                {
+                    demo.DemoId,
+                    Version = demo.GameType.ToString(),
+                    Name = demo.Title,
+                    Date = demo.Created!.Value,
+                    demo.Map,
+                    demo.Mod,
+                    GameType = demo.GameMode,
+                    Server = demo.ServerName,
+                    Size = demo.FileSize,
+                    Identifier = demo.FileName,
+                    demo.FileName
+                }).ToList();
+
+            Logger.LogInformation(
+                "{MethodName} - Successfully provided {DemoCount} demos to client for user {UserId} (filtered from {TotalCount})",
+                nameof(ClientDemoList),
+                demos.Count,
+                userIdFromProfile,
+                totalDemosRetrieved);
 
             var clientListTelemetry = new EventTelemetry("ClientDemoListProvided");
             clientListTelemetry.Properties.TryAdd("LoggedInAdminId", userIdFromProfile);
