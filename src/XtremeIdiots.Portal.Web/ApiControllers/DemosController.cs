@@ -170,8 +170,8 @@ public class DemosController(
                 return Content("Error: Failed to retrieve demo list from server.");
             }
 
-            var allDemos = demosApiResponse.Result.Data.Items.ToList();
-            var totalDemosRetrieved = allDemos.Count;
+            var allDemos = demosApiResponse.Result.Data.Items;
+            var totalDemosRetrieved = allDemos.Count();
 
             var demos = allDemos
                 .Where(demo => demo.Created.HasValue)
@@ -180,7 +180,7 @@ public class DemosController(
                     demo.DemoId,
                     Version = demo.GameType.ToString(),
                     Name = demo.Title,
-                    Date = demo.Created!.Value,
+                    Date = demo.Created!.Value, // Safe: HasValue check in Where clause guarantees non-null
                     demo.Map,
                     demo.Mod,
                     GameType = demo.GameMode,
