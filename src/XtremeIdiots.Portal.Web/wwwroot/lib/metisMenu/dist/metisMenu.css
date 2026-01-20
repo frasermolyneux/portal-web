@@ -83,6 +83,9 @@
 .metismenu .collapse.in {
   display: block;
 }
+.metismenu .collapse.show {
+  display: block;
+}
 .metismenu .collapsing {
   position: relative;
   height: 0;
