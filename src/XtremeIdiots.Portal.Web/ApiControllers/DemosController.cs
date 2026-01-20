@@ -172,16 +172,6 @@ public class DemosController(
 
             var allDemos = demosApiResponse.Result.Data.Items.ToList();
             var totalDemosRetrieved = allDemos.Count;
-            var demosWithoutCreatedDate = allDemos.Count(demo => !demo.Created.HasValue);
-
-            if (demosWithoutCreatedDate > 0)
-            {
-                Logger.LogWarning(
-                    "{MethodName} - Filtering out {FilteredCount} demos without Created date for user {UserId}",
-                    nameof(ClientDemoList),
-                    demosWithoutCreatedDate,
-                    userIdFromProfile);
-            }
 
             var demos = allDemos
                 .Where(demo => demo.Created.HasValue)
@@ -200,6 +190,17 @@ public class DemosController(
                     demo.FileName
                 }).ToList();
 
+            var demosFilteredOut = totalDemosRetrieved - demos.Count;
+
+            if (demosFilteredOut > 0)
+            {
+                Logger.LogWarning(
+                    "{MethodName} - Filtered out {FilteredCount} demos without Created date for user {UserId}",
+                    nameof(ClientDemoList),
+                    demosFilteredOut,
+                    userIdFromProfile);
+            }
+
             Logger.LogInformation(
                 "{MethodName} - Successfully provided {DemoCount} demos to client for user {UserId} (filtered from {TotalCount})",
                 nameof(ClientDemoList),
@@ -210,6 +211,8 @@ public class DemosController(
             var clientListTelemetry = new EventTelemetry("ClientDemoListProvided");
             clientListTelemetry.Properties.TryAdd("LoggedInAdminId", userIdFromProfile);
             clientListTelemetry.Properties.TryAdd("DemoCount", demos.Count.ToString(CultureInfo.InvariantCulture));
+            clientListTelemetry.Properties.TryAdd("TotalRetrieved", totalDemosRetrieved.ToString(CultureInfo.InvariantCulture));
+            clientListTelemetry.Properties.TryAdd("FilteredOut", demosFilteredOut.ToString(CultureInfo.InvariantCulture));
             TelemetryClient.TrackEvent(clientListTelemetry);
 
             return Ok(demos);
