@@ -75,6 +75,7 @@ $(document).ready(function () {
     // Fix navigation menu functionality
     ensureExpandedParents();
     enableMiniNavbarPopouts();
+    fixMobileNavigation();
 
     // Add animation to alerts
     $('.alert').addClass('animated fadeIn');
@@ -177,6 +178,73 @@ $(document).ready(function () {
                 }
                 hideSubmenu($item);
             }, 0);
+        });
+    }
+
+    // Fix mobile navigation: prevent submenus from disappearing on touch devices
+    function fixMobileNavigation() {
+        const $body = $('body');
+        const $sideMenu = $('#side-menu');
+        
+        if ($sideMenu.length === 0) {
+            return;
+        }
+
+        // Detect if we're on a touch device
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
+        if (!isTouchDevice) {
+            return;
+        }
+
+        // On mobile/small screens (body-small class), prevent submenu from closing immediately
+        $sideMenu.on('click', '.nav-link[data-testid*="toggle"], a[href="#"]', function (e) {
+            // Only apply fix on small screens
+            if (!$body.hasClass('body-small') && !$body.hasClass('mini-navbar')) {
+                return;
+            }
+
+            const $link = $(this);
+            const $parentLi = $link.parent('li');
+            const $submenu = $parentLi.find('> ul.nav-second-level');
+
+            if ($submenu.length === 0) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Toggle the submenu
+            const isCurrentlyOpen = $submenu.hasClass('show');
+            
+            if (isCurrentlyOpen) {
+                $submenu.removeClass('show');
+                $parentLi.removeClass('active');
+                $link.attr('aria-expanded', 'false');
+            } else {
+                // Close other open submenus (accordion behavior)
+                $sideMenu.find('.nav-second-level.show').each(function() {
+                    const $otherSubmenu = $(this);
+                    if (!$otherSubmenu.is($submenu)) {
+                        $otherSubmenu.removeClass('show');
+                        $otherSubmenu.parent('li').removeClass('active');
+                        $otherSubmenu.siblings('a').attr('aria-expanded', 'false');
+                    }
+                });
+                
+                $submenu.addClass('show');
+                $parentLi.addClass('active');
+                $link.attr('aria-expanded', 'true');
+            }
+
+            return false;
+        });
+
+        // Prevent submenu links from closing the parent menu on mobile
+        $sideMenu.on('click', '.nav-second-level a', function (e) {
+            // Let the link navigate normally, but don't let it close the parent menu
+            e.stopPropagation();
         });
     }
 });
