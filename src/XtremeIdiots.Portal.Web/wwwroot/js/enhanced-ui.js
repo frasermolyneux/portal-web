@@ -181,7 +181,7 @@ $(document).ready(function () {
         });
     }
 
-    // Fix mobile navigation: prevent submenus from disappearing on touch devices
+    // Fix mobile navigation: prevent submenus from disappearing on small screens
     function fixMobileNavigation() {
         const $body = $('body');
         const $sideMenu = $('#side-menu');
@@ -190,17 +190,10 @@ $(document).ready(function () {
             return;
         }
 
-        // Detect if we're on a touch device
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        
-        if (!isTouchDevice) {
-            return;
-        }
-
-        // On mobile/small screens (body-small class), prevent submenu from closing immediately
+        // On mobile/small screens (body-small class), handle submenu toggling manually
         $sideMenu.on('click', '.nav-link[data-testid*="toggle"], a[href="#"]', function (e) {
             // Only apply fix on small screens
-            if (!$body.hasClass('body-small') && !$body.hasClass('mini-navbar')) {
+            if (!$body.hasClass('body-small')) {
                 return;
             }
 
