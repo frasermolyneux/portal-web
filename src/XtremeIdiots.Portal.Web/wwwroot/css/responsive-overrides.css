@@ -86,6 +86,26 @@ body:not(.mini-navbar) .metismenu .nav-second-level.collapse:not(.show) {
     .metismenu > li.active > .nav-second-level {
         display: block;
     }
+
+    /* Increase touch target size for better mobile usability */
+    .metismenu > li > a {
+        padding: 14px 20px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Ensure submenu items are also easy to tap */
+    .metismenu .nav-second-level li a {
+        padding: 12px 20px 12px 40px;
+        min-height: 44px;
+        display: block;
+    }
+
+    /* Prevent touch delay on navigation items */
+    .metismenu a {
+        touch-action: manipulation;
+    }
 }
 
 /* Keep icons-only (mini-navbar) menus open while interacting with the submenu */
