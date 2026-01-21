@@ -80,7 +80,8 @@
 .metismenu .collapse {
   display: none;
 }
-.metismenu .collapse.in {
+.metismenu .collapse.in,
+.metismenu .collapse.show {
   display: block;
 }
 .metismenu .collapsing {
