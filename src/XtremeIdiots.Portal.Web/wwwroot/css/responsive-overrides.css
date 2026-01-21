@@ -86,11 +86,6 @@ body:not(.mini-navbar) .metismenu .nav-second-level.collapse:not(.show) {
     .metismenu > li.active > .nav-second-level {
         display: block;
     }
-    
-    /* Prevent accidental collapse during touch interaction */
-    .metismenu .nav-second-level {
-        transition: none;
-    }
 }
 
 /* Keep icons-only (mini-navbar) menus open while interacting with the submenu */
