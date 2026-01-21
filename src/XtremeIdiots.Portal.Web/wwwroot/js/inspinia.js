@@ -261,7 +261,12 @@ function animationHover(element, animation) {
 }
 
 function SmoothlyMenu() {
-    if (!$("body").hasClass("mini-navbar") || $("body").hasClass("body-small")) {
+    // Skip menu animation on mobile screens to prevent submenu state loss
+    if ($("body").hasClass("body-small")) {
+        return;
+    }
+    
+    if (!$("body").hasClass("mini-navbar")) {
         // Hide menu in order to smoothly turn on when maximize menu
         $("#side-menu").hide();
         // For smoothly turn on menu
