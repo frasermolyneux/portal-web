@@ -190,7 +190,7 @@ $(document).ready(function () {
             return;
         }
 
-        // On mobile/small screens (body-small class), handle submenu toggling manually
+        // On mobile/small screens (body-small class), override default submenu behavior
         $sideMenu.on('click', '.nav-link[data-testid*="toggle"], a[href="#"]', function (e) {
             // Only apply fix on small screens
             if (!$body.hasClass('body-small')) {

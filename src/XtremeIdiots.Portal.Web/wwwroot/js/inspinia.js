@@ -261,7 +261,7 @@ function animationHover(element, animation) {
 }
 
 function SmoothlyMenu() {
-    // On mobile (body-small), don't hide/show the menu - let enhanced-ui.js handle submenu behavior
+    // Skip menu animation on mobile screens to prevent submenu state loss
     if ($("body").hasClass("body-small")) {
         return;
     }
