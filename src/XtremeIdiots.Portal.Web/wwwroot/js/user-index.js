@@ -1,14 +1,7 @@
-// Users index page script (extracted from inline Razor)
+// Users index page script (aligned with players-index.js pattern)
 $(document).ready(function () {
-    const $tableEl = $('#dataTable');
-    const $search = $('#filterSearch');
-    const $userFlag = $('#filterUserFlag');
-    const $reset = $('#resetFilters');
-
-    const antiForgeryToken = function () {
-        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-        return tokenInput ? tokenInput.value : '';
-    };
+    const tableEl = $('#dataTable');
+    const userFlagSel = document.getElementById('filterUserFlag');
 
     // Whitelisted claim types to show as roles
     const ROLE_CLAIM_TYPES = new Set([
@@ -37,15 +30,22 @@ $(document).ready(function () {
         return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" title="Open forum profile in new tab">' + id + '</a>';
     }
 
-    const table = $tableEl.DataTable({
+    const table = tableEl.DataTable({
         processing: true,
         serverSide: true,
-        searching: false, // we'll handle via external box
+        searchDelay: 800,
         stateSave: true,
-        searchDelay: 600,
-        order: [[2, 'asc']], // displayName column
         responsive: { details: { type: 'inline', target: 'tr' } },
         autoWidth: false,
+        order: [[2, 'asc']], // displayName column
+        stateSaveParams: function (settings, data) {
+            data._usersStructureVersion = 1;
+            if (userFlagSel) data.userFlag = userFlagSel.value || '';
+        },
+        stateLoadParams: function (settings, data) {
+            if (data._usersStructureVersion !== 1) return false;
+            if (userFlagSel && typeof data.userFlag !== 'undefined') userFlagSel.value = data.userFlag;
+        },
         columnDefs: [
             { targets: 2, responsivePriority: 1 }, // Username
             { targets: 3, responsivePriority: 2 }, // Email
@@ -57,16 +57,12 @@ $(document).ready(function () {
             dataSrc: 'data',
             contentType: 'application/json',
             type: 'POST',
-            data: function (d) {
-                // Manually set search value from external search box since searching is disabled
-                d.search.value = $search.val() || '';
-                return JSON.stringify(d);
-            },
+            data: function (d) { return JSON.stringify(d); },
             beforeSend: function (xhr) {
-                const token = antiForgeryToken();
-                if (token) xhr.setRequestHeader('RequestVerificationToken', token);
+                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (tokenInput) xhr.setRequestHeader('RequestVerificationToken', tokenInput.value);
                 const baseUrl = '/User/GetUsersAjax';
-                const flagVal = $userFlag.val();
+                const flagVal = userFlagSel?.value;
                 this.url = flagVal ? (baseUrl + '?userFlag=' + encodeURIComponent(flagVal)) : baseUrl;
             }
         },
@@ -76,31 +72,61 @@ $(document).ready(function () {
             { data: 'displayName', name: 'displayName', sortable: true },
             { data: 'email', name: 'email', sortable: false },
             { data: null, name: 'roles', sortable: false, defaultContent: '', render: function (data, type, row) { return renderRoles(row); } },
-            { data: null, defaultContent: '', sortable: false, render: function (data, type, row) { return logOutUserLink(row['xtremeIdiotsForumId'], '<input name="__RequestVerificationToken" type="hidden" value="' + antiForgeryToken() + '" />'); } }
+            { data: null, defaultContent: '', sortable: false, render: function (data, type, row) {
+                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : '';
+                return logOutUserLink(row['xtremeIdiotsForumId'], '<input name="__RequestVerificationToken" type="hidden" value="' + token + '" />');
+            } }
         ]
     });
 
-    // External search with debounce - reload table data with search term
-    let searchTimer = null;
-    $search.on('input', function () {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(function () { 
-            table.ajax.reload(null, false); // false = stay on current page if possible
-        }, 500);
+    function relocateSearch() {
+        try {
+            const filters = document.getElementById('usersFilters');
+            const dtFilter = document.getElementById('dataTable_filter');
+            if (!filters || !dtFilter) return;
+            if (dtFilter.classList) dtFilter.classList.add('filter-group');
+            const label = dtFilter.querySelector('label');
+            if (label) {
+                const input = label.querySelector('input');
+                if (input) {
+                    if (input.classList) input.classList.add('form-control');
+                    input.placeholder = 'Search users...';
+                    label.textContent = '';
+                    const newLabel = document.createElement('label');
+                    newLabel.className = 'form-label';
+                    newLabel.setAttribute('for', input.id || 'globalUsersSearch');
+                    if (!input.id) input.id = 'globalUsersSearch';
+                    newLabel.textContent = 'Search';
+                    dtFilter.appendChild(newLabel);
+                    dtFilter.appendChild(input);
+                }
+            }
+            const resetBtn = document.getElementById('resetFilters');
+            const resetGroup = resetBtn ? resetBtn.closest('.filter-group') : null;
+            if (resetGroup && resetGroup.parentElement === filters) {
+                filters.insertBefore(dtFilter, resetGroup);
+            } else {
+                filters.appendChild(dtFilter);
+            }
+        } catch { /* swallow */ }
+    }
+
+    table.on('init.dt', function(){ relocateSearch(); });
+    setTimeout(relocateSearch, 1000);
+
+    function reloadTable() { table.ajax.reload(null, false); }
+
+    userFlagSel?.addEventListener('change', reloadTable);
+
+    document.getElementById('resetFilters')?.addEventListener('click', function () {
+        let changed = false;
+        if (userFlagSel && userFlagSel.value !== '') { userFlagSel.value = ''; changed = true; }
+        if (table.search()) { table.search(''); changed = true; }
+        if (changed) table.page('first');
+        table.draw(false);
     });
 
-    $userFlag.on('change', function () {
-        table.page('first').draw('page');
-    });
-
-    $reset.on('click', function () {
-        const hadValues = $search.val() || $userFlag.val();
-        if ($search.val()) $search.val('');
-        if ($userFlag.val()) $userFlag.val('');
-        if (hadValues) {
-            table.page('first').ajax.reload(null, false);
-        } else {
-            table.ajax.reload(null, false);
-        }
-    });
+    const iboxContent = tableEl.closest('.ibox-content')[0];
+    if (iboxContent && iboxContent.classList) iboxContent.classList.add('datatable-tight');
 });
