@@ -29,16 +29,14 @@ $(document).ready(function () {
         $("body").removeClass("body-small");
     }
 
-    // MetisMenu - configured to not add active class to parent menu items automatically
-    var sideMenu = $("#side-menu").metisMenu({
-        preventDefault: false,
-        toggle: true,
-        activeClass: 'active',
-        collapseClass: 'collapse',
-        collapseInClass: 'show',
-        collapseOpenClass: 'show',
-        preventOpenOnAjax: false,
-        doubleTapToGo: false
+    // Initialize Bootstrap collapse for navigation menu
+    // Mark parent as active when submenu is shown
+    $('#side-menu .collapse').on('show.bs.collapse', function () {
+        $(this).parent('li').addClass('active');
+    });
+    
+    $('#side-menu .collapse').on('hide.bs.collapse', function () {
+        $(this).parent('li').removeClass('active');
     });
 
     // Collapse ibox function

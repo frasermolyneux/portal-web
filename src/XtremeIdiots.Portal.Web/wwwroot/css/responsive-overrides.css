@@ -51,44 +51,49 @@ body {
 }
 
 /* Improved navigation menu functionality */
-.metismenu .arrow {
+.nav .arrow {
     float: right;
     margin-top: 2px;
+    line-height: 1.42857;
     transition: transform 0.3s ease;
 }
 
-.metismenu .active>a>.fa.arrow {
-    transform: rotate(90deg);
+.nav .fa.arrow:before {
+    content: "\f104";
 }
 
-.metismenu .nav-second-level {
+.nav .arrow.rotate-90:before,
+.nav a[aria-expanded="true"] > .fa.arrow:before {
+    content: "\f107";
+}
+
+.nav .nav-second-level {
     padding-left: 0;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
 }
 
-body:not(.mini-navbar) .metismenu .nav-second-level.collapse:not(.show) {
+body:not(.mini-navbar) .nav .nav-second-level.collapse:not(.show) {
     display: none;
 }
 
-.metismenu .nav-second-level.collapse.show {
+.nav .nav-second-level.collapse.show {
     display: block;
 }
 
 /* Fix for mobile navigation: prevent submenus from collapsing immediately on touch devices */
 @media (max-width: 768px) {
     /* Ensure submenu stays open when tapped on mobile */
-    .metismenu .nav-second-level.collapse.show,
-    .metismenu .nav-second-level.collapsing {
+    .nav .nav-second-level.collapse.show,
+    .nav .nav-second-level.collapsing {
         display: block !important;
     }
     
     /* Keep parent menu item active state visible */
-    .metismenu > li.active > .nav-second-level {
+    .nav > li.active > .nav-second-level {
         display: block;
     }
 
     /* Increase touch target size for better mobile usability */
-    .metismenu > li > a {
+    .nav > li > a {
         padding: 14px 20px;
         min-height: 48px;
         display: flex;
@@ -96,36 +101,52 @@ body:not(.mini-navbar) .metismenu .nav-second-level.collapse:not(.show) {
     }
 
     /* Ensure submenu items are also easy to tap */
-    .metismenu .nav-second-level li a {
+    .nav .nav-second-level li a {
         padding: 12px 20px 12px 40px;
         min-height: 44px;
         display: block;
     }
 
     /* Prevent touch delay on navigation items */
-    .metismenu a {
+    .nav a {
         touch-action: manipulation;
     }
 }
 
 /* Keep icons-only (mini-navbar) menus open while interacting with the submenu */
-body.mini-navbar .metismenu>li.active>.nav-second-level.collapse,
-body.mini-navbar .metismenu>li:hover>.nav-second-level.collapse,
-body.mini-navbar .metismenu>li:focus-within>.nav-second-level.collapse {
+.mini-navbar .nav .collapse {
+    opacity: 0;
+}
+
+.mini-navbar .nav .collapse.show {
+    opacity: 1;
+}
+
+.mini-navbar .nav .collapse a {
+    display: none;
+}
+
+.mini-navbar .nav .collapse.show a {
     display: block;
 }
 
-body.mini-navbar .metismenu>li.mini-open {
+body.mini-navbar .nav>li.active>.nav-second-level.collapse,
+body.mini-navbar .nav>li:hover>.nav-second-level.collapse,
+body.mini-navbar .nav>li:focus-within>.nav-second-level.collapse {
+    display: block;
+}
+
+body.mini-navbar .nav>li.mini-open {
     position: relative;
 }
 
-body.mini-navbar .metismenu>li.mini-open>.nav-second-level {
+body.mini-navbar .nav>li.mini-open>.nav-second-level {
     display: block;
     opacity: 1;
     visibility: visible;
 }
 
-.metismenu .nav-second-level li a {
+.nav .nav-second-level li a {
     padding-left: 40px;
 }
 
