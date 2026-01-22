@@ -144,11 +144,11 @@
 
             <li policy="@AuthPolicies.AccessServerAdmin" class="@Html.IsSelected("ServerAdmin", "Index") nav-item">
                 <a href="#serverAdminMenu" class="nav-link" data-bs-toggle="collapse" data-testid="nav-serveradmin-toggle" 
-                   aria-expanded="@(Html.IsSelected("ServerAdmin", "Index") != "" ? "true" : "false")" aria-controls="serverAdminMenu">
+                   aria-expanded="@(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors") ? "true" : "false")" aria-controls="serverAdminMenu">
                     <i class="fa fa-terminal fa-fw"></i> <span class="nav-label">Server Admin</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(Html.IsSelected("ServerAdmin", "Index") != "" ? "show" : "")" id="serverAdminMenu">
+                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors") ? "show" : "")" id="serverAdminMenu">
                     <li class="@Html.IsSelected("ServerAdmin", "Index")">
                         <a asp-controller="ServerAdmin" asp-action="Index" data-testid="nav-serveradmin-dashboard">
                             <i class="fa fa-dashboard fa-fw"></i> Dashboard
