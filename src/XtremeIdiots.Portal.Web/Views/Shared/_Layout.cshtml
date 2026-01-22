@@ -51,7 +51,6 @@
         <link rel="stylesheet" href="~/css/inspinia.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/responsive-overrides.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/mobile-navigation.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/admin-actions.css" asp-append-version="true" />
     </environment>
     <environment names="Staging,Production">
@@ -64,7 +63,6 @@
         <link rel="stylesheet" href="~/css/inspinia.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/responsive-overrides.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/mobile-navigation.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/admin-actions.css" asp-append-version="true" />
     </environment>
 
@@ -73,33 +71,25 @@
 
 <body>
 
-    <!-- Wrapper-->
-    <div id="wrapper" class="@Html.PageClass()">
+    <!-- Top Navbar -->
+    <partial name="_TopNavbar" />
+    
+    <!-- Off-canvas Navigation -->
+    <partial name="_Navigation" />
 
-        <!-- Navigation -->
-        <partial name="_Navigation" />
-
-        <!-- Page wrapper -->
-        <div id="page-wrapper" class="gray-bg @ViewBag.SpecialClass">
-
-            <!-- Top Navbar -->
-            <partial name="_TopNavbar" />
-
-            <div class="animated fadeInRight" style="padding-top: 10px">
-                <alerts></alerts>
-            </div>
-
-            <!-- Main view  -->
-            @RenderBody()
-
-            <!-- Footer -->
-            <partial name="_Footer" />
-
+    <!-- Main Content -->
+    <main id="page-wrapper" class="@Html.PageClass() gray-bg @ViewBag.SpecialClass">
+        <div class="animated fadeInRight" style="padding-top: 10px">
+            <alerts></alerts>
         </div>
-        <!-- End page wrapper-->
 
-    </div>
-    <!-- End wrapper-->
+        <!-- Main view  -->
+        @RenderBody()
+
+        <!-- Footer -->
+        <partial name="_Footer" />
+    </main>
+    <!-- End main content-->
 
     <environment names="Development">
         <script src="~/lib/jquery/dist/jquery.js"></script>
@@ -120,7 +110,6 @@
     <script src="~/lib/moment/moment.min.js"></script>
     <script src="~/js/inspinia.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="~/js/mobile-navigation.js" asp-append-version="true"></script>
     <script src="~/js/enhanced-ui.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("scripts", false)
