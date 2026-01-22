@@ -8,10 +8,15 @@
     const MobileNav = {
         backdrop: null,
         isInitialized: false,
+        sideMenu: null,
+        MOBILE_BREAKPOINT: 768, // Consistent breakpoint for mobile detection
 
         init: function() {
             if (this.isInitialized) return;
             this.isInitialized = true;
+
+            // Cache side menu element
+            this.sideMenu = document.getElementById('side-menu');
 
             // Create backdrop element for mobile menu overlay
             this.createBackdrop();
@@ -33,7 +38,7 @@
         },
 
         isMobile: function() {
-            return window.innerWidth <= 768;
+            return window.innerWidth <= this.MOBILE_BREAKPOINT;
         },
 
         createBackdrop: function() {
@@ -120,11 +125,10 @@
         },
 
         setupCollapseHandlers: function() {
-            const sideMenu = document.getElementById('side-menu');
-            if (!sideMenu) return;
+            if (!this.sideMenu) return;
 
             // Get all collapsible submenu triggers
-            const collapseTriggers = sideMenu.querySelectorAll('[data-bs-toggle="collapse"]');
+            const collapseTriggers = this.sideMenu.querySelectorAll('[data-bs-toggle="collapse"]');
 
             collapseTriggers.forEach(trigger => {
                 // Prevent default anchor behavior
@@ -153,7 +157,8 @@
             });
 
             // Mark parent as active when submenu is shown
-            sideMenu.querySelectorAll('.collapse').forEach(collapse => {
+            if (this.sideMenu) {
+                this.sideMenu.querySelectorAll('.collapse').forEach(collapse => {
                 collapse.addEventListener('show.bs.collapse', function() {
                     const parentLi = this.closest('li');
                     if (parentLi) {
@@ -213,9 +218,10 @@
             // Override or patch the SmoothlyMenu function to prevent conflicts on mobile
             if (typeof window.SmoothlyMenu === 'function') {
                 const originalSmoothlyMenu = window.SmoothlyMenu;
+                const self = this;
                 window.SmoothlyMenu = function() {
                     // Skip animation on mobile to prevent menu state loss
-                    if (window.innerWidth < 769) {
+                    if (self.isMobile()) {
                         return;
                     }
                     originalSmoothlyMenu();
@@ -257,18 +263,20 @@
                 }
 
                 // Ensure currently active submenus stay open
-                const activeSubmenus = document.querySelectorAll('#side-menu .collapse.show');
-                activeSubmenus.forEach(submenu => {
-                    const parentLi = submenu.closest('li');
-                    if (parentLi) {
-                        parentLi.classList.add('active');
-                    }
-                    
-                    const trigger = document.querySelector(`[href="#${submenu.id}"]`);
-                    if (trigger) {
-                        trigger.setAttribute('aria-expanded', 'true');
-                    }
-                });
+                if (this.sideMenu) {
+                    const activeSubmenus = this.sideMenu.querySelectorAll('.collapse.show');
+                    activeSubmenus.forEach(submenu => {
+                        const parentLi = submenu.closest('li');
+                        if (parentLi) {
+                            parentLi.classList.add('active');
+                        }
+                        
+                        const trigger = document.querySelector(`[href="#${submenu.id}"]`);
+                        if (trigger) {
+                            trigger.setAttribute('aria-expanded', 'true');
+                        }
+                    });
+                }
             }
         }
     };
