@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
+    <title>Mobile Navigation Test - XI Portal</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="wwwroot/lib/bootstrap/dist/css/bootstrap.css" />
+    <link rel="stylesheet" href="wwwroot/lib/font-awesome/css/font-awesome.css" />
+    
+    <!-- Portal CSS -->
+    <link rel="stylesheet" href="wwwroot/css/inspinia.css" />
+    <link rel="stylesheet" href="wwwroot/css/site.css" />
+    <link rel="stylesheet" href="wwwroot/css/responsive-overrides.css" />
+    <link rel="stylesheet" href="wwwroot/css/mobile-navigation.css" />
+    
+    <style>
+        /* Test page specific styles */
+        body { 
+            font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+        .test-content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .feature-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        .feature-list i {
+            color: #1ab394;
+            margin-right: 8px;
+        }
+        .instruction-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #1ab394;
+            margin: 15px 0;
+        }
+        @media (max-width: 768px) {
+            .test-content {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body class="mini-navbar">
+    <!-- Navigation -->
+    <nav class="navbar-default navbar-static-side" role="navigation">
+        <div class="sidebar-collapse">
+            <ul class="nav" id="side-menu">
+                <li class="nav-header">
+                    <div class="dropdown profile-element text-center">
+                        <div class="placeholder-avatar mb-3">
+                            <i class="fa fa-user-circle fa-4x text-muted"></i>
+                        </div>
+                        <a href="#" class="btn btn-primary btn-block">
+                            <i class="fa fa-sign-in"></i> Test User
+                        </a>
+                    </div>
+                    <div class="logo-element">
+                        &gt;XI&lt;
+                    </div>
+                </li>
+
+                <li>
+                    <a href="#"><i class="fa fa-home fa-fw"></i> <span class="nav-label">Home</span></a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#serversMenu" class="nav-link" data-bs-toggle="collapse" 
+                       aria-expanded="false" aria-controls="serversMenu">
+                        <i class="fa fa-server fa-fw"></i> <span class="nav-label">Servers</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level collapse" id="serversMenu" data-bs-parent="#side-menu">
+                        <li><a href="#"><i class="fa fa-list fa-fw"></i> Game Servers</a></li>
+                        <li><a href="#"><i class="fa fa-map-marker fa-fw"></i> Player Map</a></li>
+                        <li><a href="#"><i class="fa fa-map fa-fw"></i> Maps</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="#"><i class="fa fa-key fa-fw"></i> <span class="nav-label">Credentials</span></a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#adminMenu" class="nav-link" data-bs-toggle="collapse"
+                       aria-expanded="false" aria-controls="adminMenu">
+                        <i class="fa fa-shield fa-fw"></i> <span class="nav-label">Admin Actions</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level collapse" id="adminMenu" data-bs-parent="#side-menu">
+                        <li><a href="#"><i class="fa fa-check-square fa-fw"></i> My Actions</a></li>
+                        <li><a href="#"><i class="fa fa-globe fa-fw"></i> Global Action List</a></li>
+                        <li><a href="#"><i class="fa fa-exclamation-circle fa-fw"></i> Unclaimed Bans</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#playersMenu" class="nav-link" data-bs-toggle="collapse"
+                       aria-expanded="false" aria-controls="playersMenu">
+                        <i class="fa fa-users fa-fw"></i> <span class="nav-label">Players</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level collapse" id="playersMenu" data-bs-parent="#side-menu">
+                        <li><a href="#"><i class="fa fa-list fa-fw"></i> Global Player Index</a></li>
+                        <li><a href="#"><i class="fa fa-gamepad fa-fw"></i> Call of Duty 2</a></li>
+                        <li><a href="#"><i class="fa fa-gamepad fa-fw"></i> Call of Duty 4</a></li>
+                        <li><a href="#"><i class="fa fa-shield fa-fw"></i> Protected Names</a></li>
+                        <li><a href="#"><i class="fa fa-area-chart fa-fw"></i> Analytics</a></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <a href="#"><i class="fa fa-history fa-fw"></i> <span class="nav-label">Change Log</span></a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page wrapper -->
+    <div id="page-wrapper" class="gray-bg">
+        <!-- Top Navbar -->
+        <div class="row border-bottom">
+            <nav class="navbar navbar-static-top white-bg" role="navigation" style="margin-bottom: 0">
+                <div class="navbar-header">
+                    <button class="navbar-minimalize minimalize-styl-2 btn btn-primary" type="button">
+                        <i class="fa fa-bars"></i>
+                    </button>
+                </div>
+                <div class="d-none d-md-block">
+                    <span class="m-r-sm text-muted welcome-message">
+                        <i class="fa fa-home fa-fw"></i> Mobile Navigation Test
+                    </span>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main content -->
+        <div class="test-content">
+            <div class="test-section">
+                <h2><i class="fa fa-mobile fa-lg"></i> Mobile Navigation Test Page</h2>
+                <p class="lead">This page demonstrates the improved mobile navigation for the XtremeIdiots Portal.</p>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fa fa-check-circle"></i> Issues Fixed</h3>
+                <ul class="feature-list">
+                    <li><i class="fa fa-check"></i> <strong>Single-click submenu opening</strong> - No more two-click requirement</li>
+                    <li><i class="fa fa-check"></i> <strong>No jumping or random blocks</strong> - Smooth, predictable animations</li>
+                    <li><i class="fa fa-check"></i> <strong>Proper positioning</strong> - Menu stays in correct position</li>
+                    <li><i class="fa fa-check"></i> <strong>Click-through prevention</strong> - Backdrop prevents accidental clicks</li>
+                    <li><i class="fa fa-check"></i> <strong>Better spacing</strong> - Touch-friendly targets (48px minimum)</li>
+                    <li><i class="fa fa-check"></i> <strong>Improved readability</strong> - Clear submenu styling with background</li>
+                </ul>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fa fa-info-circle"></i> Testing Instructions</h3>
+                <div class="instruction-box">
+                    <h5>On Desktop (width > 768px):</h5>
+                    <ol>
+                        <li>Use browser dev tools to resize to mobile viewport (375px width recommended)</li>
+                        <li>Or simply resize your browser window to less than 768px wide</li>
+                    </ol>
+                </div>
+
+                <div class="instruction-box">
+                    <h5>To Test Mobile Navigation:</h5>
+                    <ol>
+                        <li><strong>Click the hamburger menu</strong> (☰) in the top-left corner</li>
+                        <li><strong>Menu should slide in from left</strong> with a backdrop overlay</li>
+                        <li><strong>Click any menu item with an arrow</strong> (e.g., "Servers", "Players")</li>
+                        <li><strong>Submenu opens on FIRST click</strong> - no random blocks or jumping</li>
+                        <li><strong>Click outside the menu</strong> (on the dark backdrop) to close it</li>
+                        <li><strong>Try opening different submenus</strong> - only one stays open at a time</li>
+                        <li><strong>Verify spacing</strong> - all items should be easy to tap (48px+ height)</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fa fa-cogs"></i> Technical Improvements</h3>
+                <ul class="feature-list">
+                    <li><i class="fa fa-code"></i> <strong>Fixed Bootstrap 5 collapse</strong> - Proper event handling for mobile</li>
+                    <li><i class="fa fa-mobile"></i> <strong>Touch-optimized</strong> - Minimum 48x48px touch targets (WCAG AA)</li>
+                    <li><i class="fa fa-layer-group"></i> <strong>Z-index management</strong> - Prevents click-through issues</li>
+                    <li><i class="fa fa-arrows-alt"></i> <strong>Smooth animations</strong> - 300ms transitions with cubic-bezier easing</li>
+                    <li><i class="fa fa-lock"></i> <strong>Body scroll locking</strong> - Prevents background scrolling when menu is open</li>
+                    <li><i class="fa fa-desktop"></i> <strong>Responsive</strong> - Automatically adapts between mobile and desktop</li>
+                </ul>
+            </div>
+
+            <div class="test-section">
+                <h3><i class="fa fa-file-code-o"></i> Files Modified/Created</h3>
+                <ul class="feature-list">
+                    <li><i class="fa fa-file"></i> <strong>Created:</strong> wwwroot/css/mobile-navigation.css</li>
+                    <li><i class="fa fa-file"></i> <strong>Created:</strong> wwwroot/js/mobile-navigation.js</li>
+                    <li><i class="fa fa-pencil"></i> <strong>Modified:</strong> Views/Shared/_Layout.cshtml</li>
+                </ul>
+            </div>
+
+            <div class="test-section" style="background-color: #fff3cd; border-left-color: #ffc107;">
+                <h4><i class="fa fa-exclamation-triangle"></i> Note</h4>
+                <p>If you're viewing this on a desktop, you need to either:</p>
+                <ul>
+                    <li>Use browser developer tools (F12) and toggle device emulation to mobile</li>
+                    <li>Resize your browser window to less than 768px wide</li>
+                </ul>
+                <p class="mb-0">The mobile navigation improvements are specifically designed for screens 768px and smaller.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="wwwroot/lib/jquery/dist/jquery.js"></script>
+    <script src="wwwroot/lib/bootstrap/dist/js/bootstrap.bundle.js"></script>
+    <script src="wwwroot/js/inspinia.js"></script>
+    <script src="wwwroot/js/mobile-navigation.js"></script>
+    
+    <script>
+        // Add some test console logging
+        console.log('Mobile Navigation Test Page Loaded');
+        console.log('Window width:', window.innerWidth);
+        console.log('Is mobile?', window.innerWidth <= 768);
+        
+        // Log when menu toggle is clicked
+        document.querySelector('.navbar-minimalize')?.addEventListener('click', function() {
+            console.log('Menu toggle clicked, body classes:', document.body.className);
+        });
+    </script>
+</body>
+</html>
