@@ -57,7 +57,11 @@ $(document).ready(function () {
             dataSrc: 'data',
             contentType: 'application/json',
             type: 'POST',
-            data: function (d) { return JSON.stringify(d); },
+            data: function (d) {
+                // Manually set search value from external search box since searching is disabled
+                d.search.value = $search.val() || '';
+                return JSON.stringify(d);
+            },
             beforeSend: function (xhr) {
                 const token = antiForgeryToken();
                 if (token) xhr.setRequestHeader('RequestVerificationToken', token);
@@ -76,12 +80,13 @@ $(document).ready(function () {
         ]
     });
 
-    // External search with debounce (reuses DataTables search API)
+    // External search with debounce - reload table data with search term
     let searchTimer = null;
     $search.on('input', function () {
         clearTimeout(searchTimer);
-        const term = this.value.trim();
-        searchTimer = setTimeout(function () { table.search(term).draw(); }, 500);
+        searchTimer = setTimeout(function () { 
+            table.ajax.reload(null, false); // false = stay on current page if possible
+        }, 500);
     });
 
     $userFlag.on('change', function () {
@@ -93,7 +98,7 @@ $(document).ready(function () {
         if ($search.val()) $search.val('');
         if ($userFlag.val()) $userFlag.val('');
         if (hadValues) {
-            table.search('').page('first').draw('page');
+            table.page('first').ajax.reload(null, false);
         } else {
             table.ajax.reload(null, false);
         }
