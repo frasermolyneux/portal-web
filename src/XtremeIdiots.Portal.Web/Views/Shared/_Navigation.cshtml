@@ -8,6 +8,14 @@
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<IdentityUser> SignInManager
 
+@functions {
+    private bool IsAnyControllerSelected(params string[] controllers)
+    {
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        return controllers.Any(c => string.Equals(c, currentController, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
 <nav class="navbar-default navbar-static-side" role="navigation" aria-label="Main navigation">
     <div class="sidebar-collapse">
         <ul class="nav" id="side-menu">
@@ -80,11 +88,11 @@
 
             <li policy="@AuthPolicies.AccessServers" class="@Html.IsSelected("Servers", "Index") nav-item">
                 <a href="#serversMenu" class="nav-link" data-bs-toggle="collapse" data-testid="nav-servers-toggle" 
-                   aria-expanded="@(Html.IsSelected("Servers", "Index") != "" ? "true" : "false")" aria-controls="serversMenu">
+                   aria-expanded="@(IsAnyControllerSelected("Servers", "Maps") ? "true" : "false")" aria-controls="serversMenu">
                     <i class="fa fa-server fa-fw" aria-hidden="true"></i> <span class="nav-label">Servers</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(Html.IsSelected("Servers", "Index") != "" ? "show" : "")" id="serversMenu">
+                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("Servers", "Maps") ? "show" : "")" id="serversMenu">
                     <li class="@Html.IsSelected("Servers", "Index")">
                         <a asp-controller="Servers" asp-action="Index" data-testid="nav-servers-gameservers">
                             <i class="fa fa-list fa-fw" aria-hidden="true"></i> Game Servers
@@ -209,11 +217,11 @@
 
             <li policy="@AuthPolicies.AccessPlayers" class="@Html.IsSelected("Players", "Index") nav-item">
                 <a href="#playersMenu" class="nav-link" data-bs-toggle="collapse" data-testid="nav-players-toggle" 
-                   aria-expanded="@(Html.IsSelected("Players", "Index") != "" ? "true" : "false")" aria-controls="playersMenu">
+                   aria-expanded="@(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "true" : "false")" aria-controls="playersMenu">
                     <i class="fa fa-users fa-fw"></i> <span class="nav-label">Players</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(Html.IsSelected("Players", "Index") != "" ? "show" : "")" id="playersMenu">
+                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "show" : "")" id="playersMenu">
                     <li class="@Html.IsSelected("Players", "Index")">
                         <a asp-controller="Players" asp-action="Index" data-testid="nav-players-index">
                             <i class="fa fa-list fa-fw"></i> Global Player Index
