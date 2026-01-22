@@ -92,7 +92,7 @@
                     <i class="fa fa-server fa-fw" aria-hidden="true"></i> <span class="nav-label">Servers</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("Servers", "Maps") ? "show" : "")" id="serversMenu">
+                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("Servers", "Maps") ? "show" : "")" id="serversMenu" data-bs-parent="#side-menu">
                     <li class="@Html.IsSelected("Servers", "Index")">
                         <a asp-controller="Servers" asp-action="Index" data-testid="nav-servers-gameservers">
                             <i class="fa fa-list fa-fw" aria-hidden="true"></i> Game Servers
@@ -126,7 +126,7 @@
                     <i class="fa fa-shield fa-fw"></i> <span class="nav-label">Admin Actions</span><span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(Html.IsSelected("AdminActions", "Global") != "" ? "show" : "")" id="adminActionsMenu">
+                <ul class="nav nav-second-level collapse @(Html.IsSelected("AdminActions", "Global") != "" ? "show" : "")" id="adminActionsMenu" data-bs-parent="#side-menu">
                     <li class="@Html.IsSelected("AdminActions", "MyActions")">
                         <a asp-controller="AdminActions" asp-action="MyActions"><i class="fa fa-check-square fa-fw"></i>
                             My Actions</a>
@@ -148,7 +148,7 @@
                     <i class="fa fa-terminal fa-fw"></i> <span class="nav-label">Server Admin</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors") ? "show" : "")" id="serverAdminMenu">
+                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors") ? "show" : "")" id="serverAdminMenu" data-bs-parent="#side-menu">
                     <li class="@Html.IsSelected("ServerAdmin", "Index")">
                         <a asp-controller="ServerAdmin" asp-action="Index" data-testid="nav-serveradmin-dashboard">
                             <i class="fa fa-dashboard fa-fw"></i> Dashboard
@@ -193,7 +193,7 @@
                         <i class="fa fa-commenting fa-fw"></i> <span class="nav-label">Chat Log</span> <span
                             class="fa arrow"></span>
                     </a>
-                    <ul class="nav nav-second-level collapse @(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" ? "show" : "")" id="chatLogMenu">
+                    <ul class="nav nav-second-level collapse @(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" ? "show" : "")" id="chatLogMenu" data-bs-parent="#side-menu">
                         @if (canViewGlobalChatLog)
                         {
                             <li class="@Html.IsSelected("ServerAdmin", "ChatLogIndex")">
@@ -221,7 +221,7 @@
                     <i class="fa fa-users fa-fw"></i> <span class="nav-label">Players</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "show" : "")" id="playersMenu">
+                <ul class="nav nav-second-level collapse @(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "show" : "")" id="playersMenu" data-bs-parent="#side-menu">
                     <li class="@Html.IsSelected("Players", "Index")">
                         <a asp-controller="Players" asp-action="Index" data-testid="nav-players-index">
                             <i class="fa fa-list fa-fw"></i> Global Player Index
@@ -258,7 +258,7 @@
                    aria-expanded="@(Html.IsSelected("User", "Index") != "" ? "true" : "false")" aria-controls="usersMenu">
                     <i class="fa fa-user fa-fw"></i> <span class="nav-label">Users</span><span class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(Html.IsSelected("User", "Index") != "" ? "show" : "")" id="usersMenu">
+                <ul class="nav nav-second-level collapse @(Html.IsSelected("User", "Index") != "" ? "show" : "")" id="usersMenu" data-bs-parent="#side-menu">
                     <li class="@Html.IsSelected("User", "Index")">
                         <a asp-controller="User" asp-action="Index">
                             <i class="fa fa-users fa-fw"></i> <span class="nav-label">Manage Users</span>
@@ -290,7 +290,7 @@
                     <i class="fa fa-film fa-fw"></i> <span class="nav-label">Demo Manager</span> <span
                         class="fa arrow"></span>
                 </a>
-                <ul class="nav nav-second-level collapse @(Html.IsSelected("Demos", "Index") != "" ? "show" : "")" id="demosMenu">
+                <ul class="nav nav-second-level collapse @(Html.IsSelected("Demos", "Index") != "" ? "show" : "")" id="demosMenu" data-bs-parent="#side-menu">
                     <li class="@Html.IsSelected("Demos", "Index")">
                         <a asp-controller="Demos" asp-action="Index" data-testid="nav-demos-index">
                             <i class="fa fa-list fa-fw"></i> All Demos
