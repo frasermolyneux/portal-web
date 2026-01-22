@@ -1,0 +1,359 @@
+/* Mobile Navigation Fixes for XtremeIdiots Portal
+ * Addresses: jumping, two-click requirement, spacing, click-through, positioning
+ * -------------------------------------------------- */
+
+/* Mobile menu overlay backdrop to prevent click-through */
+.mobile-menu-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mobile-menu-backdrop.show {
+    display: block;
+    opacity: 1;
+}
+
+/* Mobile-specific navigation improvements */
+@media (max-width: 768px) {
+    /* Sidebar navigation positioning and behavior */
+    .navbar-default.navbar-static-side {
+        position: fixed;
+        left: -220px;
+        top: 0;
+        bottom: 0;
+        width: 220px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Show sidebar when not minimized */
+    body:not(.mini-navbar) .navbar-default.navbar-static-side {
+        left: 0;
+    }
+
+    /* Hide sidebar when minimized (default state on mobile) */
+    body.mini-navbar .navbar-default.navbar-static-side {
+        left: -220px;
+    }
+
+    /* Ensure page content doesn't shift when menu opens */
+    #page-wrapper {
+        margin-left: 0 !important;
+        transition: none;
+    }
+
+    /* Main navigation list improvements */
+    #side-menu {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* Primary navigation items - larger touch targets */
+    #side-menu > li > a {
+        padding: 14px 20px;
+        min-height: 48px;
+        display: flex !important;
+        align-items: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Navigation icons spacing */
+    #side-menu > li > a > i.fa {
+        margin-right: 8px;
+        width: 20px;
+        text-align: center;
+    }
+
+    /* Nav label text */
+    #side-menu .nav-label {
+        flex: 1;
+    }
+
+    /* Arrow indicator for submenus */
+    #side-menu > li > a > .fa.arrow {
+        margin-left: auto;
+        transition: transform 0.2s ease;
+    }
+
+    /* Rotate arrow when menu is expanded */
+    #side-menu > li > a[aria-expanded="true"] > .fa.arrow {
+        transform: rotate(90deg);
+    }
+
+    /* Submenu container */
+    #side-menu .nav-second-level {
+        background-color: #f5f5f5;
+        padding-left: 0 !important;
+        border-left: 3px solid #1ab394;
+        margin-left: 10px;
+        margin-right: 10px;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    /* Submenu items - improved spacing and touch targets */
+    #side-menu .nav-second-level li {
+        list-style: none;
+        margin: 0;
+    }
+
+    #side-menu .nav-second-level li a {
+        padding: 12px 15px 12px 30px;
+        min-height: 44px;
+        display: block !important;
+        color: #676a6c;
+        text-decoration: none;
+        transition: background-color 0.15s ease, color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        cursor: pointer;
+    }
+
+    /* Submenu item hover/active states */
+    #side-menu .nav-second-level li a:hover,
+    #side-menu .nav-second-level li a:focus {
+        background-color: #e8e8e8;
+        color: #1ab394;
+    }
+
+    #side-menu .nav-second-level li.active > a {
+        background-color: #1ab394;
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    /* Bootstrap collapse transitions for smooth opening/closing */
+    #side-menu .collapse {
+        transition: none;
+    }
+
+    #side-menu .collapse:not(.show) {
+        display: none;
+    }
+
+    #side-menu .collapse.show {
+        display: block;
+    }
+
+    #side-menu .collapsing {
+        height: 0;
+        overflow: hidden;
+        transition: height 0.2s ease;
+    }
+
+    /* Parent menu item active state when submenu is open */
+    #side-menu > li.active > a {
+        background-color: rgba(26, 179, 148, 0.1);
+        color: #1ab394;
+        font-weight: 600;
+    }
+
+    /* Profile element in header */
+    .nav-header {
+        padding: 15px 15px 10px;
+    }
+
+    .nav-header .profile-element {
+        margin-bottom: 10px;
+    }
+
+    /* Profile dropdown fixes */
+    .profile-element .dropdown-menu {
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        right: auto !important;
+        transform: none !important;
+        margin-top: 4px;
+        min-width: 180px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .profile-element .dropdown-menu.show {
+        display: block;
+    }
+
+    /* Menu toggle button improvements */
+    .navbar-minimalize {
+        padding: 10px 15px;
+        margin: 8px;
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Prevent double-tap zoom on navigation items */
+    #side-menu a,
+    #side-menu button,
+    .navbar-minimalize {
+        touch-action: manipulation;
+    }
+
+    /* Fix for nav-item class conflicts */
+    #side-menu > li.nav-item {
+        display: block !important;
+    }
+
+    /* Ensure collapse parent items maintain their structure */
+    #side-menu > li > .nav-link {
+        display: flex !important;
+        align-items: center;
+        padding: 14px 20px;
+        min-height: 48px;
+    }
+
+    /* Prevent text selection on rapid taps */
+    #side-menu * {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    /* Allow text selection in dropdown menus */
+    .dropdown-menu * {
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+    }
+
+    /* Scrollbar styling for sidebar */
+    .navbar-static-side::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .navbar-static-side::-webkit-scrollbar-track {
+        background: #2f4050;
+    }
+
+    .navbar-static-side::-webkit-scrollbar-thumb {
+        background: #1ab394;
+        border-radius: 3px;
+    }
+
+    .navbar-static-side::-webkit-scrollbar-thumb:hover {
+        background: #18a689;
+    }
+
+    /* Improve spacing between menu groups */
+    #side-menu > li {
+        margin-bottom: 2px;
+    }
+
+    /* Top navbar adjustments for mobile */
+    .navbar-static-top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1001;
+    }
+
+    /* Adjust page content to account for fixed navbar */
+    #page-wrapper {
+        padding-top: 60px;
+    }
+
+    /* Ensure sidebar collapse container stays visible (contains navigation) */
+    body.mini-navbar .sidebar-collapse {
+        display: block;
+    }
+
+    /* Logo element positioning */
+    .logo-element {
+        display: none;
+    }
+
+    body.mini-navbar .logo-element {
+        display: block;
+    }
+}
+
+/* Tablet and larger - remove mobile-specific fixes */
+@media (min-width: 769px) {
+    .mobile-menu-backdrop {
+        display: none !important;
+    }
+
+    .navbar-default.navbar-static-side {
+        position: relative;
+        left: auto;
+    }
+
+    #page-wrapper {
+        padding-top: 0;
+    }
+
+    .navbar-static-top {
+        position: relative;
+    }
+}
+
+/* Extra small devices - even more spacing */
+@media (max-width: 576px) {
+    #side-menu > li > a {
+        padding: 16px 15px;
+        min-height: 52px;
+        font-size: 15px;
+    }
+
+    #side-menu .nav-second-level li a {
+        padding: 14px 15px 14px 28px;
+        min-height: 48px;
+        font-size: 14px;
+    }
+
+    /* Even larger touch targets on very small screens */
+    .navbar-minimalize {
+        min-height: 48px;
+        min-width: 48px;
+    }
+}
+
+/* Fix for Bootstrap dropdown in navigation */
+.nav-header .dropdown-toggle::after {
+    display: none;
+}
+
+/* Smooth animations for menu state changes */
+@media (prefers-reduced-motion: no-preference) {
+    @media (max-width: 768px) {
+        .navbar-default.navbar-static-side,
+        .mobile-menu-backdrop {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #side-menu .collapse {
+            transition: height 0.2s ease;
+        }
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    #side-menu .nav-second-level {
+        border-left-width: 4px;
+    }
+
+    #side-menu > li.active > a {
+        border-left: 4px solid #1ab394;
+    }
+}
