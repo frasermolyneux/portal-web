@@ -1,44 +1,37 @@
-﻿<div class="row border-bottom">
-    <nav class="navbar navbar-static-top white-bg" role="navigation" style="margin-bottom: 0" aria-label="Top navigation">
-        <div class="navbar-header">
-            <button class="navbar-minimalize minimalize-styl-2 btn btn-primary" type="button"
-                aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="side-menu"
-                data-testid="topnav-menu-toggle">
-                <i class="fa fa-bars" aria-hidden="true"></i>
-            </button>
-        </div>
-        <div class="d-none d-md-block">
-            <span class="m-r-sm text-muted welcome-message">
-                <i class="fa fa-home fa-fw" aria-hidden="true"></i> Welcome to the XI Portal
-            </span>
-        </div>
-        <ul class="nav navbar-top-links navbar-right">
-            <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-expanded="false"
-                    aria-label="Help and information" aria-haspopup="true"
-                    data-testid="topnav-help-dropdown">
+﻿<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom fixed-top" aria-label="Top navigation">
+    <div class="container-fluid">
+        <button class="btn btn-primary me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideNav" 
+                aria-controls="sideNav" aria-label="Toggle navigation menu" data-testid="topnav-menu-toggle">
+            <i class="fa fa-bars" aria-hidden="true"></i>
+        </button>
+        
+        <span class="navbar-text d-none d-md-inline me-auto">
+            <i class="fa fa-home fa-fw" aria-hidden="true"></i> Welcome to the XI Portal
+        </span>
+
+        <ul class="navbar-nav ms-auto">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="helpDropdown" role="button" 
+                   data-bs-toggle="dropdown" aria-expanded="false" aria-label="Help and information" 
+                   data-testid="topnav-help-dropdown">
                     <i class="fa fa-question-circle fa-fw" aria-hidden="true"></i>
                 </a>
-                <ul class="dropdown-menu dropdown-messages" role="menu">
-                    <li role="presentation">
-                        <a href="https://www.xtremeidiots.com/" target="_blank" rel="noopener noreferrer" role="menuitem"
-                            data-testid="topnav-help-website">
-                            <div>
-                                <i class="fa fa-external-link fa-fw" aria-hidden="true"></i> XtremeIdiots Website
-                            </div>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="helpDropdown">
+                    <li>
+                        <a class="dropdown-item" href="https://www.xtremeidiots.com/" target="_blank" 
+                           rel="noopener noreferrer" data-testid="topnav-help-website">
+                            <i class="fa fa-external-link fa-fw" aria-hidden="true"></i> XtremeIdiots Website
                         </a>
                     </li>
-                    <li class="dropdown-divider" role="separator"></li>
-                    <li role="presentation">
-                        <a href="https://www.xtremeidiots.com/forums/" target="_blank" rel="noopener noreferrer" role="menuitem"
-                            data-testid="topnav-help-forums">
-                            <div>
-                                <i class="fa fa-comments fa-fw" aria-hidden="true"></i> Forums
-                            </div>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="https://www.xtremeidiots.com/forums/" target="_blank" 
+                           rel="noopener noreferrer" data-testid="topnav-help-forums">
+                            <i class="fa fa-comments fa-fw" aria-hidden="true"></i> Forums
                         </a>
                     </li>
                 </ul>
             </li>
         </ul>
-    </nav>
-</div>
+    </div>
+</nav>

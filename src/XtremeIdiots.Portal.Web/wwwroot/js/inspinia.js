@@ -14,7 +14,6 @@
 $(document).ready(function () {
 
     // Fast fix for position issue with Popper.js (only if Popper is present)
-    // Will be fixed in Bootstrap 4.1 - https://github.com/twbs/bootstrap/pull/24092
     if (window.Popper &&
         Popper.Defaults &&
         Popper.Defaults.modifiers &&
@@ -28,16 +27,6 @@ $(document).ready(function () {
     } else {
         $("body").removeClass("body-small");
     }
-
-    // Initialize Bootstrap collapse for navigation menu
-    // Mark parent as active when submenu is shown
-    $('#side-menu .collapse').on('show.bs.collapse', function () {
-        $(this).parent('li').addClass('active');
-    });
-    
-    $('#side-menu .collapse').on('hide.bs.collapse', function () {
-        $(this).parent('li').removeClass('active');
-    });
 
     // Collapse ibox function
     $(".collapse-link").on("click",
@@ -79,20 +68,6 @@ $(document).ready(function () {
                 100);
         });
 
-    // Close menu in canvas mode
-    $(".close-canvas-menu").on("click",
-        function (e) {
-            e.preventDefault();
-            $("body").toggleClass("mini-navbar");
-            SmoothlyMenu();
-        });
-
-    // Run menu of canvas
-    $("body.canvas-menu .sidebar-collapse").slimScroll({
-        height: "100%",
-        railOpacity: 0.9
-    });
-
     // Open close right sidebar
     $(".right-sidebar-toggle").on("click",
         function (e) {
@@ -131,22 +106,11 @@ $(document).ready(function () {
             return false;
         });
 
-
-    // Minimalize menu
-    $(".navbar-minimalize").on("click",
-        function (event) {
-            event.preventDefault();
-            $("body").toggleClass("mini-navbar");
-            SmoothlyMenu();
-
-        });
-
     // Tooltips demo
     $(".tooltip-demo").tooltip({
         selector: "[data-toggle=tooltip]",
         container: "body"
     });
-
 
     // Move right sidebar top after scroll
     $(window).scroll(function () {
@@ -176,71 +140,10 @@ $(window).bind("resize",
         }
     });
 
-// Fixed Sidebar
-$(window).bind("load",
-    function () {
-        if ($("body").hasClass("fixed-sidebar")) {
-            $(".sidebar-collapse").slimScroll({
-                height: "100%",
-                railOpacity: 0.9
-            });
-        }
-    });
-
-
 // check if browser support HTML5 local storage
 function localStorageSupport() {
     return (("localStorage" in window) && window["localStorage"] !== null);
 }
-
-// Local Storage functions
-// Set proper body class and plugins based on user configuration
-$(document).ready(function () {
-    if (localStorageSupport()) {
-
-        var collapse = localStorage.getItem("collapse_menu");
-        var fixedsidebar = localStorage.getItem("fixedsidebar");
-        var fixednavbar = localStorage.getItem("fixednavbar");
-        var boxedlayout = localStorage.getItem("boxedlayout");
-        var fixedfooter = localStorage.getItem("fixedfooter");
-
-        var body = $("body");
-
-        if (fixedsidebar == "on") {
-            body.addClass("fixed-sidebar");
-            $(".sidebar-collapse").slimScroll({
-                height: "100%",
-                railOpacity: 0.9
-            });
-        }
-
-        if (collapse == "on") {
-            if (body.hasClass("fixed-sidebar")) {
-                if (!body.hasClass("body-small")) {
-                    body.addClass("mini-navbar");
-                }
-            } else {
-                if (!body.hasClass("body-small")) {
-                    body.addClass("mini-navbar");
-                }
-
-            }
-        }
-
-        if (fixednavbar == "on") {
-            $(".navbar-static-top").removeClass("navbar-static-top").addClass("navbar-fixed-top");
-            body.addClass("fixed-nav");
-        }
-
-        if (boxedlayout == "on") {
-            body.addClass("boxed-layout");
-        }
-
-        if (fixedfooter == "on") {
-            $(".footer").addClass("fixed");
-        }
-    }
-});
 
 // For demo purpose - animation css script
 function animationHover(element, animation) {
@@ -256,34 +159,6 @@ function animationHover(element, animation) {
             },
                 2000);
         });
-}
-
-function SmoothlyMenu() {
-    // Skip menu animation on mobile screens to prevent submenu state loss
-    if ($("body").hasClass("body-small")) {
-        return;
-    }
-    
-    if (!$("body").hasClass("mini-navbar")) {
-        // Hide menu in order to smoothly turn on when maximize menu
-        $("#side-menu").hide();
-        // For smoothly turn on menu
-        setTimeout(
-            function () {
-                $("#side-menu").fadeIn(400);
-            },
-            200);
-    } else if ($("body").hasClass("fixed-sidebar")) {
-        $("#side-menu").hide();
-        setTimeout(
-            function () {
-                $("#side-menu").fadeIn(400);
-            },
-            100);
-    } else {
-        // Remove all inline style from jquery fadeIn function to reset menu state
-        $("#side-menu").removeAttr("style");
-    }
 }
 
 // Dragable panels

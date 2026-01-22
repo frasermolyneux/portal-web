@@ -15,6 +15,7 @@
 body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    padding-top: 56px;
 }
 
 /* Enhanced linking */
@@ -28,7 +29,61 @@ a:hover {
     text-decoration: none;
 }
 
-/* Navigation improvements */
+/* Navigation - Bootstrap 5 Offcanvas Styling */
+#sideNav {
+    width: 280px;
+}
+
+#sideNav .offcanvas-header {
+    padding: 1rem;
+}
+
+#sideNav .nav-link {
+    padding: 0.75rem 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+#sideNav .nav-link:hover,
+#sideNav .nav-link:focus {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: var(--xi-primary);
+}
+
+#sideNav .nav-link.active {
+    color: #fff;
+    background-color: rgba(26, 179, 148, 0.2);
+    border-left-color: var(--xi-primary);
+    font-weight: 600;
+}
+
+#sideNav .collapse .nav-link {
+    padding-left: 2.5rem;
+    font-size: 0.9rem;
+}
+
+#sideNav .fa-chevron-down {
+    transition: transform 0.2s ease;
+}
+
+#sideNav .nav-link[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+/* Top Navbar Styling */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Main content area */
+#page-wrapper {
+    min-height: calc(100vh - 56px);
+    padding: 20px;
+}
+
+/* Metismenu legacy compatibility (for existing styles) */
 .metismenu .active>a {
     color: #ffffff;
     background-color: var(--xi-primary);
@@ -42,12 +97,10 @@ a:hover {
     font-weight: 600;
 }
 
-/* Ensure only truly active menu items are highlighted */
 .metismenu li a:focus {
     background-color: transparent;
 }
 
-/* Arrow rotation for menu toggle */
 .metismenu .arrow {
     float: right;
     transition: transform 0.3s ease;
