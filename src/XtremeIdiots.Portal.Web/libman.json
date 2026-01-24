@@ -55,7 +55,7 @@
       ]
     },
     {
-      "library": "bootstrap@5.3.3",
+      "library": "bootstrap@5.3.8",
       "provider": "unpkg",
       "destination": "wwwroot/lib/bootstrap",
       "files": [
@@ -78,15 +78,6 @@
         "fonts/fontawesome-webfont.woff",
         "fonts/fontawesome-webfont.woff2",
         "fonts/FontAwesome.otf"
-      ]
-    },
-    {
-      "library": "jquery-slimscroll@1.3.8",
-      "provider": "unpkg",
-      "destination": "wwwroot/lib/slimScroll",
-      "files": [
-        "jquery.slimscroll.js",
-        "jquery.slimscroll.min.js"
       ]
     },
     {
