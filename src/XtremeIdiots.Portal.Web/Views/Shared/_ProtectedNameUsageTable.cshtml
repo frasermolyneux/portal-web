@@ -1,0 +1,47 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players
+@model IEnumerable<ProtectedNameUsageDto>
+
+@*
+    Shared Protected Name Usage Report Table Partial
+    Displays usage instances with DataTables responsive support
+    
+    Usage: Pass IEnumerable<ProtectedNameUsageDto> as model
+    Must include protected-name-usage-report.js script in parent view
+*@
+
+<div class="table-responsive">
+    <table id="usageReportTable" class="table table-striped table-hover w-100">
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Last Used</th>
+                <th>Times Used</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var usage in Model)
+            {
+                <tr class="@(usage.IsOwner ? "table-success" : "table-danger")">
+                    <td>
+                        <a asp-controller="Players" asp-action="Details" asp-route-id="@usage.PlayerId">
+                            @usage.Username
+                        </a>
+                    </td>
+                    <td><time time-ago utc="@usage.LastUsed" show-absolute="false"></time></td>
+                    <td>@usage.UsageCount</td>
+                    <td>
+                        @if (usage.IsOwner)
+                        {
+                            <span class="badge bg-success">Legitimate Owner</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Unauthorized Usage</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
