@@ -64,9 +64,11 @@
                     <h5>Server Control</h5>
                 </div>
                 <div class="ibox-content">
-                    <button id="restartServer" class="btn btn-primary btn-block" type="button" data-testid="rcon-btn-restart-server">
-                        <i class="fa fa-refresh"></i> Restart Server
-                    </button>
+                    <div class="d-grid">
+                        <button id="restartServer" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-server">
+                            <i class="fa fa-refresh"></i> Restart Server
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -75,18 +77,19 @@
                     <h5>Map Control</h5>
                 </div>
                 <div class="ibox-content">
+                    <div class="d-grid gap-2">
+                        <button id="restartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-map">
+                            <i class="fa fa-refresh"></i> Restart Map
+                        </button>
 
-                    <button id="restartMap" class="btn btn-primary btn-block mb-2" type="button" data-testid="rcon-btn-restart-map">
-                        <i class="fa fa-refresh"></i> Restart Map
-                    </button>
+                        <button id="fastRestartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-fast-restart-map">
+                            <i class="fa fa-refresh"></i> Fast Restart Map
+                        </button>
 
-                    <button id="fastRestartMap" class="btn btn-primary btn-block mb-2" type="button" data-testid="rcon-btn-fast-restart-map">
-                        <i class="fa fa-refresh"></i> Fast Restart Map
-                    </button>
-
-                    <button id="nextMap" class="btn btn-primary btn-block" type="button" data-testid="rcon-btn-next-map">
-                        <i class="fa fa-forward"></i> Next Map
-                    </button>
+                        <button id="nextMap" class="btn btn-primary" type="button" data-testid="rcon-btn-next-map">
+                            <i class="fa fa-forward"></i> Next Map
+                        </button>
+                    </div>
 
                 </div>
             </div>
