@@ -45,40 +45,42 @@
     <div class="card-body">
         @if (Model.Report != null && Model.Report.UsageInstances.Any())
         {
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Last Used</th>
-                        <th>Times Used</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var usage in Model.Report.UsageInstances)
-                    {
-                        <tr class="@(usage.IsOwner ? "success" : "danger")">
-                            <td>
-                                <a asp-controller="Players" asp-action="Details" asp-route-id="@usage.PlayerId">
-                                    @usage.Username
-                                </a>
-                            </td>
-                            <td><time time-ago utc="@usage.LastUsed" show-absolute="false"></time></td>
-                            <td>@usage.UsageCount</td>
-                            <td>
-                                @if (usage.IsOwner)
-                                {
-                                    <span class="badge bg-success">Legitimate Owner</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">Unauthorized Usage</span>
-                                }
-                            </td>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Last Used</th>
+                            <th>Times Used</th>
+                            <th>Status</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var usage in Model.Report.UsageInstances)
+                        {
+                            <tr class="@(usage.IsOwner ? "success" : "danger")">
+                                <td>
+                                    <a asp-controller="Players" asp-action="Details" asp-route-id="@usage.PlayerId">
+                                        @usage.Username
+                                    </a>
+                                </td>
+                                <td><time time-ago utc="@usage.LastUsed" show-absolute="false"></time></td>
+                                <td>@usage.UsageCount</td>
+                                <td>
+                                    @if (usage.IsOwner)
+                                    {
+                                        <span class="badge bg-success">Legitimate Owner</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Unauthorized Usage</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
         else
         {

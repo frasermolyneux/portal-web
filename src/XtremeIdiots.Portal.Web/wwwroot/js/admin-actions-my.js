@@ -30,6 +30,14 @@
         order: [[0, 'desc']],
         scrollY: calcScrollY(),
         scrollCollapse: true,
+        responsive: { details: { type: 'inline', target: 'tr' } },
+        autoWidth: false,
+        columnDefs: [
+            { targets: 0, responsivePriority: 1 }, // Created (most important)
+            { targets: 1, responsivePriority: 5 }, // Game Type (least important)
+            { targets: 2, responsivePriority: 2 }, // Type (second most important)
+            { targets: 3, responsivePriority: 3 }  // Player (third most important)
+        ],
         ajax: {
             url: '/AdminActions/GetMyAdminActionsAjax',
             type: 'POST',
@@ -40,7 +48,7 @@
         },
         columns: [
             { data: 'created', render: function (d) { return window.timeAgo ? window.timeAgo(d) : d; } },
-            { data: 'gameType', className: 'hide-sm', render: function (d) { return d ? (window.gameTypeIcon ? window.gameTypeIcon(d) : d) : ''; } },
+            { data: 'gameType', render: function (d) { return d ? (window.gameTypeIcon ? window.gameTypeIcon(d) : d) : ''; } },
             { data: 'type', render: function (d) { return window.adminActionTypeIcon ? window.adminActionTypeIcon(d) : d; } },
             { data: 'player' },
             { data: 'text', visible: false }
