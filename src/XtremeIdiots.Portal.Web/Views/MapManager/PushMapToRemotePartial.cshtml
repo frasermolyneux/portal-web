@@ -15,7 +15,7 @@
 
             <input asp-for="GameServerId" type="hidden" />
 
-            <div class="form-group">
+            <div class="mb-3">
                 <label asp-for="MapName" class="control-label"></label>
                 <input asp-for="MapName" class="form-control" />
                 <span asp-validation-for="MapName" class="text-danger"></span>
@@ -24,7 +24,7 @@
         </div>
 
         <div class="ibox-footer">
-            <div class="form-group">
+            <div class="mb-3">
                 <button type="submit" class="btn btn-primary">
                     <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Sync to Remote
                 </button>

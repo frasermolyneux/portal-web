@@ -12,11 +12,11 @@
                     <h5>Edit Tag</h5>
                 </div>
                 <div class="ibox-content">
-                    <form asp-action="Edit" method="post" class="form-horizontal">
+                    <form asp-action="Edit" method="post" class="">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="TagId" />
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="Name" class="col-sm-2 control-label"></label>
                             <div class="col-sm-10">
                                 <input asp-for="Name" class="form-control" />
@@ -24,7 +24,7 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="Description" class="col-sm-2 control-label"></label>
                             <div class="col-sm-10">
                                 <textarea asp-for="Description" class="form-control"></textarea>
@@ -32,7 +32,7 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="TagHtml" class="col-sm-2 control-label"></label>
                             <div class="col-sm-10">
                                 <textarea asp-for="TagHtml" class="form-control"></textarea>
@@ -42,7 +42,7 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="UserDefined" class="col-sm-2 control-label"></label>
                             <div class="col-sm-10">
                                 <div class="checkbox">
@@ -55,7 +55,7 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <div class="col-sm-10 col-sm-offset-2">
                                 <a asp-action="Index" class="btn btn-secondary">
                                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to List

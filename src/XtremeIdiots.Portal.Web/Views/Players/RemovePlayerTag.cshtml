@@ -33,7 +33,7 @@
                     <form asp-action="RemovePlayerTag" method="post">
                         <input type="hidden" name="id" value="@Model.PlayerId" />
                         <input type="hidden" name="playerTagId" value="@Model.PlayerTagId" />
-                        <div class="form-group">
+                        <div class="mb-3">
                             <a asp-action="Details" asp-controller="Players" asp-route-id="@Model.PlayerId"
                                 class="btn btn-secondary">
                                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player

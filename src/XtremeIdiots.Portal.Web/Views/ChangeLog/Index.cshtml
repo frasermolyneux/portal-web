@@ -155,7 +155,7 @@
         <i class="fa-solid fa-circle-info" aria-hidden="true"></i> This dashboard displays real-time development activity
         across all XtremeIdiots
         Portal microservices and repositories.
-        <div class="pull-right">
+        <div class="float-end">
             <small id="cacheStatus" class="text-muted" data-testid="changelog-cache-status"></small>
         </div>
     </div>
@@ -635,7 +635,7 @@
                                                     <div class="card">
                                                         <div class="card-header">
                                                             <div class="row">
-                                                                <div class="col-xs-8">
+                                                                <div class="col-8">
                                                                     <h4 class="card-title">
                                                                         <a href="${data.url}" target="_blank" class="text-decoration-none">
                                                                             <i class="fa-solid fa-github fa-lg"></i> ${repo.name}
@@ -644,34 +644,34 @@
                                                                     </h4>
                                                                     <small class="text-muted">${data.description}</small>
                                                                 </div>
-                                                                <div class="col-xs-4 text-end">
+                                                                <div class="col-4 text-end">
                                                                     ${build ? getBuildStatusBadge(build.status, build.name, build.url) : ''}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div class="card-body">
                                                             <div class="row">
-                                                                <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
+                                                                <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Language</small>
                                                                     <div><span class="badge bg-info">${data.language || 'Mixed'}</span></div>
                                                                 </div>
-                                                                <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
+                                                                <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Stars</small>
                                                                     <div><i class="fa-solid fa-star text-warning"></i> ${data.stars}</div>
                                                                 </div>
-                                                                <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
+                                                                <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Open PRs</small>
                                                                     <div><i class="fa-solid fa-code-fork text-info"></i> ${pullRequestData[repo.name] || 0}</div>
                                                                 </div>
-                                                                <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
+                                                                <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Issues</small>
                                                                     <div><i class="fa-solid fa-circle-exclamation text-warning"></i> ${data.openIssues}</div>
                                                                 </div>
-                                                                <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
+                                                                <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Forks</small>
                                                                     <div><i class="fa-solid fa-code-fork text-muted"></i> ${data.forks}</div>
                                                                 </div>
-                                                                <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
+                                                                <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Last Push</small>
                                                                     <div><span class="text-primary">${formatDate(data.lastPush)}</span></div>
                                                                 </div>
