@@ -1,12 +1,14 @@
-@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players
-@model IEnumerable<ProtectedNameUsageDto>
+@model dynamic
 
 @*
     Shared Protected Name Usage Report Table Partial
     Displays usage instances with DataTables responsive support
     
-    Usage: Pass IEnumerable<ProtectedNameUsageDto> as model
+    Usage: Pass Model.Report.UsageInstances collection as model
     Must include protected-name-usage-report.js script in parent view
+    
+    Expected properties on each item:
+    - PlayerId, Username, LastUsed, UsageCount, IsOwner
 *@
 
 <div class="table-responsive">
