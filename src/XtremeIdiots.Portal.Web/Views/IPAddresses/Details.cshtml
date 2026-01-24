@@ -238,24 +238,26 @@
                 <div class="ibox-content">
                     @if (Model.Players != null && Model.Players.Any())
                     {
-                        <table class="table table-striped table-hover">                            <thead>
-                                <tr>
-                                    <th>Game</th>
-                                    <th>Username</th>
-                                    <th>GUID</th>
-                                    <th>First Seen</th>
-                                    <th>Last Seen</th>
-                                    <th data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
-                                        Confidence
-                                    </th>
-                                    <th>Tags</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var player in Model.Players)
-                                {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
                                     <tr>
-                                        <td><game-type-icon game="@player.GameType"></game-type-icon></td>
+                                        <th scope="col">Game</th>
+                                        <th scope="col">Username</th>
+                                        <th scope="col">GUID</th>
+                                        <th scope="col">First Seen</th>
+                                        <th scope="col">Last Seen</th>
+                                        <th scope="col" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
+                                            Confidence
+                                        </th>
+                                        <th scope="col">Tags</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var player in Model.Players)
+                                    {
+                                        <tr>
+                                            <td><game-type-icon game="@player.GameType"></game-type-icon></td>
                                         <td>
                                             <a asp-controller="Players" asp-action="Details" asp-route-id="@player.PlayerId">
                                                 @player.Username
@@ -283,6 +285,7 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
 
                         @if (Model.TotalPlayersCount > Model.Players.Count())
                         {
