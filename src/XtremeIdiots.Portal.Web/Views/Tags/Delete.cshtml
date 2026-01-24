@@ -35,8 +35,12 @@
                     <form asp-action="Delete" method="post">
                         <input type="hidden" name="id" value="@Model.TagId" />
                         <div class="form-group">
-                            <a asp-action="Index" class="btn btn-white">Back to List</a>
-                            <button type="submit" class="btn btn-danger">Delete</button>
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete
+                            </button>
                         </div>
                     </form>
                 </div>

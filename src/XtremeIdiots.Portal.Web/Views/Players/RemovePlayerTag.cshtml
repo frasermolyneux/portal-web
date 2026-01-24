@@ -35,8 +35,12 @@
                         <input type="hidden" name="playerTagId" value="@Model.PlayerTagId" />
                         <div class="form-group">
                             <a asp-action="Details" asp-controller="Players" asp-route-id="@Model.PlayerId"
-                                class="btn btn-white">Back to Player</a>
-                            <button type="submit" class="btn btn-danger">Remove Tag</button>
+                                class="btn btn-secondary">
+                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i> Remove Tag
+                            </button>
                         </div>
                     </form>
                 </div>

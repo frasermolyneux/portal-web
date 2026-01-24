@@ -19,8 +19,8 @@
                                 playerTag.Tag?.UserDefined == true)
                     {
                         <a asp-controller="Players" asp-action="RemovePlayerTag" asp-route-id="@playerTag.PlayerId"
-                            asp-route-playerTagId="@playerTag.PlayerTagId" class="btn btn-xs btn-danger ms-2">
-                            <i class="fa-solid fa-xmark"></i>
+                            asp-route-playerTagId="@playerTag.PlayerTagId" class="btn btn-sm btn-danger ms-2" aria-label="Remove tag">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </a>
                     }
                 </div>
