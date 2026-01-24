@@ -239,7 +239,7 @@
                     @if (Model.Players != null && Model.Players.Any())
                     {
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table id="ipPlayersTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
                                         <th scope="col">Game</th>
@@ -476,5 +476,6 @@
             }
         </script>
         <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBTtnBCPGgfMxfohkzdaSsJEzC_y40bcpY&signed_in=false&callback=initMap"></script>
+        <script src="~/js/ip-address-details.js" asp-append-version="true"></script>
     }
 }

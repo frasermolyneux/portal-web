@@ -145,36 +145,38 @@
                             else
                             {
                                 <div class="table-responsive">
-                                    <table class="table">
-                                        <tr>
-                                            <th>
-                                                @Html.Label("Num")
-                                            </th>
-                                            <th>
-                                                @Html.Label("Name")
-                                            </th>
-                                            <th>
-                                                @Html.Label("Score")
-                                            </th>
-                                        </tr>
-
-                                        @foreach (var item in Model.GameServer.LivePlayers)
-                                        {
+                                    <table id="connectedPlayersTable" class="table table-striped table-hover w-100">
+                                        <thead>
                                             <tr>
-                                                <td>
-                                                    @Html.DisplayFor(model => item.Num)
-                                                </td>
-                                                <td>
-                                                    <flag-image country-code="@item.CountryCode"></flag-image>
-                                                    <player-name value="@item.Name"></player-name>
-                                                </td>
-                                                <td>
-                                                    @Html.DisplayFor(model => item.Score)
-                                                </td>
-
+                                                <th>
+                                                    @Html.Label("Num")
+                                                </th>
+                                                <th>
+                                                    @Html.Label("Name")
+                                                </th>
+                                                <th>
+                                                    @Html.Label("Score")
+                                                </th>
                                             </tr>
-                                        }
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in Model.GameServer.LivePlayers)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        @Html.DisplayFor(model => item.Num)
+                                                    </td>
+                                                    <td>
+                                                        <flag-image country-code="@item.CountryCode"></flag-image>
+                                                        <player-name value="@item.Name"></player-name>
+                                                    </td>
+                                                    <td>
+                                                        @Html.DisplayFor(model => item.Score)
+                                                    </td>
 
+                                                </tr>
+                                            }
+                                        </tbody>
                                     </table>
                                 </div>
                             }
@@ -224,23 +226,25 @@
 
                     <div class="ibox-content">
                         <div class="table-responsive">
-                            <table class="table">
-                            <tr>
-                                <th>
-                                    @Html.Label("Name")
-                                </th>
-                                <th>
-                                    @Html.Label("Files")
-                                </th>
-                                <th>
-                                    @Html.Label("Popularity")
-                                </th>
-                                <th>
-                                </th>
-                            </tr>
-
-                            @foreach (var item in Model.Maps)
-                            {
+                            <table id="serverMapRotationTable" class="table table-striped table-hover w-100">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        @Html.Label("Name")
+                                    </th>
+                                    <th>
+                                        @Html.Label("Files")
+                                    </th>
+                                    <th>
+                                        @Html.Label("Popularity")
+                                    </th>
+                                    <th>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Maps)
+                                {
                                 <tr>
                                     <td>
                                         @Html.DisplayFor(modelItem => item.MapName)
@@ -281,6 +285,7 @@
                                 </tr>
                             }
 
+                            </tbody>
                         </table>
                         </div>
                     </div>
@@ -291,6 +296,10 @@
     }
 
 </div>
+
+@section Scripts {
+    <script src="~/js/server-info.js" asp-append-version="true"></script>
+}
 
 
 @* ReSharper disable once Razor.SectionNotResolved *@
