@@ -137,7 +137,7 @@
                     </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
-                            <table class="table w-100">
+                            <table id="gameServerMonitorsTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
                                         <th scope="col">
@@ -214,3 +214,7 @@
     </div>
 
 </div>
+
+@section Scripts {
+    <script src="~/js/game-server-details.js" asp-append-version="true"></script>
+}

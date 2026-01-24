@@ -1,0 +1,42 @@
+@* 
+    Shared ChatLog Table Partial View
+    Can be used for global, game-specific, server-specific, or player-specific chat logs
+    
+    Parameters:
+    - dataUrl: The AJAX endpoint URL for fetching chat log data
+    - showServer: Boolean to show/hide the Server column
+    - title: Optional title for the ibox (defaults to "ChatLog")
+*@
+@{
+    var dataUrl = ViewData["ChatLogDataUrl"] as string ?? "/ServerAdmin/GetChatLogAjax";
+    var showServer = ViewData["ChatLogShowServer"] as bool? ?? true;
+    var title = ViewData["ChatLogTitle"] as string ?? "ChatLog";
+}
+
+<div class="ibox chatlog-table-wrapper">
+    <div class="ibox-title">
+        <h5>@title</h5>
+    </div>
+    <div class="ibox-content">
+        <div class="table-responsive">
+            <table id="dataTable" class="table table-striped table-hover w-100" 
+                   data-source="@dataUrl"
+                   data-show-server="@showServer.ToString().ToLower()">
+                <thead>
+                    <tr>
+                        <th scope="col">Timestamp</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Message</th>
+                        @if (showServer)
+                        {
+                            <th scope="col">Server</th>
+                        }
+                        <th scope="col">Locked</th>
+                        <th scope="col">Link</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>

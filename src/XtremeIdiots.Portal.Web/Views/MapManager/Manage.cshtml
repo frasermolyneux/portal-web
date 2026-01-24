@@ -84,44 +84,44 @@
                 </div>
 
                 <div class="ibox-content">
-
-                    <table class="table">
-                        <tbody>
-                            <tr>
-                                <th>
-                                    @Html.Label("Title")
-                                </th>
-                                <th>
-                                    @Html.Label("Game Mode")
-                                </th>
-                                <th>@Html.Label("Count")</th>
-                                <th></th>
-                            </tr>
-
-                            @foreach (var item in Model.MapPacks)
-                            {
+                    <div class="table-responsive">
+                        <table id="mapPacksTable" class="table table-striped table-hover w-100">
+                            <tbody>
                                 <tr>
-                                    <td>
-                                        @Html.DisplayFor(modelItem => item.Title)
-                                    </td>
-                                    <td>
-                                        @Html.DisplayFor(modelItem => item.GameMode)
-                                    </td>
-                                    <td>
-                                        @Html.DisplayFor(modelItem => item.MapPackMaps.Count)
-                                    </td>
-                                    <td>
-                                        <a href="@Url.Action("Manage", "MapPacks", new { id = item.MapPackId })"
-                                            class="btn btn-xs btn-primary">Manage</a>
-                                        <a href="@Url.Action("Delete", "MapPacks", new { id = item.MapPackId })"
-                                            class="btn btn-xs btn-danger">Delete</a>
-                                    </td>
+                                    <th>
+                                        @Html.Label("Title")
+                                    </th>
+                                    <th>
+                                        @Html.Label("Game Mode")
+                                    </th>
+                                    <th>@Html.Label("Count")</th>
+                                    <th></th>
                                 </tr>
-                            }
 
-                        </tbody>
-                    </table>
+                                @foreach (var item in Model.MapPacks)
+                                {
+                                    <tr>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.Title)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.GameMode)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.MapPackMaps.Count)
+                                        </td>
+                                        <td>
+                                            <a href="@Url.Action("Manage", "MapPacks", new { id = item.MapPackId })"
+                                                class="btn btn-xs btn-primary">Manage</a>
+                                            <a href="@Url.Action("Delete", "MapPacks", new { id = item.MapPackId })"
+                                                class="btn btn-xs btn-danger">Delete</a>
+                                        </td>
+                                    </tr>
+                                }
 
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="ibox-footer">
@@ -140,8 +140,8 @@
                 </div>
 
                 <div class="ibox-content">
-
-                    <table class="table">
+                    <div class="table-responsive">
+                        <table id="mapRotationTable" class="table table-striped table-hover w-100">
                         <tr>
                             <th>
                                 @Html.Label("Name")
@@ -223,7 +223,7 @@
 }
 
                     </table>
-
+                    </div>
                 </div>
             </div>
 
@@ -237,8 +237,8 @@
                 </div>
 
                 <div class="ibox-content">
-
-                    <table class="table">
+                    <div class="table-responsive">
+                        <table id="remoteMapsTable" class="table table-striped table-hover w-100">
                         <tr>
                             <th>
                                 @Html.Label("Name")
@@ -286,7 +286,7 @@
 }
 
                     </table>
-
+                    </div>
                 </div>
             </div>
 
@@ -295,3 +295,7 @@
     </div>
 
 </div>
+
+@section Scripts {
+    <script src="~/js/map-manager.js" asp-append-version="true"></script>
+}

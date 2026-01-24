@@ -215,18 +215,12 @@
                 <div class="tab-content">
                     <div class="ibox-content tab-pane container fade show active" style="height: 100%" id="aliases" role="tabpanel" aria-labelledby="aliases-tab">
                         <div class="table-responsive">
-                            <table class="table table-borderless" style="width: 100%;">
+                            <table id="aliasesTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
-                                        <th>
-                                            Name
-                                        </th>
-                                        <th>
-                                            Added
-                                        </th>
-                                        <th>
-                                            Last Used
-                                        </th>
+                                        <th>Name</th>
+                                        <th>Added</th>
+                                        <th>Last Used</th>
                                         <th data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the Alias has been linked to the GUID">
                                             Confidence
                                         </th>
@@ -252,19 +246,13 @@
                     
                     <div class="ibox-content tab-pane container fade" style="height: 100%" id="ipAddresses" role="tabpanel" aria-labelledby="ipAddresses-tab">
                         <div class="table-responsive">
-                            <table class="table table-borderless" style="width: 100%;">
+                            <table id="ipAddressesTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
-                                        <th>
-                                            Address
-                                        </th>
-                                        <th>
-                                            Added
-                                        </th>
-                                        <th>
-                                            Last Used
-                                        </th>
-                                            <th data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
+                                        <th>Address</th>
+                                        <th>Added</th>
+                                        <th>Last Used</th>
+                                        <th data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
                                             Confidence
                                         </th>
                                     </tr>
@@ -300,7 +288,7 @@
                         @if (player.ProtectedNames != null && player.ProtectedNames.Any())
                         {
                             <div class="table-responsive">
-                                <table class="table table-borderless" style="width: 100%;">
+                                <table id="protectedNamesTable" class="table table-striped table-hover w-100">
                                     <thead>
                                         <tr>
                                             <th>Name</th>
@@ -317,8 +305,8 @@
                                                 <td><time user-time utc="@protectedName.CreatedOn"></time></td>
                                                 <td>@protectedName.CreatedByUserProfile?.DisplayName</td>
                                                 <td>
-                                                    <div class="btn-group btn-group-sm d-flex flex-column flex-sm-row" role="group">
-                                                        <a asp-controller="ProtectedNames" asp-action="Report" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-info btn-sm mb-1 mb-sm-0">
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <a asp-controller="ProtectedNames" asp-action="Report" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-info btn-sm">
                                                             <i class="fa-solid fa-file-text"></i> <span class="d-none d-sm-inline">Usage Report</span>
                                                         </a>
                                                         <a asp-controller="ProtectedNames" asp-action="Delete" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-danger btn-sm"
@@ -412,28 +400,12 @@
                                 <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
                             </div>
                         </div>
-                        <div class="ibox chatlog-table-wrapper">
-                            <div class="ibox-title">
-                                <h5>Player ChatLog</h5>
-                            </div>
-                            <div class="ibox-content">
-                                <div class="table-responsive">
-                                    <table id="dataTable" class="table table-striped table-hover w-100" data-source="/ServerAdmin/GetPlayerChatLog/@(Model?.Player?.PlayerId.ToString() ?? Guid.Empty.ToString())" data-show-server="true">
-                                        <thead>
-                                        <tr>
-                                            <th scope="col">Timestamp</th>
-                                            <th scope="col">Username</th>
-                                            <th scope="col">Type</th>
-                                            <th scope="col">Message</th>
-                                            <th scope="col">Server</th>
-                                            <th scope="col">Locked</th>
-                                            <th scope="col">Link</th>
-                                        </tr>
-                                        </thead>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                        @{
+                            ViewData["ChatLogDataUrl"] = $"/ServerAdmin/GetPlayerChatLog/{Model?.Player?.PlayerId.ToString() ?? Guid.Empty.ToString()}";
+                            ViewData["ChatLogShowServer"] = true;
+                            ViewData["ChatLogTitle"] = "Player ChatLog";
+                        }
+                        <partial name="_ChatLogTable" />
                     </div>                
                 </div>
             </div>
@@ -499,6 +471,7 @@
 
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBTtnBCPGgfMxfohkzdaSsJEzC_y40bcpY&signed_in=false&callback=initMap"></script>
     <script src="~/js/chatlog-index.js" asp-append-version="true"></script>
+    <script src="~/js/player-details-tables.js" asp-append-version="true"></script>
     <script>
         // Copy to clipboard functionality
         function copyToClipboard(elementId) {

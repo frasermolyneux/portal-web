@@ -59,32 +59,12 @@
                         Filters</button>
                 </div>
             </div>
-            <div class="ibox chatlog-table-wrapper">
-                <div class="ibox-title">
-                    <h5>@ViewData["Title"]</h5>
-                </div>
-                <div class="ibox-content">
-                    <div class="table-responsive">
-                        <table id="dataTable" class="table table-striped table-hover w-100" data-source="@dataUrl"
-                            data-show-server="@showServer">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Timestamp</th>
-                                    <th scope="col">Username</th>
-                                    <th scope="col">Type</th>
-                                    <th scope="col">Message</th>
-                                    @if (showServer)
-                                    {
-                                        <th scope="col">Server</th>
-                                    }
-                                    <th scope="col">Locked</th>
-                                    <th scope="col">Link</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            @{
+                ViewData["ChatLogDataUrl"] = dataUrl;
+                ViewData["ChatLogShowServer"] = showServer;
+                ViewData["ChatLogTitle"] = ViewData["Title"];
+            }
+            <partial name="_ChatLogTable" />
         </div>
     </div>
 </div>
