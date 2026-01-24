@@ -10,11 +10,11 @@
 
 <div class="row">
     <div class="col-md-6">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <h3 class="panel-title">Player Information</h3>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Player Information</h3>
             </div>
-            <div class="panel-body">
+            <div class="card-body">
                 <dl class="dl-horizontal">
                     <dt>Username:</dt>
                     <dd>@Model.Player?.Username</dd>
@@ -28,11 +28,11 @@
     </div>
 
     <div class="col-md-6">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <h3 class="panel-title">Add Protected Name</h3>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Add Protected Name</h3>
             </div>
-            <div class="panel-body">
+            <div class="card-body">
                 <form asp-controller="ProtectedNames" asp-action="Add" method="post">
                     @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>

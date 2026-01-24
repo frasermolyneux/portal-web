@@ -31,7 +31,7 @@
                         <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
 
                         <div class="form-group">
-                            <label asp-for="Text" class="sr-only">Reason</label>
+                            <label asp-for="Text" class="visually-hidden">Reason</label>
                             <textarea id="summernote" asp-for="Text" class="form-control"
                                 placeholder="Enter the reason for this @Model.Type..." 
                                 aria-describedby="text-help" required

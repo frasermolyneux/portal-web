@@ -44,21 +44,21 @@
         height: 100%;
     }
 
-    .panel-heading {
+    .card-header {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         border-radius: 8px 8px 0 0;
         padding: 20px;
     }
 
-    .panel-body {
+    .card-body {
         padding: 20px;
     }
 
-    .panel-body .row {
+    .card-body .row {
         margin: 0;
     }
 
-    .panel-body [class*="col-"] {
+    .card-body [class*="col-"] {
         padding-left: 10px;
         padding-right: 10px;
     }
@@ -74,11 +74,11 @@
         font-weight: 500;
     }
 
-    .panel-title {
+    .card-title {
         margin-bottom: 8px;
     }
 
-    .panel-title i.fa-github {
+    .card-title i.fa-github {
         font-size: 1.2em;
     }
 
@@ -120,7 +120,7 @@
         animation: fa-spin 1s infinite linear;
     }
 
-    .panel-title a:hover {
+    .card-title a:hover {
         text-decoration: none;
     }
 
@@ -632,11 +632,11 @@
                     if (data) {
                         html += `
                                                 <div class="col-lg-6 col-md-12 mb-3">
-                                                    <div class="panel panel-default">
-                                                        <div class="panel-heading">
+                                                    <div class="card">
+                                                        <div class="card-header">
                                                             <div class="row">
                                                                 <div class="col-xs-8">
-                                                                    <h4 class="panel-title">
+                                                                    <h4 class="card-title">
                                                                         <a href="${data.url}" target="_blank" class="text-decoration-none">
                                                                             <i class="fa-solid fa-github fa-lg"></i> ${repo.name}
                                                                             <i class="fa-solid fa-arrow-up-right-from-square fa-sm"></i>
@@ -649,7 +649,7 @@
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="panel-body">
+                                                        <div class="card-body">
                                                             <div class="row">
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Language</small>
