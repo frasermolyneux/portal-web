@@ -122,3 +122,27 @@
 @section Scripts {
     <script src="~/js/ban-file-monitors-index.js" asp-append-version="true"></script>
 }
+
+@section Styles {
+    <style>
+        /* Truncate long FTP file paths on mobile to prevent overflow */
+        #banFileMonitorsTable td:nth-child(2) {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        @media (min-width: 768px) {
+            #banFileMonitorsTable td:nth-child(2) {
+                max-width: 400px;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            #banFileMonitorsTable td:nth-child(2) {
+                max-width: none;
+            }
+        }
+    </style>
+}
