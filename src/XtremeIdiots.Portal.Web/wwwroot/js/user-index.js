@@ -67,12 +67,12 @@ $(document).ready(function () {
             }
         },
         columns: [
-            { data: 'xtremeIdiotsForumId', name: 'xtremeIdiotsForumId', sortable: false, render: function (data, type, row) { return forumProfileLink(data, row.displayName); } },
-            { data: 'userProfileId', name: 'userProfileId', sortable: false, render: function (data) { return '<a href="/User/ManageProfile/' + data + '">' + data + '</a>'; } },
-            { data: 'displayName', name: 'displayName', sortable: true },
-            { data: 'email', name: 'email', sortable: false },
-            { data: null, name: 'roles', sortable: false, defaultContent: '', render: function (data, type, row) { return renderRoles(row); } },
-            { data: null, defaultContent: '', sortable: false, render: function (data, type, row) {
+            { data: 'xtremeIdiotsForumId', name: 'xtremeIdiotsForumId', orderable: false, render: function (data, type, row) { return forumProfileLink(data, row.displayName); } },
+            { data: 'userProfileId', name: 'userProfileId', orderable: false, render: function (data) { return '<a href="/User/ManageProfile/' + data + '">' + data + '</a>'; } },
+            { data: 'displayName', name: 'displayName', orderable: true },
+            { data: 'email', name: 'email', orderable: false },
+            { data: null, name: 'roles', orderable: false, defaultContent: '', render: function (data, type, row) { return renderRoles(row); } },
+            { data: null, defaultContent: '', orderable: false, render: function (data, type, row) {
                 const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
                 const token = tokenInput ? tokenInput.value : '';
                 return logOutUserLink(row['xtremeIdiotsForumId'], '<input name="__RequestVerificationToken" type="hidden" value="' + token + '" />');

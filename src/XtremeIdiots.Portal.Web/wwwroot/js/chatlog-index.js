@@ -25,9 +25,9 @@ $(document).ready(function () {
     const structureVersion = 5; // bumped after adding server filter
 
     const columns = [
-        { data: 'timestamp', name: 'timestamp', sortable: true, render: function (data) { return data ? ('<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
+        { data: 'timestamp', name: 'timestamp', orderable: true, render: function (data) { return data ? ('<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
         {
-            data: 'username', name: 'username', sortable: false, render: function (data, type, row) {
+            data: 'username', name: 'username', orderable: false, render: function (data, type, row) {
                 // Prefer numeric enum (player.gameType or gameServer.gameType); fall back to top-level gameType.
                 // Some chat log payloads may include string enum names instead of numeric values.
                 var gameTypeVal = (row['player'] && row['player']['gameType'] !== undefined)
@@ -54,18 +54,18 @@ $(document).ready(function () {
                 return gameTypeIcon(gameTypeVal) + ' ' + usernameAnchor();
             }
         },
-        { data: 'chatType', name: 'chatType', sortable: false },
-        { data: 'message', name: 'message', sortable: false, render: function (data) { return data ? escapeHtml(data) : ''; } }
+        { data: 'chatType', name: 'chatType', orderable: false },
+        { data: 'message', name: 'message', orderable: false, render: function (data) { return data ? escapeHtml(data) : ''; } }
     ];
     if (showServer) {
         // Use data: null so DataTables doesn't expect a primitive at serverName path; render from nested object
-        columns.push({ data: null, name: 'serverName', sortable: false, render: function (data, type, row) { return row['gameServer']?.['liveTitle'] || row['serverName'] || ''; } });
+        columns.push({ data: null, name: 'serverName', orderable: false, render: function (data, type, row) { return row['gameServer']?.['liveTitle'] || row['serverName'] || ''; } });
     }
     columns.push(
         {
             data: 'locked',
             name: 'locked',
-            sortable: false,
+            orderable: false,
             render: function (data, type, row) {
                 var id = row['chatMessageId'];
                 if (!id) return '';
@@ -75,7 +75,7 @@ $(document).ready(function () {
                 return '<button type="button" class="btn btn-link p-0 lock-toggle" data-id="' + id + '" data-locked="false" title="Click to lock"><i class="fa-solid fa-unlock text-muted"></i></button>';
             }
         },
-        { data: 'chatMessageId', name: 'chatMessageId', sortable: false, render: function (data, type, row) { return chatLogUrl(row['chatMessageId']); } }
+        { data: 'chatMessageId', name: 'chatMessageId', orderable: false, render: function (data, type, row) { return chatLogUrl(row['chatMessageId']); } }
     );
 
     const table = tableEl.DataTable({

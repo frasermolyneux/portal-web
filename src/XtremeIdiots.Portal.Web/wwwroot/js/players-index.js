@@ -51,15 +51,15 @@ $(document).ready(function () {
             }
         },
         columns: [
-            { data: 'username', name: 'username', sortable: true, render: function (data, type, row) { return renderPlayerName(row['gameType'], row['username'], row['playerId']); } },
+            { data: 'username', name: 'username', orderable: true, render: function (data, type, row) { return renderPlayerName(row['gameType'], row['username'], row['playerId']); } },
             {
-                data: 'ipAddress', name: 'ipAddress', sortable: false, render: function (data, type, row) {
+                data: 'ipAddress', name: 'ipAddress', orderable: false, render: function (data, type, row) {
                     return data ? formatIPAddress(data, row['proxyCheckRiskScore'], row['isProxy'], row['isVpn'], row['proxyType'], row['countryCode'], true) : '';
                 }
             },
-            { data: 'guid', name: 'guid', sortable: false, defaultContent: '' },
-            { data: 'firstSeen', name: 'firstSeen', sortable: true, render: function (data) { return data ? ('<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
-            { data: 'lastSeen', name: 'lastSeen', sortable: true, render: function (data) { return data ? ('<span title="' + data + '">' + timeAgo(data) + '</span>') : ''; } }
+            { data: 'guid', name: 'guid', orderable: false, defaultContent: '' },
+            { data: 'firstSeen', name: 'firstSeen', orderable: true, render: function (data) { return data ? ('<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
+            { data: 'lastSeen', name: 'lastSeen', orderable: true, render: function (data) { return data ? ('<span title="' + data + '">' + timeAgo(data) + '</span>') : ''; } }
         ]
     });
 

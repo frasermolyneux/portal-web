@@ -15,10 +15,10 @@ $(document).ready(function () {
             pageLength: 10,
             order: [[2, 'desc']], // Last Used desc
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Name - always visible
-                { targets: 1, responsivePriority: 4 }, // Added - lower priority
-                { targets: 2, responsivePriority: 2 }, // Last Used - high priority
-                { targets: 3, responsivePriority: 3 }  // Confidence - medium priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Name - always visible
+                { targets: 1, responsivePriority: 4, orderable: true }, // Added
+                { targets: 2, responsivePriority: 2, orderable: true }, // Last Used
+                { targets: 3, responsivePriority: 3, orderable: false }  // Confidence - not sortable
             ],
             language: {
                 search: '<i class="fa fa-search" aria-hidden="true"></i>',
@@ -44,10 +44,10 @@ $(document).ready(function () {
             pageLength: 10,
             order: [[2, 'desc']], // Last Used desc
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Address - always visible
-                { targets: 1, responsivePriority: 4 }, // Added - lower priority
-                { targets: 2, responsivePriority: 2 }, // Last Used - high priority
-                { targets: 3, responsivePriority: 3 }  // Confidence - medium priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Address - always visible
+                { targets: 1, responsivePriority: 4, orderable: true }, // Added
+                { targets: 2, responsivePriority: 2, orderable: true }, // Last Used
+                { targets: 3, responsivePriority: 3, orderable: false }  // Confidence - not sortable
             ],
             language: {
                 search: '<i class="fa fa-search" aria-hidden="true"></i>',
@@ -73,10 +73,10 @@ $(document).ready(function () {
             pageLength: 10,
             order: [[1, 'desc']], // Created desc
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Name - always visible
-                { targets: 1, responsivePriority: 3 }, // Created - medium priority
-                { targets: 2, responsivePriority: 4 }, // Created By - lower priority
-                { targets: 3, responsivePriority: 2 }  // Actions - high priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Name - always visible
+                { targets: 1, responsivePriority: 3, orderable: true }, // Created
+                { targets: 2, responsivePriority: 4, orderable: false }, // Created By - not sortable
+                { targets: 3, responsivePriority: 2, orderable: false }  // Actions - not sortable
             ],
             language: {
                 search: '<i class="fa fa-search" aria-hidden="true"></i>',

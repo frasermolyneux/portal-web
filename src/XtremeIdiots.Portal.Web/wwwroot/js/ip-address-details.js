@@ -15,10 +15,10 @@ $(document).ready(function () {
             pageLength: 25,
             order: [[2, 'desc']], // Last Used desc
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Username - always visible
-                { targets: 1, responsivePriority: 4 }, // Added - lower priority
-                { targets: 2, responsivePriority: 2 }, // Last Used - high priority
-                { targets: 3, responsivePriority: 3 }  // Confidence - medium priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Username - always visible
+                { targets: 1, responsivePriority: 4, orderable: true }, // Added
+                { targets: 2, responsivePriority: 2, orderable: true }, // Last Used
+                { targets: 3, responsivePriority: 3, orderable: false }  // Confidence - not sortable
             ],
             language: {
                 search: '<i class="fa fa-search" aria-hidden="true"></i>',

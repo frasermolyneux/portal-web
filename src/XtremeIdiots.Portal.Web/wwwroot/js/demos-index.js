@@ -80,15 +80,15 @@ $(document).ready(function () {
             }
         },
         columns: [
-            { data: 'game', name: 'game', sortable: true, render: function (data, type, row) { return gameTypeIcon(row['game']); } },
-            { data: 'name', name: 'name', sortable: true, render: function (data, type, row) { return downloadDemoLink(row['name'], row['demoId']); } },
-            { data: 'date', name: 'date', sortable: true, render: function (data) { return data ? '<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>' : ''; } },
-            { data: 'map', name: 'map', sortable: false },
-            { data: 'mod', name: 'mod', sortable: false },
-            { data: 'gameType', name: 'gameType', sortable: false },
-            { data: 'server', name: 'server', sortable: false },
-            { data: 'size', name: 'size', sortable: false, render: function (data) { return formatBytes(data); } },
-            { data: 'uploadedBy', name: 'uploadedBy', sortable: true },
+            { data: 'game', name: 'game', orderable: true, render: function (data, type, row) { return gameTypeIcon(row['game']); } },
+            { data: 'name', name: 'name', orderable: true, render: function (data, type, row) { return downloadDemoLink(row['name'], row['demoId']); } },
+            { data: 'date', name: 'date', orderable: true, render: function (data) { return data ? '<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>' : ''; } },
+            { data: 'map', name: 'map', orderable: false },
+            { data: 'mod', name: 'mod', orderable: false },
+            { data: 'gameType', name: 'gameType', orderable: false },
+            { data: 'server', name: 'server', orderable: false },
+            { data: 'size', name: 'size', orderable: false, render: function (data) { return formatBytes(data); } },
+            { data: 'uploadedBy', name: 'uploadedBy', orderable: true },
             { data: null, defaultContent: '', orderable: false, render: function (data, type, row) { return row['showDeleteLink'] === true ? deleteDemoLink(row['demoId'], gtSel?.value) : ''; } }
         ]
     });
