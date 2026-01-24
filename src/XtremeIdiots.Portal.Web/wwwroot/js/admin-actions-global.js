@@ -8,13 +8,11 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[0, 'desc']],
         columnDefs: [
-            // Match unclaimed pattern: lower number = keep longer
-            { targets: 1, responsivePriority: 1 }, // Game
-            { targets: 2, responsivePriority: 2 }, // Type
-            { targets: 3, responsivePriority: 3 }, // Player
-            { targets: 5, responsivePriority: 4 }, // Expires
-            { targets: 4, responsivePriority: 5 }, // Admin
-            { targets: 0, responsivePriority: 6 }  // Created
+            { targets: 0, responsivePriority: 5, orderable: true }, // Created
+            { targets: 1, responsivePriority: 2, orderable: false }, // Type
+            { targets: 2, responsivePriority: 1, orderable: false }, // Player (with game icon)
+            { targets: 3, responsivePriority: 4, orderable: false }, // Admin
+            { targets: 4, responsivePriority: 3, orderable: false }  // Expires
         ],
         ajax: {
             url: '/AdminActions/GetAdminActionsAjax',
@@ -37,12 +35,13 @@ $(document).ready(function () {
             }
         },
         columns: [
-            { data: 'created', name: 'created', sortable: true, render: function (data) { return '<span title="' + data + '">' + timeAgo(data) + '</span>'; } },
-            { data: 'gameType', name: 'gameType', sortable: false, render: function (data) { return gameTypeIcon(data); } },
-            { data: 'type', name: 'type', sortable: false, render: function (data) { return adminActionTypeIcon(data); } },
-            { data: 'player', name: 'player', sortable: false, render: function (data, type, row) { return '<a href="/Players/Details/' + row.playerId + '">' + data + '</a><br/><small class="text-muted">' + (row.guid || '') + '</small>'; } },
-            { data: 'admin', name: 'admin', sortable: false },
-            { data: 'expires', name: 'expires', sortable: false, className: 'expires-cell', render: function (data) { return formatExpiryDate(data); } }
+            { data: 'created', name: 'created', orderable: true, render: function (data) { return '<span title="' + data + '">' + timeAgo(data) + '</span>'; } },
+            { data: 'type', name: 'type', orderable: false, render: function (data) { return adminActionTypeIcon(data); } },
+            { data: 'player', name: 'player', orderable: false, render: function (data, type, row) { 
+                return renderPlayerName(row.gameType, data, row.playerId) + '<br/><small class="text-muted">' + (row.guid || '') + '</small>'; 
+            } },
+            { data: 'admin', name: 'admin', orderable: false },
+            { data: 'expires', name: 'expires', orderable: false, className: 'expires-cell', render: function (data) { return formatExpiryDate(data); } }
         ]
     });
 
@@ -50,8 +49,7 @@ $(document).ready(function () {
     $('#dataTable').on('init.dt', function () { setTimeout(function () { table.columns.adjust().draw(false); }, 350); });
 
     function applyGameColumnVisibility() {
-        const hasSpecificGame = $('#filterGameType').val() !== '';
-        table.column(1).visible(!hasSpecificGame, false);
+        // Game column no longer exists, but keep function for filter logic
     }
 
     applyGameColumnVisibility();

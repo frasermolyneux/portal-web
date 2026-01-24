@@ -18,25 +18,14 @@
                             <table id="serversTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
-                                        <th scope="col">
-                                        </th>
-                                        <th scope="col">
-                                            @Html.Label("Title")
-                                        </th>
-                                        <th scope="col">
-                                            @Html.Label("Hostname")
-                                        </th>
-                                        <th scope="col"></th>
-                                        <th scope="col">
-                                            @Html.Label("Players")
-                                        </th>
-                                        <th scope="col">
-                                            @Html.Label("Map")
-                                        </th>
-                                        <th scope="col">
-                                        @Html.Label("Mod")
-                                    </th>
-                                    <th></th>
+                                        <th scope="col">Game Type</th>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Hostname</th>
+                                        <th scope="col">Links</th>
+                                        <th scope="col">Players</th>
+                                        <th scope="col">Map</th>
+                                        <th scope="col">Mod</th>
+                                        <th scope="col">Info</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -91,11 +80,11 @@
                                             @item.GameServer.LiveMod
                                         </td>
                                         <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a type="button" class="btn btn-primary" asp-controller="Servers"
-                                                    asp-action="ServerInfo" asp-route-id="@item.GameServer.GameServerId"><i
-                                                        class="fa-solid fa-circle-info"></i> Server Info</a>
-                                            </div>
+                                            <a class="btn btn-sm btn-primary" asp-controller="Servers"
+                                                asp-action="ServerInfo" asp-route-id="@item.GameServer.GameServerId" 
+                                                title="Server Info" aria-label="Server Info">
+                                                <i class="fa-solid fa-circle-info"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                 }
