@@ -18,44 +18,10 @@
         <h3 class="card-title">All Protected Names</h3>
     </div>
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Owner</th>
-                        <th class="d-none d-md-table-cell">Created</th>
-                        <th class="d-none d-lg-table-cell">Created By</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var protectedName in Model.ProtectedNames)
-                    {
-                        <tr>
-                            <td>@protectedName.Name</td>
-                            <td>
-                                <a asp-controller="Players" asp-action="Details" asp-route-id="@protectedName.PlayerId">
-                                    View Player Profile
-                                </a>
-                            </td>
-                            <td class="d-none d-md-table-cell">@protectedName.CreatedOn.ToString("yyyy-MM-dd")</td>
-                            <td class="d-none d-lg-table-cell">@protectedName.CreatedByUserProfile?.DisplayName</td>
-                            <td>
-                                <a asp-controller="ProtectedNames" asp-action="Report"
-                                    asp-route-id="@protectedName.ProtectedNameId" class="btn btn-info btn-sm">
-                                    <i class="fa-solid fa-file-text"></i> <span class="d-none d-sm-inline">Usage Report</span>
-                                </a>
-                                <a asp-controller="ProtectedNames" asp-action="Delete"
-                                    asp-route-id="@protectedName.ProtectedNameId" class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Are you sure you want to delete this protected name?');">
-                                    <i class="fa-solid fa-trash"></i> <span class="d-none d-sm-inline">Delete</span>
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_ProtectedNamesTable" model="Model.ProtectedNames" />
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/protected-names-table.js" asp-append-version="true"></script>
+}
