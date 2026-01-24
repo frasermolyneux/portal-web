@@ -46,10 +46,6 @@ body {
     cursor: pointer;
 }
 
-.navbar-default.navbar-static-side {
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-}
-
 /* Improved navigation menu functionality */
 .nav .arrow {
     float: right;
