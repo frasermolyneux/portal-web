@@ -33,10 +33,9 @@
         responsive: { details: { type: 'inline', target: 'tr' } },
         autoWidth: false,
         columnDefs: [
-            { targets: 0, responsivePriority: 1 }, // Created (most important)
-            { targets: 1, responsivePriority: 5 }, // Game Type (least important)
-            { targets: 2, responsivePriority: 2 }, // Type (second most important)
-            { targets: 3, responsivePriority: 3 }  // Player (third most important)
+            { targets: 0, responsivePriority: 1, orderable: true }, // Created
+            { targets: 1, responsivePriority: 2, orderable: false }, // Type
+            { targets: 2, responsivePriority: 3, orderable: false }  // Player (with game icon)
         ],
         ajax: {
             url: '/AdminActions/GetMyAdminActionsAjax',
@@ -47,10 +46,11 @@
             dataSrc: function (json) { return json.data; }
         },
         columns: [
-            { data: 'created', render: function (d) { return window.timeAgo ? window.timeAgo(d) : d; } },
-            { data: 'gameType', render: function (d) { return d ? (window.gameTypeIcon ? window.gameTypeIcon(d) : d) : ''; } },
-            { data: 'type', render: function (d) { return window.adminActionTypeIcon ? window.adminActionTypeIcon(d) : d; } },
-            { data: 'player' },
+            { data: 'created', orderable: true, render: function (d) { return window.timeAgo ? window.timeAgo(d) : d; } },
+            { data: 'type', orderable: false, render: function (d) { return window.adminActionTypeIcon ? window.adminActionTypeIcon(d) : d; } },
+            { data: 'player', orderable: false, render: function (data, type, row) {
+                return window.renderPlayerName ? window.renderPlayerName(row.gameType, data, row.playerId) : data;
+            } },
             { data: 'text', visible: false }
         ]
     });
