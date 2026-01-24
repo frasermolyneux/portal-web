@@ -16,7 +16,7 @@
                 </div>
                 <div class="ibox-content">
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table id="tagsTable" class="table table-striped table-hover w-100">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -48,11 +48,15 @@
                                             }
                                         </td>
                                         <td>
-                                            <div class="btn-group">
+                                            <div class="btn-group btn-group-sm">
                                                 <a asp-action="Edit" asp-route-id="@tag.TagId"
-                                                    class="btn btn-white btn-xs">Edit</a>
+                                                    class="btn btn-primary btn-sm">
+                                                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span class="d-none d-sm-inline">Edit</span>
+                                                </a>
                                                 <a asp-action="Delete" asp-route-id="@tag.TagId"
-                                                    class="btn btn-danger btn-xs">Delete</a>
+                                                    class="btn btn-danger btn-sm">
+                                                    <i class="fa-solid fa-trash" aria-hidden="true"></i> <span class="d-none d-sm-inline">Delete</span>
+                                                </a>
                                             </div>
                                         </td>
                                     </tr>
@@ -65,3 +69,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/tags-index.js" asp-append-version="true"></script>
+}
