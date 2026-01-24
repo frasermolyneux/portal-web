@@ -14,13 +14,13 @@
 
     <environment names="Development">
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.css" />
-        <link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <link rel="stylesheet" href="~/css/animate.css" />
         <link rel="stylesheet" href="~/css/inspinia.css" asp-append-version="true" />
     </environment>
     <environment names="Staging,Production">
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-        <link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <link rel="stylesheet" href="~/css/animate.css" />
         <link rel="stylesheet" href="~/css/inspinia.css" asp-append-version="true" />
     </environment>
@@ -39,7 +39,9 @@
                 <form class="d-inline-flex" asp-controller="Identity" asp-action="LoginWithXtremeIdiots" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
-                    <button type="submit" class="btn btn-primary">XtremeIdiots Login</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> XtremeIdiots Login
+                    </button>
                 </form>
             </div>
         </div>
