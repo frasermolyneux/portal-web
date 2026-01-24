@@ -1114,6 +1114,10 @@ button.dim:active:before {
     white-space: nowrap;
 }
 
+/* Badge color overrides with Inspinia theme colors
+ * Supporting both Bootstrap 4 (.badge-*) and Bootstrap 5 (.badge.bg-*) patterns
+ * for gradual migration and backward compatibility with user-generated content.
+ */
 .badge-primary,
 .badge.bg-primary {
     background-color: #1ab394;
