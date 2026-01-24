@@ -12,24 +12,25 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <row class="row">
+    <div class="row">
         <div class="col-12">
 
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-content">
-                        <table class="table table-responsive w-100 d-block d-md-table">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        @Html.Label("Title")
-                                    </th>
-                                    <th>
-                                        @Html.Label("Hostname")
-                                    </th>
-                                    <th>
-                                        @Html.Label("Players")
-                                    </th>
+                        <div class="table-responsive">
+                            <table class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            @Html.Label("Title")
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Hostname")
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Players")
+                                        </th>
                                     <th>
                                         @Html.Label("Map")
                                     </th>
@@ -109,11 +110,12 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </div>
-    </row>
+    </div>
 
 </div>

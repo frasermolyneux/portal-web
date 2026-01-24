@@ -59,22 +59,22 @@ function gameTypeIconEnum(gameType) {
 // Mirrors mappings used in server-side views (AdminActions ViewComponent).
 function adminActionTypeIcon(actionType) {
     if (!actionType) return '';
-    var iconClass = 'fa fa-circle-question';
+    var iconClass = 'fa-solid fa-circle-question';
     switch (actionType) {
         case 'Observation':
-            iconClass = 'fa fa-eye';
+            iconClass = 'fa-solid fa-eye';
             break;
         case 'Warning':
-            iconClass = 'fa fa-triangle-exclamation';
+            iconClass = 'fa-solid fa-triangle-exclamation';
             break;
         case 'Kick':
-            iconClass = 'fa fa-user-xmark';
+            iconClass = 'fa-solid fa-user-xmark';
             break;
         case 'TempBan':
-            iconClass = 'fa fa-clock';
+            iconClass = 'fa-solid fa-clock';
             break;
         case 'Ban':
-            iconClass = 'fa fa-ban';
+            iconClass = 'fa-solid fa-ban';
             break;
     }
     return "<i class='" + iconClass + "' aria-hidden='true'></i> <span class='action-text'>" + actionType + "</span>";

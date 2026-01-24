@@ -13,16 +13,16 @@
         <div class="col-12">
             <div class="ibox chatlog-permalink">
                 <div class="ibox-title d-flex align-items-center justify-content-between flex-wrap py-2 px-3">
-                    <div class="d-flex align-items-center mb-2 mb-sm-0 pr-sm-3">
-                        <i class="fa-solid fa-commenting fa-lg text-info mr-2" aria-hidden="true"></i>
+                    <div class="d-flex align-items-center mb-2 mb-sm-0 pe-sm-3">
+                        <i class="fa-solid fa-commenting fa-lg text-info me-2" aria-hidden="true"></i>
                         <h5 class="mb-0">Chat Log Entry <small class="text-muted">#@Model.ChatMessageId</small></h5>
                     </div>
                     <div class="d-flex align-items-center badges-wrapper">
-                        <span class="badge badge-@(Model.Locked ? "warning" : "secondary") mr-2" title="@(Model.Locked ? "Locked" : "Unlocked")">
+                        <span class="badge badge-@(Model.Locked ? "warning" : "secondary") me-2" title="@(Model.Locked ? "Locked" : "Unlocked")">
                             <i class="fa-solid fa-@(Model.Locked ? "lock" : "unlock")" aria-hidden="true"></i>
                             @(Model.Locked ? "Locked" : "Unlocked")
                         </span>
-                        <span class="badge badge-primary" title="Chat Type"><i class="fa-solid fa-tag"></i> @Model.ChatType</span>
+                        <span class="badge bg-primary" title="Chat Type"><i class="fa-solid fa-tag"></i> @Model.ChatType</span>
                     </div>
                 </div>
 
@@ -33,25 +33,25 @@
                                 <dt class="col-sm-4">Player ID</dt>
                                 <dd class="col-sm-8">
                                     <i class="fa-solid fa-user text-muted" aria-hidden="true"></i>
-                                    <span class="ml-1">@Model.PlayerId</span>
+                                    <span class="ms-1">@Model.PlayerId</span>
                                 </dd>
 
                                 <dt class="col-sm-4">Username</dt>
                                 <dd class="col-sm-8">
                                     <i class="fa-solid fa-circle-user text-muted" aria-hidden="true"></i>
-                                    <span class="ml-1">@Model.Username</span>
+                                    <span class="ms-1">@Model.Username</span>
                                 </dd>
 
                                 <dt class="col-sm-4">Server</dt>
                                 <dd class="col-sm-8">
                                     <i class="fa-solid fa-server text-muted" aria-hidden="true"></i>
-                                    <span class="ml-1">@(Model.GameServer?.LiveTitle ?? "Unknown Server")</span>
+                                    <span class="ms-1">@(Model.GameServer?.LiveTitle ?? "Unknown Server")</span>
                                 </dd>
 
                                 <dt class="col-sm-4">Timestamp</dt>
                                 <dd class="col-sm-8">
                                     <i class="fa-solid fa-clock text-muted" aria-hidden="true"></i>
-                                    <time class="ml-1" datetime="@Model.Timestamp.ToString("O")" title="@Model.Timestamp.ToString("u")">
+                                    <time class="ms-1" datetime="@Model.Timestamp.ToString("O")" title="@Model.Timestamp.ToString("u")">
                                         @Model.Timestamp
                                     </time>
                                 </dd>
@@ -59,12 +59,12 @@
                                 <dt class="col-sm-4">Locked</dt>
                                 <dd class="col-sm-8">
                                     <i class="fa-solid fa-@(Model.Locked ? "lock text-warning" : "unlock text-success")" aria-hidden="true"></i>
-                                    <span class="ml-1">@(Model.Locked ? "Yes" : "No")</span>
+                                    <span class="ms-1">@(Model.Locked ? "Yes" : "No")</span>
                                 </dd>
                             </dl>
                         </div>
                         <div class="col-md-5">
-                            <div class="chat-message-wrapper h-100 d-flex flex-column pl-md-3">
+                            <div class="chat-message-wrapper h-100 d-flex flex-column ps-md-3">
                                 <div class="chat-message-box border rounded bg-light d-flex flex-column flex-grow-1">
                                     <div class="chat-message-box-header d-flex align-items-center justify-content-between border-bottom bg-white rounded-top">
                                         <span class="font-weight-bold small text-uppercase text-muted mb-0">Chat Message</span>
@@ -85,7 +85,7 @@
                 {
                     <div class="ibox-footer d-flex justify-content-between align-items-center flex-wrap gap-2 py-3">
                         <div class="text-muted info-note d-flex align-items-center mb-2 mb-sm-0">
-                            <i class="fa-solid fa-circle-info mr-2"></i>
+                            <i class="fa-solid fa-circle-info me-2"></i>
                             <span class="font-weight-500">Toggle lock to prevent editing or removal.</span>
                         </div>
                         <form asp-controller="ServerAdmin" asp-action="ToggleChatMessageLock" asp-route-id="@Model.ChatMessageId" method="post" class="m-0 p-0">
@@ -93,11 +93,11 @@
                             <button type="submit" class="btn btn-sm @(Model.Locked ? "btn-success" : "btn-warning")">
                                 @if (Model.Locked)
                                 {
-                                    <i class="fa-solid fa-unlock"></i> <span class="ml-1">Unlock Message</span>
+                                    <i class="fa-solid fa-unlock"></i> <span class="ms-1">Unlock Message</span>
                                 }
                                 else
                                 {
-                                    <i class="fa-solid fa-lock"></i> <span class="ml-1">Lock Message</span>
+                                    <i class="fa-solid fa-lock"></i> <span class="ms-1">Lock Message</span>
                                 }
                             </button>
                         </form>

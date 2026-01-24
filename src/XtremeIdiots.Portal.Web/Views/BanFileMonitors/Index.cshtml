@@ -60,13 +60,13 @@
                                             @if (!string.IsNullOrWhiteSpace(item.FilePath) && !string.IsNullOrWhiteSpace(item.GameServer?.LiveMod) 
                                                 && item.FilePath.ToLower().Contains(item.GameServer.LiveMod.ToLower()))
                                             {
-                                                <span class="badge badge-success" title="Mod check passed">
+                                                <span class="badge bg-success" title="Mod check passed">
                                                     @item.GameServer.LiveMod is included in path
                                                 </span>
                                             }
                                             else
                                             {
-                                                <span class="badge badge-danger" title="Mod check failed">
+                                                <span class="badge bg-danger" title="Mod check failed">
                                                     @(item.GameServer?.LiveMod ?? "Unknown mod") is not included in path
                                                 </span>
                                             }

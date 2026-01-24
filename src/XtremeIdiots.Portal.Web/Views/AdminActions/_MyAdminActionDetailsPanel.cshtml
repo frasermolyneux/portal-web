@@ -20,10 +20,10 @@
     };
     var iconClass = adminAction.Type switch
     {
-        AdminActionType.Ban => "fa fa-ban",
-        AdminActionType.TempBan => "fa fa-clock",
-        AdminActionType.Kick => "fa fa-arrow-right-from-bracket",
-        _ => "fa fa-gavel"
+        AdminActionType.Ban => "fa-solid fa-ban",
+        AdminActionType.TempBan => "fa-solid fa-clock",
+        AdminActionType.Kick => "fa-solid fa-arrow-right-from-bracket",
+        _ => "fa-solid fa-gavel"
     };
     var gameType = player?.GameType;
     var userForumId = adminAction.UserProfile?.XtremeIdiotsForumId;

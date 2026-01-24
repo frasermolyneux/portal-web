@@ -128,21 +128,22 @@
                         Additional Portal Permission
                     </div>
                     <div class="ibox-content">
-                        <table class="table table-responsive w-100 d-block d-md-table">
-                            <thead>
-                                <tr>
-                                    <th>Claim Type</th>
-                                    <th>Claim Value</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var claim in Model.Profile.UserProfileClaims)
-                                {
+                        <div class="table-responsive">
+                            <table class="table w-100">
+                                <thead>
                                     <tr>
-                                        @{
-                                            Guid.TryParse(claim.ClaimValue, out var gameServerId);
-                                            var server = gameServers?.FirstOrDefault(s => s.GameServerId == gameServerId);
+                                        <th scope="col">Claim Type</th>
+                                        <th scope="col">Claim Value</th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var claim in Model.Profile.UserProfileClaims)
+                                    {
+                                        <tr>
+                                            @{
+                                                Guid.TryParse(claim.ClaimValue, out var gameServerId);
+                                                var server = gameServers?.FirstOrDefault(s => s.GameServerId == gameServerId);
                                         }
 
                                         <td>@claim.ClaimType</td>
@@ -180,6 +181,7 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>

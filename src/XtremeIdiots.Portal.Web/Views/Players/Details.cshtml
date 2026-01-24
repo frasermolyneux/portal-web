@@ -25,28 +25,28 @@
                 <div class="row">
                     <div class="col-12">                        
                         <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center">                            
-                            <div class="mr-0 mr-md-3 mb-2 mb-md-0 text-center text-md-left">                                
+                            <div class="me-0 me-md-3 mb-2 mb-md-0 text-center text-md-start">                                
                                 <game-type-icon game="@player.GameType"></game-type-icon>
                             </div>
                             <div class="flex-grow-1">
-                                <h2 class="mb-2 text-center text-md-left">@(player.Username ?? "Unknown Player")</h2>                                
+                                <h2 class="mb-2 text-center text-md-start">@(player.Username ?? "Unknown Player")</h2>                                
                                 <div class="text-muted mb-3">
                                     <div class="row">                                        
                                         <div class="col-12 col-lg-6 mb-2 mb-lg-0">
                                             <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                <i class="fa-solid fa-id-card mr-1"></i> Player ID: 
+                                                <i class="fa-solid fa-id-card me-1"></i> Player ID: 
                                                 <span id="playerId" class="mx-1 font-weight-bold">@player.PlayerId.ToString()</span>
                                                 <i class="fa-solid fa-copy cursor-pointer" onclick="copyToClipboard('playerId')" title="Copy Player ID"></i>
                                             </span>
                                             <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                <i class="fa-solid fa-key mr-1"></i> GUID: 
+                                                <i class="fa-solid fa-key me-1"></i> GUID: 
                                                 <span id="playerGuid" class="mx-1 font-weight-bold text-truncate"><guid-link guid="@player.Guid" game="@player.GameType.ToString()"></guid-link></span>
                                                 <i class="fa-solid fa-copy cursor-pointer" onclick="copyToClipboard('playerGuid')" title="Copy GUID"></i>
                                             </span>
                                             @if (player.Tags != null && player.Tags.Any())
                                             {
                                                 <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                    <i class="fa-solid fa-tag mr-1"></i> Tags: 
+                                                    <i class="fa-solid fa-tag me-1"></i> Tags: 
                                                     <span class="mx-1">
                                                         @foreach (var playerTag in player.Tags)
                                                         {
@@ -538,7 +538,7 @@
             var icon = document.querySelector('#' + elementId + ' + .fa-copy');
             if (icon) {
                 var originalClass = icon.className;
-                icon.className = 'fa fa-check ml-1 cursor-pointer text-success';
+                icon.className = 'fa-solid fa-check ms-1 cursor-pointer text-success';
                 setTimeout(function() {
                     icon.className = originalClass;
                 }, 2000);

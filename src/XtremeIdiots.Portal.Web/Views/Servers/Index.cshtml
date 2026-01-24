@@ -14,25 +14,26 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-content">
-                        <table class="table table-responsive w-100 d-block d-md-table">
-                            <thead>
-                                <tr>
-                                    <th>
-                                    </th>
-                                    <th>
-                                        @Html.Label("Title")
-                                    </th>
-                                    <th>
-                                        @Html.Label("Hostname")
-                                    </th>
-                                    <th></th>
-                                    <th>
-                                        @Html.Label("Players")
-                                    </th>
-                                    <th>
-                                        @Html.Label("Map")
-                                    </th>
-                                    <th>
+                        <div class="table-responsive">
+                            <table class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Title")
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Hostname")
+                                        </th>
+                                        <th scope="col"></th>
+                                        <th scope="col">
+                                            @Html.Label("Players")
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Map")
+                                        </th>
+                                        <th scope="col">
                                         @Html.Label("Mod")
                                     </th>
                                     <th></th>
@@ -100,6 +101,7 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>

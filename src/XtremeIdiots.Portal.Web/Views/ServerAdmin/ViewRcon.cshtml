@@ -45,7 +45,7 @@
                     <div class="ibox-title">
                         <h5>Live Chat Log</h5>
                         <div class="ibox-tools">
-                            <span class="badge badge-primary" id="chatMessageCount">0</span>
+                            <span class="badge bg-primary" id="chatMessageCount">0</span>
                         </div>
                     </div>
                     <div class="ibox-content" style="max-height: 400px; overflow-y: auto;" id="chatLogContainer">
@@ -405,7 +405,7 @@
                             for (var i = result.messages.length - 1; i >= 0; i--) {
                                 var msg = result.messages[i];
                                 var msgClass = msg.locked ? 'alert-warning' : 'alert-info';
-                                var lockedBadge = msg.locked ? '<span class="badge badge-warning ml-2">Locked</span>' : '';
+                                var lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
                                 
                                 messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
                                 messagesHtml += '<small class="text-muted">' + formatDateTime(msg.timestamp) + '</small> ';

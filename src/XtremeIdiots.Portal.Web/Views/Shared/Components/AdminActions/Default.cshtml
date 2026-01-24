@@ -21,12 +21,12 @@
 
         var iconClass = item.Type switch
         {
-            AdminActionType.Observation => "fa fa-eye",
-            AdminActionType.Warning => "fa fa-triangle-exclamation",
-            AdminActionType.Kick => "fa fa-user-xmark",
-            AdminActionType.TempBan => "fa fa-clock",
-            AdminActionType.Ban => "fa fa-ban",
-            _ => "fa fa-circle-info"
+            AdminActionType.Observation => "fa-solid fa-eye",
+            AdminActionType.Warning => "fa-solid fa-triangle-exclamation",
+            AdminActionType.Kick => "fa-solid fa-user-xmark",
+            AdminActionType.TempBan => "fa-solid fa-clock",
+            AdminActionType.Ban => "fa-solid fa-ban",
+            _ => "fa-solid fa-circle-info"
         };
 
         var statusBadge = item.Type switch
