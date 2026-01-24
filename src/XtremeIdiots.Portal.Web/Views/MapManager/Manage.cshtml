@@ -112,9 +112,13 @@
                                         </td>
                                         <td>
                                             <a href="@Url.Action("Manage", "MapPacks", new { id = item.MapPackId })"
-                                                class="btn btn-xs btn-primary">Manage</a>
+                                                class="btn btn-sm btn-primary" aria-label="Manage map pack">
+                                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span class="d-none d-sm-inline">Manage</span>
+                                            </a>
                                             <a href="@Url.Action("Delete", "MapPacks", new { id = item.MapPackId })"
-                                                class="btn btn-xs btn-danger">Delete</a>
+                                                class="btn btn-sm btn-danger" aria-label="Delete map pack">
+                                                <i class="fa-solid fa-trash" aria-hidden="true"></i> <span class="d-none d-sm-inline">Delete</span>
+                                            </a>
                                         </td>
                                     </tr>
                                 }
