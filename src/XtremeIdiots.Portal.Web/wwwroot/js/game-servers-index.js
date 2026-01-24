@@ -75,7 +75,9 @@ $(document).ready(function () {
             }
         });
 
-        const iboxContent = gameServersTable.closest('.ibox-content')[0];
-        if (iboxContent && iboxContent.classList) iboxContent.classList.add('datatable-tight');
+        const iboxContent = gameServersTable.closest('.ibox-content');
+        if (iboxContent.length && iboxContent[0] && iboxContent[0].classList) {
+            iboxContent[0].classList.add('datatable-tight');
+        }
     }
 });
