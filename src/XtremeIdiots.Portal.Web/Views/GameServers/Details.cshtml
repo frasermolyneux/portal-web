@@ -12,7 +12,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <row class="row">
+    <div class="row">
         <div class="col-12">
 
             <div class="container-fluid">
@@ -125,9 +125,9 @@
             </div>
 
         </div>
-    </row>
+    </div>
 
-    <row class="row">
+    <div class="row">
         <div class="col-12">
 
             <div class="container-fluid">
@@ -136,23 +136,24 @@
                         Ban File Monitors
                     </div>
                     <div class="ibox-content">
-                        <table class="table table-responsive w-100 d-block d-md-table">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        File Path
-                                    </th>
-                                    <th>
-                                        Last Sync
-                                    </th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model.BanFileMonitors)
-                                {
+                        <div class="table-responsive">
+                            <table class="table w-100">
+                                <thead>
                                     <tr>
-                                        <td>
+                                        <th scope="col">
+                                            File Path
+                                        </th>
+                                        <th scope="col">
+                                            Last Sync
+                                        </th>
+                                        <th scope="col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.BanFileMonitors)
+                                    {
+                                        <tr>
+                                            <td>
                                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                     Guid>(Model.GameType, Model.GameServerId),
                                                                                     AuthPolicies.ViewFtpCredential)).Succeeded)
@@ -204,11 +205,12 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </div>
-    </row>
+    </div>
 
 </div>

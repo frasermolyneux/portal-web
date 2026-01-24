@@ -17,27 +17,27 @@
                 </div>
 
                 <div class="ibox-content">
-
-                    <table class="table table-responsive w-100 d-block d-md-table">
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <strong>Hostname</strong>
-                                </td>
-                                <td><server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host></td>
-                            </tr>
-
-                            @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
-                            {
+                    <div class="table-responsive">
+                        <table class="table w-100">
+                            <tbody>
                                 <tr>
                                     <td>
-                                        <strong>Mod</strong>
+                                        <strong>Hostname</strong>
                                     </td>
-                                    <td>@Model.GameServer.LiveMod</td>
+                                    <td><server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host></td>
                                 </tr>
-                            }
 
-                            @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
+                                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>Mod</strong>
+                                        </td>
+                                        <td>@Model.GameServer.LiveMod</td>
+                                    </tr>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
                             {
                                 <tr>
                                     <td>
@@ -71,6 +71,7 @@
 
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
