@@ -12,7 +12,7 @@
 
     <form asp-action="Create">
 
-        <row class="row">
+        <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
@@ -46,7 +46,7 @@
                 </div>
 
             </div>
-        </row>
+        </div>
 
         @{
             var canEditFtpCredentials = (await AuthorizationService.AuthorizeAsync(User, Model.GameType,
@@ -57,7 +57,7 @@
 
         @if (canEditFtpCredentials || canEditRconCredentials)
         {
-            <row class="row">
+            <div class="row">
                 <div class="col-12">
 
                     <div class="container-fluid">
@@ -102,10 +102,10 @@
                     </div>
 
                 </div>
-            </row>
+            </div>
         }
 
-        <row class="row">
+        <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
@@ -160,9 +160,9 @@
                 </div>
 
             </div>
-        </row>
+        </div>
 
-        <row class="row">
+        <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
@@ -188,7 +188,7 @@
                 </div>
 
             </div>
-        </row>
+        </div>
 
     </form>
 
