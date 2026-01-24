@@ -50,7 +50,7 @@
                     <thead>
                         <tr>
                             <th>Player</th>
-                            <th>Last Used</th>
+                            <th class="d-none d-md-table-cell">Last Used</th>
                             <th>Times Used</th>
                             <th>Status</th>
                         </tr>
@@ -64,7 +64,7 @@
                                         @usage.Username
                                     </a>
                                 </td>
-                                <td><time time-ago utc="@usage.LastUsed" show-absolute="false"></time></td>
+                                <td class="d-none d-md-table-cell"><time time-ago utc="@usage.LastUsed" show-absolute="false"></time></td>
                                 <td>@usage.UsageCount</td>
                                 <td>
                                     @if (usage.IsOwner)

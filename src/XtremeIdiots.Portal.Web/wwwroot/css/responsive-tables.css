@@ -2,6 +2,26 @@
    Shared mobile-optimized table styling for all tables
    -------------------------------------------------- */
 
+/* Bootstrap Responsive Display Utilities for Static Tables
+   =========================================================
+   Static tables should use Bootstrap's responsive display classes to hide
+   less important columns on smaller screens:
+   
+   - d-none d-md-table-cell: Hide on mobile (<768px), show on tablet+
+   - d-none d-lg-table-cell: Hide on mobile/tablet (<992px), show on desktop+
+   - d-table-cell d-md-none: Show on mobile, hide on tablet+
+   
+   Example:
+   <th class="d-none d-md-table-cell">Added</th>
+   <td class="d-none d-md-table-cell">2024-01-01</td>
+   
+   Priority guidelines for static tables:
+   1. Primary/Key columns: Always visible
+   2. Secondary columns: d-none d-md-table-cell
+   3. Tertiary columns: d-none d-lg-table-cell
+   4. Actions column: Always visible
+*/
+
 /* Mobile-first spacing optimizations */
 @media (max-width: 767.98px) {
     /* Reduce wrapper padding on mobile to maximize screen real estate */
