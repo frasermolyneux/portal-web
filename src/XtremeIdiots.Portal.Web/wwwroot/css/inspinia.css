@@ -269,7 +269,7 @@ ul.nav-second-level { background: #293846; }
     right: 0;
 }
 
-.count-info .label {
+.count-info .badge {
     line-height: 12px;
     padding: 2px 5px;
     position: absolute;
@@ -344,7 +344,7 @@ body.mini-navbar .navbar-default .nav > li > .nav-second-level li a {
     color: white;
 }
 
-.navbar-default .special_link a span.label {
+.navbar-default .special_link a span.badge {
     background: #fff;
     color: #1ab394;
 }
@@ -359,7 +359,7 @@ body.mini-navbar .navbar-default .nav > li > .nav-second-level li a {
     color: white;
 }
 
-.navbar-default .landing_link a span.label {
+.navbar-default .landing_link a span.badge {
     background: #fff;
     color: #1cc09f;
 }
@@ -1098,20 +1098,8 @@ button.dim:active:before {
 
 .btn:focus { outline: none !important; }
 
-.label {
-    background-color: #d1dade;
-    border-radius: 0.25em;
-    color: #5e5e5e;
-    font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-weight: 600;
-    line-height: 1;
-    padding: 3px 8px;
-    text-shadow: none;
-    white-space: nowrap;
-}
-
-.nav .label,
-.ibox .label { font-size: 10px; }
+.nav .badge,
+.ibox .badge { font-size: 10px; }
 
 .badge {
     background-color: #d1dade;
@@ -1126,58 +1114,63 @@ button.dim:active:before {
     white-space: nowrap;
 }
 
-.label-primary,
-.badge-primary {
+.badge-primary,
+.badge.bg-primary {
     background-color: #1ab394;
     color: #FFFFFF;
 }
 
-.label-success,
-.badge-success {
+.badge-success,
+.badge.bg-success {
     background-color: #1c84c6;
     color: #FFFFFF;
 }
 
-.label-warning,
-.badge-warning {
+.badge-warning,
+.badge.bg-warning {
     background-color: #f8ac59;
     color: #FFFFFF;
 }
 
-.label-warning-light,
-.badge-warning-light {
+.badge-warning-light,
+.badge.bg-warning-light {
     background-color: #f8ac59;
     color: #ffffff;
 }
 
-.label-danger,
-.badge-danger {
+.badge-danger,
+.badge.bg-danger {
     background-color: #ed5565;
     color: #FFFFFF;
 }
 
-.label-info,
-.badge-info {
+.badge-info,
+.badge.bg-info {
     background-color: #23c6c8;
     color: #FFFFFF;
 }
 
-.label-inverse,
-.badge-inverse {
+.badge-inverse,
+.badge.bg-inverse {
     background-color: #262626;
     color: #FFFFFF;
 }
 
-.label-white,
-.badge-white {
+.badge-white,
+.badge.bg-white {
     background-color: #FFFFFF;
     color: #5E5E5E;
 }
 
-.label-white,
-.badge-disable {
+.badge-disable,
+.badge.bg-disable {
     background-color: #2A2E36;
     color: #8B91A0;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d;
+    color: #FFFFFF;
 }
 
 /* TOOGLE SWICH */
@@ -1942,7 +1935,7 @@ div.dt-button-info { z-index: 100; }
     margin: 0 5px;
 }
 
-.todo-list > li .label {
+.todo-list > li .badge {
     font-size: 9px;
     margin-left: 10px;
 }
@@ -2490,7 +2483,7 @@ select.form-control:not([size]):not([multiple]) { height: 2.05rem; }
     padding: 10px;
 }
 
-#nestable2 span.label { margin-right: 10px; }
+#nestable2 span.badge { margin-right: 10px; }
 
 #nestable-output,
 #nestable2-output {
@@ -3457,7 +3450,7 @@ body.tour-open .animated { animation-fill-mode: initial; }
 
 .stream-small { margin: 10px 0; }
 
-.stream-small .label {
+.stream-small .badge {
     margin-right: 2px;
     padding: 2px 6px;
 }
@@ -4213,7 +4206,7 @@ table.table-mail tr td { padding: 12px; }
     text-overflow: ellipsis;
 }
 
-.ibox-title .label { margin-left: 4px; }
+.ibox-title .badge { margin-left: 4px; }
 
 .ibox-title .pull-right {
     position: absolute;
@@ -4909,7 +4902,7 @@ body.mini-navbar.fixed-sidebar .logo-element { display: none; }
 
 .statistic-box { margin-top: 40px; }
 
-.dashboard-header .list-group-item span.label { margin-right: 10px; }
+.dashboard-header .list-group-item span.badge { margin-right: 10px; }
 
 .list-group.clear-list .list-group-item {
     border-bottom: 0;
@@ -7786,7 +7779,7 @@ body.rtls .float-left { float: right !important; }
 
 body.rtls .ibox-title { padding: 15px 15px 8px 15px; }
 
-body.rtls .ibox-title .label { float: left; }
+body.rtls .ibox-title .badge { float: left; }
 
 body.rtls #small-chat {
     left: 20px;
@@ -8603,7 +8596,7 @@ body.md-skin {
 
 .md-skin .nav-header { background: url("patterns/4.png") no-repeat; }
 
-.md-skin .label,
+.md-skin .badge,
 .md-skin .badge { font-family: 'Roboto'; }
 
 .md-skin ul.nav-second-level { background-color: inherit; }

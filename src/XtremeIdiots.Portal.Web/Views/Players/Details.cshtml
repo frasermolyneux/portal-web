@@ -128,13 +128,13 @@
                     <div>                        
                         <ul class="list-group clear-list">
                             <li class="list-group-item">
-                                <span class="float-right text-right"> @player.Username</span>
+                                <span class="float-end text-right"> @player.Username</span>
                                 Alias
                             </li>                            
                             @if (Model.GeoLocation != null)
                             {                                  
                                 <li class="list-group-item">                                    
-                                    <span class="float-right text-right ip-address-container" 
+                                    <span class="float-end text-right ip-address-container" 
                                           data-ip="@player.IpAddress" 
                                           data-risk="@player.ProxyCheckRiskScore()" 
                                           data-is-proxy="@player.IsProxy().ToString().ToLower()" 
@@ -146,18 +146,18 @@
                                     IP Address
                                 </li>
                                 <li class="list-group-item">
-                                    <span class="float-right text-right"> <location-summary geo-model="@Model.GeoLocation"></location-summary></span>
+                                    <span class="float-end text-right"> <location-summary geo-model="@Model.GeoLocation"></location-summary></span>
                                     Country/City
                                 </li>
                             }        
                             <li class="list-group-item">
-                                <span class="float-right text-right">
+                                <span class="float-end text-right">
                                     <i class="fa fa-clock-o"></i> <time user-time utc="@player.FirstSeen"></time>
                                 </span>
                                 First Seen
                             </li>                    
                             <li class="list-group-item">
-                                <span class="float-right text-right">
+                                <span class="float-end text-right">
                                     <i class="fa fa-clock-o"></i> <time user-time utc="@player.LastSeen"></time>
                                 </span>
                                 Last Seen

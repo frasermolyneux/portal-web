@@ -194,11 +194,11 @@
     var remoteMatch = Model.ServerMaps.FirstOrDefault(x => x.Name == item.MapName);
     if (remoteMatch != null)
     {
-                                    <span class="label label-success">On Host</span>
+                                    <span class="badge bg-success">On Host</span>
     }
     else
     {
-                                    <span class="label label-danger">Not On Host</span>
+                                    <span class="badge bg-danger">Not On Host</span>
     }
                                 }
                             </td>
@@ -267,11 +267,11 @@
                                 @{
     if (Model.RconMaps.Any(x => x.MapName == item.Name))
     {
-                                    <span class="label label-success">In Rotation</span>
+                                    <span class="badge bg-success">In Rotation</span>
     }
     else
     {
-                                    <span class="label label-danger">Not In Rotation</span>
+                                    <span class="badge bg-danger">Not In Rotation</span>
     }
                                 }
                             </td>
