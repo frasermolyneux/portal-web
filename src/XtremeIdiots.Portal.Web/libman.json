@@ -55,7 +55,7 @@
       ]
     },
     {
-      "library": "bootstrap@5.3.3",
+      "library": "bootstrap@5.3.8",
       "provider": "unpkg",
       "destination": "wwwroot/lib/bootstrap",
       "files": [
@@ -66,27 +66,18 @@
       ]
     },
     {
-      "library": "font-awesome@4.7.0",
-      "provider": "unpkg",
+      "library": "@fortawesome/fontawesome-free@6.7.2",
+      "provider": "cdnjs",
       "destination": "wwwroot/lib/font-awesome",
       "files": [
-        "css/font-awesome.css",
-        "css/font-awesome.min.css",
-        "fonts/fontawesome-webfont.eot",
-        "fonts/fontawesome-webfont.svg",
-        "fonts/fontawesome-webfont.ttf",
-        "fonts/fontawesome-webfont.woff",
-        "fonts/fontawesome-webfont.woff2",
-        "fonts/FontAwesome.otf"
-      ]
-    },
-    {
-      "library": "jquery-slimscroll@1.3.8",
-      "provider": "unpkg",
-      "destination": "wwwroot/lib/slimScroll",
-      "files": [
-        "jquery.slimscroll.js",
-        "jquery.slimscroll.min.js"
+        "css/all.min.css",
+        "css/all.css",
+        "webfonts/fa-solid-900.woff2",
+        "webfonts/fa-solid-900.ttf",
+        "webfonts/fa-regular-400.woff2",
+        "webfonts/fa-regular-400.ttf",
+        "webfonts/fa-brands-400.woff2",
+        "webfonts/fa-brands-400.ttf"
       ]
     },
     {

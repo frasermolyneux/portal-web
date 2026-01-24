@@ -70,9 +70,9 @@ $(document).ready(function () {
                 var id = row['chatMessageId'];
                 if (!id) return '';
                 if (row['locked']) {
-                    return '<button type="button" class="btn btn-link p-0 lock-toggle" data-id="' + id + '" data-locked="true" title="Click to unlock"><i class="fa fa-lock text-warning"></i></button>';
+                    return '<button type="button" class="btn btn-link p-0 lock-toggle" data-id="' + id + '" data-locked="true" title="Click to unlock"><i class="fa-solid fa-lock text-warning"></i></button>';
                 }
-                return '<button type="button" class="btn btn-link p-0 lock-toggle" data-id="' + id + '" data-locked="false" title="Click to lock"><i class="fa fa-unlock text-muted"></i></button>';
+                return '<button type="button" class="btn btn-link p-0 lock-toggle" data-id="' + id + '" data-locked="false" title="Click to lock"><i class="fa-solid fa-unlock text-muted"></i></button>';
             }
         },
         { data: 'chatMessageId', name: 'chatMessageId', sortable: false, render: function (data, type, row) { return chatLogUrl(row['chatMessageId']); } }
@@ -296,8 +296,8 @@ $(document).ready(function () {
         var newLocked = !currentlyLocked;
         btn.setAttribute('data-locked', newLocked ? 'true' : 'false');
         btn.innerHTML = newLocked
-            ? '<i class="fa fa-lock text-warning"></i>'
-            : '<i class="fa fa-unlock text-muted"></i>';
+            ? '<i class="fa-solid fa-lock text-warning"></i>'
+            : '<i class="fa-solid fa-unlock text-muted"></i>';
         var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
         var headers = { 'X-Requested-With': 'XMLHttpRequest' };
         if (tokenInput) headers['RequestVerificationToken'] = tokenInput.value;
@@ -311,8 +311,8 @@ $(document).ready(function () {
                     // revert optimistic change if failed
                     btn.setAttribute('data-locked', currentlyLocked ? 'true' : 'false');
                     btn.innerHTML = currentlyLocked
-                        ? '<i class="fa fa-lock text-warning"></i>'
-                        : '<i class="fa fa-unlock text-muted"></i>';
+                        ? '<i class="fa-solid fa-lock text-warning"></i>'
+                        : '<i class="fa-solid fa-unlock text-muted"></i>';
                     if (typeof toastr !== 'undefined') toastr.error('Failed to toggle lock ' + (resp && resp.error ? '(' + resp.error + ')' : ''));
                 } else {
                     if (typeof toastr !== 'undefined') toastr.success('Chat message ' + (resp.locked ? 'locked' : 'unlocked'));
@@ -322,8 +322,8 @@ $(document).ready(function () {
             .catch(function () {
                 btn.setAttribute('data-locked', currentlyLocked ? 'true' : 'false');
                 btn.innerHTML = currentlyLocked
-                    ? '<i class="fa fa-lock text-warning"></i>'
-                    : '<i class="fa fa-unlock text-muted"></i>';
+                    ? '<i class="fa-solid fa-lock text-warning"></i>'
+                    : '<i class="fa-solid fa-unlock text-muted"></i>';
                 if (typeof toastr !== 'undefined') toastr.error('Failed to toggle lock');
             });
     });

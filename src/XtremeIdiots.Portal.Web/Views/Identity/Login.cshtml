@@ -36,7 +36,7 @@
             <div class="col-md-6">
                 <h2 class="font-bold">XtremeIdiots Portal Login</h2>
 
-                <form class="form-inline" asp-controller="Identity" asp-action="LoginWithXtremeIdiots" method="post">
+                <form class="d-inline-flex" asp-controller="Identity" asp-action="LoginWithXtremeIdiots" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                     <button type="submit" class="btn btn-primary">XtremeIdiots Login</button>
@@ -48,7 +48,7 @@
             <div class="col-md-6">
                 Copyright - Fraser Molyneux
             </div>
-            <div class="col-md-6 text-right">
+            <div class="col-md-6 text-end">
                 <small>© @DateTime.UtcNow.Year</small>
             </div>
         </div>

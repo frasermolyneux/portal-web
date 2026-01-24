@@ -13,16 +13,16 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-primary" role="alert">
-        <i class="fa fa-info-circle"></i> This confirms that the ban files on the game servers have been updated with
+        <i class="fa-solid fa-circle-info"></i> This confirms that the ban files on the game servers have been updated with
         the latest bans and any new bans have been imported.
     </div>
 
     <div class="alert alert-warning" role="alert">
-        <i class="fa fa-warning"></i> This page is used for monitoring but at present does not alert. If there is an
+        <i class="fa-solid fa-warning"></i> This page is used for monitoring but at present does not alert. If there is an
         error displaying below then please contact Sitting-Duc.
     </div>
 
-    <row class="row">
+    <div class="row">
         <div class="col-12">
 
             <div class="container-fluid">
@@ -72,7 +72,7 @@
             </div>
 
         </div>
-    </row>
+    </div>
 
     @foreach (var item in Model)
     {
@@ -148,7 +148,7 @@
                                 {
                                     <a type="button" class="btn btn-primary" asp-controller="GameServers" asp-action="Edit"
                                         asp-route-id="@item.GameServer.GameServerId">
-                                        <i class="fa fa-edit"></i> Edit Game Server
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit Game Server
                                     </a>
                                 }
 
@@ -158,7 +158,7 @@
                                 {
                                     <a type="button" class="btn btn-primary" asp-controller="BanFileMonitors" asp-action="Edit"
                                         asp-route-id="@item.BanFileMonitorId">
-                                        <i class="fa fa-edit"></i> Edit Ban File Monitor
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit Ban File Monitor
                                     </a>
                                 }
                             </div>

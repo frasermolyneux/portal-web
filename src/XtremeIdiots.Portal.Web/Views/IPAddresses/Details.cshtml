@@ -21,14 +21,14 @@
                     </div>
                     <div class="stats-container">
                         <div class="stat-item">
-                            <i class="fa fa-users fa-2x text-navy"></i>
+                            <i class="fa-solid fa-users fa-2x text-navy"></i>
                             <h3>@Model.TotalPlayersCount</h3>
                             <p>Players used this IP</p>
                         </div>
                         @if (Model.GeoLocation != null)
                         {
                             <div class="stat-item">                <span class="fa-stack fa-2x">
-                                    <i class="fa fa-circle fa-stack-2x text-navy"></i>
+                                    <i class="fa-solid fa-circle fa-stack-2x text-navy"></i>
                                     @{                                        @if (Model.GeoLocation != null)
                                         {
                                             string flagHtml = Model.GeoLocation.FlagImage().ToString().Replace("<img", "<img class=\"fa-stack-1x\" style=\"height:32px;width:auto;top:20%;\"");
@@ -43,7 +43,7 @@
                         @if (Model.ProxyCheck != null && !Model.ProxyCheck.IsError)
                         {
                             <div class="stat-item">
-                                <i class="fa fa-shield fa-2x @(Model.ProxyCheck.RiskScore >= 50 ? "text-danger" : "text-success")"></i>
+                                <i class="fa-solid fa-shield fa-2x @(Model.ProxyCheck.RiskScore >= 50 ? "text-danger" : "text-success")"></i>
                                 <h3>Risk Score: @Model.ProxyCheck.RiskScore</h3>
                                 <p>
                                     @if (Model.ProxyCheck.IsProxy || Model.ProxyCheck.IsVpn)
@@ -115,14 +115,14 @@
 
                             <div id="map" style="height: 250px; width: 100%; margin-top: 15px;"></div>
                             <a href="https://www.geo-location.net/Home/LookupAddress/@Model.IpAddress" target="_blank" class="btn btn-outline btn-primary btn-sm mt-2" data-testid="ipaddress-details-geolocation-link">
-                                <i class="fa fa-external-link me-1" aria-hidden="true"></i>View on geo-location.net
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1" aria-hidden="true"></i>View on geo-location.net
                             </a>
                         </div>
                     }
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa fa-info-circle"></i> No GeoLocation data available for this IP address.
+                            <i class="fa-solid fa-circle-info"></i> No GeoLocation data available for this IP address.
                         </div>
                     }
                 </div>
@@ -209,14 +209,14 @@
                             </table>
 
                             <a href="https://proxycheck.io/v2/@Model.IpAddress" target="_blank" class="btn btn-outline btn-primary btn-sm mt-2" data-testid="ipaddress-details-proxycheck-link">
-                                <i class="fa fa-external-link me-1" aria-hidden="true"></i>View on ProxyCheck.io
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1" aria-hidden="true"></i>View on ProxyCheck.io
                             </a>
                         </div>
                     }
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa fa-info-circle"></i> No ProxyCheck data available for this IP address.
+                            <i class="fa-solid fa-circle-info"></i> No ProxyCheck data available for this IP address.
                             @if (Model.ProxyCheck?.IsError == true && !string.IsNullOrEmpty(Model.ProxyCheck.ErrorMessage))
                             {
                                 <p class="mb-0 mt-2">Error: @Model.ProxyCheck.ErrorMessage</p>
@@ -238,24 +238,26 @@
                 <div class="ibox-content">
                     @if (Model.Players != null && Model.Players.Any())
                     {
-                        <table class="table table-striped table-hover">                            <thead>
-                                <tr>
-                                    <th>Game</th>
-                                    <th>Username</th>
-                                    <th>GUID</th>
-                                    <th>First Seen</th>
-                                    <th>Last Seen</th>
-                                    <th data-toggle="tooltip" data-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
-                                        Confidence
-                                    </th>
-                                    <th>Tags</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var player in Model.Players)
-                                {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
                                     <tr>
-                                        <td><game-type-icon game="@player.GameType"></game-type-icon></td>
+                                        <th scope="col">Game</th>
+                                        <th scope="col">Username</th>
+                                        <th scope="col">GUID</th>
+                                        <th scope="col">First Seen</th>
+                                        <th scope="col">Last Seen</th>
+                                        <th scope="col" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
+                                            Confidence
+                                        </th>
+                                        <th scope="col">Tags</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var player in Model.Players)
+                                    {
+                                        <tr>
+                                            <td><game-type-icon game="@player.GameType"></game-type-icon></td>
                                         <td>
                                             <a asp-controller="Players" asp-action="Details" asp-route-id="@player.PlayerId">
                                                 @player.Username
@@ -283,18 +285,19 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
 
                         @if (Model.TotalPlayersCount > Model.Players.Count())
                         {
                             <div class="alert alert-info">
-                                <i class="fa fa-info-circle"></i> Showing @Model.Players.Count() of @Model.TotalPlayersCount players.
+                                <i class="fa-solid fa-circle-info"></i> Showing @Model.Players.Count() of @Model.TotalPlayersCount players.
                             </div>
                         }
                     }
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa fa-info-circle"></i> No players found using this IP address.
+                            <i class="fa-solid fa-circle-info"></i> No players found using this IP address.
                         </div>
                     }
                 </div>

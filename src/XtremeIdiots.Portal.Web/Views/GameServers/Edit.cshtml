@@ -14,7 +14,7 @@
 
         <input type="hidden" asp-for="GameServerId" />
 
-        <row class="row">
+        <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
@@ -49,7 +49,7 @@
                 </div>
 
             </div>
-        </row>
+        </div>
 
         @{
             var canEditFtpCredentials = (await AuthorizationService.AuthorizeAsync(User, Model.GameType,
@@ -60,7 +60,7 @@
 
         @if (canEditFtpCredentials || canEditRconCredentials)
         {
-            <row class="row">
+            <div class="row">
                 <div class="col-12">
 
                     <div class="container-fluid">
@@ -105,10 +105,10 @@
                     </div>
 
                 </div>
-            </row>
+            </div>
         }
 
-        <row class="row">
+        <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
@@ -163,9 +163,9 @@
                 </div>
 
             </div>
-        </row>
+        </div>
 
-        <row class="row">
+        <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
@@ -182,14 +182,14 @@
                         <div class="ibox-footer">
                             <div class="btn-group btn-group-sm" role="group">
                                 <a type="button" class="btn btn-primary" asp-action="Index"><i
-                                        class="fa fa-arrow-left"></i> Back to List</a>
+                                        class="fa-solid fa-arrow-left"></i> Back to List</a>
                             </div>
                         </div>
                     </div>
                 </div>
 
             </div>
-        </row>
+        </div>
 
     </form>
 

@@ -44,21 +44,21 @@
         height: 100%;
     }
 
-    .panel-heading {
+    .card-header {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         border-radius: 8px 8px 0 0;
         padding: 20px;
     }
 
-    .panel-body {
+    .card-body {
         padding: 20px;
     }
 
-    .panel-body .row {
+    .card-body .row {
         margin: 0;
     }
 
-    .panel-body [class*="col-"] {
+    .card-body [class*="col-"] {
         padding-left: 10px;
         padding-right: 10px;
     }
@@ -74,11 +74,11 @@
         font-weight: 500;
     }
 
-    .panel-title {
+    .card-title {
         margin-bottom: 8px;
     }
 
-    .panel-title i.fa-github {
+    .card-title i.fa-github {
         font-size: 1.2em;
     }
 
@@ -120,7 +120,7 @@
         animation: fa-spin 1s infinite linear;
     }
 
-    .panel-title a:hover {
+    .card-title a:hover {
         text-decoration: none;
     }
 
@@ -152,7 +152,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-info" role="alert">
-        <i class="fa fa-info-circle" aria-hidden="true"></i> This dashboard displays real-time development activity
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> This dashboard displays real-time development activity
         across all XtremeIdiots
         Portal microservices and repositories.
         <div class="pull-right">
@@ -167,7 +167,7 @@
                 <div class="ibox-content">
                     <h5>Commits This Month</h5>
                     <h2 class="no-margins" id="commitsThisMonth" data-testid="changelog-stats-commits">
-                        <i class="fa fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Across all repositories</small>
                 </div>
@@ -187,7 +187,7 @@
                 <div class="ibox-content">
                     <h5>Open PRs</h5>
                     <h2 class="no-margins text-info" id="openPRs" data-testid="changelog-stats-prs">
-                        <i class="fa fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Pull requests</small>
                 </div>
@@ -198,7 +198,7 @@
                 <div class="ibox-content">
                     <h5>Build Status</h5>
                     <h2 class="no-margins" id="buildStatus" data-testid="changelog-stats-builds">
-                        <i class="fa fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Overall health</small>
                 </div>
@@ -209,7 +209,7 @@
                 <div class="ibox-content">
                     <h5>Issues</h5>
                     <h2 class="no-margins text-warning" id="totalIssues" data-testid="changelog-stats-issues">
-                        <i class="fa fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Open issues</small>
                 </div>
@@ -220,7 +220,7 @@
                 <div class="ibox-content">
                     <h5>Last Activity</h5>
                     <h2 class="no-margins text-success" id="lastActivity" data-testid="changelog-stats-activity">
-                        <i class="fa fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Most recent commit</small>
                 </div>
@@ -233,12 +233,12 @@
         <div class="col-lg-12">
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5><i class="fa fa-github" aria-hidden="true"></i> Repository Status Overview</h5>
+                    <h5><i class="fa-solid fa-github" aria-hidden="true"></i> Repository Status Overview</h5>
                 </div>
                 <div class="ibox-content">
                     <div id="repositoryStatus" data-testid="changelog-repository-status">
                         <div class="text-center">
-                            <i class="fa fa-spinner fa-spin fa-2x"></i>
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
                             <p class="text-muted">Loading repository information...</p>
                         </div>
                     </div>
@@ -252,20 +252,20 @@
         <div class="col-lg-12">
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5><i class="fa fa-code-branch" aria-hidden="true"></i> Recent Development Activity</h5>
+                    <h5><i class="fa-solid fa-code-branch" aria-hidden="true"></i> Recent Development Activity</h5>
                     <div class="ibox-tools">
                         <a class="btn btn-primary btn-xs" id="refreshActivity" data-testid="changelog-refresh-activity">
-                            <i class="fa fa-refresh" aria-hidden="true"></i> Refresh
+                            <i class="fa-solid fa-refresh" aria-hidden="true"></i> Refresh
                         </a>
                         <a class="btn btn-warning btn-xs" id="clearCache" data-testid="changelog-clear-cache">
-                            <i class="fa fa-trash" aria-hidden="true"></i> Clear Cache
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Clear Cache
                         </a>
                     </div>
                 </div>
                 <div class="ibox-content">
                     <div id="activityStream" data-testid="changelog-activity-stream">
                         <div class="text-center">
-                            <i class="fa fa-spinner fa-spin fa-2x"></i>
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
                             <p class="text-muted">Loading recent commits...</p>
                         </div>
                     </div>
@@ -318,12 +318,12 @@
                     const isValid = cacheAge < CACHE_DURATION;
 
                     if (isValid) {
-                        $('#cacheStatus').html(`<i class="fa fa-check-circle text-success"></i> Cache: ${minutesAgo}m old (valid)`);
+                        $('#cacheStatus').html(`<i class="fa-solid fa-check-circle text-success"></i> Cache: ${minutesAgo}m old (valid)`);
                     } else {
-                        $('#cacheStatus').html(`<i class="fa fa-exclamation-triangle text-warning"></i> Cache: ${minutesAgo}m old (expired)`);
+                        $('#cacheStatus').html(`<i class="fa-solid fa-triangle-exclamation text-warning"></i> Cache: ${minutesAgo}m old (expired)`);
                     }
                 } else {
-                    $('#cacheStatus').html('<i class="fa fa-info-circle text-info"></i> Cache: No data cached');
+                    $('#cacheStatus').html('<i class="fa-solid fa-circle-info text-info"></i> Cache: No data cached');
                 }
             }
 
@@ -398,7 +398,7 @@
                 const msg = message.toLowerCase();
                 if (msg.includes('fix') || msg.includes('bug')) return 'fa-bug text-danger';
                 if (msg.includes('feat') || msg.includes('add')) return 'fa-plus text-success';
-                if (msg.includes('update') || msg.includes('modify')) return 'fa-edit text-warning';
+                if (msg.includes('update') || msg.includes('modify')) return 'fa-pen-to-square text-warning';
                 if (msg.includes('remove') || msg.includes('delete')) return 'fa-minus text-danger';
                 if (msg.includes('merge')) return 'fa-code-branch text-info';
                 if (msg.includes('doc')) return 'fa-file-text text-muted';
@@ -411,14 +411,14 @@
 
                 switch (status) {
                     case 'success':
-                        return `<span class="label label-primary" ${tooltip} ${link}><i class="fa fa-check"></i> Passing</span>`;
+                        return `<span class="badge bg-primary" ${tooltip} ${link}><i class="fa-solid fa-check"></i> Passing</span>`;
                     case 'failure':
-                        return `<span class="label label-danger" ${tooltip} ${link}><i class="fa fa-times"></i> Failed</span>`;
+                        return `<span class="badge bg-danger" ${tooltip} ${link}><i class="fa-solid fa-xmark"></i> Failed</span>`;
                     case 'pending':
                     case 'in_progress':
-                        return `<span class="label label-warning" ${tooltip} ${link}><i class="fa fa-clock-o"></i> Running</span>`;
+                        return `<span class="badge bg-warning" ${tooltip} ${link}><i class="fa-solid fa-clock"></i> Running</span>`;
                     default:
-                        return '<span class="label label-default"><i class="fa fa-question"></i> Unknown</span>';
+                        return '<span class="badge bg-secondary"><i class="fa-solid fa-question"></i> Unknown</span>';
                 }
             }
 
@@ -632,44 +632,44 @@
                     if (data) {
                         html += `
                                                 <div class="col-lg-6 col-md-12 mb-3">
-                                                    <div class="panel panel-default">
-                                                        <div class="panel-heading">
+                                                    <div class="card">
+                                                        <div class="card-header">
                                                             <div class="row">
                                                                 <div class="col-xs-8">
-                                                                    <h4 class="panel-title">
+                                                                    <h4 class="card-title">
                                                                         <a href="${data.url}" target="_blank" class="text-decoration-none">
-                                                                            <i class="fa fa-github fa-lg"></i> ${repo.name}
-                                                                            <i class="fa fa-external-link fa-sm"></i>
+                                                                            <i class="fa-solid fa-github fa-lg"></i> ${repo.name}
+                                                                            <i class="fa-solid fa-arrow-up-right-from-square fa-sm"></i>
                                                                         </a>
                                                                     </h4>
                                                                     <small class="text-muted">${data.description}</small>
                                                                 </div>
-                                                                <div class="col-xs-4 text-right">
+                                                                <div class="col-xs-4 text-end">
                                                                     ${build ? getBuildStatusBadge(build.status, build.name, build.url) : ''}
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="panel-body">
+                                                        <div class="card-body">
                                                             <div class="row">
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Language</small>
-                                                                    <div><span class="label label-info">${data.language || 'Mixed'}</span></div>
+                                                                    <div><span class="badge bg-info">${data.language || 'Mixed'}</span></div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Stars</small>
-                                                                    <div><i class="fa fa-star text-warning"></i> ${data.stars}</div>
+                                                                    <div><i class="fa-solid fa-star text-warning"></i> ${data.stars}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Open PRs</small>
-                                                                    <div><i class="fa fa-code-fork text-info"></i> ${pullRequestData[repo.name] || 0}</div>
+                                                                    <div><i class="fa-solid fa-code-fork text-info"></i> ${pullRequestData[repo.name] || 0}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Issues</small>
-                                                                    <div><i class="fa fa-exclamation-circle text-warning"></i> ${data.openIssues}</div>
+                                                                    <div><i class="fa-solid fa-circle-exclamation text-warning"></i> ${data.openIssues}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Forks</small>
-                                                                    <div><i class="fa fa-code-fork text-muted"></i> ${data.forks}</div>
+                                                                    <div><i class="fa-solid fa-code-fork text-muted"></i> ${data.forks}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-xs-6 repo-stat">
                                                                     <small class="text-muted">Last Push</small>
@@ -709,7 +709,7 @@
                                                                 <div>
                                                                     <strong>${escapeHtml(commit.commit.author.name)}</strong> 
                                                                     committed to 
-                                                                    <span class="label label-default">${commit.repository}</span>
+                                                                    <span class="badge bg-secondary">${commit.repository}</span>
                                                                 </div>
                                                                 <div class="text-muted" style="margin-top: 5px; word-wrap: break-word;">
                                                                     ${escapeHtml(commitMessage)}
@@ -719,7 +719,7 @@
                                                                 <div class="text-muted" style="font-size: 12px;">${formatDate(commit.commit.author.date)}</div>
                                                                 <div style="margin-top: 5px;">
                                                                     <a href="${commit.html_url}" target="_blank" class="btn btn-xs btn-outline btn-primary">
-                                                                        <i class="fa fa-code"></i> ${shortSha}
+                                                                        <i class="fa-solid fa-code"></i> ${shortSha}
                                                                     </a>
                                                                 </div>
                                                             </div>

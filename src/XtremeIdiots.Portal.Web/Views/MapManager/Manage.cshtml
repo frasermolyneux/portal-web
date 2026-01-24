@@ -17,27 +17,27 @@
                 </div>
 
                 <div class="ibox-content">
-
-                    <table class="table table-responsive w-100 d-block d-md-table">
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <strong>Hostname</strong>
-                                </td>
-                                <td><server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host></td>
-                            </tr>
-
-                            @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
-                            {
+                    <div class="table-responsive">
+                        <table class="table w-100">
+                            <tbody>
                                 <tr>
                                     <td>
-                                        <strong>Mod</strong>
+                                        <strong>Hostname</strong>
                                     </td>
-                                    <td>@Model.GameServer.LiveMod</td>
+                                    <td><server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host></td>
                                 </tr>
-                            }
 
-                            @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
+                                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>Mod</strong>
+                                        </td>
+                                        <td>@Model.GameServer.LiveMod</td>
+                                    </tr>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
                             {
                                 <tr>
                                     <td>
@@ -71,6 +71,7 @@
 
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
@@ -124,7 +125,7 @@
                 </div>
 
                 <div class="ibox-footer">
-                    <a href="@Url.Action("Create", "MapPacks", new { gameServerId = @Model.GameServer.GameServerId })" class="btn btn-primary"><i class="fa fa-plus"></i></a>
+                    <a href="@Url.Action("Create", "MapPacks", new { gameServerId = @Model.GameServer.GameServerId })" class="btn btn-primary"><i class="fa-solid fa-plus"></i></a>
                 </div>
 
             </div>
@@ -194,11 +195,11 @@
     var remoteMatch = Model.ServerMaps.FirstOrDefault(x => x.Name == item.MapName);
     if (remoteMatch != null)
     {
-                                    <span class="label label-success">On Host</span>
+                                    <span class="badge bg-success">On Host</span>
     }
     else
     {
-                                    <span class="label label-danger">Not On Host</span>
+                                    <span class="badge bg-danger">Not On Host</span>
     }
                                 }
                             </td>
@@ -267,11 +268,11 @@
                                 @{
     if (Model.RconMaps.Any(x => x.MapName == item.Name))
     {
-                                    <span class="label label-success">In Rotation</span>
+                                    <span class="badge bg-success">In Rotation</span>
     }
     else
     {
-                                    <span class="label label-danger">Not In Rotation</span>
+                                    <span class="badge bg-danger">Not In Rotation</span>
     }
                                 }
                             </td>

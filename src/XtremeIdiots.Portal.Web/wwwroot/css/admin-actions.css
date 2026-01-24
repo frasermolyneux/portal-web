@@ -165,24 +165,6 @@
     margin-bottom: 0;
 }
 
-/* Icon styling improvements - FontAwesome 4 compatibility */
-.fa {
-    font-family: FontAwesome;
-    display: inline-block;
-    font-size: inherit;
-    text-rendering: auto;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* Ensure FontAwesome icons display properly */
-.fa:before {
-    font-family: FontAwesome;
-    font-style: normal;
-    font-weight: normal;
-    text-decoration: inherit;
-}
-
 /* Specific icon colors for admin actions */
 .icon-primary {
     color: #007bff !important;
@@ -205,13 +187,15 @@
 }
 
 /* Icon size fixes for admin actions */
-.admin-action-card .fa {
+.admin-action-card .fa-solid,
+.admin-action-card .fa-regular {
     font-size: 1.2em;
     width: 1.2em;
     text-align: center;
 }
 
-.admin-action-card .rounded-circle .fa {
+.admin-action-card .rounded-circle .fa-solid,
+.admin-action-card .rounded-circle .fa-regular {
     font-size: 1.1em;
 }
 

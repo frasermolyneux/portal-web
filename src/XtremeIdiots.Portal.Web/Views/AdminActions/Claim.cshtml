@@ -9,7 +9,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="alert alert-primary" role="alert">
-        <i class="fa fa-info-circle" aria-hidden="true"></i>
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
         Claim this @(Model?.Type.ToString() ?? "admin action") by clicking the claim button below. Head admins are
         able to claim a ban on behalf of an admin through the edit function.
     </div>
@@ -62,12 +62,12 @@
                         <input type="hidden" asp-for="PlayerId" />
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="submit" class="btn btn-danger" aria-label="Confirm claim">
-                                <i class="fa fa-check" aria-hidden="true"></i> Claim @(Model?.Type.ToString() ??
+                                <i class="fa-solid fa-check" aria-hidden="true"></i> Claim @(Model?.Type.ToString() ??
                                                                 "Action")
                             </button>
                             <a class="btn btn-primary" asp-controller="Players" asp-action="Details"
                                 asp-route-id="@Model?.PlayerId" aria-label="Return to player details">
-                                <i class="fa fa-arrow-left" aria-hidden="true"></i> Back to Player
+                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player
                             </a>
                         </div>
                     </form>

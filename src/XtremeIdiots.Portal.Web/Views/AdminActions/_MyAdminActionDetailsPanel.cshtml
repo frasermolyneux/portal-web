@@ -20,10 +20,10 @@
     };
     var iconClass = adminAction.Type switch
     {
-        AdminActionType.Ban => "fa fa-ban",
-        AdminActionType.TempBan => "fa fa-clock",
-        AdminActionType.Kick => "fa fa-sign-out",
-        _ => "fa fa-gavel"
+        AdminActionType.Ban => "fa-solid fa-ban",
+        AdminActionType.TempBan => "fa-solid fa-clock",
+        AdminActionType.Kick => "fa-solid fa-arrow-right-from-bracket",
+        _ => "fa-solid fa-gavel"
     };
     var gameType = player?.GameType;
     var userForumId = adminAction.UserProfile?.XtremeIdiotsForumId;
@@ -92,7 +92,7 @@
                 string?>(gameType.Value, adminAction.Type, userForumId), AuthPolicies.EditAdminAction)).Succeeded)
         {
             <a asp-controller="AdminActions" asp-action="Edit" asp-route-id="@adminAction.AdminActionId"
-                class="btn btn-outline-primary btn-sm"><i class="fa fa-edit me-1"></i> Edit</a>
+                class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-pen-to-square me-1"></i> Edit</a>
         }
         @if ((adminAction.Type == AdminActionType.Ban && adminAction.Expires is null) || (adminAction.Type == AdminActionType.TempBan &&
                 adminAction.Expires > DateTime.UtcNow))
@@ -101,7 +101,7 @@
             string?>(gameType.Value, userForumId), AuthPolicies.LiftAdminAction)).Succeeded)
             {
                 <a asp-controller="AdminActions" asp-action="Lift" asp-route-id="@adminAction.AdminActionId"
-                    class="btn btn-outline-warning btn-sm"><i class="fa fa-unlock me-1"></i> Lift</a>
+                    class="btn btn-outline-warning btn-sm"><i class="fa-solid fa-unlock me-1"></i> Lift</a>
             }
         }
         @if (adminAction.Type == AdminActionType.Ban && adminAction.UserProfile is null)
@@ -110,7 +110,7 @@
             AuthPolicies.ClaimAdminAction)).Succeeded)
             {
                 <a asp-controller="AdminActions" asp-action="Claim" asp-route-id="@adminAction.AdminActionId"
-                    class="btn btn-outline-info btn-sm"><i class="fa fa-user me-1"></i> Claim</a>
+                    class="btn btn-outline-info btn-sm"><i class="fa-solid fa-user me-1"></i> Claim</a>
             }
         }
         @if (adminAction.ForumTopicId == 0)
@@ -119,13 +119,13 @@
             AuthPolicies.CreateAdminActionTopic)).Succeeded)
             {
                 <a asp-controller="AdminActions" asp-action="CreateDiscussionTopic" asp-route-id="@adminAction.AdminActionId"
-                    class="btn btn-outline-success btn-sm"><i class="fa fa-plus me-1"></i> Create Topic</a>
+                    class="btn btn-outline-success btn-sm"><i class="fa-solid fa-plus me-1"></i> Create Topic</a>
             }
         }
         @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.DeleteAdminAction)).Succeeded)
         {
             <a asp-controller="AdminActions" asp-action="Delete" asp-route-id="@adminAction.AdminActionId"
-                class="btn btn-outline-danger btn-sm"><i class="fa fa-trash me-1"></i> Delete</a>
+                class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-trash me-1"></i> Delete</a>
         }
     </div>
 </div>

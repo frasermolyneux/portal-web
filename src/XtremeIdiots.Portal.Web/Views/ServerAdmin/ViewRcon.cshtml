@@ -10,10 +10,10 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-info" role="alert">
-        <i class="fa fa-info-circle"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
+        <i class="fa-solid fa-circle-info"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
     </div>
 
-    <row class="row">
+    <div class="row">
 
         <div class="col-lg-8 col-md-12">
             <div class="container-fluid">
@@ -45,7 +45,7 @@
                     <div class="ibox-title">
                         <h5>Live Chat Log</h5>
                         <div class="ibox-tools">
-                            <span class="badge badge-primary" id="chatMessageCount">0</span>
+                            <span class="badge bg-primary" id="chatMessageCount">0</span>
                         </div>
                     </div>
                     <div class="ibox-content" style="max-height: 400px; overflow-y: auto;" id="chatLogContainer">
@@ -64,9 +64,11 @@
                     <h5>Server Control</h5>
                 </div>
                 <div class="ibox-content">
-                    <button id="restartServer" class="btn btn-primary btn-block" type="button" data-testid="rcon-btn-restart-server">
-                        <i class="fa fa-refresh"></i> Restart Server
-                    </button>
+                    <div class="d-grid">
+                        <button id="restartServer" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-server">
+                            <i class="fa-solid fa-refresh"></i> Restart Server
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -75,25 +77,26 @@
                     <h5>Map Control</h5>
                 </div>
                 <div class="ibox-content">
+                    <div class="d-grid gap-2">
+                        <button id="restartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-map">
+                            <i class="fa-solid fa-refresh"></i> Restart Map
+                        </button>
 
-                    <button id="restartMap" class="btn btn-primary btn-block mb-2" type="button" data-testid="rcon-btn-restart-map">
-                        <i class="fa fa-refresh"></i> Restart Map
-                    </button>
+                        <button id="fastRestartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-fast-restart-map">
+                            <i class="fa-solid fa-refresh"></i> Fast Restart Map
+                        </button>
 
-                    <button id="fastRestartMap" class="btn btn-primary btn-block mb-2" type="button" data-testid="rcon-btn-fast-restart-map">
-                        <i class="fa fa-refresh"></i> Fast Restart Map
-                    </button>
-
-                    <button id="nextMap" class="btn btn-primary btn-block" type="button" data-testid="rcon-btn-next-map">
-                        <i class="fa fa-forward"></i> Next Map
-                    </button>
+                        <button id="nextMap" class="btn btn-primary" type="button" data-testid="rcon-btn-next-map">
+                            <i class="fa-solid fa-forward"></i> Next Map
+                        </button>
+                    </div>
 
                 </div>
             </div>
 
         </div>
 
-    </row>
+    </div>
 
 
 </div>
@@ -274,9 +277,9 @@
                             var playerGuid = row.guid || '';
                             var playerName = escapeHtml(row.name || 'Unknown');
                             
-                            var kickBtn = '<button class="btn btn-sm btn-warning kick-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-kick"><i class="fa fa-user-times"></i> Kick</button> ';
-                            var tempBanBtn = '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-tempban"><i class="fa fa-clock-o"></i> TempBan</button> ';
-                            var banBtn = '<button class="btn btn-sm btn-danger ban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-ban"><i class="fa fa-ban"></i> Ban</button>';
+                            var kickBtn = '<button class="btn btn-sm btn-warning kick-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-kick"><i class="fa-solid fa-user-xmark"></i> Kick</button> ';
+                            var tempBanBtn = '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-tempban"><i class="fa-solid fa-clock"></i> TempBan</button> ';
+                            var banBtn = '<button class="btn btn-sm btn-danger ban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-ban"><i class="fa-solid fa-ban"></i> Ban</button>';
                             
                             return '<div class="btn-group btn-group-sm" role="group">' + kickBtn + tempBanBtn + banBtn + '</div>';
                         }
@@ -402,7 +405,7 @@
                             for (var i = result.messages.length - 1; i >= 0; i--) {
                                 var msg = result.messages[i];
                                 var msgClass = msg.locked ? 'alert-warning' : 'alert-info';
-                                var lockedBadge = msg.locked ? '<span class="badge badge-warning ml-2">Locked</span>' : '';
+                                var lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
                                 
                                 messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
                                 messagesHtml += '<small class="text-muted">' + formatDateTime(msg.timestamp) + '</small> ';

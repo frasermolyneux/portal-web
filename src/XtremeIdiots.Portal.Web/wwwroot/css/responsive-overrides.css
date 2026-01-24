@@ -277,7 +277,7 @@ select:focus {
 }
 
 /* Better notifications */
-.label {
+.badge {
     font-weight: 600;
     padding: 3px 8px;
     border-radius: 3px;
@@ -394,7 +394,7 @@ select:focus {
     text-align: center !important;
 }
 
-.text-right {
+.text-end {
     text-align: right !important;
 }
 
@@ -408,7 +408,8 @@ select:focus {
     font-weight: bold !important;
 }
 
-.float-right {
+.float-right,
+.float-end {
     float: right !important;
 }
 

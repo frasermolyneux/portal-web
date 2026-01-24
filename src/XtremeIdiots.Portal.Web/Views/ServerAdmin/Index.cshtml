@@ -12,24 +12,25 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <row class="row">
+    <div class="row">
         <div class="col-12">
 
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-content">
-                        <table class="table table-responsive w-100 d-block d-md-table">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        @Html.Label("Title")
-                                    </th>
-                                    <th>
-                                        @Html.Label("Hostname")
-                                    </th>
-                                    <th>
-                                        @Html.Label("Players")
-                                    </th>
+                        <div class="table-responsive">
+                            <table class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            @Html.Label("Title")
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Hostname")
+                                        </th>
+                                        <th scope="col">
+                                            @Html.Label("Players")
+                                        </th>
                                     <th>
                                         @Html.Label("Map")
                                     </th>
@@ -67,7 +68,7 @@
                                             <div class="progress" style="margin-right: 20px">
                                                 <div style="width: @percentage%" aria-valuemax="100" aria-valuemin="0"
                                                     aria-valuenow="@percentage" role="progressbar" class="progress-bar">
-                                                    <span class="sr-only">@percentage% Slots Filled</span>
+                                                    <span class="visually-hidden">@percentage% Slots Filled</span>
                                                 </div>
                                             </div>
                                         </td>
@@ -84,7 +85,7 @@
                                                 {
                                                     <a type="button" class="btn btn-primary" asp-action="ViewRcon"
                                                         asp-route-id="@item.GameServer.GameServerId"><i
-                                                            class="fa fa-terminal"></i> View Rcon</a>
+                                                            class="fa-solid fa-terminal"></i> View Rcon</a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
@@ -93,7 +94,7 @@
                                                 {
                                                     <a type="button" class="btn btn-primary" asp-action="ServerChatLog"
                                                         asp-route-id="@item.GameServer.GameServerId"><i
-                                                            class="fa fa-comments"></i> View ChatLog</a>
+                                                            class="fa-solid fa-comments"></i> View ChatLog</a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
@@ -101,7 +102,7 @@
                                                 {
                                                     <a type="button" class="btn btn-primary" asp-controller="MapManager"
                                                         asp-action="Manage" asp-route-id="@item.GameServer.GameServerId"><i
-                                                            class="fa fa-terminal"></i> Manage Maps</a>
+                                                            class="fa-solid fa-terminal"></i> Manage Maps</a>
                                                 }
                                             </div>
                                         </td>
@@ -109,11 +110,12 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </div>
-    </row>
+    </div>
 
 </div>

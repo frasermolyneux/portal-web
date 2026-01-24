@@ -68,66 +68,25 @@ $(document).ready(function () {
                 100);
         });
 
-    // Open close right sidebar
-    $(".right-sidebar-toggle").on("click",
-        function (e) {
-            e.preventDefault();
-            $("#right-sidebar").toggleClass("sidebar-open");
-        });
-
-    // Initialize slimscroll for right sidebar
-    $(".sidebar-container").slimScroll({
-        height: "100%",
-        railOpacity: 0.4,
-        wheelStep: 10
-    });
-
-    // Open close small chat
-    $(".open-small-chat").on("click",
-        function (e) {
-            e.preventDefault();
-            $(this).children().toggleClass("fa-comments").toggleClass("fa-times");
-            $(".small-chat-box").toggleClass("active");
-        });
-
-    // Initialize slimscroll for small chat
-    $(".small-chat-box .content").slimScroll({
-        height: "234px",
-        railOpacity: 0.4
-    });
-
     // Small todo handler
     $(".check-link").on("click",
         function () {
             var button = $(this).find("i");
             var label = $(this).next("span");
-            button.toggleClass("fa-check-square").toggleClass("fa-square-o");
+            button.toggleClass("fa-square-check").toggleClass("fa-square");
             label.toggleClass("todo-completed");
             return false;
         });
 
-    // Tooltips demo
+    // Bootstrap 5 Tooltips - Updated selector from data-toggle to data-bs-toggle
     $(".tooltip-demo").tooltip({
-        selector: "[data-toggle=tooltip]",
+        selector: "[data-bs-toggle=tooltip]",
         container: "body"
     });
 
-    // Move right sidebar top after scroll
-    $(window).scroll(function () {
-        if ($(window).scrollTop() > 0 && !$("body").hasClass("fixed-nav")) {
-            $("#right-sidebar").addClass("sidebar-top");
-        } else {
-            $("#right-sidebar").removeClass("sidebar-top");
-        }
-    });
-
-    $("[data-toggle=popover]")
+    // Bootstrap 5 Popovers - Updated selector from data-toggle to data-bs-toggle
+    $("[data-bs-toggle=popover]")
         .popover();
-
-    // Add slimscroll to element
-    $(".full-height-scroll").slimscroll({
-        height: "100%"
-    });
 });
 
 // Minimalize menu when screen is less than 768px

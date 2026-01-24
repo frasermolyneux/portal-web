@@ -59,22 +59,22 @@ function gameTypeIconEnum(gameType) {
 // Mirrors mappings used in server-side views (AdminActions ViewComponent).
 function adminActionTypeIcon(actionType) {
     if (!actionType) return '';
-    var iconClass = 'fa fa-question-circle';
+    var iconClass = 'fa-solid fa-circle-question';
     switch (actionType) {
         case 'Observation':
-            iconClass = 'fa fa-eye';
+            iconClass = 'fa-solid fa-eye';
             break;
         case 'Warning':
-            iconClass = 'fa fa-exclamation-triangle';
+            iconClass = 'fa-solid fa-triangle-exclamation';
             break;
         case 'Kick':
-            iconClass = 'fa fa-user-times';
+            iconClass = 'fa-solid fa-user-xmark';
             break;
         case 'TempBan':
-            iconClass = 'fa fa-clock-o';
+            iconClass = 'fa-solid fa-clock';
             break;
         case 'Ban':
-            iconClass = 'fa fa-ban';
+            iconClass = 'fa-solid fa-ban';
             break;
     }
     return "<i class='" + iconClass + "' aria-hidden='true'></i> <span class='action-text'>" + actionType + "</span>";
@@ -180,13 +180,13 @@ function deleteDemoLink(demoId, gameType = null) {
         return '<div class="btn-group btn-group-sm" role="group">' +
             '<a type="button" class="btn btn-danger"  href="/Demos/Delete/' +
             demoId +
-            '"><i class="fa fa-trash"></i> Delete Demo</a>' +
+            '"><i class="fa-solid fa-trash"></i> Delete Demo</a>' +
             "</div>";
     } else {
         return '<div class="btn-group btn-group-sm" role="group">' +
             '<a type="button" class="btn btn-danger"  href="/Demos/Delete/' +
             demoId +
-            '?filterGame=true"><i class="fa fa-trash"></i> Delete Demo</a>' +
+            '?filterGame=true"><i class="fa-solid fa-trash"></i> Delete Demo</a>' +
             "</div>";
     }
 }
@@ -260,7 +260,7 @@ function manageClaimsLink(userId) {
     return '<div class="btn-group btn-group-sm" role="group">' +
         '<a type="button" class="btn btn-primary"  href="/User/ManageProfile/' +
         userId +
-        '?filterGame=true"><i class="fa fa-key"></i> Manage Claims</a>' +
+        '?filterGame=true"><i class="fa-solid fa-key"></i> Manage Claims</a>' +
         "</div>";
 }
 
@@ -269,7 +269,7 @@ function logOutUserLink(id, antiForgeryToken) {
         '<input id="id" name="id" type="hidden" value="' +
         id +
         '\"/>' +
-        '<button class="btn btn-primary" type="submit"><i class="fa fa-sign-out"></i> Logout User</button>' +
+        '<button class="btn btn-primary" type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout User</button>' +
         antiForgeryToken +
         '</form>';
 }
