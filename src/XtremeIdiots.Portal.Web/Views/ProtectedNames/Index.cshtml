@@ -10,7 +10,7 @@
     <p class="text-muted">Usernames exclusively owned by specific players. Unauthorized use triggers automatic bans.</p>
     <hr />
     <div class="mb-3">
-        <i class="fa fa-shield"></i>
+        <i class="fa-solid fa-shield"></i>
         <span class="ml-1">Total Protected Names: @(Model?.ProtectedNames?.Count ?? 0)</span>
     </div>
     <div class="panel panel-default">
@@ -46,12 +46,12 @@
                             <td>
                                 <a asp-controller="ProtectedNames" asp-action="Report"
                                     asp-route-id="@protectedName.ProtectedNameId" class="btn btn-info btn-sm">
-                                    <i class="fa fa-file-text"></i> Usage Report
+                                    <i class="fa-solid fa-file-text"></i> Usage Report
                                 </a>
                                 <a asp-controller="ProtectedNames" asp-action="Delete"
                                     asp-route-id="@protectedName.ProtectedNameId" class="btn btn-danger btn-sm"
                                     onclick="return confirm('Are you sure you want to delete this protected name?');">
-                                    <i class="fa fa-trash"></i> Delete
+                                    <i class="fa-solid fa-trash"></i> Delete
                                 </a>
                             </td>
                         </tr>

@@ -34,7 +34,7 @@
                         <li>
                             <a asp-controller="Profile" asp-action="Manage" class="dropdown-item"
                                 data-testid="nav-profile-manage">
-                                <i class="fa fa-id-card fa-fw" aria-hidden="true"></i> Manage Profile
+                                <i class="fa-solid fa-id-card fa-fw" aria-hidden="true"></i> Manage Profile
                             </a>
                         </li>
                         <li><hr class="dropdown-divider" /></li>
@@ -43,7 +43,7 @@
                                 @Html.AntiForgeryToken()
                                 <button class="dropdown-item" type="submit" aria-label="Sign out of your account"
                                     data-testid="nav-logout-button">
-                                    <i class="fa fa-sign-out fa-fw" aria-hidden="true"></i> Logout
+                                    <i class="fa-solid fa-arrow-right-from-bracket fa-fw" aria-hidden="true"></i> Logout
                                 </button>
                             </form>
                         </li>
@@ -55,13 +55,13 @@
         {
             <div class="w-100 text-center py-2">
                 <div class="mb-3">
-                    <i class="fa fa-user-circle fa-4x text-muted" aria-hidden="true"></i>
+                    <i class="fa-solid fa-circle-user fa-4x text-muted" aria-hidden="true"></i>
                 </div>
                 <form asp-controller="Identity" asp-action="LoginWithXtremeIdiots" method="post">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-primary w-100"
                         aria-label="Sign in with your XtremeIdiots account" data-testid="nav-login-button">
-                        <i class="fa fa-sign-in fa-fw" aria-hidden="true"></i> XtremeIdiots Login
+                        <i class="fa-solid fa-arrow-right-to-bracket fa-fw" aria-hidden="true"></i> XtremeIdiots Login
                     </button>
                 </form>
             </div>
@@ -73,29 +73,29 @@
         <nav class="nav flex-column py-2" id="side-menu">
             <a policy="@AuthPolicies.AccessHome" class="nav-link text-white @Html.IsSelected("Home", "Index")" 
                asp-controller="Home" asp-action="Index" data-testid="nav-home">
-                <i class="fa fa-home fa-fw" aria-hidden="true"></i> Home
+                <i class="fa-solid fa-house fa-fw" aria-hidden="true"></i> Home
             </a>
 
             <div policy="@AuthPolicies.AccessServers">
                 <a class="nav-link text-white @Html.IsSelected("Servers", "Index")" href="#serversMenu" 
                    data-bs-toggle="collapse" data-testid="nav-servers-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("Servers", "Maps") ? "true" : "false")">
-                    <i class="fa fa-server fa-fw" aria-hidden="true"></i> Servers 
-                    <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                    <i class="fa-solid fa-server fa-fw" aria-hidden="true"></i> Servers 
+                    <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
                 <div class="collapse @(IsAnyControllerSelected("Servers", "Maps") ? "show" : "")" id="serversMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Servers", "Index")" 
                            asp-controller="Servers" asp-action="Index" data-testid="nav-servers-gameservers">
-                            <i class="fa fa-list fa-fw" aria-hidden="true"></i> Game Servers
+                            <i class="fa-solid fa-list fa-fw" aria-hidden="true"></i> Game Servers
                         </a>
                         <a class="nav-link text-white-50 @Html.IsSelected("Servers", "Map")" 
                            asp-controller="Servers" asp-action="Map" data-testid="nav-servers-playermap">
-                            <i class="fa fa-map-marker fa-fw" aria-hidden="true"></i> Player Map
+                            <i class="fa-solid fa-location-dot fa-fw" aria-hidden="true"></i> Player Map
                         </a>
                         <a policy="@AuthPolicies.AccessMaps" class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" 
                            asp-controller="Maps" asp-action="Index" data-testid="nav-servers-maps">
-                            <i class="fa fa-map fa-fw" aria-hidden="true"></i> Maps
+                            <i class="fa-solid fa-map fa-fw" aria-hidden="true"></i> Maps
                         </a>
                     </nav>
                 </div>
@@ -103,29 +103,29 @@
 
             <a policy="@AuthPolicies.AccessCredentials" class="nav-link text-white @Html.IsSelected("Credentials", "Index")" 
                asp-controller="Credentials" asp-action="Index" data-testid="nav-credentials">
-                <i class="fa fa-key fa-fw" aria-hidden="true"></i> Credentials
+                <i class="fa-solid fa-key fa-fw" aria-hidden="true"></i> Credentials
             </a>
 
             <div policy="@AuthPolicies.AccessAdminActionsController">
                 <a class="nav-link text-white @Html.IsSelected("AdminActions", "Global")" href="#adminActionsMenu" 
                    data-bs-toggle="collapse" 
                    aria-expanded="@(Html.IsSelected("AdminActions", "Global") != "" ? "true" : "false")">
-                    <i class="fa fa-shield fa-fw" aria-hidden="true"></i> Admin Actions 
-                    <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                    <i class="fa-solid fa-shield fa-fw" aria-hidden="true"></i> Admin Actions 
+                    <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
                 <div class="collapse @(Html.IsSelected("AdminActions", "Global") != "" ? "show" : "")" id="adminActionsMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "MyActions")" 
                            asp-controller="AdminActions" asp-action="MyActions">
-                            <i class="fa fa-check-square fa-fw" aria-hidden="true"></i> My Actions
+                            <i class="fa-solid fa-square-check fa-fw" aria-hidden="true"></i> My Actions
                         </a>
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "Global")" 
                            asp-controller="AdminActions" asp-action="Global">
-                            <i class="fa fa-globe fa-fw" aria-hidden="true"></i> Global Action List
+                            <i class="fa-solid fa-globe fa-fw" aria-hidden="true"></i> Global Action List
                         </a>
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "Unclaimed")" 
                            asp-controller="AdminActions" asp-action="Unclaimed">
-                            <i class="fa fa-exclamation-circle fa-fw" aria-hidden="true"></i> Unclaimed Bans
+                            <i class="fa-solid fa-circle-exclamation fa-fw" aria-hidden="true"></i> Unclaimed Bans
                         </a>
                     </nav>
                 </div>
@@ -135,22 +135,22 @@
                 <a class="nav-link text-white @Html.IsSelected("ServerAdmin", "Index")" href="#serverAdminMenu" 
                    data-bs-toggle="collapse" data-testid="nav-serveradmin-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors") ? "true" : "false")">
-                    <i class="fa fa-terminal fa-fw" aria-hidden="true"></i> Server Admin 
-                    <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                    <i class="fa-solid fa-terminal fa-fw" aria-hidden="true"></i> Server Admin 
+                    <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
                 <div class="collapse @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors") ? "show" : "")" id="serverAdminMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("ServerAdmin", "Index")" 
                            asp-controller="ServerAdmin" asp-action="Index" data-testid="nav-serveradmin-dashboard">
-                            <i class="fa fa-dashboard fa-fw" aria-hidden="true"></i> Dashboard
+                            <i class="fa-solid fa-gauge fa-fw" aria-hidden="true"></i> Dashboard
                         </a>
                         <a policy="@AuthPolicies.AccessStatus" class="nav-link text-white-50 @Html.IsSelected("Status", "BanFileStatus")" 
                            asp-controller="Status" asp-action="BanFileStatus" data-testid="nav-serveradmin-banfilestatus">
-                            <i class="fa fa-heartbeat fa-fw" aria-hidden="true"></i> Ban File Status
+                            <i class="fa-solid fa-heart-pulse fa-fw" aria-hidden="true"></i> Ban File Status
                         </a>
                         <a policy="@AuthPolicies.AccessBanFileMonitors" class="nav-link text-white-50 @Html.IsSelected("BanFileMonitors", "Index")" 
                            asp-controller="BanFileMonitors" asp-action="Index" data-testid="nav-serveradmin-banfilemonitors">
-                            <i class="fa fa-ban fa-fw" aria-hidden="true"></i> Ban File Monitors
+                            <i class="fa-solid fa-ban fa-fw" aria-hidden="true"></i> Ban File Monitors
                         </a>
                     </nav>
                 </div>
@@ -176,8 +176,8 @@
                     <a class="nav-link text-white @Html.IsSelected("ServerAdmin", "ChatLogIndex")" href="#chatLogMenu" 
                        data-bs-toggle="collapse" data-testid="nav-chatlog-toggle" 
                        aria-expanded="@(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" ? "true" : "false")">
-                        <i class="fa fa-commenting fa-fw" aria-hidden="true"></i> Chat Log 
-                        <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                        <i class="fa-solid fa-commenting fa-fw" aria-hidden="true"></i> Chat Log 
+                        <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                     </a>
                     <div class="collapse @(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" ? "show" : "")" id="chatLogMenu">
                         <nav class="nav flex-column ms-3">
@@ -185,7 +185,7 @@
                             {
                                 <a class="nav-link text-white-50 @Html.IsSelected("ServerAdmin", "ChatLogIndex")" 
                                    asp-controller="ServerAdmin" asp-action="ChatLogIndex" data-testid="nav-chatlog-global">
-                                    <i class="fa fa-globe fa-fw" aria-hidden="true"></i> Global Chat Log
+                                    <i class="fa-solid fa-globe fa-fw" aria-hidden="true"></i> Global Chat Log
                                 </a>
                             }
                             @foreach (var game in authorizedChatGames)
@@ -205,14 +205,14 @@
                 <a class="nav-link text-white @Html.IsSelected("Players", "Index")" href="#playersMenu" 
                    data-bs-toggle="collapse" data-testid="nav-players-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "true" : "false")">
-                    <i class="fa fa-users fa-fw" aria-hidden="true"></i> Players 
-                    <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                    <i class="fa-solid fa-users fa-fw" aria-hidden="true"></i> Players 
+                    <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
                 <div class="collapse @(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "show" : "")" id="playersMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Players", "Index")" 
                            asp-controller="Players" asp-action="Index" data-testid="nav-players-index">
-                            <i class="fa fa-list fa-fw" aria-hidden="true"></i> Global Player Index
+                            <i class="fa-solid fa-list fa-fw" aria-hidden="true"></i> Global Player Index
                         </a>
 
                         @foreach (var game in new[] { GameType.CallOfDuty2, GameType.CallOfDuty4, GameType.CallOfDuty5, GameType.Insurgency })
@@ -228,11 +228,11 @@
 
                         <a class="nav-link text-white-50 @Html.IsSelected("ProtectedNames", "Index")" 
                            asp-controller="ProtectedNames" asp-action="Index">
-                            <i class="fa fa-shield fa-fw" aria-hidden="true"></i> Protected Names
+                            <i class="fa-solid fa-shield fa-fw" aria-hidden="true"></i> Protected Names
                         </a>
                         <a class="nav-link text-white-50 @Html.IsSelected("PlayerAnalytics", "Analytics")" 
                            asp-controller="PlayerAnalytics" asp-action="Analytics">
-                            <i class="fa fa-area-chart fa-fw" aria-hidden="true"></i> Analytics
+                            <i class="fa-solid fa-chart-area fa-fw" aria-hidden="true"></i> Analytics
                         </a>
                     </nav>
                 </div>
@@ -242,18 +242,18 @@
                 <a class="nav-link text-white @Html.IsSelected("User", "Index")" href="#usersMenu" 
                    data-bs-toggle="collapse" 
                    aria-expanded="@(Html.IsSelected("User", "Index") != "" ? "true" : "false")">
-                    <i class="fa fa-user fa-fw" aria-hidden="true"></i> Users 
-                    <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                    <i class="fa-solid fa-user fa-fw" aria-hidden="true"></i> Users 
+                    <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
                 <div class="collapse @(Html.IsSelected("User", "Index") != "" ? "show" : "")" id="usersMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("User", "Index")" 
                            asp-controller="User" asp-action="Index">
-                            <i class="fa fa-users fa-fw" aria-hidden="true"></i> Manage Users
+                            <i class="fa-solid fa-users fa-fw" aria-hidden="true"></i> Manage Users
                         </a>
                         <a class="nav-link text-white-50 @Html.IsSelected("User", "Permissions")" 
                            asp-controller="User" asp-action="Permissions">
-                            <i class="fa fa-lock fa-fw" aria-hidden="true"></i> Permissions
+                            <i class="fa-solid fa-lock fa-fw" aria-hidden="true"></i> Permissions
                         </a>
                     </nav>
                 </div>
@@ -261,30 +261,30 @@
 
             <a policy="@AuthPolicies.AccessChangeLog" class="nav-link text-white @Html.IsSelected("ChangeLog", "Index")" 
                asp-controller="ChangeLog" asp-action="Index">
-                <i class="fa fa-history fa-fw" aria-hidden="true"></i> Change Log
+                <i class="fa-solid fa-history fa-fw" aria-hidden="true"></i> Change Log
             </a>
 
             <a policy="@AuthPolicies.AccessGameServers" class="nav-link text-white @Html.IsSelected("GameServers", "Index")" 
                asp-controller="GameServers" asp-action="Index">
-                <i class="fa fa-gamepad fa-fw" aria-hidden="true"></i> Game Servers
+                <i class="fa-solid fa-gamepad fa-fw" aria-hidden="true"></i> Game Servers
             </a>
 
             <div policy="@AuthPolicies.AccessDemos">
                 <a class="nav-link text-white @Html.IsSelected("Demos", "Index")" href="#demosMenu" 
                    data-bs-toggle="collapse" data-testid="nav-demos-toggle" 
                    aria-expanded="@(Html.IsSelected("Demos", "Index") != "" ? "true" : "false")">
-                    <i class="fa fa-film fa-fw" aria-hidden="true"></i> Demo Manager 
-                    <i class="fa fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
+                    <i class="fa-solid fa-film fa-fw" aria-hidden="true"></i> Demo Manager 
+                    <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
                 <div class="collapse @(Html.IsSelected("Demos", "Index") != "" ? "show" : "")" id="demosMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Demos", "Index")" 
                            asp-controller="Demos" asp-action="Index" data-testid="nav-demos-index">
-                            <i class="fa fa-list fa-fw" aria-hidden="true"></i> All Demos
+                            <i class="fa-solid fa-list fa-fw" aria-hidden="true"></i> All Demos
                         </a>
                         <a class="nav-link text-white-50 @Html.IsSelected("Demos", "DemoClient")" 
                            asp-controller="Demos" asp-action="DemoClient" data-testid="nav-demos-client">
-                            <i class="fa fa-key fa-fw" aria-hidden="true"></i> Demo Client
+                            <i class="fa-solid fa-key fa-fw" aria-hidden="true"></i> Demo Client
                         </a>
                     </nav>
                 </div>
@@ -292,7 +292,7 @@
 
             <a policy="@AuthPolicies.AccessPlayerTags" class="nav-link text-white @Html.IsSelected("Tags", "Index")" 
                asp-controller="Tags" asp-action="Index">
-                <i class="fa fa-tags fa-fw" aria-hidden="true"></i> Player Tags
+                <i class="fa-solid fa-tags fa-fw" aria-hidden="true"></i> Player Tags
             </a>
         </nav>
     </div>

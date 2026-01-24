@@ -10,7 +10,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-info" role="alert">
-        <i class="fa fa-info-circle"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
+        <i class="fa-solid fa-circle-info"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
     </div>
 
     <row class="row">
@@ -66,7 +66,7 @@
                 <div class="ibox-content">
                     <div class="d-grid">
                         <button id="restartServer" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-server">
-                            <i class="fa fa-refresh"></i> Restart Server
+                            <i class="fa-solid fa-refresh"></i> Restart Server
                         </button>
                     </div>
                 </div>
@@ -79,15 +79,15 @@
                 <div class="ibox-content">
                     <div class="d-grid gap-2">
                         <button id="restartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-map">
-                            <i class="fa fa-refresh"></i> Restart Map
+                            <i class="fa-solid fa-refresh"></i> Restart Map
                         </button>
 
                         <button id="fastRestartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-fast-restart-map">
-                            <i class="fa fa-refresh"></i> Fast Restart Map
+                            <i class="fa-solid fa-refresh"></i> Fast Restart Map
                         </button>
 
                         <button id="nextMap" class="btn btn-primary" type="button" data-testid="rcon-btn-next-map">
-                            <i class="fa fa-forward"></i> Next Map
+                            <i class="fa-solid fa-forward"></i> Next Map
                         </button>
                     </div>
 
@@ -277,9 +277,9 @@
                             var playerGuid = row.guid || '';
                             var playerName = escapeHtml(row.name || 'Unknown');
                             
-                            var kickBtn = '<button class="btn btn-sm btn-warning kick-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-kick"><i class="fa fa-user-times"></i> Kick</button> ';
-                            var tempBanBtn = '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-tempban"><i class="fa fa-clock-o"></i> TempBan</button> ';
-                            var banBtn = '<button class="btn btn-sm btn-danger ban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-ban"><i class="fa fa-ban"></i> Ban</button>';
+                            var kickBtn = '<button class="btn btn-sm btn-warning kick-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-kick"><i class="fa-solid fa-user-xmark"></i> Kick</button> ';
+                            var tempBanBtn = '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-tempban"><i class="fa-solid fa-clock"></i> TempBan</button> ';
+                            var banBtn = '<button class="btn btn-sm btn-danger ban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-ban"><i class="fa-solid fa-ban"></i> Ban</button>';
                             
                             return '<div class="btn-group btn-group-sm" role="group">' + kickBtn + tempBanBtn + banBtn + '</div>';
                         }

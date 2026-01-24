@@ -8,7 +8,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="alert alert-primary" role="alert">
-        <i class="fa fa-info-circle" aria-hidden="true"></i> 
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> 
         This section allows you to manage what ban files are monitored on all the servers, ideally there should be one entry per server. 
         If the mod changes then the file path should be updated to reflect that.
     </div>
@@ -81,32 +81,32 @@
                                                     @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.EditBanFileMonitor)).Succeeded)
                                                     {
                                                         <a class="btn btn-primary" asp-action="Edit" asp-route-id="@item.BanFileMonitorId" aria-label="Edit monitor">
-                                                            <i class="fa fa-edit" aria-hidden="true"></i> Edit Monitor
+                                                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Edit Monitor
                                                         </a>
                                                     }
 
                                                     @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.EditGameServer)).Succeeded)
                                                     {
                                                         <a class="btn btn-primary" asp-controller="GameServers" asp-action="Edit" asp-route-id="@item.GameServer.GameServerId" aria-label="Edit game server">
-                                                            <i class="fa fa-edit" aria-hidden="true"></i> Edit Game Server
+                                                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Edit Game Server
                                                         </a>
                                                     }
 
                                                     @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.ViewBanFileMonitor)).Succeeded)
                                                     {
                                                         <a class="btn btn-primary" asp-action="Details" asp-route-id="@item.BanFileMonitorId" aria-label="View details">
-                                                            <i class="fa fa-info-circle" aria-hidden="true"></i> Details
+                                                            <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Details
                                                         </a>
                                                     }
 
                                                     <a class="btn btn-primary" asp-controller="Servers" asp-action="ServerInfo" asp-route-id="@item.GameServerId" aria-label="View server info">
-                                                        <i class="fa fa-info-circle" aria-hidden="true"></i> Server Info
+                                                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Server Info
                                                     </a>
 
                                                     @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.DeleteBanFileMonitor)).Succeeded)
                                                     {
                                                         <a class="btn btn-danger" asp-action="Delete" asp-route-id="@item.BanFileMonitorId" aria-label="Delete monitor">
-                                                            <i class="fa fa-trash" aria-hidden="true"></i> Delete
+                                                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete
                                                         </a>
                                                     }
                                                 }
@@ -121,7 +121,7 @@
                 <div class="ibox-footer">
                     <div class="btn-group btn-group-sm" role="group">
                         <a class="btn btn-primary" asp-action="Create" aria-label="Create new ban file monitor">
-                            <i class="fa fa-plus" aria-hidden="true"></i> Create New
+                            <i class="fa-solid fa-plus" aria-hidden="true"></i> Create New
                         </a>
                     </div>
                 </div>

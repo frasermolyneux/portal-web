@@ -11,7 +11,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="alert alert-primary" role="alert">
-        <i class="fa fa-info-circle" aria-hidden="true"></i> Enter the reason for your @Model.Type in the text box below. 
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Enter the reason for your @Model.Type in the text box below. 
         You can use rich text (bold/italic etc.) however images and video are not supported.
         If a forum topic has been previously created then it will be updated with the new content.
     </div>
@@ -77,12 +77,12 @@
                         <div class="form-group">
                             <button type="submit" class="btn btn-primary"
                                 data-testid="admin-action-edit-submit">
-                                <i class="fa fa-save fa-fw" aria-hidden="true"></i> Save @Model.Type
+                                <i class="fa-solid fa-save fa-fw" aria-hidden="true"></i> Save @Model.Type
                             </button>
                             <a asp-controller="Players" asp-action="Details" asp-route-id="@Model.PlayerId"
                                 class="btn btn-secondary ml-2"
                                 data-testid="admin-action-edit-cancel">
-                                <i class="fa fa-times fa-fw" aria-hidden="true"></i> Cancel
+                                <i class="fa-solid fa-xmark fa-fw" aria-hidden="true"></i> Cancel
                             </a>
                         </div>
                     </form>

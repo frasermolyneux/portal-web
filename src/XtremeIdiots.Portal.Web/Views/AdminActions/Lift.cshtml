@@ -9,7 +9,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="alert alert-primary" role="alert">
-        <i class="fa fa-info-circle" aria-hidden="true"></i>
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
         After you lift the below @(Model?.Type.ToString() ?? "admin action") it may take up to an hour before the
         @(Model?.Type.ToString() ?? "action") is removed from all of the servers.
         It is best to inform the player that the ban may take up to 24 hours to be removed.
@@ -61,12 +61,12 @@
                         <input type="hidden" asp-for="PlayerId" />
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="submit" class="btn btn-danger" aria-label="Confirm lift action">
-                                <i class="fa fa-unlock" aria-hidden="true"></i> Lift @(Model?.Type.ToString() ??
+                                <i class="fa-solid fa-unlock" aria-hidden="true"></i> Lift @(Model?.Type.ToString() ??
                                                                 "Action")
                             </button>
                             <a class="btn btn-primary" asp-controller="Players" asp-action="Details"
                                 asp-route-id="@Model?.PlayerId" aria-label="Return to player details">
-                                <i class="fa fa-arrow-left" aria-hidden="true"></i> Back to Player
+                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player
                             </a>
                         </div>
                     </form>

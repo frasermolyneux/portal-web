@@ -29,7 +29,7 @@ $(document).ready(function () {
                 $table.DataTable({
                     responsive: true,
                     language: {
-                        search: '<i class="fa fa-search"></i>',
+                        search: '<i class="fa-solid fa-magnifying-glass"></i>',
                         lengthMenu: 'Show _MENU_ entries',
                         info: 'Showing _START_ to _END_ of _TOTAL_ entries'
                     },

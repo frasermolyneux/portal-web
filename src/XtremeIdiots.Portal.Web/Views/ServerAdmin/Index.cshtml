@@ -84,7 +84,7 @@
                                                 {
                                                     <a type="button" class="btn btn-primary" asp-action="ViewRcon"
                                                         asp-route-id="@item.GameServer.GameServerId"><i
-                                                            class="fa fa-terminal"></i> View Rcon</a>
+                                                            class="fa-solid fa-terminal"></i> View Rcon</a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
@@ -93,7 +93,7 @@
                                                 {
                                                     <a type="button" class="btn btn-primary" asp-action="ServerChatLog"
                                                         asp-route-id="@item.GameServer.GameServerId"><i
-                                                            class="fa fa-comments"></i> View ChatLog</a>
+                                                            class="fa-solid fa-comments"></i> View ChatLog</a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
@@ -101,7 +101,7 @@
                                                 {
                                                     <a type="button" class="btn btn-primary" asp-controller="MapManager"
                                                         asp-action="Manage" asp-route-id="@item.GameServer.GameServerId"><i
-                                                            class="fa fa-terminal"></i> Manage Maps</a>
+                                                            class="fa-solid fa-terminal"></i> Manage Maps</a>
                                                 }
                                             </div>
                                         </td>

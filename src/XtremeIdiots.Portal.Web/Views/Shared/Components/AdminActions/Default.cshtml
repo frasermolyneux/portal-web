@@ -22,11 +22,11 @@
         var iconClass = item.Type switch
         {
             AdminActionType.Observation => "fa fa-eye",
-            AdminActionType.Warning => "fa fa-exclamation-triangle",
-            AdminActionType.Kick => "fa fa-user-times",
-            AdminActionType.TempBan => "fa fa-clock-o",
+            AdminActionType.Warning => "fa fa-triangle-exclamation",
+            AdminActionType.Kick => "fa fa-user-xmark",
+            AdminActionType.TempBan => "fa fa-clock",
             AdminActionType.Ban => "fa fa-ban",
-            _ => "fa fa-info-circle"
+            _ => "fa fa-circle-info"
         };
 
         var statusBadge = item.Type switch
@@ -67,7 +67,7 @@
                                         <text>@item.Type for
                                             <a asp-controller="Players" asp-action="Details" asp-route-id="@item.PlayerId"
                                                 class="btn btn-sm btn-outline-light ms-2 fw-bold">
-                                                <i class="fa fa-user me-1"></i>@item.Player.Username
+                                                <i class="fa-solid fa-user me-1"></i>@item.Player.Username
                                             </a>
                                         </text>
                                     }
@@ -77,7 +77,7 @@
                                     }
                                 </h5>
                                 <small class="text-white-75">
-                                    <i class="fa fa-calendar me-1"></i>
+                                    <i class="fa-solid fa-calendar me-1"></i>
                                     @item.Created.ToString("MMM dd, yyyy HH:mm") UTC
                                 </small>
                             </div>
@@ -85,7 +85,7 @@
                         @if (!string.IsNullOrEmpty(statusBadge))
                         {
                             <span class="badge @badgeClass rounded-pill px-3 py-2 fs-6">
-                                <i class="fa fa-circle me-1" style="font-size: 0.5rem;"></i>
+                                <i class="fa-solid fa-circle me-1" style="font-size: 0.5rem;"></i>
                                 @statusBadge
                             </span>
                         }
@@ -95,7 +95,7 @@
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center mb-3">
                                     <div class="bg-light rounded-circle p-2 me-3">
-                                        <i class="fa fa-user icon-@cardStyle"></i>
+                                        <i class="fa-solid fa-user icon-@cardStyle"></i>
                                     </div>
                                     <div>
                                         <small class="text-muted text-uppercase fw-bold">Created By</small>
@@ -126,7 +126,7 @@
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center mb-3">
                                         <div class="bg-light rounded-circle p-2 me-3">
-                                            <i class="fa fa-clock-o icon-@cardStyle"></i>
+                                            <i class="fa-solid fa-clock icon-@cardStyle"></i>
                                         </div>
                                         <div>
                                             <small class="text-muted text-uppercase fw-bold">
@@ -169,14 +169,14 @@
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center mb-3">
                                         <div class="bg-light rounded-circle p-2 me-3">
-                                            <i class="fa fa-comments icon-@cardStyle"></i>
+                                            <i class="fa-solid fa-comments icon-@cardStyle"></i>
                                         </div>
                                         <div>
                                             <small class="text-muted text-uppercase fw-bold">Discussion Topic</small>
                                             <div>
                                                 <a href="https://www.xtremeidiots.com/forums/topic/@item.ForumTopicId-topic/"
                                                     target="_blank" class="btn btn-sm btn-outline-@cardStyle">
-                                                    <i class="fa fa-external-link me-1"></i>
+                                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>
                                                     View Forum Topic
                                                 </a>
                                             </div>
@@ -219,7 +219,7 @@
                                     {
                                         <a asp-controller="AdminActions" asp-action="Edit" asp-route-id="@item.AdminActionId"
                                             class="btn btn-outline-@cardStyle btn-sm">
-                                            <i class="fa fa-edit me-1"></i> Edit @item.Type
+                                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit @item.Type
                                         </a>
                                     }
 
@@ -232,7 +232,7 @@
                                         {
                                             <a asp-controller="AdminActions" asp-action="Lift" asp-route-id="@item.AdminActionId"
                                                 class="btn btn-outline-warning btn-sm">
-                                                <i class="fa fa-unlock me-1"></i> Lift Ban
+                                                <i class="fa-solid fa-unlock me-1"></i> Lift Ban
                                             </a>
                                         }
                                     }
@@ -244,7 +244,7 @@
                                         {
                                             <a asp-controller="AdminActions" asp-action="Claim" asp-route-id="@item.AdminActionId"
                                                 class="btn btn-outline-info btn-sm">
-                                                <i class="fa fa-user me-1"></i> Claim Ban
+                                                <i class="fa-solid fa-user me-1"></i> Claim Ban
                                             </a>
                                         }
                                     }
@@ -256,7 +256,7 @@
                                         {
                                             <a asp-controller="AdminActions" asp-action="CreateDiscussionTopic"
                                                 asp-route-id="@item.AdminActionId" class="btn btn-outline-success btn-sm">
-                                                <i class="fa fa-plus me-1"></i> Create Discussion Topic
+                                                <i class="fa-solid fa-plus me-1"></i> Create Discussion Topic
                                             </a>
                                         }
                                     }
@@ -266,7 +266,7 @@
                                     {
                                         <a asp-controller="AdminActions" asp-action="Delete" asp-route-id="@item.AdminActionId"
                                             class="btn btn-outline-danger btn-sm">
-                                            <i class="fa fa-trash me-1"></i> Delete @item.Type
+                                            <i class="fa-solid fa-trash me-1"></i> Delete @item.Type
                                         </a>
                                     }
                                 </div>
