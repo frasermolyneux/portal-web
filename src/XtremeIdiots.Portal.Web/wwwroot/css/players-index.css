@@ -53,3 +53,39 @@
 #dataTable thead th {
     font-weight: 600;
 }
+
+/* Mobile optimizations for Players table */
+@media (max-width: 767.98px) {
+    /* Even tighter spacing on mobile */
+    #dataTable tbody td {
+        padding-top: .3rem;
+        padding-bottom: .3rem;
+        padding-left: .4rem;
+        padding-right: .4rem;
+        font-size: 0.875rem;
+    }
+
+    #dataTable thead th {
+        padding: .4rem;
+        font-size: 0.8rem;
+    }
+
+    /* Reduce filter spacing on mobile */
+    #playersFilters {
+        margin-top: .25rem;
+        margin-bottom: .5rem;
+    }
+
+    /* Game icons smaller on mobile */
+    #dataTable td:first-child img {
+        max-width: 20px;
+        height: auto;
+    }
+
+    /* Ensure GUID text wraps on very small screens */
+    #dataTable td:nth-child(3) {
+        word-break: break-all;
+        font-size: 0.75rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", Consolas, monospace;
+    }
+}

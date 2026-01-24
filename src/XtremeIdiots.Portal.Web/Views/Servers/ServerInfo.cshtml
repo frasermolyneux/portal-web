@@ -144,37 +144,39 @@
                             }
                             else
                             {
-                                <table class="table">
-                                    <tr>
-                                        <th>
-                                            @Html.Label("Num")
-                                        </th>
-                                        <th>
-                                            @Html.Label("Name")
-                                        </th>
-                                        <th>
-                                            @Html.Label("Score")
-                                        </th>
-                                    </tr>
-
-                                    @foreach (var item in Model.GameServer.LivePlayers)
-                                    {
+                                <div class="table-responsive">
+                                    <table class="table">
                                         <tr>
-                                            <td>
-                                                @Html.DisplayFor(model => item.Num)
-                                            </td>
-                                            <td>
-                                                <flag-image country-code="@item.CountryCode"></flag-image>
-                                                <player-name value="@item.Name"></player-name>
-                                            </td>
-                                            <td>
-                                                @Html.DisplayFor(model => item.Score)
-                                            </td>
-
+                                            <th>
+                                                @Html.Label("Num")
+                                            </th>
+                                            <th>
+                                                @Html.Label("Name")
+                                            </th>
+                                            <th>
+                                                @Html.Label("Score")
+                                            </th>
                                         </tr>
-                                    }
 
-                                </table>
+                                        @foreach (var item in Model.GameServer.LivePlayers)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @Html.DisplayFor(model => item.Num)
+                                                </td>
+                                                <td>
+                                                    <flag-image country-code="@item.CountryCode"></flag-image>
+                                                    <player-name value="@item.Name"></player-name>
+                                                </td>
+                                                <td>
+                                                    @Html.DisplayFor(model => item.Score)
+                                                </td>
+
+                                            </tr>
+                                        }
+
+                                    </table>
+                                </div>
                             }
                         </div>
                         @if (Model.GameServer.LivePlayers.Any())
@@ -221,8 +223,8 @@
                     </div>
 
                     <div class="ibox-content">
-
-                        <table class="table">
+                        <div class="table-responsive">
+                            <table class="table">
                             <tr>
                                 <th>
                                     @Html.Label("Name")
@@ -280,7 +282,7 @@
                             }
 
                         </table>
-
+                        </div>
                     </div>
                 </div>
 
