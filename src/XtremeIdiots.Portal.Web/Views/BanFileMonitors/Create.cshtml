@@ -22,7 +22,7 @@
                     <form asp-action="Create" method="post">
                         <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="GameServerId" class="control-label"></label>
                             <select asp-for="GameServerId" class="form-control" asp-items="ViewBag.GameServers"
                                 aria-describedby="gameServerHelp">
@@ -31,7 +31,7 @@
                             <span asp-validation-for="GameServerId" class="text-danger"></span>
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="FilePath" class="control-label"></label>
                             <input asp-for="FilePath" class="form-control" aria-describedby="filePathHelp" />
                             <span asp-validation-for="FilePath" class="text-danger"></span>
@@ -42,7 +42,7 @@
                             You do not need to enter the FTP hostname or credentials. Example: /mods/xinam/ban.txt
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
                             </button>

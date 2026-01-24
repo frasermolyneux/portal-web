@@ -30,7 +30,7 @@
                         <input type="hidden" asp-for="Type" />
                         <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label asp-for="Text" class="visually-hidden">Reason</label>
                             <textarea id="summernote" asp-for="Text" class="form-control"
                                 placeholder="Enter the reason for this @Model.Type..." 
@@ -44,7 +44,7 @@
 
                         @if (Model.Type == AdminActionType.TempBan)
                         {
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label asp-for="Expires" class="form-label">Expiration Date</label>
                                 <input asp-for="Expires" class="form-control" type="datetime-local" 
                                     aria-describedby="expires-help"
@@ -60,7 +60,7 @@
                                                 Model.PlayerDto.GameType,
                                                 AuthPolicies.ChangeAdminActionAdmin)).Succeeded)
                         {
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label asp-for="AdminId" class="form-label">Admin ID</label>
                                 <input asp-for="AdminId" class="form-control" type="number" min="0"
                                     placeholder="Enter admin forum ID or leave empty for unclaimed" 
@@ -74,7 +74,7 @@
                             </div>
                         }
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <button type="submit" class="btn btn-primary"
                                 data-testid="admin-action-edit-submit">
                                 <i class="fa-solid fa-save fa-fw" aria-hidden="true"></i> Save @Model.Type
@@ -94,13 +94,13 @@
 
 @section Styles {
     <environment names="Development,Staging,Production">
-        <link rel="stylesheet" href="~/lib/summernote/summernote-bs4.css" />
+        <link rel="stylesheet" href="~/lib/summernote/summernote-bs5.css" />
     </environment>
 }
 
 @section Scripts {
     <environment names="Development,Staging,Production">
-        <script src="~/lib/summernote/summernote-bs4.js"></script>
+        <script src="~/lib/summernote/summernote-bs5.js"></script>
     </environment>
 
     <script type="text/javascript">

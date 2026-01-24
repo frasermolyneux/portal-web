@@ -25,13 +25,13 @@
                         <form asp-action="Edit">
                             <div asp-validation-summary="All" class="text-danger"></div>
                             <input type="hidden" asp-for="BanFileMonitorId" />
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label asp-for="GameServerId" class="control-label"></label>
                                 <select asp-for="GameServerId" class="form-control" asp-items="ViewBag.GameServers"
                                     disabled="disabled" data-testid="ban-file-monitor-form-gameserver"></select>
                                 <span asp-validation-for="GameServerId" class="text-danger"></span>
                             </div>
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label asp-for="FilePath" class="control-label"></label>
                                 <input asp-for="FilePath" class="form-control"
                                     data-testid="ban-file-monitor-form-filepath" />
@@ -42,7 +42,7 @@
                                 hostname or
                                 credentials. example: /mods/xinam/ban.txt
                             </div>
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <button type="submit" class="btn btn-primary" data-testid="ban-file-monitor-edit-submit">
                                     <i class="fa-solid fa-save" aria-hidden="true"></i> Save
                                 </button>
