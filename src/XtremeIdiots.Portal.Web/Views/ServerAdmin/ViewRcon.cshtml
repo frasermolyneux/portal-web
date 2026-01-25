@@ -251,6 +251,26 @@
         var chatRefreshInterval = 15000; // 15 seconds
         var refreshEnabled = true;
         var selectedPlayerSlot = null;
+        
+        // Helper function to show toast notifications
+        function showToast(type, message, title) {
+            toastr.options = {
+                closeButton: true,
+                progressBar: true,
+                positionClass: "toast-top-right",
+                timeOut: 5000
+            };
+            
+            if (type === 'success') {
+                toastr.success(message, title || 'Success');
+            } else if (type === 'error') {
+                toastr.error(message, title || 'Error');
+            } else if (type === 'warning') {
+                toastr.warning(message, title || 'Warning');
+            } else {
+                toastr.info(message, title || 'Info');
+            }
+        }
 
         $(document).ready(function () {
 

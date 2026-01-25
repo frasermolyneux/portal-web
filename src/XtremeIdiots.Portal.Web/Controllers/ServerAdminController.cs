@@ -438,8 +438,11 @@ public class ServerAdminController(
 
             if (string.IsNullOrWhiteSpace(mapName))
             {
+                Logger.LogWarning("LoadMap called with empty map name for server {ServerId}", id);
                 return Json(new { success = false, message = "Map name is required" });
             }
+
+            Logger.LogInformation("Attempting to load map {MapName} on server {ServerId}", mapName, id);
 
             // Call the actual LoadMap RCON command
             var loadMapResult = await serversApiClient.Rcon.V1.ChangeMap(id, mapName);
@@ -447,7 +450,7 @@ public class ServerAdminController(
             if (!loadMapResult.IsSuccess)
             {
                 Logger.LogError("Failed to load map {MapName} on server {ServerId}", mapName, id);
-                return Json(new { success = false, message = "Failed to load map" });
+                return Json(new { success = false, message = "Failed to load map. Please check server logs for details." });
             }
 
             TrackSuccessTelemetry("MapLoaded", nameof(LoadMap), new Dictionary<string, string>
