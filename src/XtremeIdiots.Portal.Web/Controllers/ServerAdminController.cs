@@ -287,7 +287,7 @@ public class ServerAdminController(
             // Get current map image from repository
             string? mapImageUri = null;
             string? currentMapName = null;
-            
+
             // Try to get map name from status data (property name may vary)
             try
             {
