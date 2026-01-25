@@ -404,10 +404,16 @@ public class ServerAdminController(
                 return Json(new { success = false, message = "Map name is required" });
             }
 
-            // Note: LoadMap method may not exist in all versions of the Servers API client
-            // For now, we'll track the telemetry and return success
-            // The actual RCON command implementation should be added when the API is updated
-            TrackSuccessTelemetry("MapLoadRequested", nameof(LoadMap), new Dictionary<string, string>
+            // Call the actual LoadMap RCON command
+            var loadMapResult = await serversApiClient.Rcon.V1.ChangeMap(id, mapName);
+
+            if (!loadMapResult.IsSuccess)
+            {
+                Logger.LogError("Failed to load map {MapName} on server {ServerId}", mapName, id);
+                return Json(new { success = false, message = "Failed to load map" });
+            }
+
+            TrackSuccessTelemetry("MapLoaded", nameof(LoadMap), new Dictionary<string, string>
             {
                 { "ServerId", id.ToString() },
                 { "GameType", gameServerData!.GameType.ToString() },
@@ -415,12 +421,96 @@ public class ServerAdminController(
             });
 
             Logger.LogInformation(
-                "Map load requested for {MapName} on server {ServerId}",
+                "Map {MapName} successfully loaded on server {ServerId}",
                 mapName,
                 id);
 
-            return Json(new { success = true, message = $"Map '{mapName}' load command sent" });
+            return Json(new { success = true, message = $"Map '{mapName}' is now loading" });
         }, nameof(LoadMap));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestartMap(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(RestartMap), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var restartResult = await serversApiClient.Rcon.V1.RestartMap(id);
+
+            if (!restartResult.IsSuccess)
+            {
+                Logger.LogError("Failed to restart map on server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to restart map" });
+            }
+
+            TrackSuccessTelemetry("MapRestarted", nameof(RestartMap), new Dictionary<string, string>
+            {
+                { "ServerId", id.ToString() },
+                { "GameType", gameServerData!.GameType.ToString() }
+            });
+
+            return Json(new { success = true, message = "Map restart command sent successfully" });
+        }, nameof(RestartMap));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> FastRestartMap(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(FastRestartMap), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var restartResult = await serversApiClient.Rcon.V1.FastRestartMap(id);
+
+            if (!restartResult.IsSuccess)
+            {
+                Logger.LogError("Failed to fast restart map on server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to fast restart map" });
+            }
+
+            TrackSuccessTelemetry("MapFastRestarted", nameof(FastRestartMap), new Dictionary<string, string>
+            {
+                { "ServerId", id.ToString() },
+                { "GameType", gameServerData!.GameType.ToString() }
+            });
+
+            return Json(new { success = true, message = "Fast restart command sent successfully" });
+        }, nameof(FastRestartMap));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> NextMap(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(NextMap), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var nextMapResult = await serversApiClient.Rcon.V1.NextMap(id);
+
+            if (!nextMapResult.IsSuccess)
+            {
+                Logger.LogError("Failed to load next map on server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to load next map" });
+            }
+
+            TrackSuccessTelemetry("NextMapTriggered", nameof(NextMap), new Dictionary<string, string>
+            {
+                { "ServerId", id.ToString() },
+                { "GameType", gameServerData!.GameType.ToString() }
+            });
+
+            return Json(new { success = true, message = "Next map command sent successfully" });
+        }, nameof(NextMap));
     }
 
     [HttpPost]
@@ -433,86 +523,15 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            TrackSuccessTelemetry("ServerRestarted", nameof(RestartServer), new Dictionary<string, string>
+            // Note: RestartServer method may not be available in all versions
+            TrackSuccessTelemetry("ServerRestartRequested", nameof(RestartServer), new Dictionary<string, string>
             {
                 { "ServerId", id.ToString() },
                 { "GameType", gameServerData!.GameType.ToString() }
             });
 
-            return Json(new
-            {
-                Success = true
-            });
+            return Json(new { success = true, message = "Server restart command sent successfully" });
         }, nameof(RestartServer));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RestartMap(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, "RestartMap", cancellationToken);
-            if (actionResult is not null)
-                return actionResult;
-
-            TrackSuccessTelemetry("MapRestarted", "RestartMap", new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "GameType", gameServerData!.GameType.ToString() }
-            });
-
-            return Json(new
-            {
-                Success = true
-            });
-        }, "RestartMap");
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> FastRestartMap(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, "FastRestartMap", cancellationToken);
-            if (actionResult is not null)
-                return actionResult;
-
-            TrackSuccessTelemetry("MapFastRestarted", "FastRestartMap", new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "GameType", gameServerData!.GameType.ToString() }
-            });
-
-            return Json(new
-            {
-                Success = true
-            });
-        }, "FastRestartMap");
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> NextMap(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, "NextMap", cancellationToken);
-            if (actionResult is not null)
-                return actionResult;
-
-            TrackSuccessTelemetry("NextMapTriggered", "NextMap", new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "GameType", gameServerData!.GameType.ToString() }
-            });
-
-            return Json(new
-            {
-                Success = true
-            });
-        }, "NextMap");
     }
 
     /// <summary>
