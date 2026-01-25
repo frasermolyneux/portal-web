@@ -11,6 +11,50 @@
 
     <div class="alert alert-info" role="alert">
         <i class="fa-solid fa-circle-info"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
+        <button id="toggleRefresh" class="btn btn-sm btn-outline-info float-end" data-testid="rcon-toggle-refresh">
+            <i class="fa fa-pause"></i> Pause Refresh
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Server Status</h5>
+                    <div class="ibox-tools">
+                        <span class="badge bg-success" id="serverStatusIndicator">Online</span>
+                    </div>
+                </div>
+                <div class="ibox-content">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <div id="currentMapImageContainer">
+                                <img id="currentMapImage" src="/images/noimage.jpg" alt="Current Map" class="img-fluid" style="max-height: 150px; width: auto;">
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4 col-md-3">Hostname:</dt>
+                                <dd class="col-sm-8 col-md-9" id="serverHostname">@Model.Hostname</dd>
+                                
+                                <dt class="col-sm-4 col-md-3">Current Map:</dt>
+                                <dd class="col-sm-8 col-md-9">
+                                    <span id="currentMapName">Loading...</span>
+                                </dd>
+                                
+                                <dt class="col-sm-4 col-md-3">Players:</dt>
+                                <dd class="col-sm-8 col-md-9">
+                                    <span id="playerCount">0</span> / <span id="maxPlayers">0</span>
+                                </dd>
+                                
+                                <dt class="col-sm-4 col-md-3">Game Type:</dt>
+                                <dd class="col-sm-8 col-md-9">@Model.GameType</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row">
@@ -77,6 +121,22 @@
                     <h5>Map Control</h5>
                 </div>
                 <div class="ibox-content">
+                    
+                    <div class="mb-3">
+                        <h6 class="mb-2">Map Rotation</h6>
+                        <div id="mapRotationContainer" class="mb-3" style="display: none;">
+                            <div id="mapRotationCarousel" class="d-flex overflow-auto gap-2 pb-2" style="scroll-behavior: smooth;">
+                                <!-- Maps will be loaded here via JavaScript -->
+                            </div>
+                        </div>
+                        <div id="mapRotationLoading" class="text-center text-muted">
+                            <i class="fa fa-spinner fa-spin"></i> Loading map rotation...
+                        </div>
+                        <div id="mapRotationError" class="text-center text-danger" style="display: none;">
+                            Failed to load map rotation
+                        </div>
+                    </div>
+
                     <div class="d-grid gap-2">
                         <button id="restartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-map">
                             <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Restart Map
@@ -110,6 +170,67 @@
     <environment names="Staging,Production">
         <link rel="stylesheet" href="~/lib/toastr/toastr.min.css" />
     </environment>
+    
+    <style>
+        .map-card {
+            min-width: 200px;
+            max-width: 200px;
+            flex-shrink: 0;
+            border: 2px solid #e7eaec;
+            border-radius: 4px;
+            background-color: #fff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .map-card:hover {
+            border-color: #1ab394;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .map-card-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background-color: #f3f3f4;
+        }
+        
+        .map-card-body {
+            padding: 10px;
+        }
+        
+        .map-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .map-card-btn {
+            width: 100%;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
 }
 
 @* ReSharper disable once Razor.SectionNotResolved *@
@@ -128,10 +249,55 @@
 
         var lastChatMessageId = null;
         var chatRefreshInterval = 15000; // 15 seconds
+        var refreshEnabled = true;
+        var selectedPlayerSlot = null;
 
         $(document).ready(function () {
 
             var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
+
+            // Toggle refresh button
+            $('#toggleRefresh').click(function() {
+                refreshEnabled = !refreshEnabled;
+                $(this).find('i').toggleClass('fa-pause fa-play');
+                $(this).html(refreshEnabled ? 
+                    '<i class="fa fa-pause"></i> Pause Refresh' : 
+                    '<i class="fa fa-play"></i> Resume Refresh');
+                
+                if (!refreshEnabled) {
+                    $('.alert-info').addClass('alert-warning').removeClass('alert-info');
+                    $('.alert-warning .fa-circle-info').removeClass('fa-circle-info').addClass('fa-exclamation-triangle');
+                } else {
+                    $('.alert-warning').addClass('alert-info').removeClass('alert-warning');
+                    $('.alert-info .fa-exclamation-triangle').removeClass('fa-exclamation-triangle').addClass('fa-circle-info');
+                }
+            });
+
+            // Load server status
+            function loadServerStatus() {
+                if (!refreshEnabled) return;
+                
+                $.ajax({
+                    url: '/ServerAdmin/GetServerStatus/@Model.GameServerId',
+                    type: 'GET',
+                    success: function(result) {
+                        if (result.success) {
+                            $('#currentMapName').text(result.currentMap || 'Unknown');
+                            $('#playerCount').text(result.playerCount || 0);
+                            $('#maxPlayers').text(result.maxPlayers || 0);
+                            
+                            if (result.mapImageUri) {
+                                $('#currentMapImage').attr('src', result.mapImageUri);
+                            } else {
+                                $('#currentMapImage').attr('src', '/images/noimage.jpg');
+                            }
+                        }
+                    },
+                    error: function() {
+                        $('#serverStatusIndicator').removeClass('bg-success').addClass('bg-danger').text('Error');
+                    }
+                });
+            }
 
             $("#restartServer").click(function (e) {
                 e.preventDefault();
@@ -196,6 +362,88 @@
                     }
                 });
             });
+
+            // Load map rotation
+            function loadMapRotation() {
+                $.ajax({
+                    type: "GET",
+                    url: "/ServerAdmin/GetMapRotation/@Model.GameServerId",
+                    success: function (result) {
+                        if (result.success && result.maps && result.maps.length > 0) {
+                            var carousel = $('#mapRotationCarousel');
+                            carousel.empty();
+                            
+                            result.maps.forEach(function(map) {
+                                var mapCard = $('<div>', { class: 'map-card', 'data-testid': 'map-card-' + map.mapName });
+                                
+                                // Map image
+                                var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/noimage.jpg';
+                                var mapImg = $('<img>', { 
+                                    src: imgSrc, 
+                                    class: 'map-card-image',
+                                    alt: map.mapTitle,
+                                    onerror: "this.src='/images/noimage.jpg'"
+                                });
+                                
+                                // Map card body
+                                var cardBody = $('<div>', { class: 'map-card-body' });
+                                var mapTitle = $('<div>', { class: 'map-card-title', title: map.mapTitle }).text(map.mapTitle);
+                                var loadBtn = $('<button>', { 
+                                    class: 'btn btn-sm btn-primary map-card-btn load-map-btn',
+                                    'data-map-name': map.mapName,
+                                    'data-testid': 'load-map-' + map.mapName
+                                }).html('<i class="fa-solid fa-play"></i> Load Map');
+                                
+                                cardBody.append(mapTitle);
+                                cardBody.append(loadBtn);
+                                mapCard.append(mapImg);
+                                mapCard.append(cardBody);
+                                carousel.append(mapCard);
+                            });
+                            
+                            $('#mapRotationLoading').hide();
+                            $('#mapRotationContainer').show();
+                        } else {
+                            $('#mapRotationLoading').hide();
+                            $('#mapRotationError').text('No maps in rotation').show();
+                        }
+                    },
+                    error: function (xhr) {
+                        $('#mapRotationLoading').hide();
+                        $('#mapRotationError').text('Failed to load map rotation').show();
+                    }
+                });
+            }
+            
+            // Handle load map button clicks
+            $(document).on('click', '.load-map-btn', function(e) {
+                e.preventDefault();
+                var mapName = $(this).data('map-name');
+                
+                if (!confirm('Load map "' + mapName + '"?')) return;
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/ServerAdmin/LoadMap/@Model.GameServerId',
+                    data: { 
+                        mapName: mapName,
+                        __RequestVerificationToken: antiForgeryToken 
+                    },
+                    success: function(result) {
+                        if (result.success) {
+                            showToast('success', result.message || 'Map load command sent');
+                        } else {
+                            showToast('error', result.message || 'Failed to load map');
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast('error', 'Error loading map: ' + (xhr.responseText || 'Unknown error'));
+                    }
+                });
+            });
+            
+            // Initial load of map rotation
+            loadMapRotation();
 
             var playersTable = $('#dataTable').DataTable({
                 processing: true,
@@ -380,13 +628,23 @@
                 });
             });
 
-            // Reload player data every 10 seconds
+            // Reload player data every 10 seconds (respecting pause state)
             setInterval(function () {
-                playersTable.ajax.reload(null, false);
+                if (refreshEnabled && !selectedPlayerSlot) {
+                    playersTable.ajax.reload(null, false);
+                }
+            }, 10000);
+
+            // Reload server status every 10 seconds
+            setInterval(function () {
+                if (refreshEnabled) {
+                    loadServerStatus();
+                }
             }, 10000);
 
             // Load and refresh chat log
             function loadChatLog() {
+                if (!refreshEnabled) return;
                 var url = '/ServerAdmin/GetServerLiveChatLog/@Model.GameServerId?minutes=30';
                 if (lastChatMessageId) {
                     url += '&lastMessageId=' + lastChatMessageId;
@@ -455,9 +713,13 @@
 
             // Initial load
             loadChatLog();
+            loadServerStatus();
 
             // Refresh chat log periodically
             setInterval(loadChatLog, chatRefreshInterval);
+            
+            // Initial load of map rotation
+            loadMapRotation();
         });
 
     </script>
