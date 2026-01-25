@@ -36,6 +36,11 @@
     position: relative;
 }
 
+/* Full-width search filter for single search input layouts */
+.admin-actions-filters .filter-group.full-width-search {
+    flex: 1 1 100%;
+}
+
 .admin-actions-filters label.form-label {
     font-size: .68rem;
     text-transform: uppercase;
