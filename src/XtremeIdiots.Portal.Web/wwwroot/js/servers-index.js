@@ -29,8 +29,7 @@ $(document).ready(function () {
                 info: 'Showing _START_ to _END_ of _TOTAL_ servers',
                 emptyTable: 'No servers found'
             },
-            dom: 'lfrtip', // Default layout
-            searching: true // Enable searching
+            dom: 'lfrtip' // Default layout
         });
 
         // Connect custom search input to DataTable
