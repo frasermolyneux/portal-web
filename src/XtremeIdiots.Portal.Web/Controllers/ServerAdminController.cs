@@ -293,14 +293,23 @@ public class ServerAdminController(
             {
                 // Attempt to get map name from dynamic status object
                 var statusDynamic = (dynamic)status;
-                currentMapName = statusDynamic.MapName?.ToString() ??
-                    statusDynamic.Map?.ToString() ??
-                    "Unknown";
+
+                // Try various property names that different games might use
+                currentMapName = statusDynamic.MapName?.ToString() ?? statusDynamic.Map?.ToString() ?? statusDynamic.mapname?.ToString() ?? statusDynamic.map?.ToString() ?? null;
+
+                // Log what properties are available for debugging
+                if (string.IsNullOrWhiteSpace(currentMapName))
+                {
+                    var statusJson = JsonConvert.SerializeObject(status);
+                    Logger.LogDebug("Server status for {ServerId}: {Status}", id, statusJson);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                currentMapName = "Unknown";
+                Logger.LogWarning(ex, "Failed to extract map name from server status for {ServerId}", id);
             }
+
+            if (string.IsNullOrWhiteSpace(currentMapName)) currentMapName = "Unknown";
 
             if (!string.IsNullOrWhiteSpace(currentMapName) &&
                 currentMapName != "Unknown")
@@ -326,6 +335,34 @@ public class ServerAdminController(
                 gameType = gameServerData.GameType.ToString()
             });
         }, nameof(GetServerStatus));
+    }
+
+    /// <summary>
+    /// Gets raw server information from RCON for display in the UI tooltip
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with raw server info text</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetServerInfo(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerInfo), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+
+            if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null) return Json(new { success = false, message = "Failed to get server info" });
+
+            var status = getServerStatusResult.Result.Data;
+
+            // Convert the status object to a formatted string for display
+            var serverInfo = JsonConvert.SerializeObject(status, Formatting.Indented);
+
+            return Json(new { success = true, serverInfo });
+        }, nameof(GetServerInfo));
     }
 
     /// <summary>
