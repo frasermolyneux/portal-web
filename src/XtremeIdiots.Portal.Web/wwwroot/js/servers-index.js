@@ -3,7 +3,7 @@ $(document).ready(function () {
     const serversTable = $('#serversTable');
     
     if (serversTable.length && serversTable.find('tbody tr').length > 0) {
-        serversTable.DataTable({
+        const dataTable = serversTable.DataTable({
             responsive: {
                 details: {
                     type: 'inline',
@@ -25,41 +25,24 @@ $(document).ready(function () {
                 { targets: 7, responsivePriority: 2, orderable: false }  // Actions - not sortable
             ],
             language: {
-                search: '<i class="fa fa-search" aria-hidden="true"></i>',
                 lengthMenu: 'Show _MENU_ entries',
                 info: 'Showing _START_ to _END_ of _TOTAL_ servers',
                 emptyTable: 'No servers found'
             },
-            dom: 'lfrtip' // Default layout
+            dom: 'lfrtip', // Default layout
+            searching: true // Enable searching
         });
 
-        // Move search box outside and make it full width
-        setTimeout(function() {
-            const searchWrapper = $('#serversTable_filter');
-            const tableWrapper = $('.ibox-content');
-            
-            if (searchWrapper.length && tableWrapper.length) {
-                // Create a full-width search container
-                const searchContainer = $('<div class="datatable-search-wrapper mb-3"></div>');
-                searchContainer.append(searchWrapper);
-                tableWrapper.before(searchContainer);
-                
-                // Style the search input to be full width
-                const searchInput = searchWrapper.find('input');
-                if (searchInput.length) {
-                    searchInput.addClass('form-control').css('width', '100%');
-                    searchWrapper.css('width', '100%');
-                    
-                    // Update label
-                    const label = searchWrapper.find('label');
-                    if (label.length) {
-                        label.contents().filter(function() {
-                            return this.nodeType === 3;
-                        }).remove();
-                        label.prepend('Search: ');
-                    }
-                }
-            }
-        }, 100);
+        // Connect custom search input to DataTable
+        const searchInput = $('#serversSearchInput');
+        if (searchInput.length) {
+            // Bind the custom search input to DataTable search
+            searchInput.on('keyup search input', function () {
+                dataTable.search(this.value).draw();
+            });
+        }
+
+        // Hide the default DataTables search box
+        $('.dataTables_filter').hide();
     }
 });

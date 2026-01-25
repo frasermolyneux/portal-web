@@ -10,6 +10,12 @@
 
     <div class="row">
         <div class="col-12">
+            <div class="admin-actions-filters mb-2" id="serversFilters">
+                <div class="filter-group" style="flex: 1 1 100%;">
+                    <label for="serversSearchInput" class="form-label">Search Servers</label>
+                    <input type="text" id="serversSearchInput" class="form-control" placeholder="Search by title, hostname, map, or mod..." autocomplete="off" />
+                </div>
+            </div>
 
             <div class="container-fluid">
                 <div class="ibox">
@@ -102,4 +108,8 @@
 
 @section Scripts {
     <script src="~/js/servers-index.js" asp-append-version="true"></script>
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin-actions.css" />
 }
