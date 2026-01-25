@@ -288,12 +288,12 @@
                                 var mapCard = $('<div>', { class: 'map-card', 'data-testid': 'map-card-' + map.mapName });
                                 
                                 // Map image
-                                var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/maps/default-map.jpg';
+                                var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/noimage.jpg';
                                 var mapImg = $('<img>', { 
                                     src: imgSrc, 
                                     class: 'map-card-image',
                                     alt: map.mapTitle,
-                                    onerror: "this.src='/images/maps/default-map.jpg'"
+                                    onerror: "this.src='/images/noimage.jpg'"
                                 });
                                 
                                 // Map card body
