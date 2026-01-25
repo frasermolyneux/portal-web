@@ -261,6 +261,74 @@ public class ServerAdminController(
     }
 
     /// <summary>
+    /// Gets the server status including current map and player count
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with server status data</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetServerStatus(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerStatus), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+
+            if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get server status" });
+            }
+
+            var status = getServerStatusResult.Result.Data;
+
+            // Get current map image from repository
+            string? mapImageUri = null;
+            string? currentMapName = null;
+            
+            // Try to get map name from status data (property name may vary)
+            try
+            {
+                // Attempt to get map name from dynamic status object
+                var statusDynamic = (dynamic)status;
+                currentMapName = statusDynamic.MapName?.ToString() ??
+                    statusDynamic.Map?.ToString() ??
+                    "Unknown";
+            }
+            catch
+            {
+                currentMapName = "Unknown";
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentMapName) &&
+                currentMapName != "Unknown")
+            {
+                var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
+                    gameServerData!.GameType,
+                    [currentMapName],
+                    null, null, 0, 1, MapsOrder.MapNameAsc, cancellationToken);
+
+                mapImageUri = mapsApiResponse.Result?.Data?.Items?.FirstOrDefault()?.MapImageUri;
+            }
+
+            var playerCount = status.Players?.Count ?? 0;
+
+            return Json(new
+            {
+                success = true,
+                currentMap = currentMapName,
+                mapImageUri,
+                playerCount,
+                maxPlayers = 32, // Default, could be from server config
+                hostname = gameServerData!.Hostname,
+                gameType = gameServerData.GameType.ToString()
+            });
+        }, nameof(GetServerStatus));
+    }
+
+    /// <summary>
     /// Gets the map rotation for a specific game server
     /// </summary>
     /// <param name="id">Game server ID</param>
