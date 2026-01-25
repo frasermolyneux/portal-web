@@ -9,20 +9,36 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <div class="alert alert-info" role="alert">
-        <i class="fa-solid fa-circle-info"></i> Live RCON View - Player information is enriched with profiles, geolocation, and risk assessment data
-        <button id="toggleRefresh" class="btn btn-sm btn-outline-info float-end" data-testid="rcon-toggle-refresh">
-            <i class="fa fa-pause"></i> Pause Refresh
-        </button>
-    </div>
-
     <div class="row">
         <div class="col-12">
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5>Server Status</h5>
+                    <h5>
+                        <game-type-icon game="@Model.GameType" size="20" class="me-2" /> Server Status
+                        <button id="serverInfoBtn" class="btn btn-sm btn-link p-0 ms-2" type="button" 
+                                data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true"
+                                title="<div class='text-start'><strong>Server Information</strong><br/><span id='serverInfoTooltip'>Loading...</span></div>"
+                                data-testid="rcon-server-info-btn">
+                            <i class="fa fa-info-circle text-primary"></i>
+                        </button>
+                    </h5>
                     <div class="ibox-tools">
-                        <span class="badge bg-success" id="serverStatusIndicator">Online</span>
+                        <button id="toggleRefresh" class="btn btn-sm btn-outline-info me-2" data-testid="rcon-toggle-refresh">
+                            <i class="fa fa-pause"></i> Pause Refresh
+                        </button>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-testid="rcon-server-control-dropdown">
+                                <i class="fa-solid fa-cog"></i> Server Control
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <button id="restartServer" class="dropdown-item" type="button" data-testid="rcon-btn-restart-server">
+                                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Restart Server
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        <span class="badge bg-success ms-2" id="serverStatusIndicator">Online</span>
                     </div>
                 </div>
                 <div class="ibox-content">
@@ -46,9 +62,6 @@
                                 <dd class="col-sm-8 col-md-9">
                                     <span id="playerCount">0</span> / <span id="maxPlayers">0</span>
                                 </dd>
-                                
-                                <dt class="col-sm-4 col-md-3">Game Type:</dt>
-                                <dd class="col-sm-8 col-md-9">@Model.GameType</dd>
                             </dl>
                         </div>
                     </div>
@@ -102,19 +115,6 @@
         </div>
 
         <div class="col-lg-4 col-md-12">
-
-            <div class="ibox">
-                <div class="ibox-title">
-                    <h5>Server Control</h5>
-                </div>
-                <div class="ibox-content">
-                    <div class="d-grid">
-                        <button id="restartServer" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-server">
-                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Restart Server
-                        </button>
-                    </div>
-                </div>
-            </div>
 
             <div class="ibox">
                 <div class="ibox-title">
@@ -251,10 +251,36 @@
         var chatRefreshInterval = 15000; // 15 seconds
         var refreshEnabled = true;
         var selectedPlayerSlot = null;
+        
+        // Helper function to show toast notifications
+        function showToast(type, message, title) {
+            toastr.options = {
+                closeButton: true,
+                progressBar: true,
+                positionClass: "toast-top-right",
+                timeOut: 5000
+            };
+            
+            if (type === 'success') {
+                toastr.success(message, title || 'Success');
+            } else if (type === 'error') {
+                toastr.error(message, title || 'Error');
+            } else if (type === 'warning') {
+                toastr.warning(message, title || 'Warning');
+            } else {
+                toastr.info(message, title || 'Info');
+            }
+        }
 
         $(document).ready(function () {
 
             var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
+            
+            // Initialize Bootstrap tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
 
             // Toggle refresh button
             $('#toggleRefresh').click(function() {
@@ -263,15 +289,34 @@
                 $(this).html(refreshEnabled ? 
                     '<i class="fa fa-pause"></i> Pause Refresh' : 
                     '<i class="fa fa-play"></i> Resume Refresh');
-                
-                if (!refreshEnabled) {
-                    $('.alert-info').addClass('alert-warning').removeClass('alert-info');
-                    $('.alert-warning .fa-circle-info').removeClass('fa-circle-info').addClass('fa-exclamation-triangle');
-                } else {
-                    $('.alert-warning').addClass('alert-info').removeClass('alert-warning');
-                    $('.alert-info .fa-exclamation-triangle').removeClass('fa-exclamation-triangle').addClass('fa-circle-info');
-                }
             });
+            
+            // Load server info for tooltip
+            function loadServerInfo() {
+                $.ajax({
+                    url: '/ServerAdmin/GetServerInfo/@Model.GameServerId',
+                    type: 'GET',
+                    success: function(result) {
+                        if (result.success && result.serverInfo) {
+                            var infoHtml = '<pre class="mb-0" style="font-size: 10px; max-width: 400px;">' + 
+                                escapeHtml(result.serverInfo) + '</pre>';
+                            $('#serverInfoBtn').attr('data-bs-original-title', 
+                                '<div class="text-start"><strong>Server Information</strong><br/>' + infoHtml + '</div>');
+                            
+                            // Update tooltip if already shown
+                            var tooltip = bootstrap.Tooltip.getInstance(document.getElementById('serverInfoBtn'));
+                            if (tooltip) {
+                                tooltip.setContent({
+                                    '.tooltip-inner': '<div class="text-start"><strong>Server Information</strong><br/>' + infoHtml + '</div>'
+                                });
+                            }
+                        }
+                    },
+                    error: function() {
+                        console.error('Failed to load server info');
+                    }
+                });
+            }
 
             // Load server status
             function loadServerStatus() {
@@ -714,6 +759,7 @@
             // Initial load
             loadChatLog();
             loadServerStatus();
+            loadServerInfo();
 
             // Refresh chat log periodically
             setInterval(loadChatLog, chatRefreshInterval);
