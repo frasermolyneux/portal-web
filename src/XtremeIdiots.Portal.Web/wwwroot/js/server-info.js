@@ -15,9 +15,9 @@ $(document).ready(function () {
             searching: false,
             order: [[0, 'asc']], // Num ascending
             columnDefs: [
-                { targets: 0, responsivePriority: 3 }, // Num - medium priority
-                { targets: 1, responsivePriority: 1 }, // Name - always visible
-                { targets: 2, responsivePriority: 2 }  // Score - high priority
+                { targets: 0, responsivePriority: 3, orderable: true }, // Num
+                { targets: 1, responsivePriority: 1, orderable: true }, // Name - always visible
+                { targets: 2, responsivePriority: 2, orderable: true }  // Score
             ]
         });
     }
@@ -37,10 +37,10 @@ $(document).ready(function () {
             pageLength: 25,
             order: [[0, 'asc']], // Name ascending
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Name - always visible
-                { targets: 1, responsivePriority: 4 }, // Files - lower priority
-                { targets: 2, responsivePriority: 3 }, // Popularity - medium priority
-                { targets: 3, responsivePriority: 5 }  // Image - low priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Name - always visible
+                { targets: 1, responsivePriority: 4, orderable: false }, // Files - not sortable
+                { targets: 2, responsivePriority: 3, orderable: false }, // Popularity - not sortable
+                { targets: 3, responsivePriority: 5, orderable: false }  // Image - not sortable
             ]
         });
     }

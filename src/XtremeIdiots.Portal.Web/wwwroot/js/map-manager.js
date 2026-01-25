@@ -15,10 +15,10 @@ $(document).ready(function () {
             searching: false,
             order: [[0, 'asc']], // Title ascending
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Title - always visible
-                { targets: 1, responsivePriority: 3 }, // Game Mode - medium priority
-                { targets: 2, responsivePriority: 4 }, // Count - lower priority
-                { targets: 3, responsivePriority: 2 }  // Actions - high priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Title - always visible
+                { targets: 1, responsivePriority: 3, orderable: false }, // Game Mode - not sortable
+                { targets: 2, responsivePriority: 4, orderable: false }, // Count - not sortable
+                { targets: 3, responsivePriority: 2, orderable: false }  // Actions - not sortable
             ]
         });
     }
@@ -38,11 +38,11 @@ $(document).ready(function () {
             pageLength: 25,
             order: [[0, 'asc']], // Name ascending
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Name - always visible
-                { targets: 1, responsivePriority: 4 }, // Files - lower priority
-                { targets: 2, responsivePriority: 3 }, // Remote Status - medium priority
-                { targets: 3, responsivePriority: 5 }, // Popularity - low priority
-                { targets: 4, responsivePriority: 6 }  // Image - very low priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Name - always visible
+                { targets: 1, responsivePriority: 4, orderable: false }, // Files - not sortable
+                { targets: 2, responsivePriority: 3, orderable: false }, // Remote Status - not sortable
+                { targets: 3, responsivePriority: 5, orderable: false }, // Popularity - not sortable
+                { targets: 4, responsivePriority: 6, orderable: false }  // Image - not sortable
             ]
         });
     }
@@ -62,11 +62,11 @@ $(document).ready(function () {
             pageLength: 25,
             order: [[0, 'asc']], // Name ascending
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // Name - always visible
-                { targets: 1, responsivePriority: 4 }, // Path - lower priority
-                { targets: 2, responsivePriority: 3 }, // Rotation Status - medium priority
-                { targets: 3, responsivePriority: 5 }, // Modified - low priority
-                { targets: 4, responsivePriority: 2 }  // Actions - high priority
+                { targets: 0, responsivePriority: 1, orderable: true }, // Name - always visible
+                { targets: 1, responsivePriority: 4, orderable: false }, // Path - not sortable
+                { targets: 2, responsivePriority: 3, orderable: false }, // Rotation Status - not sortable
+                { targets: 3, responsivePriority: 5, orderable: false }, // Modified - not sortable
+                { targets: 4, responsivePriority: 2, orderable: false }  // Actions - not sortable
             ]
         });
     }

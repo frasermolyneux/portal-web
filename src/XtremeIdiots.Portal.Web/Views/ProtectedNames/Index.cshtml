@@ -5,23 +5,36 @@
     ViewData["Title"] = "Protected Names";
 }
 
-<div class="page-header">
-    <h2>Protected Names</h2>
-    <p class="text-muted">Usernames exclusively owned by specific players. Unauthorized use triggers automatic bans.</p>
-    <hr />
-    <div class="mb-3">
-        <i class="fa-solid fa-shield"></i>
-        <span class="ms-1">Total Protected Names: @(Model?.ProtectedNames?.Count ?? 0)</span>
-    </div>
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">All Protected Names</h3>
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="page-header">
+        <h2>Protected Names</h2>
+        <p class="text-muted">Usernames exclusively owned by specific players. Unauthorized use triggers automatic bans.</p>
+        <hr />
+        <div class="mb-3">
+            <i class="fa-solid fa-shield"></i>
+            <span class="ms-1">Total Protected Names: @(Model?.ProtectedNames?.Count ?? 0)</span>
         </div>
-        <div class="card-body">
+    </div>
+    <div class="admin-actions-filters mb-2" id="protectedNamesFilters">
+        <div class="filter-group">
+            <label class="form-label" for="resetFilters">Reset</label>
+            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+        </div>
+    </div>
+    <div class="ibox">
+        <div class="ibox-title">
+            <h5>All Protected Names</h5>
+        </div>
+        <div class="ibox-content">
             <partial name="_ProtectedNamesTable" model="@(Model?.ProtectedNames ?? new List<ProtectedNameDto>())" />
         </div>
     </div>
+</div>
 
 @section Scripts {
     <script src="~/js/protected-names-table.js" asp-append-version="true"></script>
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin-actions.css" />
 }

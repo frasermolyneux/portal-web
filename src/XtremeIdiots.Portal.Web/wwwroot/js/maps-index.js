@@ -39,11 +39,11 @@ $(document).ready(function () {
             }
         },
         columns: [
-            { data: 'gameType', name: 'gameType', sortable: true, render: function (data) { return gameTypeIcon(data); } },
-            { data: 'mapName', name: 'mapName', sortable: true },
-            { data: 'mapFiles', name: 'mapFiles', sortable: false, render: renderMapFiles },
-            { data: null, name: 'popularity', sortable: true, render: renderPopularity },
-            { data: null, sortable: false, render: renderImage }
+            { data: 'gameType', name: 'gameType', orderable: true, render: function (data) { return gameTypeIcon(data); } },
+            { data: 'mapName', name: 'mapName', orderable: true },
+            { data: 'mapFiles', name: 'mapFiles', orderable: false, render: renderMapFiles },
+            { data: null, name: 'popularity', orderable: true, render: renderPopularity, className: 'popularity-column' },
+            { data: null, orderable: false, render: renderImage }
         ]
     });
 

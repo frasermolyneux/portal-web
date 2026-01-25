@@ -15,9 +15,9 @@ $(document).ready(function () {
             searching: false,
             order: [[1, 'desc']], // Last Sync desc
             columnDefs: [
-                { targets: 0, responsivePriority: 1 }, // File Path - always visible
-                { targets: 1, responsivePriority: 3 }, // Last Sync - medium priority
-                { targets: 2, responsivePriority: 2 }  // Actions - high priority
+                { targets: 0, responsivePriority: 1, orderable: false }, // File Path - not sortable
+                { targets: 1, responsivePriority: 3, orderable: true }, // Last Sync
+                { targets: 2, responsivePriority: 2, orderable: false }  // Actions - not sortable
             ]
         });
     }
