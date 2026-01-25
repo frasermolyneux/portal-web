@@ -77,6 +77,22 @@
                     <h5>Map Control</h5>
                 </div>
                 <div class="ibox-content">
+                    
+                    <div class="mb-3">
+                        <h6 class="mb-2">Map Rotation</h6>
+                        <div id="mapRotationContainer" class="mb-3" style="display: none;">
+                            <div id="mapRotationCarousel" class="d-flex overflow-auto gap-2 pb-2" style="scroll-behavior: smooth;">
+                                <!-- Maps will be loaded here via JavaScript -->
+                            </div>
+                        </div>
+                        <div id="mapRotationLoading" class="text-center text-muted">
+                            <i class="fa fa-spinner fa-spin"></i> Loading map rotation...
+                        </div>
+                        <div id="mapRotationError" class="text-center text-danger" style="display: none;">
+                            Failed to load map rotation
+                        </div>
+                    </div>
+
                     <div class="d-grid gap-2">
                         <button id="restartMap" class="btn btn-primary" type="button" data-testid="rcon-btn-restart-map">
                             <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Restart Map
@@ -110,6 +126,67 @@
     <environment names="Staging,Production">
         <link rel="stylesheet" href="~/lib/toastr/toastr.min.css" />
     </environment>
+    
+    <style>
+        .map-card {
+            min-width: 200px;
+            max-width: 200px;
+            flex-shrink: 0;
+            border: 2px solid #e7eaec;
+            border-radius: 4px;
+            background-color: #fff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .map-card:hover {
+            border-color: #1ab394;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .map-card-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background-color: #f3f3f4;
+        }
+        
+        .map-card-body {
+            padding: 10px;
+        }
+        
+        .map-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .map-card-btn {
+            width: 100%;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        #mapRotationCarousel::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
 }
 
 @* ReSharper disable once Razor.SectionNotResolved *@
@@ -196,6 +273,88 @@
                     }
                 });
             });
+
+            // Load map rotation
+            function loadMapRotation() {
+                $.ajax({
+                    type: "GET",
+                    url: "/ServerAdmin/GetMapRotation/@Model.GameServerId",
+                    success: function (result) {
+                        if (result.success && result.maps && result.maps.length > 0) {
+                            var carousel = $('#mapRotationCarousel');
+                            carousel.empty();
+                            
+                            result.maps.forEach(function(map) {
+                                var mapCard = $('<div>', { class: 'map-card', 'data-testid': 'map-card-' + map.mapName });
+                                
+                                // Map image
+                                var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/maps/default-map.jpg';
+                                var mapImg = $('<img>', { 
+                                    src: imgSrc, 
+                                    class: 'map-card-image',
+                                    alt: map.mapTitle,
+                                    onerror: "this.src='/images/maps/default-map.jpg'"
+                                });
+                                
+                                // Map card body
+                                var cardBody = $('<div>', { class: 'map-card-body' });
+                                var mapTitle = $('<div>', { class: 'map-card-title', title: map.mapTitle }).text(map.mapTitle);
+                                var loadBtn = $('<button>', { 
+                                    class: 'btn btn-sm btn-primary map-card-btn load-map-btn',
+                                    'data-map-name': map.mapName,
+                                    'data-testid': 'load-map-' + map.mapName
+                                }).html('<i class="fa-solid fa-play"></i> Load Map');
+                                
+                                cardBody.append(mapTitle);
+                                cardBody.append(loadBtn);
+                                mapCard.append(mapImg);
+                                mapCard.append(cardBody);
+                                carousel.append(mapCard);
+                            });
+                            
+                            $('#mapRotationLoading').hide();
+                            $('#mapRotationContainer').show();
+                        } else {
+                            $('#mapRotationLoading').hide();
+                            $('#mapRotationError').text('No maps in rotation').show();
+                        }
+                    },
+                    error: function (xhr) {
+                        $('#mapRotationLoading').hide();
+                        $('#mapRotationError').text('Failed to load map rotation').show();
+                    }
+                });
+            }
+            
+            // Handle load map button clicks
+            $(document).on('click', '.load-map-btn', function(e) {
+                e.preventDefault();
+                var mapName = $(this).data('map-name');
+                
+                if (!confirm('Load map "' + mapName + '"?')) return;
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/ServerAdmin/LoadMap/@Model.GameServerId',
+                    data: { 
+                        mapName: mapName,
+                        __RequestVerificationToken: antiForgeryToken 
+                    },
+                    success: function(result) {
+                        if (result.success) {
+                            showToast('success', result.message || 'Map load command sent');
+                        } else {
+                            showToast('error', result.message || 'Failed to load map');
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast('error', 'Error loading map: ' + (xhr.responseText || 'Unknown error'));
+                    }
+                });
+            });
+            
+            // Initial load of map rotation
+            loadMapRotation();
 
             var playersTable = $('#dataTable').DataTable({
                 processing: true,
