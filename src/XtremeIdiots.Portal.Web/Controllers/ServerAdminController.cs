@@ -346,9 +346,11 @@ public class ServerAdminController(
                 { "MapName", mapName }
             });
 
-            Logger.LogInformation("Map load requested for {MapName} on server {ServerId}",
-                mapName, id);
-            
+            Logger.LogInformation(
+                "Map load requested for {MapName} on server {ServerId}",
+                mapName,
+                id);
+
             return Json(new { success = true, message = $"Map '{mapName}' load command sent" });
         }, nameof(LoadMap));
     }
