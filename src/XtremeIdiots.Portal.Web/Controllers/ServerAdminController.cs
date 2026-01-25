@@ -523,8 +523,15 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            // Note: RestartServer method may not be available in all versions
-            TrackSuccessTelemetry("ServerRestartRequested", nameof(RestartServer), new Dictionary<string, string>
+            var restartResult = await serversApiClient.Rcon.V1.Restart(id);
+
+            if (!restartResult.IsSuccess)
+            {
+                Logger.LogError("Failed to restart server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to restart server" });
+            }
+
+            TrackSuccessTelemetry("ServerRestarted", nameof(RestartServer), new Dictionary<string, string>
             {
                 { "ServerId", id.ToString() },
                 { "GameType", gameServerData!.GameType.ToString() }
