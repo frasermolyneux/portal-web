@@ -436,9 +436,21 @@ public class ServerAdminController(
                 message = message[..255];
             }
 
-            // For now, return a message that this feature is not yet implemented
-            // TODO: Add ExecuteCommand or Say method to the Servers API when available
-            return Json(new { success = false, message = "Say command is not available - command execution not yet implemented in the API" });
+            var sayResult = await serversApiClient.Rcon.V1.Say(id, message);
+
+            if (!sayResult.IsSuccess)
+            {
+                Logger.LogWarning("Failed to send say command to server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to send message to server" });
+            }
+
+            TrackSuccessTelemetry("SayCommandSent", nameof(SendSayCommand), new Dictionary<string, string>
+            {
+                { "GameServerId", id.ToString() },
+                { "MessageLength", message.Length.ToString() }
+            });
+
+            return Json(new { success = true, message = "Message sent to server" });
         }, nameof(SendSayCommand));
     }
 
