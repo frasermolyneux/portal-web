@@ -516,7 +516,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/RestartServer/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Server restart command sent successfully');
                     },
@@ -532,7 +532,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/RestartMap/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Map restart command sent successfully');
                     },
@@ -548,7 +548,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/FastRestartMap/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Fast restart command sent successfully');
                     },
@@ -564,7 +564,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/NextMap/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Next map command sent successfully');
                     },
