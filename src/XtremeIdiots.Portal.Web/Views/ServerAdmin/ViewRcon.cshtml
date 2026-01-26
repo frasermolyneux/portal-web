@@ -11,6 +11,16 @@
 
     <div class="row">
         <div class="col-12">
+            <div class="d-flex justify-content-end mb-2">
+                <button id="toggleRefresh" class="btn btn-sm btn-outline-info" data-testid="rcon-toggle-refresh">
+                    <i class="fa fa-pause"></i> Pause Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
             <div class="ibox">
                 <div class="ibox-title">
                     <h5>
@@ -23,22 +33,7 @@
                         </button>
                     </h5>
                     <div class="ibox-tools">
-                        <button id="toggleRefresh" class="btn btn-sm btn-outline-info me-2" data-testid="rcon-toggle-refresh">
-                            <i class="fa fa-pause"></i> Pause Refresh
-                        </button>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-testid="rcon-server-control-dropdown">
-                                <i class="fa-solid fa-cog"></i> Server Control
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
-                                    <button id="restartServer" class="dropdown-item" type="button" data-testid="rcon-btn-restart-server">
-                                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Restart Server
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                        <span class="badge bg-success ms-2" id="serverStatusIndicator">Online</span>
+                        <span class="badge bg-success" id="serverStatusIndicator">Online</span>
                     </div>
                 </div>
                 <div class="ibox-content">
@@ -63,6 +58,22 @@
                                     <span id="playerCount">0</span> / <span id="maxPlayers">0</span>
                                 </dd>
                             </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="ibox-footer">
+                    <div class="d-flex justify-content-end">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-testid="rcon-server-control-dropdown">
+                                <i class="fa-solid fa-cog"></i> Server Control
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <button id="restartServer" class="dropdown-item" type="button" data-testid="rcon-btn-restart-server">
+                                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Restart Server
+                                    </button>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
