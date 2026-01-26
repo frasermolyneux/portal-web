@@ -352,17 +352,120 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+            var getServerInfoResult = await serversApiClient.Rcon.V1.GetServerInfo(id);
 
-            if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null) return Json(new { success = false, message = "Failed to get server info" });
+            if (!getServerInfoResult.IsSuccess || getServerInfoResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get server info" });
+            }
 
-            var status = getServerStatusResult.Result.Data;
-
-            // Convert the status object to a formatted string for display
-            var serverInfo = JsonConvert.SerializeObject(status, Formatting.Indented);
+            var serverInfo = getServerInfoResult.Result.Data;
 
             return Json(new { success = true, serverInfo });
         }, nameof(GetServerInfo));
+    }
+
+    /// <summary>
+    /// Gets raw system information from RCON for display in the UI
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with raw system info text</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetSystemInfo(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetSystemInfo), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var getSystemInfoResult = await serversApiClient.Rcon.V1.GetSystemInfo(id);
+
+            if (!getSystemInfoResult.IsSuccess || getSystemInfoResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get system info" });
+            }
+
+            var systemInfo = getSystemInfoResult.Result.Data;
+
+            return Json(new { success = true, systemInfo });
+        }, nameof(GetSystemInfo));
+    }
+
+    /// <summary>
+    /// Gets raw command list from RCON for display in the UI
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with raw command list text</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetCommandList(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCommandList), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var getCommandListResult = await serversApiClient.Rcon.V1.GetCommandList(id);
+
+            if (!getCommandListResult.IsSuccess || getCommandListResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get command list" });
+            }
+
+            var commandList = getCommandListResult.Result.Data;
+
+            return Json(new { success = true, commandList });
+        }, nameof(GetCommandList));
+    }
+
+    /// <summary>
+    /// Sends a 'say' command to broadcast a message to all players on the server
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="message">Message to broadcast</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON result indicating success or failure</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendSayCommand(Guid id, string message, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(SendSayCommand), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return Json(new { success = false, message = "Message cannot be empty" });
+            }
+
+            // Limit message length
+            message = message.Trim();
+            if (message.Length > 255)
+            {
+                message = message[..255];
+            }
+
+            var sayResult = await serversApiClient.Rcon.V1.Say(id, message);
+
+            if (!sayResult.IsSuccess)
+            {
+                Logger.LogWarning("Failed to send say command to server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to send message to server" });
+            }
+
+            TrackSuccessTelemetry("SayCommandSent", nameof(SendSayCommand), new Dictionary<string, string>
+            {
+                { "GameServerId", id.ToString() },
+                { "MessageLength", message.Length.ToString() }
+            });
+
+            return Json(new { success = true, message = "Message sent to server" });
+        }, nameof(SendSayCommand));
     }
 
     /// <summary>
