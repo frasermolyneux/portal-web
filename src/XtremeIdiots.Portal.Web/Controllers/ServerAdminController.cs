@@ -380,17 +380,14 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+            var getSystemInfoResult = await serversApiClient.Rcon.V1.GetSystemInfo(id);
 
-            if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null)
+            if (!getSystemInfoResult.IsSuccess || getSystemInfoResult.Result?.Data is null)
             {
                 return Json(new { success = false, message = "Failed to get system info" });
             }
 
-            var status = getServerStatusResult.Result.Data;
-
-            // Convert the status object to a formatted string for display
-            var systemInfo = JsonConvert.SerializeObject(status, Formatting.Indented);
+            var systemInfo = getSystemInfoResult.Result.Data;
 
             return Json(new { success = true, systemInfo });
         }, nameof(GetSystemInfo));
