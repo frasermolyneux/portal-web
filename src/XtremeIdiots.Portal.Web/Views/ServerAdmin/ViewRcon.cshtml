@@ -133,7 +133,7 @@
                             <span class="badge bg-secondary ms-2" id="chatLogRefresh" title="Last refresh time">Just now</span>
                         </div>
                     </div>
-                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column-reverse;" id="chatLogContainer">
+                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column-reverse;" id="chatLogContainer" role="log" aria-live="polite" aria-label="Live chat messages">
                         <div id="chatMessages">
                             <p class="text-muted text-center">Loading chat messages...</p>
                         </div>
@@ -212,7 +212,7 @@
     
     <style>
         .map-card {
-            min-width: 200px;
+            width: min(90vw, 200px);
             max-width: 200px;
             flex-shrink: 0;
             border: 2px solid #e7eaec;
@@ -269,6 +269,17 @@
         #mapRotationCarousel::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+        
+        /* Mobile responsive improvements */
+        @@media (max-width: 768px) {
+            .map-card {
+                width: min(80vw, 180px);
+            }
+            
+            #chatLogContainer {
+                max-height: clamp(250px, 40vh, 400px) !important;
+            }
+        }
     </style>
 }
 
@@ -286,13 +297,24 @@
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
     <script type="text/javascript">
 
-        var lastChatMessageId = null;
-        var chatRefreshInterval = 15000; // 15 seconds
-        var refreshEnabled = true;
-        var selectedPlayerSlot = null;
+        // Configuration constants
+        const REFRESH_INTERVALS = {
+            CHAT: 15000,        // 15 seconds
+            PLAYERS: 10000,     // 10 seconds
+            SERVER_STATUS: 10000, // 10 seconds
+            BADGES: 5000        // 5 seconds
+        };
+
+        // State variables
+        let lastChatMessageId = null;
+        let refreshEnabled = true;
+        let selectedPlayerSlot = null;
+        
+        // Track active intervals for cleanup
+        const activeIntervals = [];
         
         // Track last refresh times for each section
-        var lastRefreshTimes = {
+        const lastRefreshTimes = {
             serverStatus: new Date(),
             players: new Date(),
             chatLog: new Date(),
@@ -301,7 +323,7 @@
         
         // Helper function to update refresh badge
         function updateRefreshBadge(badgeId, lastRefreshTime) {
-            var badge = $('#' + badgeId);
+            const badge = $('#' + badgeId);
             if (badge.length && lastRefreshTime) {
                 badge.text('Updated ' + timeAgo(formatDateTimeForTimeAgo(lastRefreshTime)));
             }
@@ -309,13 +331,34 @@
         
         // Helper to format Date object for timeAgo function
         function formatDateTimeForTimeAgo(date) {
-            var year = date.getFullYear();
-            var month = String(date.getMonth() + 1).padStart(2, '0');
-            var day = String(date.getDate()).padStart(2, '0');
-            var hours = String(date.getHours()).padStart(2, '0');
-            var minutes = String(date.getMinutes()).padStart(2, '0');
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
             return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
         }
+        
+        // AJAX error handler
+        function handleAjaxError(xhr, textStatus, errorThrown) {
+            console.error('AJAX Error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown });
+            // Don't show toast for expected 404s or when paused
+            if (xhr.status !== 404 && refreshEnabled) {
+                showToast('error', 'Failed to load data. Please refresh the page.');
+            }
+        }
+        
+        // Cleanup function for page unload
+        function cleanup() {
+            // Clear all active intervals
+            activeIntervals.forEach(intervalId => clearInterval(intervalId));
+            activeIntervals.splice(0); // Clear array
+            console.log('Cleaned up all intervals');
+        }
+        
+        // Register cleanup on page unload
+        window.addEventListener('beforeunload', cleanup);
+        window.addEventListener('pagehide', cleanup);
         
         // Update all refresh badges
         function updateAllRefreshBadges() {
@@ -358,7 +401,6 @@
             // Toggle refresh button
             $('#toggleRefresh').click(function() {
                 refreshEnabled = !refreshEnabled;
-                $(this).find('i').toggleClass('fa-pause fa-play');
                 $(this).html(refreshEnabled ? 
                     '<i class="fa fa-pause"></i> Pause Refresh' : 
                     '<i class="fa fa-play"></i> Resume Refresh');
@@ -516,7 +558,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/RestartServer/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Server restart command sent successfully');
                     },
@@ -532,7 +574,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/RestartMap/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Map restart command sent successfully');
                     },
@@ -548,7 +590,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/FastRestartMap/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Fast restart command sent successfully');
                     },
@@ -564,7 +606,7 @@
                 $.ajax({
                     type: "POST",
                     url: "/ServerAdmin/NextMap/@Model.GameServerId",
-                    headers: { 'RequestVerificationToken': antiForgeryToken },
+                    data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Next map command sent successfully');
                     },
@@ -856,7 +898,7 @@
                     },
                     success: function(result) {
                         if (result.success) {
-                            showToast('error', result.message || 'Player banned successfully', 'Player Banned');
+                            showToast('warning', result.message || 'Player banned successfully', 'Player Banned');
                             playersTable.ajax.reload();
                         } else {
                             showToast('error', result.message || 'Failed to ban player');
@@ -869,23 +911,23 @@
             });
 
             // Reload player data every 10 seconds (respecting pause state)
-            setInterval(function () {
+            activeIntervals.push(setInterval(function () {
                 if (refreshEnabled && !selectedPlayerSlot) {
                     playersTable.ajax.reload(null, false);
                 }
-            }, 10000);
+            }, REFRESH_INTERVALS.PLAYERS));
 
             // Reload server status every 10 seconds
-            setInterval(function () {
+            activeIntervals.push(setInterval(function () {
                 if (refreshEnabled) {
                     loadServerStatus();
                 }
-            }, 10000);
+            }, REFRESH_INTERVALS.SERVER_STATUS));
 
             // Load and refresh chat log
             function loadChatLog() {
                 if (!refreshEnabled) return;
-                var url = '/ServerAdmin/GetServerLiveChatLog/@Model.GameServerId?minutes=30';
+                let url = '/ServerAdmin/GetServerLiveChatLog/@Model.GameServerId?minutes=30';
                 if (lastChatMessageId) {
                     url += '&lastMessageId=' + lastChatMessageId;
                 }
@@ -899,11 +941,11 @@
                             lastChatMessageId = result.messages[0].chatMessageId;
                             
                             // Build messages HTML (reversed order - newest first)
-                            var messagesHtml = '';
-                            for (var i = 0; i < result.messages.length; i++) {
-                                var msg = result.messages[i];
-                                var msgClass = msg.locked ? 'alert-warning' : 'alert-info';
-                                var lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
+                            let messagesHtml = '';
+                            for (let i = 0; i < result.messages.length; i++) {
+                                const msg = result.messages[i];
+                                const msgClass = msg.locked ? 'alert-warning' : 'alert-info';
+                                const lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
                                 
                                 messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
                                 messagesHtml += '<small class="text-muted">' + timeAgo(msg.timestamp) + '</small> ';
@@ -919,7 +961,7 @@
                                 messagesHtml += '</div>';
                             }
                             
-                            var container = $('#chatMessages');
+                            const container = $('#chatMessages');
                             if (container.find('p.text-muted').length > 0) {
                                 // First load - replace loading message
                                 container.html(messagesHtml);
@@ -951,7 +993,7 @@
             // Handle Say form submission
             $('#sayForm').submit(function(e) {
                 e.preventDefault();
-                var message = $('#sayMessage').val().trim();
+                const message = $('#sayMessage').val().trim();
                 
                 if (!message) {
                     showToast('warning', 'Please enter a message');
@@ -987,10 +1029,10 @@
             loadServerInfoForTooltip();
 
             // Refresh chat log periodically
-            setInterval(loadChatLog, chatRefreshInterval);
+            activeIntervals.push(setInterval(loadChatLog, REFRESH_INTERVALS.CHAT));
             
             // Update all refresh badges every 5 seconds
-            setInterval(updateAllRefreshBadges, 5000);
+            activeIntervals.push(setInterval(updateAllRefreshBadges, REFRESH_INTERVALS.BADGES));
             
             // Initial load of map rotation
             loadMapRotation();
