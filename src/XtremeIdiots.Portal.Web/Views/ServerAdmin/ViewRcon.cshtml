@@ -358,7 +358,6 @@
             // Toggle refresh button
             $('#toggleRefresh').click(function() {
                 refreshEnabled = !refreshEnabled;
-                $(this).find('i').toggleClass('fa-pause fa-play');
                 $(this).html(refreshEnabled ? 
                     '<i class="fa fa-pause"></i> Pause Refresh' : 
                     '<i class="fa fa-play"></i> Resume Refresh');
