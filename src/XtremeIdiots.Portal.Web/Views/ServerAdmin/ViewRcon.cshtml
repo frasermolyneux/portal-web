@@ -670,28 +670,6 @@
                     }
                 });
             }
-                                }).html('<i class="fa-solid fa-play"></i> Load Map');
-                                
-                                cardBody.append(mapTitle);
-                                cardBody.append(loadBtn);
-                                mapCard.append(mapImg);
-                                mapCard.append(cardBody);
-                                carousel.append(mapCard);
-                            });
-                            
-                            $('#mapRotationLoading').hide();
-                            $('#mapRotationContainer').show();
-                        } else {
-                            $('#mapRotationLoading').hide();
-                            $('#mapRotationError').text('No maps in rotation').show();
-                        }
-                    },
-                    error: function (xhr) {
-                        $('#mapRotationLoading').hide();
-                        $('#mapRotationError').text('Failed to load map rotation').show();
-                    }
-                });
-            }
             
             // Handle load map button clicks
             $(document).on('click', '.load-map-btn', function(e) {
