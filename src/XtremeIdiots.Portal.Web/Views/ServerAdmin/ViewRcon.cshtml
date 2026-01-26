@@ -395,29 +395,31 @@
                 });
             }
             
-            // Load server info for tooltip
-            function loadServerInfo() {
+            // Load server info for tooltip on Connected Players box
+            function loadServerInfoForTooltip() {
                 $.ajax({
-                    url: '/ServerAdmin/GetServerInfo/@Model.GameServerId',
+                    url: '/ServerAdmin/GetServerStatus/@Model.GameServerId',
                     type: 'GET',
                     success: function(result) {
-                        if (result.success && result.serverInfo) {
-                            var infoHtml = '<pre class="mb-0" style="font-size: 10px; max-width: 400px;">' + 
-                                escapeHtml(result.serverInfo) + '</pre>';
+                        if (result.success) {
+                            // Create a summary for the tooltip
+                            var summaryHtml = 'Map: ' + (result.currentMap || 'Unknown') + '<br/>' +
+                                             'Players: ' + (result.playerCount || 0) + '/' + (result.maxPlayers || 0);
+                            
                             $('#connectedPlayersInfoBtn').attr('data-bs-original-title', 
-                                '<div class="text-start"><strong>Server Status</strong><br/>' + infoHtml + '</div>');
+                                '<div class="text-start"><strong>Server Status</strong><br/>' + summaryHtml + '</div>');
                             
                             // Update tooltip if already shown
                             var tooltip = bootstrap.Tooltip.getInstance(document.getElementById('connectedPlayersInfoBtn'));
                             if (tooltip) {
                                 tooltip.setContent({
-                                    '.tooltip-inner': '<div class="text-start"><strong>Server Status</strong><br/>' + infoHtml + '</div>'
+                                    '.tooltip-inner': '<div class="text-start"><strong>Server Status</strong><br/>' + summaryHtml + '</div>'
                                 });
                             }
                         }
                     },
                     error: function() {
-                        console.error('Failed to load server info');
+                        console.error('Failed to load server status for tooltip');
                     }
                 });
             }
@@ -982,7 +984,7 @@
             // Initial load
             loadChatLog();
             loadServerStatus();
-            loadServerInfo();
+            loadServerInfoForTooltip();
 
             // Refresh chat log periodically
             setInterval(loadChatLog, chatRefreshInterval);

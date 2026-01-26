@@ -352,14 +352,14 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+            var getServerInfoResult = await serversApiClient.Rcon.V1.GetServerInfo(id);
 
-            if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null) return Json(new { success = false, message = "Failed to get server info" });
+            if (!getServerInfoResult.IsSuccess || getServerInfoResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get server info" });
+            }
 
-            var status = getServerStatusResult.Result.Data;
-
-            // Convert the status object to a formatted string for display
-            var serverInfo = JsonConvert.SerializeObject(status, Formatting.Indented);
+            var serverInfo = getServerInfoResult.Result.Data;
 
             return Json(new { success = true, serverInfo });
         }, nameof(GetServerInfo));
@@ -380,9 +380,19 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            // For now, return a message that this feature is not yet implemented
-            // TODO: Add ExecuteCommand method to the Servers API when available
-            return Json(new { success = false, message = "System info is not available - command execution not yet implemented in the API" });
+            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+
+            if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get system info" });
+            }
+
+            var status = getServerStatusResult.Result.Data;
+
+            // Convert the status object to a formatted string for display
+            var systemInfo = JsonConvert.SerializeObject(status, Formatting.Indented);
+
+            return Json(new { success = true, systemInfo });
         }, nameof(GetSystemInfo));
     }
 
@@ -401,9 +411,16 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            // For now, return a message that this feature is not yet implemented
-            // TODO: Add ExecuteCommand method to the Servers API when available
-            return Json(new { success = false, message = "Command list is not available - command execution not yet implemented in the API" });
+            var getCommandListResult = await serversApiClient.Rcon.V1.GetCommandList(id);
+
+            if (!getCommandListResult.IsSuccess || getCommandListResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get command list" });
+            }
+
+            var commandList = getCommandListResult.Result.Data;
+
+            return Json(new { success = true, commandList });
         }, nameof(GetCommandList));
     }
 
