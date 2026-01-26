@@ -476,11 +476,13 @@
                         if (result.success && result.serverInfo) {
                             showInfoModal('Server Information', result.serverInfo);
                         } else {
-                            showToast('error', 'Failed to load server info');
+                            console.error('Server info request returned success=false:', result);
+                            showToast('error', result.message || 'Failed to load server info');
                         }
                     },
-                    error: function() {
-                        showToast('error', 'Failed to load server info');
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.error('Server info AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
+                        showToast('error', 'Failed to load server info: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
                     }
                 });
             });
@@ -495,11 +497,13 @@
                         if (result.success && result.systemInfo) {
                             showInfoModal('System Information', result.systemInfo);
                         } else {
+                            console.error('System info request returned success=false:', result);
                             showToast('error', result.message || 'Failed to load system info');
                         }
                     },
-                    error: function() {
-                        showToast('error', 'Failed to load system info');
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.error('System info AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
+                        showToast('error', 'Failed to load system info: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
                     }
                 });
             });
@@ -514,11 +518,13 @@
                         if (result.success && result.commandList) {
                             showInfoModal('Command List', result.commandList);
                         } else {
+                            console.error('Command list request returned success=false:', result);
                             showToast('error', result.message || 'Failed to load command list');
                         }
                     },
-                    error: function() {
-                        showToast('error', 'Failed to load command list');
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.error('Command list AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
+                        showToast('error', 'Failed to load command list: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
                     }
                 });
             });
@@ -689,11 +695,13 @@
                         if (result.success) {
                             showToast('success', result.message || 'Map load command sent');
                         } else {
+                            console.error('Load map request returned success=false:', result);
                             showToast('error', result.message || 'Failed to load map');
                         }
                     },
-                    error: function(xhr) {
-                        showToast('error', 'Error loading map: ' + (xhr.responseText || 'Unknown error'));
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.error('Load map AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
+                        showToast('error', 'Error loading map: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
                     }
                 });
             });
@@ -992,11 +1000,13 @@
                             // Reload chat log after a short delay to see the message
                             setTimeout(loadChatLog, 1000);
                         } else {
+                            console.error('Send say command returned success=false:', result);
                             showToast('error', result.message || 'Failed to send message');
                         }
                     },
-                    error: function(xhr) {
-                        showToast('error', 'Error sending message: ' + (xhr.responseText || 'Unknown error'));
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.error('Send say command AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
+                        showToast('error', 'Error sending message: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
                     }
                 });
             });
