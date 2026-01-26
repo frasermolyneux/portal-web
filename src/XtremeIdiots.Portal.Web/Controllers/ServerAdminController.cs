@@ -366,6 +366,83 @@ public class ServerAdminController(
     }
 
     /// <summary>
+    /// Gets raw system information from RCON for display in the UI
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with raw system info text</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetSystemInfo(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetSystemInfo), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            // For now, return a message that this feature is not yet implemented
+            // TODO: Add ExecuteCommand method to the Servers API when available
+            return Json(new { success = false, message = "System info is not available - command execution not yet implemented in the API" });
+        }, nameof(GetSystemInfo));
+    }
+
+    /// <summary>
+    /// Gets raw command list from RCON for display in the UI
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with raw command list text</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetCommandList(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCommandList), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            // For now, return a message that this feature is not yet implemented
+            // TODO: Add ExecuteCommand method to the Servers API when available
+            return Json(new { success = false, message = "Command list is not available - command execution not yet implemented in the API" });
+        }, nameof(GetCommandList));
+    }
+
+    /// <summary>
+    /// Sends a 'say' command to broadcast a message to all players on the server
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="message">Message to broadcast</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON result indicating success or failure</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendSayCommand(Guid id, string message, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(SendSayCommand), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return Json(new { success = false, message = "Message cannot be empty" });
+            }
+
+            // Limit message length
+            message = message.Trim();
+            if (message.Length > 255)
+            {
+                message = message[..255];
+            }
+
+            // For now, return a message that this feature is not yet implemented
+            // TODO: Add ExecuteCommand or Say method to the Servers API when available
+            return Json(new { success = false, message = "Say command is not available - command execution not yet implemented in the API" });
+        }, nameof(SendSayCommand));
+    }
+
+    /// <summary>
     /// Gets the map rotation for a specific game server
     /// </summary>
     /// <param name="id">Game server ID</param>

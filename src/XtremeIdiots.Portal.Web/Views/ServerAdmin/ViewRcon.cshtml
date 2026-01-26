@@ -24,16 +24,21 @@
             <div class="ibox">
                 <div class="ibox-title">
                     <h5>
-                        <game-type-icon game="@Model.GameType" size="20" class="me-2" /> Server Status
-                        <button id="serverInfoBtn" class="btn btn-sm btn-link p-0 ms-2" type="button" 
-                                data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true"
-                                title="<div class='text-start'><strong>Server Information</strong><br/><span id='serverInfoTooltip'>Loading...</span></div>"
-                                data-testid="rcon-server-info-btn">
-                            <i class="fa fa-info-circle text-primary"></i>
-                        </button>
+                        <game-type-icon game="@Model.GameType" size="20" class="me-2" /> @Model.Title
+                        <div class="btn-group ms-2" role="group">
+                            <button type="button" class="btn btn-sm btn-link p-0 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-testid="rcon-server-info-dropdown">
+                                <i class="fa fa-info-circle text-primary"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" id="serverInfoBtn" data-testid="rcon-server-info-btn"><i class="fa fa-server"></i> Server Info</a></li>
+                                <li><a class="dropdown-item" href="#" id="systemInfoBtn" data-testid="rcon-system-info-btn"><i class="fa fa-microchip"></i> System Info</a></li>
+                                <li><a class="dropdown-item" href="#" id="commandListBtn" data-testid="rcon-command-list-btn"><i class="fa fa-list"></i> Command List</a></li>
+                            </ul>
+                        </div>
                     </h5>
                     <div class="ibox-tools">
                         <span class="badge bg-success" id="serverStatusIndicator">Online</span>
+                        <span class="badge bg-secondary ms-2" id="serverStatusRefresh" title="Last refresh time">Just now</span>
                     </div>
                 </div>
                 <div class="ibox-content">
@@ -87,7 +92,18 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5>Connected Players</h5>
+                        <h5>
+                            Connected Players
+                            <button id="connectedPlayersInfoBtn" class="btn btn-sm btn-link p-0 ms-2" type="button" 
+                                    data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true"
+                                    title="<div class='text-start'><strong>Server Status</strong><br/><span id='connectedPlayersInfoTooltip'>Loading...</span></div>"
+                                    data-testid="rcon-connected-players-info-btn">
+                                <i class="fa fa-info-circle text-primary"></i>
+                            </button>
+                        </h5>
+                        <div class="ibox-tools">
+                            <span class="badge bg-secondary" id="playersTableRefresh" title="Last refresh time">Just now</span>
+                        </div>
                     </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
@@ -114,12 +130,21 @@
                         <h5>Live Chat Log</h5>
                         <div class="ibox-tools">
                             <span class="badge bg-primary" id="chatMessageCount">0</span>
+                            <span class="badge bg-secondary ms-2" id="chatLogRefresh" title="Last refresh time">Just now</span>
                         </div>
                     </div>
-                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto;" id="chatLogContainer">
+                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column-reverse;" id="chatLogContainer">
                         <div id="chatMessages">
                             <p class="text-muted text-center">Loading chat messages...</p>
                         </div>
+                    </div>
+                    <div class="ibox-footer">
+                        <form id="sayForm" class="d-flex gap-2">
+                            <input type="text" id="sayMessage" class="form-control form-control-sm" placeholder="Type a message to send to server..." maxlength="255" data-testid="rcon-say-input">
+                            <button type="submit" class="btn btn-sm btn-primary" id="saySend" data-testid="rcon-say-btn">
+                                <i class="fa fa-paper-plane"></i> Send
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -130,6 +155,9 @@
             <div class="ibox">
                 <div class="ibox-title">
                     <h5>Map Control</h5>
+                    <div class="ibox-tools">
+                        <span class="badge bg-secondary" id="mapRotationRefresh" title="Last refresh time">Just now</span>
+                    </div>
                 </div>
                 <div class="ibox-content">
                     
@@ -263,6 +291,40 @@
         var refreshEnabled = true;
         var selectedPlayerSlot = null;
         
+        // Track last refresh times for each section
+        var lastRefreshTimes = {
+            serverStatus: new Date(),
+            players: new Date(),
+            chatLog: new Date(),
+            mapRotation: new Date()
+        };
+        
+        // Helper function to update refresh badge
+        function updateRefreshBadge(badgeId, lastRefreshTime) {
+            var badge = $('#' + badgeId);
+            if (badge.length && lastRefreshTime) {
+                badge.text('Updated ' + timeAgo(formatDateTimeForTimeAgo(lastRefreshTime)));
+            }
+        }
+        
+        // Helper to format Date object for timeAgo function
+        function formatDateTimeForTimeAgo(date) {
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0');
+            var day = String(date.getDate()).padStart(2, '0');
+            var hours = String(date.getHours()).padStart(2, '0');
+            var minutes = String(date.getMinutes()).padStart(2, '0');
+            return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
+        }
+        
+        // Update all refresh badges
+        function updateAllRefreshBadges() {
+            updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
+            updateRefreshBadge('playersTableRefresh', lastRefreshTimes.players);
+            updateRefreshBadge('chatLogRefresh', lastRefreshTimes.chatLog);
+            updateRefreshBadge('mapRotationRefresh', lastRefreshTimes.mapRotation);
+        }
+        
         // Helper function to show toast notifications
         function showToast(type, message, title) {
             toastr.options = {
@@ -302,6 +364,37 @@
                     '<i class="fa fa-play"></i> Resume Refresh');
             });
             
+            // Show info modal
+            function showInfoModal(title, content) {
+                var modalHtml = '<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">' +
+                    '<div class="modal-dialog modal-lg modal-dialog-scrollable">' +
+                        '<div class="modal-content">' +
+                            '<div class="modal-header">' +
+                                '<h5 class="modal-title" id="infoModalLabel">' + escapeHtml(title) + '</h5>' +
+                                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+                            '</div>' +
+                            '<div class="modal-body">' +
+                                '<pre class="mb-0" style="font-size: 11px; max-height: 500px; overflow-y: auto;">' + escapeHtml(content) + '</pre>' +
+                            '</div>' +
+                            '<div class="modal-footer">' +
+                                '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+                
+                // Remove any existing modal
+                $('#infoModal').remove();
+                $('body').append(modalHtml);
+                var modal = new bootstrap.Modal(document.getElementById('infoModal'));
+                modal.show();
+                
+                // Clean up modal when hidden
+                $('#infoModal').on('hidden.bs.modal', function () {
+                    $(this).remove();
+                });
+            }
+            
             // Load server info for tooltip
             function loadServerInfo() {
                 $.ajax({
@@ -311,14 +404,14 @@
                         if (result.success && result.serverInfo) {
                             var infoHtml = '<pre class="mb-0" style="font-size: 10px; max-width: 400px;">' + 
                                 escapeHtml(result.serverInfo) + '</pre>';
-                            $('#serverInfoBtn').attr('data-bs-original-title', 
-                                '<div class="text-start"><strong>Server Information</strong><br/>' + infoHtml + '</div>');
+                            $('#connectedPlayersInfoBtn').attr('data-bs-original-title', 
+                                '<div class="text-start"><strong>Server Status</strong><br/>' + infoHtml + '</div>');
                             
                             // Update tooltip if already shown
-                            var tooltip = bootstrap.Tooltip.getInstance(document.getElementById('serverInfoBtn'));
+                            var tooltip = bootstrap.Tooltip.getInstance(document.getElementById('connectedPlayersInfoBtn'));
                             if (tooltip) {
                                 tooltip.setContent({
-                                    '.tooltip-inner': '<div class="text-start"><strong>Server Information</strong><br/>' + infoHtml + '</div>'
+                                    '.tooltip-inner': '<div class="text-start"><strong>Server Status</strong><br/>' + infoHtml + '</div>'
                                 });
                             }
                         }
@@ -328,6 +421,63 @@
                     }
                 });
             }
+            
+            // Handle server info button click
+            $('#serverInfoBtn').click(function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '/ServerAdmin/GetServerInfo/@Model.GameServerId',
+                    type: 'GET',
+                    success: function(result) {
+                        if (result.success && result.serverInfo) {
+                            showInfoModal('Server Information', result.serverInfo);
+                        } else {
+                            showToast('error', 'Failed to load server info');
+                        }
+                    },
+                    error: function() {
+                        showToast('error', 'Failed to load server info');
+                    }
+                });
+            });
+            
+            // Handle system info button click
+            $('#systemInfoBtn').click(function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '/ServerAdmin/GetSystemInfo/@Model.GameServerId',
+                    type: 'GET',
+                    success: function(result) {
+                        if (result.success && result.systemInfo) {
+                            showInfoModal('System Information', result.systemInfo);
+                        } else {
+                            showToast('error', result.message || 'Failed to load system info');
+                        }
+                    },
+                    error: function() {
+                        showToast('error', 'Failed to load system info');
+                    }
+                });
+            });
+            
+            // Handle command list button click
+            $('#commandListBtn').click(function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '/ServerAdmin/GetCommandList/@Model.GameServerId',
+                    type: 'GET',
+                    success: function(result) {
+                        if (result.success && result.commandList) {
+                            showInfoModal('Command List', result.commandList);
+                        } else {
+                            showToast('error', result.message || 'Failed to load command list');
+                        }
+                    },
+                    error: function() {
+                        showToast('error', 'Failed to load command list');
+                    }
+                });
+            });
 
             // Load server status
             function loadServerStatus() {
@@ -347,6 +497,9 @@
                             } else {
                                 $('#currentMapImage').attr('src', '/images/noimage.jpg');
                             }
+                            
+                            lastRefreshTimes.serverStatus = new Date();
+                            updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
                         }
                     },
                     error: function() {
@@ -459,6 +612,31 @@
                             
                             $('#mapRotationLoading').hide();
                             $('#mapRotationContainer').show();
+                            
+                            lastRefreshTimes.mapRotation = new Date();
+                            updateRefreshBadge('mapRotationRefresh', lastRefreshTimes.mapRotation);
+                        } else {
+                            $('#mapRotationLoading').hide();
+                            $('#mapRotationError').text('No maps in rotation').show();
+                        }
+                    },
+                    error: function (xhr) {
+                        $('#mapRotationLoading').hide();
+                        $('#mapRotationError').text('Failed to load map rotation').show();
+                    }
+                });
+            }
+                                }).html('<i class="fa-solid fa-play"></i> Load Map');
+                                
+                                cardBody.append(mapTitle);
+                                cardBody.append(loadBtn);
+                                mapCard.append(mapImg);
+                                mapCard.append(cardBody);
+                                carousel.append(mapCard);
+                            });
+                            
+                            $('#mapRotationLoading').hide();
+                            $('#mapRotationContainer').show();
                         } else {
                             $('#mapRotationLoading').hide();
                             $('#mapRotationError').text('No maps in rotation').show();
@@ -515,7 +693,11 @@
                 order: [[0, "asc"]],
                 ajax: {
                     url: '/ServerAdmin/GetRconPlayers/@Model.GameServerId',
-                    dataSrc: 'data',
+                    dataSrc: function(json) {
+                        lastRefreshTimes.players = new Date();
+                        updateRefreshBadge('playersTableRefresh', lastRefreshTimes.players);
+                        return json.data;
+                    },
                     error: handleAjaxError
                 },
                 columnDefs: [
@@ -714,15 +896,15 @@
                             // Update the last message ID
                             lastChatMessageId = result.messages[0].chatMessageId;
                             
-                            // Prepend new messages
+                            // Build messages HTML (reversed order - newest first)
                             var messagesHtml = '';
-                            for (var i = result.messages.length - 1; i >= 0; i--) {
+                            for (var i = 0; i < result.messages.length; i++) {
                                 var msg = result.messages[i];
                                 var msgClass = msg.locked ? 'alert-warning' : 'alert-info';
                                 var lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
                                 
                                 messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
-                                messagesHtml += '<small class="text-muted">' + formatDateTime(msg.timestamp) + '</small> ';
+                                messagesHtml += '<small class="text-muted">' + timeAgo(msg.timestamp) + '</small> ';
                                 
                                 if (msg.playerId) {
                                     messagesHtml += '<strong><a href="/Players/Details/' + msg.playerId + '" class="alert-link">' + escapeHtml(msg.username) + '</a></strong>';
@@ -737,20 +919,17 @@
                             
                             var container = $('#chatMessages');
                             if (container.find('p.text-muted').length > 0) {
+                                // First load - replace loading message
                                 container.html(messagesHtml);
                             } else {
-                                container.prepend(messagesHtml);
+                                // Append new messages at the top (they will appear at bottom due to column-reverse)
+                                container.append(messagesHtml);
                             }
                             
-                            // Update message count
+                            // Update message count and refresh time
                             $('#chatMessageCount').text(result.messages.length + ' new');
-                            
-                            // Auto-scroll to bottom only if we're near the bottom
-                            var chatContainer = $('#chatLogContainer');
-                            var isNearBottom = chatContainer[0].scrollHeight - chatContainer.scrollTop() - chatContainer.height() < 100;
-                            if (isNearBottom || !lastChatMessageId) {
-                                chatContainer.scrollTop(chatContainer[0].scrollHeight);
-                            }
+                            lastRefreshTimes.chatLog = new Date();
+                            updateRefreshBadge('chatLogRefresh', lastRefreshTimes.chatLog);
                         } else if (!lastChatMessageId) {
                             $('#chatMessages').html('<p class="text-muted text-center">No recent chat messages</p>');
                             $('#chatMessageCount').text('0');
@@ -766,6 +945,39 @@
                     }
                 });
             }
+            
+            // Handle Say form submission
+            $('#sayForm').submit(function(e) {
+                e.preventDefault();
+                var message = $('#sayMessage').val().trim();
+                
+                if (!message) {
+                    showToast('warning', 'Please enter a message');
+                    return;
+                }
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/ServerAdmin/SendSayCommand/@Model.GameServerId',
+                    data: {
+                        message: message,
+                        __RequestVerificationToken: antiForgeryToken
+                    },
+                    success: function(result) {
+                        if (result.success) {
+                            showToast('success', result.message || 'Message sent successfully');
+                            $('#sayMessage').val('');
+                            // Reload chat log after a short delay to see the message
+                            setTimeout(loadChatLog, 1000);
+                        } else {
+                            showToast('error', result.message || 'Failed to send message');
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast('error', 'Error sending message: ' + (xhr.responseText || 'Unknown error'));
+                    }
+                });
+            });
 
             // Initial load
             loadChatLog();
@@ -774,6 +986,9 @@
 
             // Refresh chat log periodically
             setInterval(loadChatLog, chatRefreshInterval);
+            
+            // Update all refresh badges every 5 seconds
+            setInterval(updateAllRefreshBadges, 5000);
             
             // Initial load of map rotation
             loadMapRotation();
