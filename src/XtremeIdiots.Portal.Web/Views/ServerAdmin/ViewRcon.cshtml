@@ -961,16 +961,17 @@
                             if (container.find('p.text-muted').length > 0) {
                                 // First load - replace loading message
                                 container.html(messagesHtml);
+                                $('#chatMessageCount').text(result.messages.length);
                             } else {
                                 // Prepend new messages at the top (newest messages at top)
                                 container.prepend(messagesHtml);
+                                $('#chatMessageCount').text(result.messages.length + ' new');
                             }
                             
                             // Scroll to top to show newest messages
                             $('#chatLogContainer').scrollTop(0);
                             
-                            // Update message count and refresh time
-                            $('#chatMessageCount').text(result.messages.length + ' new');
+                            // Update refresh time
                             lastRefreshTimes.chatLog = new Date();
                             updateRefreshBadge('chatLogRefresh', lastRefreshTimes.chatLog);
                         } else if (!lastChatMessageId) {
