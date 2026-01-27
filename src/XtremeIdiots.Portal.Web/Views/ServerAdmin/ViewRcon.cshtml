@@ -38,7 +38,6 @@
                     </h5>
                     <div class="ibox-tools">
                         <span class="badge bg-success" id="serverStatusIndicator">Online</span>
-                        <span class="badge bg-secondary ms-2" id="serverStatusRefresh" title="Last refresh time">Just now</span>
                     </div>
                 </div>
                 <div class="ibox-content">
@@ -67,7 +66,10 @@
                     </div>
                 </div>
                 <div class="ibox-footer">
-                    <div class="d-flex justify-content-end">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fa fa-clock"></i> <span id="serverStatusRefresh" title="Last refresh time">Just now</span>
+                        </small>
                         <div class="btn-group">
                             <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-testid="rcon-server-control-dropdown">
                                 <i class="fa-solid fa-cog"></i> Server Control
@@ -101,9 +103,6 @@
                                 <i class="fa fa-info-circle text-primary"></i>
                             </button>
                         </h5>
-                        <div class="ibox-tools">
-                            <span class="badge bg-secondary" id="playersTableRefresh" title="Last refresh time">Just now</span>
-                        </div>
                     </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
@@ -123,22 +122,29 @@
                             </table>
                         </div>
                     </div>
+                    <div class="ibox-footer">
+                        <small class="text-muted">
+                            <i class="fa fa-clock"></i> <span id="playersTableRefresh" title="Last refresh time">Just now</span>
+                        </small>
+                    </div>
                 </div>
 
                 <div class="ibox">
                     <div class="ibox-title">
                         <h5>Live Chat Log</h5>
-                        <div class="ibox-tools">
-                            <span class="badge bg-primary" id="chatMessageCount">0</span>
-                            <span class="badge bg-secondary ms-2" id="chatLogRefresh" title="Last refresh time">Just now</span>
-                        </div>
                     </div>
-                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column-reverse;" id="chatLogContainer" role="log" aria-live="polite" aria-label="Live chat messages">
+                    <div class="ibox-content" style="max-height: 400px; overflow-y: auto;" id="chatLogContainer" role="log" aria-live="polite" aria-label="Live chat messages">
                         <div id="chatMessages">
                             <p class="text-muted text-center">Loading chat messages...</p>
                         </div>
                     </div>
                     <div class="ibox-footer">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">
+                                <span class="badge bg-primary" id="chatMessageCount">0</span>
+                                <i class="fa fa-clock ms-2"></i> <span id="chatLogRefresh" title="Last refresh time">Just now</span>
+                            </small>
+                        </div>
                         <form id="sayForm" class="d-flex gap-2">
                             <input type="text" id="sayMessage" class="form-control form-control-sm" placeholder="Type a message to send to server..." maxlength="255" data-testid="rcon-say-input">
                             <button type="submit" class="btn btn-sm btn-primary" id="saySend" data-testid="rcon-say-btn">
@@ -155,9 +161,6 @@
             <div class="ibox">
                 <div class="ibox-title">
                     <h5>Map Control</h5>
-                    <div class="ibox-tools">
-                        <span class="badge bg-secondary" id="mapRotationRefresh" title="Last refresh time">Just now</span>
-                    </div>
                 </div>
                 <div class="ibox-content">
                     
@@ -190,6 +193,11 @@
                         </button>
                     </div>
 
+                </div>
+                <div class="ibox-footer">
+                    <small class="text-muted">
+                        <i class="fa fa-clock"></i> <span id="mapRotationRefresh" title="Last refresh time">Just now</span>
+                    </small>
                 </div>
             </div>
 
@@ -711,7 +719,9 @@
 
             var playersTable = $('#dataTable').DataTable({
                 processing: true,
-                pageLength: 50,
+                paging: false,
+                info: false,
+                searching: false,
                 stateSave: true,
                 responsive: {
                     details: {
@@ -926,7 +936,7 @@
                             // Update the last message ID
                             lastChatMessageId = result.messages[0].chatMessageId;
                             
-                            // Build messages HTML (reversed order - newest first)
+                            // Build messages HTML (newest first at top)
                             let messagesHtml = '';
                             for (let i = 0; i < result.messages.length; i++) {
                                 const msg = result.messages[i];
@@ -952,9 +962,12 @@
                                 // First load - replace loading message
                                 container.html(messagesHtml);
                             } else {
-                                // Append new messages at the top (they will appear at bottom due to column-reverse)
-                                container.append(messagesHtml);
+                                // Prepend new messages at the top (newest messages at top)
+                                container.prepend(messagesHtml);
                             }
+                            
+                            // Scroll to top to show newest messages
+                            $('#chatLogContainer').scrollTop(0);
                             
                             // Update message count and refresh time
                             $('#chatMessageCount').text(result.messages.length + ' new');
