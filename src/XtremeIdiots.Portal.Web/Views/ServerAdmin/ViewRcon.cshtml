@@ -577,6 +577,9 @@
                             
                             lastRefreshTimes.serverStatus = new Date();
                             updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
+                        } else {
+                            $('#currentMapName').text('Unknown');
+                            $('#currentMapImage').attr('src', '/images/noimage.jpg');
                         }
                         
                         // Hide loading indicator
@@ -585,6 +588,8 @@
                     },
                     error: function() {
                         $('#serverStatusIndicator').removeClass('bg-success').addClass('bg-danger').text('Error');
+                        $('#currentMapName').text('Error loading map');
+                        $('#currentMapImage').attr('src', '/images/noimage.jpg');
                         
                         // Hide loading indicator
                         $('#serverInfoLoading').hide();
