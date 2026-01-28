@@ -133,6 +133,9 @@
                     <div class="ibox-footer">
                         <small class="text-muted">
                             <i class="fa fa-clock"></i> <span id="playersTableRefresh" title="Last refresh time">Just now</span>
+                            <button id="manualRefreshPlayersBtn" class="btn btn-xs btn-link p-0 ms-2" type="button" title="Refresh now" data-testid="rcon-manual-refresh-players-btn">
+                                <i class="fa fa-refresh"></i>
+                            </button>
                         </small>
                     </div>
                 </div>
@@ -151,6 +154,9 @@
                             <small class="text-muted">
                                 <span class="badge bg-primary" id="chatMessageCount">0</span>
                                 <i class="fa fa-clock ms-2"></i> <span id="chatLogRefresh" title="Last refresh time">Just now</span>
+                                <button id="manualRefreshChatBtn" class="btn btn-xs btn-link p-0 ms-2" type="button" title="Refresh now" data-testid="rcon-manual-refresh-chat-btn">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
                             </small>
                         </div>
                         <form id="sayForm" class="d-flex gap-2">
@@ -205,6 +211,9 @@
                 <div class="ibox-footer">
                     <small class="text-muted">
                         <i class="fa fa-clock"></i> <span id="mapRotationRefresh" title="Last refresh time">Just now</span>
+                        <button id="manualRefreshMapRotationBtn" class="btn btn-xs btn-link p-0 ms-2" type="button" title="Refresh now" data-testid="rcon-manual-refresh-map-rotation-btn">
+                            <i class="fa fa-refresh"></i>
+                        </button>
                     </small>
                 </div>
             </div>
@@ -589,6 +598,27 @@
                 e.preventDefault();
                 loadServerStatus();
                 showToast('info', 'Refreshing server status...');
+            });
+
+            // Manual refresh button for players table
+            $('#manualRefreshPlayersBtn').click(function(e) {
+                e.preventDefault();
+                playersTable.ajax.reload(null, false);
+                showToast('info', 'Refreshing connected players...');
+            });
+
+            // Manual refresh button for chat log
+            $('#manualRefreshChatBtn').click(function(e) {
+                e.preventDefault();
+                loadChatLog();
+                showToast('info', 'Refreshing chat log...');
+            });
+
+            // Manual refresh button for map rotation
+            $('#manualRefreshMapRotationBtn').click(function(e) {
+                e.preventDefault();
+                loadMapRotation();
+                showToast('info', 'Refreshing map rotation...');
             });
 
             $("#restartServer").click(function (e) {
