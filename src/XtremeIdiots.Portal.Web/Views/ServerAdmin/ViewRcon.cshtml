@@ -578,6 +578,7 @@
                             lastRefreshTimes.serverStatus = new Date();
                             updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
                         } else {
+                            $('#serverStatusIndicator').removeClass('bg-success').addClass('bg-danger').text('Error');
                             $('#currentMapName').text('Unknown');
                             $('#currentMapImage').attr('src', '/images/noimage.jpg');
                         }
