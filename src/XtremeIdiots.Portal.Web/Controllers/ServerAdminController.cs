@@ -338,6 +338,53 @@ public class ServerAdminController(
     }
 
     /// <summary>
+    /// Gets the current map information from the server using the new dedicated endpoint
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JSON with current map information including map name and image URI</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetCurrentMap(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCurrentMap), cancellationToken);
+            if (actionResult is not null)
+                return actionResult;
+
+            var getCurrentMapResult = await serversApiClient.Rcon.V1.GetCurrentMap(id);
+
+            if (!getCurrentMapResult.IsSuccess || getCurrentMapResult.Result?.Data is null)
+            {
+                return Json(new { success = false, message = "Failed to get current map" });
+            }
+
+            var currentMapDto = getCurrentMapResult.Result.Data;
+            var currentMapName = currentMapDto.MapName;
+
+            // Get current map image from repository
+            string? mapImageUri = null;
+
+            if (!string.IsNullOrWhiteSpace(currentMapName))
+            {
+                var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
+                    gameServerData!.GameType,
+                    [currentMapName],
+                    null, null, 0, 1, MapsOrder.MapNameAsc, cancellationToken);
+
+                mapImageUri = mapsApiResponse.Result?.Data?.Items?.FirstOrDefault()?.MapImageUri;
+            }
+
+            return Json(new
+            {
+                success = true,
+                currentMap = currentMapName,
+                mapImageUri
+            });
+        }, nameof(GetCurrentMap));
+    }
+
+    /// <summary>
     /// Gets raw server information from RCON for display in the UI tooltip
     /// </summary>
     /// <param name="id">Game server ID</param>

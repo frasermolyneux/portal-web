@@ -41,27 +41,32 @@
                     </div>
                 </div>
                 <div class="ibox-content">
-                    <div class="row">
-                        <div class="col-md-3 text-center">
-                            <div id="currentMapImageContainer">
-                                <img id="currentMapImage" src="/images/noimage.jpg" alt="Current Map" class="img-fluid" style="max-height: 150px; width: auto;">
+                    <div id="serverInfoLoading" class="text-center text-muted" style="display: none;">
+                        <i class="fa fa-spinner fa-spin"></i> Loading server info...
+                    </div>
+                    <div id="serverInfoContent">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <div id="currentMapImageContainer">
+                                    <img id="currentMapImage" src="/images/noimage.jpg" alt="Current Map" class="img-fluid" style="max-height: 150px; width: auto;">
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-9">
-                            <dl class="row mb-0">
-                                <dt class="col-sm-4 col-md-3">Hostname:</dt>
-                                <dd class="col-sm-8 col-md-9" id="serverHostname">@Model.Hostname</dd>
-                                
-                                <dt class="col-sm-4 col-md-3">Current Map:</dt>
-                                <dd class="col-sm-8 col-md-9">
-                                    <span id="currentMapName">Loading...</span>
-                                </dd>
-                                
-                                <dt class="col-sm-4 col-md-3">Players:</dt>
-                                <dd class="col-sm-8 col-md-9">
-                                    <span id="playerCount">0</span> / <span id="maxPlayers">0</span>
-                                </dd>
-                            </dl>
+                            <div class="col-md-9">
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-4 col-md-3">Hostname:</dt>
+                                    <dd class="col-sm-8 col-md-9" id="serverHostname">@Model.Hostname</dd>
+                                    
+                                    <dt class="col-sm-4 col-md-3">Current Map:</dt>
+                                    <dd class="col-sm-8 col-md-9">
+                                        <span id="currentMapName">Loading...</span>
+                                    </dd>
+                                    
+                                    <dt class="col-sm-4 col-md-3">Players:</dt>
+                                    <dd class="col-sm-8 col-md-9">
+                                        <span id="playerCount">0</span> / <span id="maxPlayers">0</span>
+                                    </dd>
+                                </dl>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -69,6 +74,9 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted">
                             <i class="fa fa-clock"></i> <span id="serverStatusRefresh" title="Last refresh time">Just now</span>
+                            <button id="manualRefreshBtn" class="btn btn-xs btn-link p-0 ms-2" type="button" title="Refresh now" data-testid="rcon-manual-refresh-btn">
+                                <i class="fa fa-refresh"></i>
+                            </button>
                         </small>
                         <div class="btn-group">
                             <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-testid="rcon-server-control-dropdown">
@@ -135,7 +143,7 @@
                     </div>
                     <div class="ibox-content" style="max-height: 400px; overflow-y: auto;" id="chatLogContainer" role="log" aria-live="polite" aria-label="Live chat messages">
                         <div id="chatMessages">
-                            <p class="text-muted text-center">Loading chat messages...</p>
+                            <p class="text-muted text-center"><i class="fa fa-spinner fa-spin"></i> Loading chat messages...</p>
                         </div>
                     </div>
                     <div class="ibox-footer">
@@ -537,18 +545,20 @@
                 });
             });
 
-            // Load server status
+            // Load server status (current map and player count)
             function loadServerStatus() {
                 if (!refreshEnabled) return;
                 
+                // Show loading indicator
+                $('#serverInfoLoading').show();
+                $('#serverInfoContent').css('opacity', '0.5');
+                
                 $.ajax({
-                    url: '/ServerAdmin/GetServerStatus/@Model.GameServerId',
+                    url: '/ServerAdmin/GetCurrentMap/@Model.GameServerId',
                     type: 'GET',
                     success: function(result) {
                         if (result.success) {
                             $('#currentMapName').text(result.currentMap || 'Unknown');
-                            $('#playerCount').text(result.playerCount || 0);
-                            $('#maxPlayers').text(result.maxPlayers || 0);
                             
                             if (result.mapImageUri) {
                                 $('#currentMapImage').attr('src', result.mapImageUri);
@@ -559,12 +569,27 @@
                             lastRefreshTimes.serverStatus = new Date();
                             updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
                         }
+                        
+                        // Hide loading indicator
+                        $('#serverInfoLoading').hide();
+                        $('#serverInfoContent').css('opacity', '1');
                     },
                     error: function() {
                         $('#serverStatusIndicator').removeClass('bg-success').addClass('bg-danger').text('Error');
+                        
+                        // Hide loading indicator
+                        $('#serverInfoLoading').hide();
+                        $('#serverInfoContent').css('opacity', '1');
                     }
                 });
             }
+
+            // Manual refresh button handler
+            $('#manualRefreshBtn').click(function(e) {
+                e.preventDefault();
+                loadServerStatus();
+                showToast('info', 'Refreshing server status...');
+            });
 
             $("#restartServer").click(function (e) {
                 e.preventDefault();
@@ -591,6 +616,10 @@
                     data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Map restart command sent successfully');
+                        // Refresh server status after map command
+                        setTimeout(function() {
+                            loadServerStatus();
+                        }, 2000);
                     },
                     error: function (xhr) {
                         showToast('error', 'Failed to restart map: ' + (xhr.responseText || 'Unknown error'));
@@ -607,6 +636,10 @@
                     data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Fast restart command sent successfully');
+                        // Refresh server status after map command
+                        setTimeout(function() {
+                            loadServerStatus();
+                        }, 2000);
                     },
                     error: function (xhr) {
                         showToast('error', 'Failed to fast restart map: ' + (xhr.responseText || 'Unknown error'));
@@ -623,6 +656,10 @@
                     data: { __RequestVerificationToken: antiForgeryToken },
                     success: function (result) {
                         showToast('success', 'Next map command sent successfully');
+                        // Refresh server status after map command
+                        setTimeout(function() {
+                            loadServerStatus();
+                        }, 2000);
                     },
                     error: function (xhr) {
                         showToast('error', 'Failed to load next map: ' + (xhr.responseText || 'Unknown error'));
@@ -702,6 +739,10 @@
                     success: function(result) {
                         if (result.success) {
                             showToast('success', result.message || 'Map load command sent');
+                            // Refresh server status after map command
+                            setTimeout(function() {
+                                loadServerStatus();
+                            }, 2000);
                         } else {
                             console.error('Load map request returned success=false:', result);
                             showToast('error', result.message || 'Failed to load map');
@@ -736,6 +777,12 @@
                     dataSrc: function(json) {
                         lastRefreshTimes.players = new Date();
                         updateRefreshBadge('playersTableRefresh', lastRefreshTimes.players);
+                        
+                        // Update player count in server info
+                        if (json.data) {
+                            $('#playerCount').text(json.data.length || 0);
+                        }
+                        
                         return json.data;
                     },
                     error: handleAjaxError
