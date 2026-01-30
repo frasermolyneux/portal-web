@@ -15,7 +15,7 @@ public class MapsAuthHandler : IAuthorizationHandler
     /// <returns>A completed task after processing all pending requirements</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements.ToList();
+        var pendingRequirements = context.PendingRequirements;
 
         foreach (var requirement in pendingRequirements)
         {
