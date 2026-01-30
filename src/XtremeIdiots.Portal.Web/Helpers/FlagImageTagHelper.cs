@@ -65,11 +65,11 @@ public class IpAddressTagHelper : TagHelper
 
         var flag = Geo?.CountryCode;
         var code = string.IsNullOrEmpty(flag) ? "unknown" : flag.ToLower();
-        var parts = new List<string>
-        {
+        List<string> parts =
+        [
             $"<img src=\"/images/flags/{code}.png\" />",
             LinkToDetails ? $"<a href=\"/IPAddresses/Details?ipAddress={Ip}\">{Ip}</a>" : Ip
-        };
+        ];
 
         if (Risk.HasValue)
         {

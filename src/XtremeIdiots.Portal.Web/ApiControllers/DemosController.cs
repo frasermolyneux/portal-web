@@ -71,7 +71,7 @@ public class DemosController(
                 return StatusCode(500, "Failed to retrieve demos data");
             }
 
-            var portalDemoEntries = new List<PortalDemoDto>();
+            List<PortalDemoDto> portalDemoEntries = [];
             if (demosApiResponse.Result.Data.Items is not null)
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)

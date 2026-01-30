@@ -161,7 +161,7 @@ public class ServerAdminController(
             }
 
             var rconPlayers = getServerStatusResult.Result.Data.Players;
-            var enrichedPlayers = new List<object>();
+            List<object> enrichedPlayers = [];
 
             foreach (var rconPlayer in rconPlayers)
             {

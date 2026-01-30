@@ -52,10 +52,10 @@ public class StatusController(
             if (banFileMonitorsApiResponse.IsNotFound || banFileMonitorsApiResponse.Result?.Data?.Items is null)
             {
                 Logger.LogWarning("No ban file monitors found for user {UserId}", User.XtremeIdiotsId());
-                return View(new List<EditBanFileMonitorViewModel>());
+                return View(Array.Empty<EditBanFileMonitorViewModel>());
             }
 
-            var models = new List<EditBanFileMonitorViewModel>();
+            List<EditBanFileMonitorViewModel> models = [];
 
             foreach (var banFileMonitor in banFileMonitorsApiResponse.Result.Data.Items)
             {

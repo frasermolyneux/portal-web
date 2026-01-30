@@ -172,7 +172,7 @@ public class AdminActionsController(
             }
 
             var items = apiResponse.Result.Data.Items.ToList();
-            var responseItems = new List<object>(items.Count);
+            List<object> responseItems = new(items.Count);
             foreach (var a in items)
             {
                 var canClaim = false;

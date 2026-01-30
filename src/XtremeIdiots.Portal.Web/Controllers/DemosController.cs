@@ -233,7 +233,7 @@ public class DemosController(
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            var portalDemoEntries = new List<PortalDemoDto>();
+            List<PortalDemoDto> portalDemoEntries = [];
             if (demosApiResponse.Result.Data.Items is not null)
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)
@@ -540,7 +540,7 @@ public class DemosController(
                 return Content("You must provide a file to be uploaded");
             }
 
-            var whitelistedExtensions = new List<string> { ".dm_1", ".dm_6" };
+            string[] whitelistedExtensions = [".dm_1", ".dm_6"];
 
             if (!whitelistedExtensions.Any(file.FileName.EndsWith))
             {

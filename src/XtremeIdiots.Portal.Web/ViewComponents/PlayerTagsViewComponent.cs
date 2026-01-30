@@ -37,7 +37,7 @@ public class PlayerTagsViewComponent(
                 }
 
                 ViewBag.PlayerId = playerId;
-                return View(new List<PlayerTagDto>());
+                return View(Array.Empty<PlayerTagDto>());
             }
 
             ViewBag.PlayerId = playerId;
@@ -47,7 +47,7 @@ public class PlayerTagsViewComponent(
         {
             logger.LogError(ex, "Exception retrieving player tags for playerId {PlayerId}", playerId);
             ViewBag.PlayerId = playerId;
-            return View(new List<PlayerTagDto>());
+            return View(Array.Empty<PlayerTagDto>());
         }
     }
 }

@@ -83,7 +83,7 @@ public class ServersController(
             {
                 Logger.LogWarning("Failed to retrieve recent players for map view for user {UserId}. API Success: {IsSuccess}",
                     User.XtremeIdiotsId(), response.IsSuccess);
-                return View(new List<object>());
+                return View(Array.Empty<object>());
             }
 
             Logger.LogInformation("User {UserId} successfully retrieved {PlayerCount} recent players for map view",
@@ -134,9 +134,9 @@ public class ServersController(
             var gameServerStatsResponseDto = await repositoryApiClient.GameServersStats.V1
                 .GetGameServerStatusStats(gameServerData.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken);
 
-            var mapTimelineDataPoints = new List<MapTimelineDataPoint>();
-            var gameServerStatDtos = new List<GameServerStatDto>();
-            var maps = new List<MapDto>();
+            List<MapTimelineDataPoint> mapTimelineDataPoints = [];
+            List<GameServerStatDto> gameServerStatDtos = [];
+            List<MapDto> maps = [];
 
             if (gameServerStatsResponseDto.IsSuccess && gameServerStatsResponseDto.Result?.Data?.Items is not null)
             {

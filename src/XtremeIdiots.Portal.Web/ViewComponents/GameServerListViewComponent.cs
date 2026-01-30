@@ -26,7 +26,7 @@ public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClien
 
         if (gameServersApiResponse.Result?.Data?.Items is null)
         {
-            return View(new List<object>());
+            return View(Array.Empty<object>());
         }
 
         var filtered = gameServersApiResponse.Result.Data.Items
