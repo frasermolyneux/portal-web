@@ -121,10 +121,10 @@ public static class ClaimsPrincipalExtensions
     /// <returns>A list of game types the user can manage servers for</returns>
     public static List<GameType> GetGameTypesForGameServers(this ClaimsPrincipal claimsPrincipal)
     {
-        var requiredClaims = new[]
-        {
+        string[] requiredClaims =
+        [
             UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin
-        };
+        ];
 
         return claimsPrincipal.ClaimedGameTypes(requiredClaims);
     }

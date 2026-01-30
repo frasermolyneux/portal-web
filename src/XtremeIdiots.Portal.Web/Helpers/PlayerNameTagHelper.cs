@@ -18,7 +18,7 @@ public class PlayerNameTagHelper : TagHelper
         }
 
         var cleaned = Value;
-        var toRemove = new[] { "^1", "^2", "^3", "^4", "^5", "^6", "^7", "^8", "^9" };
+        string[] toRemove = ["^1", "^2", "^3", "^4", "^5", "^6", "^7", "^8", "^9"];
         foreach (var code in toRemove)
         {
             cleaned = cleaned.Replace(code, string.Empty);

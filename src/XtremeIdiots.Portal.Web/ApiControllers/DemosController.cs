@@ -42,7 +42,7 @@ public class DemosController(
                 return BadRequest();
             }
 
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
             var gameTypes = User.ClaimedGameTypes(requiredClaims);
 
             string? filterUserId = null;
@@ -150,7 +150,7 @@ public class DemosController(
 
             var claimsPrincipal = await signInManager.ClaimsFactory.CreateAsync(user);
 
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
             var gameTypes = claimsPrincipal.ClaimedGameTypes(requiredClaims);
 
             string? filterUserId = null;
