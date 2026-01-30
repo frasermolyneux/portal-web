@@ -29,7 +29,8 @@ public class HealthCheckController : BaseApiController
         IConfiguration configuration)
         : base(telemetryClient, logger, configuration)
     {
-        this.forumsClient = forumsClient ?? throw new ArgumentNullException(nameof(forumsClient));
+        ArgumentNullException.ThrowIfNull(forumsClient);
+        this.forumsClient = forumsClient;
 
         healthCheckComponents.Add(new HealthCheckComponent
         {

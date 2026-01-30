@@ -15,7 +15,7 @@ public class GuidLinkTagHelper : TagHelper
             output.SuppressOutput();
             return;
         }
-        if (string.Equals(Game, "CallOfDuty4", StringComparison.OrdinalIgnoreCase))
+        if (Game?.Equals("CallOfDuty4", StringComparison.OrdinalIgnoreCase) == true)
         {
             var link = $"https://www.pbbans.com/mbi.php?action=12&guid={GuidValue}";
             output.TagName = "a";

@@ -153,9 +153,9 @@ public class DataController(
             {
                 var orderColumn = model.Columns[model.Order.First().Column].Name;
                 var dir = model.Order.First().Dir;
-                if (string.Equals(orderColumn, "displayName", StringComparison.OrdinalIgnoreCase))
+                if (orderColumn.Equals("displayName", StringComparison.OrdinalIgnoreCase))
                 {
-                    order = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase)
+                    order = dir.Equals("asc", StringComparison.OrdinalIgnoreCase)
                         ? UserProfilesOrder.DisplayNameAsc
                         : UserProfilesOrder.DisplayNameDesc;
                 }
