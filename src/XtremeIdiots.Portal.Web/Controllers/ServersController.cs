@@ -19,7 +19,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <remarks>
 /// Initializes a new instance of the ServersController
 /// </remarks>
-/// <param name="authorizationService">Service for handling authorization checks</param>
 /// <param name="repositoryApiClient">Client for repository API operations</param>
 /// <param name="telemetryClient">Client for application telemetry</param>
 /// <param name="logger">Logger instance for this controller</param>
@@ -27,7 +26,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <exception cref="ArgumentNullException">Thrown when required dependencies are null</exception>
 [Authorize(Policy = AuthPolicies.AccessServers)]
 public class ServersController(
-    IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ServersController> logger,

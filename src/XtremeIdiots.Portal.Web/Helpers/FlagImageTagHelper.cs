@@ -26,7 +26,7 @@ public class LocationSummaryTagHelper : TagHelper
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagName = "span";
-        if (Geo == null)
+        if (Geo is null)
         {
             output.Content.SetContent("Unknown");
             return;

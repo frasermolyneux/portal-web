@@ -72,7 +72,7 @@ public class ServerLinkTagHelper : TagHelper
                     "CallOfDuty5" => "CoDWW",
                     _ => null
                 };
-                if (hlswGame == null)
+                if (hlswGame is null)
                 {
                     output.SuppressOutput();
                     return;

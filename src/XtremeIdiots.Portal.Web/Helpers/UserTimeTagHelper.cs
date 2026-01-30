@@ -38,7 +38,7 @@ public class UserTimeTagHelper : TagHelper
 
     private static DateTime ConvertToUserTime(ClaimsPrincipal? user, DateTime utc)
     {
-        if (user == null)
+        if (user is null)
             return utc;
         var timezoneClaim = user.Claims.SingleOrDefault(c => c.Type == UserProfileClaimType.TimeZone);
         if (timezoneClaim is null)
