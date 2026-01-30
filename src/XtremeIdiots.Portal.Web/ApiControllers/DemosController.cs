@@ -25,10 +25,6 @@ public class DemosController(
         ILogger<DemosController> logger,
         IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly SignInManager<IdentityUser> signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly UserManager<IdentityUser> userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
 
     [HttpPost("GetDemoListAjax")]
     public async Task<IActionResult> GetDemoListAjax(GameType? id, CancellationToken cancellationToken = default)

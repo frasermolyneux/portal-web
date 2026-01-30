@@ -19,7 +19,6 @@ public class UserSearchController(
     ILogger<UserSearchController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Searches user profiles by display name returning lightweight id/text pairs for autocomplete

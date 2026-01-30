@@ -14,7 +14,6 @@ namespace XtremeIdiots.Portal.Web.ViewComponents;
 /// <param name="repositoryApiClient">Client for repository API operations</param>
 public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClient) : ViewComponent
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Retrieves and displays game servers that have banner functionality enabled

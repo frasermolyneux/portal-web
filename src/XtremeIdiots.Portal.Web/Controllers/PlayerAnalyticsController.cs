@@ -24,7 +24,6 @@ public class PlayerAnalyticsController(
     ILogger<PlayerAnalyticsController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Displays the main player analytics dashboard with charting capabilities

@@ -23,8 +23,6 @@ public class UsersController(
     ILogger<UsersController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly UserManager<IdentityUser> userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Provides AJAX endpoint for retrieving paginated user data for DataTables

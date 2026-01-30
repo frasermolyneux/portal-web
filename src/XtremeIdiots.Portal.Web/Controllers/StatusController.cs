@@ -29,7 +29,6 @@ public class StatusController(
     ILogger<StatusController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Displays the ban file monitor status page showing synchronization status and file information

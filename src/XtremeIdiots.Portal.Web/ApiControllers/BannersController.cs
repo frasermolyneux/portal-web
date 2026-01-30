@@ -38,9 +38,6 @@ public class BannersController(
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
     private const string GameServersListCacheKey = nameof(GameServersListCacheKey);
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly IMemoryCache memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
 
     /// <summary>
     /// Gets HTML banners for game servers that are enabled for banner display

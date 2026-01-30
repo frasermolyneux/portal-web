@@ -22,7 +22,6 @@ public class PlayerAnalyticsController(
     ILogger<PlayerAnalyticsController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Gets cumulative daily players data for analytics charts

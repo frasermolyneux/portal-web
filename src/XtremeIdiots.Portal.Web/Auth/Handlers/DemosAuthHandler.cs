@@ -10,7 +10,6 @@ namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 /// <param name="httpContextAccessor">HTTP context accessor for request header validation</param>
 public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAuthorizationHandler
 {
-    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
 
     /// <summary>
     /// Handles authorization requirements for demo operations

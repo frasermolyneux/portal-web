@@ -13,8 +13,6 @@ namespace XtremeIdiots.Portal.Integrations.Forums;
 /// <param name="forumsClient">Invision Community API client for forum operations</param>
 public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiClient forumsClient) : IAdminActionTopics
 {
-    private readonly IInvisionApiClient invisionClient = forumsClient ?? throw new ArgumentNullException(nameof(forumsClient));
-    private readonly ILogger<AdminActionTopics> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
     /// Creates a forum topic for a new admin action
@@ -46,7 +44,7 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
                 _ => 28
             };
 
-            var postTopicResult = await invisionClient.Forums.PostTopic(forumId, userId, $"{username} - {type}", PostContent(type, playerId, username, created, text), type.ToString());
+            var postTopicResult = await forumsClient.Forums.PostTopic(forumId, userId, $"{username} - {type}", PostContent(type, playerId, username, created, text), type.ToString());
 
             if (postTopicResult is null)
             {
@@ -84,7 +82,7 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
         if (adminId is not null)
             userId = Convert.ToInt32(adminId);
 
-        await invisionClient.Forums.UpdateTopic(topicId, userId, PostContent(type, playerId, username, created, text));
+        await forumsClient.Forums.UpdateTopic(topicId, userId, PostContent(type, playerId, username, created, text));
     }
 
     private static string PostContent(AdminActionType type, Guid playerId, string username, DateTime created, string text)

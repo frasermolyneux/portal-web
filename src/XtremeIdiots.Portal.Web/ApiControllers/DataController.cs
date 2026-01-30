@@ -35,7 +35,6 @@ public class DataController(
     ILogger<DataController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Retrieves players data for DataTables AJAX requests with username and GUID filtering

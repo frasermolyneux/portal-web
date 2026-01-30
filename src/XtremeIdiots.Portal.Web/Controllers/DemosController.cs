@@ -45,12 +45,6 @@ public class DemosController(
     IConfiguration configuration,
     IHttpClientFactory httpClientFactory) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly UserManager<IdentityUser> userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly SignInManager<IdentityUser> signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
-    private readonly IDemoManager demosForumsClient = demosForumsClient ?? throw new ArgumentNullException(nameof(demosForumsClient));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly IHttpClientFactory httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
 
     /// <summary>
     /// Displays the demo client configuration page with authentication key information

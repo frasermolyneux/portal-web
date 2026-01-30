@@ -11,8 +11,6 @@ public class PlayerTagsViewComponent(
     IRepositoryApiClient repositoryApiClient,
     ILogger<PlayerTagsViewComponent> logger) : ViewComponent
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly ILogger<PlayerTagsViewComponent> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
     /// Invokes the view component to display player tags

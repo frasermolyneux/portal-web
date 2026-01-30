@@ -24,7 +24,6 @@ public class ExternalController(
     ILogger<ExternalController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Retrieves the latest admin actions for display in external forum widgets
