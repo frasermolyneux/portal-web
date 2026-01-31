@@ -50,10 +50,12 @@ public static class PlayerEnrichmentExtensions
             return [];
 
         var players = playerDtos.ToList();
-        foreach (var player in players.Where(p => p != null))
-        {
-            await player.EnrichWithProxyCheckDataAsync(proxyCheckService, logger, cancellationToken).ConfigureAwait(false);
-        }
+
+        // Use Parallel.ForEachAsync for concurrent enrichment of independent player records
+        await Parallel.ForEachAsync(players.Where(p => p != null), cancellationToken, async (player, ct) =>
+            await player.EnrichWithProxyCheckDataAsync(proxyCheckService, logger, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
         return players;
     }
 
@@ -91,10 +93,12 @@ public static class PlayerEnrichmentExtensions
             return [];
 
         var players = playerDtos.ToList();
-        foreach (var player in players.Where(p => p != null))
-        {
-            await player.EnrichWithGeoLocationDataAsync(geoLocationClient, logger, cancellationToken).ConfigureAwait(false);
-        }
+
+        // Use Parallel.ForEachAsync for concurrent enrichment of independent player records
+        await Parallel.ForEachAsync(players.Where(p => p != null), cancellationToken, async (player, ct) =>
+            await player.EnrichWithGeoLocationDataAsync(geoLocationClient, logger, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
         return players;
     }
 
