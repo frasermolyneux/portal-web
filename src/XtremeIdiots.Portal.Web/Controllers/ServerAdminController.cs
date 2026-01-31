@@ -67,7 +67,7 @@ public class ServerAdminController(
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 gameTypes, gameServerIds, GameServerFilter.LiveTrackingEnabled, 0, 50,
-                GameServerOrder.BannerServerListPosition, cancellationToken);
+                GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -86,7 +86,7 @@ public class ServerAdminController(
                 results.Count, User.XtremeIdiotsId());
 
             return View(results);
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public class ServerAdminController(
         string action,
         CancellationToken cancellationToken = default)
     {
-        var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+        var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
         if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
         {
@@ -117,7 +117,7 @@ public class ServerAdminController(
             action,
             "GameServer",
             $"ServerId:{id},GameType:{gameServerData.GameType}",
-            gameServerData);
+            gameServerData).ConfigureAwait(false);
 
         return authResult is not null ? (authResult, null) : (null, gameServerData);
     }
@@ -133,9 +133,9 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(ViewRcon), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(ViewRcon), cancellationToken).ConfigureAwait(false);
             return actionResult is not null ? actionResult : View(gameServerData);
-        }, nameof(ViewRcon));
+        }, nameof(ViewRcon)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -149,11 +149,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetRconPlayers), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetRconPlayers), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id).ConfigureAwait(false);
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data?.Players is null)
             {
@@ -165,12 +165,12 @@ public class ServerAdminController(
 
             foreach (var rconPlayer in rconPlayers)
             {
-                var enrichedPlayer = await EnrichRconPlayerDataAsync(rconPlayer, gameServerData!.GameType, cancellationToken);
+                var enrichedPlayer = await EnrichRconPlayerDataAsync(rconPlayer, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
                 enrichedPlayers.Add(enrichedPlayer);
             }
 
             return Json(new { data = enrichedPlayers });
-        }, nameof(GetRconPlayers));
+        }, nameof(GetRconPlayers)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public class ServerAdminController(
             {
                 // Search for player by GUID using GetPlayers with filter
                 var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                    gameType, null, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None);
+                    gameType, null, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
 
                 if (playerResponse.IsSuccess && playerResponse.Result?.Data?.Items?.Any() == true)
                 {
@@ -214,7 +214,7 @@ public class ServerAdminController(
             try
             {
                 // Get geolocation country code
-                var geoResponse = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress, cancellationToken);
+                var geoResponse = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress, cancellationToken).ConfigureAwait(false);
                 if (geoResponse.IsSuccess && geoResponse.Result?.Data is not null)
                 {
                     countryCode = geoResponse.Result.Data.CountryCode;
@@ -228,7 +228,7 @@ public class ServerAdminController(
             try
             {
                 // Get ProxyCheck risk assessment
-                proxyCheck = await proxyCheckService.GetIpRiskDataAsync(ipAddress, cancellationToken);
+                proxyCheck = await proxyCheckService.GetIpRiskDataAsync(ipAddress, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -264,11 +264,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerStatus), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerStatus), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id);
+            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id).ConfigureAwait(false);
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null)
             {
@@ -310,7 +310,7 @@ public class ServerAdminController(
                 var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                     gameServerData!.GameType,
                     [currentMapName],
-                    null, null, 0, 1, MapsOrder.MapNameAsc, cancellationToken);
+                    null, null, 0, 1, MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
 
                 mapImageUri = mapsApiResponse.Result?.Data?.Items?.FirstOrDefault()?.MapImageUri;
             }
@@ -327,7 +327,7 @@ public class ServerAdminController(
                 hostname = gameServerData!.Hostname,
                 gameType = gameServerData.GameType.ToString()
             });
-        }, nameof(GetServerStatus));
+        }, nameof(GetServerStatus)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -341,11 +341,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCurrentMap), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCurrentMap), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getCurrentMapResult = await serversApiClient.Rcon.V1.GetCurrentMap(id);
+            var getCurrentMapResult = await serversApiClient.Rcon.V1.GetCurrentMap(id).ConfigureAwait(false);
 
             if (!getCurrentMapResult.IsSuccess || getCurrentMapResult.Result?.Data is null)
             {
@@ -363,7 +363,7 @@ public class ServerAdminController(
                 var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                     gameServerData!.GameType,
                     [currentMapName],
-                    null, null, 0, 1, MapsOrder.MapNameAsc, cancellationToken);
+                    null, null, 0, 1, MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
 
                 mapImageUri = mapsApiResponse.Result?.Data?.Items?.FirstOrDefault()?.MapImageUri;
             }
@@ -374,7 +374,7 @@ public class ServerAdminController(
                 currentMap = currentMapName,
                 mapImageUri
             });
-        }, nameof(GetCurrentMap));
+        }, nameof(GetCurrentMap)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -388,11 +388,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerInfo), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerInfo), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerInfoResult = await serversApiClient.Rcon.V1.GetServerInfo(id);
+            var getServerInfoResult = await serversApiClient.Rcon.V1.GetServerInfo(id).ConfigureAwait(false);
 
             if (!getServerInfoResult.IsSuccess || getServerInfoResult.Result?.Data is null)
             {
@@ -402,7 +402,7 @@ public class ServerAdminController(
             var serverInfo = getServerInfoResult.Result.Data;
 
             return Json(new { success = true, serverInfo });
-        }, nameof(GetServerInfo));
+        }, nameof(GetServerInfo)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -416,11 +416,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetSystemInfo), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetSystemInfo), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getSystemInfoResult = await serversApiClient.Rcon.V1.GetSystemInfo(id);
+            var getSystemInfoResult = await serversApiClient.Rcon.V1.GetSystemInfo(id).ConfigureAwait(false);
 
             if (!getSystemInfoResult.IsSuccess || getSystemInfoResult.Result?.Data is null)
             {
@@ -430,7 +430,7 @@ public class ServerAdminController(
             var systemInfo = getSystemInfoResult.Result.Data;
 
             return Json(new { success = true, systemInfo });
-        }, nameof(GetSystemInfo));
+        }, nameof(GetSystemInfo)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -444,11 +444,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCommandList), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetCommandList), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getCommandListResult = await serversApiClient.Rcon.V1.GetCommandList(id);
+            var getCommandListResult = await serversApiClient.Rcon.V1.GetCommandList(id).ConfigureAwait(false);
 
             if (!getCommandListResult.IsSuccess || getCommandListResult.Result?.Data is null)
             {
@@ -458,7 +458,7 @@ public class ServerAdminController(
             var commandList = getCommandListResult.Result.Data;
 
             return Json(new { success = true, commandList });
-        }, nameof(GetCommandList));
+        }, nameof(GetCommandList)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -474,7 +474,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(SendSayCommand), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(SendSayCommand), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -490,7 +490,7 @@ public class ServerAdminController(
                 message = message[..255];
             }
 
-            var sayResult = await serversApiClient.Rcon.V1.Say(id, message);
+            var sayResult = await serversApiClient.Rcon.V1.Say(id, message).ConfigureAwait(false);
 
             if (!sayResult.IsSuccess)
             {
@@ -505,7 +505,7 @@ public class ServerAdminController(
             });
 
             return Json(new { success = true, message = "Message sent to server" });
-        }, nameof(SendSayCommand));
+        }, nameof(SendSayCommand)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -519,11 +519,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetMapRotation), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetMapRotation), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id);
+            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id).ConfigureAwait(false);
 
             if (!getServerMapsResult.IsSuccess || getServerMapsResult.Result?.Data?.Items is null)
             {
@@ -538,7 +538,7 @@ public class ServerAdminController(
             var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                 gameServerData!.GameType,
                 mapNames,
-                null, null, 0, 100, MapsOrder.MapNameAsc, cancellationToken);
+                null, null, 0, 100, MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
 
             var mapDetails = mapsApiResponse.Result?.Data?.Items?.ToDictionary(m => m.MapName, m => m)
                 ?? [];
@@ -556,7 +556,7 @@ public class ServerAdminController(
             }).ToList();
 
             return Json(new { success = true, maps = enrichedMaps });
-        }, nameof(GetMapRotation));
+        }, nameof(GetMapRotation)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -575,7 +575,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(LoadMap), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(LoadMap), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -588,7 +588,7 @@ public class ServerAdminController(
             Logger.LogInformation("Attempting to load map {MapName} on server {ServerId}", mapName, id);
 
             // Call the actual LoadMap RCON command
-            var loadMapResult = await serversApiClient.Rcon.V1.ChangeMap(id, mapName);
+            var loadMapResult = await serversApiClient.Rcon.V1.ChangeMap(id, mapName).ConfigureAwait(false);
 
             if (!loadMapResult.IsSuccess)
             {
@@ -609,7 +609,7 @@ public class ServerAdminController(
                 id);
 
             return Json(new { success = true, message = $"Map '{mapName}' is now loading" });
-        }, nameof(LoadMap));
+        }, nameof(LoadMap)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -618,11 +618,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(RestartMap), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(RestartMap), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.RestartMap(id);
+            var restartResult = await serversApiClient.Rcon.V1.RestartMap(id).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -637,7 +637,7 @@ public class ServerAdminController(
             });
 
             return Json(new { success = true, message = "Map restart command sent successfully" });
-        }, nameof(RestartMap));
+        }, nameof(RestartMap)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -646,11 +646,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(FastRestartMap), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(FastRestartMap), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.FastRestartMap(id);
+            var restartResult = await serversApiClient.Rcon.V1.FastRestartMap(id).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -665,7 +665,7 @@ public class ServerAdminController(
             });
 
             return Json(new { success = true, message = "Fast restart command sent successfully" });
-        }, nameof(FastRestartMap));
+        }, nameof(FastRestartMap)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -674,11 +674,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(NextMap), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(NextMap), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var nextMapResult = await serversApiClient.Rcon.V1.NextMap(id);
+            var nextMapResult = await serversApiClient.Rcon.V1.NextMap(id).ConfigureAwait(false);
 
             if (!nextMapResult.IsSuccess)
             {
@@ -693,7 +693,7 @@ public class ServerAdminController(
             });
 
             return Json(new { success = true, message = "Next map command sent successfully" });
-        }, nameof(NextMap));
+        }, nameof(NextMap)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -702,11 +702,11 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(RestartServer), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(RestartServer), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.Restart(id);
+            var restartResult = await serversApiClient.Rcon.V1.Restart(id).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -721,7 +721,7 @@ public class ServerAdminController(
             });
 
             return Json(new { success = true, message = "Server restart command sent successfully" });
-        }, nameof(RestartServer));
+        }, nameof(RestartServer)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -739,7 +739,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(KickRconPlayer), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(KickRconPlayer), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -752,7 +752,7 @@ public class ServerAdminController(
                 "Kick",
                 "RconPlayer",
                 $"GameType:{gameServerData.GameType},ServerId:{id}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to kick players" });
@@ -766,7 +766,7 @@ public class ServerAdminController(
             try
             {
                 // Kick the player via RCON using slot number
-                var kickResult = await serversApiClient.Rcon.V1.KickPlayer(id, playerSlot);
+                var kickResult = await serversApiClient.Rcon.V1.KickPlayer(id, playerSlot).ConfigureAwait(false);
 
                 if (!kickResult.IsSuccess)
                 {
@@ -781,7 +781,7 @@ public class ServerAdminController(
                     await CreateAdminActionForRconOperationAsync(
                         gameServerData.GameType, playerGuid, playerName, AdminActionType.Kick,
                         $"Player kicked from {gameServerData.Title} via RCON by {User.Username()}",
-                        cancellationToken);
+                        cancellationToken).ConfigureAwait(false);
                 }
 
                 TrackSuccessTelemetry("RconPlayerKicked", nameof(KickRconPlayer), new Dictionary<string, string>
@@ -799,7 +799,7 @@ public class ServerAdminController(
                     playerName, playerSlot, id);
                 return Json(new { success = false, error = "Exception", message = "An error occurred while kicking the player" });
             }
-        }, nameof(KickRconPlayer));
+        }, nameof(KickRconPlayer)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -817,7 +817,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(TempBanRconPlayer), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(TempBanRconPlayer), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -830,7 +830,7 @@ public class ServerAdminController(
                 "TempBan",
                 "RconPlayer",
                 $"GameType:{gameServerData.GameType},ServerId:{id}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to temp ban players" });
@@ -844,7 +844,7 @@ public class ServerAdminController(
             try
             {
                 // Ban the player via RCON using slot number (most servers don't have separate temp ban RCON command)
-                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot);
+                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
 
                 if (!banResult.IsSuccess)
                 {
@@ -861,7 +861,7 @@ public class ServerAdminController(
                         gameServerData.GameType, playerGuid, playerName, AdminActionType.TempBan,
                         $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
                         cancellationToken,
-                        expiryDate);
+                        expiryDate).ConfigureAwait(false);
                 }
 
                 TrackSuccessTelemetry("RconPlayerTempBanned", nameof(TempBanRconPlayer), new Dictionary<string, string>
@@ -879,7 +879,7 @@ public class ServerAdminController(
                     playerName, playerSlot, id);
                 return Json(new { success = false, error = "Exception", message = "An error occurred while temp banning the player" });
             }
-        }, nameof(TempBanRconPlayer));
+        }, nameof(TempBanRconPlayer)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -897,7 +897,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(BanRconPlayer), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(BanRconPlayer), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -910,7 +910,7 @@ public class ServerAdminController(
                 "Ban",
                 "RconPlayer",
                 $"GameType:{gameServerData.GameType},ServerId:{id}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to ban players" });
@@ -924,7 +924,7 @@ public class ServerAdminController(
             try
             {
                 // Ban the player via RCON using slot number
-                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot);
+                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
 
                 if (!banResult.IsSuccess)
                 {
@@ -939,7 +939,7 @@ public class ServerAdminController(
                     await CreateAdminActionForRconOperationAsync(
                         gameServerData.GameType, playerGuid, playerName, AdminActionType.Ban,
                         $"Player banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
-                        cancellationToken);
+                        cancellationToken).ConfigureAwait(false);
                 }
 
                 TrackSuccessTelemetry("RconPlayerBanned", nameof(BanRconPlayer), new Dictionary<string, string>
@@ -957,7 +957,7 @@ public class ServerAdminController(
                     playerName, playerSlot, id);
                 return Json(new { success = false, error = "Exception", message = "An error occurred while banning the player" });
             }
-        }, nameof(BanRconPlayer));
+        }, nameof(BanRconPlayer)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -983,7 +983,7 @@ public class ServerAdminController(
         {
             // Try to find existing player profile by searching with GUID
             var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                gameType, null, playerGuidStr, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None);
+                gameType, null, playerGuidStr, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (!playerResponse.IsSuccess || playerResponse.Result?.Data?.Items?.Any() != true)
             {
@@ -1001,7 +1001,8 @@ public class ServerAdminController(
                 playerName,
                 DateTime.UtcNow,
                 text,
-                adminId);
+                adminId,
+                cancellationToken).ConfigureAwait(false);
 
             var createAdminActionDto = new CreateAdminActionDto(playerId, actionType, text)
             {
@@ -1010,7 +1011,7 @@ public class ServerAdminController(
                 ForumTopicId = forumTopicId
             };
 
-            await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
 
             Logger.LogInformation("Created admin action {ActionType} for player {PlayerName} ({Guid}) by user {UserId}",
                 actionType, playerName, playerGuidStr, adminId);
@@ -1027,7 +1028,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(KickPlayer), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(KickPlayer), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -1048,7 +1049,7 @@ public class ServerAdminController(
             });
 
             return RedirectToAction(nameof(ViewRcon), new { id });
-        }, nameof(KickPlayer));
+        }, nameof(KickPlayer)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1064,7 +1065,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerLiveChatLog), cancellationToken);
+            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetServerLiveChatLog), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -1077,7 +1078,7 @@ public class ServerAdminController(
             // If lastMessageId is provided, only get messages newer than that
             var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
                 null, id, null, null,
-                0, 100, ChatMessageOrder.TimestampDesc, null, cancellationToken);
+                0, 100, ChatMessageOrder.TimestampDesc, null, cancellationToken).ConfigureAwait(false);
 
             if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data?.Items is null)
             {
@@ -1120,14 +1121,14 @@ public class ServerAdminController(
                 count = messages.Count,
                 serverTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
             });
-        }, nameof(GetServerLiveChatLog));
+        }, nameof(GetServerLiveChatLog)).ConfigureAwait(false);
     }
 
     [HttpGet]
     [Authorize(Policy = AuthPolicies.ViewGlobalChatLog)]
-    public IActionResult ChatLogIndex()
+    public async Task<IActionResult> ChatLogIndex(CancellationToken cancellationToken = default)
     {
-        return ExecuteWithErrorHandlingAsync(async () => await Task.FromResult(View()), nameof(ChatLogIndex)).Result;
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(ChatLogIndex)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -1135,7 +1136,7 @@ public class ServerAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetChatLogAjax(bool? lockedOnly = null, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () => await GetChatLogPrivate(null, null, null, lockedOnly, cancellationToken), "GetChatLogAjax");
+        return await ExecuteWithErrorHandlingAsync(async () => await GetChatLogPrivate(null, null, null, lockedOnly, cancellationToken), "GetChatLogAjax").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1151,7 +1152,7 @@ public class ServerAdminController(
         {
             // Return broad list (no per-user claim filtering) relying on policy authorization already performed.
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                null, null, null, 0, 300, GameServerOrder.BannerServerListPosition, cancellationToken);
+                null, null, null, 0, 300, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -1171,7 +1172,7 @@ public class ServerAdminController(
                 .ToList();
 
             return Json(results);
-        }, nameof(GetChatLogServers));
+        }, nameof(GetChatLogServers)).ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -1186,14 +1187,14 @@ public class ServerAdminController(
                 "View",
                 "GameChatLog",
                 $"GameType:{id}",
-                id);
+                id).ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
 
             ViewData["GameType"] = id;
             return View(nameof(ChatLogIndex));
-        }, "GameChatLog");
+        }, "GameChatLog").ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -1209,10 +1210,10 @@ public class ServerAdminController(
                 "GetGameChatLogAjax",
                 "GameChatLog",
                 $"GameType:{id}",
-                id);
+                id).ConfigureAwait(false);
 
-            return authResult ?? await GetChatLogPrivate(id, null, null, lockedOnly, cancellationToken);
-        }, "GetGameChatLogAjax");
+            return authResult ?? await GetChatLogPrivate(id, null, null, lockedOnly, cancellationToken).ConfigureAwait(false);
+        }, "GetGameChatLogAjax").ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -1220,7 +1221,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
             {
@@ -1237,14 +1238,14 @@ public class ServerAdminController(
                 "View",
                 "ServerChatLog",
                 $"ServerId:{id},GameType:{gameServerData.GameType}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
 
             ViewData["GameServerId"] = id;
             return View(nameof(ChatLogIndex));
-        }, nameof(ServerChatLog));
+        }, nameof(ServerChatLog)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -1253,7 +1254,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
             {
@@ -1270,10 +1271,10 @@ public class ServerAdminController(
                 "GetServerChatLogAjax",
                 "ServerChatLog",
                 $"ServerId:{id},GameType:{gameServerData.GameType}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
-            return authResult ?? await GetChatLogPrivate(null, id, null, lockedOnly, cancellationToken);
-        }, nameof(GetServerChatLogAjax));
+            return authResult ?? await GetChatLogPrivate(null, id, null, lockedOnly, cancellationToken).ConfigureAwait(false);
+        }, nameof(GetServerChatLogAjax)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -1282,7 +1283,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var playerApiResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None);
+            var playerApiResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (playerApiResponse.IsNotFound || playerApiResponse.Result?.Data is null)
             {
@@ -1299,12 +1300,12 @@ public class ServerAdminController(
                 "GetPlayerChatLog",
                 "PlayerChatLog",
                 $"PlayerId:{id},GameType:{playerData.GameType}",
-                playerData);
+                playerData).ConfigureAwait(false);
 
             return authResult is not null
                 ? authResult
-                : await GetChatLogPrivate(playerData.GameType, null, playerData.PlayerId, lockedOnly, cancellationToken);
-        }, nameof(GetPlayerChatLog));
+                : await GetChatLogPrivate(playerData.GameType, null, playerData.PlayerId, lockedOnly, cancellationToken).ConfigureAwait(false);
+        }, nameof(GetPlayerChatLog)).ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -1312,7 +1313,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var chatMessageApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessage(id, cancellationToken);
+            var chatMessageApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessage(id, cancellationToken).ConfigureAwait(false);
 
             if (chatMessageApiResponse.IsNotFound || chatMessageApiResponse.Result?.Data is null)
             {
@@ -1321,7 +1322,7 @@ public class ServerAdminController(
             }
 
             return View(chatMessageApiResponse.Result.Data);
-        }, nameof(ChatLogPermaLink));
+        }, nameof(ChatLogPermaLink)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -1331,7 +1332,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var chatMessageApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessage(id, cancellationToken);
+            var chatMessageApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessage(id, cancellationToken).ConfigureAwait(false);
 
             if (chatMessageApiResponse.IsNotFound || chatMessageApiResponse.Result?.Data?.GameServer is null)
             {
@@ -1348,12 +1349,12 @@ public class ServerAdminController(
                 "ToggleLock",
                 "ChatMessage",
                 $"MessageId:{id},GameType:{chatMessageData.GameServer.GameType}",
-                chatMessageData);
+                chatMessageData).ConfigureAwait(false);
 
             if (authResult != null)
                 return JsonOrStatus(authResult, new { success = false, error = "Unauthorized", chatMessageId = id });
 
-            var toggleResponse = await repositoryApiClient.ChatMessages.V1.SetLock(id, !chatMessageData.Locked, cancellationToken);
+            var toggleResponse = await repositoryApiClient.ChatMessages.V1.SetLock(id, !chatMessageData.Locked, cancellationToken).ConfigureAwait(false);
 
             if (!toggleResponse.IsSuccess)
             {
@@ -1374,7 +1375,7 @@ public class ServerAdminController(
 
             this.AddAlertSuccess("Chat message lock status has been updated successfully.");
             return RedirectToAction(nameof(ChatLogPermaLink), new { id });
-        }, nameof(ToggleChatMessageLock));
+        }, nameof(ToggleChatMessageLock)).ConfigureAwait(false);
     }
 
     private bool IsJsonRequest()
@@ -1396,7 +1397,7 @@ public class ServerAdminController(
     private async Task<IActionResult> GetChatLogPrivate(GameType? gameType, Guid? gameServerId, Guid? playerId, bool? lockedOnly = null, CancellationToken cancellationToken = default)
     {
         var reader = new StreamReader(Request.Body);
-        var requestBody = await reader.ReadToEndAsync(cancellationToken);
+        var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
         var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -1430,7 +1431,7 @@ public class ServerAdminController(
 
         var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
             gameType, gameServerId, playerId, model.Search?.Value,
-            model.Start, model.Length, order, lockedOnly, cancellationToken);
+            model.Start, model.Length, order, lockedOnly, cancellationToken).ConfigureAwait(false);
 
         if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data is null)
         {

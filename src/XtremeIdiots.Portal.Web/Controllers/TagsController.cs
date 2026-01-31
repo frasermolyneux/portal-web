@@ -46,7 +46,7 @@ public class TagsController(
         string action,
         CancellationToken cancellationToken = default)
     {
-        var tagResponse = await repositoryApiClient.Tags.V1.GetTag(id, cancellationToken);
+        var tagResponse = await repositoryApiClient.Tags.V1.GetTag(id, cancellationToken).ConfigureAwait(false);
 
         if (tagResponse.IsNotFound || tagResponse.Result?.Data is null)
         {
@@ -68,7 +68,7 @@ public class TagsController(
             action,
             nameof(PlayerTagsController),
             $"TagId:{id},TagName:{tagData.Name}",
-            tagData);
+            tagData).ConfigureAwait(false);
 
         return authResult is not null ? (authResult, null) : (null, tagData);
     }
@@ -83,7 +83,7 @@ public class TagsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100, cancellationToken);
+            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100, cancellationToken).ConfigureAwait(false);
 
             if (!tagsResponse.IsSuccess || tagsResponse.Result?.Data?.Items is null)
             {
@@ -97,7 +97,7 @@ public class TagsController(
             };
 
             return View(model);
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -111,7 +111,7 @@ public class TagsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag);
+            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
 
             if (!canCreateTag.Succeeded)
             {
@@ -120,7 +120,7 @@ public class TagsController(
             }
 
             return View(new CreateTagViewModel());
-        }, nameof(Create));
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public class TagsController(
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
-            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag);
+            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
 
             if (!canCreateTag.Succeeded)
             {
@@ -157,7 +157,7 @@ public class TagsController(
                 UserDefined = model.UserDefined
             };
 
-            var response = await repositoryApiClient.Tags.V1.CreateTag(createTagDto, cancellationToken);
+            var response = await repositoryApiClient.Tags.V1.CreateTag(createTagDto, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -176,7 +176,7 @@ public class TagsController(
             this.AddAlertSuccess($"The tag '{model.Name}' has been successfully created");
 
             return RedirectToAction(nameof(Index));
-        }, nameof(Create));
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public class TagsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.EditPlayerTag, nameof(Edit), cancellationToken);
+            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.EditPlayerTag, nameof(Edit), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -205,7 +205,7 @@ public class TagsController(
             };
 
             return View(model);
-        }, nameof(Edit));
+        }, nameof(Edit)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -225,7 +225,7 @@ public class TagsController(
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
-            var (actionResult, originalTagData) = await GetAuthorizedTagAsync(model.TagId, AuthPolicies.EditPlayerTag, nameof(Edit), cancellationToken);
+            var (actionResult, originalTagData) = await GetAuthorizedTagAsync(model.TagId, AuthPolicies.EditPlayerTag, nameof(Edit), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
             {
                 if (actionResult is UnauthorizedResult)
@@ -246,7 +246,7 @@ public class TagsController(
                 UserDefined = model.UserDefined
             };
 
-            var response = await repositoryApiClient.Tags.V1.UpdateTag(tagDto, cancellationToken);
+            var response = await repositoryApiClient.Tags.V1.UpdateTag(tagDto, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -266,7 +266,7 @@ public class TagsController(
             this.AddAlertSuccess($"The tag '{model.Name}' has been successfully updated");
 
             return RedirectToAction(nameof(Index));
-        }, nameof(Edit));
+        }, nameof(Edit)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -281,9 +281,9 @@ public class TagsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.DeletePlayerTag, nameof(Delete), cancellationToken);
+            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.DeletePlayerTag, nameof(Delete), cancellationToken).ConfigureAwait(false);
             return actionResult is not null ? actionResult : View(tagData);
-        }, nameof(Delete));
+        }, nameof(Delete)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -301,7 +301,7 @@ public class TagsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.DeletePlayerTag, nameof(Delete), cancellationToken);
+            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.DeletePlayerTag, nameof(Delete), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
             {
                 if (actionResult is UnauthorizedResult)
@@ -325,7 +325,7 @@ public class TagsController(
                 }
             }
 
-            var response = await repositoryApiClient.Tags.V1.DeleteTag(id, cancellationToken);
+            var response = await repositoryApiClient.Tags.V1.DeleteTag(id, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -345,6 +345,6 @@ public class TagsController(
             this.AddAlertSuccess($"The tag '{tagData.Name}' has been successfully deleted");
 
             return RedirectToAction(nameof(Index));
-        }, nameof(DeleteConfirmed));
+        }, nameof(DeleteConfirmed)).ConfigureAwait(false);
     }
 }

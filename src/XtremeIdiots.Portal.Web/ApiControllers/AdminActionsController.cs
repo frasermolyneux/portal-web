@@ -38,7 +38,7 @@ public class AdminActionsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             using var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
             if (model is null)
@@ -77,7 +77,7 @@ public class AdminActionsController(
             }
 
             var apiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(
-                gameType, null, adminId, apiFilter, model.Start, model.Length, order, cancellationToken);
+                gameType, null, adminId, apiFilter, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!apiResponse.IsSuccess || apiResponse.Result?.Data?.Items is null)
             {
@@ -115,7 +115,7 @@ public class AdminActionsController(
                     expires = a.Expires?.ToString("yyyy-MM-dd HH:mm") ?? (a.Type == AdminActionType.Ban ? "Never" : string.Empty)
                 })
             });
-        }, nameof(GetAdminActionsAjax));
+        }, nameof(GetAdminActionsAjax)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -132,7 +132,7 @@ public class AdminActionsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             using var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
             if (model is null)
@@ -163,7 +163,7 @@ public class AdminActionsController(
             }
 
             var apiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(
-                gameType, null, null, AdminActionFilter.UnclaimedBans, model.Start, model.Length, order, cancellationToken);
+                gameType, null, null, AdminActionFilter.UnclaimedBans, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!apiResponse.IsSuccess || apiResponse.Result?.Data?.Items is null)
             {
@@ -178,7 +178,7 @@ public class AdminActionsController(
                 var canClaim = false;
                 if (a.Player?.GameType is GameType gtClaim)
                 {
-                    var auth = await authorizationService.AuthorizeAsync(User, gtClaim, AuthPolicies.ClaimAdminAction);
+                    var auth = await authorizationService.AuthorizeAsync(User, gtClaim, AuthPolicies.ClaimAdminAction).ConfigureAwait(false);
                     canClaim = auth.Succeeded;
                 }
 
@@ -213,7 +213,7 @@ public class AdminActionsController(
                 recordsFiltered = apiResponse.Result.Pagination?.FilteredCount,
                 data = responseItems
             });
-        }, nameof(GetUnclaimedAdminActionsAjax));
+        }, nameof(GetUnclaimedAdminActionsAjax)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -228,7 +228,7 @@ public class AdminActionsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             using var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
             if (model is null)
@@ -265,7 +265,7 @@ public class AdminActionsController(
             }
 
             var apiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(
-                gameType, null, adminId, apiFilter, model.Start, model.Length, order, cancellationToken);
+                gameType, null, adminId, apiFilter, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!apiResponse.IsSuccess || apiResponse.Result?.Data?.Items is null)
             {
@@ -303,6 +303,6 @@ public class AdminActionsController(
                     text = a.Text
                 })
             });
-        }, nameof(GetMyAdminActionsAjax));
+        }, nameof(GetMyAdminActionsAjax)).ConfigureAwait(false);
     }
 }

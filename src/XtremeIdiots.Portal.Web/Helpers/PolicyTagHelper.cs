@@ -14,7 +14,7 @@ public class PolicyTagHelper(IAuthorizationService authService, IHttpContextAcce
 
     public async override Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
-        if (!(await authService.AuthorizeAsync(principal, Policy)).Succeeded)
+        if (!(await authService.AuthorizeAsync(principal, Policy).ConfigureAwait(false)).Succeeded)
             output.SuppressOutput();
     }
 }

@@ -23,7 +23,7 @@ public static class PlayerEnrichmentExtensions
 
         try
         {
-            var proxyCheckResult = await proxyCheckService.GetIpRiskDataAsync(playerDto.IpAddress, cancellationToken);
+            var proxyCheckResult = await proxyCheckService.GetIpRiskDataAsync(playerDto.IpAddress, cancellationToken).ConfigureAwait(false);
             if (!proxyCheckResult.IsError)
             {
                 playerDto.SetProxyCheckRiskScore(proxyCheckResult.RiskScore);
@@ -52,7 +52,7 @@ public static class PlayerEnrichmentExtensions
         var players = playerDtos.ToList();
         foreach (var player in players.Where(p => p != null))
         {
-            await player.EnrichWithProxyCheckDataAsync(proxyCheckService, logger, cancellationToken);
+            await player.EnrichWithProxyCheckDataAsync(proxyCheckService, logger, cancellationToken).ConfigureAwait(false);
         }
         return players;
     }
@@ -68,7 +68,7 @@ public static class PlayerEnrichmentExtensions
 
         try
         {
-            var geoResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(playerDto.IpAddress, cancellationToken);
+            var geoResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(playerDto.IpAddress, cancellationToken).ConfigureAwait(false);
             if (geoResult.IsSuccess && geoResult.Result?.Data is not null && !string.IsNullOrWhiteSpace(geoResult.Result.Data.CountryCode))
             {
                 playerDto.SetCountryCode(geoResult.Result.Data.CountryCode);
@@ -93,7 +93,7 @@ public static class PlayerEnrichmentExtensions
         var players = playerDtos.ToList();
         foreach (var player in players.Where(p => p != null))
         {
-            await player.EnrichWithGeoLocationDataAsync(geoLocationClient, logger, cancellationToken);
+            await player.EnrichWithGeoLocationDataAsync(geoLocationClient, logger, cancellationToken).ConfigureAwait(false);
         }
         return players;
     }
@@ -105,7 +105,7 @@ public static class PlayerEnrichmentExtensions
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
-        var proxyEnriched = await playerDtos.EnrichWithProxyCheckDataAsync(proxyCheckService, logger, cancellationToken);
-        return await proxyEnriched.EnrichWithGeoLocationDataAsync(geoLocationClient, logger, cancellationToken);
+        var proxyEnriched = await playerDtos.EnrichWithProxyCheckDataAsync(proxyCheckService, logger, cancellationToken).ConfigureAwait(false);
+        return await proxyEnriched.EnrichWithGeoLocationDataAsync(geoLocationClient, logger, cancellationToken).ConfigureAwait(false);
     }
 }

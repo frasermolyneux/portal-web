@@ -50,7 +50,7 @@ public class BannersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome);
+            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome).ConfigureAwait(false);
             if (!authorizationResult.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt("Access", "GameServersBanners", "BannerData", null);
@@ -68,7 +68,7 @@ public class BannersController(
 
                 gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                     null, null, GameServerFilter.BannerServerListEnabled, 0, 50,
-                    GameServerOrder.BannerServerListPosition, cancellationToken);
+                    GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
                 if (gameServersApiResponse != null)
                 {
@@ -97,7 +97,7 @@ public class BannersController(
             });
 
             return Ok(htmlBanners);
-        }, "Retrieve game servers banners data");
+        }, "Retrieve game servers banners data").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -121,7 +121,7 @@ public class BannersController(
                 return BadRequest("Invalid parameters provided");
             }
 
-            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome);
+            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome).ConfigureAwait(false);
             if (!authorizationResult.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt("Access", "GameTrackerBanner", $"IpAddress:{ipAddress},QueryPort:{queryPort},ImageName:{imageName}", null);
@@ -141,7 +141,7 @@ public class BannersController(
                     ipAddress, queryPort, imageName);
 
                 repositoryApiResponse = await repositoryApiClient.GameTrackerBanner.V1.GetGameTrackerBanner(
-                    ipAddress, queryPort, imageName, cancellationToken);
+                    ipAddress, queryPort, imageName, cancellationToken).ConfigureAwait(false);
 
                 if (repositoryApiResponse != null)
                 {
@@ -185,6 +185,6 @@ public class BannersController(
             });
 
             return Redirect($"https://cache.gametracker.com/server_info/{ipAddress}:{queryPort}/{imageName}");
-        }, nameof(GetGameTrackerBanner), $"ipAddress: {ipAddress}, queryPort: {queryPort}, imageName: {imageName}");
+        }, nameof(GetGameTrackerBanner), $"ipAddress: {ipAddress}, queryPort: {queryPort}, imageName: {imageName}").ConfigureAwait(false);
     }
 }

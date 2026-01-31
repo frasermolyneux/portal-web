@@ -46,7 +46,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} accessing add player tag form for player {PlayerId}",
                 User.XtremeIdiotsId(), id);
 
-            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.CreatePlayerTag);
+            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
             if (!canCreatePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to create player tag for player {PlayerId}",
@@ -56,7 +56,7 @@ public class PlayerTagsController(
                 return Unauthorized();
             }
 
-            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None);
+            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (playerResponse.IsNotFound)
             {
@@ -70,7 +70,7 @@ public class PlayerTagsController(
                 return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
-            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100);
+            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100).ConfigureAwait(false);
 
             if (!tagsResponse.IsSuccess || tagsResponse.Result?.Data?.Items is null)
             {
@@ -95,7 +95,7 @@ public class PlayerTagsController(
             TelemetryClient.TrackEvent(eventTelemetry);
 
             return View(model);
-        }, nameof(Add), $"id: {id}");
+        }, nameof(Add), $"id: {id}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} attempting to add tag {TagId} to player {PlayerId}",
                 User.XtremeIdiotsId(), model.TagId, model.PlayerId);
 
-            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.CreatePlayerTag);
+            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
             if (!canCreatePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to add tag {TagId} to player {PlayerId}",
@@ -135,13 +135,13 @@ public class PlayerTagsController(
             {
                 Logger.LogWarning("Invalid model state for adding tag to player {PlayerId}", model.PlayerId);
 
-                var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None);
+                var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
                 if (playerResponse.IsSuccess && playerResponse.Result?.Data != null)
                 {
                     model.Player = playerResponse.Result.Data;
                 }
 
-                var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100);
+                var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100).ConfigureAwait(false);
                 if (tagsResponse.IsSuccess && tagsResponse.Result?.Data?.Items != null)
                 {
                     model.AvailableTags = [.. tagsResponse.Result.Data.Items.Where(t => t.UserDefined)];
@@ -150,7 +150,7 @@ public class PlayerTagsController(
                 return View(model);
             }
 
-            var tagResponse = await repositoryApiClient.Tags.V1.GetTag(model.TagId);
+            var tagResponse = await repositoryApiClient.Tags.V1.GetTag(model.TagId).ConfigureAwait(false);
             if (!tagResponse.IsSuccess || tagResponse.Result?.Data is null)
             {
                 Logger.LogWarning("Tag {TagId} not found when adding to player {PlayerId}", model.TagId, model.PlayerId);
@@ -164,13 +164,13 @@ public class PlayerTagsController(
 
                 this.AddAlertDanger("This tag cannot be assigned to players as it is not marked as User Defined.");
 
-                var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None);
+                var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
                 if (playerResponse.IsSuccess && playerResponse.Result?.Data != null)
                 {
                     model.Player = playerResponse.Result.Data;
                 }
 
-                var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100);
+                var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(0, 100).ConfigureAwait(false);
                 if (tagsResponse.IsSuccess && tagsResponse.Result?.Data?.Items != null)
                 {
                     model.AvailableTags = [.. tagsResponse.Result.Data.Items.Where(t => t.UserDefined)];
@@ -194,7 +194,7 @@ public class PlayerTagsController(
                 Assigned = DateTime.UtcNow
             };
 
-            var response = await repositoryApiClient.Players.V1.AddPlayerTag(model.PlayerId, playerTagDto);
+            var response = await repositoryApiClient.Players.V1.AddPlayerTag(model.PlayerId, playerTagDto).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -206,7 +206,7 @@ public class PlayerTagsController(
             Logger.LogInformation("Successfully added tag '{TagName}' ({TagId}) to player {PlayerId} by user {UserId}",
      tagResponse.Result.Data.Name, model.TagId, model.PlayerId, User.XtremeIdiotsId());
 
-            var playerDataResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None);
+            var playerDataResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
             var playerData = playerDataResponse.IsSuccess ? playerDataResponse.Result?.Data : null;
 
             var eventTelemetry = new EventTelemetry("PlayerTagAdded")
@@ -220,7 +220,7 @@ public class PlayerTagsController(
             this.AddAlertSuccess($"The tag '{tagResponse.Result.Data.Name}' has been successfully added to the player");
 
             return RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController)[..^10], new { id = model.PlayerId });
-        }, nameof(Add), $"PlayerId: {model.PlayerId}, TagId: {model.TagId}");
+        }, nameof(Add), $"PlayerId: {model.PlayerId}, TagId: {model.TagId}").ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -231,7 +231,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} accessing remove player tag confirmation for player {PlayerId} and tag {PlayerTagId}",
      User.XtremeIdiotsId(), id, playerTagId);
 
-            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.DeletePlayerTag);
+            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.DeletePlayerTag).ConfigureAwait(false);
             if (!canDeletePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to remove player tag {PlayerTagId} from player {PlayerId}",
@@ -248,14 +248,14 @@ public class PlayerTagsController(
                 return Unauthorized();
             }
 
-            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None);
+            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None).ConfigureAwait(false);
             if (playerResponse.IsNotFound || playerResponse.Result?.Data is null)
             {
                 Logger.LogWarning("Player {PlayerId} not found when removing player tag {PlayerTagId}", id, playerTagId);
                 return NotFound();
             }
 
-            var playerTagsResponse = await repositoryApiClient.Players.V1.GetPlayerTags(id);
+            var playerTagsResponse = await repositoryApiClient.Players.V1.GetPlayerTags(id).ConfigureAwait(false);
             if (!playerTagsResponse.IsSuccess || playerTagsResponse.Result?.Data?.Items is null)
             {
                 Logger.LogWarning("Failed to retrieve player tags for player {PlayerId}", id);
@@ -284,7 +284,7 @@ public class PlayerTagsController(
      User.XtremeIdiotsId(), id, playerTagId);
 
             return View(playerTag);
-        }, nameof(Remove), $"id: {id}, playerTagId: {playerTagId}");
+        }, nameof(Remove), $"id: {id}, playerTagId: {playerTagId}").ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -297,7 +297,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} attempting to remove player tag {PlayerTagId} from player {PlayerId}",
      User.XtremeIdiotsId(), playerTagId, id);
 
-            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.DeletePlayerTag);
+            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.DeletePlayerTag).ConfigureAwait(false);
             if (!canDeletePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to remove player tag {PlayerTagId} from player {PlayerId}",
@@ -314,14 +314,14 @@ public class PlayerTagsController(
                 return Unauthorized();
             }
 
-            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None);
+            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None).ConfigureAwait(false);
             if (playerResponse.IsNotFound || playerResponse.Result?.Data is null)
             {
                 Logger.LogWarning("Player {PlayerId} not found when removing player tag {PlayerTagId}", id, playerTagId);
                 return NotFound();
             }
 
-            var playerTagsResponse = await repositoryApiClient.Players.V1.GetPlayerTags(id);
+            var playerTagsResponse = await repositoryApiClient.Players.V1.GetPlayerTags(id).ConfigureAwait(false);
             if (!playerTagsResponse.IsSuccess || playerTagsResponse.Result?.Data?.Items is null)
             {
                 Logger.LogWarning("Failed to retrieve player tags for player {PlayerId}", id);
@@ -344,7 +344,7 @@ public class PlayerTagsController(
                 return RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController)[..^10], new { id = id });
             }
 
-            var response = await repositoryApiClient.Players.V1.RemovePlayerTag(id, playerTagId);
+            var response = await repositoryApiClient.Players.V1.RemovePlayerTag(id, playerTagId).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -366,6 +366,6 @@ public class PlayerTagsController(
             this.AddAlertSuccess($"The tag '{playerTag.Tag?.Name ?? "Unknown"}' has been successfully removed from the player");
 
             return RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController)[..^10], new { id = id });
-        }, nameof(RemoveConfirmed), $"id: {id}, playerTagId: {playerTagId}");
+        }, nameof(RemoveConfirmed), $"id: {id}, playerTagId: {playerTagId}").ConfigureAwait(false);
     }
 }

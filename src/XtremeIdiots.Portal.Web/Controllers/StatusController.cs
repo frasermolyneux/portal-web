@@ -47,7 +47,7 @@ public class StatusController(
                 User.XtremeIdiotsId(), gameTypes.Length, banFileMonitorIds.Length);
 
             var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(
-                gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken);
+                gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (banFileMonitorsApiResponse.IsNotFound || banFileMonitorsApiResponse.Result?.Data?.Items is null)
             {
@@ -59,7 +59,7 @@ public class StatusController(
 
             foreach (var banFileMonitor in banFileMonitorsApiResponse.Result.Data.Items)
             {
-                var (actionResult, gameServerData) = await GetGameServerDataAsync(banFileMonitor.GameServerId, banFileMonitor.BanFileMonitorId, cancellationToken);
+                var (actionResult, gameServerData) = await GetGameServerDataAsync(banFileMonitor.GameServerId, banFileMonitor.BanFileMonitorId, cancellationToken).ConfigureAwait(false);
 
                 if (actionResult is not null)
                 {
@@ -90,7 +90,7 @@ public class StatusController(
                 User.XtremeIdiotsId(), models.Count);
 
             return View(models);
-        }, nameof(BanFileStatus));
+        }, nameof(BanFileStatus)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public class StatusController(
     {
         try
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
             {

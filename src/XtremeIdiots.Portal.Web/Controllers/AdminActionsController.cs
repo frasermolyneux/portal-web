@@ -40,7 +40,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var playerData = await GetPlayerDataAsync(id, cancellationToken);
+            var playerData = await GetPlayerDataAsync(id, cancellationToken).ConfigureAwait(false);
             if (playerData is null)
                 return NotFound();
 
@@ -53,7 +53,7 @@ public class AdminActionsController(
                 "Create",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionType:{adminActionType}",
-                playerData);
+                playerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -67,7 +67,7 @@ public class AdminActionsController(
             };
 
             return View(createAdminActionViewModel);
-        }, $"CreateAdminActionForm-{adminActionType}");
+        }, $"CreateAdminActionForm-{adminActionType}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var playerData = await GetPlayerDataAsync(model.PlayerId, cancellationToken);
+            var playerData = await GetPlayerDataAsync(model.PlayerId, cancellationToken).ConfigureAwait(false);
             if (playerData is null)
                 return NotFound();
 
@@ -98,7 +98,7 @@ public class AdminActionsController(
                 "Create",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionType:{model.Type}",
-                playerData);
+                playerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -115,10 +115,11 @@ public class AdminActionsController(
                     playerData.Username,
                     DateTime.UtcNow,
                     model.Text,
-                    adminId)
+                    adminId,
+                    cancellationToken).ConfigureAwait(false)
             };
 
-            await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionCreated", "CreateAdminAction", new Dictionary<string, string>
             {
@@ -130,7 +131,7 @@ public class AdminActionsController(
             this.AddAlertSuccess(CreateActionAppliedMessage(model.Type, playerData.Username, createAdminActionDto.ForumTopicId));
 
             return RedirectToAction("Details", "Players", new { id = model.PlayerId });
-        }, $"CreateAdminAction-{model.Type}");
+        }, $"CreateAdminAction-{model.Type}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -144,7 +145,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var adminActionData = await GetAdminActionDataAsync(id, cancellationToken);
+            var adminActionData = await GetAdminActionDataAsync(id, cancellationToken).ConfigureAwait(false);
             if (adminActionData is null)
                 return NotFound();
 
@@ -158,7 +159,7 @@ public class AdminActionsController(
                 "Edit",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -175,7 +176,7 @@ public class AdminActionsController(
             };
 
             return View(viewModel);
-        }, "EditAdminActionForm");
+        }, "EditAdminActionForm").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -190,7 +191,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var adminActionData = await GetAdminActionDataAsync(model.AdminActionId, cancellationToken);
+            var adminActionData = await GetAdminActionDataAsync(model.AdminActionId, cancellationToken).ConfigureAwait(false);
             if (adminActionData is null)
                 return NotFound();
 
@@ -208,7 +209,7 @@ public class AdminActionsController(
                 "Edit",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{model.AdminActionId}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -219,7 +220,7 @@ public class AdminActionsController(
                 Expires = model.Type == AdminActionType.TempBan ? model.Expires : null
             };
 
-            var canChangeAdminActionAdmin = await authorizationService.AuthorizeAsync(User, playerData.GameType, AuthPolicies.ChangeAdminActionAdmin);
+            var canChangeAdminActionAdmin = await authorizationService.AuthorizeAsync(User, playerData.GameType, AuthPolicies.ChangeAdminActionAdmin).ConfigureAwait(false);
 
             if (canChangeAdminActionAdmin.Succeeded && adminActionData.UserProfile?.XtremeIdiotsForumId != model.AdminId)
             {
@@ -228,13 +229,13 @@ public class AdminActionsController(
                     User.XtremeIdiotsId(), model.AdminActionId, editAdminActionDto.AdminId);
             }
 
-            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
 
             var adminForumId = canChangeAdminActionAdmin.Succeeded && adminActionData.UserProfile?.XtremeIdiotsForumId != model.AdminId
                 ? editAdminActionDto.AdminId
                 : adminActionData.UserProfile?.XtremeIdiotsForumId;
 
-            await UpdateForumTopicIfExistsAsync(adminActionData, model.Text, adminForumId);
+            await UpdateForumTopicIfExistsAsync(adminActionData, model.Text, adminForumId, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionEdited", nameof(Edit), new Dictionary<string, string>
             {
@@ -246,7 +247,7 @@ public class AdminActionsController(
             this.AddAlertSuccess(CreateActionOperationMessage(model.Type, playerData.Username, "updated"));
 
             return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = model.PlayerId });
-        }, nameof(Edit));
+        }, nameof(Edit)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -260,7 +261,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var adminActionData = await GetAdminActionDataAsync(id, cancellationToken);
+            var adminActionData = await GetAdminActionDataAsync(id, cancellationToken).ConfigureAwait(false);
             if (adminActionData is null)
                 return NotFound();
 
@@ -274,10 +275,10 @@ public class AdminActionsController(
                 "Lift",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             return authResult is not null ? authResult : View(adminActionData);
-        }, "LiftAdminActionForm");
+        }, "LiftAdminActionForm").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -294,7 +295,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var adminActionData = await GetAdminActionDataAsync(id, cancellationToken);
+            var adminActionData = await GetAdminActionDataAsync(id, cancellationToken).ConfigureAwait(false);
             if (adminActionData is null)
                 return NotFound();
 
@@ -308,7 +309,7 @@ public class AdminActionsController(
                 "Lift",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id},PlayerId:{playerId}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -318,9 +319,9 @@ public class AdminActionsController(
                 Expires = DateTime.UtcNow
             };
 
-            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
 
-            await UpdateForumTopicIfExistsAsync(adminActionData, adminActionData.Text, adminActionData.UserProfile?.XtremeIdiotsForumId);
+            await UpdateForumTopicIfExistsAsync(adminActionData, adminActionData.Text, adminActionData.UserProfile?.XtremeIdiotsForumId, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionLifted", nameof(Lift), new Dictionary<string, string>
             {
@@ -332,7 +333,7 @@ public class AdminActionsController(
             this.AddAlertSuccess(CreateActionOperationMessage(adminActionData.Type, playerData.Username, "lifted"));
 
             return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = playerId });
-        }, nameof(Lift));
+        }, nameof(Lift)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -346,7 +347,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken);
+            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken).ConfigureAwait(false);
 
             if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data is null)
             {
@@ -360,7 +361,7 @@ public class AdminActionsController(
             var playerData = adminActionData.Player;
             if (playerData is null)
             {
-                var playerResult = await repositoryApiClient.Players.V1.GetPlayer(adminActionData.PlayerId, PlayerEntityOptions.None);
+                var playerResult = await repositoryApiClient.Players.V1.GetPlayer(adminActionData.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
                 if (playerResult.IsNotFound || playerResult.Result?.Data is null)
                 {
                     Logger.LogWarning("Player {PlayerId} not found when enriching admin action {AdminActionId} for claim operation", adminActionData.PlayerId, id);
@@ -376,10 +377,10 @@ public class AdminActionsController(
                 "Claim",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             return authResult is not null ? authResult : View(adminActionData);
-        }, "ClaimAdminActionForm");
+        }, "ClaimAdminActionForm").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -396,7 +397,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken);
+            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken).ConfigureAwait(false);
 
             if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data?.Player is null)
             {
@@ -414,7 +415,7 @@ public class AdminActionsController(
                 "Claim",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id},PlayerId:{playerId}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -425,7 +426,7 @@ public class AdminActionsController(
                 AdminId = adminId
             };
 
-            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
 
             if (adminActionData.ForumTopicId.HasValue && adminActionData.ForumTopicId != 0)
             {
@@ -437,7 +438,7 @@ public class AdminActionsController(
                     playerData.Username,
                     adminActionData.Created,
                     adminActionData.Text,
-                    adminId);
+                    adminId).ConfigureAwait(false);
             }
 
             TrackSuccessTelemetry("AdminActionClaimed", nameof(Claim), new Dictionary<string, string>
@@ -450,7 +451,7 @@ public class AdminActionsController(
             this.AddAlertSuccess($"The {adminActionData.Type} has been successfully claimed for {playerData.Username}");
 
             return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = playerId });
-        }, nameof(Claim));
+        }, nameof(Claim)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -464,7 +465,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken);
+            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken).ConfigureAwait(false);
 
             if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data?.Player is null)
             {
@@ -482,7 +483,7 @@ public class AdminActionsController(
                 "CreateDiscussionTopic",
                 "AdminActionTopic",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -494,14 +495,15 @@ public class AdminActionsController(
                 playerData.Username,
                 DateTime.UtcNow,
                 adminActionData.Text,
-                adminActionData.UserProfile?.XtremeIdiotsForumId);
+                adminActionData.UserProfile?.XtremeIdiotsForumId,
+                cancellationToken).ConfigureAwait(false);
 
             var editAdminActionDto = new EditAdminActionDto(adminActionData.AdminActionId)
             {
                 ForumTopicId = forumTopicId
             };
 
-            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionTopicCreated", nameof(CreateDiscussionTopic), new Dictionary<string, string>
             {
@@ -514,7 +516,7 @@ public class AdminActionsController(
             this.AddAlertSuccess($"The discussion topic has been successfully created <a target=\"_blank\" href=\"{forumBaseUrl}{forumTopicId}-topic/\" class=\"alert-link\">here</a>");
 
             return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = adminActionData.PlayerId });
-        }, nameof(CreateDiscussionTopic));
+        }, nameof(CreateDiscussionTopic)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -528,7 +530,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken);
+            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken).ConfigureAwait(false);
 
             if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data?.Player is null)
             {
@@ -545,10 +547,10 @@ public class AdminActionsController(
                 "Delete",
                 "AdminActions",
                 $"AdminActionId:{id}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             return authResult is not null ? authResult : View(adminActionData);
-        }, "DeleteAdminActionForm");
+        }, "DeleteAdminActionForm").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -565,7 +567,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken);
+            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken).ConfigureAwait(false);
 
             if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data?.Player is null)
             {
@@ -583,12 +585,12 @@ public class AdminActionsController(
                 "Delete",
                 "AdminActions",
                 $"AdminActionId:{id},PlayerId:{playerId}",
-                adminActionData);
+                adminActionData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
 
-            await repositoryApiClient.AdminActions.V1.DeleteAdminAction(id, cancellationToken);
+            await repositoryApiClient.AdminActions.V1.DeleteAdminAction(id, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionDeleted", nameof(Delete), new Dictionary<string, string>
             {
@@ -600,7 +602,7 @@ public class AdminActionsController(
             this.AddAlertSuccess($"The {adminActionData.Type} has been successfully deleted from {playerData.Username}");
 
             return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = playerId });
-        }, nameof(Delete));
+        }, nameof(Delete)).ConfigureAwait(false);
     }
 
     private string GetForumBaseUrl()
@@ -615,7 +617,7 @@ public class AdminActionsController(
 
     private async Task<PlayerDto?> GetPlayerDataAsync(Guid playerId, CancellationToken cancellationToken = default)
     {
-        var getPlayerResult = await repositoryApiClient.Players.V1.GetPlayer(playerId, PlayerEntityOptions.None);
+        var getPlayerResult = await repositoryApiClient.Players.V1.GetPlayer(playerId, PlayerEntityOptions.None).ConfigureAwait(false);
 
         if (getPlayerResult.IsNotFound)
         {
@@ -634,7 +636,7 @@ public class AdminActionsController(
 
     private async Task<AdminActionDto?> GetAdminActionDataAsync(Guid adminActionId, CancellationToken cancellationToken = default)
     {
-        var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(adminActionId, cancellationToken);
+        var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(adminActionId, cancellationToken).ConfigureAwait(false);
 
         if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data?.Player is null)
         {
@@ -645,7 +647,7 @@ public class AdminActionsController(
         return getAdminActionResult.Result.Data;
     }
 
-    private async Task UpdateForumTopicIfExistsAsync(AdminActionDto adminActionData, string text, string? adminForumId)
+    private async Task UpdateForumTopicIfExistsAsync(AdminActionDto adminActionData, string text, string? adminForumId, CancellationToken cancellationToken = default)
     {
         if (adminActionData.ForumTopicId.HasValue && adminActionData.ForumTopicId != 0 && adminActionData.Player is not null)
         {
@@ -657,7 +659,8 @@ public class AdminActionsController(
                 adminActionData.Player.Username,
                 adminActionData.Created,
                 text,
-                adminForumId);
+                adminForumId,
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -682,7 +685,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var adminActionsApiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(null, null, User.XtremeIdiotsId(), null, 0, 50, AdminActionOrder.CreatedDesc);
+            var adminActionsApiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(null, null, User.XtremeIdiotsId(), null, 0, 50, AdminActionOrder.CreatedDesc).ConfigureAwait(false);
 
             if (!adminActionsApiResponse.IsSuccess || adminActionsApiResponse.Result?.Data?.Items is null)
             {
@@ -694,7 +697,7 @@ public class AdminActionsController(
                 adminActionsApiResponse.Result.Data.Items.Count(), User.XtremeIdiotsId());
 
             return View(adminActionsApiResponse.Result.Data.Items);
-        }, nameof(MyActions));
+        }, nameof(MyActions)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -708,9 +711,9 @@ public class AdminActionsController(
         // New DataTables based view does not require pre-loaded model (AJAX fetch)
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await Task.CompletedTask; // maintain async signature for consistency
+            await Task.CompletedTask.ConfigureAwait(false); // maintain async signature for consistency
             return View();
-        }, nameof(Unclaimed));
+        }, nameof(Unclaimed)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -734,7 +737,7 @@ public class AdminActionsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken);
+            var getAdminActionResult = await repositoryApiClient.AdminActions.V1.GetAdminAction(id, cancellationToken).ConfigureAwait(false);
             if (getAdminActionResult.IsNotFound || getAdminActionResult.Result?.Data is null)
             {
                 Logger.LogWarning("Admin action {AdminActionId} not found for my details panel", id);
@@ -744,7 +747,7 @@ public class AdminActionsController(
             var adminAction = getAdminActionResult.Result.Data;
             PlayerDto? player = null;
 
-            var playerResult = await repositoryApiClient.Players.V1.GetPlayer(adminAction.PlayerId, PlayerEntityOptions.None);
+            var playerResult = await repositoryApiClient.Players.V1.GetPlayer(adminAction.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
             if (!playerResult.IsNotFound && playerResult.Result?.Data is not null)
             {
                 player = playerResult.Result.Data;
@@ -752,7 +755,7 @@ public class AdminActionsController(
 
             var vm = new MyAdminActionDetailsViewModel(adminAction, player);
             return PartialView("_MyAdminActionDetailsPanel", vm);
-        }, nameof(GetMyAdminActionDetails));
+        }, nameof(GetMyAdminActionDetails)).ConfigureAwait(false);
     }
 
     // Recent admin actions feature removed (was action: Recent) as per maintenance decision.

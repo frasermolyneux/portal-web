@@ -45,7 +45,7 @@ public class GameServersController(
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken);
+                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -58,7 +58,7 @@ public class GameServersController(
                 User.XtremeIdiotsId(), gameServerCount);
 
             return View(gameServersApiResponse.Result.Data.Items);
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -72,8 +72,8 @@ public class GameServersController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             AddGameTypeViewData();
-            return await Task.FromResult(View(new GameServerViewModel()));
-        }, nameof(Create));
+            return await Task.FromResult(View(new GameServerViewModel())).ConfigureAwait(false);
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -96,7 +96,7 @@ public class GameServersController(
                 AuthPolicies.CreateGameServer,
                 nameof(Create),
                 "GameServer",
-                $"GameType:{createGameServerDto.GameType}");
+                $"GameType:{createGameServerDto.GameType}").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -105,7 +105,7 @@ public class GameServersController(
             createGameServerDto.Hostname = model.Hostname;
             createGameServerDto.QueryPort = model.QueryPort;
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, createGameServerDto.GameType, AuthPolicies.EditGameServerFtp);
+            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, createGameServerDto.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
             if (canEditGameServerFtp.Succeeded)
             {
                 createGameServerDto.FtpHostname = model.FtpHostname;
@@ -114,7 +114,7 @@ public class GameServersController(
                 createGameServerDto.FtpPassword = model.FtpPassword;
             }
 
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, createGameServerDto.GameType, AuthPolicies.EditGameServerRcon);
+            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, createGameServerDto.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
             if (canEditGameServerRcon.Succeeded)
                 createGameServerDto.RconPassword = model.RconPassword;
 
@@ -126,7 +126,7 @@ public class GameServersController(
             createGameServerDto.ChatLogEnabled = model.ChatLogEnabled;
             createGameServerDto.BotEnabled = model.BotEnabled;
 
-            var createResult = await repositoryApiClient.GameServers.V1.CreateGameServer(createGameServerDto, cancellationToken);
+            var createResult = await repositoryApiClient.GameServers.V1.CreateGameServer(createGameServerDto, cancellationToken).ConfigureAwait(false);
 
             if (createResult.IsSuccess)
             {
@@ -148,7 +148,7 @@ public class GameServersController(
                 AddGameTypeViewData(model.GameType);
                 return View(model);
             }
-        }, "CreatePost");
+        }, "CreatePost").ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -156,7 +156,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound)
             {
@@ -178,7 +178,7 @@ public class GameServersController(
                 nameof(Details),
                 "GameServer",
                 $"GameType:{gameServerData.GameType},GameServerId:{id}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -189,7 +189,7 @@ public class GameServersController(
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
 
             return View(gameServerData);
-        }, nameof(Details));
+        }, nameof(Details)).ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -197,7 +197,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound)
             {
@@ -221,21 +221,21 @@ public class GameServersController(
                 nameof(Edit),
                 "GameServer",
                 $"GameType:{gameServerData.GameType},GameServerId:{id}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp);
+            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
             if (!canEditGameServerFtp.Succeeded)
                 gameServerData.ClearFtpCredentials();
 
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon);
+            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
             if (!canEditGameServerRcon.Succeeded)
                 gameServerData.ClearRconCredentials();
 
             return View(gameServerData.ToViewModel());
-        }, nameof(Edit));
+        }, nameof(Edit)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -244,7 +244,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound)
             {
@@ -271,7 +271,7 @@ public class GameServersController(
                 nameof(Edit),
                 "GameServer",
                 $"GameType:{gameServerData.GameType},GameServerId:{model.GameServerId}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
@@ -283,7 +283,7 @@ public class GameServersController(
                 QueryPort = model.QueryPort
             };
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp);
+            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
             if (canEditGameServerFtp.Succeeded)
             {
                 editGameServerDto.FtpHostname = model.FtpHostname;
@@ -292,7 +292,7 @@ public class GameServersController(
                 editGameServerDto.FtpPassword = model.FtpPassword;
             }
 
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon);
+            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
             if (canEditGameServerRcon.Succeeded)
                 editGameServerDto.RconPassword = model.RconPassword;
 
@@ -304,7 +304,7 @@ public class GameServersController(
             editGameServerDto.ChatLogEnabled = model.ChatLogEnabled;
             editGameServerDto.BotEnabled = model.BotEnabled;
 
-            var updateResult = await repositoryApiClient.GameServers.V1.UpdateGameServer(editGameServerDto, cancellationToken);
+            var updateResult = await repositoryApiClient.GameServers.V1.UpdateGameServer(editGameServerDto, cancellationToken).ConfigureAwait(false);
 
             if (updateResult.IsSuccess)
             {
@@ -327,7 +327,7 @@ public class GameServersController(
                 AddGameTypeViewData(model.GameType);
                 return View(model);
             }
-        }, "EditPost");
+        }, "EditPost").ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -335,7 +335,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound)
             {
@@ -351,7 +351,7 @@ public class GameServersController(
 
             var gameServerData = gameServerApiResponse.Result.Data;
 
-            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer);
+            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer).ConfigureAwait(false);
             if (!canDeleteGameServer.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt(nameof(Delete), "GameServer", $"GameType:{gameServerData.GameType},GameServerId:{id}", gameServerData);
@@ -359,7 +359,7 @@ public class GameServersController(
             }
 
             return View(gameServerData.ToViewModel());
-        }, nameof(Delete));
+        }, nameof(Delete)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -369,7 +369,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound)
             {
@@ -385,14 +385,14 @@ public class GameServersController(
 
             var gameServerData = gameServerApiResponse.Result.Data;
 
-            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer);
+            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer).ConfigureAwait(false);
             if (!canDeleteGameServer.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt(nameof(Delete), "GameServer", $"GameType:{gameServerData.GameType},GameServerId:{id}", gameServerData);
                 return Unauthorized();
             }
 
-            var deleteResult = await repositoryApiClient.GameServers.V1.DeleteGameServer(id, cancellationToken);
+            var deleteResult = await repositoryApiClient.GameServers.V1.DeleteGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (deleteResult.IsSuccess)
             {
@@ -414,7 +414,7 @@ public class GameServersController(
                 this.AddAlertDanger("Failed to delete the game server. Please try again.");
                 return RedirectToAction(nameof(Index));
             }
-        }, nameof(DeleteConfirmed));
+        }, nameof(DeleteConfirmed)).ConfigureAwait(false);
     }
 
     private void AddGameTypeViewData(GameType? selected = null)

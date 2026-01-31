@@ -47,12 +47,12 @@ public class ProtectedNamesController(
                 AuthPolicies.ViewProtectedName,
                 nameof(Index),
                 "ProtectedName",
-                "ViewAll");
+                "ViewAll").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
 
-            var protectedNamesResponse = await repositoryApiClient.Players.V1.GetProtectedNames(0, 1000);
+            var protectedNamesResponse = await repositoryApiClient.Players.V1.GetProtectedNames(0, 1000).ConfigureAwait(false);
 
             if (!protectedNamesResponse.IsSuccess || protectedNamesResponse.Result?.Data?.Items is null)
             {
@@ -71,7 +71,7 @@ public class ProtectedNamesController(
             });
 
             return View(model);
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -91,12 +91,12 @@ public class ProtectedNamesController(
                 AuthPolicies.CreateProtectedName,
                 nameof(Add),
                 "ProtectedName",
-                $"PlayerId:{id}");
+                $"PlayerId:{id}").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
 
-            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None);
+            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(id, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (playerResponse.IsNotFound)
             {
@@ -116,7 +116,7 @@ public class ProtectedNamesController(
             };
 
             return View(model);
-        }, nameof(Add), $"id: {id}");
+        }, nameof(Add), $"id: {id}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public class ProtectedNamesController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None);
+            var playerResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
             if (playerResponse.IsNotFound)
             {
                 Logger.LogWarning("Player {PlayerId} not found when creating protected name", model.PlayerId);
@@ -153,7 +153,7 @@ public class ProtectedNamesController(
                 nameof(Add),
                 "ProtectedName",
                 $"PlayerId:{model.PlayerId}",
-                playerData);
+                playerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -167,7 +167,7 @@ public class ProtectedNamesController(
                 model.Name,
                 User.XtremeIdiotsId() ?? throw new InvalidOperationException("User XtremeIdiotsId is required"));
 
-            var response = await repositoryApiClient.Players.V1.CreateProtectedName(createProtectedNameDto);
+            var response = await repositoryApiClient.Players.V1.CreateProtectedName(createProtectedNameDto).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -195,7 +195,7 @@ public class ProtectedNamesController(
             this.AddAlertSuccess($"Protected name '{model.Name}' has been successfully added");
 
             return RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController), new { id = model.PlayerId });
-        }, nameof(Add), $"PlayerId: {model.PlayerId}");
+        }, nameof(Add), $"PlayerId: {model.PlayerId}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -215,12 +215,12 @@ public class ProtectedNamesController(
                 AuthPolicies.DeleteProtectedName,
                 nameof(Delete),
                 "ProtectedName",
-                $"ProtectedNameId:{id}");
+                $"ProtectedNameId:{id}").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
 
-            var protectedNameResponse = await repositoryApiClient.Players.V1.GetProtectedName(id);
+            var protectedNameResponse = await repositoryApiClient.Players.V1.GetProtectedName(id).ConfigureAwait(false);
 
             if (protectedNameResponse.IsNotFound)
             {
@@ -236,7 +236,7 @@ public class ProtectedNamesController(
 
             var playerId = protectedNameResponse.Result.Data.PlayerId;
             var deleteProtectedNameDto = new DeleteProtectedNameDto(id);
-            var response = await repositoryApiClient.Players.V1.DeleteProtectedName(deleteProtectedNameDto);
+            var response = await repositoryApiClient.Players.V1.DeleteProtectedName(deleteProtectedNameDto).ConfigureAwait(false);
 
             if (!response.IsSuccess)
             {
@@ -254,7 +254,7 @@ public class ProtectedNamesController(
             this.AddAlertSuccess("Protected name has been successfully deleted");
 
             return RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController), new { id = playerId });
-        }, nameof(Delete), $"id: {id}");
+        }, nameof(Delete), $"id: {id}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -268,7 +268,7 @@ public class ProtectedNamesController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var reportResponse = await repositoryApiClient.Players.V1.GetProtectedNameUsageReport(id);
+            var reportResponse = await repositoryApiClient.Players.V1.GetProtectedNameUsageReport(id).ConfigureAwait(false);
 
             if (reportResponse.IsNotFound)
             {
@@ -293,6 +293,6 @@ public class ProtectedNamesController(
             });
 
             return View(model);
-        }, nameof(Report), $"id: {id}");
+        }, nameof(Report), $"id: {id}").ConfigureAwait(false);
     }
 }

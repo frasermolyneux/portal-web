@@ -36,7 +36,7 @@ public class UserSearchController(
                 return Ok(Array.Empty<object>());
 
             var response = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
-                search, UserProfileFilter.AnyAdmin, 0, 15, UserProfilesOrder.DisplayNameAsc, cancellationToken);
+                search, UserProfileFilter.AnyAdmin, 0, 15, UserProfilesOrder.DisplayNameAsc, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccess || response.Result?.Data?.Items is null)
             {
@@ -56,6 +56,6 @@ public class UserSearchController(
             });
 
             return Ok(data);
-        }, nameof(Users));
+        }, nameof(Users)).ConfigureAwait(false);
     }
 }

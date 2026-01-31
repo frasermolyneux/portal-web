@@ -36,7 +36,7 @@ public class UsersController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -67,7 +67,7 @@ public class UsersController(
             }
 
             var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
-                model.Search?.Value, userProfileFilter, model.Start, model.Length, order, cancellationToken);
+                model.Search?.Value, userProfileFilter, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (userProfileResponseDto.Result?.Data is null)
             {
@@ -116,7 +116,7 @@ public class UsersController(
                 recordsFiltered = userProfileResponseDto.Result?.Pagination?.FilteredCount,
                 data = enriched
             });
-        }, nameof(GetUsersAjax));
+        }, nameof(GetUsersAjax)).ConfigureAwait(false);
     }
 }
 

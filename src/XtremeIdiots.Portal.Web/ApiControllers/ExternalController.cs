@@ -39,7 +39,7 @@ public class ExternalController(
             Logger.LogInformation("External API request for latest admin actions JSON data");
 
             var adminActionsApiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(
-                null, null, null, null, 0, 15, AdminActionOrder.CreatedDesc, cancellationToken);
+                null, null, null, null, 0, 15, AdminActionOrder.CreatedDesc, cancellationToken).ConfigureAwait(false);
 
             if (!adminActionsApiResponse.IsSuccess || adminActionsApiResponse.Result?.Data?.Items is null)
             {
@@ -80,6 +80,6 @@ public class ExternalController(
             });
 
             return Ok(results);
-        }, nameof(GetLatestAdminActions));
+        }, nameof(GetLatestAdminActions)).ConfigureAwait(false);
     }
 }

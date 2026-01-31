@@ -31,7 +31,7 @@ public class BannersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome);
+            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome).ConfigureAwait(false);
             if (!authorizationResult.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt("Access", nameof(GameServersList), "BannerManagement", null);
@@ -46,6 +46,6 @@ public class BannersController(
             });
 
             return View();
-        }, "Display game servers list view for banner management");
+        }, "Display game servers list view for banner management").ConfigureAwait(false);
     }
 }

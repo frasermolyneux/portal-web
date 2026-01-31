@@ -63,7 +63,7 @@ public class DemosController(
 
             if (!string.IsNullOrEmpty(userId))
             {
-                var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(userId);
+                var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(userId).ConfigureAwait(false);
 
                 if (!userProfileApiResponse.IsNotFound && userProfileApiResponse.Result?.Data is not null)
                 {
@@ -72,7 +72,7 @@ public class DemosController(
                 }
             }
 
-            var demoManagerClientDto = await demosForumsClient.GetDemoManagerClient();
+            var demoManagerClientDto = await demosForumsClient.GetDemoManagerClient().ConfigureAwait(false);
 
             TrackSuccessTelemetry(nameof(DemoClient), nameof(DemoClient), new Dictionary<string, string>
             {
@@ -83,7 +83,7 @@ public class DemosController(
             });
 
             return View(demoManagerClientDto);
-        }, $"Display {nameof(DemoClient)} configuration page with authentication key");
+        }, $"Display {nameof(DemoClient)} configuration page with authentication key").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public class DemosController(
                 return NotFound();
             }
 
-            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(userId);
+            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(userId).ConfigureAwait(false);
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
@@ -120,7 +120,7 @@ public class DemosController(
                 DemoAuthKey = Guid.NewGuid().ToString()
             };
 
-            await repositoryApiClient.UserProfiles.V1.UpdateUserProfile(editUserProfileDto);
+            await repositoryApiClient.UserProfiles.V1.UpdateUserProfile(editUserProfileDto).ConfigureAwait(false);
 
             this.AddAlertSuccess("Your demo auth key has been regenerated, you will need to reconfigure your client desktop application");
 
@@ -133,7 +133,7 @@ public class DemosController(
             });
 
             return RedirectToAction(nameof(DemoClient));
-        }, $"Regenerate demo authentication key for user");
+        }, $"Regenerate demo authentication key for user").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ public class DemosController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
 
             TrackSuccessTelemetry(nameof(Index), nameof(Index), new Dictionary<string, string>
             {
@@ -154,7 +154,7 @@ public class DemosController(
             });
 
             return View();
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class DemosController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
 
             ViewData["GameType"] = id;
 
@@ -179,7 +179,7 @@ public class DemosController(
             });
 
             return View(nameof(Index));
-        }, nameof(GameIndex));
+        }, nameof(GameIndex)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public class DemosController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -225,7 +225,7 @@ public class DemosController(
 
             var order = GetDemoOrderFromDataTable(model);
 
-            var demosApiResponse = await repositoryApiClient.Demos.V1.GetDemos(filterGameTypes, filterUserId, model.Search?.Value, model.Start, model.Length, order, cancellationToken);
+            var demosApiResponse = await repositoryApiClient.Demos.V1.GetDemos(filterGameTypes, filterUserId, model.Search?.Value, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!demosApiResponse.IsSuccess || demosApiResponse.Result?.Data is null)
             {
@@ -238,7 +238,7 @@ public class DemosController(
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)
                 {
-                    var canDeletePortalDemo = await authorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(demoDto.GameType, demoDto.UserProfileId), AuthPolicies.DeleteDemo);
+                    var canDeletePortalDemo = await authorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(demoDto.GameType, demoDto.UserProfileId), AuthPolicies.DeleteDemo).ConfigureAwait(false);
 
                     var portalDemoDto = new PortalDemoDto(demoDto);
 
@@ -263,7 +263,7 @@ public class DemosController(
                 recordsFiltered = demosApiResponse.Result?.Pagination?.FilteredCount,
                 data = portalDemoEntries
             });
-        }, nameof(GetDemoListAjax));
+        }, nameof(GetDemoListAjax)).ConfigureAwait(false);
     }
 
     private static DemoOrder GetDemoOrderFromDataTable(DataTableAjaxPostModel model)
@@ -293,7 +293,7 @@ public class DemosController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var demoApiResult = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken);
+            var demoApiResult = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken).ConfigureAwait(false);
 
             if (demoApiResult.IsNotFound || demoApiResult.Result?.Data is null)
             {
@@ -306,14 +306,14 @@ public class DemosController(
 
             // Fetch the remote file so we can control the download filename instead of redirecting to a GUID blob
             var client = httpClientFactory.CreateClient();
-            var response = await client.GetAsync(demo.FileUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            var response = await client.GetAsync(demo.FileUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogError("Failed to retrieve demo file content for {DemoId} - StatusCode {StatusCode}", id, (int)response.StatusCode);
                 return StatusCode((int)response.StatusCode);
             }
 
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
             var downloadFileName = string.IsNullOrWhiteSpace(demo.FileName) ? $"{demo.DemoId}.dm_1" : demo.FileName;
 
@@ -326,7 +326,7 @@ public class DemosController(
             });
 
             return File(stream, contentType, downloadFileName);
-        }, nameof(Download));
+        }, nameof(Download)).ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -334,7 +334,7 @@ public class DemosController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var demoApiResult = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken);
+            var demoApiResult = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken).ConfigureAwait(false);
 
             if (demoApiResult.IsNotFound || demoApiResult.Result?.Data is null)
             {
@@ -342,7 +342,7 @@ public class DemosController(
             }
 
             var authorizationResource = new Tuple<GameType, Guid>(demoApiResult.Result.Data.GameType, demoApiResult.Result.Data.UserProfileId);
-            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.DeleteDemo, nameof(Delete), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}");
+            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.DeleteDemo, nameof(Delete), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}").ConfigureAwait(false);
             if (authorizationResult != null)
                 return authorizationResult;
 
@@ -356,7 +356,7 @@ public class DemosController(
         });
 
             return View(demoApiResult.Result);
-        }, nameof(Delete));
+        }, nameof(Delete)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -366,7 +366,7 @@ public class DemosController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var demoApiResult = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken);
+            var demoApiResult = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken).ConfigureAwait(false);
 
             if (demoApiResult.IsNotFound || demoApiResult.Result?.Data is null)
             {
@@ -374,11 +374,11 @@ public class DemosController(
             }
 
             var authorizationResource = new Tuple<GameType, Guid>(demoApiResult.Result.Data.GameType, demoApiResult.Result.Data.UserProfileId);
-            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.DeleteDemo, nameof(DeleteConfirmed), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}");
+            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.DeleteDemo, nameof(DeleteConfirmed), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}").ConfigureAwait(false);
             if (authorizationResult != null)
                 return authorizationResult;
 
-            await repositoryApiClient.Demos.V1.DeleteDemo(id, cancellationToken);
+            await repositoryApiClient.Demos.V1.DeleteDemo(id, cancellationToken).ConfigureAwait(false);
 
             this.AddAlertSuccess($"The demo {demoApiResult.Result.Data.Title} has been successfully deleted from {demoApiResult.Result.Data.GameType}");
 
@@ -392,7 +392,7 @@ public class DemosController(
             return filterGame
                 ? RedirectToAction(nameof(GameIndex), new { id = demoApiResult.Result.Data.GameType })
                 : RedirectToAction(nameof(Index));
-        }, nameof(DeleteConfirmed));
+        }, nameof(DeleteConfirmed)).ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -414,7 +414,7 @@ public class DemosController(
                 return Content("AuthError: The auth key supplied was empty. This should be set in the client.");
             }
 
-            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByDemoAuthKey(authKey, cancellationToken);
+            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByDemoAuthKey(authKey, cancellationToken).ConfigureAwait(false);
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
@@ -429,14 +429,14 @@ public class DemosController(
                 return Content("AuthError: An internal auth error occurred processing your request - missing user ID.");
             }
 
-            var user = await userManager.FindByIdAsync(userIdFromProfile);
+            var user = await userManager.FindByIdAsync(userIdFromProfile).ConfigureAwait(false);
             if (user is null)
             {
                 Logger.LogWarning("ClientDemoList - User not found for ID {UserId}", userIdFromProfile);
                 return Content($"AuthError: An internal auth error occurred processing your request for userId: {userIdFromProfile}");
             }
 
-            var claimsPrincipal = await signInManager.ClaimsFactory.CreateAsync(user);
+            var claimsPrincipal = await signInManager.ClaimsFactory.CreateAsync(user).ConfigureAwait(false);
 
             var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator };
             var gameTypes = claimsPrincipal.ClaimedGameTypes(requiredClaims);
@@ -446,7 +446,7 @@ public class DemosController(
             if (gameTypes.Count == 0)
                 filterUserId = userIdFromProfile;
 
-            var demosApiResponse = await repositoryApiClient.Demos.V1.GetDemos(filterGameTypes, filterUserId, null, 0, 500, DemoOrder.CreatedDesc, cancellationToken);
+            var demosApiResponse = await repositoryApiClient.Demos.V1.GetDemos(filterGameTypes, filterUserId, null, 0, 500, DemoOrder.CreatedDesc, cancellationToken).ConfigureAwait(false);
 
             if (!demosApiResponse.IsSuccess || demosApiResponse.Result?.Data?.Items is null)
             {
@@ -512,7 +512,7 @@ public class DemosController(
                 return Content("AuthError: The auth key supplied was empty. This should be set in the client.");
             }
 
-            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByDemoAuthKey(authKey, cancellationToken);
+            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByDemoAuthKey(authKey, cancellationToken).ConfigureAwait(false);
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
@@ -550,14 +550,14 @@ public class DemosController(
 
             var filePath = Path.Join(Path.GetTempPath(), file.FileName);
             using (var stream = System.IO.File.Create(filePath))
-                await file.CopyToAsync(stream, cancellationToken);
+                await file.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
 
             var demoDto = new CreateDemoDto(gameType, userProfileApiResponse.Result.Data.UserProfileId);
 
-            var createDemoApiResponse = await repositoryApiClient.Demos.V1.CreateDemo(demoDto, cancellationToken);
+            var createDemoApiResponse = await repositoryApiClient.Demos.V1.CreateDemo(demoDto, cancellationToken).ConfigureAwait(false);
             if (createDemoApiResponse.IsSuccess && createDemoApiResponse.Result?.Data != null)
             {
-                await repositoryApiClient.Demos.V1.SetDemoFile(createDemoApiResponse.Result.Data.DemoId, file.FileName, filePath, cancellationToken);
+                await repositoryApiClient.Demos.V1.SetDemoFile(createDemoApiResponse.Result.Data.DemoId, file.FileName, filePath, cancellationToken).ConfigureAwait(false);
             }
 
             Logger.LogInformation("User {UserId} successfully uploaded demo {FileName} for game type {GameType}",
@@ -612,7 +612,7 @@ public class DemosController(
                 return Content("AuthError: The auth key supplied was empty. This should be set in the client.");
             }
 
-            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByDemoAuthKey(authKey, cancellationToken);
+            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByDemoAuthKey(authKey, cancellationToken).ConfigureAwait(false);
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
@@ -627,7 +627,7 @@ public class DemosController(
                 return Content("AuthError: An internal auth error occurred processing your request - missing user ID.");
             }
 
-            var demoApiResponse = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken);
+            var demoApiResponse = await repositoryApiClient.Demos.V1.GetDemo(id, cancellationToken).ConfigureAwait(false);
 
             if (demoApiResponse.IsNotFound || demoApiResponse.Result?.Data is null)
             {

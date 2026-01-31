@@ -17,8 +17,9 @@ public interface IAdminActionTopics
     /// <param name="created">The date and time the action was created</param>
     /// <param name="text">The action description or reason</param>
     /// <param name="adminId">The optional identifier of the admin who took the action</param>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>The ID of the created forum topic</returns>
-    Task<int> CreateTopicForAdminAction(AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId);
+    Task<int> CreateTopicForAdminAction(AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing forum topic for an admin action
@@ -31,6 +32,7 @@ public interface IAdminActionTopics
     /// <param name="created">The date and time the action was created</param>
     /// <param name="text">The action description or reason</param>
     /// <param name="adminId">The optional identifier of the admin who took the action</param>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>A task representing the asynchronous update operation</returns>
-    Task UpdateTopicForAdminAction(int topicId, AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId);
+    Task UpdateTopicForAdminAction(int topicId, AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId, CancellationToken cancellationToken = default);
 }

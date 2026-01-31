@@ -43,7 +43,7 @@ public class ServersController(
         {
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 null, null, GameServerFilter.PortalServerListEnabled, 0, 50,
-                GameServerOrder.BannerServerListPosition, cancellationToken);
+                GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -60,7 +60,7 @@ public class ServersController(
                 User.XtremeIdiotsId(), result.Count);
 
             return View(result);
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ public class ServersController(
         {
             var response = await repositoryApiClient.RecentPlayers.V1.GetRecentPlayers(
                 null, null, DateTime.UtcNow.AddHours(-48), RecentPlayersFilter.GeoLocated,
-                0, 200, null, cancellationToken);
+                0, 200, null, cancellationToken).ConfigureAwait(false);
 
             if (response.Result?.Data?.Items is null)
             {
@@ -88,7 +88,7 @@ public class ServersController(
                 User.XtremeIdiotsId(), response.Result.Data.Items.Count());
 
             return View(response.Result.Data.Items);
-        }, nameof(Map));
+        }, nameof(Map)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -102,7 +102,7 @@ public class ServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
             {
@@ -119,7 +119,7 @@ public class ServersController(
                 try
                 {
                     var mapApiResponse = await repositoryApiClient.Maps.V1.GetMap(
-                        gameServerData.GameType, gameServerData.LiveMap, cancellationToken);
+                        gameServerData.GameType, gameServerData.LiveMap, cancellationToken).ConfigureAwait(false);
                     mapDto = mapApiResponse.Result?.Data;
                 }
                 catch (Exception ex)
@@ -130,7 +130,7 @@ public class ServersController(
             }
 
             var gameServerStatsResponseDto = await repositoryApiClient.GameServersStats.V1
-                .GetGameServerStatusStats(gameServerData.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken);
+                .GetGameServerStatusStats(gameServerData.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken).ConfigureAwait(false);
 
             List<MapTimelineDataPoint> mapTimelineDataPoints = [];
             List<GameServerStatDto> gameServerStatDtos = [];
@@ -173,7 +173,7 @@ public class ServersController(
 
                     var mapsCollectionApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                         gameServerData.GameType, mapNames, null, null, 0, 50,
-                        MapsOrder.MapNameAsc, cancellationToken);
+                        MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
 
                     if (mapsCollectionApiResponse.Result?.Data?.Items is not null)
                         maps = [.. mapsCollectionApiResponse.Result.Data.Items];
@@ -196,6 +196,6 @@ public class ServersController(
                 User.XtremeIdiotsId(), id, maps.Count, gameServerStatDtos.Count);
 
             return View(viewModel);
-        }, nameof(ServerInfo));
+        }, nameof(ServerInfo)).ConfigureAwait(false);
     }
 }

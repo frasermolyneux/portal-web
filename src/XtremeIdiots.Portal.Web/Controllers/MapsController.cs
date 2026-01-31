@@ -34,7 +34,7 @@ public class MapsController(
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Index));
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public class MapsController(
         {
             ViewData["GameType"] = id;
             return Task.FromResult<IActionResult>(View(nameof(Index)));
-        }, nameof(GameIndex));
+        }, nameof(GameIndex)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -72,7 +72,7 @@ public class MapsController(
                 return BadRequest();
             }
 
-            var mapApiResponse = await repositoryApiClient.Maps.V1.GetMap(gameType, mapName);
+            var mapApiResponse = await repositoryApiClient.Maps.V1.GetMap(gameType, mapName).ConfigureAwait(false);
 
             if (!mapApiResponse.IsSuccess || mapApiResponse.Result?.Data is null || string.IsNullOrWhiteSpace(mapApiResponse.Result.Data.MapImageUri))
             {
@@ -88,6 +88,6 @@ public class MapsController(
             });
 
             return Redirect(mapApiResponse.Result.Data.MapImageUri);
-        }, nameof(MapImage));
+        }, nameof(MapImage)).ConfigureAwait(false);
     }
 }

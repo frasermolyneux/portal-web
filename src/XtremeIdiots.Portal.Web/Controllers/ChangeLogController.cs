@@ -33,6 +33,6 @@ public class ChangeLogController(
             });
 
             return Task.FromResult<IActionResult>(View());
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 }

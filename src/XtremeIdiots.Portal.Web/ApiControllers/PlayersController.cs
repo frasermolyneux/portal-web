@@ -45,7 +45,7 @@ public class PlayersController(
             var filter = playersFilter ?? PlayersFilter.UsernameAndGuid;
 
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -58,7 +58,7 @@ public class PlayersController(
             var order = GetPlayersOrderFromDataTable(model);
 
             var playerCollectionApiResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                id, filter, model.Search?.Value, model.Start, model.Length, order, PlayerEntityOptions.None);
+                id, filter, model.Search?.Value, model.Start, model.Length, order, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (!playerCollectionApiResponse.IsSuccess || playerCollectionApiResponse.Result?.Data?.Items is null)
             {
@@ -68,7 +68,7 @@ public class PlayersController(
             }
 
             var enrichedPlayers = await playerCollectionApiResponse.Result.Data.Items
-                .EnrichWithPlayerDataAsync(proxyCheckService, geoLocationClient, Logger, cancellationToken);
+                .EnrichWithPlayerDataAsync(proxyCheckService, geoLocationClient, Logger, cancellationToken).ConfigureAwait(false);
 
             var playerData = enrichedPlayers.Select(player => new
             {
@@ -103,7 +103,7 @@ public class PlayersController(
                 recordsFiltered = playerCollectionApiResponse.Result?.Pagination?.FilteredCount,
                 data = playerData
             });
-        }, nameof(GetPlayersAjax));
+        }, nameof(GetPlayersAjax)).ConfigureAwait(false);
     }
 
     private static PlayersOrder GetPlayersOrderFromDataTable(DataTableAjaxPostModel model)

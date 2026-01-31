@@ -35,8 +35,8 @@ public class PlayerAnalyticsController(
             var cutoff = DateTime.UtcNow.AddMonths(-3);
             ViewBag.DateFilterRange = cutoff;
 
-            return await Task.FromResult(View());
-        }, nameof(Analytics));
+            return await Task.FromResult(View()).ConfigureAwait(false);
+        }, nameof(Analytics)).ConfigureAwait(false);
     }
 
     /// <summary>
