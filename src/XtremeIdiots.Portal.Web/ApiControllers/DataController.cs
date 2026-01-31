@@ -78,20 +78,13 @@ public class DataController(
             var orderColumn = model.Columns[model.Order.First().Column].Name;
             var searchOrder = model.Order.First().Dir;
 
-            switch (orderColumn)
+            order = orderColumn switch
             {
-                case "mapName":
-                    order = searchOrder == "asc" ? MapsOrder.MapNameAsc : MapsOrder.MapNameDesc;
-                    break;
-                case "popularity":
-                    order = searchOrder == "asc" ? MapsOrder.PopularityAsc : MapsOrder.PopularityDesc;
-                    break;
-                case "gameType":
-                    order = searchOrder == "asc" ? MapsOrder.GameTypeAsc : MapsOrder.GameTypeDesc;
-                    break;
-                default:
-                    break;
-            }
+                "mapName" => searchOrder == "asc" ? MapsOrder.MapNameAsc : MapsOrder.MapNameDesc,
+                "popularity" => searchOrder == "asc" ? MapsOrder.PopularityAsc : MapsOrder.PopularityDesc,
+                "gameType" => searchOrder == "asc" ? MapsOrder.GameTypeAsc : MapsOrder.GameTypeDesc,
+                _ => order
+            };
 
             var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(id, null, null, model.Search?.Value, model.Start, model.Length, order).ConfigureAwait(false);
 
@@ -212,23 +205,14 @@ public class DataController(
                 var orderColumn = model.Columns[model.Order.First().Column].Name;
                 var searchOrder = model.Order.First().Dir;
 
-                switch (orderColumn)
+                order = orderColumn switch
                 {
-                    case "username":
-                        order = searchOrder == "asc" ? PlayersOrder.UsernameAsc : PlayersOrder.UsernameDesc;
-                        break;
-                    case "gameType":
-                        order = searchOrder == "asc" ? PlayersOrder.GameTypeAsc : PlayersOrder.GameTypeDesc;
-                        break;
-                    case "firstSeen":
-                        order = searchOrder == "asc" ? PlayersOrder.FirstSeenAsc : PlayersOrder.FirstSeenDesc;
-                        break;
-                    case "lastSeen":
-                        order = searchOrder == "asc" ? PlayersOrder.LastSeenAsc : PlayersOrder.LastSeenDesc;
-                        break;
-                    default:
-                        break;
-                }
+                    "username" => searchOrder == "asc" ? PlayersOrder.UsernameAsc : PlayersOrder.UsernameDesc,
+                    "gameType" => searchOrder == "asc" ? PlayersOrder.GameTypeAsc : PlayersOrder.GameTypeDesc,
+                    "firstSeen" => searchOrder == "asc" ? PlayersOrder.FirstSeenAsc : PlayersOrder.FirstSeenDesc,
+                    "lastSeen" => searchOrder == "asc" ? PlayersOrder.LastSeenAsc : PlayersOrder.LastSeenDesc,
+                    _ => order
+                };
             }
 
             var playersApiResponse = await repositoryApiClient.Players.V1.GetPlayers(
