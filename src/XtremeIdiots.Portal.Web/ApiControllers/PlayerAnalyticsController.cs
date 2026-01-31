@@ -37,7 +37,7 @@ public class PlayerAnalyticsController(
             Logger.LogInformation("User {UserId} requesting cumulative daily players data from {Cutoff}",
                 User.XtremeIdiotsId(), cutoff);
 
-            var playerAnalyticsResponse = await repositoryApiClient.PlayerAnalytics.V1.GetCumulativeDailyPlayers(cutoff);
+            var playerAnalyticsResponse = await repositoryApiClient.PlayerAnalytics.V1.GetCumulativeDailyPlayers(cutoff).ConfigureAwait(false);
 
             if (!playerAnalyticsResponse.IsSuccess || playerAnalyticsResponse.Result?.Data is null)
             {
@@ -47,7 +47,7 @@ public class PlayerAnalyticsController(
 
             Logger.LogInformation("Successfully retrieved cumulative daily players data for user {UserId}", User.XtremeIdiotsId());
             return Ok(playerAnalyticsResponse.Result.Data);
-        }, "GetCumulativeDailyPlayersJson", $"cutoff: {cutoff}");
+        }, "GetCumulativeDailyPlayersJson", $"cutoff: {cutoff}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -64,7 +64,7 @@ public class PlayerAnalyticsController(
             Logger.LogInformation("User {UserId} requesting new daily players per game data from {Cutoff}",
                 User.XtremeIdiotsId(), cutoff);
 
-            var playerAnalyticsResponse = await repositoryApiClient.PlayerAnalytics.V1.GetNewDailyPlayersPerGame(cutoff);
+            var playerAnalyticsResponse = await repositoryApiClient.PlayerAnalytics.V1.GetNewDailyPlayersPerGame(cutoff).ConfigureAwait(false);
 
             if (!playerAnalyticsResponse.IsSuccess || playerAnalyticsResponse.Result?.Data is null)
             {
@@ -74,7 +74,7 @@ public class PlayerAnalyticsController(
 
             Logger.LogInformation("Successfully retrieved new daily players per game data for user {UserId}", User.XtremeIdiotsId());
             return Ok(playerAnalyticsResponse.Result.Data);
-        }, "GetNewDailyPlayersPerGameJson", $"cutoff: {cutoff}");
+        }, "GetNewDailyPlayersPerGameJson", $"cutoff: {cutoff}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ public class PlayerAnalyticsController(
             Logger.LogInformation("User {UserId} requesting players drop-off per game data from {Cutoff}",
                 User.XtremeIdiotsId(), cutoff);
 
-            var playerAnalyticsResponse = await repositoryApiClient.PlayerAnalytics.V1.GetPlayersDropOffPerGameJson(cutoff);
+            var playerAnalyticsResponse = await repositoryApiClient.PlayerAnalytics.V1.GetPlayersDropOffPerGameJson(cutoff).ConfigureAwait(false);
 
             if (!playerAnalyticsResponse.IsSuccess || playerAnalyticsResponse.Result?.Data is null)
             {
@@ -101,6 +101,6 @@ public class PlayerAnalyticsController(
 
             Logger.LogInformation("Successfully retrieved players drop-off per game data for user {UserId}", User.XtremeIdiotsId());
             return Ok(playerAnalyticsResponse.Result.Data);
-        }, "GetPlayersDropOffPerGameJson", $"cutoff: {cutoff}");
+        }, "GetPlayersDropOffPerGameJson", $"cutoff: {cutoff}").ConfigureAwait(false);
     }
 }

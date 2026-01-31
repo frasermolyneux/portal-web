@@ -55,7 +55,7 @@ public abstract class BaseApiController(
         string? context = null,
         object? additionalData = null)
     {
-        var authorizationResult = await authorizationService.AuthorizeAsync(User, resource, policy);
+        var authorizationResult = await authorizationService.AuthorizeAsync(User, resource, policy).ConfigureAwait(false);
 
         if (!authorizationResult.Succeeded)
         {
@@ -89,7 +89,7 @@ public abstract class BaseApiController(
             Logger.LogInformation("User {UserId} executing API {ActionName} in {Controller}",
                 userIdToLog, actionName, controllerName);
 
-            var result = await action();
+            var result = await action().ConfigureAwait(false);
 
             Logger.LogInformation("User {UserId} successfully completed API {ActionName} in {Controller}",
                 userIdToLog, actionName, controllerName);

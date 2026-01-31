@@ -38,7 +38,7 @@ public class BanFileMonitorsController(
             var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor };
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItems(requiredClaims);
 
-            var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken);
+            var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!banFileMonitorsApiResponse.IsSuccess || banFileMonitorsApiResponse.Result?.Data?.Items is null)
             {
@@ -47,7 +47,7 @@ public class BanFileMonitorsController(
             }
 
             return View(banFileMonitorsApiResponse.Result.Data.Items);
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -60,9 +60,9 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await AddGameServersViewData(cancellationToken: cancellationToken);
+            await AddGameServersViewData(cancellationToken: cancellationToken).ConfigureAwait(false);
             return View(new CreateBanFileMonitorViewModel { FilePath = string.Empty });
-        }, nameof(Create));
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
             {
@@ -89,9 +89,9 @@ public class BanFileMonitorsController(
 
             var modelValidationResult = await CheckModelStateAsync(model, async m =>
             {
-                await AddGameServersViewData(model.GameServerId, cancellationToken);
+                await AddGameServersViewData(model.GameServerId, cancellationToken).ConfigureAwait(false);
                 m.GameServer = gameServerData;
-            });
+            }).ConfigureAwait(false);
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
@@ -103,13 +103,13 @@ public class BanFileMonitorsController(
                 nameof(Create),
                 "BanFileMonitor",
                 $"GameType:{gameServerData.GameType},GameServerId:{gameServerData.GameServerId}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
 
             var createBanFileMonitorDto = new CreateBanFileMonitorDto(model.GameServerId, model.FilePath, gameServerData.GameType);
-            await repositoryApiClient.BanFileMonitors.V1.CreateBanFileMonitor(createBanFileMonitorDto, cancellationToken);
+            await repositoryApiClient.BanFileMonitors.V1.CreateBanFileMonitor(createBanFileMonitorDto, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("BanFileMonitorCreated", nameof(Create), new Dictionary<string, string>
             {
@@ -121,7 +121,7 @@ public class BanFileMonitorsController(
             this.AddAlertSuccess($"The ban file monitor has been created for {gameServerData.Title}");
 
             return RedirectToAction(nameof(Index));
-        }, nameof(Create));
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -136,10 +136,10 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.ViewBanFileMonitor, nameof(Details), cancellationToken);
+                id, AuthPolicies.ViewBanFileMonitor, nameof(Details), cancellationToken).ConfigureAwait(false);
 
             return actionResult is not null ? actionResult : View(banFileMonitorData);
-        }, nameof(Details));
+        }, nameof(Details)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -154,12 +154,12 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.EditBanFileMonitor, nameof(Edit), cancellationToken);
+                id, AuthPolicies.EditBanFileMonitor, nameof(Edit), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
 
-            await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken);
+            await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken).ConfigureAwait(false);
 
             var viewModel = new EditBanFileMonitorViewModel
             {
@@ -172,7 +172,7 @@ public class BanFileMonitorsController(
             };
 
             return View(viewModel);
-        }, nameof(Edit));
+        }, nameof(Edit)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -188,21 +188,21 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                model.BanFileMonitorId, AuthPolicies.EditBanFileMonitor, nameof(Edit), cancellationToken);
+                model.BanFileMonitorId, AuthPolicies.EditBanFileMonitor, nameof(Edit), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
 
             var modelValidationResult = await CheckModelStateAsync(model, async m =>
             {
-                await AddGameServersViewData(model.GameServerId, cancellationToken);
+                await AddGameServersViewData(model.GameServerId, cancellationToken).ConfigureAwait(false);
                 model.GameServer = banFileMonitorData!.GameServer;
-            });
+            }).ConfigureAwait(false);
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
             var editBanFileMonitorDto = new EditBanFileMonitorDto(banFileMonitorData!.BanFileMonitorId, model.FilePath);
-            await repositoryApiClient.BanFileMonitors.V1.UpdateBanFileMonitor(editBanFileMonitorDto, cancellationToken);
+            await repositoryApiClient.BanFileMonitors.V1.UpdateBanFileMonitor(editBanFileMonitorDto, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("BanFileMonitorUpdated", nameof(Edit), new Dictionary<string, string>
             {
@@ -214,7 +214,7 @@ public class BanFileMonitorsController(
             this.AddAlertSuccess($"The ban file monitor has been updated for {banFileMonitorData.GameServer.Title}");
 
             return RedirectToAction(nameof(Index));
-        }, nameof(Edit));
+        }, nameof(Edit)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -229,15 +229,15 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.DeleteBanFileMonitor, nameof(Delete), cancellationToken);
+                id, AuthPolicies.DeleteBanFileMonitor, nameof(Delete), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
 
-            await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken);
+            await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken).ConfigureAwait(false);
 
             return View(banFileMonitorData);
-        }, nameof(Delete));
+        }, nameof(Delete)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -254,12 +254,12 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.DeleteBanFileMonitor, nameof(DeleteConfirmed), cancellationToken);
+                id, AuthPolicies.DeleteBanFileMonitor, nameof(DeleteConfirmed), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
 
-            await repositoryApiClient.BanFileMonitors.V1.DeleteBanFileMonitor(id, cancellationToken);
+            await repositoryApiClient.BanFileMonitors.V1.DeleteBanFileMonitor(id, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("BanFileMonitorDeleted", nameof(DeleteConfirmed), new Dictionary<string, string>
             {
@@ -271,7 +271,7 @@ public class BanFileMonitorsController(
             this.AddAlertSuccess($"The ban file monitor has been deleted for {banFileMonitorData.GameServer.Title}");
 
             return RedirectToAction(nameof(Index));
-        }, nameof(DeleteConfirmed));
+        }, nameof(DeleteConfirmed)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -286,7 +286,7 @@ public class BanFileMonitorsController(
             var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor };
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
-            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken);
+            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (gameServersApiResponse.Result?.Data?.Items is not null)
             {
@@ -319,7 +319,7 @@ public class BanFileMonitorsController(
         string action,
         CancellationToken cancellationToken = default)
     {
-        var banFileMonitorApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitor(id, cancellationToken);
+        var banFileMonitorApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitor(id, cancellationToken).ConfigureAwait(false);
 
         if (banFileMonitorApiResponse.IsNotFound || banFileMonitorApiResponse.Result?.Data?.GameServer is null)
         {
@@ -338,7 +338,7 @@ public class BanFileMonitorsController(
             action,
             "BanFileMonitor",
             $"GameType:{gameServerData.GameType},GameServerId:{gameServerData.GameServerId}",
-            banFileMonitorData);
+            banFileMonitorData).ConfigureAwait(false);
 
         return authResult is not null ? ((IActionResult? ActionResult, BanFileMonitorDto? BanFileMonitor))(authResult, null) : ((IActionResult? ActionResult, BanFileMonitorDto? BanFileMonitor))(null, banFileMonitorData);
     }

@@ -62,12 +62,12 @@ public class IPAddressesController(
                 nameof(Details),
                 nameof(IPAddressesController),
                 $"IpAddress:{ipAddress}",
-                ipAddress);
+                ipAddress).ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
 
-            var viewModel = await BuildIPAddressDetailsViewModelAsync(ipAddress, cancellationToken);
+            var viewModel = await BuildIPAddressDetailsViewModelAsync(ipAddress, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("IPAddressDetailsViewed", nameof(Details), new Dictionary<string, string>
             {
@@ -78,7 +78,7 @@ public class IPAddressesController(
             });
 
             return View(viewModel);
-        }, "ViewIPAddressDetails");
+        }, "ViewIPAddressDetails").ConfigureAwait(false);
     }
 
     private async Task<IPAddressDetailsViewModel> BuildIPAddressDetailsViewModelAsync(string ipAddress, CancellationToken cancellationToken)
@@ -90,7 +90,7 @@ public class IPAddressesController(
 
         try
         {
-            var getGeoLocationResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress, cancellationToken);
+            var getGeoLocationResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress, cancellationToken).ConfigureAwait(false);
             if (getGeoLocationResult.IsSuccess && getGeoLocationResult.Result?.Data is not null)
             {
                 viewModel.GeoLocation = getGeoLocationResult.Result.Data;
@@ -108,7 +108,7 @@ public class IPAddressesController(
 
         try
         {
-            var proxyCheckResult = await proxyCheckService.GetIpRiskDataAsync(ipAddress, cancellationToken);
+            var proxyCheckResult = await proxyCheckService.GetIpRiskDataAsync(ipAddress, cancellationToken).ConfigureAwait(false);
             viewModel.ProxyCheck = proxyCheckResult;
 
             if (proxyCheckResult is not null)
@@ -126,7 +126,7 @@ public class IPAddressesController(
         }
 
         var playersResponse = await repositoryApiClient.Players.V1.GetPlayersWithIpAddress(
-            ipAddress, 0, 100, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None);
+            ipAddress, 0, 100, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
 
         if (playersResponse.IsSuccess && playersResponse.Result?.Data is not null)
         {

@@ -21,7 +21,7 @@ public class PlayerTagsViewComponent(
     {
         try
         {
-            var playerTagsResponse = await repositoryApiClient.Players.V1.GetPlayerTags(playerId);
+            var playerTagsResponse = await repositoryApiClient.Players.V1.GetPlayerTags(playerId).ConfigureAwait(false);
 
             if (!playerTagsResponse.IsSuccess || playerTagsResponse.Result?.Data?.Items is null)
             {

@@ -45,18 +45,18 @@ public class MapManagerController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(
-                id, AuthPolicies.ManageMaps, nameof(Manage), "Maps", cancellationToken);
+                id, AuthPolicies.ManageMaps, nameof(Manage), "Maps", cancellationToken).ConfigureAwait(false);
             if (actionResult != null)
                 return actionResult;
 
-            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id);
-            var getLoadedServerMapsFromHostResult = await serversApiClient.Maps.V1.GetLoadedServerMapsFromHost(id);
-            var mapPacks = await repositoryApiClient.MapPacks.V1.GetMapPacks(null, [id], null, 0, 50, MapPacksOrder.Title);
+            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id).ConfigureAwait(false);
+            var getLoadedServerMapsFromHostResult = await serversApiClient.Maps.V1.GetLoadedServerMapsFromHost(id).ConfigureAwait(false);
+            var mapPacks = await repositoryApiClient.MapPacks.V1.GetMapPacks(null, [id], null, 0, 50, MapPacksOrder.Title).ConfigureAwait(false);
 
             var mapsCollectionApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                 gameServerData!.GameType,
                 getServerMapsResult.Result?.Data?.Items?.Select(m => m.MapName).ToArray(),
-                null, null, 0, 50, MapsOrder.MapNameAsc);
+                null, null, 0, 50, MapsOrder.MapNameAsc).ConfigureAwait(false);
 
             var viewModel = new ManageMapsViewModel(gameServerData)
             {
@@ -67,7 +67,7 @@ public class MapManagerController(
             };
 
             return View(viewModel);
-        }, nameof(Manage));
+        }, nameof(Manage)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -90,11 +90,11 @@ public class MapManagerController(
             }
 
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(
-                viewModel.GameServerId, AuthPolicies.PushMapToRemote, nameof(PushMapToRemote), "Map", cancellationToken);
+                viewModel.GameServerId, AuthPolicies.PushMapToRemote, nameof(PushMapToRemote), "Map", cancellationToken).ConfigureAwait(false);
             if (actionResult != null)
                 return actionResult;
 
-            await serversApiClient.Maps.V1.PushServerMapToHost(viewModel.GameServerId, viewModel.MapName!);
+            await serversApiClient.Maps.V1.PushServerMapToHost(viewModel.GameServerId, viewModel.MapName!).ConfigureAwait(false);
 
             TrackSuccessTelemetry("MapPushedToRemote", nameof(PushMapToRemote), new Dictionary<string, string>
             {
@@ -104,7 +104,7 @@ public class MapManagerController(
 
             this.AddAlertSuccess($"Map '{viewModel.MapName}' has been successfully pushed to the remote server.");
             return RedirectToAction(nameof(Manage), new { id = viewModel.GameServerId });
-        }, nameof(PushMapToRemote));
+        }, nameof(PushMapToRemote)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -127,11 +127,11 @@ public class MapManagerController(
             }
 
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(
-                model.GameServerId, AuthPolicies.DeleteMapFromHost, nameof(DeleteMapFromHost), "Map", cancellationToken);
+                model.GameServerId, AuthPolicies.DeleteMapFromHost, nameof(DeleteMapFromHost), "Map", cancellationToken).ConfigureAwait(false);
             if (actionResult != null)
                 return actionResult;
 
-            await serversApiClient.Maps.V1.DeleteServerMapFromHost(model.GameServerId, model.MapName!);
+            await serversApiClient.Maps.V1.DeleteServerMapFromHost(model.GameServerId, model.MapName!).ConfigureAwait(false);
 
             TrackSuccessTelemetry("MapDeletedFromHost", nameof(DeleteMapFromHost), new Dictionary<string, string>
             {
@@ -141,7 +141,7 @@ public class MapManagerController(
 
             this.AddAlertSuccess($"Map '{model.MapName}' has been successfully deleted from the remote server.");
             return RedirectToAction(nameof(Manage), new { id = model.GameServerId });
-        }, nameof(DeleteMapFromHost));
+        }, nameof(DeleteMapFromHost)).ConfigureAwait(false);
     }
 
     private async Task<(IActionResult? ActionResult, Repository.Abstractions.Models.V1.GameServers.GameServerDto? GameServerData)> GetAuthorizedGameServerAsync(
@@ -151,7 +151,7 @@ public class MapManagerController(
         string resourceType,
         CancellationToken cancellationToken = default)
     {
-        var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken);
+        var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
 
         if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
         {
@@ -167,7 +167,7 @@ public class MapManagerController(
             action,
             resourceType,
             $"GameType:{gameServerData.GameType},GameServerId:{gameServerId}",
-            gameServerData);
+            gameServerData).ConfigureAwait(false);
 
         return authResult != null ? (authResult, null) : (null, gameServerData);
     }

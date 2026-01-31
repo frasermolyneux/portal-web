@@ -36,7 +36,7 @@ public class ExternalController(
             Logger.LogInformation("External request for latest admin actions view");
 
             var adminActionDtos = await repositoryApiClient.AdminActions.V1.GetAdminActions(
-                null, null, null, null, 0, 15, AdminActionOrder.CreatedDesc, cancellationToken);
+                null, null, null, null, 0, 15, AdminActionOrder.CreatedDesc, cancellationToken).ConfigureAwait(false);
 
             if (!adminActionDtos.IsSuccess || adminActionDtos.Result?.Data is null)
             {
@@ -55,7 +55,7 @@ public class ExternalController(
             });
 
             return View(adminActionDtos);
-        }, nameof(LatestAdminActions));
+        }, nameof(LatestAdminActions)).ConfigureAwait(false);
     }
 
     /// <summary>

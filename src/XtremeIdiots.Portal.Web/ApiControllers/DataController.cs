@@ -47,7 +47,7 @@ public class DataController(
     public async Task<IActionResult> GetPlayersAjax(GameType? id, [FromQuery] PlayersFilter? playersFilter, CancellationToken cancellationToken = default)
     {
         var filter = playersFilter ?? PlayersFilter.UsernameAndGuid;
-        return await GetPlayersAjaxPrivate(filter, id, cancellationToken);
+        return await GetPlayersAjaxPrivate(filter, id, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public class DataController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync();
+            var requestBody = await reader.ReadToEndAsync().ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -93,7 +93,7 @@ public class DataController(
                     break;
             }
 
-            var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(id, null, null, model.Search?.Value, model.Start, model.Length, order);
+            var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(id, null, null, model.Search?.Value, model.Start, model.Length, order).ConfigureAwait(false);
 
             if (!mapsApiResponse.IsSuccess || mapsApiResponse.Result?.Data is null)
             {
@@ -115,7 +115,7 @@ public class DataController(
                 recordsFiltered = mapsApiResponse.Result?.Pagination?.FilteredCount,
                 data = mapsApiResponse?.Result?.Data?.Items
             });
-        }, nameof(GetMapListAjax));
+        }, nameof(GetMapListAjax)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -130,7 +130,7 @@ public class DataController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -162,7 +162,7 @@ public class DataController(
             }
 
             var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
-                model.Search?.Value, userProfileFilter, model.Start, model.Length, order, cancellationToken);
+                model.Search?.Value, userProfileFilter, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (userProfileResponseDto.Result?.Data is null)
             {
@@ -180,7 +180,7 @@ public class DataController(
                 recordsFiltered = userProfileResponseDto.Result?.Pagination?.FilteredCount,
                 data = profileItems
             });
-        }, nameof(GetUsersAjax));
+        }, nameof(GetUsersAjax)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -195,7 +195,7 @@ public class DataController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -232,7 +232,7 @@ public class DataController(
             }
 
             var playersApiResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                gameType, filter, model.Search?.Value, model.Start, model.Length, order, PlayerEntityOptions.None);
+                gameType, filter, model.Search?.Value, model.Start, model.Length, order, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (!playersApiResponse.IsSuccess || playersApiResponse.Result?.Data is null)
             {
@@ -255,6 +255,6 @@ public class DataController(
                 recordsFiltered = playersApiResponse.Result?.Pagination?.FilteredCount,
                 data = playersApiResponse?.Result?.Data?.Items
             });
-        }, nameof(GetPlayersAjax), $"filter: {filter}, gameType: {gameType}");
+        }, nameof(GetPlayersAjax), $"filter: {filter}, gameType: {gameType}").ConfigureAwait(false);
     }
 }

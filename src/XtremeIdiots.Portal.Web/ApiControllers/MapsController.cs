@@ -35,7 +35,7 @@ public class MapsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -62,7 +62,7 @@ public class MapsController(
             }
 
             var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
-                id, null, null, model.Search?.Value, model.Start, model.Length, order);
+                id, null, null, model.Search?.Value, model.Start, model.Length, order).ConfigureAwait(false);
 
             if (!mapsApiResponse.IsSuccess || mapsApiResponse.Result?.Data is null)
             {
@@ -84,6 +84,6 @@ public class MapsController(
                 recordsFiltered = mapsApiResponse.Result?.Pagination?.FilteredCount,
                 data = mapsApiResponse?.Result?.Data?.Items
             });
-        }, nameof(GetMapListAjax));
+        }, nameof(GetMapListAjax)).ConfigureAwait(false);
     }
 }

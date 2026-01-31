@@ -34,7 +34,7 @@ public class ServerAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetChatLogAjax(bool? lockedOnly = null, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () => await GetChatLogPrivate(null, null, null, lockedOnly, cancellationToken), "GetChatLogAjax");
+        return await ExecuteWithErrorHandlingAsync(async () => await GetChatLogPrivate(null, null, null, lockedOnly, cancellationToken).ConfigureAwait(false), "GetChatLogAjax").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -57,10 +57,10 @@ public class ServerAdminController(
                 "GetGameChatLogAjax",
                 "GameChatLog",
                 $"GameType:{id}",
-                id);
+                id).ConfigureAwait(false);
 
-            return authResult ?? await GetChatLogPrivate(id, null, null, lockedOnly, cancellationToken);
-        }, "GetGameChatLogAjax");
+            return authResult ?? await GetChatLogPrivate(id, null, null, lockedOnly, cancellationToken).ConfigureAwait(false);
+        }, "GetGameChatLogAjax").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
             {
@@ -94,16 +94,16 @@ public class ServerAdminController(
                 "GetServerChatLogAjax",
                 "ServerChatLog",
                 $"ServerId:{id},GameType:{gameServerData.GameType}",
-                gameServerData);
+                gameServerData).ConfigureAwait(false);
 
-            return authResult ?? await GetChatLogPrivate(null, id, null, lockedOnly, cancellationToken);
-        }, "GetServerChatLogAjax");
+            return authResult ?? await GetChatLogPrivate(null, id, null, lockedOnly, cancellationToken).ConfigureAwait(false);
+        }, "GetServerChatLogAjax").ConfigureAwait(false);
     }
 
     private async Task<IActionResult> GetChatLogPrivate(GameType? gameType, Guid? serverId, Guid? playerId, bool? lockedOnly, CancellationToken cancellationToken = default)
     {
         var reader = new StreamReader(Request.Body);
-        var requestBody = await reader.ReadToEndAsync(cancellationToken);
+        var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
         var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
 
@@ -132,7 +132,7 @@ public class ServerAdminController(
 
         var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
             gameType, serverId, playerId, model.Search?.Value,
-            model.Start, model.Length, order, lockedOnly, cancellationToken);
+            model.Start, model.Length, order, lockedOnly, cancellationToken).ConfigureAwait(false);
 
         if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data is null)
         {

@@ -96,8 +96,8 @@ public class ProxyCheckService : IProxyCheckService
             var apiUrl = $"{apiBaseUrl}{ipAddress}?key={apiKey}&vpn=1&asn=1&risk=1&seen=1&tag=portal";
 
             logger.LogDebug("Calling ProxyCheck.io API for IP {IpAddress}", ipAddress);
-            var response = await httpClient.GetAsync(apiUrl, cancellationToken);
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var response = await httpClient.GetAsync(apiUrl, cancellationToken).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {

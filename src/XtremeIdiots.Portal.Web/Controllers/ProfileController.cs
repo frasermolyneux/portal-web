@@ -32,6 +32,6 @@ public class ProfileController(
     [HttpGet]
     public async Task<IActionResult> Manage(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Manage));
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Manage)).ConfigureAwait(false);
     }
 }

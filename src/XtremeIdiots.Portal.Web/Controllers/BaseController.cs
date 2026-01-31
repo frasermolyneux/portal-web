@@ -105,7 +105,7 @@ public abstract class BaseController(
     string? context = null,
     object? additionalData = null)
     {
-        var authorizationResult = await authorizationService.AuthorizeAsync(User, resource, policy);
+        var authorizationResult = await authorizationService.AuthorizeAsync(User, resource, policy).ConfigureAwait(false);
 
         if (!authorizationResult.Succeeded)
         {
@@ -175,7 +175,7 @@ public abstract class BaseController(
             Logger.LogWarning("Invalid model state in {Controller}", nameof(GetType));
             if (additionalSetupAsync is not null)
             {
-                await additionalSetupAsync(model);
+                await additionalSetupAsync(model).ConfigureAwait(false);
             }
 
             return View(model);
@@ -204,7 +204,7 @@ public abstract class BaseController(
             Logger.LogInformation("User {UserId} executing {ActionName} in {Controller}",
             userIdToLog, actionName, controllerName);
 
-            var result = await action();
+            var result = await action().ConfigureAwait(false);
 
             Logger.LogInformation("User {UserId} successfully completed {ActionName} in {Controller}",
             userIdToLog, actionName, controllerName);

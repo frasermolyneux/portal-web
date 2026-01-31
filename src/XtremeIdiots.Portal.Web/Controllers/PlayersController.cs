@@ -47,7 +47,7 @@ public class PlayersController(
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult(View() as IActionResult), nameof(Index));
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult(View() as IActionResult), nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -62,7 +62,7 @@ public class PlayersController(
         {
             ViewData["GameType"] = id;
             return Task.FromResult(View(nameof(Index)) as IActionResult);
-        }, nameof(GameIndex));
+        }, nameof(GameIndex)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public class PlayersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, playerData) = await GetAuthorizedPlayerAsync(id, "view", cancellationToken);
+            var (actionResult, playerData) = await GetAuthorizedPlayerAsync(id, "view", cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -85,11 +85,11 @@ public class PlayersController(
                 Player = playerData!
             };
 
-            await EnrichCurrentPlayerGeoLocationAsync(playerDetailsViewModel, playerData!, id);
+            await EnrichCurrentPlayerGeoLocationAsync(playerDetailsViewModel, playerData!, id).ConfigureAwait(false);
 
             if (playerData!.PlayerIpAddresses is not null && playerData.PlayerIpAddresses.Count != 0)
             {
-                await EnrichPlayerIpAddressesAsync(playerDetailsViewModel, playerData, id);
+                await EnrichPlayerIpAddressesAsync(playerDetailsViewModel, playerData, id).ConfigureAwait(false);
             }
 
             // Enrich related players (proxy + geo) so UI can use data attributes / helper formatting
@@ -108,12 +108,12 @@ public class PlayersController(
                         // Geo
                         if (!string.IsNullOrWhiteSpace(vm.IpAddress))
                         {
-                            var geo = await geoLocationClient.GeoLookup.V1.GetGeoLocation(vm.IpAddress, cancellationToken);
+                            var geo = await geoLocationClient.GeoLookup.V1.GetGeoLocation(vm.IpAddress, cancellationToken).ConfigureAwait(false);
                             if (geo.IsSuccess && geo.Result?.Data is not null && !string.IsNullOrWhiteSpace(geo.Result.Data.CountryCode))
                             {
                                 vm.CountryCode = geo.Result.Data.CountryCode;
                             }
-                            var proxy = await proxyCheckService.GetIpRiskDataAsync(vm.IpAddress, cancellationToken);
+                            var proxy = await proxyCheckService.GetIpRiskDataAsync(vm.IpAddress, cancellationToken).ConfigureAwait(false);
                             if (!proxy.IsError)
                             {
                                 vm.RiskScore = proxy.RiskScore;
@@ -140,7 +140,7 @@ public class PlayersController(
             });
 
             return View(playerDetailsViewModel);
-        }, nameof(Details));
+        }, nameof(Details)).ConfigureAwait(false);
     }
 
     private async Task<(IActionResult? ActionResult, PlayerDto? Data)> GetAuthorizedPlayerAsync(
@@ -150,7 +150,7 @@ public class PlayersController(
     {
         var playerApiResponse = await repositoryApiClient.Players.V1.GetPlayer(id,
             PlayerEntityOptions.Aliases | PlayerEntityOptions.IpAddresses | PlayerEntityOptions.AdminActions |
-            PlayerEntityOptions.RelatedPlayers | PlayerEntityOptions.ProtectedNames | PlayerEntityOptions.Tags);
+            PlayerEntityOptions.RelatedPlayers | PlayerEntityOptions.ProtectedNames | PlayerEntityOptions.Tags).ConfigureAwait(false);
 
         if (playerApiResponse.IsNotFound)
         {
@@ -173,7 +173,7 @@ public class PlayersController(
             action,
             "Player",
             $"GameType:{playerData.GameType}",
-            playerData);
+            playerData).ConfigureAwait(false);
 
         return authResult is not null ? ((IActionResult? ActionResult, PlayerDto? Data))(authResult, null) : ((IActionResult? ActionResult, PlayerDto? Data))(null, playerData);
     }
@@ -185,7 +185,7 @@ public class PlayersController(
 
         try
         {
-            var getGeoLocationResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(playerData.IpAddress);
+            var getGeoLocationResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(playerData.IpAddress).ConfigureAwait(false);
 
             if (getGeoLocationResult.IsSuccess && getGeoLocationResult.Result?.Data is not null)
                 viewModel.GeoLocation = getGeoLocationResult.Result.Data;
@@ -210,13 +210,13 @@ public class PlayersController(
             try
             {
 
-                var getGeoLocationResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress.Address);
+                var getGeoLocationResult = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress.Address).ConfigureAwait(false);
                 if (getGeoLocationResult.IsSuccess && getGeoLocationResult.Result is not null)
                 {
                     enrichedIp.GeoLocation = getGeoLocationResult.Result.Data;
                 }
 
-                var proxyCheck = await proxyCheckService.GetIpRiskDataAsync(ipAddress.Address);
+                var proxyCheck = await proxyCheckService.GetIpRiskDataAsync(ipAddress.Address).ConfigureAwait(false);
                 if (!proxyCheck.IsError)
                 {
                     enrichedIp.ProxyCheck = proxyCheck;

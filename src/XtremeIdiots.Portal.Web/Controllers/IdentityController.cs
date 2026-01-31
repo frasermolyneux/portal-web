@@ -36,7 +36,7 @@ public class IdentityController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             ViewData["ReturnUrl"] = returnUrl;
-            return await Task.FromResult(View());
+            return await Task.FromResult(View()).ConfigureAwait(false);
         }, "Login", "Anonymous");
     }
 
@@ -56,7 +56,7 @@ public class IdentityController(
             var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Identity", new { returnUrl });
             var properties = xtremeIdiotsAuth.ConfigureExternalAuthenticationProperties(redirectUrl);
 
-            return await Task.FromResult(new ChallengeResult("XtremeIdiots", properties));
+            return await Task.FromResult(new ChallengeResult("XtremeIdiots", properties)).ConfigureAwait(false);
         }, "LoginWithXtremeIdiots", "Anonymous");
     }
 
@@ -69,10 +69,10 @@ public class IdentityController(
             if (remoteError != null)
             {
                 Logger.LogError("External authentication provider returned error: {RemoteError}", remoteError);
-                return await IdentityError("There has been an issue logging you in with the xtremeidiots provider");
+                return await IdentityError("There has been an issue logging you in with the xtremeidiots provider").ConfigureAwait(false);
             }
 
-            var info = await xtremeIdiotsAuth.GetExternalLoginInfoAsync();
+            var info = await xtremeIdiotsAuth.GetExternalLoginInfoAsync().ConfigureAwait(false);
             if (info is null)
             {
                 Logger.LogWarning("External login info was null, redirecting to home");
@@ -80,7 +80,7 @@ public class IdentityController(
             }
 
             var username = info.Principal.FindFirstValue(ClaimTypes.Name);
-            var result = await xtremeIdiotsAuth.ProcessExternalLogin(info);
+            var result = await xtremeIdiotsAuth.ProcessExternalLogin(info).ConfigureAwait(false);
 
             switch (result)
             {
@@ -100,9 +100,9 @@ public class IdentityController(
                         { "LoginResult", "Locked" }
                     });
 
-                    return await IdentityError("Your account is currently locked");
+                    return await IdentityError("Your account is currently locked").ConfigureAwait(false);
                 case XtremeIdiotsAuthResult.Failed:
-                    return await IdentityError("There has been an issue logging you in with the XtremeIdiots provider");
+                    return await IdentityError("There has been an issue logging you in with the XtremeIdiots provider").ConfigureAwait(false);
                 default:
                     Logger.LogWarning("User {Username} authentication failed with result: {Result}", username, result);
 
@@ -112,7 +112,7 @@ public class IdentityController(
                         { "LoginResult", result.ToString() }
                     });
 
-                    return await IdentityError("There has been an issue logging you in");
+                    return await IdentityError("There has been an issue logging you in").ConfigureAwait(false);
             }
         }, "ExternalLoginCallback", "Anonymous");
     }
@@ -128,7 +128,7 @@ public class IdentityController(
                 { "ErrorMessage", message ?? "Unknown" }
             });
 
-            return await Task.FromResult(View("IdentityError", message));
+            return await Task.FromResult(View("IdentityError", message)).ConfigureAwait(false);
         }, "IdentityError", "Anonymous");
     }
 
@@ -139,7 +139,7 @@ public class IdentityController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await xtremeIdiotsAuth.SignOutAsync();
+            await xtremeIdiotsAuth.SignOutAsync().ConfigureAwait(false);
 
             TrackSuccessTelemetry("UserLogout", "Logout", new Dictionary<string, string>
             {
@@ -147,7 +147,7 @@ public class IdentityController(
             });
 
             return RedirectToLocal(returnUrl);
-        }, "Logout");
+        }, "Logout").ConfigureAwait(false);
     }
 
     private IActionResult RedirectToLocal(string? returnUrl)

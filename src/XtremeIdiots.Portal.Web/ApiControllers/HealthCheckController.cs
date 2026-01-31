@@ -40,7 +40,7 @@ public class HealthCheckController : BaseApiController
             {
                 try
                 {
-                    var response = await this.forumsClient.Core.GetCoreHello();
+                    var response = await this.forumsClient.Core.GetCoreHello().ConfigureAwait(false);
                     var checkResponse = response?.CommunityUrl == "https://www.xtremeidiots.com/";
                     return new Tuple<bool, string>(checkResponse, "OK");
                 }
@@ -72,7 +72,7 @@ public class HealthCheckController : BaseApiController
             {
                 if (healthCheckComponent.HealthFunc is not null)
                 {
-                    var (isHealthy, additionalData) = await healthCheckComponent.HealthFunc.Invoke();
+                    var (isHealthy, additionalData) = await healthCheckComponent.HealthFunc.Invoke().ConfigureAwait(false);
 
                     result.Components.Add(new HealthCheckComponentStatus
                     {
@@ -123,7 +123,7 @@ public class HealthCheckController : BaseApiController
             }
 
             return actionResult;
-        }, "Status");
+        }, "Status").ConfigureAwait(false);
     }
 
     /// <summary>

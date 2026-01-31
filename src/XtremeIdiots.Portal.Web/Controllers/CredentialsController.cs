@@ -43,13 +43,13 @@ public class CredentialsController(
             Logger.LogInformation("User {UserId} querying game servers for credentials with {GameTypeCount} game types and {GameServerIdCount} specific servers",
                 User.XtremeIdiotsId(), gameTypes?.Length ?? 0, gameServerIds?.Length ?? 0);
 
-            var gameServersList = await GetAuthorizedGameServersAsync(gameTypes, gameServerIds, cancellationToken);
+            var gameServersList = await GetAuthorizedGameServersAsync(gameTypes, gameServerIds, cancellationToken).ConfigureAwait(false);
             if (gameServersList is null)
             {
                 return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController).Replace("Controller", ""), new { id = 500 });
             }
 
-            await ApplyCredentialAuthorizationAsync(gameServersList, cancellationToken);
+            await ApplyCredentialAuthorizationAsync(gameServersList, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry(nameof(Index), nameof(CredentialsController), new Dictionary<string, string>
             {
@@ -63,7 +63,7 @@ public class CredentialsController(
                 User.XtremeIdiotsId(), gameServersList.Count);
 
             return View(gameServersList);
-        }, "Display credentials index page with game server credentials");
+        }, "Display credentials index page with game server credentials").ConfigureAwait(false);
     }
 
     private async Task<List<GameServerDto>?> GetAuthorizedGameServersAsync(GameType[]? gameTypes, Guid[]? gameServerIds, CancellationToken cancellationToken)
@@ -75,7 +75,7 @@ public class CredentialsController(
         if (gameTypes is not null && gameTypes.Length > 0)
         {
             var byGameTypesResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, null, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken);
+                gameTypes, null, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (byGameTypesResponse.IsSuccess && byGameTypesResponse.Result?.Data?.Items is not null)
             {
@@ -104,7 +104,7 @@ public class CredentialsController(
         if (gameServerIds is not null && gameServerIds.Length > 0)
         {
             var byServerIdsResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                null, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken);
+                null, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (byServerIdsResponse.IsSuccess && byServerIdsResponse.Result?.Data?.Items is not null)
             {
@@ -141,7 +141,7 @@ public class CredentialsController(
         foreach (var gameServerDto in gameServersList)
         {
             var ftpResource = new Tuple<GameType, Guid>(gameServerDto.GameType, gameServerDto.GameServerId);
-            var canViewFtpCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewFtpCredential);
+            var canViewFtpCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewFtpCredential).ConfigureAwait(false);
 
             if (!canViewFtpCredential.Succeeded)
             {
@@ -150,7 +150,7 @@ public class CredentialsController(
                 gameServerDto.ClearFtpCredentials();
             }
 
-            var canViewRconCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewRconCredential);
+            var canViewRconCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewRconCredential).ConfigureAwait(false);
 
             if (!canViewRconCredential.Succeeded)
             {

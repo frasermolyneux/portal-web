@@ -46,7 +46,7 @@ public class MapPacksController(
                 gameServerId,
                 AuthPolicies.CreateMapPack,
                 nameof(Create),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (actionResult != null)
                 return actionResult;
@@ -60,7 +60,7 @@ public class MapPacksController(
                 Description = string.Empty,
                 GameMode = string.Empty
             });
-        }, nameof(Create));
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -79,7 +79,7 @@ public class MapPacksController(
                 model.GameServerId,
                 AuthPolicies.CreateMapPack,
                 nameof(Create),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (actionResult != null)
                 return actionResult;
@@ -94,7 +94,7 @@ public class MapPacksController(
                 SyncToGameServer = model.SyncToGameServer
             };
 
-            var createMapPackApiResponse = await repositoryApiClient.MapPacks.V1.CreateMapPack(createMapPackDto, cancellationToken);
+            var createMapPackApiResponse = await repositoryApiClient.MapPacks.V1.CreateMapPack(createMapPackDto, cancellationToken).ConfigureAwait(false);
 
             if (!createMapPackApiResponse.IsSuccess)
             {
@@ -124,7 +124,7 @@ public class MapPacksController(
             this.AddAlertSuccess($"Map pack '{model.Title}' has been created successfully for {gameServerData.Title}.");
 
             return RedirectToAction("Manage", "MapManager", new { id = model.GameServerId });
-        }, nameof(Create));
+        }, nameof(Create)).ConfigureAwait(false);
     }
 
     private async Task<(IActionResult? ActionResult, GameServerDto? GameServerData)> GetAuthorizedGameServerAsync(
@@ -133,7 +133,7 @@ public class MapPacksController(
         string action,
         CancellationToken cancellationToken = default)
     {
-        var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken);
+        var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
 
         if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
         {
@@ -149,7 +149,7 @@ public class MapPacksController(
             action,
             "MapPack",
             $"GameType:{gameServerData.GameType},GameServerId:{gameServerId}",
-            gameServerData);
+            gameServerData).ConfigureAwait(false);
 
         return authResult is not null ? (authResult, null) : (null, gameServerData);
     }

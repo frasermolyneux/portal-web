@@ -17,7 +17,7 @@ public class DemoManager(IInvisionApiClient forumsClient) : IDemoManager
     /// <exception cref="InvalidOperationException">Thrown when demo manager download file cannot be retrieved or URL is missing</exception>
     public async Task<DemoManagerClientDto> GetDemoManagerClient()
     {
-        var downloadFile = await forumsClient.Downloads.GetDownloadFile(2753);
+        var downloadFile = await forumsClient.Downloads.GetDownloadFile(2753).ConfigureAwait(false);
 
         return downloadFile is null
             ? throw new InvalidOperationException("Unable to retrieve demo manager download file from forums")

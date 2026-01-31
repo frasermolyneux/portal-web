@@ -45,9 +45,9 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             return View();
-        }, nameof(Index));
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -59,9 +59,9 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             return View();
-        }, nameof(Permissions));
+        }, nameof(Permissions)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -79,9 +79,9 @@ public class UserController(
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken);
+                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
-            var userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken);
+            var userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
 
             if (userProfileDtoApiResponse.IsNotFound)
             {
@@ -103,10 +103,10 @@ public class UserController(
             IdentityUser? identityUser = null;
             if (profileData.XtremeIdiotsForumId is not null)
             {
-                identityUser = await userManager.FindByIdAsync(profileData.XtremeIdiotsForumId.ToString()!);
+                identityUser = await userManager.FindByIdAsync(profileData.XtremeIdiotsForumId.ToString()!).ConfigureAwait(false);
             }
 
-            identityUser ??= await userManager.FindByIdAsync(profileData.UserProfileId.ToString());
+            identityUser ??= await userManager.FindByIdAsync(profileData.UserProfileId.ToString()).ConfigureAwait(false);
 
             var identitySummary = identityUser is null ? null : new IdentityUserSummary
             {
@@ -127,7 +127,7 @@ public class UserController(
             };
 
             return View(vm);
-        }, nameof(ManageProfile));
+        }, nameof(ManageProfile)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -148,7 +148,7 @@ public class UserController(
                 return RedirectToAction(nameof(Index));
             }
 
-            var user = await userManager.FindByIdAsync(id);
+            var user = await userManager.FindByIdAsync(id).ConfigureAwait(false);
 
             if (user is null)
             {
@@ -157,7 +157,7 @@ public class UserController(
                 return RedirectToAction(nameof(Index));
             }
 
-            await userManager.UpdateSecurityStampAsync(user);
+            await userManager.UpdateSecurityStampAsync(user).ConfigureAwait(false);
 
             this.AddAlertSuccess($"User {user.UserName} has been force logged out (this may take up to 15 minutes)");
 
@@ -168,7 +168,7 @@ public class UserController(
             });
 
             return RedirectToAction(nameof(Index));
-        }, nameof(LogUserOut));
+        }, nameof(LogUserOut)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken);
+            var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
 
             if (userProfileResponseDto.IsNotFound)
             {
@@ -201,7 +201,7 @@ public class UserController(
 
             var userProfileData = userProfileResponseDto.Result.Data;
 
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(Guid.Parse(claimValue), cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(Guid.Parse(claimValue), cancellationToken).ConfigureAwait(false);
 
             if (gameServerApiResponse.Result?.Data is null)
             {
@@ -217,7 +217,7 @@ public class UserController(
                 AuthPolicies.CreateUserClaim,
                 nameof(CreateUserClaim),
                 "UserClaim",
-                $"ProfileId:{id},GameType:{gameServerData.GameType},ClaimType:{claimType}");
+                $"ProfileId:{id},GameType:{gameServerData.GameType},ClaimType:{claimType}").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -227,7 +227,7 @@ public class UserController(
                 var createUserProfileClaimDto = new CreateUserProfileClaimDto(userProfileData.UserProfileId, claimType, claimValue, false);
 
                 await repositoryApiClient.UserProfiles.V1.CreateUserProfileClaim(
-                    userProfileData.UserProfileId, [createUserProfileClaimDto], cancellationToken);
+                    userProfileData.UserProfileId, [createUserProfileClaimDto], cancellationToken).ConfigureAwait(false);
 
                 var user = !string.IsNullOrEmpty(userProfileData.XtremeIdiotsForumId)
                     ? await userManager.FindByIdAsync(userProfileData.XtremeIdiotsForumId)
@@ -269,7 +269,7 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken);
+            var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
 
             if (userProfileResponseDto.IsNotFound)
             {
@@ -292,7 +292,7 @@ public class UserController(
                 return NotFound();
             }
 
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(Guid.Parse(claim.ClaimValue), cancellationToken);
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(Guid.Parse(claim.ClaimValue), cancellationToken).ConfigureAwait(false);
 
             var canDeleteUserClaim = false;
             if (gameServerApiResponse.IsNotFound)
@@ -308,7 +308,7 @@ public class UserController(
                     AuthPolicies.DeleteUserClaim,
                     nameof(RemoveUserClaim),
                     "UserClaim",
-                    $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType}");
+                    $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType}").ConfigureAwait(false);
 
                 if (authResult is not null)
                     return authResult;
@@ -322,14 +322,14 @@ public class UserController(
                 return Unauthorized();
             }
 
-            await repositoryApiClient.UserProfiles.V1.DeleteUserProfileClaim(id, claimId, cancellationToken);
+            await repositoryApiClient.UserProfiles.V1.DeleteUserProfileClaim(id, claimId, cancellationToken).ConfigureAwait(false);
 
             var user = !string.IsNullOrEmpty(userProfileData.XtremeIdiotsForumId)
                 ? await userManager.FindByIdAsync(userProfileData.XtremeIdiotsForumId)
                 : null;
 
             if (user is not null)
-                await userManager.UpdateSecurityStampAsync(user);
+                await userManager.UpdateSecurityStampAsync(user).ConfigureAwait(false);
 
             this.AddAlertSuccess($"User {userProfileData.DisplayName}'s claim has been removed (this may take up to 15 minutes)");
 
