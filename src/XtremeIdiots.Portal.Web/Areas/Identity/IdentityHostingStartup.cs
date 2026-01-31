@@ -43,12 +43,12 @@ public class IdentityHostingStartup : IHostingStartup
 
     private static void ValidateConfiguration(IConfiguration configuration)
     {
-        var requiredKeys = new[]
-        {
+        string[] requiredKeys =
+        [
             AuthClientIdKey,
             AuthClientSecretKey,
             SqlConnectionStringKey
-        };
+        ];
 
         foreach (var key in requiredKeys)
         {

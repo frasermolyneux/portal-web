@@ -35,7 +35,7 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
@@ -283,7 +283,7 @@ public class BanFileMonitorsController(
     {
         try
         {
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
@@ -295,13 +295,13 @@ public class BanFileMonitorsController(
             else
             {
                 Logger.LogWarning("Failed to load game servers for user {UserId}", User.XtremeIdiotsId());
-                ViewData["GameServers"] = new SelectList(Enumerable.Empty<GameServerDto>(), nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title));
+                ViewData["GameServers"] = new SelectList(Array.Empty<GameServerDto>(), nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading game servers view data for user {UserId}", User.XtremeIdiotsId());
-            ViewData["GameServers"] = new SelectList(Enumerable.Empty<GameServerDto>(), nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title));
+            ViewData["GameServers"] = new SelectList(Array.Empty<GameServerDto>(), nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title));
         }
     }
 
