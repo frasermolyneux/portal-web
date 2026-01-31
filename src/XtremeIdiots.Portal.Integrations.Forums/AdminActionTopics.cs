@@ -24,8 +24,9 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
     /// <param name="created">When the admin action was created</param>
     /// <param name="text">Admin action description/reason</param>
     /// <param name="adminId">ID of the admin who created the action</param>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Topic ID of the created forum topic, or 0 if creation failed</returns>
-    public async Task<int> CreateTopicForAdminAction(AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId)
+    public async Task<int> CreateTopicForAdminAction(AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -72,7 +73,8 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
     /// <param name="created">When the admin action was created</param>
     /// <param name="text">Admin action description/reason</param>
     /// <param name="adminId">ID of the admin who created the action</param>
-    public async Task UpdateTopicForAdminAction(int topicId, AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId)
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    public async Task UpdateTopicForAdminAction(int topicId, AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId, CancellationToken cancellationToken = default)
     {
         if (topicId == 0)
             return;

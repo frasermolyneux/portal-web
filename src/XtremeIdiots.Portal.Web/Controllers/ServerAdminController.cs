@@ -1001,7 +1001,8 @@ public class ServerAdminController(
                 playerName,
                 DateTime.UtcNow,
                 text,
-                adminId).ConfigureAwait(false);
+                adminId,
+                cancellationToken).ConfigureAwait(false);
 
             var createAdminActionDto = new CreateAdminActionDto(playerId, actionType, text)
             {

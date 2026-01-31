@@ -115,7 +115,8 @@ public class AdminActionsController(
                     playerData.Username,
                     DateTime.UtcNow,
                     model.Text,
-                    adminId).ConfigureAwait(false)
+                    adminId,
+                    cancellationToken).ConfigureAwait(false)
             };
 
             await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
@@ -234,7 +235,7 @@ public class AdminActionsController(
                 ? editAdminActionDto.AdminId
                 : adminActionData.UserProfile?.XtremeIdiotsForumId;
 
-            await UpdateForumTopicIfExistsAsync(adminActionData, model.Text, adminForumId).ConfigureAwait(false);
+            await UpdateForumTopicIfExistsAsync(adminActionData, model.Text, adminForumId, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionEdited", nameof(Edit), new Dictionary<string, string>
             {
@@ -320,7 +321,7 @@ public class AdminActionsController(
 
             await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
 
-            await UpdateForumTopicIfExistsAsync(adminActionData, adminActionData.Text, adminActionData.UserProfile?.XtremeIdiotsForumId).ConfigureAwait(false);
+            await UpdateForumTopicIfExistsAsync(adminActionData, adminActionData.Text, adminActionData.UserProfile?.XtremeIdiotsForumId, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionLifted", nameof(Lift), new Dictionary<string, string>
             {
@@ -494,7 +495,8 @@ public class AdminActionsController(
                 playerData.Username,
                 DateTime.UtcNow,
                 adminActionData.Text,
-                adminActionData.UserProfile?.XtremeIdiotsForumId).ConfigureAwait(false);
+                adminActionData.UserProfile?.XtremeIdiotsForumId,
+                cancellationToken).ConfigureAwait(false);
 
             var editAdminActionDto = new EditAdminActionDto(adminActionData.AdminActionId)
             {
@@ -645,7 +647,7 @@ public class AdminActionsController(
         return getAdminActionResult.Result.Data;
     }
 
-    private async Task UpdateForumTopicIfExistsAsync(AdminActionDto adminActionData, string text, string? adminForumId)
+    private async Task UpdateForumTopicIfExistsAsync(AdminActionDto adminActionData, string text, string? adminForumId, CancellationToken cancellationToken = default)
     {
         if (adminActionData.ForumTopicId.HasValue && adminActionData.ForumTopicId != 0 && adminActionData.Player is not null)
         {
@@ -657,7 +659,8 @@ public class AdminActionsController(
                 adminActionData.Player.Username,
                 adminActionData.Created,
                 text,
-                adminForumId).ConfigureAwait(false);
+                adminForumId,
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
