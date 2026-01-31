@@ -11,8 +11,6 @@ public class PlayerTagsViewComponent(
     IRepositoryApiClient repositoryApiClient,
     ILogger<PlayerTagsViewComponent> logger) : ViewComponent
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly ILogger<PlayerTagsViewComponent> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
     /// Invokes the view component to display player tags
@@ -39,7 +37,7 @@ public class PlayerTagsViewComponent(
                 }
 
                 ViewBag.PlayerId = playerId;
-                return View(new List<PlayerTagDto>());
+                return View(Array.Empty<PlayerTagDto>());
             }
 
             ViewBag.PlayerId = playerId;
@@ -49,7 +47,7 @@ public class PlayerTagsViewComponent(
         {
             logger.LogError(ex, "Exception retrieving player tags for playerId {PlayerId}", playerId);
             ViewBag.PlayerId = playerId;
-            return View(new List<PlayerTagDto>());
+            return View(Array.Empty<PlayerTagDto>());
         }
     }
 }

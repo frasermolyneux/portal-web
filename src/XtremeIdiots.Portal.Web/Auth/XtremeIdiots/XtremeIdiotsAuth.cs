@@ -19,12 +19,6 @@ public class XtremeIdiotsAuth(
     private const string UnknownUsername = "Unknown";
     private const string UnknownEmail = "unknown@example.com";
 
-    private readonly IInvisionApiClient forumsClient = forumsClient ?? throw new ArgumentNullException(nameof(forumsClient));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly ILogger<XtremeIdiotsAuth> logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly SignInManager<IdentityUser> signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
-    private readonly UserManager<IdentityUser> userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-
     public AuthenticationProperties ConfigureExternalAuthenticationProperties(string? redirectUrl)
     {
         return signInManager.ConfigureExternalAuthenticationProperties(XtremeIdiotsProvider, redirectUrl);

@@ -67,8 +67,8 @@ public static class ClaimsPrincipalExtensions
     /// <returns>A tuple containing arrays of game types and item IDs the user has claims for</returns>
     public static (GameType[] gameTypes, Guid[] itemIds) ClaimedGamesAndItems(this ClaimsPrincipal claimsPrincipal, IEnumerable<string> requiredClaims)
     {
-        var gameTypes = new List<GameType>();
-        var servers = new List<Guid>();
+        List<GameType> gameTypes = [];
+        List<Guid> servers = [];
 
         if (claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
             gameTypes = [.. Enum.GetValues<GameType>()];
@@ -100,7 +100,7 @@ public static class ClaimsPrincipalExtensions
     /// <returns>A list of game types the user has claims for</returns>
     public static List<GameType> ClaimedGameTypes(this ClaimsPrincipal claimsPrincipal, IEnumerable<string> requiredClaims)
     {
-        var gameTypes = new List<GameType>();
+        List<GameType> gameTypes = [];
 
         if (claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
             gameTypes = [.. Enum.GetValues<GameType>()];
@@ -121,10 +121,10 @@ public static class ClaimsPrincipalExtensions
     /// <returns>A list of game types the user can manage servers for</returns>
     public static List<GameType> GetGameTypesForGameServers(this ClaimsPrincipal claimsPrincipal)
     {
-        var requiredClaims = new[]
-        {
+        string[] requiredClaims =
+        [
             UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin
-        };
+        ];
 
         return claimsPrincipal.ClaimedGameTypes(requiredClaims);
     }

@@ -24,8 +24,6 @@ public class AdminActionsController(
     ILogger<AdminActionsController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Provides server-side paginated admin actions for DataTables AJAX endpoint.
@@ -174,7 +172,7 @@ public class AdminActionsController(
             }
 
             var items = apiResponse.Result.Data.Items.ToList();
-            var responseItems = new List<object>(items.Count);
+            List<object> responseItems = new(items.Count);
             foreach (var a in items)
             {
                 var canClaim = false;

@@ -25,10 +25,6 @@ public class DemosController(
         ILogger<DemosController> logger,
         IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly SignInManager<IdentityUser> signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly UserManager<IdentityUser> userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
 
     [HttpPost("GetDemoListAjax")]
     public async Task<IActionResult> GetDemoListAjax(GameType? id, CancellationToken cancellationToken = default)
@@ -46,7 +42,7 @@ public class DemosController(
                 return BadRequest();
             }
 
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
             var gameTypes = User.ClaimedGameTypes(requiredClaims);
 
             string? filterUserId = null;
@@ -75,7 +71,7 @@ public class DemosController(
                 return StatusCode(500, "Failed to retrieve demos data");
             }
 
-            var portalDemoEntries = new List<PortalDemoDto>();
+            List<PortalDemoDto> portalDemoEntries = [];
             if (demosApiResponse.Result.Data.Items is not null)
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)
@@ -154,7 +150,7 @@ public class DemosController(
 
             var claimsPrincipal = await signInManager.ClaimsFactory.CreateAsync(user);
 
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
             var gameTypes = claimsPrincipal.ClaimedGameTypes(requiredClaims);
 
             string? filterUserId = null;

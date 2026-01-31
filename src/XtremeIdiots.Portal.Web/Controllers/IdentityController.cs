@@ -22,7 +22,6 @@ public class IdentityController(
     ILogger<IdentityController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IXtremeIdiotsAuth xtremeIdiotsAuth = xtremeIdiotsAuth ?? throw new ArgumentNullException(nameof(xtremeIdiotsAuth));
 
     /// <summary>
     /// Displays the login page for anonymous users

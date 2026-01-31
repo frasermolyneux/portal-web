@@ -19,7 +19,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <remarks>
 /// Initializes a new instance of the ServersController
 /// </remarks>
-/// <param name="authorizationService">Service for handling authorization checks</param>
 /// <param name="repositoryApiClient">Client for repository API operations</param>
 /// <param name="telemetryClient">Client for application telemetry</param>
 /// <param name="logger">Logger instance for this controller</param>
@@ -27,15 +26,11 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <exception cref="ArgumentNullException">Thrown when required dependencies are null</exception>
 [Authorize(Policy = AuthPolicies.AccessServers)]
 public class ServersController(
-    IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ServersController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-
     /// <summary>
     /// Displays the main servers listing page
     /// </summary>
@@ -86,7 +81,7 @@ public class ServersController(
             {
                 Logger.LogWarning("Failed to retrieve recent players for map view for user {UserId}. API Success: {IsSuccess}",
                     User.XtremeIdiotsId(), response.IsSuccess);
-                return View(new List<object>());
+                return View(Array.Empty<object>());
             }
 
             Logger.LogInformation("User {UserId} successfully retrieved {PlayerCount} recent players for map view",
@@ -137,9 +132,9 @@ public class ServersController(
             var gameServerStatsResponseDto = await repositoryApiClient.GameServersStats.V1
                 .GetGameServerStatusStats(gameServerData.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken);
 
-            var mapTimelineDataPoints = new List<MapTimelineDataPoint>();
-            var gameServerStatDtos = new List<GameServerStatDto>();
-            var maps = new List<MapDto>();
+            List<MapTimelineDataPoint> mapTimelineDataPoints = [];
+            List<GameServerStatDto> gameServerStatDtos = [];
+            List<MapDto> maps = [];
 
             if (gameServerStatsResponseDto.IsSuccess && gameServerStatsResponseDto.Result?.Data?.Items is not null)
             {

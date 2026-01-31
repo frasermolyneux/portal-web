@@ -42,12 +42,16 @@ public class ProxyCheckService : IProxyCheckService
         IConfiguration configuration,
         ILogger<ProxyCheckService> logger)
     {
-        this.httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
-        this.memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
-        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
+        ArgumentNullException.ThrowIfNull(memoryCache);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        this.httpClientFactory = httpClientFactory;
+        this.memoryCache = memoryCache;
+        this.logger = logger;
 
         apiKey = configuration["ProxyCheck:ApiKey"];
-        if (string.IsNullOrEmpty(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             logger.LogWarning("ProxyCheck:ApiKey is not configured. ProxyCheck service will not be able to make API calls.");
         }

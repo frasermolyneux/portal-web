@@ -9,7 +9,6 @@ namespace XtremeIdiots.Portal.Integrations.Forums;
 /// <param name="forumsClient">Invision Community API client for forum operations</param>
 public class DemoManager(IInvisionApiClient forumsClient) : IDemoManager
 {
-    private readonly IInvisionApiClient invisionClient = forumsClient ?? throw new ArgumentNullException(nameof(forumsClient));
 
     /// <summary>
     /// Retrieves the latest demo manager client download information from the forums
@@ -18,7 +17,7 @@ public class DemoManager(IInvisionApiClient forumsClient) : IDemoManager
     /// <exception cref="InvalidOperationException">Thrown when demo manager download file cannot be retrieved or URL is missing</exception>
     public async Task<DemoManagerClientDto> GetDemoManagerClient()
     {
-        var downloadFile = await invisionClient.Downloads.GetDownloadFile(2753);
+        var downloadFile = await forumsClient.Downloads.GetDownloadFile(2753);
 
         return downloadFile is null
             ? throw new InvalidOperationException("Unable to retrieve demo manager download file from forums")

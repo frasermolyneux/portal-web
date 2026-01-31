@@ -24,7 +24,6 @@ public class ExternalController(
     ILogger<ExternalController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Retrieves the latest admin actions for display in external forum widgets
@@ -48,7 +47,7 @@ public class ExternalController(
                 return StatusCode(500, "Failed to retrieve admin actions data");
             }
 
-            var results = new List<dynamic>();
+            List<dynamic> results = [];
             foreach (var adminActionDto in adminActionsApiResponse.Result.Data.Items)
             {
                 // Determine action text based on admin action type and expiration status

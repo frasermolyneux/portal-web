@@ -10,7 +10,6 @@ namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 /// <param name="httpContextAccessor">HTTP context accessor for request header validation</param>
 public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAuthorizationHandler
 {
-    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
 
     /// <summary>
     /// Handles authorization requirements for demo operations
@@ -19,7 +18,7 @@ public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAutho
     /// <returns>A completed task indicating the authorization check is complete</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements.ToList();
+        var pendingRequirements = context.PendingRequirements;
 
         foreach (var requirement in pendingRequirements)
         {

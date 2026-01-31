@@ -45,12 +45,6 @@ public class DemosController(
     IConfiguration configuration,
     IHttpClientFactory httpClientFactory) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly UserManager<IdentityUser> userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly SignInManager<IdentityUser> signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
-    private readonly IDemoManager demosForumsClient = demosForumsClient ?? throw new ArgumentNullException(nameof(demosForumsClient));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-    private readonly IHttpClientFactory httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
 
     /// <summary>
     /// Displays the demo client configuration page with authentication key information
@@ -239,7 +233,7 @@ public class DemosController(
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            var portalDemoEntries = new List<PortalDemoDto>();
+            List<PortalDemoDto> portalDemoEntries = [];
             if (demosApiResponse.Result.Data.Items is not null)
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)
@@ -546,7 +540,7 @@ public class DemosController(
                 return Content("You must provide a file to be uploaded");
             }
 
-            var whitelistedExtensions = new List<string> { ".dm_1", ".dm_6" };
+            string[] whitelistedExtensions = [".dm_1", ".dm_6"];
 
             if (!whitelistedExtensions.Any(file.FileName.EndsWith))
             {

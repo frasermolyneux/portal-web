@@ -15,7 +15,7 @@ public class PlayerTagsAuthHandler : IAuthorizationHandler
     /// <returns>Completed task</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements.ToList();
+        var pendingRequirements = context.PendingRequirements;
 
         foreach (var requirement in pendingRequirements)
         {

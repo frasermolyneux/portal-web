@@ -29,7 +29,6 @@ public class StatusController(
     ILogger<StatusController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Displays the ban file monitor status page showing synchronization status and file information
@@ -53,10 +52,10 @@ public class StatusController(
             if (banFileMonitorsApiResponse.IsNotFound || banFileMonitorsApiResponse.Result?.Data?.Items is null)
             {
                 Logger.LogWarning("No ban file monitors found for user {UserId}", User.XtremeIdiotsId());
-                return View(new List<EditBanFileMonitorViewModel>());
+                return View(Array.Empty<EditBanFileMonitorViewModel>());
             }
 
-            var models = new List<EditBanFileMonitorViewModel>();
+            List<EditBanFileMonitorViewModel> models = [];
 
             foreach (var banFileMonitor in banFileMonitorsApiResponse.Result.Data.Items)
             {

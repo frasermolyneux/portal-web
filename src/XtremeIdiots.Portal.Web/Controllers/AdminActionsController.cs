@@ -28,10 +28,6 @@ public class AdminActionsController(
     private const string DefaultFallbackAdminId = "21145";
     private const int DefaultTempBanDurationDays = 7;
 
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-    private readonly IAdminActionTopics adminActionTopics = adminActionTopics ?? throw new ArgumentNullException(nameof(adminActionTopics));
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
-
     /// <summary>
     /// Displays the create admin action form for a specific player
     /// </summary>

@@ -14,7 +14,6 @@ namespace XtremeIdiots.Portal.Web.ViewComponents;
 /// <param name="repositoryApiClient">Client for repository API operations</param>
 public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClient) : ViewComponent
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Retrieves and displays game servers that have banner functionality enabled
@@ -27,12 +26,11 @@ public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClien
 
         if (gameServersApiResponse.Result?.Data?.Items is null)
         {
-            return View(new List<object>());
+            return View(Array.Empty<object>());
         }
 
         var filtered = gameServersApiResponse.Result.Data.Items
-            .Where(s => !string.IsNullOrWhiteSpace(s.HtmlBanner))
-            .ToList();
+            .Where(s => !string.IsNullOrWhiteSpace(s.HtmlBanner));
 
         return View(filtered);
     }

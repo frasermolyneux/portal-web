@@ -20,7 +20,6 @@ public class BannersController(
     ILogger<BannersController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly IAuthorizationService authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
 
     /// <summary>
     /// Displays the game servers list view for banner management

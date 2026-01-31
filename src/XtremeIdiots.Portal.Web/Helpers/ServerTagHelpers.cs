@@ -36,7 +36,7 @@ public class ServerNameTagHelper : TagHelper
     {
         output.TagName = "span";
         var value = string.IsNullOrWhiteSpace(LiveTitle) ? Title ?? string.Empty : LiveTitle;
-        var toRemove = new[] { "^1", "^2", "^3", "^4", "^5", "^6", "^7", "^8", "^9" };
+        string[] toRemove = ["^1", "^2", "^3", "^4", "^5", "^6", "^7", "^8", "^9"];
         foreach (var code in toRemove)
         {
             value = value?.Replace(code, string.Empty);
@@ -72,7 +72,7 @@ public class ServerLinkTagHelper : TagHelper
                     "CallOfDuty5" => "CoDWW",
                     _ => null
                 };
-                if (hlswGame == null)
+                if (hlswGame is null)
                 {
                     output.SuppressOutput();
                     return;

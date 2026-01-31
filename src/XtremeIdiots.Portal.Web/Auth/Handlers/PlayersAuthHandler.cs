@@ -7,7 +7,7 @@ public class PlayersAuthHandler : IAuthorizationHandler
 {
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements.ToList();
+        var pendingRequirements = context.PendingRequirements;
 
         foreach (var requirement in pendingRequirements)
         {

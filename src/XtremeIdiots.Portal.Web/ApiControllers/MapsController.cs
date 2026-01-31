@@ -21,7 +21,6 @@ public class MapsController(
     ILogger<MapsController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
-    private readonly IRepositoryApiClient repositoryApiClient = repositoryApiClient ?? throw new ArgumentNullException(nameof(repositoryApiClient));
 
     /// <summary>
     /// Provides paginated, searchable map data for DataTables Ajax requests

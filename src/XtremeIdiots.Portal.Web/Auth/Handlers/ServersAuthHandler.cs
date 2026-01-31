@@ -15,7 +15,7 @@ public class ServersAuthHandler : IAuthorizationHandler
     /// <returns>A completed task indicating the authorization evaluation is complete</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements.ToList();
+        var pendingRequirements = context.PendingRequirements;
 
         foreach (var requirement in pendingRequirements)
         {

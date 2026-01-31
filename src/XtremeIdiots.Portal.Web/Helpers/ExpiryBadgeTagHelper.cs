@@ -29,7 +29,7 @@ public class ExpiryBadgeTagHelper : TagHelper
         var displayDate = ExpiresUtc.Value;
         // timezone via claim (same logic as existing helper)
         var tzClaim = User?.Claims.SingleOrDefault(c => c.Type == UserProfileClaimType.TimeZone);
-        if (tzClaim != null)
+        if (tzClaim is not null)
         {
             try
             {

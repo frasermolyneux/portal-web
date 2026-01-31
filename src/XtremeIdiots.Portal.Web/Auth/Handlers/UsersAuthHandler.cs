@@ -16,7 +16,7 @@ public class UsersAuthHandler : IAuthorizationHandler
     /// <returns>A task representing the asynchronous operation</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements.ToList();
+        var pendingRequirements = context.PendingRequirements;
 
         foreach (var requirement in pendingRequirements)
         {
