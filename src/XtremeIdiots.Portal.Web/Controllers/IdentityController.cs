@@ -152,8 +152,11 @@ public class IdentityController(
 
     private IActionResult RedirectToLocal(string? returnUrl)
     {
-        return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
-            ? Redirect(returnUrl)
-            : RedirectToAction(nameof(HomeController.Index), "Home");
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return LocalRedirect(returnUrl);
+        }
+
+        return RedirectToAction(nameof(HomeController.Index), "Home");
     }
 }
