@@ -30,7 +30,8 @@ public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClien
         }
 
         var filtered = gameServersApiResponse.Result.Data.Items
-            .Where(s => !string.IsNullOrWhiteSpace(s.HtmlBanner));
+            .Where(s => !string.IsNullOrWhiteSpace(s.HtmlBanner))
+            .ToList();
 
         return View(filtered);
     }

@@ -54,7 +54,7 @@ public class ExternalController(
                 { "Count", (adminActionDtos.Result.Data.Items?.Count() ?? 0).ToString() }
             });
 
-            return View(adminActionDtos);
+            return View(adminActionDtos.Result.Data.Items?.ToList() ?? []);
         }, nameof(LatestAdminActions)).ConfigureAwait(false);
     }
 

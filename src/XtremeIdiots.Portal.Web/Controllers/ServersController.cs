@@ -87,7 +87,7 @@ public class ServersController(
             Logger.LogInformation("User {UserId} successfully retrieved {PlayerCount} recent players for map view",
                 User.XtremeIdiotsId(), response.Result.Data.Items.Count());
 
-            return View(response.Result.Data.Items);
+            return View(response.Result.Data.Items.ToList());
         }, nameof(Map)).ConfigureAwait(false);
     }
 

@@ -696,7 +696,7 @@ public class AdminActionsController(
             Logger.LogInformation("Successfully retrieved {Count} admin actions for user {UserId}",
                 adminActionsApiResponse.Result.Data.Items.Count(), User.XtremeIdiotsId());
 
-            return View(adminActionsApiResponse.Result.Data.Items);
+            return View(adminActionsApiResponse.Result.Data.Items.ToList());
         }, nameof(MyActions)).ConfigureAwait(false);
     }
 
