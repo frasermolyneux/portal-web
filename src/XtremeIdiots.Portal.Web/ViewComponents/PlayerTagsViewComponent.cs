@@ -41,7 +41,7 @@ public class PlayerTagsViewComponent(
             }
 
             ViewBag.PlayerId = playerId;
-            return View(playerTagsResponse.Result.Data.Items);
+            return View(playerTagsResponse.Result.Data.Items.ToList());
         }
         catch (Exception ex)
         {
