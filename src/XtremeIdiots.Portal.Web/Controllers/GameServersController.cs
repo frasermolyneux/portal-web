@@ -41,7 +41,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameServer };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameServer];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -183,7 +183,7 @@ public class GameServersController(
             if (authResult is not null)
                 return authResult;
 
-            var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor };
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
@@ -433,7 +433,7 @@ public class GameServersController(
         {
             Logger.LogError(ex, "Error adding game type ViewData for user {UserId}", User.XtremeIdiotsId());
 
-            ViewData[nameof(GameType)] = new SelectList(Enumerable.Empty<GameType>(), selected ?? GameType.Unknown);
+            ViewData[nameof(GameType)] = new SelectList(Array.Empty<GameType>(), selected ?? GameType.Unknown);
         }
     }
 }

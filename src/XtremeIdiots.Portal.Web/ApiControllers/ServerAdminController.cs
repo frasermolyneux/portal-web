@@ -120,14 +120,11 @@ public class ServerAdminController(
             var orderColumn = model.Columns[model.Order.First().Column].Name;
             var searchOrder = model.Order.First().Dir;
 
-            switch (orderColumn)
+            order = orderColumn switch
             {
-                case "timestamp":
-                    order = searchOrder == "asc" ? ChatMessageOrder.TimestampAsc : ChatMessageOrder.TimestampDesc;
-                    break;
-                default:
-                    break;
-            }
+                "timestamp" => searchOrder == "asc" ? ChatMessageOrder.TimestampAsc : ChatMessageOrder.TimestampDesc,
+                _ => order
+            };
         }
 
         var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
