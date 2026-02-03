@@ -38,9 +38,14 @@
 @use 'features/admin-actions';
 @use 'features/players';
 @use 'features/chatlog';
+@use 'features/chatlog-permalink';
 @use 'features/demos';
 @use 'features/maps';
 @use 'features/users';
+@use 'features/ipaddresses';
+@use 'features/banfilemonitors';
+@use 'features/rcon';
+@use 'features/changelog';
 
 // 7. Vendor - Third-party library overrides
 @use 'vendor/bootstrap-overrides';

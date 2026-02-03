@@ -127,24 +127,7 @@
     .open > a:focus {
         background: #fff;
     }
-}
 
-// Metismenu navigation (dropdown menu)
-.nav.metismenu {
-    > li {
-        display: block;
-        position: relative;
-        width: 100%;
-    }
-
-    .dropdown-menu > li > a {
-        display: block;
-        padding: 3px 20px;
-    }
-}
-
-// Navigation improvements from responsive-overrides
-.nav {
     .arrow {
         float: right;
         margin-top: 2px;

@@ -1,0 +1,47 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// ChangeLog Feature Styles
+
+.stream-item {
+    padding: 20px 0;
+    border-bottom: 1px solid $border-color;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.stream-content {
+    padding-left: 15px;
+}
+
+.stream-divider {
+    margin: 15px 0;
+    opacity: 0.3;
+}
+
+.activity-icon {
+    width: 40px;
+    text-align: center;
+}
+
+.activity-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-meta {
+    white-space: nowrap;
+    text-align: right;
+    min-width: 120px;
+}
+
+.panel {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    height: 100%;
+}

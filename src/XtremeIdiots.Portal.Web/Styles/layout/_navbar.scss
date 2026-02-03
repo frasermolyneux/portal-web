@@ -3,6 +3,11 @@
 @use '../tokens/typography' as *;
 @use '../layout/responsive' as *;
 
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
 // Top navbar styles
 
 .navbar {
@@ -30,16 +35,10 @@
     }
 }
 
-.body-small .navbar-top-links li:last-child {
-    margin-right: 0;
-}
-
-// Navbar brand
 .navbar-brand {
     padding: 0.5rem 1rem;
 }
 
-// Mobile navbar adjustments
 @include media-max-md {
     .navbar-top-links li a {
         padding: 15px 8px;

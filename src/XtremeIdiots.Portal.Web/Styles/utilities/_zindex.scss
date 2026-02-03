@@ -36,6 +36,11 @@ $z-index-tooltip: 1070;
     cursor: pointer !important;
 }
 
+// Button utilities
+.btn-nowrap {
+    white-space: nowrap !important;
+}
+
 // Clear utilities
 .clearfix::after {
     content: "";
