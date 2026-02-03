@@ -1,8 +1,8 @@
-/* Desktop Layout Improvements
- * Fixes for large screen (desktop) layout to:
- * 1. Keep navigation open by default on desktop
+/* Large Screen Layout Styles
+ * Responsive layout optimizations for large screens:
+ * 1. Keep navigation open by default on large screens
  * 2. Remove unnecessary right-side spacing
- * 3. Maintain mobile offcanvas behavior
+ * 3. Maintain mobile offcanvas behavior on smaller screens
  -------------------------------------------------- */
 
 /* Large screens (≥992px) - Desktop behavior */
