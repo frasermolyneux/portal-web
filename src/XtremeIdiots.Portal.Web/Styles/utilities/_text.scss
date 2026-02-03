@@ -3,58 +3,16 @@
 @use '../tokens/typography' as *;
 @use '../layout/responsive' as *;
 
-// Text utilities
+// Portal-specific text utilities (non-Bootstrap)
+// Bootstrap 5 provides comprehensive text utilities; these are portal-specific additions
 
-// Text alignment
-.text-left { text-align: left !important; }
-.text-center { text-align: center !important; }
-.text-right { text-align: right !important; }
+// Custom font sizes specific to portal
+.text-xs { font-size: $font-size-xs !important; }
 
-// Text colors
-.text-primary { color: $xi-primary !important; }
-.text-secondary { color: $xi-secondary !important; }
-.text-success { color: $success-color !important; }
-.text-danger { color: $danger-color !important; }
-.text-warning { color: $warning-color !important; }
-.text-info { color: $info-color !important; }
-.text-muted { color: $xi-text-muted !important; }
-.text-white { color: #fff !important; }
-
-// Font weights
-.font-weight-light { font-weight: $font-weight-light !important; }
-.font-weight-normal { font-weight: $font-weight-normal !important; }
-.font-weight-semibold { font-weight: $font-weight-semibold !important; }
-.font-weight-bold { font-weight: $font-weight-bold !important; }
-
-// Font sizes
-.small { font-size: $font-size-sm !important; }
-.text-sm { font-size: $font-size-sm !important; }
-.text-md { font-size: $font-size-md !important; }
-.text-lg { font-size: $font-size-lg !important; }
-
-// Text transform
-.text-uppercase { text-transform: uppercase !important; }
-.text-lowercase { text-transform: lowercase !important; }
-.text-capitalize { text-transform: capitalize !important; }
-
-// Text decoration
-.text-decoration-none { text-decoration: none !important; }
-.text-underline { text-decoration: underline !important; }
-
-// Line height
+// Line height utilities (not in Bootstrap)
 .line-height-sm { line-height: $line-height-sm !important; }
 .line-height-base { line-height: $line-height-base !important; }
 .line-height-md { line-height: $line-height-md !important; }
 
-// Responsive text alignment
-@include media-md {
-    .text-md-left { text-align: left !important; }
-    .text-md-center { text-align: center !important; }
-    .text-md-right { text-align: right !important; }
-}
-
-@include media-lg {
-    .text-lg-left { text-align: left !important; }
-    .text-lg-center { text-align: center !important; }
-    .text-lg-right { text-align: right !important; }
-}
+// Font weight semibold (Bootstrap uses fw-semibold, we support both)
+.font-weight-semibold { font-weight: $font-weight-semibold !important; }
