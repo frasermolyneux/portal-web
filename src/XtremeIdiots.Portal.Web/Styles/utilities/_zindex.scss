@@ -1,3 +1,8 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
 // Z-index utilities for layering
 
 $z-index-dropdown: 1000;
@@ -17,3 +22,23 @@ $z-index-tooltip: 1070;
 .z-index-sticky { z-index: $z-index-sticky !important; }
 .z-index-fixed { z-index: $z-index-fixed !important; }
 .z-index-modal { z-index: $z-index-modal !important; }
+
+// Utility for copy toast notifications
+.copy-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+// Cursor utilities
+.cursor-pointer {
+    cursor: pointer !important;
+}
+
+// Clear utilities
+.clearfix::after {
+    content: "";
+    display: table;
+    clear: both;
+}

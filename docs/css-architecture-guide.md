@@ -4,7 +4,7 @@ This document describes the modernized CSS architecture for the XtremeIdiots Por
 
 ## Overview
 
-The portal uses a structured SCSS-based architecture that compiles to a single `app.css` file. This replaces the previous approach of using multiple CSS files (inspinia.css, site.css, responsive-overrides.css, etc.).
+The portal uses a structured SCSS-based architecture that compiles to a single minified `app.css` file. All styles are organized into logical modules using modern Sass 3.0 `@use` syntax.
 
 ## Structure
 
