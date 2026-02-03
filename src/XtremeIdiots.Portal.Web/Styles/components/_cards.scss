@@ -1,3 +1,8 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use 'sass:color';
+
 // ibox cards component (Inspinia's signature component)
 
 .ibox {
@@ -68,7 +73,7 @@
 }
 
 .ibox-heading {
-    background-color: lighten($xi-primary, 45%);
+    background-color: color.adjust($xi-primary, $lightness: 45%);
     border-bottom: none;
 
     h3 {

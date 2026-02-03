@@ -1,3 +1,9 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+@use 'sass:color';
+
 // Off-canvas sidebar navigation (Bootstrap 5 Offcanvas)
 
 #sideNav {
@@ -24,13 +30,13 @@
         &:hover,
         &:focus {
             color: #fff;
-            background-color: darken($nav-bg, 5%);
+            background-color: color.adjust($nav-bg, $lightness: -5%);
             border-left-color: $xi-primary;
         }
 
         &.active {
             color: $nav-text-active;
-            background-color: darken($nav-bg, 3%);
+            background-color: color.adjust($nav-bg, $lightness: -3%);
             border-left-color: $xi-primary;
         }
 

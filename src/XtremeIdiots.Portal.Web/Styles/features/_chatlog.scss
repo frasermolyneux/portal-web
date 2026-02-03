@@ -1,3 +1,8 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
 // Chat Log Feature Styles
 
 .chatlog-table-wrapper {

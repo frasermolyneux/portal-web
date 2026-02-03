@@ -1,3 +1,9 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+@use 'sass:color';
+
 // Admin Actions Feature Styles
 
 .admin-action-card {
@@ -194,7 +200,7 @@
 
 .my-actions-resizer {
     cursor: col-resize;
-    background: linear-gradient(180deg, $border-color 0%, darken($border-color, 5%) 100%);
+    background: linear-gradient(180deg, $border-color 0%, color.adjust($border-color, $lightness: -5%) 100%);
     border-radius: 4px;
     position: relative;
     transition: background 0.15s ease;
@@ -213,7 +219,7 @@
 
     &:hover,
     &:focus {
-        background: darken($border-color, 10%);
+        background: color.adjust($border-color, $lightness: -10%);
         outline: none;
     }
 

@@ -204,14 +204,14 @@ The previous Inspinia theme (inspinia.css) has been absorbed into the structured
 
 1. Create a new file in `features/`: `Styles/features/_mypage.scss`
 2. Add feature-specific styles
-3. Import in `Styles/app.scss`: `@import 'features/mypage';`
+3. Import in `Styles/app.scss`: `@use 'features/mypage';`
 4. Rebuild: `dotnet build`
 
 ### For a new component:
 
 1. Create a new file in `components/`: `Styles/components/_mycomponent.scss`
 2. Add reusable component styles
-3. Import in `Styles/app.scss`: `@import 'components/mycomponent';`
+3. Import in `Styles/app.scss`: `@use 'components/mycomponent';`
 4. Rebuild: `dotnet build`
 
 ### For theme changes:
@@ -254,12 +254,6 @@ If changes aren't reflected:
 
 ### Deprecation warnings
 
-The SCSS compiler may show deprecation warnings about `@import` and color functions. These are informational and don't affect functionality. They will be addressed in a future update to use `@use` and modern color functions.
+SCSS compilation may show informational warnings that don't affect functionality. These are kept up-to-date with the latest Sass best practices.
 
-## Future Improvements
-
-- Migrate from `@import` to `@use` modules (Sass 3.0 preparation)
-- Replace deprecated color functions with `color.adjust()` and `color.scale()`
-- Add CSS minification for production builds
-- Consider CSS-in-JS for dynamic theming
-- Implement CSS purging to remove unused styles
+## Best Practices

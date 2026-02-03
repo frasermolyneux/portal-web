@@ -1,3 +1,8 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use 'sass:color';
+
 // Bootstrap vendor overrides
 // Keep Bootstrap CSS external, override specific styles here for portal branding
 
@@ -38,27 +43,27 @@ a {
 
 // Alert overrides
 .alert-success {
-    --bs-alert-bg: #{lighten($success-color, 45%)};
-    --bs-alert-border-color: #{lighten($success-color, 35%)};
-    --bs-alert-color: #{darken($success-color, 20%)};
+    --bs-alert-bg: #{color.adjust($success-color, $lightness: 45%)};
+    --bs-alert-border-color: #{color.adjust($success-color, $lightness: 35%)};
+    --bs-alert-color: #{color.adjust($success-color, $lightness: -20%)};
 }
 
 .alert-danger {
-    --bs-alert-bg: #{lighten($danger-color, 40%)};
-    --bs-alert-border-color: #{lighten($danger-color, 30%)};
-    --bs-alert-color: #{darken($danger-color, 20%)};
+    --bs-alert-bg: #{color.adjust($danger-color, $lightness: 40%)};
+    --bs-alert-border-color: #{color.adjust($danger-color, $lightness: 30%)};
+    --bs-alert-color: #{color.adjust($danger-color, $lightness: -20%)};
 }
 
 .alert-warning {
-    --bs-alert-bg: #{lighten($warning-color, 35%)};
-    --bs-alert-border-color: #{lighten($warning-color, 25%)};
-    --bs-alert-color: #{darken($warning-color, 30%)};
+    --bs-alert-bg: #{color.adjust($warning-color, $lightness: 35%)};
+    --bs-alert-border-color: #{color.adjust($warning-color, $lightness: 25%)};
+    --bs-alert-color: #{color.adjust($warning-color, $lightness: -30%)};
 }
 
 .alert-info {
-    --bs-alert-bg: #{lighten($info-color, 40%)};
-    --bs-alert-border-color: #{lighten($info-color, 30%)};
-    --bs-alert-color: #{darken($info-color, 20%)};
+    --bs-alert-bg: #{color.adjust($info-color, $lightness: 40%)};
+    --bs-alert-border-color: #{color.adjust($info-color, $lightness: 30%)};
+    --bs-alert-color: #{color.adjust($info-color, $lightness: -20%)};
 }
 
 // Offcanvas overrides for sidebar

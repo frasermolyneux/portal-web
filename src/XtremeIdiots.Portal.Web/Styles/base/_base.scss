@@ -1,3 +1,8 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use 'sass:color';
+
 // Base HTML element styles
 
 html {

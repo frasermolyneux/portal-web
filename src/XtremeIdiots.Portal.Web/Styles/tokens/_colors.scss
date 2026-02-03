@@ -1,43 +1,43 @@
 // Color Tokens
 // Primary brand colors from XtremeIdiots Portal
-$xi-primary: #1ab394;
-$xi-primary-dark: #18a689;
-$xi-secondary: #293846;
-$xi-secondary-dark: #1f2d3d;
-$xi-accent: #f8ac59;
+$xi-primary: #1ab394 !default;
+$xi-primary-dark: #18a689 !default;
+$xi-secondary: #293846 !default;
+$xi-secondary-dark: #1f2d3d !default;
+$xi-accent: #f8ac59 !default;
 
 // Text colors
-$xi-text: #676a6c;
-$xi-text-muted: #999c9e;
-$xi-link: #1ab394;
+$xi-text: #676a6c !default;
+$xi-text-muted: #999c9e !default;
+$xi-link: #1ab394 !default;
 
 // Background colors
-$gray-bg: #f3f3f4;
-$white-bg: #ffffff;
-$dark-bg: #2f4050;
+$gray-bg: #f3f3f4 !default;
+$white-bg: #ffffff !default;
+$dark-bg: #2f4050 !default;
 
 // Border colors
-$border-color: #e7eaec;
-$border-color-light: #d1d5db;
+$border-color: #e7eaec !default;
+$border-color-light: #d1d5db !default;
 
 // State colors
-$success-color: #1ab394;
-$info-color: #23c6c8;
-$warning-color: #f8ac59;
-$danger-color: #ed5565;
+$success-color: #1ab394 !default;
+$info-color: #23c6c8 !default;
+$warning-color: #f8ac59 !default;
+$danger-color: #ed5565 !default;
 
 // Navigation colors
-$nav-bg: #2f4050;
-$nav-text: #a7b1c2;
-$nav-text-active: #ffffff;
+$nav-bg: #2f4050 !default;
+$nav-text: #a7b1c2 !default;
+$nav-text-active: #ffffff !default;
 
 // Bootstrap overrides
-$primary: $xi-primary;
-$secondary: $xi-secondary;
-$success: $success-color;
-$info: $info-color;
-$warning: $warning-color;
-$danger: $danger-color;
+$primary: $xi-primary !default;
+$secondary: $xi-secondary !default;
+$success: $success-color !default;
+$info: $info-color !default;
+$warning: $warning-color !default;
+$danger: $danger-color !default;
 
 // CSS Custom Properties (for runtime theming)
 :root {

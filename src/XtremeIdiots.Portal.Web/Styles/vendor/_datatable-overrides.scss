@@ -1,3 +1,8 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use 'sass:color';
+
 // DataTables vendor overrides
 // Keep third-party DataTables CSS external, override specific styles here
 
@@ -53,7 +58,7 @@ table.dataTable {
             cursor: pointer;
 
             &:hover {
-                background-color: darken($gray-bg, 5%);
+                background-color: color.adjust($gray-bg, $lightness: -5%);
             }
         }
     }

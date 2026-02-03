@@ -1,22 +1,22 @@
 // Spacing Tokens
 // Based on Inspinia and Bootstrap spacing system
 
-$spacer: 1rem;
+$spacer: 1rem !default;
 
-$spacing-xs: 0.25rem;   // 4px
-$spacing-sm: 0.5rem;    // 8px
-$spacing-md: 1rem;      // 16px
-$spacing-lg: 1.5rem;    // 24px
-$spacing-xl: 2rem;      // 32px
-$spacing-xxl: 3rem;     // 48px
+$spacing-xs: 0.25rem !default;   // 4px
+$spacing-sm: 0.5rem !default;    // 8px
+$spacing-md: 1rem !default;      // 16px
+$spacing-lg: 1.5rem !default;    // 24px
+$spacing-xl: 2rem !default;      // 32px
+$spacing-xxl: 3rem !default;     // 48px
 
 // Component-specific spacing
-$ibox-margin: 25px;
-$ibox-padding: 20px;
-$nav-padding: 14px 20px 14px 25px;
-$content-padding: 20px;
+$ibox-margin: 25px !default;
+$ibox-padding: 20px !default;
+$nav-padding: 14px 20px 14px 25px !default;
+$content-padding: 20px !default;
 
 // Layout spacing
-$navbar-height: 56px;
-$sidebar-width: 280px;
-$footer-spacing: 4rem;
+$navbar-height: 56px !default;
+$sidebar-width: 280px !default;
+$footer-spacing: 4rem !default;
