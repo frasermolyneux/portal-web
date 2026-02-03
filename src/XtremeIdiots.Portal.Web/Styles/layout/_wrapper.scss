@@ -1,0 +1,35 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Main page wrapper and content area
+
+#page-wrapper {
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 200px;
+
+    &.gray-bg {
+        background-color: $gray-bg;
+    }
+}
+
+.wrapper-content {
+    padding: $content-padding;
+}
+
+.alerts-container {
+    padding-top: 10px;
+}
+
+// Ensure content doesn't overlap with fixed navbar
+main {
+    padding-top: $navbar-height;
+}
+
+@include media-lg {
+    .wrapper-content {
+        padding: $content-padding * 1.5;
+    }
+}

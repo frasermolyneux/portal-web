@@ -1,0 +1,53 @@
+/*!
+ * XtremeIdiots Portal - Application Styles
+ * Compiled from SCSS source files
+ */
+
+// 1. Tokens - Design system variables and CSS custom properties
+@use 'tokens/colors';
+@use 'tokens/spacing';
+@use 'tokens/typography';
+
+// 2. Base - Reset, HTML elements, accessibility
+@use 'base/reset';
+@use 'base/base';
+@use 'base/accessibility';
+@use 'base/animations';
+
+// 3. Layout - Page structure, navigation, footer, responsive system
+@use 'layout/responsive';
+@use 'layout/navbar';
+@use 'layout/sidebar';
+@use 'layout/footer';
+@use 'layout/wrapper';
+
+// 4. Utilities - Helper classes for spacing, flexbox, text, z-index
+@use 'utilities/spacing' as util-spacing;
+@use 'utilities/flex' as util-flex;
+@use 'utilities/text' as util-text;
+@use 'utilities/zindex' as util-zindex;
+
+// 5. Components - Reusable UI components
+@use 'components/buttons';
+@use 'components/cards';
+@use 'components/tables';
+@use 'components/forms';
+@use 'components/badges';
+@use 'components/pagination';
+
+// 6. Features - Page-specific styles
+@use 'features/admin-actions';
+@use 'features/players';
+@use 'features/chatlog';
+@use 'features/chatlog-permalink';
+@use 'features/demos';
+@use 'features/maps';
+@use 'features/users';
+@use 'features/ipaddresses';
+@use 'features/banfilemonitors';
+@use 'features/rcon';
+@use 'features/changelog';
+
+// 7. Vendor - Third-party library overrides
+@use 'vendor/bootstrap-overrides';
+@use 'vendor/datatable-overrides';

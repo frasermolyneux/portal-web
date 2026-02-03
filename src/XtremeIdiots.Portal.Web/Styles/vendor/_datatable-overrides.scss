@@ -1,0 +1,81 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use 'sass:color';
+
+// DataTables vendor overrides
+// Keep third-party DataTables CSS external, override specific styles here
+
+.dataTables_wrapper {
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info,
+    .dataTables_processing,
+    .dataTables_paginate {
+        color: $xi-text;
+    }
+
+    .dataTables_length select {
+        color: $xi-text;
+        background-color: $white-bg;
+    }
+
+    .dataTables_filter input {
+        &::placeholder {
+            color: $xi-text-muted;
+        }
+    }
+}
+
+// DataTables responsive overrides
+.dtr-control {
+    cursor: pointer;
+    
+    &:before {
+        color: $xi-primary;
+    }
+}
+
+.dtr-details {
+    background-color: $gray-bg;
+    border: 1px solid $border-color;
+    padding: 1rem;
+}
+
+// Custom DataTable styling for portal
+table.dataTable {
+    border-collapse: collapse !important;
+    
+    thead {
+        th {
+            border-bottom: 2px solid $border-color;
+            background-color: $gray-bg;
+        }
+
+        .sorting,
+        .sorting_asc,
+        .sorting_desc {
+            cursor: pointer;
+
+            &:hover {
+                background-color: color.adjust($gray-bg, $lightness: -5%);
+            }
+        }
+    }
+
+    tbody tr {
+        &:hover {
+            background-color: rgba($xi-primary, 0.05);
+        }
+
+        &.selected {
+            background-color: rgba($xi-primary, 0.1);
+        }
+    }
+}
+
+// Fix DataTables search input styling
+.dataTables_filter input[type="search"] {
+    -webkit-appearance: none;
+    appearance: none;
+}

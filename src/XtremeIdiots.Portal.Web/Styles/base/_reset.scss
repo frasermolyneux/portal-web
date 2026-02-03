@@ -1,0 +1,16 @@
+// Minimal reset for consistent cross-browser rendering
+// Note: Bootstrap already provides a good reset, this supplements it
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+// Remove default margins on common elements
+body, h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, blockquote, dl, dd {
+    margin: 0;
+}
+
+// Inherit fonts for form controls
+input, button, textarea, select {
+    font: inherit;
+}

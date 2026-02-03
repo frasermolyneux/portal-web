@@ -44,30 +44,18 @@
     <environment names="Development">
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <link rel="stylesheet" href="~/css/animate.css" />
         <link rel="stylesheet" href="~/lib/datatables/css/jquery.dataTables.min.css" />
         <link rel="stylesheet" href="~/lib/datatables-responsive/responsive.dataTables.min.css" />
         <link rel="stylesheet" href="~/lib/toastr/toastr.min.css" />
-        <link rel="stylesheet" href="~/css/inspinia.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/responsive-overrides.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/responsive-tables.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/admin-actions.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/large-screens.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
     </environment>
     <environment names="Staging,Production">
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <link rel="stylesheet" href="~/css/animate.css" />
         <link rel="stylesheet" href="~/lib/datatables/css/jquery.dataTables.min.css" />
         <link rel="stylesheet" href="~/lib/datatables-responsive/responsive.dataTables.min.css" />
         <link rel="stylesheet" href="~/lib/toastr/toastr.min.css" />
-        <link rel="stylesheet" href="~/css/inspinia.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/responsive-overrides.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/responsive-tables.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/admin-actions.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/large-screens.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
     </environment>
 
     @Html.Raw(JavaScriptSnippet.FullScript)
@@ -83,7 +71,7 @@
 
     <!-- Main Content -->
     <main id="page-wrapper" class="@Html.PageClass() gray-bg @ViewBag.SpecialClass">
-        <div class="animated fadeInRight" style="padding-top: 10px">
+        <div class="animated fadeInRight alerts-container">
             <alerts></alerts>
         </div>
 

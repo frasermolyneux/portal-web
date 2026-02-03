@@ -1,0 +1,348 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+@use 'sass:color';
+
+// Admin Actions Feature Styles
+
+.admin-action-card {
+    transition: all 0.3s ease;
+    background: $white-bg;
+    margin-bottom: 2rem;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+}
+
+.admin-actions-container {
+    padding-bottom: 4rem;
+    min-height: 50vh;
+}
+
+// Filter bar
+.admin-actions-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1.1rem;
+    align-items: stretch;
+    margin-bottom: 0.85rem;
+
+    .filter-group {
+        flex: 0 1 240px;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        position: relative;
+
+        &.full-width-search {
+            flex: 1 1 100%;
+        }
+    }
+
+    label.form-label {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: $font-weight-semibold;
+        color: #6c757d;
+        margin: 0;
+        line-height: 1.1;
+    }
+
+    select.form-select {
+        width: 100%;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        border: 1px solid $border-color-light;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+        &:focus {
+            border-color: $xi-primary;
+            box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+        }
+    }
+}
+
+// Autocomplete suggestions
+.admin-suggestions {
+    top: 100%;
+    left: 0;
+    right: 0;
+
+    .list-group-item {
+        cursor: pointer;
+
+        &.active,
+        &:focus {
+            background: $xi-primary;
+            color: #fff;
+        }
+    }
+}
+
+// Background gradients
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+}
+
+.bg-gradient-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
+}
+
+.text-white-75 {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+// Admin action text content
+.admin-action-text {
+    line-height: 1.6;
+    color: #495057;
+    white-space: pre-wrap;
+
+    p {
+        margin-bottom: 0.75rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+// Icon colors
+.icon-primary { color: #007bff !important; }
+.icon-warning { color: #ffc107 !important; }
+.icon-danger { color: #dc3545 !important; }
+.icon-secondary { color: #6c757d !important; }
+.icon-info { color: #17a2b8 !important; }
+
+// Icon sizing
+.admin-action-card .fa-solid,
+.admin-action-card .fa-regular {
+    font-size: 1.2em;
+    width: 1.2em;
+    text-align: center;
+}
+
+.admin-action-card .rounded-circle .fa-solid,
+.admin-action-card .rounded-circle .fa-regular {
+    font-size: 1.1em;
+}
+
+// My Admin Actions master-detail layout
+.wrapper.wrapper-content.my-admin-actions-layout {
+    --my-actions-left-width: 480px;
+    --my-actions-left-min: 320px;
+    --my-actions-left-max: 900px;
+    display: grid !important;
+    grid-template-columns: var(--my-actions-left-width) 6px 1fr;
+    gap: 1rem;
+    align-items: stretch;
+    height: calc(100vh - 140px);
+}
+
+.my-actions-left {
+    width: var(--my-actions-left-width);
+    max-width: var(--my-actions-left-max);
+    min-width: var(--my-actions-left-min);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .ibox {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .ibox-title {
+        flex: 0 0 auto;
+    }
+
+    .ibox-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dataTables_wrapper {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dataTables_scrollBody {
+        flex: 1 1 auto !important;
+    }
+
+    .dataTables_info {
+        padding-left: 0.75rem;
+    }
+}
+
+.my-actions-resizer {
+    cursor: col-resize;
+    background: linear-gradient(180deg, $border-color 0%, color.adjust($border-color, $lightness: -5%) 100%);
+    border-radius: 4px;
+    position: relative;
+    transition: background 0.15s ease;
+
+    &:before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 40px;
+        background: #b4b9bd;
+        border-radius: 2px;
+    }
+
+    &:hover,
+    &:focus {
+        background: color.adjust($border-color, $lightness: -10%);
+        outline: none;
+    }
+
+    &.dragging {
+        background: $xi-primary;
+    }
+}
+
+.my-actions-right {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+
+    #myActionDetailsPanel {
+        flex: 1 1 auto;
+        overflow: auto;
+    }
+}
+
+#myActionDetailsPanel {
+    background: $white-bg;
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.my-action-details-placeholder {
+    background: $white-bg;
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    min-height: 300px;
+}
+
+.my-action-selected {
+    background: #f0f8ff !important;
+}
+
+.my-action-details-inner {
+    font-size: 0.97rem;
+    line-height: 1.55;
+
+    h5 {
+        font-size: 1.20rem;
+        line-height: 1.3;
+    }
+
+    .fw-semibold.small,
+    .small.text-muted,
+    .small {
+        font-size: 0.82rem;
+    }
+
+    .admin-action-text {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .btn.btn-sm {
+        font-size: 0.8rem;
+    }
+}
+
+// Responsive breakpoints
+@media (max-width: 880px) {
+    .admin-actions-filters .filter-group {
+        flex: 0 1 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-action-card .card-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+
+    .admin-action-card .badge {
+        align-self: flex-start;
+    }
+}
+
+@media (max-width: 720px) {
+    .admin-actions-filters .filter-group {
+        flex: 1 1 48%;
+    }
+}
+
+@media (max-width: 500px) {
+    .admin-actions-filters {
+        gap: 0.55rem 0.7rem;
+
+        .filter-group {
+            flex: 1 1 100%;
+        }
+
+        select.form-select {
+            padding: 0.45rem 0.65rem;
+            font-size: 0.85rem;
+        }
+
+        label.form-label {
+            font-size: 0.6rem;
+        }
+    }
+}
+
+@include media-max-lg {
+    .wrapper.wrapper-content.my-admin-actions-layout {
+        grid-template-columns: 1fr !important;
+        height: auto;
+    }
+
+    .my-actions-left {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+    }
+
+    .my-actions-resizer {
+        display: none !important;
+    }
+
+    .my-actions-right {
+        margin-top: 1rem;
+    }
+}

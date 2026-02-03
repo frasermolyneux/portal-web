@@ -1,0 +1,18 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Portal-specific text utilities (non-Bootstrap)
+// Bootstrap 5 provides comprehensive text utilities; these are portal-specific additions
+
+// Custom font sizes specific to portal
+.text-xs { font-size: $font-size-xs !important; }
+
+// Line height utilities (not in Bootstrap)
+.line-height-sm { line-height: $line-height-sm !important; }
+.line-height-base { line-height: $line-height-base !important; }
+.line-height-md { line-height: $line-height-md !important; }
+
+// Font weight semibold (Bootstrap uses fw-semibold, we support both)
+.font-weight-semibold { font-weight: $font-weight-semibold !important; }

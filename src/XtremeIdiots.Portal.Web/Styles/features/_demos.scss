@@ -1,0 +1,39 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Demos Feature Styles
+
+.demos-table-wrapper {
+    .dataTables_wrapper .dataTables_filter {
+        display: none;
+    }
+}
+
+#demosFilters {
+    margin-top: 0.35rem;
+
+    .filter-group {
+        flex: 0 1 240px;
+    }
+}
+
+.demo-file-size {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", Consolas, monospace;
+    font-size: 0.85rem;
+}
+
+@include media-lg {
+    #dataTable {
+        td:nth-child(3),
+        th:nth-child(3) {
+            width: 150px;
+        }
+
+        td:nth-child(4),
+        th:nth-child(4) {
+            width: 200px;
+        }
+    }
+}

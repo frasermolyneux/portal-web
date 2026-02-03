@@ -1,0 +1,83 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Users Feature Styles
+
+.user-index-table-wrapper {
+    .dataTables_wrapper .dataTables_filter {
+        display: none;
+    }
+}
+
+#userFilters {
+    margin-top: 0.35rem;
+
+    .filter-group {
+        flex: 0 1 260px;
+    }
+}
+
+.user-role-badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 75%;
+    font-weight: $font-weight-semibold;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    border-radius: 3px;
+    margin-right: 0.25rem;
+}
+
+.user-status-active {
+    color: $success-color;
+    font-weight: $font-weight-semibold;
+}
+
+.user-status-inactive {
+    color: $xi-text-muted;
+}
+
+// User search autocomplete
+.user-suggestions {
+    top: 100%;
+    left: 0;
+    right: 0;
+
+    .list-group-item {
+        cursor: pointer;
+
+        &.active,
+        &:focus {
+            background: $xi-primary;
+            color: #fff;
+        }
+    }
+}
+
+@include media-lg {
+    #dataTable {
+        td:nth-child(2),
+        th:nth-child(2) {
+            width: 250px;
+        }
+
+        td:nth-child(3),
+        th:nth-child(3) {
+            width: 200px;
+        }
+    }
+}
+
+@include media-max-md {
+    #userFilters {
+        margin-top: 0.25rem;
+        margin-bottom: 0.5rem;
+
+        .filter-group {
+            flex: 1 1 100%;
+        }
+    }
+}

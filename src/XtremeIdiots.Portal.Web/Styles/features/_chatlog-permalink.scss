@@ -1,0 +1,78 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Chat Log Permalink Feature Styles
+
+.chatlog-permalink {
+    .ibox-title {
+        border-bottom: 1px solid $border-color;
+    }
+
+    .chat-message-box {
+        min-height: 170px;
+
+        pre {
+            background: transparent;
+        }
+    }
+
+    .chat-message-box-header {
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 0.55rem 0.75rem;
+
+        button {
+            line-height: 1;
+        }
+
+        .copy-btn {
+            height: 32px;
+            width: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+    }
+
+    .info-note {
+        font-size: 1.05rem;
+    }
+
+    dl.chat-details {
+        dt, dd {
+            padding-top: 0.35rem;
+            padding-bottom: 0.35rem;
+        }
+
+        dt {
+            font-weight: $font-weight-semibold;
+        }
+    }
+
+    .ibox-footer {
+        border-top: 1px solid $border-color;
+    }
+
+    .badges-wrapper {
+        .badge {
+            font-weight: 500;
+
+            & + .badge {
+                margin-left: 0.75rem;
+            }
+        }
+    }
+
+    @include media-max-md {
+        .chat-message-wrapper {
+            padding-left: 0;
+        }
+
+        .chat-message-box {
+            margin-top: 1rem;
+        }
+    }
+}

@@ -68,4 +68,16 @@
     <Message Text="Validating Razor views for compilation errors..." Importance="high" />
   </Target>
 
+  <!-- Integrate npm/SCSS build into dotnet build pipeline -->
+  <Target Name="NpmInstall" BeforeTargets="PreBuildEvent" Condition="!Exists('node_modules')">
+    <Message Text="Running npm install..." Importance="high" />
+    <Exec Command="npm install" />
+  </Target>
+
+  <Target Name="BuildCss" BeforeTargets="PreBuildEvent" DependsOnTargets="NpmInstall" Condition="Exists('Styles/app.scss')">
+    <Message Text="Compiling SCSS to CSS..." Importance="high" />
+    <Exec Command="npm run build:css" Condition="'$(Configuration)' == 'Release'" />
+    <Exec Command="npm run build:css:dev" Condition="'$(Configuration)' != 'Release'" />
+  </Target>
+
 </Project>

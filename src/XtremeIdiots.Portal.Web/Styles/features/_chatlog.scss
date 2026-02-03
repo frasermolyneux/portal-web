@@ -1,0 +1,49 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Chat Log Feature Styles
+
+.chatlog-table-wrapper {
+    .dataTables_wrapper .dataTables_filter {
+        display: none;
+    }
+}
+
+#chatLogFilters {
+    margin-top: 0.35rem;
+
+    .filter-group {
+        flex: 0 1 240px;
+
+        &.locked-filter-group .form-check-label {
+            cursor: pointer;
+            user-select: none;
+        }
+    }
+}
+
+#dataTable_filter.filter-group {
+    flex: 0 1 240px;
+}
+
+@include media-max-md {
+    #chatLogFilters .filter-group.locked-filter-group {
+        padding-top: 0.4rem;
+    }
+}
+
+@include media-lg {
+    #dataTable {
+        td:nth-child(4),
+        th:nth-child(4) {
+            width: 180px;
+        }
+
+        td:nth-child(5),
+        th:nth-child(5) {
+            width: 120px;
+        }
+    }
+}

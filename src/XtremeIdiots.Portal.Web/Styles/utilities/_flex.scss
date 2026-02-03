@@ -1,0 +1,13 @@
+@use '../layout/responsive' as *;
+
+// Portal-specific flexbox utilities (non-Bootstrap)
+// Bootstrap 5 provides comprehensive flexbox utilities; these are portal-specific additions only
+
+// Custom flex basis utilities for specific portal layouts
+.flex-basis-240 {
+    flex-basis: 240px !important;
+}
+
+.flex-basis-260 {
+    flex-basis: 260px !important;
+}

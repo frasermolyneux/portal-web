@@ -1,0 +1,191 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Table component styles
+
+.table {
+    width: 100%;
+    margin-bottom: $spacing-md;
+    color: $xi-text;
+    background-color: transparent;
+
+    th,
+    td {
+        padding: 0.75rem;
+        vertical-align: top;
+        border-top: 1px solid $border-color;
+    }
+
+    thead th {
+        vertical-align: bottom;
+        border-bottom: 2px solid $border-color;
+        font-weight: $font-weight-semibold;
+        color: $xi-text;
+    }
+
+    tbody + tbody {
+        border-top: 2px solid $border-color;
+    }
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+}
+
+.table-bordered {
+    border: 1px solid $border-color;
+
+    th,
+    td {
+        border: 1px solid $border-color;
+    }
+
+    thead th,
+    thead td {
+        border-bottom-width: 2px;
+    }
+}
+
+// Responsive tables
+.table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    > .table-bordered {
+        border: 0;
+    }
+}
+
+// DataTables integration
+.dataTables_wrapper {
+    .dataTables_length {
+        float: left;
+        margin-bottom: 1rem;
+
+        select {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid $border-color;
+            border-radius: 3px;
+            margin: 0 0.5rem;
+        }
+    }
+
+    .dataTables_filter {
+        float: right;
+        margin-bottom: 1rem;
+
+        input {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid $border-color;
+            border-radius: 3px;
+            margin-left: 0.5rem;
+
+            &:focus {
+                outline: 0;
+                border-color: $xi-primary;
+                box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+            }
+        }
+    }
+
+    .dataTables_info {
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        color: $xi-text-muted;
+    }
+
+    .dataTables_paginate {
+        padding-top: 0.75rem;
+
+        .paginate_button {
+            padding: 0.375rem 0.75rem;
+            margin-left: 2px;
+            border: 1px solid $border-color;
+            border-radius: 3px;
+            background-color: $white-bg;
+            color: $xi-text;
+            cursor: pointer;
+
+            &:hover {
+                background-color: $gray-bg;
+                border-color: $border-color;
+            }
+
+            &.current {
+                background-color: $xi-primary;
+                border-color: $xi-primary;
+                color: #fff;
+
+                &:hover {
+                    background-color: $xi-primary-dark;
+                    border-color: $xi-primary-dark;
+                }
+            }
+
+            &.disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+
+                &:hover {
+                    background-color: $white-bg;
+                }
+            }
+        }
+    }
+
+    .dataTables_processing {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 1rem 2rem;
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid $border-color;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+    }
+}
+
+// Responsive table utilities (from responsive-tables.css)
+@include media-max-md {
+    .table-responsive-stack {
+        tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid $border-color;
+            border-radius: 4px;
+        }
+
+        td,
+        th {
+            display: block;
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+
+            &:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0.75rem;
+                top: 0.75rem;
+                font-weight: $font-weight-semibold;
+                text-align: left;
+                width: 45%;
+            }
+        }
+
+        thead {
+            display: none;
+        }
+    }
+}

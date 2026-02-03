@@ -1,0 +1,20 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// Portal-specific spacing utilities (non-Bootstrap)
+// Bootstrap 5 provides most spacing utilities; these are portal-specific additions
+
+// Extra large spacing (beyond Bootstrap's scale)
+.m-6 { margin: $spacing-xxl !important; }
+.mt-6 { margin-top: $spacing-xxl !important; }
+.mb-6 { margin-bottom: $spacing-xxl !important; }
+.ml-6 { margin-left: $spacing-xxl !important; }
+.mr-6 { margin-right: $spacing-xxl !important; }
+
+.p-6 { padding: $spacing-xxl !important; }
+.pt-6 { padding-top: $spacing-xxl !important; }
+.pb-6 { padding-bottom: $spacing-xxl !important; }
+.pl-6 { padding-left: $spacing-xxl !important; }
+.pr-6 { padding-right: $spacing-xxl !important; }

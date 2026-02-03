@@ -1,0 +1,212 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+
+// Form component styles
+
+.form-group {
+    margin-bottom: $spacing-md;
+}
+
+.form-label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-weight: $font-weight-semibold;
+    color: $xi-text;
+}
+
+.form-control {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: $font-size-base;
+    font-weight: $font-weight-normal;
+    line-height: $line-height-base;
+    color: $xi-text;
+    background-color: $white-bg;
+    background-clip: padding-box;
+    border: 1px solid $border-color;
+    border-radius: 3px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+    &:focus {
+        color: $xi-text;
+        background-color: $white-bg;
+        border-color: $xi-primary;
+        outline: 0;
+        box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+    }
+
+    &::placeholder {
+        color: $xi-text-muted;
+        opacity: 1;
+    }
+
+    &:disabled,
+    &[readonly] {
+        background-color: $gray-bg;
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+}
+
+select.form-control {
+    &:focus::-ms-value {
+        color: $xi-text;
+        background-color: $white-bg;
+    }
+}
+
+.form-control-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: $font-size-sm;
+}
+
+.form-control-lg {
+    padding: 0.5rem 1rem;
+    font-size: $font-size-lg;
+}
+
+// Form select
+.form-select {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: $font-size-base;
+    font-weight: $font-weight-normal;
+    line-height: $line-height-base;
+    color: $xi-text;
+    background-color: $white-bg;
+    border: 1px solid $border-color-light;
+    border-radius: 0.5rem;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+    &:focus {
+        border-color: $xi-primary;
+        outline: 0;
+        box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+    }
+}
+
+// Checkboxes and radios
+.form-check {
+    display: block;
+    min-height: 1.5rem;
+    padding-left: 1.5em;
+    margin-bottom: 0.125rem;
+
+    .form-check-input {
+        float: left;
+        margin-left: -1.5em;
+    }
+}
+
+.form-check-input {
+    width: 1em;
+    height: 1em;
+    margin-top: 0.25em;
+    vertical-align: top;
+    background-color: $white-bg;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    border: 1px solid $border-color;
+    appearance: none;
+    cursor: pointer;
+
+    &[type="checkbox"] {
+        border-radius: 0.25em;
+    }
+
+    &[type="radio"] {
+        border-radius: 50%;
+    }
+
+    &:checked {
+        background-color: $xi-primary;
+        border-color: $xi-primary;
+    }
+
+    &:focus {
+        border-color: $xi-primary;
+        outline: 0;
+        box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+    }
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+// Form validation states
+.is-invalid {
+    border-color: $danger-color !important;
+
+    &:focus {
+        border-color: $danger-color !important;
+        box-shadow: 0 0 0 0.15rem rgba($danger-color, 0.25) !important;
+    }
+}
+
+.is-valid {
+    border-color: $success-color !important;
+
+    &:focus {
+        border-color: $success-color !important;
+        box-shadow: 0 0 0 0.15rem rgba($success-color, 0.25) !important;
+    }
+}
+
+.invalid-feedback,
+.valid-feedback {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: $font-size-sm;
+}
+
+.invalid-feedback {
+    color: $danger-color;
+}
+
+.valid-feedback {
+    color: $success-color;
+}
+
+// Form text/help
+.form-text {
+    margin-top: 0.25rem;
+    font-size: $font-size-sm;
+    color: $xi-text-muted;
+}
+
+// Input groups
+.input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+
+    > .form-control {
+        position: relative;
+        flex: 1 1 auto;
+        width: 1%;
+        min-width: 0;
+    }
+
+    .input-group-text {
+        display: flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
+        font-size: $font-size-base;
+        font-weight: $font-weight-normal;
+        line-height: $line-height-base;
+        color: $xi-text;
+        text-align: center;
+        white-space: nowrap;
+        background-color: $gray-bg;
+        border: 1px solid $border-color;
+        border-radius: 3px;
+    }
+}

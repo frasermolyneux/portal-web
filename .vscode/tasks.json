@@ -124,6 +124,30 @@
             ],
             "dependsOn": "libman restore",
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch:css",
+            "type": "npm",
+            "script": "watch:css",
+            "path": "src/XtremeIdiots.Portal.Web",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "build:css",
+            "type": "npm",
+            "script": "build:css:dev",
+            "path": "src/XtremeIdiots.Portal.Web",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent"
+            }
         }
     ]
 }

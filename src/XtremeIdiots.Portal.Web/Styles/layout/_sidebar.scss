@@ -1,0 +1,184 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+@use 'sass:color';
+
+// Off-canvas sidebar navigation (Bootstrap 5 Offcanvas)
+
+#sideNav {
+    width: $sidebar-width;
+
+    .offcanvas-header {
+        padding: 1rem;
+        background-color: $nav-bg;
+    }
+
+    .offcanvas-body {
+        background-color: $nav-bg;
+        padding: 0;
+    }
+
+    .nav-link {
+        padding: 0.75rem 1rem;
+        color: rgba(255, 255, 255, 0.85);
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+        display: flex;
+        align-items: center;
+
+        &:hover,
+        &:focus {
+            color: #fff;
+            background-color: color.adjust($nav-bg, $lightness: -5%);
+            border-left-color: $xi-primary;
+        }
+
+        &.active {
+            color: $nav-text-active;
+            background-color: color.adjust($nav-bg, $lightness: -3%);
+            border-left-color: $xi-primary;
+        }
+
+        i {
+            margin-right: 8px;
+            width: 20px;
+            text-align: center;
+        }
+    }
+
+    .btn-close {
+        color: #fff;
+    }
+
+    .user-avatar {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+// Large screen layout - sidebar always visible
+@include media-lg {
+    #sideNav.offcanvas-start {
+        visibility: visible !important;
+        transform: none !important;
+        position: fixed !important;
+        top: $navbar-height;
+        left: 0;
+        height: calc(100vh - #{$navbar-height});
+        z-index: 1040;
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .offcanvas-backdrop {
+        display: none !important;
+    }
+
+    #page-wrapper {
+        margin-left: $sidebar-width;
+        width: calc(100% - #{$sidebar-width});
+        max-width: 100%;
+    }
+
+    button[data-bs-target="#sideNav"] {
+        display: none;
+    }
+
+    #sideNav .btn-close {
+        display: none;
+    }
+}
+
+// Small/medium screens - offcanvas behavior
+@include media-max-lg {
+    #page-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    button[data-bs-target="#sideNav"] {
+        display: inline-block;
+    }
+}
+
+// Navigation base styles (from Inspinia)
+.nav {
+    > li > a {
+        color: $nav-text;
+        display: block;
+        font-weight: $font-weight-semibold;
+        padding: $nav-padding;
+
+        i {
+            margin-right: 6px;
+        }
+    }
+
+    &.navbar-right > li > a {
+        color: $xi-text-muted;
+    }
+
+    > li.active > a {
+        color: $nav-text-active;
+    }
+
+    .open > a,
+    .open > a:hover,
+    .open > a:focus {
+        background: #fff;
+    }
+
+    .arrow {
+        float: right;
+        margin-top: 2px;
+        line-height: $line-height-base;
+        transition: transform 0.3s ease;
+    }
+
+    .fa.arrow:before {
+        content: "\f104";
+    }
+
+    .arrow.rotate-90:before,
+    a[aria-expanded="true"] > .fa.arrow:before {
+        content: "\f107";
+    }
+
+    .nav-second-level {
+        padding-left: 0;
+    }
+}
+
+body:not(.mini-navbar) .nav .nav-second-level.collapse:not(.show) {
+    display: none;
+}
+
+.nav .nav-second-level.collapse.show {
+    display: block;
+}
+
+// Mobile navigation improvements
+@include media-max-md {
+    .nav {
+        .nav-second-level.collapse.show,
+        .nav-second-level.collapsing {
+            display: block !important;
+        }
+
+        > li.active > .nav-second-level {
+            display: block;
+        }
+
+        > li > a {
+            padding: 14px 20px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-second-level li a {
+            padding: 12px 20px 12px 40px;
+            min-height: 44px;
+        }
+    }
+}

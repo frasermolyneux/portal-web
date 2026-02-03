@@ -1,0 +1,69 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use 'sass:color';
+
+// Base HTML element styles
+
+html {
+    font-size: $font-size-base;
+    height: 100%;
+}
+
+body {
+    font-family: $font-family-base;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding-top: $navbar-height;
+    color: $xi-text;
+    background-color: $gray-bg;
+    min-height: 100%;
+}
+
+// Headings
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    font-weight: $font-weight-light;
+}
+
+.h1, .h2, .h3,
+h1, h2, h3 {
+    margin-bottom: 10px;
+    margin-top: 20px;
+}
+
+h1 { font-size: $h1-size; }
+h2 { font-size: $h2-size; }
+h3 { font-size: $h3-size; }
+h4 { font-size: $h4-size; }
+h5 { font-size: $h5-size; }
+h6 { font-size: $h6-size; }
+
+h3, h4, h5 {
+    font-weight: $font-weight-semibold;
+    margin-top: 5px;
+}
+
+// Links
+a {
+    color: var(--xi-link);
+    transition: color 0.2s ease-in-out;
+    text-decoration: none;
+
+    &:hover {
+        color: var(--xi-primary-dark);
+        text-decoration: none;
+    }
+}
+
+// Paragraph
+p {
+    margin: 0 0 10px;
+}
+
+// Avatar styles
+.profile-avatar-large {
+    border-radius: 50%;
+    max-height: 180px;
+    max-width: 180px;
+}

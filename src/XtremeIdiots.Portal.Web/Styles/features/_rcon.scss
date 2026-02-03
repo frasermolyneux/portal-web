@@ -1,0 +1,77 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// RCON Viewer Feature Styles
+
+.map-card {
+    width: min(90vw, 200px);
+    max-width: 200px;
+    flex-shrink: 0;
+    border: 2px solid $border-color;
+    border-radius: 4px;
+    background-color: $white-bg;
+    transition: all 0.3s ease;
+    cursor: pointer;
+
+    &:hover {
+        border-color: $xi-primary;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+}
+
+.map-card-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background-color: $gray-bg;
+}
+
+.map-card-body {
+    padding: 10px;
+}
+
+.map-card-title {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.map-card-btn {
+    width: 100%;
+}
+
+#mapRotationCarousel {
+    &::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+
+        &:hover {
+            background: #555;
+        }
+    }
+}
+
+@include media-max-md {
+    .map-card {
+        width: min(80vw, 180px);
+    }
+
+    #chatLogContainer {
+        max-height: clamp(250px, 40vh, 400px) !important;
+    }
+}

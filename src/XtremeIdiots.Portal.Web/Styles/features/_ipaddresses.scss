@@ -1,0 +1,102 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
+
+// IP Addresses Feature Styles
+
+.stats-container {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.stat-item {
+    padding: 15px;
+}
+
+.risk-score-gauge {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.gauge-container {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.gauge {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 10px solid #f1f1f1;
+    position: relative;
+
+    // Color based on risk score using data-risk-level attribute
+    // Use data-risk-level="low|medium|high|critical" for cleaner CSS
+    &[data-risk-level="low"] {
+        border-color: $success-color;
+    }
+
+    &[data-risk-level="medium"] {
+        border-color: $info-color;
+    }
+
+    &[data-risk-level="high"] {
+        border-color: $warning-color;
+    }
+
+    &[data-risk-level="critical"] {
+        border-color: $danger-color;
+    }
+
+    // Fallback for legacy numeric data-risk-score attribute
+    // Low risk (0-24): Green
+    &[data-risk-score="0"], &[data-risk-score="1"], &[data-risk-score="2"], &[data-risk-score="3"], &[data-risk-score="4"],
+    &[data-risk-score="5"], &[data-risk-score="6"], &[data-risk-score="7"], &[data-risk-score="8"], &[data-risk-score="9"],
+    &[data-risk-score="10"], &[data-risk-score="11"], &[data-risk-score="12"], &[data-risk-score="13"], &[data-risk-score="14"],
+    &[data-risk-score="15"], &[data-risk-score="16"], &[data-risk-score="17"], &[data-risk-score="18"], &[data-risk-score="19"],
+    &[data-risk-score="20"], &[data-risk-score="21"], &[data-risk-score="22"], &[data-risk-score="23"], &[data-risk-score="24"] {
+        border-color: $success-color;
+    }
+
+    // Medium risk (25-49): Info blue
+    &[data-risk-score="25"], &[data-risk-score="26"], &[data-risk-score="27"], &[data-risk-score="28"], &[data-risk-score="29"],
+    &[data-risk-score="30"], &[data-risk-score="31"], &[data-risk-score="32"], &[data-risk-score="33"], &[data-risk-score="34"],
+    &[data-risk-score="35"], &[data-risk-score="36"], &[data-risk-score="37"], &[data-risk-score="38"], &[data-risk-score="39"],
+    &[data-risk-score="40"], &[data-risk-score="41"], &[data-risk-score="42"], &[data-risk-score="43"], &[data-risk-score="44"],
+    &[data-risk-score="45"], &[data-risk-score="46"], &[data-risk-score="47"], &[data-risk-score="48"], &[data-risk-score="49"] {
+        border-color: $info-color;
+    }
+
+    // High risk (50-79): Warning yellow
+    &[data-risk-score="50"], &[data-risk-score="51"], &[data-risk-score="52"], &[data-risk-score="53"], &[data-risk-score="54"],
+    &[data-risk-score="55"], &[data-risk-score="56"], &[data-risk-score="57"], &[data-risk-score="58"], &[data-risk-score="59"],
+    &[data-risk-score="60"], &[data-risk-score="61"], &[data-risk-score="62"], &[data-risk-score="63"], &[data-risk-score="64"],
+    &[data-risk-score="65"], &[data-risk-score="66"], &[data-risk-score="67"], &[data-risk-score="68"], &[data-risk-score="69"],
+    &[data-risk-score="70"], &[data-risk-score="71"], &[data-risk-score="72"], &[data-risk-score="73"], &[data-risk-score="74"],
+    &[data-risk-score="75"], &[data-risk-score="76"], &[data-risk-score="77"], &[data-risk-score="78"], &[data-risk-score="79"] {
+        border-color: $warning-color;
+    }
+
+    // Critical risk (80-100): Danger red
+    &[data-risk-score="80"], &[data-risk-score="81"], &[data-risk-score="82"], &[data-risk-score="83"], &[data-risk-score="84"],
+    &[data-risk-score="85"], &[data-risk-score="86"], &[data-risk-score="87"], &[data-risk-score="88"], &[data-risk-score="89"],
+    &[data-risk-score="90"], &[data-risk-score="91"], &[data-risk-score="92"], &[data-risk-score="93"], &[data-risk-score="94"],
+    &[data-risk-score="95"], &[data-risk-score="96"], &[data-risk-score="97"], &[data-risk-score="98"], &[data-risk-score="99"],
+    &[data-risk-score="100"] {
+        border-color: $danger-color;
+    }
+}
+
+.gauge-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: $font-weight-bold;
+}

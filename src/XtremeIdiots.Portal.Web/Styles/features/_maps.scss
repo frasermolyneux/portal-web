@@ -1,0 +1,30 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+
+// Maps Feature Styles
+
+.map-files li {
+    line-height: 1.2;
+}
+
+.map-popularity {
+    height: 14px;
+    margin-bottom: 4px;
+}
+
+.map-image {
+    border: 5px solid $map-border-color;
+    display: block;
+    margin: 0 auto;
+    max-width: 200px;
+}
+
+.vote-stats {
+    font-size: $font-size-xs;
+}
+
+.maps-table-wrapper {
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+}
