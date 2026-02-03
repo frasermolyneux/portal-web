@@ -39,8 +39,3 @@
     white-space: nowrap;
     border: 0;
 }
-
-// Ensure images have alt text in development
-img:not([alt]) {
-    outline: 3px solid red;
-}
