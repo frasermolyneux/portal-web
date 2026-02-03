@@ -1,0 +1,49 @@
+/* Large Screen Layout Styles
+ * Responsive layout optimizations for large screens:
+ * 1. Keep navigation open by default on large screens
+ * 2. Remove unnecessary right-side spacing
+ * 3. Maintain mobile offcanvas behavior on smaller screens
+ -------------------------------------------------- */
+
+@media (min-width: 992px) {
+    #sideNav.offcanvas-start {
+        visibility: visible !important;
+        transform: none !important;
+        position: fixed !important;
+        top: 56px; /* Below the top navbar */
+        left: 0;
+        height: calc(100vh - 56px);
+        z-index: 1040;
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Prevent backdrop overlay on large screens */
+    .offcanvas-backdrop {
+        display: none !important;
+    }
+    
+    #page-wrapper {
+        margin-left: 280px; /* Match sidebar width to prevent overlap */
+        width: calc(100% - 280px);
+        max-width: 100%;
+    }
+    
+    button[data-bs-target="#sideNav"] {
+        display: none;
+    }
+    
+    #sideNav .btn-close {
+        display: none;
+    }
+}
+
+@media (max-width: 991px) {
+    #page-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    button[data-bs-target="#sideNav"] {
+        display: inline-block;
+    }
+}
