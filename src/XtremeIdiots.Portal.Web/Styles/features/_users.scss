@@ -35,6 +35,23 @@
     color: $xi-text-muted;
 }
 
+// User search autocomplete
+.user-suggestions {
+    top: 100%;
+    left: 0;
+    right: 0;
+
+    .list-group-item {
+        cursor: pointer;
+
+        &.active,
+        &:focus {
+            background: $xi-primary;
+            color: #fff;
+        }
+    }
+}
+
 @include media-lg {
     #dataTable {
         td:nth-child(2),

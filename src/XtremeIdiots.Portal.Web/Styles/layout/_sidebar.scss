@@ -40,6 +40,54 @@
             text-align: center;
         }
     }
+
+    .btn-close {
+        color: #fff;
+    }
+}
+
+// Large screen layout - sidebar always visible
+@include media-lg {
+    #sideNav.offcanvas-start {
+        visibility: visible !important;
+        transform: none !important;
+        position: fixed !important;
+        top: $navbar-height;
+        left: 0;
+        height: calc(100vh - #{$navbar-height});
+        z-index: 1040;
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .offcanvas-backdrop {
+        display: none !important;
+    }
+
+    #page-wrapper {
+        margin-left: $sidebar-width;
+        width: calc(100% - #{$sidebar-width});
+        max-width: 100%;
+    }
+
+    button[data-bs-target="#sideNav"] {
+        display: none;
+    }
+
+    #sideNav .btn-close {
+        display: none;
+    }
+}
+
+// Small/medium screens - offcanvas behavior
+@include media-max-lg {
+    #page-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    button[data-bs-target="#sideNav"] {
+        display: inline-block;
+    }
 }
 
 // Navigation base styles (from Inspinia)
