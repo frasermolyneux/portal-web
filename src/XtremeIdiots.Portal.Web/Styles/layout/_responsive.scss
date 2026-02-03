@@ -1,0 +1,71 @@
+// Responsive breakpoints and mixins
+
+// Breakpoint definitions (matching Bootstrap 5)
+$breakpoint-xs: 0;
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 992px;
+$breakpoint-xl: 1200px;
+$breakpoint-xxl: 1400px;
+
+// Breakpoint mixins for media queries
+@mixin media-xs {
+    @media (max-width: #{$breakpoint-sm - 1}) {
+        @content;
+    }
+}
+
+@mixin media-sm {
+    @media (min-width: $breakpoint-sm) {
+        @content;
+    }
+}
+
+@mixin media-md {
+    @media (min-width: $breakpoint-md) {
+        @content;
+    }
+}
+
+@mixin media-lg {
+    @media (min-width: $breakpoint-lg) {
+        @content;
+    }
+}
+
+@mixin media-xl {
+    @media (min-width: $breakpoint-xl) {
+        @content;
+    }
+}
+
+@mixin media-xxl {
+    @media (min-width: $breakpoint-xxl) {
+        @content;
+    }
+}
+
+// Max-width variants
+@mixin media-max-sm {
+    @media (max-width: #{$breakpoint-sm - 1}) {
+        @content;
+    }
+}
+
+@mixin media-max-md {
+    @media (max-width: #{$breakpoint-md - 1}) {
+        @content;
+    }
+}
+
+@mixin media-max-lg {
+    @media (max-width: #{$breakpoint-lg - 1}) {
+        @content;
+    }
+}
+
+@mixin media-max-xl {
+    @media (max-width: #{$breakpoint-xl - 1}) {
+        @content;
+    }
+}

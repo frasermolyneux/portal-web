@@ -1,0 +1,107 @@
+// Bootstrap vendor overrides
+// Keep Bootstrap CSS external, override specific styles here for portal branding
+
+// Custom primary color overrides
+.btn-primary {
+    --bs-btn-bg: #{$xi-primary};
+    --bs-btn-border-color: #{$xi-primary};
+    --bs-btn-hover-bg: #{$xi-primary-dark};
+    --bs-btn-hover-border-color: #{$xi-primary-dark};
+    --bs-btn-active-bg: #{$xi-primary-dark};
+    --bs-btn-active-border-color: #{$xi-primary-dark};
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #{$xi-primary};
+    --bs-btn-border-color: #{$xi-primary};
+    --bs-btn-hover-bg: #{$xi-primary};
+    --bs-btn-hover-border-color: #{$xi-primary};
+}
+
+// Link color overrides
+a {
+    --bs-link-color: #{$xi-primary};
+    --bs-link-hover-color: #{$xi-primary-dark};
+}
+
+// Form control focus color
+.form-control:focus,
+.form-select:focus {
+    border-color: $xi-primary;
+    box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+}
+
+// Badge overrides
+.badge.bg-primary {
+    background-color: $xi-primary !important;
+}
+
+// Alert overrides
+.alert-success {
+    --bs-alert-bg: #{lighten($success-color, 45%)};
+    --bs-alert-border-color: #{lighten($success-color, 35%)};
+    --bs-alert-color: #{darken($success-color, 20%)};
+}
+
+.alert-danger {
+    --bs-alert-bg: #{lighten($danger-color, 40%)};
+    --bs-alert-border-color: #{lighten($danger-color, 30%)};
+    --bs-alert-color: #{darken($danger-color, 20%)};
+}
+
+.alert-warning {
+    --bs-alert-bg: #{lighten($warning-color, 35%)};
+    --bs-alert-border-color: #{lighten($warning-color, 25%)};
+    --bs-alert-color: #{darken($warning-color, 30%)};
+}
+
+.alert-info {
+    --bs-alert-bg: #{lighten($info-color, 40%)};
+    --bs-alert-border-color: #{lighten($info-color, 30%)};
+    --bs-alert-color: #{darken($info-color, 20%)};
+}
+
+// Offcanvas overrides for sidebar
+.offcanvas {
+    &.offcanvas-start {
+        background-color: $nav-bg;
+    }
+}
+
+// Progress bar overrides
+.progress-bar {
+    background-color: $xi-primary;
+}
+
+// Dropdown overrides
+.dropdown-menu {
+    border-color: $border-color;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item {
+    &:hover,
+    &:focus {
+        background-color: rgba($xi-primary, 0.1);
+        color: $xi-primary;
+    }
+
+    &.active {
+        background-color: $xi-primary;
+    }
+}
+
+// Modal overrides
+.modal-header {
+    border-bottom-color: $border-color;
+}
+
+.modal-footer {
+    border-top-color: $border-color;
+}
+
+// Card overrides (Bootstrap cards, not ibox)
+.card {
+    border-color: $border-color;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}

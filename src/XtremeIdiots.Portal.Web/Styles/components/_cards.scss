@@ -1,0 +1,125 @@
+// ibox cards component (Inspinia's signature component)
+
+.ibox {
+    clear: both;
+    margin-bottom: $ibox-margin;
+    background-color: $white-bg;
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.ibox-title {
+    background-color: $white-bg;
+    border-bottom: 1px solid $border-color;
+    padding: 15px 20px;
+    min-height: 48px;
+    border-radius: 4px 4px 0 0;
+
+    h5 {
+        display: inline-block;
+        font-size: $h4-size;
+        margin: 0 0 7px;
+        padding: 0;
+        font-weight: $font-weight-semibold;
+        color: $xi-text;
+    }
+
+    .ibox-tools {
+        display: inline-block;
+        float: right;
+        margin-top: 0;
+        position: relative;
+        padding: 0;
+
+        a {
+            cursor: pointer;
+            margin-left: 5px;
+            color: $xi-text-muted;
+
+            &:hover {
+                color: $xi-primary;
+            }
+        }
+
+        .dropdown-menu {
+            > li > a {
+                padding: 6px 20px;
+                font-size: $font-size-sm;
+            }
+        }
+    }
+}
+
+.ibox-content {
+    background-color: $white-bg;
+    color: inherit;
+    padding: $ibox-padding;
+    border-radius: 0 0 4px 4px;
+
+    &.no-padding {
+        padding: 0;
+    }
+
+    &.gray-bg {
+        background-color: $gray-bg;
+    }
+}
+
+.ibox-heading {
+    background-color: lighten($xi-primary, 45%);
+    border-bottom: none;
+
+    h3 {
+        font-weight: $font-weight-normal;
+        font-size: $h3-size;
+        color: $xi-text;
+    }
+}
+
+.ibox-footer {
+    color: inherit;
+    border-top: 1px solid $border-color;
+    font-size: $font-size-sm;
+    background-color: $white-bg;
+    padding: 10px 20px;
+}
+
+// ibox color variants
+.ibox.border-primary {
+    border-color: $xi-primary;
+    border-width: 2px;
+}
+
+.ibox.border-success {
+    border-color: $success-color;
+    border-width: 2px;
+}
+
+.ibox.border-warning {
+    border-color: $warning-color;
+    border-width: 2px;
+}
+
+.ibox.border-danger {
+    border-color: $danger-color;
+    border-width: 2px;
+}
+
+// ibox collapsed state
+.ibox.collapsed {
+    .ibox-content {
+        display: none;
+    }
+}
+
+// Full height ibox
+.ibox.full-height {
+    height: 100%;
+    margin-bottom: 0;
+
+    .ibox-content {
+        height: calc(100% - 48px);
+    }
+}

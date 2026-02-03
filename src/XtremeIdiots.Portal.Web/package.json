@@ -1,0 +1,15 @@
+{
+  "name": "xtremeidiots-portal-web",
+  "version": "1.0.0",
+  "description": "XtremeIdiots Portal - Game server management portal",
+  "private": true,
+  "scripts": {
+    "build:css": "sass Styles/app.scss:wwwroot/css/app.css --no-source-map",
+    "build:css:dev": "sass Styles/app.scss:wwwroot/css/app.css --source-map",
+    "watch:css": "sass Styles/app.scss:wwwroot/css/app.css --watch --source-map",
+    "build": "npm run build:css"
+  },
+  "devDependencies": {
+    "sass": "^1.83.0"
+  }
+}

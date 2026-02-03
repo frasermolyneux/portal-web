@@ -1,0 +1,47 @@
+/*!
+ * XtremeIdiots Portal - Application Styles
+ * Compiled from SCSS source files
+ */
+
+// 1. Tokens - Design system variables and CSS custom properties
+@import 'tokens/colors';
+@import 'tokens/spacing';
+@import 'tokens/typography';
+
+// 2. Base - Reset, HTML elements, accessibility
+@import 'base/reset';
+@import 'base/base';
+@import 'base/accessibility';
+
+// 3. Layout - Page structure, navigation, footer, responsive system
+@import 'layout/responsive';
+@import 'layout/navbar';
+@import 'layout/sidebar';
+@import 'layout/footer';
+@import 'layout/wrapper';
+
+// 4. Utilities - Helper classes for spacing, flexbox, text, z-index
+@import 'utilities/spacing';
+@import 'utilities/flex';
+@import 'utilities/text';
+@import 'utilities/zindex';
+
+// 5. Components - Reusable UI components
+@import 'components/buttons';
+@import 'components/cards';
+@import 'components/tables';
+@import 'components/forms';
+@import 'components/badges';
+@import 'components/pagination';
+
+// 6. Features - Page-specific styles
+@import 'features/admin-actions';
+@import 'features/players';
+@import 'features/chatlog';
+@import 'features/maps';
+@import 'features/demos';
+@import 'features/users';
+
+// 7. Vendor - Third-party library overrides
+@import 'vendor/bootstrap-overrides';
+@import 'vendor/datatable-overrides';

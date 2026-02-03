@@ -1,0 +1,32 @@
+// Typography Tokens
+// Font families from Inspinia
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700");
+
+$font-family-base: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+$font-family-secondary: "Roboto", sans-serif;
+
+// Font sizes
+$font-size-base: 14px;
+$font-size-xs: 10px;
+$font-size-sm: 12px;
+$font-size-md: 14px;
+$font-size-lg: 16px;
+
+// Headings
+$h1-size: 30px;
+$h2-size: 24px;
+$h3-size: 16px;
+$h4-size: 14px;
+$h5-size: 12px;
+$h6-size: 10px;
+
+// Font weights
+$font-weight-light: 100;
+$font-weight-normal: 400;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// Line heights
+$line-height-base: 1.42857;
+$line-height-sm: 1.1;
+$line-height-md: 1.2;

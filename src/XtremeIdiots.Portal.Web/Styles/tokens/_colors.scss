@@ -1,0 +1,51 @@
+// Color Tokens
+// Primary brand colors from XtremeIdiots Portal
+$xi-primary: #1ab394;
+$xi-primary-dark: #18a689;
+$xi-secondary: #293846;
+$xi-secondary-dark: #1f2d3d;
+$xi-accent: #f8ac59;
+
+// Text colors
+$xi-text: #676a6c;
+$xi-text-muted: #999c9e;
+$xi-link: #1ab394;
+
+// Background colors
+$gray-bg: #f3f3f4;
+$white-bg: #ffffff;
+$dark-bg: #2f4050;
+
+// Border colors
+$border-color: #e7eaec;
+$border-color-light: #d1d5db;
+
+// State colors
+$success-color: #1ab394;
+$info-color: #23c6c8;
+$warning-color: #f8ac59;
+$danger-color: #ed5565;
+
+// Navigation colors
+$nav-bg: #2f4050;
+$nav-text: #a7b1c2;
+$nav-text-active: #ffffff;
+
+// Bootstrap overrides
+$primary: $xi-primary;
+$secondary: $xi-secondary;
+$success: $success-color;
+$info: $info-color;
+$warning: $warning-color;
+$danger: $danger-color;
+
+// CSS Custom Properties (for runtime theming)
+:root {
+    --xi-primary: #{$xi-primary};
+    --xi-primary-dark: #{$xi-primary-dark};
+    --xi-secondary: #{$xi-secondary};
+    --xi-secondary-dark: #{$xi-secondary-dark};
+    --xi-accent: #{$xi-accent};
+    --xi-text: #{$xi-text};
+    --xi-link: #{$xi-link};
+}

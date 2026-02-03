@@ -1,0 +1,85 @@
+// Players Feature Styles
+
+.players-table-wrapper {
+    .dataTables_wrapper .dataTables_filter {
+        display: none;
+    }
+
+    .ibox-content.datatable-tight {
+        padding-top: 0.5rem;
+    }
+}
+
+#playersFilters {
+    margin-top: 0.35rem;
+
+    .filter-group {
+        flex: 0 1 260px;
+    }
+}
+
+#dataTable {
+    td:first-child img {
+        vertical-align: middle;
+        margin-right: 2px;
+    }
+
+    tbody td {
+        padding-top: 0.4rem;
+        padding-bottom: 0.35rem;
+    }
+
+    thead th {
+        font-weight: $font-weight-semibold;
+    }
+}
+
+@include media-lg {
+    #dataTable {
+        td:nth-child(2),
+        th:nth-child(2) {
+            width: 240px;
+        }
+
+        td:nth-child(3),
+        th:nth-child(3) {
+            width: 280px;
+            word-break: break-all;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", Consolas, monospace;
+            font-size: 0.85rem;
+        }
+    }
+}
+
+@include media-max-md {
+    #dataTable {
+        tbody td {
+            padding-top: 0.3rem;
+            padding-bottom: 0.3rem;
+            padding-left: 0.4rem;
+            padding-right: 0.4rem;
+            font-size: 0.875rem;
+        }
+
+        thead th {
+            padding: 0.4rem;
+            font-size: 0.8rem;
+        }
+
+        td:first-child img {
+            max-width: 20px;
+            height: auto;
+        }
+
+        td:nth-child(3) {
+            word-break: break-all;
+            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", Consolas, monospace;
+        }
+    }
+
+    #playersFilters {
+        margin-top: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+}

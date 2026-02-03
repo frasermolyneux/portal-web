@@ -1,0 +1,52 @@
+// Main page wrapper and content area
+
+#page-wrapper {
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 200px; // Space for footer
+
+    &.gray-bg {
+        background-color: $gray-bg;
+    }
+}
+
+.wrapper-content {
+    padding: $content-padding;
+}
+
+.animated {
+    animation-duration: 0.5s;
+    animation-fill-mode: both;
+}
+
+.fadeInRight {
+    animation-name: fadeInRight;
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translate3d(30px, 0, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+// Content padding adjustments
+.animated.fadeInRight {
+    padding-top: 10px;
+}
+
+// Ensure content doesn't overlap with fixed navbar
+main {
+    padding-top: $navbar-height;
+}
+
+// Large screen adjustments
+@include media-lg {
+    .wrapper-content {
+        padding: $content-padding * 1.5;
+    }
+}

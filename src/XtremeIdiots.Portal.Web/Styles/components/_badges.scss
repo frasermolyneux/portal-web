@@ -1,0 +1,103 @@
+// Badge component styles
+
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 75%;
+    font-weight: $font-weight-semibold;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 3px;
+}
+
+// Badge colors
+.badge-primary {
+    background-color: $xi-primary;
+}
+
+.badge-secondary {
+    background-color: $xi-secondary;
+}
+
+.badge-success {
+    background-color: $success-color;
+}
+
+.badge-danger {
+    background-color: $danger-color;
+}
+
+.badge-warning {
+    background-color: $warning-color;
+    color: $xi-text;
+}
+
+.badge-info {
+    background-color: $info-color;
+}
+
+.badge-light {
+    background-color: $gray-bg;
+    color: $xi-text;
+}
+
+.badge-dark {
+    background-color: $dark-bg;
+}
+
+// Pill badges
+.badge-pill {
+    padding-right: 0.6em;
+    padding-left: 0.6em;
+    border-radius: 10rem;
+}
+
+// Game server status badge
+.game-server-status {
+    padding: 0.35em 0.65em;
+    border-radius: 3px;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+
+    &.online {
+        background-color: $success-color;
+        color: #fff;
+    }
+
+    &.offline {
+        background-color: $danger-color;
+        color: #fff;
+    }
+}
+
+// Admin action type badges
+.admin-action-type {
+    padding: 0.35em 0.65em;
+    border-radius: 3px;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    text-transform: uppercase;
+
+    &.ban {
+        background-color: $danger-color;
+        color: #fff;
+    }
+
+    &.kick {
+        background-color: $warning-color;
+        color: $xi-text;
+    }
+
+    &.warning {
+        background-color: $info-color;
+        color: #fff;
+    }
+
+    &.mute {
+        background-color: $xi-secondary;
+        color: #fff;
+    }
+}
