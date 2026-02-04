@@ -25,7 +25,7 @@ $(document).ready(function () {
             language: {
                 emptyTable: 'No servers available for administration'
             },
-            dom: 'rt' // Only show table (no search, length, info, or pagination)
+            dom: 't' // Only show table (no search, length, info, or pagination)
         });
     }
 });
