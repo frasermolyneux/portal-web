@@ -1,0 +1,56 @@
+name: Copilot PR Verify
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-test:
+    if: github.event.pull_request.draft == false && startsWith(github.head_ref, 'copilot/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: frasermolyneux/actions/dotnet-web-ci@main
+        with:
+          dotnet-project: "XtremeIdiots.Portal.Web"
+          dotnet-version: 9.0.x
+          src-folder: "src"
+
+  terraform-plan-dev:
+    if: github.event.pull_request.draft == false && startsWith(github.head_ref, 'copilot/') && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-dev-plan')
+    needs: build-and-test
+    environment: Development
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.repository }}-dev
+    steps:
+      - uses: frasermolyneux/actions/terraform-plan@main
+        with:
+          terraform-folder: "terraform"
+          terraform-var-file: "tfvars/dev.tfvars"
+          terraform-backend-file: "backends/dev.backend.hcl"
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+  terraform-plan-prd:
+    if: github.event.pull_request.draft == false && startsWith(github.head_ref, 'copilot/') && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan')
+    needs: terraform-plan-dev
+    environment: Production
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.repository }}-prd
+    steps:
+      - uses: frasermolyneux/actions/terraform-plan@main
+        with:
+          terraform-folder: "terraform"
+          terraform-var-file: "tfvars/prd.tfvars"
+          terraform-backend-file: "backends/prd.backend.hcl"
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
