@@ -11,9 +11,8 @@ $(document).ready(function () {
                 }
             },
             autoWidth: false,
-            paging: true,
-            pageLength: 25,
-            searching: true,
+            paging: false,
+            searching: false,
             order: [[0, 'asc']], // Title ascending
             columnDefs: [
                 { targets: 0, responsivePriority: 1, orderable: true }, // Title - always visible
@@ -24,41 +23,9 @@ $(document).ready(function () {
                 { targets: 5, responsivePriority: 2, orderable: false }  // Actions - always visible
             ],
             language: {
-                search: '<i class="fa fa-search" aria-hidden="true"></i>',
-                lengthMenu: 'Show _MENU_ entries',
-                info: 'Showing _START_ to _END_ of _TOTAL_ servers',
                 emptyTable: 'No servers available for administration'
             },
-            dom: 'lfrtip' // Default layout
+            dom: 't' // Only show table (no search, length, info, or pagination)
         });
-
-        // Move search box and make it full width
-        setTimeout(function() {
-            const searchWrapper = $('#serverAdminTable_filter');
-            const iboxContent = serverTable.closest('.ibox-content');
-            
-            if (searchWrapper.length && iboxContent.length) {
-                // Create a full-width search container
-                const searchContainer = $('<div class="datatable-search-wrapper mb-3"></div>');
-                searchContainer.append(searchWrapper);
-                iboxContent.before(searchContainer);
-                
-                // Style the search input to be full width
-                const searchInput = searchWrapper.find('input');
-                if (searchInput.length) {
-                    searchInput.addClass('form-control').css('width', '100%');
-                    searchWrapper.css('width', '100%');
-                    
-                    // Update label
-                    const label = searchWrapper.find('label');
-                    if (label.length) {
-                        label.contents().filter(function() {
-                            return this.nodeType === 3;
-                        }).remove();
-                        label.prepend('Search: ');
-                    }
-                }
-            }
-        }, 100);
     }
 });
