@@ -359,3 +359,10 @@ __azurite*
 __blobstorage__/
 __queuestorage__/
 __tablestorage__/
+
+# Playwright
+tests/playwright/node_modules/
+tests/playwright/test-results/
+tests/playwright/playwright-report/
+tests/playwright/.cache/
+tests/playwright/package-lock.json

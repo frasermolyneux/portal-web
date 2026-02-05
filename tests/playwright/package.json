@@ -1,0 +1,23 @@
+{
+  "name": "xtremeidiots-portal-playwright-tests",
+  "version": "1.0.0",
+  "description": "Playwright tests for XtremeIdiots Portal UITest mode",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "uitest"
+  ],
+  "author": "XtremeIdiots",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.41.0",
+    "@types/node": "^20.11.0"
+  }
+}
