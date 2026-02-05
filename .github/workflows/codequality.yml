@@ -18,7 +18,6 @@ permissions:
   
 jobs:
   quality:
-    if: github.actor != 'dependabot[bot]'
     uses: frasermolyneux/actions/.github/workflows/codequality.yml@main
     with:
       sonar-project-key: frasermolyneux_portal-web
