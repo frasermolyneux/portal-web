@@ -44,6 +44,8 @@ dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
 
 ### Feature Branch → PR → Merge Flow
 
+**Note**: This diagram shows the standard flow for `feature/*`, `bugfix/*`, and `hotfix/*` branches. For `copilot/*` branches, Terraform plans are skipped by default unless explicitly enabled with labels (see "Copilot Agent Flow" section below).
+
 ```mermaid
 graph TD
     A[Create feature branch] --> B[Make commits]
@@ -75,7 +77,7 @@ graph TD
 ```
 
 ### Infrastructure Changes
-- Dev Terraform plan runs automatically on PR (non-copilot branches)
+- Dev Terraform plan runs automatically on PRs, except for copilot/* and dependabot PRs (copilot PRs can opt in via the `run-dev-plan` label)
 - Prd Terraform plan requires explicit `run-prd-plan` label
 - Plans use OIDC auth via environment variables from GitHub environments
 - Concurrency groups (`${{ github.repository }}-dev`, `-prd`) serialize operations per environment
