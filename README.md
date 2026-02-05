@@ -1,15 +1,16 @@
 # XtremeIdiots Portal - Website
 
-| Stage                  | Status                                                                                                                                                                                                                                                                                                                                                                                     |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| DevOps Secure Scanning | [![Build Status](https://dev.azure.com/frasermolyneux/XtremeIdiots-Public/_apis/build/status%2Fxtremeidiots-portal.DevOpsSecureScanning?branchName=main)](https://dev.azure.com/frasermolyneux/XtremeIdiots-Public/_build/latest?definitionId=210&branchName=main)                                                                                                                         |
-| Code Quality           | [![Code Quality](https://github.com/frasermolyneux/xtremeidiots-portal/actions/workflows/codequality.yml/badge.svg)](https://github.com/frasermolyneux/xtremeidiots-portal/actions/workflows/codequality.yml)                                                                                                                                                                              |
-| Build                  | [![Build Status](https://dev.azure.com/frasermolyneux/XtremeIdiots-Public/_apis/build/status%2Fxtremeidiots-portal.ReleaseToProduction?repoName=frasermolyneux%2Fxtremeidiots-portal&branchName=main&stageName=build_and_validate)](https://dev.azure.com/frasermolyneux/XtremeIdiots-Public/_build/latest?definitionId=188&repoName=frasermolyneux%2Fxtremeidiots-portal&branchName=main) |
-| Release to Production  | [![Build Status](https://dev.azure.com/frasermolyneux/XtremeIdiots-Public/_apis/build/status%2Fxtremeidiots-portal.ReleaseToProduction?repoName=frasermolyneux%2Fxtremeidiots-portal&branchName=main&stageName=deploy_prd)](https://dev.azure.com/frasermolyneux/XtremeIdiots-Public/_build/latest?definitionId=188&repoName=frasermolyneux%2Fxtremeidiots-portal&branchName=main)         |
+| Workflow        | Status                                                                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Code Quality    | [![Code Quality](https://github.com/frasermolyneux/portal-web/actions/workflows/codequality.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/codequality.yml) |
+| PR Verification | [![PR Verify](https://github.com/frasermolyneux/portal-web/actions/workflows/pr-verify.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/pr-verify.yml)        |
+| Deploy to Dev   | [![Deploy Dev](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-dev.yml)     |
+| Deploy to Prd   | [![Deploy PRD](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-prd.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-prd.yml)     |
 
 ## Documentation
 
-* [manual-steps](/docs/manual-steps.md)
+* [Development Workflows](/docs/development-workflows.md) - Branch strategy, CI/CD triggers, and development flows
+* [Manual Steps](/docs/manual-steps.md) - Post-deployment configuration steps
 
 ---
 

@@ -1,5 +1,12 @@
 name: PR Verify
 
+# Label-based workflow control:
+# - 'run-dev-plan': Enables dev Terraform plan for copilot/* branches (always runs for other branches)
+# - 'run-prd-plan': Enables prd Terraform plan for any branch
+# - copilot/* branches: Require 'run-dev-plan' label to run dev plan, and both 'run-dev-plan' + 'run-prd-plan' labels to run prd plan
+# - Non-copilot branches: Dev plan runs automatically, prd plan requires 'run-prd-plan' label
+# - dependabot PRs: Terraform plans are always skipped
+
 on:
   pull_request:
     branches:
@@ -12,7 +19,7 @@ permissions:
 
 jobs:
   build-and-test:
-    if: github.event.pull_request.draft == false && !startsWith(github.head_ref, 'copilot/')
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: frasermolyneux/actions/dotnet-web-ci@main
@@ -21,8 +28,12 @@ jobs:
           dotnet-version: 9.0.x
           src-folder: "src"
 
+  # Dev Terraform Plan:
+  # - Runs automatically for feature/bugfix/hotfix branches (non-copilot, non-dependabot)
+  # - Skipped for copilot/* branches unless 'run-dev-plan' label is added
+  # - Always skipped for dependabot PRs
   terraform-plan-dev:
-    if: github.event.pull_request.draft == false && !startsWith(github.head_ref, 'copilot/') && github.actor != 'dependabot[bot]'
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]' && (!startsWith(github.head_ref, 'copilot/') || contains(github.event.pull_request.labels.*.name, 'run-dev-plan'))
     needs: build-and-test
     environment: Development
     runs-on: ubuntu-latest
@@ -38,8 +49,13 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+  # Prd Terraform Plan:
+  # Label requirements for this job:
+  # - Non-copilot branches: require 'run-prd-plan' label only
+  # - copilot/* branches: require both 'run-dev-plan' and 'run-prd-plan' labels
+  # - Always skipped for dependabot PRs
   terraform-plan-prd:
-    if: github.event.pull_request.draft == false && !startsWith(github.head_ref, 'copilot/') && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan')
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan') && (!startsWith(github.head_ref, 'copilot/') || contains(github.event.pull_request.labels.*.name, 'run-dev-plan'))
     needs: terraform-plan-dev
     environment: Production
     runs-on: ubuntu-latest
