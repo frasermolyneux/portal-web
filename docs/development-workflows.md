@@ -11,7 +11,7 @@ Target: Senior engineers working on portal-web. Covers branch strategy, CI/CD tr
   - Purpose: Fast feedback loop for WIP changes
 
 ### Pull Requests → main
-- **pr-verify.yml**: Full validation pipeline (runs when PR is marked ready for review)
+- **pr-verify.yml**: Full validation pipeline (runs on PR open, updates, reopen, and ready for review)
   - Build and test
   - Terraform plan for dev (skips for dependabot and copilot/* branches unless labeled)
   - Terraform plan for prd (requires `run-prd-plan` label)
