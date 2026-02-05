@@ -7,11 +7,11 @@ on:
       - "bugfix/**"
       - "hotfix/**"
 
-permissions:
-  contents: read
 
 jobs:
   build-and-test:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: frasermolyneux/actions/dotnet-web-ci@main
