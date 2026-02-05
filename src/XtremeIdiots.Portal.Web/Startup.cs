@@ -49,7 +49,11 @@ public class Startup(IConfiguration configuration, IWebHostEnvironment environme
             EnableAdaptiveSampling = false,
         });
 
-        services.AddServiceProfiler();
+        // Only add Service Profiler in non-UITest mode
+        if (!IsUITestMode)
+        {
+            services.AddServiceProfiler();
+        }
         
         if (!IsUITestMode)
         {

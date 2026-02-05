@@ -38,7 +38,10 @@ public class IdentityHostingStartup : IHostingStartup
     {
         builder.ConfigureServices((context, services) =>
         {
-            var isUITest = UITestConfiguration.IsUITestMode(context.Configuration);
+            // Check for UITest mode - can't use UITestConfiguration.IsUITestMode here because
+            // we don't have IWebHostEnvironment yet, so check configuration directly
+            var isUITest = string.Equals(context.HostingEnvironment.EnvironmentName, "UITest", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(context.Configuration["UITest:Enabled"], "true", StringComparison.OrdinalIgnoreCase);
             
             if (!isUITest)
             {
