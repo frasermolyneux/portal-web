@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-and-test:
-    if: github.event.pull_request.draft == false && !startsWith(github.head_ref, 'copilot/')
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: frasermolyneux/actions/dotnet-web-ci@main
@@ -22,7 +22,7 @@ jobs:
           src-folder: "src"
 
   terraform-plan-dev:
-    if: github.event.pull_request.draft == false && !startsWith(github.head_ref, 'copilot/') && github.actor != 'dependabot[bot]'
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]' && (!startsWith(github.head_ref, 'copilot/') || contains(github.event.pull_request.labels.*.name, 'run-dev-plan'))
     needs: build-and-test
     environment: Development
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
   terraform-plan-prd:
-    if: github.event.pull_request.draft == false && !startsWith(github.head_ref, 'copilot/') && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan')
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan') && (!startsWith(github.head_ref, 'copilot/') || contains(github.event.pull_request.labels.*.name, 'run-dev-plan'))
     needs: terraform-plan-dev
     environment: Production
     runs-on: ubuntu-latest
