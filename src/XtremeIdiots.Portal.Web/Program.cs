@@ -36,6 +36,16 @@ public class Program
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
                 var builtConfig = configBuilder.Build();
+                
+                // Skip Azure App Configuration in UITest mode
+                var isUITest = string.Equals(context.HostingEnvironment.EnvironmentName, "UITest", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(builtConfig["UITest:Enabled"], "true", StringComparison.OrdinalIgnoreCase);
+                
+                if (isUITest)
+                {
+                    return;
+                }
+                
                 var appConfigEndpoint = builtConfig["AzureAppConfiguration:Endpoint"];
 
                 if (string.IsNullOrWhiteSpace(appConfigEndpoint))
