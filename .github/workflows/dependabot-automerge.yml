@@ -5,6 +5,8 @@ on:
       - main
 
 
+permissions: read-all
+
 jobs:
   dependabot:
     permissions:
