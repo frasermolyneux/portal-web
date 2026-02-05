@@ -29,3 +29,18 @@ jobs:
       src-folder: src
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  devops-secure-scanning:
+    uses: frasermolyneux/actions/.github/workflows/devops-secure-scanning.yml@main
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
