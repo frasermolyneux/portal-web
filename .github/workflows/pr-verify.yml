@@ -72,7 +72,7 @@ jobs:
         run: |
           cd terraform
           echo "web_app_name=$(terraform output -raw web_app_name)" >> $GITHUB_OUTPUT
-          echo "resource_group_name=$(terraform output -raw web_app_resource_group)" >> $GITHUB_OUTPUT
+          echo "web_app_resource_group=$(terraform output -raw web_app_resource_group)" >> $GITHUB_OUTPUT
         env:
           ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
@@ -82,7 +82,7 @@ jobs:
 
     outputs:
       web_app_name: ${{ steps.terraform-output.outputs.web_app_name }}
-      resource_group_name: ${{ steps.terraform-output.outputs.resource_group_name }}
+      web_app_resource_group: ${{ steps.terraform-output.outputs.web_app_resource_group }}
 
   web-app-deploy-dev:
     permissions:
@@ -99,7 +99,7 @@ jobs:
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}
-          resource-group-name: ${{ needs.terraform-plan-and-apply-dev.outputs.resource_group_name }}
+          resource-group-name: ${{ needs.terraform-plan-and-apply-dev.outputs.web_app_resource_group }}
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
