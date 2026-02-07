@@ -13,12 +13,14 @@ on:
       - main
     types: [opened, synchronize, reopened, ready_for_review]
 
-permissions:
-  contents: read
-  id-token: write
+
+permissions: read-all
 
 jobs:
   build-and-test:
+    permissions:
+      contents: read
+      id-token: write
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
@@ -33,6 +35,9 @@ jobs:
   # - Skipped for copilot/* branches unless 'run-dev-plan' label is added
   # - Always skipped for dependabot PRs
   terraform-plan-dev:
+    permissions:
+      contents: read
+      id-token: write
     if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]' && (!startsWith(github.head_ref, 'copilot/') || contains(github.event.pull_request.labels.*.name, 'run-dev-plan'))
     needs: build-and-test
     environment: Development
@@ -55,6 +60,9 @@ jobs:
   # - copilot/* branches: require both 'run-dev-plan' and 'run-prd-plan' labels
   # - Always skipped for dependabot PRs
   terraform-plan-prd:
+    permissions:
+      contents: read
+      id-token: write
     if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan') && (!startsWith(github.head_ref, 'copilot/') || contains(github.event.pull_request.labels.*.name, 'run-dev-plan'))
     needs: terraform-plan-dev
     environment: Production
