@@ -26,7 +26,7 @@ public class IPAddressExtensionsTests
         string? ipAddress = null;
 
         // Act
-        var result = ipAddress.FormatIPAddress();
+        var result = ipAddress!.FormatIPAddress();
 
         // Assert
         Assert.Equal(string.Empty, result.Value);

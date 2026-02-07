@@ -169,32 +169,41 @@ public class ProxyCheckServiceTests
             .Setup(c => c.TryGetValue(It.IsAny<object>(), out cacheValue))
             .Returns(false);
 
-        var mockHandler = new Mock<HttpMessageHandler>();
-        mockHandler.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.BadRequest,
-                Content = new StringContent("Bad Request")
-            });
+        var httpResponseMessage = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.BadRequest,
+            Content = new StringContent("Bad Request")
+        };
 
-        var httpClient = new HttpClient(mockHandler.Object);
-        mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
+        try
+        {
+            var mockHandler = new Mock<HttpMessageHandler>();
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
 
-        var service = new ProxyCheckService(
-            mockHttpClientFactory.Object,
-            mockMemoryCache.Object,
-            mockConfiguration.Object,
-            mockLogger.Object);
+            using var httpClient = new HttpClient(mockHandler.Object);
+            mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-        // Act
-        var result = await service.GetIpRiskDataAsync("192.168.1.1");
+            var service = new ProxyCheckService(
+                mockHttpClientFactory.Object,
+                mockMemoryCache.Object,
+                mockConfiguration.Object,
+                mockLogger.Object);
 
-        // Assert
-        Assert.True(result.IsError);
-        Assert.Contains("API Error", result.ErrorMessage);
+            // Act
+            var result = await service.GetIpRiskDataAsync("192.168.1.1");
+
+            // Assert
+            Assert.True(result.IsError);
+            Assert.Contains("API Error", result.ErrorMessage);
+        }
+        finally
+        {
+            httpResponseMessage.Dispose();
+        }
     }
 
     [Fact]
