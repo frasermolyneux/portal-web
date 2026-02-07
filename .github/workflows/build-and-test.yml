@@ -7,8 +7,7 @@ on:
       - "bugfix/**"
       - "hotfix/**"
 
-
-permissions: read-all
+permissions: {}
 
 jobs:
   build-and-test:

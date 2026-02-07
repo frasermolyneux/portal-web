@@ -13,8 +13,7 @@ on:
       - main
     types: [opened, synchronize, reopened, ready_for_review]
 
-
-permissions: read-all
+permissions: {}
 
 jobs:
   build-and-test:
