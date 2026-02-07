@@ -169,41 +169,34 @@ public class ProxyCheckServiceTests
             .Setup(c => c.TryGetValue(It.IsAny<object>(), out cacheValue))
             .Returns(false);
 
-        var httpResponseMessage = new HttpResponseMessage
+        using var httpResponseMessage = new HttpResponseMessage
         {
             StatusCode = HttpStatusCode.BadRequest,
             Content = new StringContent("Bad Request")
         };
 
-        try
-        {
-            var mockHandler = new Mock<HttpMessageHandler>();
-            mockHandler.Protected()
-                .Setup<Task<HttpResponseMessage>>("SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(httpResponseMessage);
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponseMessage);
 
-            using var httpClient = new HttpClient(mockHandler.Object);
-            mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
+        using var httpClient = new HttpClient(mockHandler.Object);
+        mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            var service = new ProxyCheckService(
-                mockHttpClientFactory.Object,
-                mockMemoryCache.Object,
-                mockConfiguration.Object,
-                mockLogger.Object);
+        var service = new ProxyCheckService(
+            mockHttpClientFactory.Object,
+            mockMemoryCache.Object,
+            mockConfiguration.Object,
+            mockLogger.Object);
 
-            // Act
-            var result = await service.GetIpRiskDataAsync("192.168.1.1");
+        // Act
+        var result = await service.GetIpRiskDataAsync("192.168.1.1");
 
-            // Assert
-            Assert.True(result.IsError);
-            Assert.Contains("API Error", result.ErrorMessage);
-        }
-        finally
-        {
-            httpResponseMessage.Dispose();
-        }
+        // Assert
+        Assert.True(result.IsError);
+        Assert.Contains("API Error", result.ErrorMessage);
     }
 
     [Fact]
