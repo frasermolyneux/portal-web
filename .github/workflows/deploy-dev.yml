@@ -3,8 +3,7 @@ name: Deploy Dev
 on:
   workflow_dispatch:
 
-
-permissions: read-all
+permissions: {}
 
 jobs:
   build-and-test:
