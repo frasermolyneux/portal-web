@@ -1,7 +1,7 @@
 name: PR Verify
 
 # Label-based workflow control:
-# - Always run Terraform plan against Development when Terraform exists (skips drafts/dependabot)
+# - Always run Terraform plan against Development when Terraform exists (skips drafts)
 # - 'deploy-dev': Runs Terraform plan+apply and deploys the app to Development (skips drafts/dependabot)
 # - 'run-prd-plan': Runs Terraform plan against Production (skips drafts/dependabot)
 
@@ -31,21 +31,25 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]' && !contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'deploy-dev')
     needs: build-and-test
     environment: Development
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
+    env:
+      AZURE_CLIENT_ID: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && vars.AZURE_PLAN_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
     steps:
       - uses: frasermolyneux/actions/terraform-plan@main
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
           terraform-backend-file: "backends/dev.backend.hcl"
-          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_CLIENT_ID: ${{ env.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ env.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
   terraform-plan-and-apply-dev:
     permissions:
@@ -108,18 +112,22 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'run-prd-plan')
+    if: github.event.pull_request.draft == false && contains(github.event.pull_request.labels.*.name, 'run-prd-plan')
     needs: build-and-test
     environment: Production
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
+    env:
+      AZURE_CLIENT_ID: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && vars.AZURE_PLAN_CLIENT_ID || vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
     steps:
       - uses: frasermolyneux/actions/terraform-plan@main
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/prd.tfvars"
           terraform-backend-file: "backends/prd.backend.hcl"
-          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_CLIENT_ID: ${{ env.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ env.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
