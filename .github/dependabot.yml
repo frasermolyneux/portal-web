@@ -9,6 +9,12 @@ updates:
     schedule:
       interval: "daily"
 
+  - package-ecosystem: "terraform"
+    assignees: ["frasermolyneux"]
+    directory: "/terraform"
+    schedule:
+      interval: "daily"
+
   - package-ecosystem: "github-actions"
     assignees: ["frasermolyneux"]
     directory: "/"
@@ -19,4 +25,4 @@ updates:
     assignees: ["frasermolyneux"]
     directory: "/"
     schedule:
-      interval: weekly
+      interval: "weekly"
