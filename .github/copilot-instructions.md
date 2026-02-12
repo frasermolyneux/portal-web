@@ -1,10 +1,48 @@
 # Copilot Instructions
 
-- **Purpose & stack**: ASP.NET Core 9 web app in [src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj](src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj). Uses Razor runtime compilation in Debug, build-time in Release, Application Insights, Azure App Configuration, Entity Framework Core identity store, and Data Protection in SQL. External clients target the Repository API, Servers Integration API, and GeoLocation API.
-- **Build/test loop**: Standard sequence: `dotnet clean src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj`; `dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj`; `dotnet test src --filter "FullyQualifiedName!~IntegrationTests"`. Release builds treat warnings as errors and precompile Razor.
-- **Front-end assets**: SCSS lives under `Styles/` with the structure documented in [docs/css-architecture-guide.md](docs/css-architecture-guide.md). `npm install` runs automatically on first build; SCSS compiles during `dotnet build` via `npm run build:css:dev` (Debug) or `npm run build:css` (Release). For live editing run `npm run watch:css` from `src/XtremeIdiots.Portal.Web`.
-- **Docs to consult**: CI/CD and branch rules in [docs/development-workflows.md](docs/development-workflows.md); data table patterns in [docs/DATATABLE-IMPLEMENTATION-GUIDE.md](docs/DATATABLE-IMPLEMENTATION-GUIDE.md); permissions nuances in [docs/credentials-permissions-matrix.md](docs/credentials-permissions-matrix.md); manual deployment/config steps in [docs/manual-steps.md](docs/manual-steps.md).
-- **Workflows & labels**: GitHub Actions pipelines are in `.github/workflows` (build-and-test, pr-verify, deploy-dev, deploy-prd, codequality, copilot-setup-steps, dependabot-automerge). PRs run dev Terraform plans; prod plans require the `run-prd-plan` label; copilot/* and dependabot PRs skip plans unless labeled.
-- **App configuration**: Sensitive settings are expected via user secrets (see `UserSecretsId` in the csproj) or environment variables. Azure App Configuration and managed identity are supported; Application Insights connection strings should be present for telemetry.
-- **Common troubleshooting**: If SCSS fails to compile, run `npm install` then `npm run build:css:dev`. If Razor view issues arise, enable `ValidateRazor=true` on build to precompile views. Identity/claims issues often map back to the matrices in [docs/credentials-permissions-matrix.md](docs/credentials-permissions-matrix.md).
-- **Testing scope**: Integration tests are filtered out by default; keep new tests in `src/XtremeIdiots.Portal.Web.Tests` and respect the existing filter unless infrastructure is available.
+## Project Overview
+
+ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the XtremeIdiots Portal front end for player and game server management. Uses Razor views with runtime compilation in Debug and build-time compilation in Release, Application Insights for telemetry, Azure App Configuration, Entity Framework Core for identity/data-protection, and API clients for the Repository API, Servers Integration API, and GeoLocation API.
+
+## Build, Test, and Run
+
+- **Solution**: `src/XtremeIdiots.Portal.Web.sln`
+- **Build**: `dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj`
+- **Test**: `dotnet test src --filter "FullyQualifiedName!~IntegrationTests"`
+- **Clean**: `dotnet clean src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj`
+- Release builds treat warnings as errors and precompile Razor views.
+- Integration tests are filtered out by default; add new tests to `src/XtremeIdiots.Portal.Web.Tests/`.
+
+## Front-End Assets (SCSS)
+
+- SCSS source lives under `src/XtremeIdiots.Portal.Web/Styles/`; see [docs/css-architecture-guide.md](docs/css-architecture-guide.md).
+- `npm install` runs automatically on first build via MSBuild targets.
+- Debug builds compile with `npm run build:css:dev`; Release uses `npm run build:css`.
+- For live editing run `npm run watch:css` from `src/XtremeIdiots.Portal.Web/`.
+- If SCSS fails, run `npm install` then `npm run build:css:dev` to reset.
+
+## Project Structure
+
+- `src/XtremeIdiots.Portal.Web/` — Main web application (Controllers, Views, ViewComponents, ApiControllers, Models, Services, Styles).
+- `src/XtremeIdiots.Portal.Integrations.Forums/` — Forum integration library.
+- `src/XtremeIdiots.Portal.Web.Tests/` — Unit tests.
+- `terraform/` — Infrastructure as code for Azure deployments.
+- `.github/workflows/` — CI/CD pipelines (build-and-test, pr-verify, deploy-dev, deploy-prd, codequality, destroy-environment, copilot-setup-steps, dependabot-automerge).
+- `docs/` — Architecture guides, workflow docs, and operational runbooks.
+
+## Key Documentation
+
+- [Development Workflows](docs/development-workflows.md) — Branch strategy, CI/CD triggers, and PR flows.
+- [Datatable Implementation Guide](docs/DATATABLE-IMPLEMENTATION-GUIDE.md) — Server-backed data table patterns.
+- [Credentials Permissions Matrix](docs/credentials-permissions-matrix.md) — Roles, claims, and access mapping.
+- [CSS Architecture Guide](docs/css-architecture-guide.md) — Styling conventions and structure.
+- [Manual Steps](docs/manual-steps.md) — Post-deployment configuration.
+
+## Conventions and Patterns
+
+- Use nullable reference types (`<Nullable>enable</Nullable>`) and implicit usings.
+- Follow existing controller/view/service patterns when adding new features.
+- Razor view validation: set `ValidateRazor=true` on build to catch compilation errors early.
+- Sensitive settings use user secrets locally (`UserSecretsId` in csproj) or environment variables; Azure App Configuration and managed identity in deployed environments.
+- PRs trigger dev Terraform plans automatically; prod plans require the `run-prd-plan` label.
+- Copilot and Dependabot PRs skip Terraform plans unless explicitly labeled.

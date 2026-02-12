@@ -1,4 +1,4 @@
-name: Deploy PRD
+name: Deploy Prd
 
 on:
   push:
