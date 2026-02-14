@@ -25,6 +25,7 @@ jobs:
           dotnet-project: "XtremeIdiots.Portal.Web"
           dotnet-version: 9.0.x
           src-folder: "src"
+          skip-nuget-artifact-upload: "true"
 
   terraform-plan-and-apply-dev:
     permissions:
