@@ -43,10 +43,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
     <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="2.1.52" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.26" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.96" />
     <PackageReference Include="MX.GeoLocation.Api.Client.V1" Version="1.1.20260212.3" />
   </ItemGroup>
 
