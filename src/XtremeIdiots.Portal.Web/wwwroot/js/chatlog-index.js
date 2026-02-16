@@ -202,10 +202,12 @@ $(document).ready(function () {
             function navigateToPage(inputElement) {
                 const pageInfo = table.page.info();
                 const pageNum = parseInt(inputElement.value, 10);
-                if (pageNum >= 1 && pageNum <= pageInfo.pages) {
+                
+                // Check for valid number and range
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pageInfo.pages) {
                     table.page(pageNum - 1).draw(false);
                 } else {
-                    // Reset to current page if invalid
+                    // Reset to current page if invalid or out of range
                     inputElement.value = pageInfo.page + 1;
                 }
             }
@@ -222,6 +224,18 @@ $(document).ready(function () {
                 pageInput.addEventListener('blur', function() {
                     navigateToPage(this);
                 });
+                
+                // Update page jump on table redraw
+                table.on('draw.dt', function() {
+                    const pageInfo = table.page.info();
+                    pageInput.value = pageInfo.page + 1;
+                    pageInput.max = pageInfo.pages;
+                    
+                    const totalSpan = document.querySelector('.page-jump-total');
+                    if (totalSpan) {
+                        totalSpan.textContent = `of ${pageInfo.pages}`;
+                    }
+                });
             }
             
             console.log('[ChatLog] addPageJump complete');
@@ -229,21 +243,6 @@ $(document).ready(function () {
             console.warn('[ChatLog] addPageJump error', e);
         }
     }
-
-    // Update page jump on page change
-    table.on('draw.dt', function() {
-        const pageInput = document.getElementById('pageJumpInput');
-        if (pageInput) {
-            const pageInfo = table.page.info();
-            pageInput.value = pageInfo.page + 1;
-            pageInput.max = pageInfo.pages;
-            
-            const totalSpan = document.querySelector('.page-jump-total');
-            if (totalSpan) {
-                totalSpan.textContent = `of ${pageInfo.pages}`;
-            }
-        }
-    });
 
     // Run after DataTables initialization to avoid timing issues
     table.on('init.dt', function () { 
