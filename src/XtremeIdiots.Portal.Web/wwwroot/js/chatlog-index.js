@@ -198,31 +198,29 @@ $(document).ready(function () {
             // Insert before the pagination controls
             paginateDiv.parentNode.insertBefore(jumpContainer, paginateDiv);
             
+            // Helper function for page navigation
+            function navigateToPage(inputElement) {
+                const pageInfo = table.page.info();
+                const pageNum = parseInt(inputElement.value, 10);
+                if (pageNum >= 1 && pageNum <= pageInfo.pages) {
+                    table.page(pageNum - 1).draw(false);
+                } else {
+                    // Reset to current page if invalid
+                    inputElement.value = pageInfo.page + 1;
+                }
+            }
+            
             // Add event handler for the input
             const pageInput = document.getElementById('pageJumpInput');
             if (pageInput) {
                 pageInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
-                        const pageInfo = table.page.info();
-                        const pageNum = parseInt(this.value);
-                        if (pageNum >= 1 && pageNum <= pageInfo.pages) {
-                            table.page(pageNum - 1).draw(false);
-                        } else {
-                            // Reset to current page if invalid
-                            this.value = pageInfo.page + 1;
-                        }
+                        navigateToPage(this);
                     }
                 });
                 
                 pageInput.addEventListener('blur', function() {
-                    const pageInfo = table.page.info();
-                    const pageNum = parseInt(this.value);
-                    if (pageNum >= 1 && pageNum <= pageInfo.pages) {
-                        table.page(pageNum - 1).draw(false);
-                    } else {
-                        // Reset to current page if invalid
-                        this.value = pageInfo.page + 1;
-                    }
+                    navigateToPage(this);
                 });
             }
             
