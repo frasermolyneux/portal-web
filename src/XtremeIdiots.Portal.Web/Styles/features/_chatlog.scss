@@ -28,9 +28,62 @@
     flex: 0 1 240px;
 }
 
+// Page jump controls
+.datatable-page-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-right: $spacing-md;
+    padding: $spacing-xs 0;
+
+    .page-jump-label {
+        font-size: $font-size-sm;
+        color: $xi-text-muted;
+        white-space: nowrap;
+    }
+
+    .page-jump-input {
+        width: 60px;
+        padding: 0.25rem 0.5rem;
+        font-size: $font-size-sm;
+        line-height: 1.5;
+        color: $xi-text;
+        background-color: $white-bg;
+        border: 1px solid $border-color;
+        border-radius: 3px;
+        text-align: center;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+        &:focus {
+            outline: 0;
+            border-color: $xi-primary;
+            box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+        }
+
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+            opacity: 1;
+        }
+    }
+
+    .page-jump-total {
+        font-size: $font-size-sm;
+        color: $xi-text-muted;
+        white-space: nowrap;
+    }
+}
+
 @include media-max-md {
     #chatLogFilters .filter-group.locked-filter-group {
         padding-top: 0.4rem;
+    }
+
+    .datatable-page-jump {
+        display: flex;
+        margin-right: 0;
+        margin-bottom: $spacing-xs;
+        width: 100%;
+        justify-content: center;
     }
 }
 

@@ -169,10 +169,89 @@ $(document).ready(function () {
         }
     }
 
+    function addPageJump() {
+        try {
+            const paginateDiv = document.querySelector('#dataTable_paginate');
+            if (!paginateDiv) {
+                console.warn('[ChatLog] addPageJump: paginate div not found');
+                return;
+            }
+            
+            // Don't add if already exists
+            if (document.getElementById('pageJumpContainer')) {
+                return;
+            }
+            
+            const pageInfo = table.page.info();
+            const totalPages = pageInfo.pages;
+            
+            // Create the page jump container
+            const jumpContainer = document.createElement('div');
+            jumpContainer.id = 'pageJumpContainer';
+            jumpContainer.className = 'datatable-page-jump';
+            jumpContainer.innerHTML = `
+                <span class="page-jump-label">Go to page:</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" max="${totalPages}" value="${pageInfo.page + 1}" />
+                <span class="page-jump-total">of ${totalPages}</span>
+            `;
+            
+            // Insert before the pagination controls
+            paginateDiv.parentNode.insertBefore(jumpContainer, paginateDiv);
+            
+            // Helper function for page navigation
+            function navigateToPage(inputElement) {
+                const pageInfo = table.page.info();
+                const pageNum = parseInt(inputElement.value, 10);
+                
+                // Check for valid number and range
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pageInfo.pages) {
+                    table.page(pageNum - 1).draw(false);
+                } else {
+                    // Reset to current page if invalid or out of range
+                    inputElement.value = pageInfo.page + 1;
+                }
+            }
+            
+            // Add event handler for the input
+            const pageInput = document.getElementById('pageJumpInput');
+            if (pageInput) {
+                pageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        navigateToPage(this);
+                    }
+                });
+                
+                pageInput.addEventListener('blur', function() {
+                    navigateToPage(this);
+                });
+                
+                // Update page jump on table redraw
+                table.on('draw.dt', function() {
+                    const pageInfo = table.page.info();
+                    pageInput.value = pageInfo.page + 1;
+                    pageInput.max = pageInfo.pages;
+                    
+                    const totalSpan = document.querySelector('.page-jump-total');
+                    if (totalSpan) {
+                        totalSpan.textContent = `of ${pageInfo.pages}`;
+                    }
+                });
+            }
+            
+            console.log('[ChatLog] addPageJump complete');
+        } catch (e) {
+            console.warn('[ChatLog] addPageJump error', e);
+        }
+    }
+
     // Run after DataTables initialization to avoid timing issues
-    table.on('init.dt', function () { relocateSearch(); });
+    table.on('init.dt', function () { 
+        relocateSearch(); 
+        addPageJump();
+    });
     // Fallback in case init event missed (safety timeout)
     setTimeout(relocateSearch, 1200);
+    setTimeout(addPageJump, 1200);
 
     if (lockedSel) lockedSel.addEventListener('change', function () { table.ajax.reload(null, false); });
     if (gameTypeSel) gameTypeSel.addEventListener('change', function () {
