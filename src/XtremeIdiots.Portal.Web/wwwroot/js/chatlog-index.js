@@ -203,20 +203,25 @@ $(document).ready(function () {
             if (pageInput) {
                 pageInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
+                        const pageInfo = table.page.info();
                         const pageNum = parseInt(this.value);
-                        if (pageNum >= 1 && pageNum <= totalPages) {
+                        if (pageNum >= 1 && pageNum <= pageInfo.pages) {
                             table.page(pageNum - 1).draw(false);
+                        } else {
+                            // Reset to current page if invalid
+                            this.value = pageInfo.page + 1;
                         }
                     }
                 });
                 
                 pageInput.addEventListener('blur', function() {
+                    const pageInfo = table.page.info();
                     const pageNum = parseInt(this.value);
-                    if (pageNum >= 1 && pageNum <= totalPages) {
+                    if (pageNum >= 1 && pageNum <= pageInfo.pages) {
                         table.page(pageNum - 1).draw(false);
                     } else {
                         // Reset to current page if invalid
-                        this.value = table.page.info().page + 1;
+                        this.value = pageInfo.page + 1;
                     }
                 });
             }
