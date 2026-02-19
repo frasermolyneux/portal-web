@@ -12,7 +12,7 @@
                     <h5>Add Tag to Player: @Model.Player?.Username</h5>
                 </div>
                 <div class="ibox-content">
-                    <form asp-action="AddPlayerTag" method="post" class="">
+                    <form asp-controller="PlayerTags" asp-action="Add" method="post" class="">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="PlayerId" />
 

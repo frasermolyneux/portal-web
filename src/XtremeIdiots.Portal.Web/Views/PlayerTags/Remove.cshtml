@@ -30,7 +30,7 @@
                         </div>
                     </div>
 
-                    <form asp-action="RemovePlayerTag" method="post">
+                    <form asp-controller="PlayerTags" asp-action="Remove" method="post">
                         <input type="hidden" name="id" value="@Model.PlayerId" />
                         <input type="hidden" name="playerTagId" value="@Model.PlayerTagId" />
                         <div class="mb-3">

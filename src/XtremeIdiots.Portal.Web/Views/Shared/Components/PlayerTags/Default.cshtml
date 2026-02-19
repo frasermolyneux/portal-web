@@ -18,7 +18,7 @@
                     @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.DeletePlayerTag)).Succeeded &&
                                 playerTag.Tag?.UserDefined == true)
                     {
-                        <a asp-controller="Players" asp-action="RemovePlayerTag" asp-route-id="@playerTag.PlayerId"
+                        <a asp-controller="PlayerTags" asp-action="Remove" asp-route-id="@playerTag.PlayerId"
                             asp-route-playerTagId="@playerTag.PlayerTagId" class="btn btn-sm btn-danger ms-2" aria-label="Remove tag">
                             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </a>
@@ -36,7 +36,7 @@
     @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag)).Succeeded)
     {
         <p>
-            <a asp-controller="Players" asp-action="AddPlayerTag" asp-route-id="@ViewBag.PlayerId" class="btn btn-primary">
+            <a asp-controller="PlayerTags" asp-action="Add" asp-route-id="@ViewBag.PlayerId" class="btn btn-primary">
                 <i class="fa-solid fa-plus"></i> Add Tag
             </a>
         </p>

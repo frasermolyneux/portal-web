@@ -57,7 +57,7 @@ public class TagsController(
         if (!tagResponse.IsSuccess)
         {
             Logger.LogWarning("Failed to retrieve tag {TagId} for {Action}", id, action);
-            return (RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 }), null);
+            return (RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 }), null);
         }
 
         var tagData = tagResponse.Result.Data;
@@ -88,7 +88,7 @@ public class TagsController(
             if (!tagsResponse.IsSuccess || tagsResponse.Result?.Data?.Items is null)
             {
                 Logger.LogWarning("Failed to retrieve tags for user {UserId}", User.XtremeIdiotsId());
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
             var model = new TagsViewModel

@@ -100,7 +100,7 @@
                                                 </a>
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag)).Succeeded)
                                                 {
-                                                    <a asp-controller="Players" asp-action="AddPlayerTag" asp-route-id="@player.PlayerId" class="btn btn-outline-dark btn-sm">
+                                                    <a asp-controller="PlayerTags" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-dark btn-sm">
                                                         <i class="fa-solid fa-tag"></i> Tag
                                                     </a>
                                                 }
