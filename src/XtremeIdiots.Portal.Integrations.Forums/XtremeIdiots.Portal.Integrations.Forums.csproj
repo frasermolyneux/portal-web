@@ -11,8 +11,8 @@
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.17.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
-    <PackageReference Include="XtremeIdiots.InvisionCommunity" Version="1.1.132.1" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.113" />
+    <PackageReference Include="MX.InvisionCommunity.Api.Client" Version="1.0.18" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.135" />
   </ItemGroup>
 
 </Project>

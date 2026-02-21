@@ -15,7 +15,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: frasermolyneux/actions/dotnet-web-ci@main
+      - uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v1.4
         with:
           dotnet-project: "XtremeIdiots.Portal.Web"
           dotnet-version: 9.0.x
@@ -31,7 +31,7 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-dev
     steps:
-      - uses: frasermolyneux/actions/terraform-plan@main
+      - uses: frasermolyneux/actions/terraform-plan@terraform-plan/v1.4
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"

@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using XtremeIdiots.InvisionCommunity;
-using XtremeIdiots.InvisionCommunity.Models;
+using MX.InvisionCommunity.Api.Abstractions;
+using MX.InvisionCommunity.Api.Abstractions.Models;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 
@@ -74,7 +74,14 @@ public class XtremeIdiotsAuth(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var member = await forumsClient.Core.GetMember(id).ConfigureAwait(false) ?? throw new InvalidOperationException($"Member not found with ID: {id}");
+            var memberResult = await forumsClient.Core.GetMember(id, cancellationToken).ConfigureAwait(false);
+
+            if (memberResult is null || !memberResult.IsSuccess)
+            {
+                throw new InvalidOperationException($"Forums API call failed for member ID: {id} with status: {memberResult?.StatusCode.ToString() ?? "null response"}");
+            }
+
+            var member = memberResult.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
             var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false) ?? throw new InvalidOperationException($"User not found for login provider: {info.LoginProvider}, key: {info.ProviderKey}");
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -126,7 +133,14 @@ public class XtremeIdiotsAuth(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var member = await forumsClient.Core.GetMember(id).ConfigureAwait(false) ?? throw new InvalidOperationException($"Member not found with ID: {id}");
+            var memberResult = await forumsClient.Core.GetMember(id, cancellationToken).ConfigureAwait(false);
+
+            if (memberResult is null || !memberResult.IsSuccess)
+            {
+                throw new InvalidOperationException($"Forums API call failed for member ID: {id} with status: {memberResult?.StatusCode.ToString() ?? "null response"}");
+            }
+
+            var member = memberResult.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
             var user = new IdentityUser { Id = id, UserName = username, Email = email };
             var createUserResult = await userManager.CreateAsync(user).ConfigureAwait(false);
 
@@ -167,7 +181,7 @@ public class XtremeIdiotsAuth(
         }
     }
 
-    private async Task<UserProfileDto?> EnsureUserProfileExists(string memberId, Member member, CancellationToken cancellationToken = default)
+    private async Task<UserProfileDto?> EnsureUserProfileExists(string memberId, MemberDto member, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(memberId))
         {

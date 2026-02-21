@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MX.GeoLocation.Api.Client.V1;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using XtremeIdiots.InvisionCommunity;
+using MX.InvisionCommunity.Api.Client;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Forums.Extensions;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
@@ -48,11 +48,9 @@ public class Startup(IConfiguration configuration)
         services.AddServiceProfiler();
         services.AddAzureAppConfiguration();
 
-        services.AddInvisionApiClient(options =>
-        {
-            options.BaseUrl = GetConfigValue("XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required");
-            options.ApiKey = GetConfigValue("XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required");
-        });
+        services.AddInvisionApiClient(options => options
+            .WithBaseUrl(GetConfigValue("XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required"))
+            .WithApiKeyAuthentication(GetConfigValue("XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required")));
 
         services.AddAdminActionTopics();
         services.AddScoped<IDemoManager, DemoManager>();
