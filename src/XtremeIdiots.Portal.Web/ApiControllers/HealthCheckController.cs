@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using XtremeIdiots.InvisionCommunity;
+using MX.InvisionCommunity.Api.Abstractions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
@@ -41,7 +41,7 @@ public class HealthCheckController : BaseApiController
                 try
                 {
                     var response = await this.forumsClient.Core.GetCoreHello().ConfigureAwait(false);
-                    var checkResponse = response?.CommunityUrl == "https://www.xtremeidiots.com/";
+                    var checkResponse = response?.Result?.Data?.CommunityUrl == "https://www.xtremeidiots.com/";
                     return new Tuple<bool, string>(checkResponse, "OK");
                 }
                 catch (Exception ex)

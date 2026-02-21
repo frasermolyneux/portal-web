@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Globalization;
-using XtremeIdiots.InvisionCommunity;
+using MX.InvisionCommunity.Api.Abstractions;
 using XtremeIdiots.Portal.Integrations.Forums.Extensions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
@@ -47,13 +47,13 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
 
             var postTopicResult = await forumsClient.Forums.PostTopic(forumId, userId, $"{username} - {type}", PostContent(type, playerId, username, created, text), type.ToString()).ConfigureAwait(false);
 
-            if (postTopicResult is null)
+            if (postTopicResult?.Result?.Data is null)
             {
                 logger.LogWarning("Failed to create forum topic for admin action - null response");
                 return 0;
             }
 
-            return postTopicResult.TopicId;
+            return postTopicResult.Result.Data.TopicId;
         }
         catch (Exception ex)
         {
