@@ -49,7 +49,11 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
 
             if (postTopicResult?.Result?.Data is null)
             {
-                logger.LogWarning("Failed to create forum topic for admin action - null response");
+                logger.LogWarning("Failed to create forum topic for admin action - StatusCode: {StatusCode}, Errors: {Errors}",
+                    postTopicResult?.StatusCode,
+                    postTopicResult?.Result?.Errors is { Length: > 0 } errors
+                        ? string.Join("; ", errors.Select(e => $"{e.Code}: {e.Message}"))
+                        : "no error details available");
                 return 0;
             }
 

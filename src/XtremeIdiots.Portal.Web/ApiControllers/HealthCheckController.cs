@@ -42,7 +42,7 @@ public class HealthCheckController : BaseApiController
                 {
                     var response = await this.forumsClient.Core.GetCoreHello().ConfigureAwait(false);
                     var checkResponse = response?.Result?.Data?.CommunityUrl == "https://www.xtremeidiots.com/";
-                    return new Tuple<bool, string>(checkResponse, "OK");
+                    return new Tuple<bool, string>(checkResponse, checkResponse ? "OK" : "Unexpected or missing CommunityUrl in forums API response");
                 }
                 catch (Exception ex)
                 {
