@@ -75,7 +75,13 @@ public class XtremeIdiotsAuth(
             cancellationToken.ThrowIfCancellationRequested();
 
             var memberResult = await forumsClient.Core.GetMember(id, cancellationToken).ConfigureAwait(false);
-            var member = memberResult?.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
+
+            if (memberResult is null || !memberResult.IsSuccess)
+            {
+                throw new InvalidOperationException($"Forums API call failed for member ID: {id} with status: {memberResult?.StatusCode.ToString() ?? "null response"}");
+            }
+
+            var member = memberResult.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
             var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false) ?? throw new InvalidOperationException($"User not found for login provider: {info.LoginProvider}, key: {info.ProviderKey}");
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -128,7 +134,13 @@ public class XtremeIdiotsAuth(
             cancellationToken.ThrowIfCancellationRequested();
 
             var memberResult = await forumsClient.Core.GetMember(id, cancellationToken).ConfigureAwait(false);
-            var member = memberResult?.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
+
+            if (memberResult is null || !memberResult.IsSuccess)
+            {
+                throw new InvalidOperationException($"Forums API call failed for member ID: {id} with status: {memberResult?.StatusCode.ToString() ?? "null response"}");
+            }
+
+            var member = memberResult.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
             var user = new IdentityUser { Id = id, UserName = username, Email = email };
             var createUserResult = await userManager.CreateAsync(user).ConfigureAwait(false);
 
