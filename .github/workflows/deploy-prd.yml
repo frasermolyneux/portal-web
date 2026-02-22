@@ -35,7 +35,7 @@ jobs:
       id-token: write
     needs:
       - detect-changes
-    if: needs.detect-changes.outputs.src == 'true'
+    if: !failure() && !cancelled() && needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v1.4
@@ -46,6 +46,7 @@ jobs:
           skip-nuget-artifact-upload: "true"
 
   terraform-plan-and-apply-dev:
+    if: github.event_name != 'schedule'
     permissions:
       contents: read
       id-token: write
@@ -103,7 +104,7 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-dev
     if: |
-      !failure() && !cancelled() && needs.detect-changes.outputs.src == 'true'
+      !failure() && !cancelled() && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
@@ -127,7 +128,7 @@ jobs:
       - terraform-plan-and-apply-dev
       - app-service-deploy-dev
     if: |
-      !failure() && !cancelled() && needs.terraform-plan-and-apply-dev.result == 'success'
+      !failure() && !cancelled() && (needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
