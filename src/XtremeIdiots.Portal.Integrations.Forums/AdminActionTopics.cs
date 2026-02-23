@@ -22,7 +22,7 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
     {
         try
         {
-            var userId = int.Parse(configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145");
+            var userId = int.TryParse(configuration["XtremeIdiots:Forums:DefaultAdminUserId"], out var defaultUserId) ? defaultUserId : 21145;
 
             if (adminId is not null)
                 userId = Convert.ToInt32(adminId);
@@ -67,7 +67,7 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
         if (topicId == 0)
             return;
 
-        var userId = int.Parse(configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145");
+        var userId = int.TryParse(configuration["XtremeIdiots:Forums:DefaultAdminUserId"], out var defaultUserId) ? defaultUserId : 21145;
 
         if (adminId is not null)
             userId = Convert.ToInt32(adminId);
