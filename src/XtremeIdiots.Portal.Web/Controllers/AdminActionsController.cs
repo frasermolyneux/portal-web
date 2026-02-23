@@ -60,7 +60,7 @@ public class AdminActionsController(
                 Type = adminActionType,
                 PlayerId = playerData.PlayerId,
                 PlayerDto = playerData,
-                Expires = adminActionType == AdminActionType.TempBan ? DateTime.UtcNow.AddDays(int.TryParse(configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7) : null
+                Expires = adminActionType == AdminActionType.TempBan ? DateTime.UtcNow.AddDays(int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7) : null
             };
 
             return View(createAdminActionViewModel);
@@ -604,12 +604,12 @@ public class AdminActionsController(
 
     private string GetForumBaseUrl()
     {
-        return (configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/') + "/";
+        return (Configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/') + "/";
     }
 
     private string GetFallbackAdminId()
     {
-        return configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145";
+        return Configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145";
     }
 
     private async Task<PlayerDto?> GetPlayerDataAsync(Guid playerId, CancellationToken cancellationToken = default)

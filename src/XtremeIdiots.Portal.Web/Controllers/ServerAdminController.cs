@@ -851,7 +851,7 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record with expiry if we have a GUID
-                var tempBanDurationDays = int.TryParse(configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
 
                 if (!string.IsNullOrWhiteSpace(playerGuid))
                 {
