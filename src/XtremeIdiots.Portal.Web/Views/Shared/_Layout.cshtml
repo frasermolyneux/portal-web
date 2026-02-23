@@ -1,17 +1,21 @@
 ﻿@using XtremeIdiots.Portal.Web.Extensions
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F10FZ2SV5E"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
+    @if (!string.IsNullOrEmpty(Configuration["Google:AnalyticsId"]))
+    {
+        <script async src="https://www.googletagmanager.com/gtag/js?id=@Configuration["Google:AnalyticsId"]"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
 
-        gtag('config', 'G-F10FZ2SV5E');
-    </script>
+            gtag('config', '@Configuration["Google:AnalyticsId"]');
+        </script>
+    }
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />

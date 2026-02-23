@@ -24,9 +24,9 @@ public class AdminActionsController(
     ILogger<AdminActionsController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private const string DefaultForumBaseUrl = "https://www.xtremeidiots.com/forums/topic/";
-    private const string DefaultFallbackAdminId = "21145";
-    private const int DefaultTempBanDurationDays = 7;
+    private readonly string forumBaseUrl = (configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/') + "/";
+    private readonly string fallbackAdminId = configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145";
+    private readonly int tempBanDurationDays = int.TryParse(configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
 
     /// <summary>
     /// Displays the create admin action form for a specific player
@@ -63,7 +63,7 @@ public class AdminActionsController(
                 Type = adminActionType,
                 PlayerId = playerData.PlayerId,
                 PlayerDto = playerData,
-                Expires = adminActionType == AdminActionType.TempBan ? DateTime.UtcNow.AddDays(DefaultTempBanDurationDays) : null
+                Expires = adminActionType == AdminActionType.TempBan ? DateTime.UtcNow.AddDays(tempBanDurationDays) : null
             };
 
             return View(createAdminActionViewModel);
@@ -607,12 +607,12 @@ public class AdminActionsController(
 
     private string GetForumBaseUrl()
     {
-        return GetConfigurationValue("AdminActions:ForumBaseUrl", DefaultForumBaseUrl);
+        return forumBaseUrl;
     }
 
     private string GetFallbackAdminId()
     {
-        return GetConfigurationValue("AdminActions:FallbackAdminId", DefaultFallbackAdminId);
+        return fallbackAdminId;
     }
 
     private async Task<PlayerDto?> GetPlayerDataAsync(Guid playerId, CancellationToken cancellationToken = default)

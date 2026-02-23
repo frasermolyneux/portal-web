@@ -1,74 +1,49 @@
 ﻿using Azure.Identity;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 
 namespace XtremeIdiots.Portal.Web;
 
-/// <summary>
-/// Entry point for the XtremeIdiots Portal web application
-/// </summary>
 public class Program
 {
-    private readonly static string[] appConfigurationKeyFilters =
-    [
-        "XtremeIdiots.Portal.Web:*",
-        "RepositoryApi:*",
-        "ServersIntegrationApi:*",
-        "FeatureManagement:*",
-    ];
-
-    /// <summary>
-    /// Main entry point for the application
-    /// </summary>
-    /// <param name="args">Command line arguments</param>
     public static void Main(string[] args)
     {
         CreateHostBuilder(args).Build().Run();
     }
 
-    /// <summary>
-    /// Creates the host builder with default configuration and Startup class
-    /// </summary>
-    /// <param name="args">Command line arguments</param>
-    /// <returns>Configured host builder</returns>
     public static IHostBuilder CreateHostBuilder(string[] args)
     {
         return Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((context, configBuilder) =>
+            .ConfigureAppConfiguration(builder =>
             {
-                var builtConfig = configBuilder.Build();
+                var builtConfig = builder.Build();
                 var appConfigEndpoint = builtConfig["AzureAppConfiguration:Endpoint"];
 
-                if (string.IsNullOrWhiteSpace(appConfigEndpoint))
+                if (!string.IsNullOrWhiteSpace(appConfigEndpoint))
                 {
-                    return;
-                }
+                    var managedIdentityClientId = builtConfig["AzureAppConfiguration:ManagedIdentityClientId"];
+                    var environmentLabel = builtConfig["AzureAppConfiguration:Environment"];
 
-                var managedIdentityClientId = builtConfig["AzureAppConfiguration:ManagedIdentityClientId"];
-                var environmentLabel = builtConfig["AzureAppConfiguration:Environment"] ?? context.HostingEnvironment.EnvironmentName;
-
-                var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    ManagedIdentityClientId = managedIdentityClientId,
-                });
-
-                configBuilder.AddAzureAppConfiguration(options =>
-                {
-                    var appConfig = options
-                        .Connect(new Uri(appConfigEndpoint), credential)
-                        .ConfigureKeyVault(kv => kv.SetCredential(credential));
-
-                    foreach (var keyFilter in appConfigurationKeyFilters)
+                    var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
                     {
-                        var selection = appConfig.Select(keyFilter, environmentLabel);
+                        ManagedIdentityClientId = managedIdentityClientId,
+                    });
 
-                        if (keyFilter == "XtremeIdiots.Portal.Web:*")
-                        {
-                            selection.TrimKeyPrefix("XtremeIdiots.Portal.Web:");
-                        }
-                    }
+                    builder.AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(new Uri(appConfigEndpoint), credential)
+                            .Select("XtremeIdiots.Portal.Web:*", environmentLabel)
+                            .TrimKeyPrefix("XtremeIdiots.Portal.Web:")
+                            .Select("RepositoryApi:*", environmentLabel)
+                            .Select("ServersIntegrationApi:*", environmentLabel)
+                            .Select("GeoLocationApi:*", environmentLabel)
+                            .Select("XtremeIdiots:*", environmentLabel)
+                            .Select("ProxyCheck:*", environmentLabel)
+                            .Select("GameTracker:*", environmentLabel)
+                            .Select("Google:*", environmentLabel)
+                            .Select("FeatureManagement:*", environmentLabel);
 
-                    appConfig.Select(KeyFilter.Any, LabelFilter.Null);
-                });
+                        options.ConfigureKeyVault(kv => kv.SetCredential(credential));
+                    });
+                }
             })
             .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Startup>());
     }

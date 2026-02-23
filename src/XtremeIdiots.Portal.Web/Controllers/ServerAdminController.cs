@@ -48,9 +48,9 @@ public class ServerAdminController(
     ILogger<ServerAdminController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private const string DefaultForumBaseUrl = "https://www.xtremeidiots.com/forums/topic/";
-    private const string DefaultFallbackAdminId = "21145";
-    private const int DefaultTempBanDurationDays = 7;
+    private readonly string forumBaseUrl = (configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/') + "/";
+    private readonly string fallbackAdminId = configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145";
+    private readonly int tempBanDurationDays = int.TryParse(configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
 
     /// <summary>
     /// Displays the main server administration dashboard with available game servers
@@ -856,7 +856,7 @@ public class ServerAdminController(
                 // Create admin action record with expiry if we have a GUID
                 if (!string.IsNullOrWhiteSpace(playerGuid))
                 {
-                    var expiryDate = DateTime.UtcNow.AddDays(DefaultTempBanDurationDays);
+                    var expiryDate = DateTime.UtcNow.AddDays(tempBanDurationDays);
                     await CreateAdminActionForRconOperationAsync(
                         gameServerData.GameType, playerGuid, playerName, AdminActionType.TempBan,
                         $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
@@ -871,7 +871,7 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
-                return Json(new { success = true, message = $"Player {playerName} has been temp banned for {DefaultTempBanDurationDays} days" });
+                return Json(new { success = true, message = $"Player {playerName} has been temp banned for {tempBanDurationDays} days" });
             }
             catch (Exception ex)
             {

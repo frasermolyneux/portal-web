@@ -38,6 +38,7 @@ public class BannersController(
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
     private const string GameServersListCacheKey = nameof(GameServersListCacheKey);
+    private readonly string gameTrackerBannerBaseUrl = (configuration["GameTracker:BannerBaseUrl"] ?? "https://cache.gametracker.com/server_info/").TrimEnd('/') + "/";
 
     /// <summary>
     /// Gets HTML banners for game servers that are enabled for banner display
@@ -168,7 +169,7 @@ public class BannersController(
                     { "BannerUrl", bannerData.BannerUrl ?? "null" }
                 });
 
-                return Redirect(bannerData.BannerUrl ?? $"https://cache.gametracker.com/server_info/{ipAddress}:{queryPort}/{imageName}");
+                return Redirect(bannerData.BannerUrl ?? $"{gameTrackerBannerBaseUrl}{ipAddress}:{queryPort}/{imageName}");
             }
 
             Logger.LogWarning("Failed to retrieve GameTracker banner data for {IpAddress}:{QueryPort}/{ImageName}, falling back to default GameTracker URL",
@@ -184,7 +185,7 @@ public class BannersController(
                 { "Fallback", "true" }
             });
 
-            return Redirect($"https://cache.gametracker.com/server_info/{ipAddress}:{queryPort}/{imageName}");
+            return Redirect($"{gameTrackerBannerBaseUrl}{ipAddress}:{queryPort}/{imageName}");
         }, nameof(GetGameTrackerBanner), $"ipAddress: {ipAddress}, queryPort: {queryPort}, imageName: {imageName}").ConfigureAwait(false);
     }
 }

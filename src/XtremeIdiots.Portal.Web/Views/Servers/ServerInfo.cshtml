@@ -1,5 +1,6 @@
 ﻿@using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Web.ViewModels
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @model ServersGameServerViewModel
 
 @{
@@ -300,7 +301,7 @@
 @section Scripts {
     <script src="~/js/server-info.js" asp-append-version="true"></script>
 
-    @if (Model.GameServer.LivePlayers.Any())
+    @if (Model.GameServer.LivePlayers.Any() && !string.IsNullOrEmpty(Configuration["Google:MapsApiKey"]))
     {
         <script>
             function initMap() {
@@ -336,7 +337,7 @@
         </script>
 
         <script async defer
-            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBTtnBCPGgfMxfohkzdaSsJEzC_y40bcpY&signed_in=false&callback=initMap"></script>
+            src="https://maps.googleapis.com/maps/api/js?key=@Configuration["Google:MapsApiKey"]&signed_in=false&callback=initMap"></script>
     }
 
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>

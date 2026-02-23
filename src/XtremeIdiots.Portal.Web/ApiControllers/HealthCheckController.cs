@@ -32,6 +32,9 @@ public class HealthCheckController : BaseApiController
         ArgumentNullException.ThrowIfNull(forumsClient);
         this.forumsClient = forumsClient;
 
+        var expectedCommunityUrl = configuration["XtremeIdiots:Forums:SiteUrl"] ?? "https://www.xtremeidiots.com";
+        var expectedCommunityUrlWithTrailingSlash = expectedCommunityUrl.TrimEnd('/') + "/";
+
         healthCheckComponents.Add(new HealthCheckComponent
         {
             Name = "forums-api",
@@ -41,7 +44,7 @@ public class HealthCheckController : BaseApiController
                 try
                 {
                     var response = await this.forumsClient.Core.GetCoreHello().ConfigureAwait(false);
-                    var checkResponse = response?.Result?.Data?.CommunityUrl == "https://www.xtremeidiots.com/";
+                    var checkResponse = response?.Result?.Data?.CommunityUrl == expectedCommunityUrlWithTrailingSlash;
                     return new Tuple<bool, string>(checkResponse, checkResponse ? "OK" : "Unexpected or missing CommunityUrl in forums API response");
                 }
                 catch (Exception ex)

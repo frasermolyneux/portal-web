@@ -4,7 +4,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 namespace XtremeIdiots.Portal.Web.Helpers;
 
 [HtmlTargetElement("game-type-icon")]
-public class GameTypeIconTagHelper : TagHelper
+public class GameTypeIconTagHelper(IConfiguration configuration) : TagHelper
 {
     [HtmlAttributeName("game")] public GameType Game { get; set; }
     [HtmlAttributeName("external")] public bool External { get; set; }
@@ -14,7 +14,7 @@ public class GameTypeIconTagHelper : TagHelper
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagName = "img";
-        var baseUrl = External ? "https://portal.xtremeidiots.com" : string.Empty;
+        var baseUrl = External ? (configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/') : string.Empty;
         output.Attributes.SetAttribute("src", $"{baseUrl}/images/game-icons/{Game}.png");
         output.Attributes.SetAttribute("alt", Game.ToString());
         output.Attributes.SetAttribute("width", Size.ToString());
