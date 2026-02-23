@@ -113,7 +113,7 @@ public class IdentityHostingStartup : IHostingStartup
 
             options.CallbackPath = new PathString("/signin-xtremeidiots");
 
-            var forumSiteUrl = (configuration["XtremeIdiots:Forums:SiteUrl"] ?? "https://www.xtremeidiots.com").TrimEnd('/');
+            var forumSiteUrl = (configuration["XtremeIdiots:Forums:BaseUrl"] ?? "https://www.xtremeidiots.com").TrimEnd('/');
             options.AuthorizationEndpoint = configuration["xtremeidiots_auth_authorization_endpoint"] ?? $"{forumSiteUrl}/oauth/authorize/";
             options.TokenEndpoint = configuration["xtremeidiots_auth_token_endpoint"] ?? $"{forumSiteUrl}/oauth/token/";
             options.UserInformationEndpoint = configuration["xtremeidiots_auth_userinfo_endpoint"] ?? $"{forumSiteUrl}/api/core/me";

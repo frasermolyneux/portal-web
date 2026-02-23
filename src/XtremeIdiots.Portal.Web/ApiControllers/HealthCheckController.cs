@@ -32,7 +32,7 @@ public class HealthCheckController : BaseApiController
         ArgumentNullException.ThrowIfNull(forumsClient);
         this.forumsClient = forumsClient;
 
-        var expectedCommunityUrl = configuration["XtremeIdiots:Forums:SiteUrl"] ?? "https://www.xtremeidiots.com";
+        var expectedCommunityUrl = configuration["XtremeIdiots:Forums:BaseUrl"] ?? "https://www.xtremeidiots.com";
         var expectedCommunityUrlWithTrailingSlash = expectedCommunityUrl.TrimEnd('/') + "/";
 
         healthCheckComponents.Add(new HealthCheckComponent
