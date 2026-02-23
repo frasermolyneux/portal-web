@@ -50,7 +50,7 @@ public class Startup(IConfiguration configuration)
 
         services.AddInvisionApiClient(options => options
             .WithBaseUrl(GetConfigValue("XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required"))
-            .WithApiKeyAuthentication(GetConfigValue("XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required")));
+            .WithApiKeyAuthentication(GetConfigValue("XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required"), "key", MX.Api.Client.Configuration.ApiKeyLocation.QueryParameter));
 
         services.AddAdminActionTopics();
         services.AddScoped<IDemoManager, DemoManager>();
