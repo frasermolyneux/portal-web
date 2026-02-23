@@ -77,7 +77,8 @@ public class ServerAdminAuthHandler : IAuthorizationHandler
 
     private static void HandleViewGameChatLog(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        // See-all-do-own: any admin (excluding moderators) can view chat logs across all game types
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
     }
 
     private static void HandleViewGlobalChatLog(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
@@ -92,7 +93,8 @@ public class ServerAdminAuthHandler : IAuthorizationHandler
 
     private static void HandleViewServerChatLog(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckSeniorOrMultipleGameAccessWithResource(context, requirement);
+        // See-all-do-own: any admin can view server chat logs across all game types
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
     }
 
     private static void HandleManageMaps(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)

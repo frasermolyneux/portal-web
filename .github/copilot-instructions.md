@@ -35,6 +35,7 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 - [Development Workflows](docs/development-workflows.md) — Branch strategy, CI/CD triggers, and PR flows.
 - [Datatable Implementation Guide](docs/DATATABLE-IMPLEMENTATION-GUIDE.md) — Server-backed data table patterns.
 - [Credentials Permissions Matrix](docs/credentials-permissions-matrix.md) — Roles, claims, and access mapping.
+- [Permissions Matrices](docs/permissions/) — Per-area authorization matrices (players, game servers, admin actions, etc.).
 - [CSS Architecture Guide](docs/css-architecture-guide.md) — Styling conventions and structure.
 - [Manual Steps](docs/manual-steps.md) — Post-deployment configuration.
 

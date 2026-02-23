@@ -69,7 +69,8 @@ public class BanFileMonitorsAuthHandler : IAuthorizationHandler
 
     private static void HandleViewBanFileMonitor(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckSeniorOrGameTypeServerAccessWithResource(context, requirement);
+        // See-all-do-own: any user with ban file monitor access claims can view all ban file monitors
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.BanFileMonitorLevels);
     }
 
     #endregion

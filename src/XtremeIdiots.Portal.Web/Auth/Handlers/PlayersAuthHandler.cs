@@ -62,7 +62,8 @@ public class PlayersAuthHandler : IAuthorizationHandler
 
     private static void HandleViewPlayers(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckSeniorOrMultipleGameAccessWithResource(context, requirement);
+        // See-all-do-own: any admin can view players across all game types
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
     }
 
     private static void HandleCreateProtectedName(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)

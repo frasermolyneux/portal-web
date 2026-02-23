@@ -1,6 +1,6 @@
 ﻿# Credentials View Permissions Matrix
 
-Generated: 2025-08-24
+Generated: 2026-02-23
 
 Source components reviewed:
 * `Views/Credentials/Index.cshtml`
@@ -8,6 +8,8 @@ Source components reviewed:
 * Helper logic in authorization handlers (e.g. `BaseAuthorizationHelper`)
 
 Scope: This matrix focuses ONLY on the game server credentials view (listing and revealing RCON / FTP credentials). It documents the minimal single claim or role required for each capability. Real users may hold multiple claims; effective access is the union of their claims.
+
+**Note:** The credentials page is explicitly **exempt** from the "see all, do own" permissions model. Credentials contain sensitive RCON/FTP data, so both data retrieval and authorization remain game-type-scoped. Admins only see credentials for servers belonging to their assigned game types.
 
 Legend:
 * ✓ Granted

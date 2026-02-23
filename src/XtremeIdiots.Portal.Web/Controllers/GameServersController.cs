@@ -42,7 +42,7 @@ public class GameServersController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameServer];
-            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
+            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
@@ -184,7 +184,7 @@ public class GameServersController(
                 return authResult;
 
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
-            var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItems(requiredClaims);
+            var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
 

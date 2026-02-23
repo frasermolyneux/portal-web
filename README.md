@@ -12,6 +12,7 @@
 ## Documentation
 
 * [Credentials Permissions Matrix](/docs/credentials-permissions-matrix.md) - Access and permission mapping for portal services and client roles.
+* [Permissions Matrices](/docs/permissions/) - Per-area authorization matrices (players, game servers, admin actions, etc.).
 * [CSS Architecture Guide](/docs/css-architecture-guide.md) - Styling conventions, structure, and tooling for the web UI.
 * [Datatable Implementation Guide](/docs/DATATABLE-IMPLEMENTATION-GUIDE.md) - Patterns for server-backed data tables and pagination.
 * [Development Workflows](/docs/development-workflows.md) - Branch strategy, CI/CD triggers, and development flows.

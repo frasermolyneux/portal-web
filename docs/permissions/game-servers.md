@@ -23,11 +23,12 @@ Roles / Claims:
 | Edit Game Server (General) (`EditGameServer`) | ✓           | ✓ g              | ✓ g               | ✗                | ✗               | HeadAdmin & GameServer claim via combined access   |
 | Edit Game Server FTP (`EditGameServerFtp`)    | ✓           | ✓ g              | ✗                 | ✗                | ✗               | Senior or HeadAdmin                                |
 | Edit Game Server RCON (`EditGameServerRcon`)  | ✓           | ✓ g              | ✗                 | ✗                | ✗               | Senior or HeadAdmin                                |
-| View Game Server (`ViewGameServer`)           | ✓           | ✓ g              | ✓ g               | ✗                | ✗               | Combined access (HeadAdmin or GameServer)          |
+| View Game Server (`ViewGameServer`)           | ✓           | ✓ (all)          | ✓ (all)           | ✗                | ✗               | **See-all**: any user with game server access can view all game servers |
 | View FTP Credential (`ViewFtpCredential`)     | ✓           | ✓ g              | ✗                 | ✗                | ✗               | See credentials matrix for per-server claim nuance |
 | View RCON Credential (`ViewRconCredential`)   | ✓           | ✓ g              | ✗                 | ✓ g              | ✓ g             | HeadAdmin added alongside GameAdmin / LiveRcon     |
 
 ## Observations
+- **See-all, do-own model**: ViewGameServer now allows any admin with game server access claims to view servers across all game types. Create/Edit/Delete operations remain game-type-scoped.
 - GameAdmin cannot access the Game Servers list unless also HeadAdmin or GameServer claim holder.
 - `GameServer` claim grants broad edit/view within its game type (excluding FTP/RCON segments).
 - RCON/FTP edits restricted to HeadAdmin (not GameServer claim holders). HeadAdmin now also views RCON credentials.

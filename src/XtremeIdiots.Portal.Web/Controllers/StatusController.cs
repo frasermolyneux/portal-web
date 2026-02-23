@@ -41,7 +41,7 @@ public class StatusController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
-            var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItems(requiredClaims);
+            var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             Logger.LogInformation("User {UserId} has access to {GameTypeCount} game types and {MonitorCount} ban file monitors",
                 User.XtremeIdiotsId(), gameTypes.Length, banFileMonitorIds.Length);

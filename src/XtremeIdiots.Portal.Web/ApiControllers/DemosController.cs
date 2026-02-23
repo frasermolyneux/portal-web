@@ -43,23 +43,13 @@ public class DemosController(
             }
 
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
-            var gameTypes = User.ClaimedGameTypes(requiredClaims);
+            var gameTypes = User.ClaimedGameTypesForViewing(requiredClaims);
 
-            string? filterUserId = null;
-            GameType[]? filterGameTypes;
-            if (id is not null)
-            {
-                filterGameTypes = [(GameType)id];
-
-                filterUserId = gameTypes.Contains((GameType)id) ? null : User.XtremeIdiotsId();
-            }
-            else
-            {
-                filterGameTypes = [.. gameTypes];
-
-                if (gameTypes.Count == 0)
-                    filterUserId = User.XtremeIdiotsId();
-            }
+            // With see-all model, admins can view demos across all game types.
+            // If a specific game type is requested via the id parameter, filter to just that type.
+            // Users with no admin claims fall back to seeing only their own demos.
+            var filterUserId = gameTypes.Count == 0 ? User.XtremeIdiotsId() : null;
+            GameType[]? filterGameTypes = id is not null ? [(GameType)id] : [.. gameTypes];
 
             var order = GetDemoOrderFromDataTable(model);
 
@@ -151,7 +141,7 @@ public class DemosController(
             var claimsPrincipal = await signInManager.ClaimsFactory.CreateAsync(user).ConfigureAwait(false);
 
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
-            var gameTypes = claimsPrincipal.ClaimedGameTypes(requiredClaims);
+            var gameTypes = claimsPrincipal.ClaimedGameTypesForViewing(requiredClaims);
 
             string? filterUserId = null;
             GameType[]? filterGameTypes = [.. gameTypes];

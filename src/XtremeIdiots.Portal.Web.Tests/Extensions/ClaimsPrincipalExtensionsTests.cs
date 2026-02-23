@@ -234,4 +234,187 @@ public class ClaimsPrincipalExtensionsTests
         Assert.Empty(gameTypes);
         Assert.Empty(itemIds);
     }
+
+    #region ClaimedGamesAndItemsForViewing Tests
+
+    [Fact]
+    public void ClaimedGamesAndItemsForViewing_WithSeniorAdmin_ReturnsAllGameTypes()
+    {
+        // Arrange
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.SeniorAdmin, "true")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
+
+        // Assert
+        var allGameTypes = Enum.GetValues<GameType>();
+        Assert.Equal(allGameTypes.Length, gameTypes.Length);
+        Assert.Empty(itemIds);
+    }
+
+    [Fact]
+    public void ClaimedGamesAndItemsForViewing_WithSingleGameTypeClaim_ReturnsAllGameTypes()
+    {
+        // Arrange — HeadAdmin for COD2 only
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.HeadAdmin, "CallOfDuty2")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.HeadAdmin };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
+
+        // Assert — should see ALL game types for viewing, not just COD2
+        var allGameTypes = Enum.GetValues<GameType>();
+        Assert.Equal(allGameTypes.Length, gameTypes.Length);
+        Assert.Empty(itemIds);
+    }
+
+    [Fact]
+    public void ClaimedGamesAndItemsForViewing_WithServerGuidClaim_ReturnsAllGameTypesAndServerId()
+    {
+        // Arrange
+        var serverId = Guid.NewGuid();
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.BanFileMonitor, serverId.ToString())
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.BanFileMonitor };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
+
+        // Assert — should see ALL game types for viewing, and the specific server ID
+        var allGameTypes = Enum.GetValues<GameType>();
+        Assert.Equal(allGameTypes.Length, gameTypes.Length);
+        Assert.Contains(serverId, itemIds);
+    }
+
+    [Fact]
+    public void ClaimedGamesAndItemsForViewing_WithNoClaims_ReturnsEmptyArrays()
+    {
+        // Arrange
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+        var requiredClaims = new[] { UserProfileClaimType.GameAdmin };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
+
+        // Assert
+        Assert.Empty(gameTypes);
+        Assert.Empty(itemIds);
+    }
+
+    [Fact]
+    public void ClaimedGamesAndItemsForViewing_WithUnrelatedClaim_ReturnsEmptyArrays()
+    {
+        // Arrange — has a Moderator claim but we're checking for HeadAdmin
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.Moderator, "CallOfDuty4")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.HeadAdmin };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
+
+        // Assert — claim doesn't match required claims, so empty
+        Assert.Empty(gameTypes);
+        Assert.Empty(itemIds);
+    }
+
+    #endregion
+
+    #region ClaimedGameTypesForViewing Tests
+
+    [Fact]
+    public void ClaimedGameTypesForViewing_WithSeniorAdmin_ReturnsAllGameTypes()
+    {
+        // Arrange
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.SeniorAdmin, "true")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.SeniorAdmin };
+
+        // Act
+        var result = principal.ClaimedGameTypesForViewing(requiredClaims);
+
+        // Assert
+        var allGameTypes = Enum.GetValues<GameType>();
+        Assert.Equal(allGameTypes.Length, result.Count);
+    }
+
+    [Fact]
+    public void ClaimedGameTypesForViewing_WithSingleGameAdminClaim_ReturnsAllGameTypes()
+    {
+        // Arrange — GameAdmin for COD4 only
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.GameAdmin, "CallOfDuty4")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.GameAdmin };
+
+        // Act
+        var result = principal.ClaimedGameTypesForViewing(requiredClaims);
+
+        // Assert — should see ALL game types for viewing
+        var allGameTypes = Enum.GetValues<GameType>();
+        Assert.Equal(allGameTypes.Length, result.Count);
+    }
+
+    [Fact]
+    public void ClaimedGameTypesForViewing_WithNoClaims_ReturnsEmpty()
+    {
+        // Arrange
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+        var requiredClaims = new[] { UserProfileClaimType.GameAdmin };
+
+        // Act
+        var result = principal.ClaimedGameTypesForViewing(requiredClaims);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void ClaimedGameTypesForViewing_VsClaimedGameTypes_ViewingReturnsMore()
+    {
+        // Arrange — GameAdmin for COD2 only
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.GameAdmin, "CallOfDuty2")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.GameAdmin };
+
+        // Act
+        var restrictedResult = principal.ClaimedGameTypes(requiredClaims);
+        var viewingResult = principal.ClaimedGameTypesForViewing(requiredClaims);
+
+        // Assert — restricted returns only COD2, viewing returns all
+        Assert.Single(restrictedResult);
+        Assert.Equal(GameType.CallOfDuty2, restrictedResult[0]);
+        Assert.True(viewingResult.Count > restrictedResult.Count);
+    }
+
+    #endregion
 }

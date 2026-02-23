@@ -17,11 +17,12 @@ Roles / Claims:
 | -------------------------------------------------- | ----------- | ---------------- | ----------------------- | --------------------------------------------------------------------------------- |
 | Access Ban File Monitors (`AccessBanFileMonitors`) | ✓           | ✓ g              | ✓ s                     | Claim group includes all three                                                    |
 | Create Ban File Monitor (`CreateBanFileMonitor`)   | ✓           | ✓ g              | ✓ s                     | Senior or (HeadAdmin for game) OR (BanFileMonitor for server) via composite check |
-| View Ban File Monitor (`ViewBanFileMonitor`)       | ✓           | ✓ g              | ✓ s                     | Same composite                                                                    |
+| View Ban File Monitor (`ViewBanFileMonitor`)       | ✓           | ✓ (all)          | ✓ (all)                 | **See-all**: any user with ban file monitor access can view all monitors           |
 | Edit Ban File Monitor (`EditBanFileMonitor`)       | ✓           | ✓ g              | ✓ s                     | Same composite                                                                    |
 | Delete Ban File Monitor (`DeleteBanFileMonitor`)   | ✓           | ✓ g              | ✓ s                     | Same composite                                                                    |
 
 ## Notes
+- **See-all, do-own model**: ViewBanFileMonitor now allows any admin with ban file monitor access to view monitors across all game types. Create/Edit/Delete operations remain game-type or server-scoped.
 - No explicit requirement for possessing both server and game claims; either suffices.
 - HeadAdmin acts game-wide; per-server claim limited.
 

@@ -36,7 +36,7 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
-            var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItems(requiredClaims);
+            var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 

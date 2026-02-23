@@ -63,7 +63,7 @@ public class ServerAdminController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.ServerAdmin];
-            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
+            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 gameTypes, gameServerIds, GameServerFilter.LiveTrackingEnabled, 0, 50,

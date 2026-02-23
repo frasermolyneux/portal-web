@@ -115,6 +115,53 @@ public static class ClaimsPrincipalExtensions
     }
 
     /// <summary>
+    /// Extracts claimed game types and item IDs for viewing purposes.
+    /// If the user holds ANY of the required claims, all game types are returned (see-all model).
+    /// Item IDs (server GUIDs) are still returned only for the user's specific claims.
+    /// </summary>
+    /// <param name="claimsPrincipal">The claims principal to extract from</param>
+    /// <param name="requiredClaims">The required claim types to check for</param>
+    /// <returns>A tuple containing all game types (if any claim matches) and the user's specific item IDs</returns>
+    public static (GameType[] gameTypes, Guid[] itemIds) ClaimedGamesAndItemsForViewing(this ClaimsPrincipal claimsPrincipal, IEnumerable<string> requiredClaims)
+    {
+        List<Guid> servers = [];
+
+        var claims = claimsPrincipal.Claims.Where(claim => requiredClaims.Contains(claim.Type));
+        var hasClaim = false;
+
+        foreach (var claim in claims)
+        {
+            hasClaim = true;
+
+            if (Guid.TryParse(claim.Value, out var guid))
+                servers.Add(guid);
+        }
+
+        // If the user has SeniorAdmin or any of the required claims, return all game types for viewing
+        var hasAnyClaim = hasClaim || claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin);
+        var gameTypes = hasAnyClaim ? Enum.GetValues<GameType>() : [];
+
+        return ([.. gameTypes], [.. servers]);
+    }
+
+    /// <summary>
+    /// Extracts game types for viewing purposes.
+    /// If the user holds ANY of the required claims, all game types are returned (see-all model).
+    /// </summary>
+    /// <param name="claimsPrincipal">The claims principal to extract from</param>
+    /// <param name="requiredClaims">The required claim types to check for</param>
+    /// <returns>A list of all game types if the user has any matching claim</returns>
+    public static List<GameType> ClaimedGameTypesForViewing(this ClaimsPrincipal claimsPrincipal, IEnumerable<string> requiredClaims)
+    {
+        if (claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+            return [.. Enum.GetValues<GameType>()];
+
+        var hasClaim = claimsPrincipal.Claims.Any(claim => requiredClaims.Contains(claim.Type));
+
+        return hasClaim ? [.. Enum.GetValues<GameType>()] : [];
+    }
+
+    /// <summary>
     /// Gets the game types for which the user can manage game servers
     /// </summary>
     /// <param name="claimsPrincipal">The claims principal to extract from</param>

@@ -121,12 +121,8 @@ public class GameServersAuthHandler : IAuthorizationHandler
 
     private static void HandleViewGameServer(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-
-        if (context.Resource is GameType gameType)
-        {
-            BaseAuthorizationHelper.CheckCombinedGameServerAccess(context, requirement, gameType);
-        }
+        // See-all-do-own: any user with game server access claims can view all game servers
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.GameServerAccessLevels);
     }
 
     private static void HandleViewRconCredential(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)

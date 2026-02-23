@@ -26,6 +26,7 @@ Roles / Claims considered (minimal single-claim scenarios):
 | View RCON Password (`ViewRconCredential`)     | ✓ (all)     | ✓ g              | ✓ g              | ✗                       | ✓ s                      | ✓ g             | HeadAdmin added; per-server claim supported |
 
 ## Nuances
+- **Credentials are exempt from the see-all, do-own model.** Both data retrieval and authorization remain game-type-scoped due to the sensitive nature of RCON/FTP credentials.
 - HeadAdmin now included in `ViewRconCredential` for parity with FTP credential access.
 - `RconCredentials` claim grants per-server RCON password visibility.
 - `LiveRcon` cannot reach page alone (not in AccessCredentials claim set) though it enables viewing RCON.
