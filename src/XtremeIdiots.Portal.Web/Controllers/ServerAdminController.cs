@@ -48,9 +48,6 @@ public class ServerAdminController(
     ILogger<ServerAdminController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private readonly string forumBaseUrl = (configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/') + "/";
-    private readonly string fallbackAdminId = configuration["XtremeIdiots:Forums:DefaultAdminUserId"] ?? "21145";
-    private readonly int tempBanDurationDays = int.TryParse(configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
 
     /// <summary>
     /// Displays the main server administration dashboard with available game servers
@@ -854,6 +851,8 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record with expiry if we have a GUID
+                var tempBanDurationDays = int.TryParse(configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+
                 if (!string.IsNullOrWhiteSpace(playerGuid))
                 {
                     var expiryDate = DateTime.UtcNow.AddDays(tempBanDurationDays);

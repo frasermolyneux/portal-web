@@ -93,7 +93,7 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
 
     private int ResolveForumId(AdminActionType type, GameType gameType)
     {
-        var defaultForumId = int.Parse(configuration["XtremeIdiots:Forums:DefaultForumId"] ?? "28");
+        var defaultForumId = int.TryParse(configuration["XtremeIdiots:Forums:DefaultForumId"], out var parsedForumId) ? parsedForumId : 28;
 
         var category = type switch
         {

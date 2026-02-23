@@ -61,9 +61,13 @@
         }
     </script>
 
-    @if (!string.IsNullOrEmpty(Configuration["Google:MapsApiKey"]))
+    @{
+        var mapsApiKey = Configuration["Google:MapsApiKey"];
+        var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @"^[A-Za-z0-9_-]+$");
+    }
+    @if (isValidMapsApiKey)
     {
         <script async defer
-            src="https://maps.googleapis.com/maps/api/js?key=@Configuration["Google:MapsApiKey"]&signed_in=false&callback=initMap"></script>
+            src="https://maps.googleapis.com/maps/api/js?key=@mapsApiKey&signed_in=false&callback=initMap"></script>
     }
 }
