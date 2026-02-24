@@ -44,10 +44,6 @@ resource "azurerm_linux_web_app" "app" {
     "ASPNETCORE_ENVIRONMENT"                     = var.environment == "prd" ? "Production" : "Development"
     "WEBSITE_RUN_FROM_PACKAGE"                   = "1"
 
-    "GeoLocationApi__BaseUrl"             = var.geo_location_api.base_url
-    "GeoLocationApi__ApiKey"              = format("@Microsoft.KeyVault(SecretUri=%s)", var.geo_location_api.keyvault_primary_ref)
-    "GeoLocationApi__ApplicationAudience" = var.geo_location_api.application_audience
-
     "sql_connection_string" = format("Server=tcp:%s;Authentication=Active Directory Default; Database=%s;User ID=%s;", data.azurerm_mssql_server.sql_server.fully_qualified_domain_name, local.sql_database_name, local.web_identity.client_id)
 
     // https://learn.microsoft.com/en-us/azure/azure-monitor/profiler/profiler-azure-functions#app-settings-for-enabling-profiler

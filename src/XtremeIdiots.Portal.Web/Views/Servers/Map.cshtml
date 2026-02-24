@@ -1,4 +1,5 @@
 ﻿@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RecentPlayers
+@inject IConfiguration Configuration
 @model List<RecentPlayerDto>
 
 @{
@@ -60,6 +61,13 @@
         }
     </script>
 
-    <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBTtnBCPGgfMxfohkzdaSsJEzC_y40bcpY&signed_in=false&callback=initMap"></script>
+    @{
+        var mapsApiKey = Configuration["Google:MapsApiKey"];
+        var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @"^[A-Za-z0-9_-]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
+    }
+    @if (isValidMapsApiKey)
+    {
+        <script async defer
+            src="https://maps.googleapis.com/maps/api/js?key=@mapsApiKey&signed_in=false&callback=initMap"></script>
+    }
 }

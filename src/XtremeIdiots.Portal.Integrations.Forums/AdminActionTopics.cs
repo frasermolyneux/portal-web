@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 using MX.InvisionCommunity.Api.Abstractions;
 using XtremeIdiots.Portal.Integrations.Forums.Extensions;
@@ -11,39 +12,22 @@ namespace XtremeIdiots.Portal.Integrations.Forums;
 /// </summary>
 /// <param name="logger">Logger for tracking operations and errors</param>
 /// <param name="forumsClient">Invision Community API client for forum operations</param>
-public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiClient forumsClient) : IAdminActionTopics
+public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiClient forumsClient, IConfiguration configuration) : IAdminActionTopics
 {
 
     /// <summary>
     /// Creates a forum topic for a new admin action
     /// </summary>
-    /// <param name="type">Type of admin action (warning, ban, etc.)</param>
-    /// <param name="gameType">Game type to determine appropriate forum section</param>
-    /// <param name="playerId">Unique identifier of the player</param>
-    /// <param name="username">Player's username</param>
-    /// <param name="created">When the admin action was created</param>
-    /// <param name="text">Admin action description/reason</param>
-    /// <param name="adminId">ID of the admin who created the action</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>Topic ID of the created forum topic, or 0 if creation failed</returns>
     public async Task<int> CreateTopicForAdminAction(AdminActionType type, GameType gameType, Guid playerId, string username, DateTime created, string text, string? adminId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var userId = 21145;
+            var userId = int.TryParse(configuration["XtremeIdiots:Forums:DefaultAdminUserId"], out var defaultUserId) ? defaultUserId : 21145;
 
             if (adminId is not null)
                 userId = Convert.ToInt32(adminId);
 
-            var forumId = type switch
-            {
-                AdminActionType.Observation => gameType.ForumIdForObservations(),
-                AdminActionType.Warning => gameType.ForumIdForWarnings(),
-                AdminActionType.Kick => gameType.ForumIdForKicks(),
-                AdminActionType.TempBan => gameType.ForumIdForTempBans(),
-                AdminActionType.Ban => gameType.ForumIdForBans(),
-                _ => 28
-            };
+            var forumId = ResolveForumId(type, gameType);
 
             var postTopicResult = await forumsClient.Forums.PostTopic(forumId, userId, $"{username} - {type}", PostContent(type, playerId, username, created, text), type.ToString(), cancellationToken).ConfigureAwait(false);
 
@@ -83,7 +67,7 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
         if (topicId == 0)
             return;
 
-        var userId = 21145;
+        var userId = int.TryParse(configuration["XtremeIdiots:Forums:DefaultAdminUserId"], out var defaultUserId) ? defaultUserId : 21145;
 
         if (adminId is not null)
             userId = Convert.ToInt32(adminId);
@@ -91,11 +75,12 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
         await forumsClient.Forums.UpdateTopic(topicId, userId, PostContent(type, playerId, username, created, text), cancellationToken).ConfigureAwait(false);
     }
 
-    private static string PostContent(AdminActionType type, Guid playerId, string username, DateTime created, string text)
+    private string PostContent(AdminActionType type, Guid playerId, string username, DateTime created, string text)
     {
+        var portalBaseUrl = (configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/');
         return "<p>" +
                $"   Username: {username}<br>" +
-               $"   Player Link: <a href=\"https://portal.xtremeidiots.com/Players/Details/{playerId}\">Portal</a><br>" +
+               $"   Player Link: <a href=\"{portalBaseUrl}/Players/Details/{playerId}\">Portal</a><br>" +
                $"   {type} Created: {created.ToString(CultureInfo.InvariantCulture)}" +
                "</p>" +
                "<p>" +
@@ -104,5 +89,41 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
                "<p>" +
                "   <small>Do not edit this post directly as it will be overwritten by the Portal. Add comments on posts below or edit the record in the Portal.</small>" +
                "</p>";
+    }
+
+    private int ResolveForumId(AdminActionType type, GameType gameType)
+    {
+        var defaultForumId = int.TryParse(configuration["XtremeIdiots:Forums:DefaultForumId"], out var parsedForumId) ? parsedForumId : 28;
+
+        var category = type switch
+        {
+            AdminActionType.Observation or AdminActionType.Warning or AdminActionType.Kick => "AdminLogs",
+            AdminActionType.TempBan or AdminActionType.Ban => "Bans",
+            _ => null
+        };
+
+        if (category is null)
+            return defaultForumId;
+
+        var gameKey = gameType switch
+        {
+            GameType.Arma or GameType.Arma2 or GameType.Arma3 => "Arma",
+            _ => gameType.ToString()
+        };
+
+        var configValue = configuration[$"XtremeIdiots:Forums:{category}:{gameKey}"];
+        if (configValue is not null && int.TryParse(configValue, out var forumId))
+            return forumId;
+
+        // Fallback to hardcoded values from GameTypeExtensions
+        return type switch
+        {
+            AdminActionType.Observation => gameType.ForumIdForObservations(),
+            AdminActionType.Warning => gameType.ForumIdForWarnings(),
+            AdminActionType.Kick => gameType.ForumIdForKicks(),
+            AdminActionType.TempBan => gameType.ForumIdForTempBans(),
+            AdminActionType.Ban => gameType.ForumIdForBans(),
+            _ => defaultForumId
+        };
     }
 }

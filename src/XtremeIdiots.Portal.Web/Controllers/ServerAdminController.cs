@@ -48,9 +48,6 @@ public class ServerAdminController(
     ILogger<ServerAdminController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
 {
-    private const string DefaultForumBaseUrl = "https://www.xtremeidiots.com/forums/topic/";
-    private const string DefaultFallbackAdminId = "21145";
-    private const int DefaultTempBanDurationDays = 7;
 
     /// <summary>
     /// Displays the main server administration dashboard with available game servers
@@ -854,9 +851,11 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record with expiry if we have a GUID
+                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+
                 if (!string.IsNullOrWhiteSpace(playerGuid))
                 {
-                    var expiryDate = DateTime.UtcNow.AddDays(DefaultTempBanDurationDays);
+                    var expiryDate = DateTime.UtcNow.AddDays(tempBanDurationDays);
                     await CreateAdminActionForRconOperationAsync(
                         gameServerData.GameType, playerGuid, playerName, AdminActionType.TempBan,
                         $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
@@ -871,7 +870,7 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
-                return Json(new { success = true, message = $"Player {playerName} has been temp banned for {DefaultTempBanDurationDays} days" });
+                return Json(new { success = true, message = $"Player {playerName} has been temp banned for {tempBanDurationDays} days" });
             }
             catch (Exception ex)
             {

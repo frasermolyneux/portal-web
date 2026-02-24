@@ -113,9 +113,10 @@ public class IdentityHostingStartup : IHostingStartup
 
             options.CallbackPath = new PathString("/signin-xtremeidiots");
 
-            options.AuthorizationEndpoint = configuration["xtremeidiots_auth_authorization_endpoint"] ?? "https://www.xtremeidiots.com/oauth/authorize/";
-            options.TokenEndpoint = configuration["xtremeidiots_auth_token_endpoint"] ?? "https://www.xtremeidiots.com/oauth/token/";
-            options.UserInformationEndpoint = configuration["xtremeidiots_auth_userinfo_endpoint"] ?? "https://www.xtremeidiots.com/api/core/me";
+            var forumSiteUrl = (configuration["XtremeIdiots:Forums:BaseUrl"] ?? "https://www.xtremeidiots.com").TrimEnd('/');
+            options.AuthorizationEndpoint = configuration["xtremeidiots_auth_authorization_endpoint"] ?? $"{forumSiteUrl}/oauth/authorize/";
+            options.TokenEndpoint = configuration["xtremeidiots_auth_token_endpoint"] ?? $"{forumSiteUrl}/oauth/token/";
+            options.UserInformationEndpoint = configuration["xtremeidiots_auth_userinfo_endpoint"] ?? $"{forumSiteUrl}/api/core/me";
 
             options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
             options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");

@@ -40,13 +40,6 @@ portal_core_state = {
   tenant_id            = "e56a6947-bb9a-4a6e-846a-1f118d1c3a14"
 }
 
-geo_location_api = {
-  base_url               = "https://apim-geo-location-prd-swedencentral-6f10eaac01a0.azure-api.net/geolocation"
-  application_audience   = "api://e56a6947-bb9a-4a6e-846a-1f118d1c3a14/geolocation-api-prd"
-  keyvault_primary_ref   = "https://kv-03bc577ff535-swe.vault.azure.net/secrets/portal-web-dev-apim-subscription-key/"
-  keyvault_secondary_ref = "https://kv-03bc577ff535-swe.vault.azure.net/secrets/portal-web-dev-apim-subscription-key-secondary/"
-}
-
 dns_subscription_id     = "db34f572-8b71-40d6-8f99-f29a27612144"
 dns_resource_group_name = "rg-platform-dns-prd-uksouth-01"
 dns_subdomain           = "portal.dev"

@@ -24,6 +24,7 @@ public class ExternalController(
     ILogger<ExternalController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
 {
+    private readonly string portalBaseUrl = (configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/');
 
     /// <summary>
     /// Retrieves the latest admin actions for display in external forum widgets
@@ -60,13 +61,13 @@ public class ExternalController(
 
                 results.Add(new
                 {
-                    GameIconUrl = $"https://portal.xtremeidiots.com/images/game-icons/{adminActionDto.Player?.GameType.ToString()}.png",
+                    GameIconUrl = $"{portalBaseUrl}/images/game-icons/{adminActionDto.Player?.GameType.ToString()}.png",
                     AdminName = adminName,
                     AdminId = adminId,
                     ActionType = adminActionDto.Type.ToString(),
                     ActionText = actionText,
                     PlayerName = adminActionDto.Player?.Username,
-                    PlayerLink = $"https://portal.xtremeidiots.com/Players/Details/{adminActionDto.PlayerId}"
+                    PlayerLink = $"{portalBaseUrl}/Players/Details/{adminActionDto.PlayerId}"
                 });
             }
 

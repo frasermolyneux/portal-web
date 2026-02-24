@@ -31,9 +31,9 @@ public class Startup(IConfiguration configuration)
             telemetryProcessorChainBuilder.UseAdaptiveSampling(
                 settings: new SamplingPercentageEstimatorSettings
                 {
-                    InitialSamplingPercentage = 5,
-                    MinSamplingPercentage = 5,
-                    MaxSamplingPercentage = 60
+                    InitialSamplingPercentage = double.TryParse(Configuration["ApplicationInsights:InitialSamplingPercentage"], out var initPct) ? initPct : 5,
+                    MinSamplingPercentage = double.TryParse(Configuration["ApplicationInsights:MinSamplingPercentage"], out var minPct) ? minPct : 5,
+                    MaxSamplingPercentage = double.TryParse(Configuration["ApplicationInsights:MaxSamplingPercentage"], out var maxPct) ? maxPct : 60
                 },
                 callback: null,
                 excludedTypes: "Exception");

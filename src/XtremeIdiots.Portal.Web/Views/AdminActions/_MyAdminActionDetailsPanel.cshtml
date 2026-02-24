@@ -1,7 +1,7 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions
 @model XtremeIdiots.Portal.Web.ViewModels.MyAdminActionDetailsViewModel
-@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject IConfiguration Configuration
 
 @if (Model?.AdminAction is null)
 {
@@ -27,7 +27,7 @@
     };
     var gameType = player?.GameType;
     var userForumId = adminAction.UserProfile?.XtremeIdiotsForumId;
-    var forumBase = Configuration["AdminActions:ForumBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/";
+    var forumBase = (Configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/') + "/";
 }
 <div class="my-action-details-inner">
     <div class="d-flex align-items-start mb-3 gap-3 flex-wrap">

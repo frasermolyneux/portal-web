@@ -47,7 +47,7 @@ public class ServerNameTagHelper : TagHelper
 }
 
 [HtmlTargetElement("server-link")]
-public class ServerLinkTagHelper : TagHelper
+public class ServerLinkTagHelper(IConfiguration configuration) : TagHelper
 {
     [HtmlAttributeName("type")] public string Type { get; set; } = string.Empty; // gametracker|hlsw|steam
     [HtmlAttributeName("game")] public string? Game { get; set; }
@@ -60,7 +60,8 @@ public class ServerLinkTagHelper : TagHelper
         switch (Type.ToLowerInvariant())
         {
             case "gametracker":
-                output.Attributes.SetAttribute("href", $"https://www.gametracker.com/server_info/{Host}:{Port}");
+                var gameTrackerBaseUrl = (configuration["GameTracker:ServerInfoBaseUrl"] ?? "https://www.gametracker.com/server_info/").TrimEnd('/') + "/";
+                output.Attributes.SetAttribute("href", $"{gameTrackerBaseUrl}{Host}:{Port}");
                 output.Attributes.SetAttribute("target", "_blank");
                 output.Content.SetHtmlContent("<img src=\"/images/service-icons/gametracker.png\" alt=\"gametracker\"/>");
                 break;

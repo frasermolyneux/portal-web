@@ -26,7 +26,7 @@ public class ProxyCheckService : IProxyCheckService
     private readonly IMemoryCache memoryCache;
     private readonly ILogger<ProxyCheckService> logger;
     private readonly string? apiKey;
-    private readonly string apiBaseUrl = "https://proxycheck.io/v2/";
+    private readonly string apiBaseUrl;
     private readonly TimeSpan cacheDuration = TimeSpan.FromHours(1);
 
     /// <summary>
@@ -50,6 +50,7 @@ public class ProxyCheckService : IProxyCheckService
         this.memoryCache = memoryCache;
         this.logger = logger;
 
+        apiBaseUrl = (configuration["ProxyCheck:BaseUrl"] ?? "https://proxycheck.io/v2/").TrimEnd('/') + "/";
         apiKey = configuration["ProxyCheck:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
         {

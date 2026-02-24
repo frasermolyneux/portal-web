@@ -1,4 +1,5 @@
 @inject IAuthorizationService AuthorizationService
+@inject IConfiguration Configuration
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
@@ -174,7 +175,7 @@
                                         <div>
                                             <small class="text-muted text-uppercase fw-bold">Discussion Topic</small>
                                             <div>
-                                                <a href="https://www.xtremeidiots.com/forums/topic/@item.ForumTopicId-topic/"
+                                                <a href="@((Configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/'))/@item.ForumTopicId-topic/"
                                                     target="_blank" class="btn btn-sm btn-outline-@cardStyle">
                                                     <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>
                                                     View Forum Topic
