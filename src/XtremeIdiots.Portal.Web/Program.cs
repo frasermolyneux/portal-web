@@ -40,9 +40,18 @@ public class Program
                             .Select("ProxyCheck:*", environmentLabel)
                             .Select("GameTracker:*", environmentLabel)
                             .Select("Google:*", environmentLabel)
-                            .Select("FeatureManagement:*", environmentLabel);
+                            .Select("FeatureManagement:*", environmentLabel)
+                            .ConfigureRefresh(refresh =>
+                            {
+                                refresh.Register("Sentinel", environmentLabel, refreshAll: true)
+                                       .SetRefreshInterval(TimeSpan.FromMinutes(5));
+                            });
 
-                        options.ConfigureKeyVault(kv => kv.SetCredential(credential));
+                        options.ConfigureKeyVault(kv =>
+                        {
+                            kv.SetCredential(credential);
+                            kv.SetSecretRefreshInterval(TimeSpan.FromHours(1));
+                        });
                     });
                 }
             })

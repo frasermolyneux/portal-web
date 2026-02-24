@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using MX.GeoLocation.Api.Client.V1;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using MX.InvisionCommunity.Api.Client;
@@ -20,8 +21,17 @@ public class Startup(IConfiguration configuration)
 {
     public IConfiguration Configuration { get; } = configuration;
 
+    private readonly SamplingPercentageEstimatorSettings _samplingSettings = new()
+    {
+        InitialSamplingPercentage = double.TryParse(configuration["ApplicationInsights:InitialSamplingPercentage"], out var initPct) ? initPct : 5,
+        MinSamplingPercentage = double.TryParse(configuration["ApplicationInsights:MinSamplingPercentage"], out var minPct) ? minPct : 5,
+        MaxSamplingPercentage = double.TryParse(configuration["ApplicationInsights:MaxSamplingPercentage"], out var maxPct) ? maxPct : 60
+    };
+
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddAzureAppConfiguration();
+
         services.AddSingleton<ITelemetryInitializer, TelemetryInitializer>();
         services.AddLogging();
 
@@ -29,12 +39,7 @@ public class Startup(IConfiguration configuration)
         {
             var telemetryProcessorChainBuilder = telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder;
             telemetryProcessorChainBuilder.UseAdaptiveSampling(
-                settings: new SamplingPercentageEstimatorSettings
-                {
-                    InitialSamplingPercentage = double.TryParse(Configuration["ApplicationInsights:InitialSamplingPercentage"], out var initPct) ? initPct : 5,
-                    MinSamplingPercentage = double.TryParse(Configuration["ApplicationInsights:MinSamplingPercentage"], out var minPct) ? minPct : 5,
-                    MaxSamplingPercentage = double.TryParse(Configuration["ApplicationInsights:MaxSamplingPercentage"], out var maxPct) ? maxPct : 60
-                },
+                settings: _samplingSettings,
                 callback: null,
                 excludedTypes: "Exception");
             telemetryProcessorChainBuilder.Build();
@@ -46,7 +51,6 @@ public class Startup(IConfiguration configuration)
         });
 
         services.AddServiceProfiler();
-        services.AddAzureAppConfiguration();
 
         services.AddInvisionApiClient(options => options
             .WithBaseUrl(GetConfigValue("XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required"))
@@ -110,6 +114,17 @@ public class Startup(IConfiguration configuration)
     {
         app.UseForwardedHeaders();
         app.UseAzureAppConfiguration();
+
+        // Update adaptive sampling settings when configuration refreshes
+        ChangeToken.OnChange(
+            () => Configuration.GetReloadToken(),
+            () =>
+            {
+                if (double.TryParse(Configuration["ApplicationInsights:MinSamplingPercentage"], out var min))
+                    _samplingSettings.MinSamplingPercentage = min;
+                if (double.TryParse(Configuration["ApplicationInsights:MaxSamplingPercentage"], out var max))
+                    _samplingSettings.MaxSamplingPercentage = max;
+            });
 
         if (env.IsDevelopment())
         {
