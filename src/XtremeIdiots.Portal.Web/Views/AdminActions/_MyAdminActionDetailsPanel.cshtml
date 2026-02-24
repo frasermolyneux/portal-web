@@ -1,7 +1,7 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions
 @model XtremeIdiots.Portal.Web.ViewModels.MyAdminActionDetailsViewModel
-@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject IConfiguration Configuration
 
 @if (Model?.AdminAction is null)
 {

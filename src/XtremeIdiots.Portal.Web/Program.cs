@@ -1,4 +1,5 @@
 ﻿using Azure.Identity;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 
 namespace XtremeIdiots.Portal.Web;
 
@@ -12,7 +13,7 @@ public class Program
     public static IHostBuilder CreateHostBuilder(string[] args)
     {
         return Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration(builder =>
+            .ConfigureAppConfiguration((context, builder) =>
             {
                 var builtConfig = builder.Build();
                 var appConfigEndpoint = builtConfig["AzureAppConfiguration:Endpoint"];
@@ -20,7 +21,7 @@ public class Program
                 if (!string.IsNullOrWhiteSpace(appConfigEndpoint))
                 {
                     var managedIdentityClientId = builtConfig["AzureAppConfiguration:ManagedIdentityClientId"];
-                    var environmentLabel = builtConfig["AzureAppConfiguration:Environment"];
+                    var environmentLabel = builtConfig["AzureAppConfiguration:Environment"] ?? context.HostingEnvironment.EnvironmentName;
 
                     var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
                     {

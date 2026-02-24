@@ -55,12 +55,14 @@ public class AdminActionsController(
             if (authResult is not null)
                 return authResult;
 
+            var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+
             var createAdminActionViewModel = new CreateAdminActionViewModel
             {
                 Type = adminActionType,
                 PlayerId = playerData.PlayerId,
                 PlayerDto = playerData,
-                Expires = adminActionType == AdminActionType.TempBan ? DateTime.UtcNow.AddDays(int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7) : null
+                Expires = adminActionType == AdminActionType.TempBan ? DateTime.UtcNow.AddDays(tempBanDurationDays) : null
             };
 
             return View(createAdminActionViewModel);

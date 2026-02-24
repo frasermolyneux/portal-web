@@ -1,5 +1,5 @@
 ﻿@inject IAuthorizationService AuthorizationService
-@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject IConfiguration Configuration
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Web.Extensions
@@ -472,7 +472,7 @@
 
     @{
         var mapsApiKey = Configuration["Google:MapsApiKey"];
-        var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @"^[A-Za-z0-9_-]+$");
+        var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @"^[A-Za-z0-9_-]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
     }
     @if (isValidMapsApiKey)
     {

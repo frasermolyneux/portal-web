@@ -1,5 +1,5 @@
 ﻿@using XtremeIdiots.Portal.Web.Extensions
-@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,7 +7,7 @@
     <!-- Global site tag (gtag.js) - Google Analytics -->
     @{
         var analyticsId = Configuration["Google:AnalyticsId"];
-        var isValidAnalyticsId = !string.IsNullOrEmpty(analyticsId) && System.Text.RegularExpressions.Regex.IsMatch(analyticsId, @"^G-[A-Z0-9]+$");
+        var isValidAnalyticsId = !string.IsNullOrEmpty(analyticsId) && System.Text.RegularExpressions.Regex.IsMatch(analyticsId, @"^G-[A-Z0-9]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
     }
     @if (isValidAnalyticsId)
     {
