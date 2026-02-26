@@ -42,10 +42,8 @@ public class Program
                             .Select("Google:*", environmentLabel)
                             .Select("FeatureManagement:*", environmentLabel)
                             .ConfigureRefresh(refresh =>
-                            {
                                 refresh.Register("Sentinel", environmentLabel, refreshAll: true)
-                                       .SetRefreshInterval(TimeSpan.FromMinutes(5));
-                            });
+                                       .SetRefreshInterval(TimeSpan.FromMinutes(5)));
 
                         options.ConfigureKeyVault(kv =>
                         {

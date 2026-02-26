@@ -21,7 +21,7 @@ public class Startup(IConfiguration configuration)
 {
     public IConfiguration Configuration { get; } = configuration;
 
-    private readonly SamplingPercentageEstimatorSettings _samplingSettings = new()
+    private readonly SamplingPercentageEstimatorSettings samplingSettings = new()
     {
         InitialSamplingPercentage = double.TryParse(configuration["ApplicationInsights:InitialSamplingPercentage"], out var initPct) ? initPct : 5,
         MinSamplingPercentage = double.TryParse(configuration["ApplicationInsights:MinSamplingPercentage"], out var minPct) ? minPct : 5,
@@ -39,7 +39,7 @@ public class Startup(IConfiguration configuration)
         {
             var telemetryProcessorChainBuilder = telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder;
             telemetryProcessorChainBuilder.UseAdaptiveSampling(
-                settings: _samplingSettings,
+                settings: samplingSettings,
                 callback: null,
                 excludedTypes: "Exception");
             telemetryProcessorChainBuilder.Build();
@@ -117,13 +117,13 @@ public class Startup(IConfiguration configuration)
 
         // Update adaptive sampling settings when configuration refreshes
         ChangeToken.OnChange(
-            () => Configuration.GetReloadToken(),
+            Configuration.GetReloadToken,
             () =>
             {
                 if (double.TryParse(Configuration["ApplicationInsights:MinSamplingPercentage"], out var min))
-                    _samplingSettings.MinSamplingPercentage = min;
+                    samplingSettings.MinSamplingPercentage = min;
                 if (double.TryParse(Configuration["ApplicationInsights:MaxSamplingPercentage"], out var max))
-                    _samplingSettings.MaxSamplingPercentage = max;
+                    samplingSettings.MaxSamplingPercentage = max;
             });
 
         if (env.IsDevelopment())
