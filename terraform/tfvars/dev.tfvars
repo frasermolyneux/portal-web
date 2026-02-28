@@ -2,7 +2,7 @@ workload_name = "portal-web"
 environment   = "dev"
 location      = "swedencentral"
 
-subscription_id = "d68448b0-9947-46d7-8771-baa331a3063a"
+subscription_id = "6cad03c1-9e98-4160-8ebe-64dd30f1bbc7"
 
 platform_workloads_state = {
   resource_group_name  = "rg-tf-platform-workloads-prd-uksouth-01"
