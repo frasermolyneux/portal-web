@@ -794,7 +794,7 @@
                         data: null,
                         sortable: false,
                         render: function (data, type, row) {
-                            if (!row.num) return '';
+                            if (row.num == null) return '';
                             
                             var playerSlot = row.num;
                             var playerGuid = row.guid || '';
