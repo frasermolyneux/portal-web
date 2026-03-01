@@ -9,10 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Azure.Identity" Version="1.18.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
     <PackageReference Include="MX.InvisionCommunity.Api.Client" Version="1.0.18" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.135" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.150" />
   </ItemGroup>
 
 </Project>
