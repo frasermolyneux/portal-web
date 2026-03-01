@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
     /// <param name="serviceCollection">The service collection to configure</param>
     public static void AddAdminActionTopics(this IServiceCollection serviceCollection)
     {
-        serviceCollection.AddSingleton<IAdminActionTopics, AdminActionTopics>();
-        serviceCollection.AddSingleton<IDemoManager, DemoManager>();
+        serviceCollection.AddScoped<IAdminActionTopics, AdminActionTopics>();
+        serviceCollection.AddScoped<IDemoManager, DemoManager>();
     }
 }
