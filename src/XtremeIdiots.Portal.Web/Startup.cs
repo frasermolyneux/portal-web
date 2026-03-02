@@ -154,6 +154,8 @@ public class Startup(IConfiguration configuration)
             endpoints.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
+
+            endpoints.MapInfoEndpoint();
         });
 
         app.UseHealthChecks(new PathString("/api/health"));

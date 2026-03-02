@@ -37,8 +37,11 @@ jobs:
       - detect-changes
     if: needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      build_version: ${{ steps.web-ci.outputs.build_version }}
     steps:
-      - uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v1.4
+      - id: web-ci
+        uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v1.4
         with:
           dotnet-project: "XtremeIdiots.Portal.Web"
           dotnet-version: 9.0.x
@@ -109,7 +112,8 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-dev
     steps:
-      - uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.2
+      - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
+        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.2
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}
@@ -117,6 +121,11 @@ jobs:
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: frasermolyneux/actions/wait-for-version@wait-for-version/v1.0
+        with:
+          info-url: "https://${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}.azurewebsites.net/info"
+          expected-version: ${{ needs.build-and-test.outputs.build_version }}
 
   terraform-plan-and-apply-prd:
     permissions:
@@ -185,7 +194,8 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-prd
     steps:
-      - uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.2
+      - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
+        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.2
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-prd.outputs.web_app_name }}
@@ -193,3 +203,8 @@ jobs:
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: frasermolyneux/actions/wait-for-version@wait-for-version/v1.0
+        with:
+          info-url: "https://${{ needs.terraform-plan-and-apply-prd.outputs.web_app_name }}.azurewebsites.net/info"
+          expected-version: ${{ needs.build-and-test.outputs.build_version }}

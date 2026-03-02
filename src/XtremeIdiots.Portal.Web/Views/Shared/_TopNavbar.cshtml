@@ -5,8 +5,15 @@
             <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
         
+        @{
+            var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+            var informationalVersion = entryAssembly?.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+            var buildVersion = informationalVersion.Split('+')[0];
+            var assemblyVersion = entryAssembly?.GetName().Version?.ToString() ?? "unknown";
+        }
         <span class="navbar-text d-none d-md-inline me-auto">
             <i class="fa-solid fa-house fa-fw" aria-hidden="true"></i> Welcome to the XI Portal
+            <span class="text-muted" style="font-size: 0.75rem; margin-left: 4px;" title="Full: @informationalVersion&#10;Assembly: @assemblyVersion">v@(buildVersion)</span>
         </span>
 
         <ul class="navbar-nav ms-auto">
