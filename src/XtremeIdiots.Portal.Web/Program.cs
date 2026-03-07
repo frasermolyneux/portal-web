@@ -14,6 +14,7 @@ using XtremeIdiots.Portal.Integrations.Forums.Extensions;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web;
+using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
@@ -65,6 +66,9 @@ var samplingSettings = new SamplingPercentageEstimatorSettings
     MinSamplingPercentage = double.TryParse(builder.Configuration["ApplicationInsights:MinSamplingPercentage"], out var minPct) ? minPct : 5,
     MaxSamplingPercentage = double.TryParse(builder.Configuration["ApplicationInsights:MaxSamplingPercentage"], out var maxPct) ? maxPct : 60
 };
+
+// Identity services (must run after Azure App Configuration is loaded)
+IdentityHostingStartup.ConfigureIdentityServices(builder.Services, builder.Configuration);
 
 // Services
 builder.Services.AddAzureAppConfiguration();

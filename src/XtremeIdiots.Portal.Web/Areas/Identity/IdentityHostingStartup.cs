@@ -9,13 +9,11 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 
-using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 
-[assembly: HostingStartup(typeof(IdentityHostingStartup))]
 namespace XtremeIdiots.Portal.Web.Areas.Identity;
 
-public class IdentityHostingStartup : IHostingStartup
+public static class IdentityHostingStartup
 {
     private const string AuthClientIdKey = "XtremeIdiots:Auth:ClientId";
     private const string AuthClientSecretKey = "XtremeIdiots:Auth:ClientSecret";
@@ -28,17 +26,14 @@ public class IdentityHostingStartup : IHostingStartup
     private const string CookieName = "XIPortal";
     private const string OAuthSchemeName = "XtremeIdiots";
 
-    public void Configure(IWebHostBuilder builder)
+    public static void ConfigureIdentityServices(IServiceCollection services, IConfiguration configuration)
     {
-        builder.ConfigureServices((context, services) =>
-        {
-            ValidateConfiguration(context.Configuration);
-            ConfigureDatabase(services, context.Configuration);
-            ConfigureIdentity(services);
-            ConfigureCookiePolicy(services);
-            ConfigureAuthentication(services, context.Configuration);
-            ConfigureDataProtection(services);
-        });
+        ValidateConfiguration(configuration);
+        ConfigureDatabase(services, configuration);
+        ConfigureIdentity(services);
+        ConfigureCookiePolicy(services);
+        ConfigureAuthentication(services, configuration);
+        ConfigureDataProtection(services);
     }
 
     private static void ValidateConfiguration(IConfiguration configuration)
