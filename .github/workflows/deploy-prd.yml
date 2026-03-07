@@ -29,13 +29,35 @@ jobs:
             src:src/**
             terraform:terraform/**
 
+  terraform-state-check-dev:
+    if: github.event_name != 'schedule'
+    permissions:
+      contents: read
+      id-token: write
+    environment: Development
+    runs-on: ubuntu-latest
+    outputs:
+      has_resources: ${{ steps.state-check.outputs.has_resources }}
+      state_tainted: ${{ steps.state-check.outputs.state_tainted }}
+    steps:
+      - id: state-check
+        uses: frasermolyneux/actions/terraform-state-check@terraform-state-check/v1.1
+        with:
+          terraform-folder: "terraform"
+          terraform-var-file: "tfvars/dev.tfvars"
+          terraform-backend-file: "backends/dev.backend.hcl"
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
   build-and-test:
     permissions:
       contents: read
       id-token: write
     needs:
       - detect-changes
-    if: needs.detect-changes.outputs.src == 'true'
+      - terraform-state-check-dev
+    if: "!failure() && !cancelled() && (needs.detect-changes.outputs.src == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')"
     runs-on: ubuntu-latest
     outputs:
       build_version: ${{ steps.web-ci.outputs.build_version }}
@@ -56,12 +78,13 @@ jobs:
     environment: Development
     needs:
       - detect-changes
+      - terraform-state-check-dev
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
     steps:
       - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v1.4
-        if: needs.detect-changes.outputs.terraform == 'true'
+        if: needs.detect-changes.outputs.terraform == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true'
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
@@ -71,7 +94,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - uses: frasermolyneux/actions/terraform-output@terraform-output/v1.0
-        if: needs.detect-changes.outputs.terraform != 'true'
+        if: needs.detect-changes.outputs.terraform != 'true' && needs.terraform-state-check-dev.outputs.state_tainted != 'true'
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
