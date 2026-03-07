@@ -218,6 +218,45 @@ public class DemosController(
         }
     }
 
+    [HttpGet("WhoAmI")]
+    public async Task<IActionResult> WhoAmI(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            const string authKeyHeader = "demo-manager-auth-key";
+
+            if (!Request.Headers.TryGetValue(authKeyHeader, out var value))
+                return Unauthorized(new { error = "No auth key provided" });
+
+            var authKey = value.FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(authKey))
+                return Unauthorized(new { error = "Empty auth key" });
+
+            var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfileByDemoAuthKey(authKey, cancellationToken).ConfigureAwait(false);
+
+            if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
+                return Unauthorized(new { error = "Invalid auth key" });
+
+            var profile = userProfileApiResponse.Result.Data;
+
+            Logger.LogInformation("{MethodName} - Identity resolved for user {DisplayName} ({UserId})",
+                nameof(WhoAmI), profile.DisplayName, profile.XtremeIdiotsForumId);
+
+            return Ok(new
+            {
+                userId = profile.XtremeIdiotsForumId,
+                displayName = profile.DisplayName
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in {MethodName} endpoint", nameof(WhoAmI));
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
     private static DemoOrder GetDemoOrderFromDataTable(DataTableAjaxPostModel model)
     {
         var order = DemoOrder.CreatedDesc;
