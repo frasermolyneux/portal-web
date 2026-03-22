@@ -1,0 +1,131 @@
+@using XtremeIdiots.Portal.Web.Models
+@model AllNotificationsPageViewModel
+@{
+    ViewData["Title"] = "All Notifications";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+
+    <div class="row">
+        <div class="col-12">
+
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fa-solid fa-bell"></i> All Notifications
+                            @if (Model.UnreadCount > 0)
+                            {
+                                <span class="badge bg-primary ms-2">@Model.UnreadCount unread</span>
+                            }
+                        </span>
+                        <a asp-action="Notifications" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-gear"></i> Preferences
+                        </a>
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.Notifications.Count == 0)
+                        {
+                            <div class="text-center py-5">
+                                <i class="fa-regular fa-bell-slash fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">You have no notifications yet.</p>
+                                <p class="text-muted small">
+                                    When events occur that match your
+                                    <a asp-action="Notifications">notification preferences</a>,
+                                    they will appear here.
+                                </p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var notification in Model.Notifications)
+                                {
+                                    <div class="list-group-item d-flex align-items-start @(!notification.IsRead ? "bg-light" : "")">
+                                        <div class="me-3 pt-1">
+                                            <i class="@notification.Icon fa-lg @(!notification.IsRead ? "text-primary" : "text-muted")"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <h6 class="mb-1 @(!notification.IsRead ? "fw-bold" : "")">
+                                                    @notification.Title
+                                                </h6>
+                                                <small class="text-muted text-nowrap ms-2" title="@notification.CreatedAt.ToString("f")">
+                                                    @FormatTimeAgo(notification.CreatedAt)
+                                                </small>
+                                            </div>
+                                            <p class="mb-1 text-muted small">@notification.Message</p>
+                                            @if (!string.IsNullOrEmpty(notification.LinkUrl))
+                                            {
+                                                <a href="@notification.LinkUrl" class="btn btn-sm btn-outline-primary mt-1">
+                                                    @(notification.LinkText ?? "View") <i class="fa-solid fa-arrow-right fa-xs"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                        @if (!notification.IsRead)
+                                        {
+                                            <div class="ms-2 pt-1">
+                                                <span class="badge bg-primary rounded-pill" title="Unread">&nbsp;</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (Model.TotalPages > 1)
+                        {
+                            <nav aria-label="Notification pagination" class="mt-3">
+                                <ul class="pagination justify-content-center mb-0">
+                                    <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                                        <a class="page-link" asp-action="AllNotifications" asp-route-page="@(Model.CurrentPage - 1)">
+                                            <i class="fa-solid fa-chevron-left"></i> Previous
+                                        </a>
+                                    </li>
+                                    @for (var i = 1; i <= Model.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                            <a class="page-link" asp-action="AllNotifications" asp-route-page="@i">@i</a>
+                                        </li>
+                                    }
+                                    <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                                        <a class="page-link" asp-action="AllNotifications" asp-route-page="@(Model.CurrentPage + 1)">
+                                            Next <i class="fa-solid fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+
+                        @if (Model.TotalCount > 0)
+                        {
+                            <div class="text-center mt-2">
+                                <small class="text-muted">
+                                    Showing page @Model.CurrentPage of @Model.TotalPages
+                                    (@Model.TotalCount total notifications)
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@functions {
+    private static string FormatTimeAgo(DateTime dateTime)
+    {
+        var span = DateTime.UtcNow - dateTime;
+
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        if (span.TotalDays < 30) return $"{(int)(span.TotalDays / 7)}w ago";
+
+        return dateTime.ToString("MMM d, yyyy");
+    }
+}

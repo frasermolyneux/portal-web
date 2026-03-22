@@ -37,6 +37,18 @@
                                 <i class="fa-solid fa-id-card fa-fw" aria-hidden="true"></i> Manage Profile
                             </a>
                         </li>
+                        <li>
+                            <a asp-controller="Profile" asp-action="Notifications" class="dropdown-item"
+                                data-testid="nav-profile-notifications">
+                                <i class="fa-solid fa-bell fa-fw" aria-hidden="true"></i> Notification Preferences
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Profile" asp-action="AllNotifications" class="dropdown-item"
+                                data-testid="nav-profile-all-notifications">
+                                <i class="fa-solid fa-inbox fa-fw" aria-hidden="true"></i> All Notifications
+                            </a>
+                        </li>
                         <li><hr class="dropdown-divider" /></li>
                         <li>
                             <form class="d-inline" asp-controller="Identity" asp-action="Logout" method="post">

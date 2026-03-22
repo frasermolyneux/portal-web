@@ -1,4 +1,6 @@
-﻿<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom fixed-top" aria-label="Top navigation">
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom fixed-top" aria-label="Top navigation">
     <div class="container-fluid">
         <button class="btn btn-primary me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideNav" 
                 aria-controls="sideNav" aria-label="Toggle navigation menu" data-testid="topnav-menu-toggle">
@@ -17,8 +19,35 @@
         </span>
 
         <ul class="navbar-nav ms-auto">
+            @if (SignInManager.IsSignedIn(User))
+            {
+                <li class="nav-item dropdown" id="notificationBell">
+                    <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications"
+                       data-testid="topnav-notifications-dropdown">
+                        <i class="fa-solid fa-bell fa-fw" aria-hidden="true"></i>
+                        <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none"
+                              id="notificationBadge" style="font-size: 0.6rem;">0</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notificationDropdown"
+                         style="min-width: 350px; max-height: 450px;">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                            <h6 class="mb-0">Notifications</h6>
+                            <a href="#" id="markAllReadBtn" class="text-decoration-none small">Mark all as read</a>
+                        </div>
+                        <div id="notificationList" style="max-height: 350px; overflow-y: auto;">
+                            <div class="text-center py-3 text-muted">
+                                <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                        <div class="border-top px-3 py-2 text-center">
+                            <a href="/Profile/Notifications" class="text-decoration-none small">View all notifications</a>
+                        </div>
+                    </div>
+                </li>
+            }
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="helpDropdown" role="button" 
+                <a class="nav-link dropdown-toggle" href="#" id="helpDropdown" role="button"
                    data-bs-toggle="dropdown" aria-expanded="false" aria-label="Help and information" 
                    data-testid="topnav-help-dropdown">
                     <i class="fa-solid fa-circle-question fa-fw" aria-hidden="true"></i>

@@ -1,0 +1,181 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model ManageUserNotificationsViewModel
+
+@{
+    ViewData["Title"] = "Manage Notifications - " + Model.DisplayName;
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+
+    <div class="mb-3">
+        <a asp-action="ManageProfile" asp-route-id="@Model.UserProfileId" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Profile
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <i class="fa-solid fa-bell"></i> Notification Preferences for @Model.DisplayName
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.NotificationTypes.Count == 0)
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="fa-solid fa-circle-info"></i> No notification types are currently configured.
+                                Notification preferences will appear here once notification types are available in the system.
+                            </div>
+                        }
+                        else
+                        {
+                            <form asp-action="UpdateUserNotificationPreferences" method="post">
+                                <input type="hidden" name="id" value="@Model.UserProfileId" />
+
+                                <div class="table-responsive">
+                                    <table class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Notification Type</th>
+                                                <th scope="col">Description</th>
+                                                <th scope="col" class="text-center">Email</th>
+                                                <th scope="col" class="text-center">In-App</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var notifType in Model.NotificationTypes)
+                                            {
+                                                var pref = Model.Preferences.FirstOrDefault(p => p.NotificationTypeId == notifType.NotificationTypeId);
+                                                <tr>
+                                                    <td>@notifType.Name</td>
+                                                    <td>@notifType.Description</td>
+                                                    <td class="text-center">
+                                                        @if (notifType.SupportsEmail)
+                                                        {
+                                                            <div class="form-check d-flex justify-content-center">
+                                                                <input type="checkbox"
+                                                                       class="form-check-input"
+                                                                       name="pref_email_@notifType.NotificationTypeId"
+                                                                       value="true"
+                                                                       checked="@(pref?.EmailEnabled ?? false)" />
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">N/A</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-center">
+                                                        @if (notifType.SupportsInApp)
+                                                        {
+                                                            <div class="form-check d-flex justify-content-center">
+                                                                <input type="checkbox"
+                                                                       class="form-check-input"
+                                                                       name="pref_inapp_@notifType.NotificationTypeId"
+                                                                       value="true"
+                                                                       checked="@(pref?.InAppEnabled ?? false)" />
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">N/A</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mb-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa-solid fa-floppy-disk"></i> Save Preferences
+                                    </button>
+                                </div>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Notification History
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.Notifications.Count == 0)
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="fa-solid fa-circle-info"></i> No notifications have been sent to this user yet.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Date</th>
+                                            <th scope="col">Type</th>
+                                            <th scope="col">Title</th>
+                                            <th scope="col" class="text-center">Read</th>
+                                            <th scope="col" class="text-center">Email Sent</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var notification in Model.Notifications.OrderByDescending(n => n.SentAt))
+                                        {
+                                            <tr>
+                                                <td>@notification.SentAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                                <td>@notification.NotificationType</td>
+                                                <td>
+                                                    @notification.Title
+                                                    @if (!string.IsNullOrWhiteSpace(notification.Message))
+                                                    {
+                                                        <br />
+                                                        <small class="text-muted">@notification.Message</small>
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (notification.IsRead)
+                                                    {
+                                                        <span class="badge bg-success">Read</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning text-dark">Unread</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (notification.EmailSent)
+                                                    {
+                                                        <span class="badge bg-success">Sent</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">No</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>

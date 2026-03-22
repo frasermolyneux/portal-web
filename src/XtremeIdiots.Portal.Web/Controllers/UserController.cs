@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -343,5 +344,160 @@ public class UserController(
 
             return RedirectToAction(nameof(ManageProfile), new { id });
         }, nameof(RemoveUserClaim), id.ToString());
+    }
+
+    /// <summary>
+    /// Displays notification management for a specific user (admin view).
+    /// Shows notification preferences and recent notification history.
+    /// </summary>
+    /// <param name="id">The user profile ID to manage notifications for</param>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>The manage notifications view with preferences and history</returns>
+    [HttpGet]
+    public async Task<IActionResult> ManageNotifications(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                new object(),
+                AuthPolicies.AccessUsers,
+                nameof(ManageNotifications),
+                "UserNotifications").ConfigureAwait(false);
+
+            if (authResult is not null)
+                return authResult;
+
+            var userProfileResponse = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfile(id, cancellationToken).ConfigureAwait(false);
+
+            if (userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("User profile {ProfileId} not found when managing notifications", id);
+                return NotFound();
+            }
+
+            var userProfile = userProfileResponse.Result.Data;
+
+            var typesResponse = await repositoryApiClient.NotificationTypes.V1
+                .GetNotificationTypes(cancellationToken).ConfigureAwait(false);
+
+            var prefsResponse = await repositoryApiClient.NotificationPreferences.V1
+                .GetNotificationPreferences(id, cancellationToken).ConfigureAwait(false);
+
+            var notificationsResponse = await repositoryApiClient.Notifications.V1
+                .GetNotifications(id, null, 0, 50, null, cancellationToken).ConfigureAwait(false);
+
+            var vm = new ManageUserNotificationsViewModel
+            {
+                UserProfileId = userProfile.UserProfileId,
+                DisplayName = userProfile.DisplayName ?? "Unknown",
+                NotificationTypes = (typesResponse.Result?.Data?.Items ?? []).Select(t => new NotificationTypeEntry
+                {
+                    NotificationTypeId = Guid.TryParse(t.NotificationTypeId, out var tid) ? tid : Guid.Empty,
+                    Name = t.DisplayName,
+                    Description = t.Description,
+                    SupportsEmail = t.SupportsEmail,
+                    SupportsInApp = t.SupportsInSite
+                }).ToList(),
+                Preferences = (prefsResponse.Result?.Data?.Items ?? []).Select(p => new NotificationPreferenceEntry
+                {
+                    NotificationTypeId = Guid.TryParse(p.NotificationTypeId, out var pid) ? pid : Guid.Empty,
+                    EmailEnabled = p.EmailEnabled,
+                    InAppEnabled = p.InSiteEnabled
+                }).ToList(),
+                Notifications = (notificationsResponse.Result?.Data?.Items ?? []).Select(n => new NotificationEntry
+                {
+                    NotificationId = n.NotificationId,
+                    Title = n.Title,
+                    Message = n.Message,
+                    NotificationType = n.NotificationTypeId,
+                    SentAt = n.CreatedAt,
+                    IsRead = n.IsRead,
+                    EmailSent = n.EmailSent
+                }).ToList()
+            };
+
+            return View(vm);
+        }, nameof(ManageNotifications)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Saves notification preferences for a specific user (admin action).
+    /// Processes the submitted notification preference form and updates via the API.
+    /// </summary>
+    /// <param name="id">The user profile ID to update preferences for</param>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>Redirects to ManageNotifications on success</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateUserNotificationPreferences(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                new object(),
+                AuthPolicies.AccessUsers,
+                nameof(UpdateUserNotificationPreferences),
+                "UserNotifications").ConfigureAwait(false);
+
+            if (authResult is not null)
+                return authResult;
+
+            var userProfileResponse = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfile(id, cancellationToken).ConfigureAwait(false);
+
+            if (userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("User profile {ProfileId} not found when updating notification preferences", id);
+                return NotFound();
+            }
+
+            // Build preferences from form data
+            var form = await Request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
+            var typeIds = form.Keys
+                .Where(k => k.StartsWith("insite_", StringComparison.Ordinal) || k.StartsWith("email_", StringComparison.Ordinal))
+                .Select(k => k.Split('_', 2)[1])
+                .Distinct()
+                .ToList();
+
+            var editDtos = new List<EditNotificationPreferenceDto>();
+            foreach (var typeId in typeIds)
+            {
+                editDtos.Add(new EditNotificationPreferenceDto(typeId)
+                {
+                    InSiteEnabled = form.ContainsKey($"insite_{typeId}"),
+                    EmailEnabled = form.ContainsKey($"email_{typeId}")
+                });
+            }
+
+            // Handle types where both checkboxes are unchecked
+            var allTypesResponse = await repositoryApiClient.NotificationTypes.V1
+                .GetNotificationTypes(cancellationToken).ConfigureAwait(false);
+            foreach (var t in allTypesResponse.Result?.Data?.Items ?? [])
+            {
+                if (!typeIds.Contains(t.NotificationTypeId))
+                {
+                    editDtos.Add(new EditNotificationPreferenceDto(t.NotificationTypeId)
+                    {
+                        InSiteEnabled = false,
+                        EmailEnabled = false
+                    });
+                }
+            }
+
+            await repositoryApiClient.NotificationPreferences.V1
+                .UpdateNotificationPreferences(id, editDtos, cancellationToken).ConfigureAwait(false);
+
+            this.AddAlertSuccess($"Notification preferences for {userProfileResponse.Result.Data.DisplayName} have been updated");
+
+            TrackSuccessTelemetry("UserNotificationPreferencesUpdated", nameof(UpdateUserNotificationPreferences), new Dictionary<string, string>
+            {
+                { "ProfileId", id.ToString() }
+            });
+
+            return RedirectToAction(nameof(ManageNotifications), new { id });
+        }, nameof(UpdateUserNotificationPreferences), id.ToString());
     }
 }

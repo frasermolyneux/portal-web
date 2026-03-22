@@ -17,6 +17,12 @@
         mean please see the <a href="@Url.ActionLink("Permissions", "User")">Permissions Overview</a>
     </div>
 
+    <div class="mb-3">
+        <a asp-action="ManageNotifications" asp-route-id="@Model.Profile.UserProfileId" class="btn btn-outline-primary">
+            <i class="fa-solid fa-bell"></i> Manage Notifications
+        </a>
+    </div>
+
     <div class="row">
         <div class="col-12 col-lg-6">
 

@@ -1,0 +1,96 @@
+@using XtremeIdiots.Portal.Web.Models
+@model NotificationPreferencesPageViewModel
+@{
+    ViewData["Title"] = "Notification Preferences";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+
+    <div class="row">
+        <div class="col-12">
+
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <i class="fa-solid fa-bell"></i> Notification Preferences
+                    </div>
+                    <div class="ibox-content">
+                        <p class="text-muted mb-3">
+                            Choose how you want to be notified for each notification type.
+                            Changes are saved when you click Save.
+                        </p>
+
+                        <form method="post" asp-action="Notifications">
+                            <input type="hidden" name="userProfileId" value="@Model.UserProfileId" />
+                            @Html.AntiForgeryToken()
+
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Notification</th>
+                                            <th class="text-center" style="width: 100px;">In-Site</th>
+                                            <th class="text-center" style="width: 100px;">Email</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var type in Model.NotificationTypes)
+                                        {
+                                            var pref = Model.Preferences.FirstOrDefault(p => p.NotificationTypeId == type.NotificationTypeId);
+                                            var insiteChecked = pref?.InSiteEnabled ?? type.DefaultInSiteEnabled;
+                                            var emailChecked = pref?.EmailEnabled ?? type.DefaultEmailEnabled;
+
+                                            <tr>
+                                                <td>
+                                                    <strong>@type.DisplayName</strong>
+                                                    <br />
+                                                    <small class="text-muted">@type.Description</small>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    @if (type.SupportsInSite)
+                                                    {
+                                                        <div class="form-check d-flex justify-content-center">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                   name="insite_@type.NotificationTypeId"
+                                                                   value="true"
+                                                                   @(insiteChecked ? "checked" : "") />
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted" title="Not available for this notification type">—</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    @if (type.SupportsEmail)
+                                                    {
+                                                        <div class="form-check d-flex justify-content-center">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                   name="email_@type.NotificationTypeId"
+                                                                   value="true"
+                                                                   @(emailChecked ? "checked" : "") />
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted" title="Not available for this notification type">—</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-floppy-disk"></i> Save Preferences
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
