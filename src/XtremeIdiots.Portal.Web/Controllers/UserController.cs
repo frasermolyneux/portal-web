@@ -392,21 +392,21 @@ public class UserController(
             {
                 UserProfileId = userProfile.UserProfileId,
                 DisplayName = userProfile.DisplayName ?? "Unknown",
-                NotificationTypes = (typesResponse.Result?.Data?.Items ?? []).Select(t => new NotificationTypeEntry
+                NotificationTypes = [.. (typesResponse.Result?.Data?.Items ?? []).Select(t => new NotificationTypeEntry
                 {
                     NotificationTypeId = Guid.TryParse(t.NotificationTypeId, out var tid) ? tid : Guid.Empty,
                     Name = t.DisplayName,
                     Description = t.Description,
                     SupportsEmail = t.SupportsEmail,
                     SupportsInApp = t.SupportsInSite
-                }).ToList(),
-                Preferences = (prefsResponse.Result?.Data?.Items ?? []).Select(p => new NotificationPreferenceEntry
+                })],
+                Preferences = [.. (prefsResponse.Result?.Data?.Items ?? []).Select(p => new NotificationPreferenceEntry
                 {
                     NotificationTypeId = Guid.TryParse(p.NotificationTypeId, out var pid) ? pid : Guid.Empty,
                     EmailEnabled = p.EmailEnabled,
                     InAppEnabled = p.InSiteEnabled
-                }).ToList(),
-                Notifications = (notificationsResponse.Result?.Data?.Items ?? []).Select(n => new NotificationEntry
+                })],
+                Notifications = [.. (notificationsResponse.Result?.Data?.Items ?? []).Select(n => new NotificationEntry
                 {
                     NotificationId = n.NotificationId,
                     Title = n.Title,
@@ -415,7 +415,7 @@ public class UserController(
                     SentAt = n.CreatedAt,
                     IsRead = n.IsRead,
                     EmailSent = n.EmailSent
-                }).ToList()
+                })]
             };
 
             return View(vm);
