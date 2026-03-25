@@ -1,10 +1,11 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
   <PropertyGroup>
+    <!-- Treat warnings as errors in all configurations to catch issues locally -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Enable .NET code style analysis -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Enable documentation file generation for better IDE analysis -->
     <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
   </PropertyGroup>

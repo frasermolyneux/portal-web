@@ -22,9 +22,11 @@ public class HomeControllerTests
             mockLogger.Object,
             mockConfiguration.Object);
 
-        var httpContext = new DefaultHttpContext();
-        httpContext.User = new System.Security.Claims.ClaimsPrincipal(
-            new System.Security.Claims.ClaimsIdentity("TestAuth"));
+        var httpContext = new DefaultHttpContext
+        {
+            User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity("TestAuth"))
+        };
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;

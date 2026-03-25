@@ -105,11 +105,13 @@ public class AdminActionTopics(ILogger<AdminActionTopics> logger, IInvisionApiCl
         if (category is null)
             return defaultForumId;
 
+#pragma warning disable IDE0072 // Default branch intentionally handles all non-Arma game types via ToString()
         var gameKey = gameType switch
         {
             GameType.Arma or GameType.Arma2 or GameType.Arma3 => "Arma",
             _ => gameType.ToString()
         };
+#pragma warning restore IDE0072
 
         var configValue = configuration[$"XtremeIdiots:Forums:{category}:{gameKey}"];
         if (configValue is not null && int.TryParse(configValue, out var forumId))

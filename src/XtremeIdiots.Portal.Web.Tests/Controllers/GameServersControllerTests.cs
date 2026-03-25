@@ -29,8 +29,10 @@ public class GameServersControllerTests
             mockLogger.Object,
             mockConfiguration.Object);
 
-        var httpContext = new DefaultHttpContext();
-        httpContext.User = user ?? new ClaimsPrincipal(new ClaimsIdentity("TestAuth"));
+        var httpContext = new DefaultHttpContext
+        {
+            User = user ?? new ClaimsPrincipal(new ClaimsIdentity("TestAuth"))
+        };
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;
