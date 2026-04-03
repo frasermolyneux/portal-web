@@ -35,9 +35,9 @@ public class LocationSummaryTagHelper : TagHelper
         var text = !string.IsNullOrWhiteSpace(Geo.CityName) && !string.IsNullOrWhiteSpace(Geo.CountryName)
             ? $"{Geo.CityName}, {Geo.CountryName}"
             : !string.IsNullOrWhiteSpace(Geo.CountryCode)
-                ? Geo.CountryCode!
+                ? Geo.CountryCode
                 : !string.IsNullOrWhiteSpace(Geo.RegisteredCountry)
-                    ? Geo.RegisteredCountry!
+                    ? Geo.RegisteredCountry
                     : "Unknown";
         output.Content.SetContent(text);
     }

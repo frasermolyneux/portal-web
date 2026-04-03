@@ -148,7 +148,7 @@ public class AdminActionsController(
             if (adminActionData is null)
                 return NotFound();
 
-            var playerData = adminActionData.Player!;
+            var playerData = adminActionData.Player;
 
             var authorizationResource = (playerData.GameType, adminActionData.Type, adminActionData.UserProfile?.XtremeIdiotsForumId);
             var authResult = await CheckAuthorizationAsync(
@@ -194,7 +194,7 @@ public class AdminActionsController(
             if (adminActionData is null)
                 return NotFound();
 
-            var playerData = adminActionData.Player!;
+            var playerData = adminActionData.Player;
 
             var modelValidationResult = CheckModelState(model, m => m.PlayerDto = playerData);
             if (modelValidationResult is not null)
@@ -264,7 +264,7 @@ public class AdminActionsController(
             if (adminActionData is null)
                 return NotFound();
 
-            var playerData = adminActionData.Player!;
+            var playerData = adminActionData.Player;
 
             var authorizationResource = (playerData.GameType, adminActionData.UserProfile?.XtremeIdiotsForumId);
             var authResult = await CheckAuthorizationAsync(
@@ -298,7 +298,7 @@ public class AdminActionsController(
             if (adminActionData is null)
                 return NotFound();
 
-            var playerData = adminActionData.Player!;
+            var playerData = adminActionData.Player;
 
             var authorizationResource = (playerData.GameType, adminActionData.UserProfile?.XtremeIdiotsForumId);
             var authResult = await CheckAuthorizationAsync(

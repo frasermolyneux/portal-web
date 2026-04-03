@@ -104,7 +104,7 @@ public class UserController(
             IdentityUser? identityUser = null;
             if (profileData.XtremeIdiotsForumId is not null)
             {
-                identityUser = await userManager.FindByIdAsync(profileData.XtremeIdiotsForumId.ToString()!).ConfigureAwait(false);
+                identityUser = await userManager.FindByIdAsync(profileData.XtremeIdiotsForumId.ToString()).ConfigureAwait(false);
             }
 
             identityUser ??= await userManager.FindByIdAsync(profileData.UserProfileId.ToString()).ConfigureAwait(false);
