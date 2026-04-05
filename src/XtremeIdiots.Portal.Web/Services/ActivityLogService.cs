@@ -21,8 +21,8 @@ public class ActivityLogService(
 
     public async Task<ActivityLogQueryResult> QueryEventsAsync(
         TimeSpan timeRange,
-        ActivityLogCategory? category,
-        string? eventName,
+        IReadOnlyList<ActivityLogCategory> categories,
+        IReadOnlyList<string> eventNames,
         bool includeReads,
         string? searchTerm,
         int skip,
@@ -33,7 +33,7 @@ public class ActivityLogService(
     {
         var resourceId = GetAppInsightsResourceId();
 
-        var allowedEvents = GetAllowedEventNames(category, eventName, includeReads);
+        var allowedEvents = GetAllowedEventNames(categories, eventNames, includeReads);
         if (allowedEvents.Count == 0)
         {
             return new ActivityLogQueryResult();
@@ -89,39 +89,35 @@ public class ActivityLogService(
         return resourceId;
     }
 
-    private static IReadOnlyList<string> GetAllowedEventNames(ActivityLogCategory? category, string? eventName, bool includeReads)
+    private static List<string> GetAllowedEventNames(IReadOnlyList<ActivityLogCategory> categories, IReadOnlyList<string> eventNames, bool includeReads)
     {
-        if (!string.IsNullOrWhiteSpace(eventName))
+        if (eventNames.Count > 0)
         {
-            // Specific event requested — validate it exists in the map AND respects category/scope filters
-            if (!ActivityLogEventMap.Events.TryGetValue(eventName, out var mapping))
-            {
-                return [];
-            }
-
-            if (!includeReads && !mapping.IsWrite)
-            {
-                return [];
-            }
-
-            if (category.HasValue && mapping.Category != category.Value)
-            {
-                return [];
-            }
-
-            return [eventName];
+            return
+            [
+                .. eventNames
+                    .Where(e => ActivityLogEventMap.Events.TryGetValue(e, out var mapping)
+                        && (includeReads || mapping.IsWrite)
+                        && (categories.Count == 0 || categories.Contains(mapping.Category)))
+            ];
         }
 
-        if (category.HasValue)
+        if (categories.Count > 0)
         {
-            return ActivityLogEventMap.GetEventsByCategory(category.Value, includeReads);
+            return
+            [
+                .. categories
+                    .SelectMany(cat => ActivityLogEventMap.GetEventsByCategory(cat, includeReads))
+                    .Distinct()
+            ];
         }
 
-        // All events matching scope
-        return ActivityLogEventMap.Events
-            .Where(e => includeReads || e.Value.IsWrite)
-            .Select(e => e.Key)
-            .ToList();
+        return
+        [
+            .. ActivityLogEventMap.Events
+                .Where(e => includeReads || e.Value.IsWrite)
+                .Select(e => e.Key)
+        ];
     }
 
     private static string BuildEventNameFilter(IReadOnlyList<string> eventNames)

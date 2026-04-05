@@ -13,8 +13,8 @@ public interface IActivityLogService
 {
     Task<ActivityLogQueryResult> QueryEventsAsync(
         TimeSpan timeRange,
-        ActivityLogCategory? category,
-        string? eventName,
+        IReadOnlyList<ActivityLogCategory> categories,
+        IReadOnlyList<string> eventNames,
         bool includeReads,
         string? searchTerm,
         int skip,

@@ -71,6 +71,19 @@ $(document).ready(function () {
         return parts.length > 0 ? '<small>' + escapeHtml(parts.join('/')) + '</small>' : '';
     }
 
+    function getSelectedValues(selectEl) {
+        if (!selectEl) return [];
+        return Array.from(selectEl.selectedOptions).map(function (o) { return o.value; });
+    }
+
+    function setSelectedValues(selectEl, values) {
+        if (!selectEl || !values) return;
+        var valSet = new Set(Array.isArray(values) ? values : []);
+        Array.from(selectEl.options).forEach(function (o) {
+            o.selected = valSet.has(o.value);
+        });
+    }
+
     // DataTable initialization
     var table = tableEl.DataTable({
         processing: true,
@@ -82,16 +95,16 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[0, 'desc']],
         stateSaveParams: function (settings, data) {
-            data._activityLogVersion = 1;
+            data._activityLogVersion = 2;
             if (timeRangeSel) data.timeRange = timeRangeSel.value;
-            if (categorySel) data.category = categorySel.value;
-            if (eventNameSel) data.eventName = eventNameSel.value;
+            if (categorySel) data.categories = getSelectedValues(categorySel);
+            if (eventNameSel) data.eventNames = getSelectedValues(eventNameSel);
             if (includeReadsCb) data.includeReads = includeReadsCb.checked;
         },
         stateLoadParams: function (settings, data) {
-            if (data._activityLogVersion !== 1) return false;
+            if (data._activityLogVersion !== 2) return false;
             if (timeRangeSel && data.timeRange) timeRangeSel.value = data.timeRange;
-            if (categorySel && data.category) categorySel.value = data.category;
+            if (categorySel && data.categories) setSelectedValues(categorySel, data.categories);
             if (includeReadsCb && typeof data.includeReads !== 'undefined') includeReadsCb.checked = data.includeReads;
         },
         columnDefs: [
@@ -118,11 +131,11 @@ $(document).ready(function () {
                 var tr = timeRangeSel?.value;
                 if (tr) qs.push('timeRange=' + encodeURIComponent(tr));
 
-                var cat = categorySel?.value;
-                if (cat) qs.push('category=' + encodeURIComponent(cat));
+                var cats = getSelectedValues(categorySel);
+                if (cats.length) qs.push('categories=' + encodeURIComponent(cats.join(',')));
 
-                var evt = eventNameSel?.value;
-                if (evt) qs.push('eventName=' + encodeURIComponent(evt));
+                var evts = getSelectedValues(eventNameSel);
+                if (evts.length) qs.push('eventNames=' + encodeURIComponent(evts.join(',')));
 
                 if (includeReadsCb?.checked) qs.push('includeReads=true');
 
@@ -163,29 +176,29 @@ $(document).ready(function () {
     // Cascading category → event name filter with AbortController for race safety
     var eventNamesController = null;
 
-    function loadEventNames(selectedValue, triggerDraw) {
+    function loadEventNames(selectedValues, triggerDraw) {
         if (eventNamesController) {
             eventNamesController.abort();
         }
         eventNamesController = new AbortController();
 
-        var cat = categorySel?.value || '';
+        var cats = getSelectedValues(categorySel);
         var includeReads = includeReadsCb?.checked || false;
         var url = '/User/GetActivityLogEvents?includeReads=' + includeReads;
-        if (cat) url += '&category=' + encodeURIComponent(cat);
+        if (cats.length) url += '&categories=' + encodeURIComponent(cats.join(','));
 
         fetch(url, { signal: eventNamesController.signal })
             .then(function (r) { return r.json(); })
             .then(function (events) {
-                eventNameSel.innerHTML = '<option value="">All Events</option>';
+                eventNameSel.innerHTML = '';
                 events.forEach(function (evt) {
                     var opt = document.createElement('option');
                     opt.value = evt.name;
                     opt.textContent = evt.name;
                     eventNameSel.appendChild(opt);
                 });
-                if (selectedValue) {
-                    eventNameSel.value = selectedValue;
+                if (selectedValues && selectedValues.length) {
+                    setSelectedValues(eventNameSel, selectedValues);
                 }
                 if (triggerDraw) {
                     table.page('first').draw(false);
@@ -202,7 +215,7 @@ $(document).ready(function () {
 
     // Load initial event names from saved state, then trigger first draw
     var savedState = table.state();
-    loadEventNames(savedState?.eventName || '', true);
+    loadEventNames(savedState?.eventNames || [], true);
 
     // Filter change handlers
     timeRangeSel?.addEventListener('change', function () {
@@ -210,8 +223,7 @@ $(document).ready(function () {
     });
 
     categorySel?.addEventListener('change', function () {
-        eventNameSel.value = '';
-        loadEventNames('', false);
+        loadEventNames([], false);
         table.page('first').draw(false);
     });
 
@@ -220,17 +232,16 @@ $(document).ready(function () {
     });
 
     includeReadsCb?.addEventListener('change', function () {
-        loadEventNames('', false);
+        loadEventNames([], false);
         table.page('first').draw(false);
     });
 
     document.getElementById('resetFilters')?.addEventListener('click', function () {
         timeRangeSel.value = '24h';
-        categorySel.value = '';
-        eventNameSel.innerHTML = '<option value="">All Events</option>';
+        setSelectedValues(categorySel, []);
         includeReadsCb.checked = false;
         table.search('');
-        loadEventNames('', false);
+        loadEventNames([], false);
         table.page('first').draw(false);
     });
 });

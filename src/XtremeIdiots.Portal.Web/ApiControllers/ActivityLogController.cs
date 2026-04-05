@@ -37,8 +37,8 @@ public class ActivityLogController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetActivityLogAjax(
         [FromQuery] string? timeRange,
-        [FromQuery] string? category,
-        [FromQuery] string? eventName,
+        [FromQuery] string? categories,
+        [FromQuery] string? eventNames,
         [FromQuery] bool includeReads = false,
         CancellationToken cancellationToken = default)
     {
@@ -53,11 +53,8 @@ public class ActivityLogController(
 
             var timeSpan = timeRanges.GetValueOrDefault(timeRange ?? "24h", TimeSpan.FromHours(24));
 
-            ActivityLogCategory? parsedCategory = null;
-            if (!string.IsNullOrWhiteSpace(category) && Enum.TryParse<ActivityLogCategory>(category, out var cat))
-            {
-                parsedCategory = cat;
-            }
+            var parsedCategories = ParseCategories(categories);
+            var parsedEventNames = ParseCommaSeparated(eventNames);
 
             // Determine sort column and direction from DataTable model
             var sortColumn = "timestamp";
@@ -80,8 +77,8 @@ public class ActivityLogController(
 
             var result = await activityLogService.QueryEventsAsync(
                 timeSpan,
-                parsedCategory,
-                eventName,
+                parsedCategories,
+                parsedEventNames,
                 includeReads,
                 searchTerm,
                 model.Start,
@@ -93,7 +90,7 @@ public class ActivityLogController(
             TrackSuccessTelemetry("ActivityLogQueried", nameof(GetActivityLogAjax), new Dictionary<string, string>
             {
                 { "TimeRange", timeRange ?? "24h" },
-                { "Category", category ?? "All" },
+                { "Categories", categories ?? "All" },
                 { "IncludeReads", includeReads.ToString() },
                 { "ResultCount", result.Entries.Count.ToString() }
             });
@@ -109,14 +106,15 @@ public class ActivityLogController(
     }
 
     /// <summary>
-    /// Returns event names for a given category (used for cascading filter dropdown)
+    /// Returns event names for given categories (used for cascading filter dropdown)
     /// </summary>
     [HttpGet("GetActivityLogEvents")]
-    public IActionResult GetActivityLogEvents([FromQuery] string? category, [FromQuery] bool includeReads = false)
+    public IActionResult GetActivityLogEvents([FromQuery] string? categories, [FromQuery] bool includeReads = false)
     {
-        if (string.IsNullOrWhiteSpace(category) || !Enum.TryParse<ActivityLogCategory>(category, out var parsedCategory))
+        var parsedCategories = ParseCategories(categories);
+
+        if (parsedCategories.Count == 0)
         {
-            // Return all events matching scope
             var allEvents = ActivityLogEventMap.Events
                 .Where(e => includeReads || e.Value.IsWrite)
                 .Select(e => new { name = e.Key, category = e.Value.Category.ToString() })
@@ -126,10 +124,41 @@ public class ActivityLogController(
             return Ok(allEvents);
         }
 
-        var events = ActivityLogEventMap.GetEventsByCategory(parsedCategory, includeReads)
-            .Select(e => new { name = e, category = parsedCategory.ToString() })
+        var events = parsedCategories
+            .SelectMany(cat => ActivityLogEventMap.GetEventsByCategory(cat, includeReads)
+                .Select(e => new { name = e, category = cat.ToString() }))
+            .OrderBy(e => e.name)
             .ToList();
 
         return Ok(events);
+    }
+
+    private static List<ActivityLogCategory> ParseCategories(string? categories)
+    {
+        if (string.IsNullOrWhiteSpace(categories))
+            return [];
+
+        return
+        [
+            .. categories
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(c => Enum.TryParse<ActivityLogCategory>(c, out var cat) ? cat : (ActivityLogCategory?)null)
+                .Where(c => c.HasValue)
+                .Select(c => c!.Value)
+                .Distinct()
+        ];
+    }
+
+    private static List<string> ParseCommaSeparated(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return [];
+
+        return
+        [
+            .. value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct()
+        ];
     }
 }

@@ -22,9 +22,8 @@
         </div>
 
         <div class="filter-group">
-            <label for="filterCategory" class="form-label">Category</label>
-            <select id="filterCategory" class="form-select">
-                <option value="">All Categories</option>
+            <label for="filterCategory" class="form-label">Categories</label>
+            <select id="filterCategory" class="form-select" multiple size="4">
                 @foreach (var cat in Enum.GetValues<ActivityLogCategory>())
                 {
                     <option value="@cat">@cat</option>
@@ -33,9 +32,8 @@
         </div>
 
         <div class="filter-group">
-            <label for="filterEventName" class="form-label">Event</label>
-            <select id="filterEventName" class="form-select">
-                <option value="">All Events</option>
+            <label for="filterEventName" class="form-label">Events</label>
+            <select id="filterEventName" class="form-select" multiple size="4">
             </select>
         </div>
 
