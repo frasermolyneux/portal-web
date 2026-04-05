@@ -103,12 +103,6 @@ public class GameServerViewModel
     public bool PortalServerListEnabled { get; set; }
 
     /// <summary>
-    /// Gets or sets whether chat log collection is enabled for this server
-    /// </summary>
-    [DisplayName("Chat Log")]
-    public bool ChatLogEnabled { get; set; }
-
-    /// <summary>
     /// Gets or sets whether bot functionality is enabled for this server
     /// </summary>
     [DisplayName("Bot")]

@@ -123,7 +123,6 @@ public class GameServersController(
             createGameServerDto.ServerListPosition = model.ServerListPosition;
             createGameServerDto.HtmlBanner = model.HtmlBanner;
             createGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
-            createGameServerDto.ChatLogEnabled = model.ChatLogEnabled;
             createGameServerDto.BotEnabled = model.BotEnabled;
             createGameServerDto.AgentEnabled = model.AgentEnabled;
 
@@ -302,7 +301,6 @@ public class GameServersController(
             editGameServerDto.ServerListPosition = model.ServerListPosition;
             editGameServerDto.HtmlBanner = model.HtmlBanner;
             editGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
-            editGameServerDto.ChatLogEnabled = model.ChatLogEnabled;
             editGameServerDto.BotEnabled = model.BotEnabled;
             editGameServerDto.AgentEnabled = model.AgentEnabled;
 

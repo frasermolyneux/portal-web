@@ -21,7 +21,6 @@ public class GameServerDtoExtensionsTests
             AgentEnabled = agentEnabled,
             BannerServerListEnabled = true,
             PortalServerListEnabled = true,
-            ChatLogEnabled = true,
             LiveTrackingEnabled = true
         });
 
@@ -46,7 +45,6 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.ServerListPosition, viewModel.ServerListPosition);
         Assert.Equal(dto.BannerServerListEnabled, viewModel.BannerServerListEnabled);
         Assert.Equal(dto.PortalServerListEnabled, viewModel.PortalServerListEnabled);
-        Assert.Equal(dto.ChatLogEnabled, viewModel.ChatLogEnabled);
         Assert.Equal(dto.LiveTrackingEnabled, viewModel.LiveTrackingEnabled);
         Assert.Equal(dto.BotEnabled, viewModel.BotEnabled);
         Assert.Equal(dto.AgentEnabled, viewModel.AgentEnabled);
