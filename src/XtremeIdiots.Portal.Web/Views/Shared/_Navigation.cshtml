@@ -251,13 +251,13 @@
             </div>
 
             <div policy="@AuthPolicies.AccessUsers">
-                <a class="nav-link text-white @Html.IsSelected("User", "Index")" href="#usersMenu" 
+                <a class="nav-link text-white @(IsAnyControllerSelected("User") ? "active" : "")" href="#usersMenu" 
                    data-bs-toggle="collapse" 
-                   aria-expanded="@(Html.IsSelected("User", "Index") != "" ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("User") ? "true" : "false")">
                     <i class="fa-solid fa-user fa-fw" aria-hidden="true"></i> Users 
                     <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(Html.IsSelected("User", "Index") != "" ? "show" : "")" id="usersMenu">
+                <div class="collapse @(IsAnyControllerSelected("User") ? "show" : "")" id="usersMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("User", "Index")" 
                            asp-controller="User" asp-action="Index">

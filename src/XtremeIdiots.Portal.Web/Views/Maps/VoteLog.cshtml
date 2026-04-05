@@ -1,27 +1,20 @@
-﻿@{
-    ViewData["Title"] = "Maps Index";
-    var dataUrl = "/Maps/GetMapListAjax";
-    if (ViewData["GameType"] != null)
-    {
-        ViewData["Title"] = ViewData["GameType"] + " Maps Index";
-        dataUrl = "/Maps/GetMapListAjax/" + ViewData["GameType"];
-    }
+@{
+    ViewData["Title"] = "Map Vote Log";
+    var dataUrl = "/Maps/GetMapVotesAjax";
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-12">
-            <div class="admin-actions-filters mb-2" id="mapsFilters">
+            <div class="admin-actions-filters mb-2" id="voteLogFilters">
                 <div class="filter-group">
                     <label for="filterGameType" class="form-label">Game Type</label>
                     <select id="filterGameType" class="form-select">
                         <option value="">All Games</option>
                         @foreach (var gt in
-                                                Enum.GetValues<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>())
+                                            Enum.GetValues<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>())
                         {
-                            var isSelected = ViewData["GameType"] != null && ViewData["GameType"]!.ToString() ==
-                            gt.ToString();
-                            <option value="@gt" selected="@(isSelected ? "selected" : null)">@gt</option>
+                            <option value="@gt">@gt</option>
                         }
                     </select>
                 </div>
@@ -31,26 +24,22 @@
                         Filters</button>
                 </div>
             </div>
-            <div class="ibox maps-table-wrapper">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>@ViewData["Title"]</h5>
-                    <div class="ibox-tools">
-                        <a asp-controller="Maps" asp-action="VoteLog" class="btn btn-outline-primary btn-sm">
-                            <i class="fa fa-list-alt"></i> Vote Log
-                        </a>
-                    </div>
                 </div>
                 <div class="ibox-content">
                     <div class="table-responsive">
                         <table id="dataTable" class="table table-striped table-hover w-100" data-source="@dataUrl"
-                            aria-describedby="maps-help">
+                            aria-describedby="vote-log-help">
                             <thead>
                                 <tr>
                                     <th scope="col">Game</th>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Map Files</th>
-                                    <th scope="col">Popularity</th>
-                                    <th scope="col">Image</th>
+                                    <th scope="col">Map</th>
+                                    <th scope="col">Player</th>
+                                    <th scope="col">Server</th>
+                                    <th scope="col">Vote</th>
+                                    <th scope="col">Date</th>
                                 </tr>
                             </thead>
                         </table>
@@ -63,6 +52,5 @@
 
 @section Scripts {
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
-    <script src="~/js/maps-index.js" asp-append-version="true"></script>
+    <script src="~/js/maps-vote-log.js" asp-append-version="true"></script>
 }
-

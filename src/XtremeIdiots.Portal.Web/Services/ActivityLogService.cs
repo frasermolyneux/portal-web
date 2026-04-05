@@ -182,8 +182,7 @@ public class ActivityLogService(
 
         sb.Append($" | order by {orderBy}");
         sb.Append(" | project timestamp, name, customDimensions");
-        sb.Append($" | skip {skip}");
-        sb.Append($" | take {take}");
+        sb.Append($" | serialize | extend _row = row_number() | where _row > {skip} and _row <= {skip + take} | project-away _row");
 
         return sb.ToString();
     }

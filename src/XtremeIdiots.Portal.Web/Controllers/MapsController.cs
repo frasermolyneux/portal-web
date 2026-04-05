@@ -90,4 +90,15 @@ public class MapsController(
             return Redirect(mapApiResponse.Result.Data.MapImageUri);
         }, nameof(MapImage)).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Displays the map vote log/audit page
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>Vote log view</returns>
+    [HttpGet]
+    public async Task<IActionResult> VoteLog(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(VoteLog)).ConfigureAwait(false);
+    }
 }

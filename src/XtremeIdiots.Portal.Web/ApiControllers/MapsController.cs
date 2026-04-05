@@ -86,4 +86,80 @@ public class MapsController(
             });
         }, nameof(GetMapListAjax)).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Provides paginated map vote data for DataTables Ajax requests
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>JSON data formatted for DataTables consumption</returns>
+    [HttpPost("GetMapVotesAjax")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GetMapVotesAjax(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            using var reader = new StreamReader(Request.Body);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+            var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
+
+            if (model is null)
+            {
+                Logger.LogWarning("Invalid DataTable request body for map votes from user {UserId}", User.XtremeIdiotsId());
+                return BadRequest("Invalid request data");
+            }
+
+            GameType? gameType = null;
+            if (Request.Query.TryGetValue("gameType", out var gameTypeValues) && Enum.TryParse<GameType>(gameTypeValues.FirstOrDefault(), out var gt))
+                gameType = gt;
+
+            var order = MapVotesOrder.TimestampDesc;
+            if (model.Order is not null && model.Order.Count != 0)
+            {
+                var orderColumn = model.Columns[model.Order.First().Column].Name;
+                var searchOrder = model.Order.First().Dir;
+
+                order = orderColumn switch
+                {
+                    "timestamp" => searchOrder == "asc" ? MapVotesOrder.TimestampAsc : MapVotesOrder.TimestampDesc,
+                    "mapName" => searchOrder == "asc" ? MapVotesOrder.MapNameAsc : MapVotesOrder.MapNameDesc,
+                    _ => MapVotesOrder.TimestampDesc
+                };
+            }
+
+            var apiResponse = await repositoryApiClient.Maps.V1.GetMapVotes(
+                gameType, null, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+
+            if (!apiResponse.IsSuccess || apiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Failed to retrieve map votes data for user {UserId}", User.XtremeIdiotsId());
+                return StatusCode(500, "Failed to retrieve map votes data");
+            }
+
+            var items = apiResponse.Result.Data.Items?.ToList() ?? [];
+
+            TrackSuccessTelemetry("MapVotesListRetrieved", nameof(GetMapVotesAjax), new Dictionary<string, string>
+            {
+                { "GameType", gameType?.ToString() ?? "All" },
+                { "ResultCount", items.Count.ToString() }
+            });
+
+            return Ok(new
+            {
+                model.Draw,
+                recordsTotal = apiResponse.Result.Pagination?.TotalCount,
+                recordsFiltered = apiResponse.Result.Pagination?.FilteredCount,
+                data = items.Select(v => new
+                {
+                    gameType = v.Map?.GameType.ToString(),
+                    mapName = v.Map?.MapName,
+                    playerName = v.Player?.Username,
+                    playerId = v.PlayerId,
+                    serverName = v.GameServer?.Title,
+                    like = v.Like,
+                    timestamp = v.Timestamp.ToString("yyyy-MM-dd HH:mm")
+                })
+            });
+        }, nameof(GetMapVotesAjax)).ConfigureAwait(false);
+    }
 }
