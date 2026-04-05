@@ -146,6 +146,7 @@
                 <div class="ibox-content">
                     <div class="table-responsive">
                         <table id="mapRotationTable" class="table table-striped table-hover w-100">
+                        <thead>
                         <tr>
                             <th>
                                 @Html.Label("Name")
@@ -165,7 +166,8 @@
                             <th>
                             </th>
                         </tr>
-
+                        </thead>
+                        <tbody>
                         @foreach (var item in Model.RconMaps.OrderBy(x => x.MapName))
 {
     var map = Model.Maps.FirstOrDefault(x => x.MapName == item.MapName);
@@ -225,7 +227,7 @@
                             </td>
                         </tr>
 }
-
+                        </tbody>
                     </table>
                     </div>
                 </div>

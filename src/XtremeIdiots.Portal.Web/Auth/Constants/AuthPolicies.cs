@@ -93,6 +93,7 @@ public static class AuthPolicies
     public const string AccessStatus = nameof(AccessStatus);
 
     // User management policies
+    public const string AccessActivityLog = nameof(AccessActivityLog);
     public const string AccessUsers = nameof(AccessUsers);
     public const string CreateUserClaim = nameof(CreateUserClaim);
     public const string DeleteUserClaim = nameof(DeleteUserClaim);

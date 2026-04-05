@@ -29,3 +29,10 @@ public class DeleteUserClaim : IAuthorizationRequirement
 public class PerformUserSearch : IAuthorizationRequirement
 {
 }
+
+/// <summary>
+/// Authorization requirement for accessing the activity log
+/// </summary>
+public class AccessActivityLog : IAuthorizationRequirement
+{
+}

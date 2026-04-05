@@ -267,6 +267,12 @@
                            asp-controller="User" asp-action="Permissions">
                             <i class="fa-solid fa-lock fa-fw" aria-hidden="true"></i> Permissions
                         </a>
+                        <div policy="@AuthPolicies.AccessActivityLog">
+                            <a class="nav-link text-white-50 @Html.IsSelected("User", "ActivityLog")" 
+                               asp-controller="User" asp-action="ActivityLog">
+                                <i class="fa-solid fa-clipboard-list fa-fw" aria-hidden="true"></i> Activity Log
+                            </a>
+                        </div>
                     </nav>
                 </div>
             </div>

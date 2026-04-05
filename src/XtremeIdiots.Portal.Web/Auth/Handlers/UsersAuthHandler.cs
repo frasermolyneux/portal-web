@@ -34,6 +34,9 @@ public class UsersAuthHandler : IAuthorizationHandler
                 case PerformUserSearch performUserSearch:
                     HandlePerformUserSearch(context, performUserSearch);
                     break;
+                case AccessActivityLog accessActivityLog:
+                    HandleAccessActivityLog(context, accessActivityLog);
+                    break;
                 default:
                     break;
             }
@@ -73,6 +76,11 @@ public class UsersAuthHandler : IAuthorizationHandler
     {
         // Any admin level (including moderators) can perform user search for autocomplete scenarios
         BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+    }
+
+    private static void HandleAccessActivityLog(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
     }
 
     #endregion

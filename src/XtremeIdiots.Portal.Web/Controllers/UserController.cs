@@ -66,6 +66,21 @@ public class UserController(
     }
 
     /// <summary>
+    /// Displays the activity log page showing Application Insights custom events
+    /// </summary>
+    /// <returns>The activity log view</returns>
+    [HttpGet]
+    [Authorize(Policy = AuthPolicies.AccessActivityLog)]
+    public async Task<IActionResult> ActivityLog()
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return View();
+        }, nameof(ActivityLog)).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Displays the user profile management page for the specified user
     /// </summary>
     /// <param name="id">The user profile ID to manage</param>

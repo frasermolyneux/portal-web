@@ -1,4 +1,5 @@
 using Azure.Identity;
+using Azure.Monitor.Query;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
@@ -17,6 +18,7 @@ using XtremeIdiots.Portal.Web;
 using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,7 +82,7 @@ builder.Services.Configure<TelemetryConfiguration>(telemetryConfiguration =>
     telemetryProcessorChainBuilder.UseAdaptiveSampling(
         settings: samplingSettings,
         callback: null,
-        excludedTypes: "Exception");
+        excludedTypes: "Exception;Event");
     telemetryProcessorChainBuilder.Build();
 });
 
@@ -97,6 +99,9 @@ builder.Services.AddInvisionApiClient(options => options
 
 builder.Services.AddAdminActionTopics();
 builder.Services.AddScoped<IDemoManager, DemoManager>();
+
+builder.Services.AddSingleton(_ => new LogsQueryClient(new DefaultAzureCredential()));
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 
 builder.Services.AddRepositoryApiClient(options => options
     .WithBaseUrl(GetConfigValue(builder.Configuration, "RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))

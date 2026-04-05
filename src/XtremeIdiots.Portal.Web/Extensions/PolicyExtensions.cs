@@ -81,6 +81,7 @@ public static class PolicyExtensions
         options.AddPolicy(AuthPolicies.AccessStatus, policy => policy.Requirements.Add(new AccessStatus()));
 
         options.AddPolicy(AuthPolicies.AccessUsers, policy => policy.Requirements.Add(new AccessUsers()));
+        options.AddPolicy(AuthPolicies.AccessActivityLog, policy => policy.Requirements.Add(new AccessActivityLog()));
         options.AddPolicy(AuthPolicies.CreateUserClaim, policy => policy.Requirements.Add(new CreateUserClaim()));
         options.AddPolicy(AuthPolicies.DeleteUserClaim, policy => policy.Requirements.Add(new DeleteUserClaim()));
         options.AddPolicy(AuthPolicies.PerformUserSearch, policy => policy.Requirements.Add(new PerformUserSearch()));

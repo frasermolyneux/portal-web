@@ -38,11 +38,12 @@ $(document).ready(function () {
             pageLength: 25,
             order: [[0, 'asc']], // Name ascending
             columnDefs: [
-                { targets: 0, responsivePriority: 1, orderable: true }, // Name - always visible
-                { targets: 1, responsivePriority: 4, orderable: false }, // Files - not sortable
-                { targets: 2, responsivePriority: 3, orderable: false }, // Remote Status - not sortable
-                { targets: 3, responsivePriority: 5, orderable: false }, // Popularity - not sortable
-                { targets: 4, responsivePriority: 6, orderable: false }  // Image - not sortable
+                { targets: 0, responsivePriority: 1, orderable: true },  // Name - always visible
+                { targets: 1, responsivePriority: 4, orderable: false }, // Game Type - not sortable
+                { targets: 2, responsivePriority: 5, orderable: false }, // Files - not sortable
+                { targets: 3, responsivePriority: 3, orderable: false }, // Remote Status - not sortable
+                { targets: 4, responsivePriority: 6, orderable: false }, // Popularity - not sortable
+                { targets: 5, responsivePriority: 7, orderable: false }  // Image - not sortable
             ]
         });
     }
