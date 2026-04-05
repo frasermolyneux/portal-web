@@ -16,11 +16,11 @@ This test project provides basic unit tests aimed at preventing runtime errors c
 
 ```
 XtremeIdiots.Portal.Web.Tests/
+├── Controllers/
+│   └── PlayersControllerTests.cs
 ├── Extensions/
 │   ├── ClaimsPrincipalExtensionsTests.cs
 │   └── IPAddressExtensionsTests.cs
-└── Services/
-    └── ProxyCheckServiceTests.cs
 ```
 
 ## Test Coverage
@@ -40,14 +40,8 @@ Tests for IP address formatting and display:
 - Geo-location integration
 - Link generation behavior
 
-### ProxyCheckServiceTests (10 tests)
-Tests for IP address risk checking service:
-- Constructor validation
-- Input validation (null/empty IP addresses)
-- Caching behavior
-- API configuration handling
-- HTTP error scenarios
-- Risk classification logic
+### PlayersControllerTests
+Tests for player controller construction and actions.
 
 ## Running Tests
 

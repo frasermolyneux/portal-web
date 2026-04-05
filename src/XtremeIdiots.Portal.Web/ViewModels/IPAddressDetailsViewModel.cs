@@ -1,6 +1,5 @@
-﻿using MX.GeoLocation.Abstractions.Models.V1;
+﻿using MX.GeoLocation.Abstractions.Models.V1_1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
-using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -15,14 +14,9 @@ public class IPAddressDetailsViewModel
     public string IpAddress { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the geolocation information for the IP address
+    /// Gets or sets the aggregated IP intelligence data (geo + risk)
     /// </summary>
-    public GeoLocationDto? GeoLocation { get; set; }
-
-    /// <summary>
-    /// Gets or sets the proxy check result for the IP address
-    /// </summary>
-    public ProxyCheckResult? ProxyCheck { get; set; }
+    public IpIntelligenceDto? Intelligence { get; set; }
 
     /// <summary>
     /// Gets or sets the total count of players associated with this IP address

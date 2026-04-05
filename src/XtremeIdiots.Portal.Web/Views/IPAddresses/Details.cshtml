@@ -1,11 +1,14 @@
 @using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@using MX.GeoLocation.Abstractions.Models.V1_1
 @using System.Linq
 @inject IConfiguration Configuration
 @model XtremeIdiots.Portal.Web.ViewModels.IPAddressDetailsViewModel
 
 @{
     ViewData["Title"] = "IP Address Details: " + Model.IpAddress;
+    var hasGeo = Model.Intelligence != null && Model.Intelligence.MaxMindStatus == SourceStatus.Success;
+    var hasProxyCheck = Model.Intelligence?.ProxyCheck != null && Model.Intelligence.ProxyCheckStatus == SourceStatus.Success;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -18,7 +21,7 @@
                 </div>
                 <div class="ibox-content">
                     <div class="text-center m-b-md">
-                        <h2><ip-address ip="@Model.IpAddress" geo="@Model.GeoLocation" risk="@Model.ProxyCheck?.RiskScore" is-proxy="@Model.ProxyCheck?.IsProxy" is-vpn="@Model.ProxyCheck?.IsVpn" proxy-type="@Model.ProxyCheck?.Type" link-to-details="false"></ip-address></h2>
+                        <h2><ip-address ip="@Model.IpAddress" country-code="@Model.Intelligence?.CountryCode" risk="@Model.Intelligence?.ProxyCheck?.RiskScore" is-proxy="@Model.Intelligence?.ProxyCheck?.IsProxy" is-vpn="@Model.Intelligence?.ProxyCheck?.IsVpn" proxy-type="@Model.Intelligence?.ProxyCheck?.ProxyType" link-to-details="false"></ip-address></h2>
                     </div>
                     <div class="stats-container">
                         <div class="stat-item">
@@ -26,30 +29,31 @@
                             <h3>@Model.TotalPlayersCount</h3>
                             <p>Players used this IP</p>
                         </div>
-                        @if (Model.GeoLocation != null)
+                        @if (hasGeo)
                         {
                             <div class="stat-item">                <span class="fa-stack fa-2x">
                                     <i class="fa-solid fa-circle fa-stack-2x text-navy"></i>
-                                    @{                                        @if (Model.GeoLocation != null)
-                                        {
-                                            string flagHtml = Model.GeoLocation.FlagImage().ToString().Replace("<img", "<img class=\"fa-stack-1x\" style=\"height:32px;width:auto;top:20%;\"");
-                                            @Html.Raw(flagHtml)
-                                        }
+                                    @{
+                                        var countryCode = Model.Intelligence?.CountryCode ?? "unknown";
+                                        var flagSrc = !string.IsNullOrWhiteSpace(Model.Intelligence?.CountryCode)
+                                            ? $"/images/flags/{Model.Intelligence!.CountryCode!.ToLower()}.png"
+                                            : "/images/flags/unknown.png";
+                                        <img class="fa-stack-1x" style="height:32px;width:auto;top:20%;" src="@flagSrc" />
                                     }
                                 </span>
-                                <h3>@Model.GeoLocation?.CountryName</h3>
-                                <p>@(string.IsNullOrEmpty(Model.GeoLocation?.CityName) ? "Unknown City" : Model.GeoLocation?.CityName)</p>
+                                <h3>@Model.Intelligence?.CountryName</h3>
+                                <p>@(string.IsNullOrEmpty(Model.Intelligence?.CityName) ? "Unknown City" : Model.Intelligence?.CityName)</p>
                             </div>
                         }
-                        @if (Model.ProxyCheck != null && !Model.ProxyCheck.IsError)
+                        @if (hasProxyCheck)
                         {
                             <div class="stat-item">
-                                <i class="fa-solid fa-shield fa-2x @(Model.ProxyCheck.RiskScore >= 50 ? "text-danger" : "text-success")"></i>
-                                <h3>Risk Score: @Model.ProxyCheck.RiskScore</h3>
+                                <i class="fa-solid fa-shield fa-2x @(Model.Intelligence!.ProxyCheck!.RiskScore >= 50 ? "text-danger" : "text-success")"></i>
+                                <h3>Risk Score: @Model.Intelligence.ProxyCheck.RiskScore</h3>
                                 <p>
-                                    @if (Model.ProxyCheck.IsProxy || Model.ProxyCheck.IsVpn)
+                                    @if (Model.Intelligence.ProxyCheck.IsProxy || Model.Intelligence.ProxyCheck.IsVpn)
                                     {
-                                        <span class="badge rounded-pill text-bg-danger">@Model.ProxyCheck.Type</span>
+                                        <span class="badge rounded-pill text-bg-danger">@Model.Intelligence.ProxyCheck.ProxyType</span>
                                     }
                                     else
                                     {
@@ -70,45 +74,39 @@
                     <h5>GeoLocation Data</h5>
                 </div>
                 <div class="ibox-content">
-                    @if (Model.GeoLocation != null)
+                    @if (hasGeo)
                     {
                         <div class="m-b-md">
                             <div>
-                                <h4><flag-image country-code="@Model.GeoLocation.CountryCode"></flag-image> <location-summary geo-model="@Model.GeoLocation"></location-summary></h4>
+                                <h4><flag-image country-code="@Model.Intelligence!.CountryCode"></flag-image> <location-summary intelligence-model="@Model.Intelligence"></location-summary></h4>
                             </div>
 
                             <table class="table table-bordered">
                                 <tbody>
                                     <tr>
                                         <th>Country</th>
-                                        <td>@Model.GeoLocation.CountryName (@Model.GeoLocation.CountryCode)</td>
+                                        <td>@Model.Intelligence.CountryName (@Model.Intelligence.CountryCode)</td>
                                     </tr>
-                                    @if (!string.IsNullOrEmpty(Model.GeoLocation.CityName))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.CityName))
                                     {
                                         <tr>
                                             <th>City</th>
-                                            <td>@Model.GeoLocation.CityName</td>
+                                            <td>@Model.Intelligence.CityName</td>
                                         </tr>
                                     }
-                                    @if (Model.GeoLocation.Latitude != 0 || Model.GeoLocation.Longitude != 0)
+                                    @if (Model.Intelligence.Latitude.HasValue && Model.Intelligence.Longitude.HasValue
+                                        && (Model.Intelligence.Latitude.Value != 0 || Model.Intelligence.Longitude.Value != 0))
                                     {
                                         <tr>
                                             <th>Coordinates</th>
-                                            <td>@Model.GeoLocation.Latitude, @Model.GeoLocation.Longitude</td>
+                                            <td>@Model.Intelligence.Latitude, @Model.Intelligence.Longitude</td>
                                         </tr>
                                     }
-                                    @if (!string.IsNullOrEmpty(Model.GeoLocation.RegisteredCountry))
-                                    {
-                                        <tr>
-                                            <th>Registered Country</th>
-                                            <td>@Model.GeoLocation.RegisteredCountry</td>
-                                        </tr>
-                                    }
-                                    @if (!string.IsNullOrEmpty(Model.GeoLocation.Timezone))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.Timezone))
                                     {
                                         <tr>
                                             <th>Time Zone</th>
-                                            <td>@Model.GeoLocation.Timezone</td>
+                                            <td>@Model.Intelligence.Timezone</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -130,25 +128,25 @@
             </div>
         </div>
 
-        <!-- ProxyCheck Card -->
+        <!-- Risk Assessment Card -->
         <div class="col-lg-4">
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5>ProxyCheck Data</h5>
+                    <h5>Risk Assessment</h5>
                 </div>
                 <div class="ibox-content">
-                    @if (Model.ProxyCheck != null && !Model.ProxyCheck.IsError)
+                    @if (hasProxyCheck)
                     {
                         <div class="m-b-md">
                             <div class="text-center m-b-md">
                                 <div class="risk-score-gauge">
                                     <h3>Risk Score</h3>
                                     <div class="gauge-container">
-                                        <div class="gauge" data-risk-score="@Model.ProxyCheck.RiskScore">
-                                            <span class="gauge-value">@Model.ProxyCheck.RiskScore</span>
+                                        <div class="gauge" data-risk-score="@Model.Intelligence!.ProxyCheck!.RiskScore">
+                                            <span class="gauge-value">@Model.Intelligence.ProxyCheck.RiskScore</span>
                                         </div>
                                     </div>
-                                    <span class="badge rounded-pill @Model.ProxyCheck.GetRiskClass()">@Model.ProxyCheck.RiskScore</span>
+                                    <span class="badge rounded-pill @IPAddressExtensions.GetRiskClass(Model.Intelligence.ProxyCheck.RiskScore)">@Model.Intelligence.ProxyCheck.RiskScore</span>
                                 </div>
                             </div>
 
@@ -157,71 +155,63 @@
                                     <tr>
                                         <th>Status</th>
                                         <td>
-                                            @if (Model.ProxyCheck.IsProxy)
+                                            @if (Model.Intelligence.ProxyCheck.IsProxy)
                                             {
                                                 <span class="badge rounded-pill text-bg-danger">Proxy</span>
                                             }
-                                            @if (Model.ProxyCheck.IsVpn)
+                                            @if (Model.Intelligence.ProxyCheck.IsVpn)
                                             {
                                                 <span class="badge rounded-pill text-bg-warning">VPN</span>
                                             }
-                                            @if (!Model.ProxyCheck.IsProxy && !Model.ProxyCheck.IsVpn)
+                                            @if (!Model.Intelligence.ProxyCheck.IsProxy && !Model.Intelligence.ProxyCheck.IsVpn)
                                             {
                                                 <span class="badge rounded-pill text-bg-success">Clean</span>
                                             }
                                         </td>
                                     </tr>
-                                    @if (!string.IsNullOrEmpty(Model.ProxyCheck.Type))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.ProxyCheck.ProxyType))
                                     {
                                         <tr>
                                             <th>Type</th>
-                                            <td>@Model.ProxyCheck.Type</td>
+                                            <td>@Model.Intelligence.ProxyCheck.ProxyType</td>
                                         </tr>
                                     }
-                                    @if (!string.IsNullOrEmpty(Model.ProxyCheck.Country))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.ProxyCheck.Country))
                                     {
                                         <tr>
                                             <th>Country</th>
-                                            <td>@Model.ProxyCheck.Country</td>
+                                            <td>@Model.Intelligence.ProxyCheck.Country</td>
                                         </tr>
                                     }
-                                    @if (!string.IsNullOrEmpty(Model.ProxyCheck.Region))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.ProxyCheck.Region))
                                     {
                                         <tr>
                                             <th>Region</th>
-                                            <td>@Model.ProxyCheck.Region</td>
+                                            <td>@Model.Intelligence.ProxyCheck.Region</td>
                                         </tr>
                                     }
-                                    @if (!string.IsNullOrEmpty(Model.ProxyCheck.AsNumber))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.ProxyCheck.AsNumber))
                                     {
                                         <tr>
                                             <th>AS Number</th>
-                                            <td>@Model.ProxyCheck.AsNumber</td>
+                                            <td>@Model.Intelligence.ProxyCheck.AsNumber</td>
                                         </tr>
                                     }
-                                    @if (!string.IsNullOrEmpty(Model.ProxyCheck.AsOrganization))
+                                    @if (!string.IsNullOrEmpty(Model.Intelligence.ProxyCheck.AsOrganization))
                                     {
                                         <tr>
                                             <th>AS Organization</th>
-                                            <td>@Model.ProxyCheck.AsOrganization</td>
+                                            <td>@Model.Intelligence.ProxyCheck.AsOrganization</td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
-
-                            <a href="https://proxycheck.io/v2/@Model.IpAddress" target="_blank" class="btn btn-outline btn-primary btn-sm mt-2" data-testid="ipaddress-details-proxycheck-link">
-                                <i class="fa-solid fa-arrow-up-right-from-square me-1" aria-hidden="true"></i>View on ProxyCheck.io
-                            </a>
                         </div>
                     }
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa-solid fa-circle-info"></i> No ProxyCheck data available for this IP address.
-                            @if (Model.ProxyCheck?.IsError == true && !string.IsNullOrEmpty(Model.ProxyCheck.ErrorMessage))
-                            {
-                                <p class="mb-0 mt-2">Error: @Model.ProxyCheck.ErrorMessage</p>
-                            }
+                            <i class="fa-solid fa-circle-info"></i> No risk assessment data available for this IP address.
                         </div>
                     }
                 </div>
@@ -313,13 +303,14 @@
         var mapsApiKey = Configuration["Google:MapsApiKey"];
         var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @"^[A-Za-z0-9_-]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
     }
-    @if (Model.GeoLocation != null && Model.GeoLocation.Latitude != 0 && Model.GeoLocation.Longitude != 0 && isValidMapsApiKey)
+    @if (hasGeo && Model.Intelligence!.Latitude.HasValue && Model.Intelligence.Longitude.HasValue
+        && (Model.Intelligence.Latitude.Value != 0 || Model.Intelligence.Longitude.Value != 0) && isValidMapsApiKey)
     {
         <script type="text/javascript">
             function initMap() {
                 var myLatLng = {
-                    lat: @Model.GeoLocation.Latitude,
-                    lng: @Model.GeoLocation.Longitude
+                    lat: @Model.Intelligence.Latitude,
+                    lng: @Model.Intelligence.Longitude
                 };
 
                 var map = new google.maps.Map(document.getElementById('map'), {

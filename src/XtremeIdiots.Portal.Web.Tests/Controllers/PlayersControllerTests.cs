@@ -11,7 +11,6 @@ using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Controllers;
-using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
@@ -21,7 +20,6 @@ public class PlayersControllerTests
     private readonly Mock<IGeoLocationApiClient> mockGeoLocationClient = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new();
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
-    private readonly Mock<IProxyCheckService> mockProxyCheckService = new();
     private readonly Mock<ILogger<PlayersController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
 
@@ -32,7 +30,6 @@ public class PlayersControllerTests
             mockGeoLocationClient.Object,
             mockRepositoryApiClient.Object,
             telemetryClient,
-            mockProxyCheckService.Object,
             mockLogger.Object,
             mockConfiguration.Object);
 

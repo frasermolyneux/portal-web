@@ -1,5 +1,4 @@
 using XtremeIdiots.Portal.Web.Extensions;
-using MX.GeoLocation.Abstractions.Models.V1;
 
 namespace XtremeIdiots.Portal.Web.Tests.Extensions;
 
@@ -46,18 +45,32 @@ public class IPAddressExtensionsTests
     }
 
     [Fact]
-    public void FormatIPAddress_WithNullGeoLocation_ReturnsValidResult()
+    public void FormatIPAddress_WithNullCountryCode_ReturnsValidResult()
     {
         // Arrange
         var ipAddress = "192.168.1.1";
 
         // Act
-        var result = ipAddress.FormatIPAddress(geoLocation: null);
+        var result = ipAddress.FormatIPAddress(countryCode: null);
 
         // Assert
         Assert.NotNull(result);
         Assert.Contains(ipAddress, result.Value);
         Assert.Contains("unknown.png", result.Value);
+    }
+
+    [Fact]
+    public void FormatIPAddress_WithCountryCode_IncludesFlag()
+    {
+        // Arrange
+        var ipAddress = "192.168.1.1";
+
+        // Act
+        var result = ipAddress.FormatIPAddress(countryCode: "GB");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("gb.png", result.Value);
     }
 
     [Fact]
@@ -206,5 +219,14 @@ public class IPAddressExtensionsTests
         // Assert
         Assert.NotNull(result);
         Assert.Contains("text-bg-success", result.Value);
+    }
+
+    [Fact]
+    public void GetRiskClass_ReturnsCorrectClasses()
+    {
+        Assert.Equal("text-bg-danger", IPAddressExtensions.GetRiskClass(85));
+        Assert.Equal("text-bg-warning", IPAddressExtensions.GetRiskClass(60));
+        Assert.Equal("text-bg-info", IPAddressExtensions.GetRiskClass(30));
+        Assert.Equal("text-bg-success", IPAddressExtensions.GetRiskClass(10));
     }
 }

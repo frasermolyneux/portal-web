@@ -1,11 +1,11 @@
-﻿using MX.GeoLocation.Abstractions.Models.V1;
+﻿using MX.GeoLocation.Abstractions.Models.V1_1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
-using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
 /// <summary>
-/// View model for displaying player IP address information with geo-location and proxy check data
+/// View model for displaying player IP address information with intelligence data
 /// </summary>
 public class PlayerIpAddressViewModel
 {
@@ -15,14 +15,9 @@ public class PlayerIpAddressViewModel
     public IpAddressDto IpAddressDto { get; set; } = null!;
 
     /// <summary>
-    /// Geographic location information for the IP address
+    /// Aggregated IP intelligence data (geo + risk)
     /// </summary>
-    public GeoLocationDto? GeoLocation { get; set; }
-
-    /// <summary>
-    /// Proxy check results for the IP address
-    /// </summary>
-    public ProxyCheckResult? ProxyCheck { get; set; }
+    public IpIntelligenceDto? Intelligence { get; set; }
 
     /// <summary>
     /// The IP address string
@@ -37,25 +32,30 @@ public class PlayerIpAddressViewModel
     /// <summary>
     /// Risk score from proxy check (0-100)
     /// </summary>
-    public int RiskScore => ProxyCheck?.RiskScore ?? 0;
+    public int RiskScore => Intelligence?.ProxyCheck?.RiskScore ?? 0;
 
     /// <summary>
     /// Indicates if the IP address is identified as a proxy
     /// </summary>
-    public bool IsProxy => ProxyCheck?.IsProxy ?? false;
+    public bool IsProxy => Intelligence?.ProxyCheck?.IsProxy ?? false;
 
     /// <summary>
     /// Indicates if the IP address is identified as a VPN
     /// </summary>
-    public bool IsVpn => ProxyCheck?.IsVpn ?? false;
+    public bool IsVpn => Intelligence?.ProxyCheck?.IsVpn ?? false;
 
     /// <summary>
     /// The type of proxy if identified
     /// </summary>
-    public string ProxyType => ProxyCheck?.Type ?? string.Empty;
+    public string ProxyType => Intelligence?.ProxyCheck?.ProxyType ?? string.Empty;
 
     /// <summary>
-    /// The country code from geo-location data
+    /// The country code from intelligence data
     /// </summary>
-    public string CountryCode => GeoLocation?.CountryCode ?? "unknown";
+    public string CountryCode => Intelligence?.CountryCode ?? "unknown";
+
+    /// <summary>
+    /// Gets the CSS class for displaying risk level
+    /// </summary>
+    public string RiskClass => IPAddressExtensions.GetRiskClass(RiskScore);
 }

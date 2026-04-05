@@ -11,7 +11,6 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
-using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
@@ -23,7 +22,6 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 public class PlayersController(
     IRepositoryApiClient repositoryApiClient,
     IGeoLocationApiClient geoLocationClient,
-    IProxyCheckService proxyCheckService,
     TelemetryClient telemetryClient,
     ILogger<PlayersController> logger,
     IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
@@ -68,7 +66,7 @@ public class PlayersController(
             }
 
             var enrichedPlayers = await playerCollectionApiResponse.Result.Data.Items
-                .EnrichWithPlayerDataAsync(proxyCheckService, geoLocationClient, Logger, cancellationToken).ConfigureAwait(false);
+                .EnrichWithIntelligenceDataAsync(geoLocationClient, Logger, cancellationToken).ConfigureAwait(false);
 
             var playerData = enrichedPlayers.Select(player => new
             {

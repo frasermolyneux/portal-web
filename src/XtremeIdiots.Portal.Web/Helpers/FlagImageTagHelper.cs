@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using MX.GeoLocation.Abstractions.Models.V1;
+using MX.GeoLocation.Abstractions.Models.V1_1;
 
 namespace XtremeIdiots.Portal.Web.Helpers;
 
@@ -18,27 +18,25 @@ public class FlagImageTagHelper : TagHelper
     }
 }
 
-[HtmlTargetElement("location-summary", Attributes = "geo-model")]
+[HtmlTargetElement("location-summary", Attributes = "intelligence-model")]
 public class LocationSummaryTagHelper : TagHelper
 {
-    [HtmlAttributeName("geo-model")] public GeoLocationDto? Geo { get; set; }
+    [HtmlAttributeName("intelligence-model")] public IpIntelligenceDto? Intelligence { get; set; }
 
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagName = "span";
-        if (Geo is null)
+        if (Intelligence is null)
         {
             output.Content.SetContent("Unknown");
             return;
         }
 
-        var text = !string.IsNullOrWhiteSpace(Geo.CityName) && !string.IsNullOrWhiteSpace(Geo.CountryName)
-            ? $"{Geo.CityName}, {Geo.CountryName}"
-            : !string.IsNullOrWhiteSpace(Geo.CountryCode)
-                ? Geo.CountryCode
-                : !string.IsNullOrWhiteSpace(Geo.RegisteredCountry)
-                    ? Geo.RegisteredCountry
-                    : "Unknown";
+        var text = !string.IsNullOrWhiteSpace(Intelligence.CityName) && !string.IsNullOrWhiteSpace(Intelligence.CountryName)
+            ? $"{Intelligence.CityName}, {Intelligence.CountryName}"
+            : !string.IsNullOrWhiteSpace(Intelligence.CountryCode)
+                ? Intelligence.CountryCode
+                : "Unknown";
         output.Content.SetContent(text);
     }
 }
@@ -47,7 +45,7 @@ public class LocationSummaryTagHelper : TagHelper
 public class IpAddressTagHelper : TagHelper
 {
     [HtmlAttributeName("ip")] public string? Ip { get; set; }
-    [HtmlAttributeName("geo")] public GeoLocationDto? Geo { get; set; }
+    [HtmlAttributeName("country-code")] public string? CountryCode { get; set; }
     [HtmlAttributeName("risk")] public int? Risk { get; set; }
     [HtmlAttributeName("is-proxy")] public bool? IsProxy { get; set; }
     [HtmlAttributeName("is-vpn")] public bool? IsVpn { get; set; }
@@ -63,8 +61,7 @@ public class IpAddressTagHelper : TagHelper
             return;
         }
 
-        var flag = Geo?.CountryCode;
-        var code = string.IsNullOrEmpty(flag) ? "unknown" : flag.ToLower();
+        var code = string.IsNullOrEmpty(CountryCode) ? "unknown" : CountryCode.ToLower();
         List<string> parts =
         [
             $"<img src=\"/images/flags/{code}.png\" />",

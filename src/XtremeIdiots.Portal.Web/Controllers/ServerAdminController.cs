@@ -19,7 +19,6 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
-using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -27,22 +26,12 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for server administration functionality including RCON commands and chat log management
 /// </summary>
-/// <remarks>
-/// Initializes a new instance of the ServerAdminController
-/// </remarks>
-/// <param name="authorizationService">Service for handling authorization policies</param>
-/// <param name="repositoryApiClient">Client for accessing repository data</param>
-/// <param name="serversApiClient">Client for server RCON operations</param>
-/// <param name="telemetryClient">Client for tracking telemetry events</param>
-/// <param name="logger">Logger instance for this controller</param>
-/// <param name="configuration">Application configuration</param>
 [Authorize(Policy = AuthPolicies.AccessServerAdmin)]
 public class ServerAdminController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     IServersApiClient serversApiClient,
     IGeoLocationApiClient geoLocationClient,
-    IProxyCheckService proxyCheckService,
     IAdminActionTopics adminActionTopics,
     TelemetryClient telemetryClient,
     ILogger<ServerAdminController> logger,
@@ -181,7 +170,10 @@ public class ServerAdminController(
     {
         PlayerDto? playerProfile = null;
         string? countryCode = null;
-        ProxyCheckResult? proxyCheck = null;
+        var proxyCheckRiskScore = 0;
+        var isProxy = false;
+        var isVpn = false;
+        var proxyType = string.Empty;
 
         // Try to find existing player profile by GUID
         string guid = rconPlayer.Guid?.ToString() ?? string.Empty;
@@ -204,32 +196,30 @@ public class ServerAdminController(
             }
         }
 
-        // Get IP address enrichment data
+        // Get IP address enrichment data via V1.1 intelligence endpoint
         string ipAddress = rconPlayer.IpAddress?.ToString() ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(ipAddress))
         {
             try
             {
-                // Get geolocation country code
-                var geoResponse = await geoLocationClient.GeoLookup.V1.GetGeoLocation(ipAddress, cancellationToken).ConfigureAwait(false);
-                if (geoResponse.IsSuccess && geoResponse.Result?.Data is not null)
+                var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
+                if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
                 {
-                    countryCode = geoResponse.Result.Data.CountryCode;
+                    var intelligence = intelligenceResult.Result.Data;
+                    countryCode = intelligence.CountryCode;
+
+                    if (intelligence.ProxyCheck is not null)
+                    {
+                        proxyCheckRiskScore = intelligence.ProxyCheck.RiskScore;
+                        isProxy = intelligence.ProxyCheck.IsProxy;
+                        isVpn = intelligence.ProxyCheck.IsVpn;
+                        proxyType = intelligence.ProxyCheck.ProxyType;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogDebug(ex, "Failed to retrieve geolocation for IP {IpAddress}", ipAddress);
-            }
-
-            try
-            {
-                // Get ProxyCheck risk assessment
-                proxyCheck = await proxyCheckService.GetIpRiskDataAsync(ipAddress, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "Failed to retrieve proxy check data for IP {IpAddress}", ipAddress);
+                Logger.LogDebug(ex, "Failed to retrieve intelligence data for IP {IpAddress}", ipAddress);
             }
         }
 
@@ -243,10 +233,10 @@ public class ServerAdminController(
             playerId = playerProfile?.PlayerId,
             username = playerProfile?.Username,
             countryCode,
-            proxyCheckRiskScore = proxyCheck?.RiskScore ?? 0,
-            isProxy = proxyCheck?.IsProxy ?? false,
-            isVpn = proxyCheck?.IsVpn ?? false,
-            proxyType = proxyCheck?.Type ?? string.Empty
+            proxyCheckRiskScore,
+            isProxy,
+            isVpn,
+            proxyType
         };
     }
 

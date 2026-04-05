@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the XtremeIdiots Portal front end for player and game server management. Uses Razor views with runtime compilation in Debug and build-time compilation in Release, Application Insights for telemetry, Azure App Configuration, Entity Framework Core for identity/data-protection, and API clients for the Repository API, Servers Integration API, and GeoLocation API.
+ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the XtremeIdiots Portal front end for player and game server management. Uses Razor views with runtime compilation in Debug and build-time compilation in Release, Application Insights for telemetry, Azure App Configuration, Entity Framework Core for identity/data-protection, and API clients for the Repository API, Servers Integration API, and GeoLocation API. IP intelligence (geolocation + risk assessment) is provided by the GeoLocation V1.1 intelligence endpoint (`geoLocationClient.GeoLookup.V1_1.GetIpIntelligence()`) which returns `IpIntelligenceDto` combining MaxMind geo data with ProxyCheck risk data in a single call.
 
 ## Build, Test, and Run
 

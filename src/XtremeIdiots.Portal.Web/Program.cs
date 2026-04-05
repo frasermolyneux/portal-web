@@ -17,7 +17,6 @@ using XtremeIdiots.Portal.Web;
 using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.Extensions;
-using XtremeIdiots.Portal.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,7 +42,6 @@ if (!string.IsNullOrWhiteSpace(appConfigEndpoint))
             .Select("ServersIntegrationApi:*", environmentLabel)
             .Select("GeoLocationApi:*", environmentLabel)
             .Select("XtremeIdiots:*", environmentLabel)
-            .Select("ProxyCheck:*", environmentLabel)
             .Select("GameTracker:*", environmentLabel)
             .Select("Google:*", environmentLabel)
             .Select("FeatureManagement:*", environmentLabel)
@@ -139,7 +137,6 @@ builder.Services.Configure<CookieTempDataProviderOptions>(options => options.Coo
 
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
-builder.Services.AddScoped<IProxyCheckService, ProxyCheckService>();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {

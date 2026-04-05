@@ -19,11 +19,10 @@
 * [Identity Manual Run](/docs/identity-manual-run.sql) - Manual SQL to validate or repair identity artifacts.
 * [Manual Steps](/docs/manual-steps.md) - Post-deployment configuration steps.
 * [Mobile Table Improvements](/docs/mobile-table-improvements.md) - Responsive table patterns and UX notes.
-* [ProxyCheck Integration](/docs/proxycheck-integration.md) - Anti-proxy integration notes and configuration.
 
 ## Overview
 
-Web front end for the XtremeIdiots Portal providing player and game server management for community admins. Built on ASP.NET Core 9 with server-rendered Razor views, shared UI components, and API integrations to enforce bans, manage servers, and surface telemetry. Uses Application Insights, AuthZ/role checks, and defensive anti-proxy validation to protect sessions. CI/CD runs via GitHub Actions with OIDC deployments to Azure App Service and supporting resources provisioned by Terraform.
+Web front end for the XtremeIdiots Portal providing player and game server management for community admins. Built on ASP.NET Core 9 with server-rendered Razor views, shared UI components, and API integrations to enforce bans, manage servers, and surface telemetry. Uses Application Insights, AuthZ/role checks, and the GeoLocation V1.1 intelligence API for IP risk assessment and geolocation. CI/CD runs via GitHub Actions with OIDC deployments to Azure App Service and supporting resources provisioned by Terraform.
 
 ## Contributing
 
