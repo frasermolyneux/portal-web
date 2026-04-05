@@ -113,4 +113,10 @@ public class GameServerViewModel
     /// </summary>
     [DisplayName("Bot")]
     public bool BotEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether agent functionality is enabled for this server
+    /// </summary>
+    [DisplayName("Agent Enabled")]
+    public bool AgentEnabled { get; set; }
 }

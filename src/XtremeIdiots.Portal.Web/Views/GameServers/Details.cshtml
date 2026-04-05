@@ -108,8 +108,18 @@
                             <dd class="col-sm-10">
                                 @Html.DisplayFor(model => model.ChatLogEnabled)
                             </dd>
+                            <dt class="col-sm-2">
+                                @Html.DisplayNameFor(model => model.BotEnabled)
+                                <span class="badge bg-warning text-dark">Legacy</span>
+                            </dt>
                             <dd class="col-sm-10">
                                 @Html.DisplayFor(model => model.BotEnabled)
+                            </dd>
+                            <dt class="col-sm-2">
+                                @Html.DisplayNameFor(model => model.AgentEnabled)
+                            </dt>
+                            <dd class="col-sm-10">
+                                @Html.DisplayFor(model => model.AgentEnabled)
                             </dd>
                         </dl>
                     </div>

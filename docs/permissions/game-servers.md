@@ -32,4 +32,6 @@ Roles / Claims:
 - GameAdmin cannot access the Game Servers list unless also HeadAdmin or GameServer claim holder.
 - `GameServer` claim grants broad edit/view within its game type (excluding FTP/RCON segments).
 - RCON/FTP edits restricted to HeadAdmin (not GameServer claim holders). HeadAdmin now also views RCON credentials.
+- **AgentEnabled** follows the same permission model as BotEnabled — controlled by the `EditGameServer` policy. No additional claims or policies are required.
+- **BotEnabled** is considered legacy; the UI marks it accordingly. AgentEnabled is the replacement.
 

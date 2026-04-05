@@ -54,6 +54,10 @@
                                     </th>
                                     <th>
                                         @Html.DisplayNameFor(model => model.BotEnabled)
+                                        <span class="badge bg-warning text-dark">Legacy</span>
+                                    </th>
+                                    <th>
+                                        @Html.DisplayNameFor(model => model.AgentEnabled)
                                     </th>
                                     <th></th>
                                 </tr>
@@ -88,6 +92,9 @@
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.BotEnabled)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.AgentEnabled)
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">

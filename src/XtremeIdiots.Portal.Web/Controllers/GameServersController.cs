@@ -125,6 +125,7 @@ public class GameServersController(
             createGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
             createGameServerDto.ChatLogEnabled = model.ChatLogEnabled;
             createGameServerDto.BotEnabled = model.BotEnabled;
+            createGameServerDto.AgentEnabled = model.AgentEnabled;
 
             var createResult = await repositoryApiClient.GameServers.V1.CreateGameServer(createGameServerDto, cancellationToken).ConfigureAwait(false);
 
@@ -303,6 +304,7 @@ public class GameServersController(
             editGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
             editGameServerDto.ChatLogEnabled = model.ChatLogEnabled;
             editGameServerDto.BotEnabled = model.BotEnabled;
+            editGameServerDto.AgentEnabled = model.AgentEnabled;
 
             var updateResult = await repositoryApiClient.GameServers.V1.UpdateGameServer(editGameServerDto, cancellationToken).ConfigureAwait(false);
 

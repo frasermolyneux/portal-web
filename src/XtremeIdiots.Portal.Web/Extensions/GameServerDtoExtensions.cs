@@ -25,7 +25,8 @@ public static class GameServerDtoExtensions
             HtmlBanner = gameServerDto.HtmlBanner,
             PortalServerListEnabled = gameServerDto.PortalServerListEnabled,
             ChatLogEnabled = gameServerDto.ChatLogEnabled,
-            BotEnabled = gameServerDto.BotEnabled
+            BotEnabled = gameServerDto.BotEnabled,
+            AgentEnabled = gameServerDto.AgentEnabled
         };
 
         return viewModel;

@@ -23,8 +23,9 @@ $(document).ready(function () {
                 { targets: 5, responsivePriority: 8 }, // Portal Server List - very low
                 { targets: 6, responsivePriority: 9 }, // Banner Server List - very low
                 { targets: 7, responsivePriority: 10 }, // Chat Log - very low
-                { targets: 8, responsivePriority: 11 }, // Bot Enabled - very low
-                { targets: 9, responsivePriority: 2 }  // Actions - high priority
+                { targets: 8, responsivePriority: 12 }, // Bot Enabled (Legacy) - lowest
+                { targets: 9, responsivePriority: 11 }, // Agent Enabled - very low
+                { targets: 10, responsivePriority: 2 }  // Actions - high priority
             ],
             language: {
                 search: '<i class="fa fa-search" aria-hidden="true"></i>',
