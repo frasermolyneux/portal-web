@@ -48,10 +48,12 @@
                                 <span asp-validation-for="@Model.GameMode" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label class="control-label">Map IDs (comma-separated GUIDs)</label>
-                                <textarea asp-for="@Model.MapIdsText" class="form-control" rows="3" placeholder="Paste map GUIDs separated by commas or newlines"></textarea>
-                                <small class="form-text text-muted">Optional. You can add maps after creation.</small>
+                                <label class="control-label">Maps</label>
+                                <input type="text" id="mapSearch" class="form-control" placeholder="Search for maps by name..." autocomplete="off" />
+                                <small class="form-text text-muted">Type at least 2 characters to search. Click a map to add it to the rotation.</small>
                             </div>
+                            <div id="selectedMapsList" class="mb-3"></div>
+                            <div id="mapIdsContainer"></div>
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
@@ -65,3 +67,19 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+    <script src="~/js/map-rotation-editor.js" asp-append-version="true"></script>
+    <script>
+        $(document).ready(function () {
+            initMapRotationEditor({
+                gameType: document.getElementById('GameType')?.value || ''
+            });
+
+            // Update gameType when dropdown changes
+            document.getElementById('GameType')?.addEventListener('change', function () {
+                // Re-init would be complex, just update config - for now clear selected and let user re-search
+            });
+        });
+    </script>
+}

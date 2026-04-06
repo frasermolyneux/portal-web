@@ -21,5 +21,5 @@ public class CreateMapRotationViewModel
     [DisplayName("Game Mode")]
     public required string GameMode { get; set; }
 
-    public string? MapIdsText { get; set; }
+    public List<Guid> MapIds { get; set; } = [];
 }

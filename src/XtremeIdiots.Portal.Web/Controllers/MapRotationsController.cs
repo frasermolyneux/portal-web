@@ -21,6 +21,21 @@ public class MapRotationsController(
 {
     private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty5];
 
+    private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
+    {
+        var initialMaps = new List<object>();
+        foreach (var mapId in mapIds)
+        {
+            var mapResponse = await repositoryApiClient.Maps.V1.GetMap(mapId, cancellationToken).ConfigureAwait(false);
+            if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
+            {
+                var map = mapResponse.Result.Data;
+                initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
+            }
+        }
+        ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index(GameType? gameType, CancellationToken cancellationToken = default)
     {
@@ -63,6 +78,7 @@ public class MapRotationsController(
         if (!supportedGameTypes.Contains(model.GameType))
         {
             ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4 and Call of Duty 5 are supported.");
+            await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
             return View(model);
         }
 
@@ -82,25 +98,10 @@ public class MapRotationsController(
             if (modelValidationResult != null)
                 return modelValidationResult;
 
-            var mapIds = new List<Guid>();
-            if (!string.IsNullOrWhiteSpace(model.MapIdsText))
-            {
-                foreach (var part in model.MapIdsText.Split([',', '\n', '\r', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                {
-                    if (Guid.TryParse(part.Trim(), out var mapId))
-                        mapIds.Add(mapId);
-                    else
-                        ModelState.AddModelError(nameof(model.MapIdsText), $"Invalid map ID: '{part.Trim()}'");
-                }
-
-                if (!ModelState.IsValid)
-                    return View(model);
-            }
-
             var createDto = new CreateMapRotationDto(model.GameType, model.Title, model.GameMode)
             {
                 Description = model.Description,
-                MapIds = mapIds
+                MapIds = model.MapIds
             };
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.CreateMapRotation(createDto, cancellationToken).ConfigureAwait(false);
@@ -119,6 +120,7 @@ public class MapRotationsController(
                     ModelState.AddModelError(string.Empty, "An error occurred while creating the map rotation");
                 }
 
+                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
                 return View(model);
             }
 
@@ -160,6 +162,21 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            var initialMaps = new List<object>();
+            if (rotation.MapRotationMaps?.Count > 0)
+            {
+                foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
+                {
+                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
+                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
+                    {
+                        var map = mapResponse.Result.Data;
+                        initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
+                    }
+                }
+            }
+            ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
+
             return View(new EditMapRotationViewModel
             {
                 MapRotationId = rotation.MapRotationId,
@@ -168,9 +185,7 @@ public class MapRotationsController(
                 GameMode = rotation.GameMode,
                 GameType = rotation.GameType,
                 Version = rotation.Version,
-                MapIdsText = rotation.MapRotationMaps?.Count > 0
-                    ? string.Join(", ", rotation.MapRotationMaps.Select(m => m.MapId))
-                    : null
+                MapIds = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? []
             });
         }, nameof(Edit)).ConfigureAwait(false);
     }
@@ -203,27 +218,12 @@ public class MapRotationsController(
             if (modelValidationResult != null)
                 return modelValidationResult;
 
-            var mapIds = new List<Guid>();
-            if (!string.IsNullOrWhiteSpace(model.MapIdsText))
-            {
-                foreach (var part in model.MapIdsText.Split([',', '\n', '\r', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                {
-                    if (Guid.TryParse(part.Trim(), out var mapId))
-                        mapIds.Add(mapId);
-                    else
-                        ModelState.AddModelError(nameof(model.MapIdsText), $"Invalid map ID: '{part.Trim()}'");
-                }
-
-                if (!ModelState.IsValid)
-                    return View(model);
-            }
-
             var updateDto = new UpdateMapRotationDto(model.MapRotationId)
             {
                 Title = model.Title,
                 Description = model.Description,
                 GameMode = model.GameMode,
-                MapIds = mapIds
+                MapIds = model.MapIds
             };
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.UpdateMapRotation(updateDto, cancellationToken).ConfigureAwait(false);
@@ -242,6 +242,7 @@ public class MapRotationsController(
                     ModelState.AddModelError(string.Empty, "An error occurred while updating the map rotation");
                 }
 
+                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
                 return View(model);
             }
 

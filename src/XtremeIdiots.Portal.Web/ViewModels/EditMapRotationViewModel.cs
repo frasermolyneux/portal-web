@@ -21,5 +21,5 @@ public class EditMapRotationViewModel
 
     public GameType GameType { get; set; }
     public int Version { get; set; }
-    public string? MapIdsText { get; set; }
+    public List<Guid> MapIds { get; set; } = [];
 }
