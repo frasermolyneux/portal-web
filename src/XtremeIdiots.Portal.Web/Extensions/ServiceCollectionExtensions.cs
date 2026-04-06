@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthorizationHandler, HomeAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, ProfileAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, MapsAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, MapRotationsAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, PlayersAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, PlayerTagsAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, ServerAdminAuthHandler>();

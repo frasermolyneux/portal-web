@@ -22,7 +22,7 @@ public static class HtmlHelpers
             if (controller == currentController)
             {
 
-                return currentAction == "Index" ? cssClass : string.Empty;
+                return cssClass;
             }
         }
 

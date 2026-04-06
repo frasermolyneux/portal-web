@@ -55,6 +55,13 @@ public static class PolicyExtensions
         options.AddPolicy(AuthPolicies.PushMapToRemote, policy => policy.Requirements.Add(new PushMapToRemote()));
         options.AddPolicy(AuthPolicies.DeleteMapFromHost, policy => policy.Requirements.Add(new DeleteMapFromHost()));
 
+        // Map Rotations
+        options.AddPolicy(AuthPolicies.AccessMapRotations, policy => policy.Requirements.Add(new AccessMapRotations()));
+        options.AddPolicy(AuthPolicies.ManageMapRotations, policy => policy.Requirements.Add(new ManageMapRotations()));
+        options.AddPolicy(AuthPolicies.CreateMapRotation, policy => policy.Requirements.Add(new CreateMapRotation()));
+        options.AddPolicy(AuthPolicies.EditMapRotation, policy => policy.Requirements.Add(new EditMapRotation()));
+        options.AddPolicy(AuthPolicies.DeleteMapRotation, policy => policy.Requirements.Add(new DeleteMapRotation()));
+
         options.AddPolicy(AuthPolicies.AccessPlayers, policy => policy.Requirements.Add(new AccessPlayers()));
         options.AddPolicy(AuthPolicies.DeletePlayer, policy => policy.Requirements.Add(new DeletePlayer()));
         options.AddPolicy(AuthPolicies.ViewPlayers, policy => policy.Requirements.Add(new ViewPlayers()));

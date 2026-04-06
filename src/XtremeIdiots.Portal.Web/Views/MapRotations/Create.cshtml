@@ -1,0 +1,67 @@
+@model XtremeIdiots.Portal.Web.ViewModels.CreateMapRotationViewModel
+
+@{
+    ViewData["Title"] = "Create Map Rotation";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <form asp-action="Create" method="post">
+        <div class="row">
+            <div class="col-12">
+                <div class="container-fluid">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>@ViewData["Title"]</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.GameType" class="control-label"></label>
+                                <select asp-for="@Model.GameType" class="form-select">
+                                    <option value="@GameType.CallOfDuty4">Call of Duty 4</option>
+                                    <option value="@GameType.CallOfDuty5">Call of Duty 5</option>
+                                </select>
+                                <span asp-validation-for="@Model.GameType" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.Title" class="control-label"></label>
+                                <input asp-for="@Model.Title" class="form-control" />
+                                <span asp-validation-for="@Model.Title" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.Description" class="control-label"></label>
+                                <textarea asp-for="@Model.Description" class="form-control" rows="3"></textarea>
+                                <span asp-validation-for="@Model.Description" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.GameMode" class="control-label"></label>
+                                <select asp-for="@Model.GameMode" class="form-select">
+                                    <option value="">-- Select Mode --</option>
+                                    <option value="dm">Deathmatch (dm)</option>
+                                    <option value="tdm">Team Deathmatch (tdm)</option>
+                                    <option value="sd">Search &amp; Destroy (sd)</option>
+                                    <option value="dom">Domination (dom)</option>
+                                    <option value="sab">Sabotage (sab)</option>
+                                    <option value="koth">King of the Hill (koth)</option>
+                                    <option value="ctf">Capture the Flag (ctf)</option>
+                                </select>
+                                <span asp-validation-for="@Model.GameMode" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="control-label">Map IDs (comma-separated GUIDs)</label>
+                                <textarea asp-for="@Model.MapIdsText" class="form-control" rows="3" placeholder="Paste map GUIDs separated by commas or newlines"></textarea>
+                                <small class="form-text text-muted">Optional. You can add maps after creation.</small>
+                            </div>
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
+                                </button>
+                                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

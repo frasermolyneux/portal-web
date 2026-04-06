@@ -1,0 +1,173 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
+@model XtremeIdiots.Portal.Web.ViewModels.MapRotationDetailsViewModel
+
+@{
+    ViewData["Title"] = "Map Rotation - " + Model.Rotation.Title;
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-12">
+            <div class="container-fluid">
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>@Model.Rotation.Title</h5>
+                        <div class="ibox-tools">
+                            <span class="badge bg-info">@Model.Rotation.GameType</span>
+                            <span class="badge bg-secondary">Version @Model.Rotation.Version</span>
+                            <a policy="@AuthPolicies.EditMapRotation" asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
+                                <i class="fa-solid fa-edit"></i> Edit
+                            </a>
+                            <form policy="@AuthPolicies.DeleteMapRotation" asp-action="Delete" asp-route-id="@Model.Rotation.MapRotationId" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this map rotation?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="fa-solid fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="ibox-content">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-3">Game Type</dt>
+                            <dd class="col-sm-9">@Model.Rotation.GameType</dd>
+
+                            <dt class="col-sm-3">Game Mode</dt>
+                            <dd class="col-sm-9">@Model.Rotation.GameMode</dd>
+
+                            <dt class="col-sm-3">Version</dt>
+                            <dd class="col-sm-9">@Model.Rotation.Version</dd>
+
+                            @if (!string.IsNullOrEmpty(Model.Rotation.Description))
+                            {
+                                <dt class="col-sm-3">Description</dt>
+                                <dd class="col-sm-9">@Model.Rotation.Description</dd>
+                            }
+
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">@Model.Rotation.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                            <dt class="col-sm-3">Updated</dt>
+                            <dd class="col-sm-9">@Model.Rotation.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Maps (@Model.Maps.Count)</h5>
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.Maps.Count == 0)
+                        {
+                            <p class="text-muted">No maps in this rotation. <a asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId">Add maps</a></p>
+                        }
+                        else
+                        {
+                            <div class="row">
+                                @{ var sortedMaps = Model.Rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? []; }
+                                @for (var i = 0; i < sortedMaps.Count; i++)
+                                {
+                                    var rotationMap = sortedMaps[i];
+                                    var mapDto = Model.Maps.FirstOrDefault(m => m.MapId == rotationMap.MapId);
+                                    if (mapDto != null)
+                                    {
+                                        <div class="col-md-3 col-sm-4 col-6 mb-3">
+                                            <div class="card h-100">
+                                                <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="card-img-top" alt="@mapDto.MapName" loading="lazy" style="max-height:120px;object-fit:cover;" />
+                                                <div class="card-body p-2">
+                                                    <small class="text-muted">#@(i + 1)</small>
+                                                    <h6 class="card-title mb-0">@mapDto.MapName</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Server Assignments (@(Model.Rotation.ServerAssignments?.Count ?? 0))</h5>
+                        <div class="ibox-tools">
+                            <a policy="@AuthPolicies.ManageMapRotations" asp-action="CreateAssignment" asp-route-mapRotationId="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
+                                <i class="fa-solid fa-plus"></i> Assign to Server
+                            </a>
+                        </div>
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.Rotation.ServerAssignments == null || Model.Rotation.ServerAssignments.Count == 0)
+                        {
+                            <p class="text-muted">No servers assigned to this rotation.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Server</th>
+                                            <th>Config Target</th>
+                                            <th>Deployment</th>
+                                            <th>Activation</th>
+                                            <th>Deployed Ver.</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var assignment in Model.Rotation.ServerAssignments)
+                                        {
+                                            var server = ViewData[$"Server_{assignment.GameServerId}"] as GameServerDto;
+                                            var isStale = assignment.DeployedVersion.HasValue && assignment.DeployedVersion < Model.Rotation.Version;
+                                            <tr>
+                                                <td>@(server?.Title ?? assignment.GameServerId.ToString())</td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(assignment.ConfigFilePath))
+                                                    {
+                                                        <code>@assignment.ConfigFilePath</code>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(assignment.ConfigVariableName))
+                                                    {
+                                                        <br /><code>@assignment.ConfigVariableName</code>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @await Html.PartialAsync("_AssignmentStatusBadge", ("Deployment", assignment.DeploymentState.ToString()))
+                                                </td>
+                                                <td>
+                                                    @await Html.PartialAsync("_AssignmentStatusBadge", ("Activation", assignment.ActivationState.ToString()))
+                                                </td>
+                                                <td>
+                                                    @(assignment.DeployedVersion?.ToString() ?? "—")
+                                                    @if (isStale)
+                                                    {
+                                                        <span class="text-warning" title="Deployed version is behind rotation version">⚠️</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline"
+                                                          onsubmit="return confirm('Are you sure you want to unassign this server?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                        <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                        <button type="submit" class="btn btn-outline-danger btn-xs">
+                                                            <i class="fa-solid fa-unlink"></i> Unassign
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

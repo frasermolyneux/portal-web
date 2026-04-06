@@ -1,0 +1,25 @@
+@model (string Category, string Status)
+
+@{
+    var (category, status) = Model;
+    var badgeClass = status switch
+    {
+        "Pending" => "bg-secondary",
+        "Syncing" or "Activating" or "Deactivating" or "Removing" => "bg-info",
+        "Synced" => "bg-success",
+        "Active" => "bg-success",
+        "Failed" => "bg-danger",
+        "Removed" => "bg-dark",
+        "Inactive" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+    var isAnimated = status is "Syncing" or "Activating" or "Deactivating" or "Removing";
+}
+
+<span class="badge @badgeClass">
+    @if (isAnimated)
+    {
+        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+    }
+    @status
+</span>

@@ -1,0 +1,64 @@
+@model XtremeIdiots.Portal.Web.ViewModels.MapRotationsIndexViewModel
+
+@{
+    ViewData["Title"] = "Map Rotations";
+    var dataUrl = "/MapRotations/GetMapRotationsAjax";
+    if (Model.SelectedGameType != null)
+    {
+        ViewData["Title"] = Model.SelectedGameType + " Map Rotations";
+        dataUrl = "/MapRotations/GetMapRotationsAjax/" + Model.SelectedGameType;
+    }
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-12">
+            <div class="admin-actions-filters mb-2" id="mapRotationsFilters">
+                <div class="filter-group">
+                    <label for="filterGameType" class="form-label">Game Type</label>
+                    <select id="filterGameType" class="form-select">
+                        <option value="">All Games</option>
+                        <option value="@GameType.CallOfDuty4" selected="@(Model.SelectedGameType != null && Model.SelectedGameType == GameType.CallOfDuty4 ? "selected" : null)">Call of Duty 4</option>
+                        <option value="@GameType.CallOfDuty5" selected="@(Model.SelectedGameType != null && Model.SelectedGameType == GameType.CallOfDuty5 ? "selected" : null)">Call of Duty 5</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="form-label" for="resetFilters">Reset</label>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+                </div>
+            </div>
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>@ViewData["Title"]</h5>
+                    <div class="ibox-tools">
+                        <a policy="@AuthPolicies.CreateMapRotation" asp-controller="MapRotations" asp-action="Create" class="btn btn-outline-primary btn-sm">
+                            <i class="fa-solid fa-plus"></i> Create
+                        </a>
+                    </div>
+                </div>
+                <div class="ibox-content">
+                    <div class="table-responsive">
+                        <table id="dataTable" class="table table-striped table-hover w-100" data-source="@dataUrl"
+                            aria-describedby="map-rotations-help">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Game</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Game Mode</th>
+                                    <th scope="col">Maps</th>
+                                    <th scope="col">Servers</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+    <script src="~/js/map-rotations-index.js" asp-append-version="true"></script>
+}

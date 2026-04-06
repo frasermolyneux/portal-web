@@ -91,11 +91,11 @@
             <div policy="@AuthPolicies.AccessServers">
                 <a class="nav-link text-white @Html.IsSelected("Servers", "Index")" href="#serversMenu" 
                    data-bs-toggle="collapse" data-testid="nav-servers-toggle" 
-                   aria-expanded="@(IsAnyControllerSelected("Servers", "Maps") ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("Servers", "Maps", "MapRotations") ? "true" : "false")">
                     <i class="fa-solid fa-server fa-fw" aria-hidden="true"></i> Servers 
                     <i class="fa-solid fa-chevron-down fa-fw float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(IsAnyControllerSelected("Servers", "Maps") ? "show" : "")" id="serversMenu">
+                <div class="collapse @(IsAnyControllerSelected("Servers", "Maps", "MapRotations") ? "show" : "")" id="serversMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Servers", "Index")" 
                            asp-controller="Servers" asp-action="Index" data-testid="nav-servers-gameservers">
@@ -108,6 +108,10 @@
                         <a policy="@AuthPolicies.AccessMaps" class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" 
                            asp-controller="Maps" asp-action="Index" data-testid="nav-servers-maps">
                             <i class="fa-solid fa-map fa-fw" aria-hidden="true"></i> Maps
+                        </a>
+                        <a policy="@AuthPolicies.AccessMapRotations" class="nav-link text-white-50 @Html.IsSelected("MapRotations")" 
+                           asp-controller="MapRotations" asp-action="Index" data-testid="nav-servers-map-rotations">
+                            <i class="fa-solid fa-rotate fa-fw" aria-hidden="true"></i> Map Rotations
                         </a>
                     </nav>
                 </div>

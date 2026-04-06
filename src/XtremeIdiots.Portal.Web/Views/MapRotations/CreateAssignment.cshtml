@@ -1,0 +1,64 @@
+@model XtremeIdiots.Portal.Web.ViewModels.CreateMapRotationAssignmentViewModel
+
+@{
+    ViewData["Title"] = "Assign Server to Map Rotation" + (ViewData["RotationTitle"] != null ? " - " + ViewData["RotationTitle"] : "");
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <form asp-action="CreateAssignment" method="post">
+        <input type="hidden" asp-for="@Model.MapRotationId" />
+
+        <div class="row">
+            <div class="col-12">
+                <div class="container-fluid">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>@ViewData["Title"]</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.GameServerId" class="control-label"></label>
+                                <select asp-for="@Model.GameServerId" class="form-select">
+                                    <option value="">-- Select Server --</option>
+                                    @foreach (var server in Model.AvailableServers)
+                                    {
+                                        <option value="@server.GameServerId">@server.Title</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.ConfigFilePath" class="control-label"></label>
+                                <select asp-for="@Model.ConfigFilePath" class="form-select">
+                                    <option value="">-- None --</option>
+                                    <option value="server.cfg">server.cfg</option>
+                                    <option value="advancedacp.cfg">advancedacp.cfg</option>
+                                </select>
+                                <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.ConfigVariableName" class="control-label"></label>
+                                <select asp-for="@Model.ConfigVariableName" class="form-select">
+                                    <option value="">-- None --</option>
+                                    <option value="sv_maprotation">sv_maprotation</option>
+                                    <option value="scr_small_rotation">scr_small_rotation</option>
+                                    <option value="scr_med_rotation">scr_med_rotation</option>
+                                    <option value="scr_large_rotation">scr_large_rotation</option>
+                                    <option value="scr_aacp_maps_1">scr_aacp_maps_1</option>
+                                </select>
+                                <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-link" aria-hidden="true"></i> Assign Server
+                                </button>
+                                <a asp-action="Details" asp-route-id="@Model.MapRotationId" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

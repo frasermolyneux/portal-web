@@ -60,6 +60,13 @@ public static class AuthPolicies
     public const string PushMapToRemote = nameof(PushMapToRemote);
     public const string DeleteMapFromHost = nameof(DeleteMapFromHost);
 
+    // Map Rotations
+    public const string AccessMapRotations = nameof(AccessMapRotations);
+    public const string ManageMapRotations = nameof(ManageMapRotations);
+    public const string CreateMapRotation = nameof(CreateMapRotation);
+    public const string EditMapRotation = nameof(EditMapRotation);
+    public const string DeleteMapRotation = nameof(DeleteMapRotation);
+
     // Migration policies
     public const string AccessMigration = nameof(AccessMigration);
 
