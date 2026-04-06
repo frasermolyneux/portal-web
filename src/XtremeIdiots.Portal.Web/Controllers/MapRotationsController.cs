@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -15,6 +16,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class MapRotationsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
+    ISyncApiClient syncApiClient,
     TelemetryClient telemetryClient,
     ILogger<MapRotationsController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -573,5 +575,140 @@ public class MapRotationsController(
                 Operations = operations
             });
         }, nameof(AssignmentStatus)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(mapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(SyncAssignment),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var result = await syncApiClient.TriggerSync(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                this.AddAlertSuccess("Sync triggered successfully.");
+                TempData["ActiveInstanceId"] = $"maprot-sync-{assignmentId}";
+            }
+            else
+            {
+                this.AddAlertDanger($"Failed to trigger sync: {result.Error}");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(SyncAssignment)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ActivateAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(mapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(ActivateAssignment),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var result = await syncApiClient.TriggerActivate(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                this.AddAlertSuccess("Activation triggered successfully.");
+                TempData["ActiveInstanceId"] = $"maprot-activate-{assignmentId}";
+            }
+            else
+            {
+                this.AddAlertDanger($"Failed to trigger activation: {result.Error}");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(ActivateAssignment)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeactivateAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(mapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(DeactivateAssignment),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var result = await syncApiClient.TriggerDeactivate(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                this.AddAlertSuccess("Deactivation triggered successfully.");
+                TempData["ActiveInstanceId"] = $"maprot-deactivate-{assignmentId}";
+            }
+            else
+            {
+                this.AddAlertDanger($"Failed to trigger deactivation: {result.Error}");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(DeactivateAssignment)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetSyncProgress(string instanceId, CancellationToken cancellationToken = default)
+    {
+        var result = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
+        if (result == null)
+            return Json(new { status = "unknown" });
+        return Json(result);
     }
 }

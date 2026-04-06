@@ -3,6 +3,24 @@
 
 @{
     ViewData["Title"] = "Assignment Status - " + Model.GameServerDisplayName;
+
+    var syncInstanceId = $"maprot-sync-{Model.Assignment.MapRotationServerAssignmentId}";
+    var activateInstanceId = $"maprot-activate-{Model.Assignment.MapRotationServerAssignmentId}";
+    var removeInstanceId = $"maprot-remove-{Model.Assignment.MapRotationServerAssignmentId}";
+    var deactivateInstanceId = $"maprot-deactivate-{Model.Assignment.MapRotationServerAssignmentId}";
+
+    // Use TempData if available (set by sync/activate/deactivate trigger), otherwise derive from DB state
+    var activeInstanceId = TempData["ActiveInstanceId"] as string ?? Model.Assignment.DeploymentState switch
+    {
+        DeploymentState.Syncing => syncInstanceId,
+        DeploymentState.Removing => removeInstanceId,
+        _ => Model.Assignment.ActivationState switch
+        {
+            ActivationState.Activating => activateInstanceId,
+            ActivationState.Deactivating => deactivateInstanceId,
+            _ => (string?)null
+        }
+    };
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -87,8 +105,76 @@
                                 <p class="mb-0 mt-1">@Model.Assignment.LastError</p>
                             </div>
                         }
+
+                        <div class="mt-3">
+                            @if (Model.Assignment.DeploymentState == DeploymentState.Pending || Model.Assignment.DeploymentState == DeploymentState.Failed)
+                            {
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <button type="submit" class="btn btn-outline-success btn-sm me-1">
+                                        <i class="fa-solid fa-sync"></i> Sync
+                                    </button>
+                                </form>
+                            }
+                            @if (Model.IsStale && Model.Assignment.DeploymentState == DeploymentState.Synced)
+                            {
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <button type="submit" class="btn btn-outline-warning btn-sm me-1">
+                                        <i class="fa-solid fa-sync"></i> Re-sync
+                                    </button>
+                                </form>
+                            }
+                            @if (Model.Assignment.DeploymentState == DeploymentState.Synced && !Model.IsStale && !string.IsNullOrEmpty(Model.Assignment.ConfigFilePath) && Model.Assignment.ActivationState != ActivationState.Active)
+                            {
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="ActivateAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <button type="submit" class="btn btn-outline-primary btn-sm me-1">
+                                        <i class="fa-solid fa-play"></i> Activate
+                                    </button>
+                                </form>
+                            }
+                            @if (Model.Assignment.ActivationState == ActivationState.Active)
+                            {
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeactivateAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
+                                        <i class="fa-solid fa-stop"></i> Deactivate
+                                    </button>
+                                </form>
+                            }
+                        </div>
                     </div>
                 </div>
+
+                @if (activeInstanceId != null)
+                {
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>Live Progress</h5>
+                        </div>
+                        <div class="ibox-content" id="progressContainer" data-instance-id="@activeInstanceId" data-poll-url="@Url.Action("GetSyncProgress", "MapRotations")">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span id="progressLabel">Initializing...</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                                <div class="progress" style="height: 24px;">
+                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div id="mapStatusList"></div>
+                        </div>
+                    </div>
+                }
 
                 <div class="ibox">
                     <div class="ibox-title">
@@ -202,3 +288,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/map-rotation-progress.js" asp-append-version="true"></script>
+}

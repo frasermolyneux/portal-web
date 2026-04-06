@@ -112,6 +112,16 @@ builder.Services.AddServersApiClient(options => options
     .WithBaseUrl(GetConfigValue(builder.Configuration, "ServersIntegrationApi:BaseUrl", "ServersIntegrationApi:BaseUrl configuration is required"))
     .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "ServersIntegrationApi:ApplicationAudience", "ServersIntegrationApi:ApplicationAudience configuration is required")));
 
+if (!string.IsNullOrWhiteSpace(builder.Configuration["SyncApi:BaseUrl"]) &&
+    !string.IsNullOrWhiteSpace(builder.Configuration["SyncApi:ApplicationAudience"]))
+{
+    builder.Services.AddHttpClient<ISyncApiClient, SyncApiClient>();
+}
+else
+{
+    builder.Services.AddSingleton<ISyncApiClient, NoOpSyncApiClient>();
+}
+
 builder.Services.AddGeoLocationApiClient(options => options
     .WithBaseUrl(GetConfigValue(builder.Configuration, "GeoLocationApi:BaseUrl", "GeoLocationApi:BaseUrl configuration is required"))
     .WithApiKeyAuthentication(GetConfigValue(builder.Configuration, "GeoLocationApi:ApiKey", "GeoLocationApi:ApiKey configuration is required"))

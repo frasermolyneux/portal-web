@@ -177,6 +177,50 @@
                                                     <a asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-info btn-xs me-1">
                                                         <i class="fa-solid fa-eye"></i> Status
                                                     </a>
+                                                    @if (assignment.DeploymentState == DeploymentState.Pending || assignment.DeploymentState == DeploymentState.Failed)
+                                                    {
+                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                            <button type="submit" class="btn btn-outline-success btn-xs me-1">
+                                                                <i class="fa-solid fa-sync"></i> Sync
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                    @if (isStale && assignment.DeploymentState == DeploymentState.Synced)
+                                                    {
+                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                            <button type="submit" class="btn btn-outline-warning btn-xs me-1">
+                                                                <i class="fa-solid fa-sync"></i> Re-sync
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                    @if (assignment.DeploymentState == DeploymentState.Synced && !isStale && !string.IsNullOrEmpty(assignment.ConfigFilePath) && assignment.ActivationState != ActivationState.Active)
+                                                    {
+                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="ActivateAssignment" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                            <button type="submit" class="btn btn-outline-primary btn-xs me-1">
+                                                                <i class="fa-solid fa-play"></i> Activate
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                    @if (assignment.ActivationState == ActivationState.Active)
+                                                    {
+                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeactivateAssignment" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                            <button type="submit" class="btn btn-outline-secondary btn-xs me-1">
+                                                                <i class="fa-solid fa-stop"></i> Deactivate
+                                                            </button>
+                                                        </form>
+                                                    }
                                                     <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline"
                                                           onsubmit="return confirm('Are you sure you want to unassign this server?');">
                                                         @Html.AntiForgeryToken()
