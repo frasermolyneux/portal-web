@@ -1,0 +1,204 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@model XtremeIdiots.Portal.Web.ViewModels.AssignmentStatusViewModel
+
+@{
+    ViewData["Title"] = "Assignment Status - " + Model.GameServerDisplayName;
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-12">
+            <div class="container-fluid">
+
+                <div class="mb-3">
+                    <a asp-action="Details" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-arrow-left"></i> Back to @Model.Rotation.Title
+                    </a>
+                </div>
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>@Model.Rotation.Title → @Model.GameServerDisplayName</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-3">Deployment State</dt>
+                            <dd class="col-sm-9">
+                                @await Html.PartialAsync("_AssignmentStatusBadge", ("Deployment", Model.Assignment.DeploymentState.ToString()))
+                            </dd>
+
+                            <dt class="col-sm-3">Activation State</dt>
+                            <dd class="col-sm-9">
+                                @await Html.PartialAsync("_AssignmentStatusBadge", ("Activation", Model.Assignment.ActivationState.ToString()))
+                                @if (Model.IsActivationStale)
+                                {
+                                    <span class="text-warning" title="Activated version is behind rotation version">⚠️ Stale</span>
+                                }
+                            </dd>
+
+                            <dt class="col-sm-3">Deployed Version</dt>
+                            <dd class="col-sm-9">
+                                @(Model.Assignment.DeployedVersion?.ToString() ?? "—")
+                                @if (Model.IsStale)
+                                {
+                                    <span class="text-warning" title="Deployed version is behind rotation version">⚠️ Stale (rotation is v@(Model.Rotation.Version))</span>
+                                }
+                            </dd>
+
+                            <dt class="col-sm-3">Activated Version</dt>
+                            <dd class="col-sm-9">@(Model.Assignment.ActivatedVersion?.ToString() ?? "—")</dd>
+
+                            <dt class="col-sm-3">Rotation Version</dt>
+                            <dd class="col-sm-9">@Model.Rotation.Version</dd>
+
+                            @if (!string.IsNullOrEmpty(Model.Assignment.ConfigFilePath))
+                            {
+                                <dt class="col-sm-3">Config File</dt>
+                                <dd class="col-sm-9"><code>@Model.Assignment.ConfigFilePath</code></dd>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Model.Assignment.ConfigVariableName))
+                            {
+                                <dt class="col-sm-3">Config Variable</dt>
+                                <dd class="col-sm-9"><code>@Model.Assignment.ConfigVariableName</code></dd>
+                            }
+
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">@Model.Assignment.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                            <dt class="col-sm-3">Updated</dt>
+                            <dd class="col-sm-9">@Model.Assignment.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                            @if (Model.Assignment.UnassignedAt.HasValue)
+                            {
+                                <dt class="col-sm-3">Unassigned</dt>
+                                <dd class="col-sm-9">@Model.Assignment.UnassignedAt.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                            }
+                        </dl>
+
+                        @if (!string.IsNullOrEmpty(Model.Assignment.LastError))
+                        {
+                            <div class="alert alert-danger mt-3 mb-0">
+                                <i class="fa-solid fa-exclamation-triangle"></i> <strong>Last Error</strong>
+                                @if (Model.Assignment.LastErrorAt.HasValue)
+                                {
+                                    <small class="text-muted">(@Model.Assignment.LastErrorAt.Value.ToString("dd MMM yyyy HH:mm:ss"))</small>
+                                }
+                                <p class="mb-0 mt-1">@Model.Assignment.LastError</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Maps (@Model.Maps.Count)</h5>
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.Maps.Count == 0)
+                        {
+                            <p class="text-muted">No maps in this rotation.</p>
+                        }
+                        else
+                        {
+                            <div class="row">
+                                @{ var sortedMaps = Model.Rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? []; }
+                                @for (var i = 0; i < sortedMaps.Count; i++)
+                                {
+                                    var rotationMap = sortedMaps[i];
+                                    var mapDto = Model.Maps.FirstOrDefault(m => m.MapId == rotationMap.MapId);
+                                    if (mapDto != null)
+                                    {
+                                        <div class="col-md-3 col-sm-4 col-6 mb-3">
+                                            <div class="card h-100">
+                                                <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="card-img-top" alt="@mapDto.MapName" loading="lazy" style="max-height:120px;object-fit:cover;" />
+                                                <div class="card-body p-2">
+                                                    <small class="text-muted">#@(i + 1)</small>
+                                                    <h6 class="card-title mb-0">@mapDto.MapName</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Recent Operations (@Model.Operations.Count)</h5>
+                    </div>
+                    <div class="ibox-content">
+                        @if (Model.Operations.Count == 0)
+                        {
+                            <p class="text-muted">No operations recorded for this assignment.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Operation</th>
+                                            <th>Status</th>
+                                            <th>Started</th>
+                                            <th>Completed</th>
+                                            <th>Duration</th>
+                                            <th>Error</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var op in Model.Operations)
+                                        {
+                                            <tr class="@(op.Status == AssignmentOperationStatus.Failed ? "table-danger" : op.Status == AssignmentOperationStatus.InProgress ? "table-info" : "")">
+                                                <td>@op.OperationType</td>
+                                                <td>
+                                                    @switch (op.Status)
+                                                    {
+                                                        case AssignmentOperationStatus.InProgress:
+                                                            <span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>
+                                                            break;
+                                                        case AssignmentOperationStatus.Succeeded:
+                                                            <span class="badge bg-success">Succeeded</span>
+                                                            break;
+                                                        case AssignmentOperationStatus.Failed:
+                                                            <span class="badge bg-danger">Failed</span>
+                                                            break;
+                                                        case AssignmentOperationStatus.Cancelled:
+                                                            <span class="badge bg-warning">Cancelled</span>
+                                                            break;
+                                                    }
+                                                </td>
+                                                <td>@op.StartedAt.ToString("dd MMM yyyy HH:mm:ss")</td>
+                                                <td>@(op.CompletedAt?.ToString("dd MMM yyyy HH:mm:ss") ?? "—")</td>
+                                                <td>
+                                                    @if (op.CompletedAt.HasValue)
+                                                    {
+                                                        var duration = op.CompletedAt.Value - op.StartedAt;
+                                                        @($"{(int)duration.TotalMinutes}m {duration.Seconds}s")
+                                                    }
+                                                    else if (op.Status == AssignmentOperationStatus.InProgress)
+                                                    {
+                                                        <span class="text-muted">Running...</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(op.Error))
+                                                    {
+                                                        <span class="text-danger" title="@op.Error">@(op.Error.Length > 60 ? op.Error[..60] + "..." : op.Error)</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

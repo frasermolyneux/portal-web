@@ -283,7 +283,8 @@ public class MapRotationsController(
                 }
             }
 
-            // Load game server details for each assignment
+            // Load game server details and operations for each assignment
+            var assignmentOperations = new Dictionary<Guid, List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.MapRotationAssignmentOperationDto>>();
             if (rotation.ServerAssignments?.Count > 0)
             {
                 foreach (var assignment in rotation.ServerAssignments)
@@ -293,13 +294,20 @@ public class MapRotationsController(
                     {
                         ViewData[$"Server_{assignment.GameServerId}"] = serverResponse.Result.Data;
                     }
+
+                    var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(assignment.MapRotationServerAssignmentId, 0, 10, cancellationToken).ConfigureAwait(false);
+                    if (opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null)
+                    {
+                        assignmentOperations[assignment.MapRotationServerAssignmentId] = [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)];
+                    }
                 }
             }
 
             return View(new MapRotationDetailsViewModel
             {
                 Rotation = rotation,
-                Maps = maps
+                Maps = maps,
+                AssignmentOperations = assignmentOperations
             });
         }, nameof(Details)).ConfigureAwait(false);
     }
@@ -503,5 +511,66 @@ public class MapRotationsController(
 
             return RedirectToAction(nameof(Details), new { id = mapRotationId });
         }, nameof(DeleteAssignment)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> AssignmentStatus(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var assignmentResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(id, cancellationToken).ConfigureAwait(false);
+
+            if (assignmentResponse.IsNotFound || assignmentResponse.Result?.Data is null)
+                return NotFound();
+
+            var assignment = assignmentResponse.Result.Data;
+
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.MapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            // Resource-based auth check against the rotation's game type
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.AccessMapRotations,
+                nameof(AssignmentStatus),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var maps = new List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps.MapDto>();
+            if (rotation.MapRotationMaps?.Count > 0)
+            {
+                foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
+                {
+                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
+                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
+                    {
+                        maps.Add(mapResponse.Result.Data);
+                    }
+                }
+            }
+
+            var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(id, 0, 20, cancellationToken).ConfigureAwait(false);
+            List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.MapRotationAssignmentOperationDto> operations = opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null
+                ? [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)]
+                : [];
+
+            var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
+
+            return View(new AssignmentStatusViewModel
+            {
+                Assignment = assignment,
+                Rotation = rotation,
+                GameServer = serverResponse.IsSuccess ? serverResponse.Result?.Data : null,
+                Maps = maps,
+                Operations = operations
+            });
+        }, nameof(AssignmentStatus)).ConfigureAwait(false);
     }
 }

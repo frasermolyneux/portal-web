@@ -1,5 +1,6 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations
 @model XtremeIdiots.Portal.Web.ViewModels.MapRotationDetailsViewModel
 
 @{
@@ -122,8 +123,17 @@
                                         {
                                             var server = ViewData[$"Server_{assignment.GameServerId}"] as GameServerDto;
                                             var isStale = assignment.DeployedVersion.HasValue && assignment.DeployedVersion < Model.Rotation.Version;
-                                            <tr>
-                                                <td>@(server?.Title ?? assignment.GameServerId.ToString())</td>
+                                            var isActivationStale = assignment.ActivatedVersion.HasValue && assignment.ActivatedVersion < Model.Rotation.Version;
+                                            var latestOp = Model.AssignmentOperations.GetValueOrDefault(assignment.MapRotationServerAssignmentId)?.FirstOrDefault();
+                                            <tr class="@(assignment.DeploymentState == DeploymentState.Removed ? "table-secondary opacity-75" : "")">
+                                                <td>
+                                                    @(server?.Title ?? assignment.GameServerId.ToString())
+                                                    @if (assignment.UnassignedAt.HasValue)
+                                                    {
+                                                        var hoursAgo = (DateTime.UtcNow - assignment.UnassignedAt.Value).TotalHours;
+                                                        <small class="text-muted d-block">Removed @((int)hoursAgo)h ago</small>
+                                                    }
+                                                </td>
                                                 <td>
                                                     @if (!string.IsNullOrEmpty(assignment.ConfigFilePath))
                                                     {
@@ -136,9 +146,19 @@
                                                 </td>
                                                 <td>
                                                     @await Html.PartialAsync("_AssignmentStatusBadge", ("Deployment", assignment.DeploymentState.ToString()))
+                                                    @if (!string.IsNullOrEmpty(assignment.LastError))
+                                                    {
+                                                        <div class="text-danger small mt-1" title="@assignment.LastError">
+                                                            <i class="fa-solid fa-exclamation-triangle"></i> @(assignment.LastError.Length > 80 ? assignment.LastError[..80] + "..." : assignment.LastError)
+                                                        </div>
+                                                    }
                                                 </td>
                                                 <td>
                                                     @await Html.PartialAsync("_AssignmentStatusBadge", ("Activation", assignment.ActivationState.ToString()))
+                                                    @if (isActivationStale)
+                                                    {
+                                                        <span class="text-warning" title="Activated version is behind rotation version">⚠️</span>
+                                                    }
                                                 </td>
                                                 <td>
                                                     @(assignment.DeployedVersion?.ToString() ?? "—")
@@ -146,8 +166,17 @@
                                                     {
                                                         <span class="text-warning" title="Deployed version is behind rotation version">⚠️</span>
                                                     }
+                                                    @if (latestOp != null)
+                                                    {
+                                                        <small class="text-muted d-block">
+                                                            Last: @latestOp.OperationType (@latestOp.Status) — @latestOp.StartedAt.ToString("dd MMM HH:mm")
+                                                        </small>
+                                                    }
                                                 </td>
                                                 <td>
+                                                    <a asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-info btn-xs me-1">
+                                                        <i class="fa-solid fa-eye"></i> Status
+                                                    </a>
                                                     <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline"
                                                           onsubmit="return confirm('Are you sure you want to unassign this server?');">
                                                         @Html.AntiForgeryToken()
