@@ -164,6 +164,10 @@
                            asp-controller="BanFileMonitors" asp-action="Index" data-testid="nav-serveradmin-banfilemonitors">
                             <i class="fa-solid fa-ban fa-fw" aria-hidden="true"></i> Ban File Monitors
                         </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("ServerAdmin", "ServerEventsIndex")" 
+                           asp-controller="ServerAdmin" asp-action="ServerEventsIndex" data-testid="nav-serveradmin-serverevents">
+                            <i class="fa-solid fa-timeline fa-fw" aria-hidden="true"></i> Server Events
+                        </a>
                     </nav>
                 </div>
             </div>

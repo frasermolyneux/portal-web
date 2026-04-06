@@ -154,4 +154,70 @@ public class ServerAdminController(
             data = chatMessagesApiResponse?.Result?.Data?.Items
         });
     }
+
+    /// <summary>
+    /// Retrieves server events data for DataTables AJAX requests
+    /// </summary>
+    [HttpPost("GetServerEventsAjax")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GetServerEventsAjax(
+        [FromQuery] string? gameType,
+        [FromQuery] Guid? gameServerId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var reader = new StreamReader(Request.Body);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
+
+            if (model is null)
+                return BadRequest("Invalid request body");
+
+            GameType? parsedGameType = null;
+            if (!string.IsNullOrWhiteSpace(gameType) && Enum.TryParse<GameType>(gameType, out var gt))
+            {
+                parsedGameType = gt;
+            }
+
+            var order = GameServerEventOrder.TimestampDesc;
+
+            if (model.Order?.Count > 0)
+            {
+                var orderColumn = model.Columns[model.Order.First().Column].Name;
+                var searchOrder = model.Order.First().Dir;
+
+                order = orderColumn switch
+                {
+                    "timestamp" => searchOrder == "asc" ? GameServerEventOrder.TimestampAsc : GameServerEventOrder.TimestampDesc,
+                    _ => order
+                };
+            }
+
+            var eventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEvents(
+                parsedGameType, gameServerId, null,
+                model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+
+            if (!eventsApiResponse.IsSuccess || eventsApiResponse.Result?.Data is null)
+            {
+                Logger.LogError("Failed to retrieve server events for user {UserId}", User.XtremeIdiotsId());
+                return StatusCode(500, "Failed to retrieve server events data");
+            }
+
+            TrackSuccessTelemetry("ServerEventsLoaded", nameof(GetServerEventsAjax), new Dictionary<string, string>
+            {
+                { "GameType", gameType ?? "All" },
+                { "GameServerId", gameServerId?.ToString() ?? "All" },
+                { "ResultCount", eventsApiResponse.Result.Data.Items?.Count().ToString() ?? "0" }
+            });
+
+            return Ok(new
+            {
+                model.Draw,
+                recordsTotal = eventsApiResponse.Result?.Pagination?.TotalCount,
+                recordsFiltered = eventsApiResponse.Result?.Pagination?.FilteredCount,
+                data = eventsApiResponse?.Result?.Data?.Items
+            });
+        }, nameof(GetServerEventsAjax)).ConfigureAwait(false);
+    }
 }

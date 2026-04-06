@@ -1120,6 +1120,16 @@ public class ServerAdminController(
         return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(ChatLogIndex)).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Displays the server events index page showing game server events
+    /// </summary>
+    /// <returns>The server events index view</returns>
+    [HttpGet]
+    public async Task<IActionResult> ServerEventsIndex()
+    {
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(ServerEventsIndex)).ConfigureAwait(false);
+    }
+
     [HttpPost]
     [Authorize(Policy = AuthPolicies.ViewGlobalChatLog)]
     [ValidateAntiForgeryToken]
@@ -1129,23 +1139,22 @@ public class ServerAdminController(
     }
 
     /// <summary>
-    /// Returns list of game servers the user can access for chat log filtering (id, title, game type)
+    /// Returns list of game servers the user can access for filtering (id, title, game type)
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>JSON array of servers</returns>
     [HttpGet]
     [Authorize(Policy = AuthPolicies.AccessServerAdmin)]
-    public async Task<IActionResult> GetChatLogServers(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetGameServers(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            // Return broad list (no per-user claim filtering) relying on policy authorization already performed.
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 null, null, null, 0, 300, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
-                Logger.LogWarning("Failed to retrieve chat log server list for user {UserId}", User.XtremeIdiotsId());
+                Logger.LogWarning("Failed to retrieve server list for user {UserId}", User.XtremeIdiotsId());
                 return Json(Array.Empty<object>());
             }
 
@@ -1161,7 +1170,7 @@ public class ServerAdminController(
                 .ToList();
 
             return Json(results);
-        }, nameof(GetChatLogServers)).ConfigureAwait(false);
+        }, nameof(GetGameServers)).ConfigureAwait(false);
     }
 
     [HttpGet]

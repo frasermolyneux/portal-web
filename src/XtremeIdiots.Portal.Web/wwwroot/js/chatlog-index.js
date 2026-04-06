@@ -287,7 +287,7 @@ $(document).ready(function () {
         const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
         const headers = {};
         if (tokenInput) headers['RequestVerificationToken'] = tokenInput.value;
-        fetch('/ServerAdmin/GetChatLogServers', { credentials: 'same-origin', headers: headers })
+        fetch('/ServerAdmin/GetGameServers', { credentials: 'same-origin', headers: headers })
             .then(r => {
                 if (!r.ok) {
                     return [];
