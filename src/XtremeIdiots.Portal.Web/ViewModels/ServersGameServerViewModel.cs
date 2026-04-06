@@ -1,6 +1,7 @@
 ﻿using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -34,4 +35,9 @@ public class ServersGameServerViewModel(GameServerDto gameServer)
     /// Gets or sets the map timeline data points for visualization
     /// </summary>
     public List<MapTimelineDataPoint> MapTimelineDataPoints { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the agent telemetry status for this server (null if unavailable)
+    /// </summary>
+    public AgentServerStatus? AgentStatus { get; set; }
 }

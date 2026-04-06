@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -18,6 +19,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// Initializes a new instance of the StatusController
 /// </remarks>
 /// <param name="repositoryApiClient">Client for repository API operations</param>
+/// <param name="agentTelemetryService">Service for querying agent telemetry from Application Insights</param>
 /// <param name="telemetryClient">Client for application telemetry</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
@@ -25,6 +27,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.AccessStatus)]
 public class StatusController(
     IRepositoryApiClient repositoryApiClient,
+    IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<StatusController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -91,6 +94,66 @@ public class StatusController(
 
             return View(models);
         }, nameof(BanFileStatus)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Displays the agent status page showing telemetry for all agent-enabled game servers
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>View with agent status information for all servers</returns>
+    [HttpGet]
+    public async Task<IActionResult> AgentStatus(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                null, null, GameServerFilter.AgentEnabled, 0, 100,
+                GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+
+            var servers = gameServersApiResponse.IsSuccess && gameServersApiResponse.Result?.Data?.Items is not null
+                ? [.. gameServersApiResponse.Result.Data.Items]
+                : new List<GameServerDto>();
+
+            IReadOnlyList<AgentServerSummary> telemetry = Array.Empty<AgentServerSummary>();
+            try
+            {
+                telemetry = await agentTelemetryService.GetAllServersStatusAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to retrieve agent telemetry for status page");
+            }
+
+            var telemetryByServer = telemetry.ToDictionary(t => t.ServerId);
+
+            var models = servers.Select(gs =>
+            {
+                telemetryByServer.TryGetValue(gs.GameServerId, out var summary);
+
+                return new AgentServerSummary
+                {
+                    ServerId = gs.GameServerId,
+                    ServerTitle = string.IsNullOrWhiteSpace(gs.LiveTitle) ? gs.Title : gs.LiveTitle,
+                    GameType = gs.GameType.ToString(),
+                    LastEventReceived = summary?.LastEventReceived,
+                    EventsLastHour = summary?.EventsLastHour ?? 0,
+                    PlayerCount = summary?.PlayerCount ?? 0,
+                    CurrentMap = summary?.CurrentMap ?? gs.LiveMap,
+                    IsAgentActive = summary?.IsAgentActive ?? false
+                };
+            }).ToList();
+
+            TrackSuccessTelemetry("AgentStatusRetrieved", nameof(AgentStatus), new Dictionary<string, string>
+            {
+                { "ServerCount", models.Count.ToString() },
+                { "ActiveCount", models.Count(m => m.IsAgentActive).ToString() }
+            });
+
+            Logger.LogInformation("User {UserId} retrieved agent status for {ServerCount} servers",
+                User.XtremeIdiotsId(), models.Count);
+
+            return View(models);
+        }, nameof(AgentStatus)).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -102,6 +102,7 @@ builder.Services.AddScoped<IDemoManager, DemoManager>();
 
 builder.Services.AddSingleton(_ => new LogsQueryClient(new DefaultAzureCredential()));
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
+builder.Services.AddScoped<IAgentTelemetryService, AgentTelemetryService>();
 
 builder.Services.AddRepositoryApiClient(options => options
     .WithBaseUrl(GetConfigValue(builder.Configuration, "RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))

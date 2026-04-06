@@ -1,0 +1,111 @@
+@using XtremeIdiots.Portal.Web.Services
+@model List<AgentServerSummary>
+
+@{
+    ViewData["Title"] = "Agent Status";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+
+    <div class="alert alert-primary" role="alert">
+        <i class="fa-solid fa-circle-info"></i> This page shows the current status of game server agents, based on
+        telemetry events received in Application Insights.
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Agent Status Overview</h5>
+                        <span class="float-end">
+                            @{
+                                var activeCount = Model.Count(m => m.IsAgentActive);
+                                var totalCount = Model.Count;
+                            }
+                            <span class="badge bg-success">@activeCount Active</span>
+                            <span class="badge bg-secondary">@totalCount Total</span>
+                        </span>
+                    </div>
+                    <div class="ibox-content">
+                        @if (!Model.Any())
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fa-solid fa-triangle-exclamation"></i> No agent-enabled servers found.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>Server</th>
+                                            <th>Game</th>
+                                            <th>Status</th>
+                                            <th>Last Event</th>
+                                            <th>Events (1h)</th>
+                                            <th>Players</th>
+                                            <th>Map</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var server in Model)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <a asp-controller="Servers" asp-action="ServerInfo" asp-route-id="@server.ServerId">
+                                                        @(server.ServerTitle ?? server.ServerId.ToString())
+                                                    </a>
+                                                </td>
+                                                <td>@server.GameType</td>
+                                                <td>
+                                                    @if (server.IsAgentActive)
+                                                    {
+                                                        <span class="badge bg-success">Active</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger">Inactive</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (server.LastEventReceived.HasValue)
+                                                    {
+                                                        var ago = DateTime.UtcNow - server.LastEventReceived.Value;
+                                                        if (ago.TotalSeconds < 60)
+                                                        {
+                                                            @($"{(int)ago.TotalSeconds}s ago")
+                                                        }
+                                                        else if (ago.TotalMinutes < 60)
+                                                        {
+                                                            @($"{(int)ago.TotalMinutes}m ago")
+                                                        }
+                                                        else
+                                                        {
+                                                            @($"{(int)ago.TotalHours}h ago")
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <text>—</text>
+                                                    }
+                                                </td>
+                                                <td>@server.EventsLastHour</td>
+                                                <td>@server.PlayerCount</td>
+                                                <td>@(server.CurrentMap ?? "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>

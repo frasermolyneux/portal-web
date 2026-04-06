@@ -5,6 +5,12 @@
 
 @{
     ViewData["Title"] = "Server Info";
+
+    var now = DateTime.UtcNow;
+    var lastUpdated = Model.GameServer.LiveLastUpdated;
+    var freshness = lastUpdated.HasValue ? (now - lastUpdated.Value).TotalMinutes : double.MaxValue;
+    var badgeClass = freshness <= 2 ? "bg-success" : freshness <= 5 ? "bg-warning" : "bg-danger";
+    var badgeText = freshness <= 2 ? "Live" : freshness <= 5 ? "Updating" : "Stale";
 }
 
 <div class="wrapper wrapper-content animated fadeInRight @(Model.Maps.Any() ? "with-datatable" : string.Empty)">
@@ -70,6 +76,23 @@
 
                             <tr>
                                 <td>
+                                    <strong>Last Updated</strong>
+                                </td>
+                                <td>
+                                    @if (lastUpdated.HasValue)
+                                    {
+                                        @lastUpdated.Value.ToString("HH:mm:ss")
+                                    }
+                                    else
+                                    {
+                                        <text>Never</text>
+                                    }
+                                    <span class="badge @badgeClass">@badgeText</span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
                                     <strong>Connect</strong>
                                 </td>
                                 <td>
@@ -117,6 +140,68 @@
 
                 </div>
             </div>
+
+            @if (Model.AgentStatus is not null)
+            {
+                var agentStatus = Model.AgentStatus;
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5><i class="fa-solid fa-robot"></i> Agent Status</h5>
+                        @if (agentStatus.IsAgentActive)
+                        {
+                            <span class="badge bg-success float-end">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger float-end">Inactive</span>
+                        }
+                    </div>
+                    <div class="ibox-content">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6>Last Event</h6>
+                                <p>@(agentStatus.LastEventReceived?.ToString("HH:mm:ss") ?? "Never")</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Events (1h)</h6>
+                                <p>@agentStatus.EventsLastHour</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Players (1h)</h6>
+                                <p>@agentStatus.PlayersConnectedLastHour</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Chat (1h)</h6>
+                                <p>@agentStatus.ChatMessagesLastHour</p>
+                            </div>
+                        </div>
+                        @if (agentStatus.LastMapName is not null)
+                        {
+                            <hr />
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Last Map Change</h6>
+                                    <p>@(agentStatus.LastMapChange?.ToString("HH:mm:ss") ?? "—") — @agentStatus.LastMapName</p>
+                                </div>
+                            </div>
+                        }
+                        @if (agentStatus.BansDetectedLast24h > 0 || agentStatus.ModerationTriggersLast24h > 0)
+                        {
+                            <hr />
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Bans Detected (24h)</h6>
+                                    <p>@agentStatus.BansDetectedLast24h</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Moderation Triggers (24h)</h6>
+                                    <p>@agentStatus.ModerationTriggersLast24h</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
 
         </div>
 

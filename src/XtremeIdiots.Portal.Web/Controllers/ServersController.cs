@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -20,6 +21,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// Initializes a new instance of the ServersController
 /// </remarks>
 /// <param name="repositoryApiClient">Client for repository API operations</param>
+/// <param name="agentTelemetryService">Service for querying agent telemetry from Application Insights</param>
 /// <param name="telemetryClient">Client for application telemetry</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
@@ -27,6 +29,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.AccessServers)]
 public class ServersController(
     IRepositoryApiClient repositoryApiClient,
+    IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<ServersController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -191,6 +194,17 @@ public class ServersController(
                 GameServerStats = gameServerStatDtos,
                 MapTimelineDataPoints = mapTimelineDataPoints
             };
+
+            // Fetch agent telemetry (non-critical — page renders without it)
+            try
+            {
+                viewModel.AgentStatus = await agentTelemetryService.GetServerStatusAsync(
+                    gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to retrieve agent telemetry for server {ServerId}", id);
+            }
 
             Logger.LogInformation("User {UserId} successfully retrieved server info for server {ServerId} with {MapCount} maps and {StatCount} statistics",
                 User.XtremeIdiotsId(), id, maps.Count, gameServerStatDtos.Count);

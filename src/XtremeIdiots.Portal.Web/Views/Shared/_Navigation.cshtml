@@ -164,6 +164,10 @@
                            asp-controller="Status" asp-action="BanFileStatus" data-testid="nav-serveradmin-banfilestatus">
                             <i class="fa-solid fa-heart-pulse fa-fw" aria-hidden="true"></i> Ban File Status
                         </a>
+                        <a policy="@AuthPolicies.AccessStatus" class="nav-link text-white-50 @Html.IsSelected("Status", "AgentStatus")" 
+                           asp-controller="Status" asp-action="AgentStatus" data-testid="nav-serveradmin-agentstatus">
+                            <i class="fa-solid fa-robot fa-fw" aria-hidden="true"></i> Agent Status
+                        </a>
                         <a policy="@AuthPolicies.AccessBanFileMonitors" class="nav-link text-white-50 @Html.IsSelected("BanFileMonitors", "Index")" 
                            asp-controller="BanFileMonitors" asp-action="Index" data-testid="nav-serveradmin-banfilemonitors">
                             <i class="fa-solid fa-ban fa-fw" aria-hidden="true"></i> Ban File Monitors
