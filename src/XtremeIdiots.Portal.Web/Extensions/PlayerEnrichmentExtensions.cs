@@ -7,17 +7,14 @@ namespace XtremeIdiots.Portal.Web.Extensions;
 
 public static class PlayerEnrichmentExtensions
 {
-    public async static Task<PlayerDto> EnrichWithIntelligenceDataAsync(
+    public async static Task<PlayerIntelligenceData> GetIntelligenceDataAsync(
         this PlayerDto playerDto,
         IGeoLocationApiClient geoLocationClient,
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
-        if (playerDto is null)
-            return playerDto!;
-
-        if (string.IsNullOrEmpty(playerDto.IpAddress))
-            return playerDto;
+        if (playerDto is null || string.IsNullOrEmpty(playerDto.IpAddress))
+            return new PlayerIntelligenceData();
 
         try
         {
@@ -25,19 +22,21 @@ public static class PlayerEnrichmentExtensions
             if (result.IsSuccess && result.Result?.Data is not null)
             {
                 var intelligence = result.Result.Data;
-
-                if (!string.IsNullOrWhiteSpace(intelligence.CountryCode))
-                {
-                    playerDto.SetCountryCode(intelligence.CountryCode);
-                }
+                var countryCode = !string.IsNullOrWhiteSpace(intelligence.CountryCode) ? intelligence.CountryCode : string.Empty;
 
                 if (intelligence.ProxyCheckStatus == SourceStatus.Success && intelligence.ProxyCheck is not null)
                 {
-                    playerDto.SetProxyCheckRiskScore(intelligence.ProxyCheck.RiskScore);
-                    playerDto.SetIsProxy(intelligence.ProxyCheck.IsProxy);
-                    playerDto.SetIsVpn(intelligence.ProxyCheck.IsVpn);
-                    playerDto.SetProxyType(intelligence.ProxyCheck.ProxyType);
+                    return new PlayerIntelligenceData
+                    {
+                        CountryCode = countryCode,
+                        ProxyCheckRiskScore = intelligence.ProxyCheck.RiskScore,
+                        IsProxy = intelligence.ProxyCheck.IsProxy,
+                        IsVpn = intelligence.ProxyCheck.IsVpn,
+                        ProxyType = intelligence.ProxyCheck.ProxyType
+                    };
                 }
+
+                return new PlayerIntelligenceData { CountryCode = countryCode };
             }
         }
         catch (Exception ex)
@@ -45,24 +44,29 @@ public static class PlayerEnrichmentExtensions
             logger.LogWarning(ex, "Failed to enrich player DTO with intelligence data for IP {IpAddress}", playerDto.IpAddress);
         }
 
-        return playerDto;
+        return new PlayerIntelligenceData();
     }
 
-    public async static Task<IEnumerable<PlayerDto>> EnrichWithIntelligenceDataAsync(
+    public async static Task<Dictionary<Guid, PlayerIntelligenceData>> GetIntelligenceDataAsync(
         this IEnumerable<PlayerDto> playerDtos,
         IGeoLocationApiClient geoLocationClient,
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
+        var result = new Dictionary<Guid, PlayerIntelligenceData>();
+
         if (playerDtos is null)
-            return [];
+            return result;
 
-        var players = playerDtos.ToList();
+        var players = playerDtos.Where(p => p != null).ToList();
+        var bag = new System.Collections.Concurrent.ConcurrentDictionary<Guid, PlayerIntelligenceData>();
 
-        await Parallel.ForEachAsync(players.Where(p => p != null), cancellationToken, async (player, ct) =>
-            await player.EnrichWithIntelligenceDataAsync(geoLocationClient, logger, ct).ConfigureAwait(false))
-            .ConfigureAwait(false);
+        await Parallel.ForEachAsync(players, cancellationToken, async (player, ct) =>
+        {
+            var data = await player.GetIntelligenceDataAsync(geoLocationClient, logger, ct).ConfigureAwait(false);
+            bag[player.PlayerId] = data;
+        }).ConfigureAwait(false);
 
-        return players;
+        return new Dictionary<Guid, PlayerIntelligenceData>(bag);
     }
 }

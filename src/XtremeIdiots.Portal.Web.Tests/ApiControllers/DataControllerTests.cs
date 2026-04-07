@@ -82,21 +82,6 @@ public class DataControllerTests
     }
 
     [Fact]
-    public async Task GetPlayersAjax_WithEmptyBody_ReturnsBadRequest()
-    {
-        // Arrange - empty body causes deserialization to return null model,
-        // which triggers BadRequest from the null model guard
-        var sut = CreateSut();
-        sut.HttpContext.Request.Body = new MemoryStream();
-
-        // Act
-        var result = await sut.GetPlayersAjax(null, null);
-
-        // Assert
-        Assert.IsType<BadRequestResult>(result);
-    }
-
-    [Fact]
     public async Task GetMapListAjax_WithEmptyBody_ReturnsBadRequest()
     {
         // Arrange

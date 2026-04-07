@@ -65,23 +65,27 @@ public class PlayersController(
                 return StatusCode(500, "Failed to retrieve players data");
             }
 
-            var enrichedPlayers = await playerCollectionApiResponse.Result.Data.Items
-                .EnrichWithIntelligenceDataAsync(geoLocationClient, Logger, cancellationToken).ConfigureAwait(false);
+            var intelligenceData = await playerCollectionApiResponse.Result.Data.Items
+                .GetIntelligenceDataAsync(geoLocationClient, Logger, cancellationToken).ConfigureAwait(false);
 
-            var playerData = enrichedPlayers.Select(player => new
+            var playerData = playerCollectionApiResponse.Result.Data.Items.Select(player =>
             {
-                player.PlayerId,
-                player.GameType,
-                player.Username,
-                player.Guid,
-                player.IpAddress,
-                player.FirstSeen,
-                player.LastSeen,
-                ProxyCheckRiskScore = player.ProxyCheckRiskScore(),
-                IsProxy = player.IsProxy(),
-                IsVpn = player.IsVpn(),
-                ProxyType = player.ProxyType(),
-                CountryCode = player.CountryCode()
+                var intel = intelligenceData.TryGetValue(player.PlayerId, out var d) ? d : new PlayerIntelligenceData();
+                return new
+                {
+                    player.PlayerId,
+                    player.GameType,
+                    player.Username,
+                    player.Guid,
+                    player.IpAddress,
+                    player.FirstSeen,
+                    player.LastSeen,
+                    intel.ProxyCheckRiskScore,
+                    intel.IsProxy,
+                    intel.IsVpn,
+                    intel.ProxyType,
+                    intel.CountryCode
+                };
             }).ToList();
 
             TrackSuccessTelemetry("PlayersDataLoaded", nameof(GetPlayersAjax), new Dictionary<string, string>

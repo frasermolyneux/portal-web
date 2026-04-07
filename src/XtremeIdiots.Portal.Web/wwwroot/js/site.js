@@ -11,14 +11,12 @@ function handleAjaxError(xhr, textStatus, error) {
     console.log(textStatus);
 }
 
-function renderPlayerName(gameType, username) {
-    var safeUsername = escapeHtml(username);
-    return gameTypeIconEnum(gameType) + " " + safeUsername;
-}
-
 function renderPlayerName(gameType, username, playerId) {
     var safeUsername = escapeHtml(username);
-    return gameTypeIconEnum(gameType) + " <a href='/Players/Details/" + playerId + "'>" + safeUsername + "</a>";
+    if (playerId) {
+        return gameTypeIconEnum(gameType) + " <a href='/Players/Details/" + playerId + "'>" + safeUsername + "</a>";
+    }
+    return gameTypeIconEnum(gameType) + " " + safeUsername;
 }
 
 function chatLogUrl(chatMessageId) {

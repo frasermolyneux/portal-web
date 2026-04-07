@@ -37,20 +37,6 @@ public class DataController(
 {
 
     /// <summary>
-    /// Retrieves players data for DataTables AJAX requests with username and GUID filtering
-    /// </summary>
-    /// <param name="id">Optional game type to filter players by</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>DataTables-compatible JSON response with player data</returns>
-    [HttpPost("Players/GetPlayersAjax")]
-    [Authorize(Policy = AuthPolicies.AccessPlayers)]
-    public async Task<IActionResult> GetPlayersAjax(GameType? id, [FromQuery] PlayersFilter? playersFilter, CancellationToken cancellationToken = default)
-    {
-        var filter = playersFilter ?? PlayersFilter.UsernameAndGuid;
-        return await GetPlayersAjaxPrivate(filter, id, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
     /// Retrieves maps data for DataTables AJAX requests with sorting and filtering support
     /// </summary>
     /// <param name="id">Optional game type to filter maps by</param>
@@ -176,69 +162,4 @@ public class DataController(
         }, nameof(GetUsersAjax)).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Private helper method to handle different types of player AJAX requests with filtering and sorting
-    /// </summary>
-    /// <param name="filter">The filter type to apply to player queries</param>
-    /// <param name="gameType">Optional game type to filter players by</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>DataTables-compatible JSON response with filtered player data</returns>
-    private async Task<IActionResult> GetPlayersAjaxPrivate(PlayersFilter filter, GameType? gameType, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var reader = new StreamReader(Request.Body);
-            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-
-            var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
-
-            if (model is null)
-            {
-                Logger.LogWarning("Invalid request model for players AJAX from user {UserId}", User.XtremeIdiotsId());
-                return BadRequest();
-            }
-
-            var order = PlayersOrder.LastSeenDesc;
-
-            if (model.Order?.Count > 0)
-            {
-                var orderColumn = model.Columns[model.Order.First().Column].Name;
-                var searchOrder = model.Order.First().Dir;
-
-                order = orderColumn switch
-                {
-                    "username" => searchOrder == "asc" ? PlayersOrder.UsernameAsc : PlayersOrder.UsernameDesc,
-                    "gameType" => searchOrder == "asc" ? PlayersOrder.GameTypeAsc : PlayersOrder.GameTypeDesc,
-                    "firstSeen" => searchOrder == "asc" ? PlayersOrder.FirstSeenAsc : PlayersOrder.FirstSeenDesc,
-                    "lastSeen" => searchOrder == "asc" ? PlayersOrder.LastSeenAsc : PlayersOrder.LastSeenDesc,
-                    _ => order
-                };
-            }
-
-            var playersApiResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                gameType, filter, model.Search?.Value, model.Start, model.Length, order, PlayerEntityOptions.None).ConfigureAwait(false);
-
-            if (!playersApiResponse.IsSuccess || playersApiResponse.Result?.Data is null)
-            {
-                Logger.LogError("Failed to retrieve players for user {UserId} with filter {Filter}",
-                    User.XtremeIdiotsId(), filter);
-                return StatusCode(500, "Failed to retrieve players data");
-            }
-
-            TrackSuccessTelemetry("PlayersListLoaded", nameof(GetPlayersAjax), new Dictionary<string, string>
-            {
-                { "Filter", filter.ToString() },
-                { "GameType", gameType?.ToString() ?? "All" },
-                { "ResultCount", playersApiResponse.Result.Data.Items?.Count().ToString() ?? "0" }
-            });
-
-            return Ok(new
-            {
-                model.Draw,
-                recordsTotal = playersApiResponse.Result?.Pagination?.TotalCount,
-                recordsFiltered = playersApiResponse.Result?.Pagination?.FilteredCount,
-                data = playersApiResponse?.Result?.Data?.Items
-            });
-        }, nameof(GetPlayersAjax), $"filter: {filter}, gameType: {gameType}").ConfigureAwait(false);
-    }
 }

@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Html;
 using System.Text;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
-using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.Extensions;
 
@@ -63,23 +61,6 @@ public static class IPAddressExtensions
         }
 
         return new HtmlString(sb.ToString());
-    }
-
-    public static HtmlString FormatIPAddress(
-        this PlayerDto player,
-        string? countryCode = null,
-        bool linkToDetails = true)
-    {
-        return player is null || string.IsNullOrEmpty(player.IpAddress)
-            ? HtmlString.Empty
-            : FormatIPAddress(
-            player.IpAddress,
-            countryCode ?? player.CountryCode(),
-            player.ProxyCheckRiskScore(),
-            player.IsProxy(),
-            player.IsVpn(),
-            player.ProxyType(),
-            linkToDetails);
     }
 
     public static string GetRiskClass(int riskScore)

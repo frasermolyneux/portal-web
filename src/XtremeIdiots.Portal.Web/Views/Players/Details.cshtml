@@ -137,12 +137,12 @@
                                 <li class="list-group-item">                                    
                                     <span class="float-end text-end ip-address-container" 
                                           data-ip="@player.IpAddress" 
-                                          data-risk="@player.ProxyCheckRiskScore()" 
-                                          data-is-proxy="@player.IsProxy().ToString().ToLower()" 
-                                          data-is-vpn="@player.IsVpn().ToString().ToLower()"
-                                          data-type="@player.ProxyType()"
+                                          data-risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)" 
+                                          data-is-proxy="@((Model.Intelligence.ProxyCheck?.IsProxy ?? false).ToString().ToLower())" 
+                                          data-is-vpn="@((Model.Intelligence.ProxyCheck?.IsVpn ?? false).ToString().ToLower())"
+                                          data-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"
                                                                                     data-country-code="@(Model.Intelligence.CountryCode ?? "")">
-                                                                                <ip-address ip="@player.IpAddress" country-code="@Model.Intelligence.CountryCode" risk="@player.ProxyCheckRiskScore()" is-proxy="@player.IsProxy()" is-vpn="@player.IsVpn()" proxy-type="@player.ProxyType()"></ip-address>
+                                                                                <ip-address ip="@player.IpAddress" country-code="@Model.Intelligence.CountryCode" risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)" is-proxy="@(Model.Intelligence.ProxyCheck?.IsProxy ?? false)" is-vpn="@(Model.Intelligence.ProxyCheck?.IsVpn ?? false)" proxy-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"></ip-address>
                                     </span>
                                     IP Address
                                 </li>
