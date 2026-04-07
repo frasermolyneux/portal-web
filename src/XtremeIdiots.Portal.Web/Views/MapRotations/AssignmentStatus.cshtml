@@ -3,24 +3,7 @@
 
 @{
     ViewData["Title"] = "Assignment Status - " + Model.GameServerDisplayName;
-
-    var syncInstanceId = $"maprot-sync-{Model.Assignment.MapRotationServerAssignmentId}";
-    var activateInstanceId = $"maprot-activate-{Model.Assignment.MapRotationServerAssignmentId}";
-    var removeInstanceId = $"maprot-remove-{Model.Assignment.MapRotationServerAssignmentId}";
-    var deactivateInstanceId = $"maprot-deactivate-{Model.Assignment.MapRotationServerAssignmentId}";
-
-    // Use TempData if available (set by sync/activate/deactivate trigger), otherwise derive from DB state
-    var activeInstanceId = TempData["ActiveInstanceId"] as string ?? Model.Assignment.DeploymentState switch
-    {
-        DeploymentState.Syncing => syncInstanceId,
-        DeploymentState.Removing => removeInstanceId,
-        _ => Model.Assignment.ActivationState switch
-        {
-            ActivationState.Activating => activateInstanceId,
-            ActivationState.Deactivating => deactivateInstanceId,
-            _ => (string?)null
-        }
-    };
+    var pendingInstanceId = TempData["PendingInstanceId"] as string;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -155,26 +138,155 @@
                     </div>
                 </div>
 
-                @if (activeInstanceId != null)
-                {
-                    <div class="ibox">
-                        <div class="ibox-title">
-                            <h5>Live Progress</h5>
-                        </div>
-                        <div class="ibox-content" id="progressContainer" data-instance-id="@activeInstanceId" data-poll-url="@Url.Action("GetSyncProgress", "MapRotations")">
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span id="progressLabel">Initializing...</span>
-                                    <span id="progressPercent">0%</span>
-                                </div>
-                                <div class="progress" style="height: 24px;">
-                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div id="mapStatusList"></div>
-                        </div>
+                <div class="ibox" id="operationsContainer"
+                     data-poll-url="@Url.Action("GetSyncProgress", "MapRotations")"
+                     @if (!string.IsNullOrEmpty(pendingInstanceId))
+                     {
+                         <text>data-pending-instance-id="@pendingInstanceId"</text>
+                     }>
+                    <div class="ibox-title">
+                        <h5>Recent Operations (@Model.Operations.Count)</h5>
                     </div>
-                }
+                    <div class="ibox-content">
+                        @if (Model.Operations.Count == 0 && string.IsNullOrEmpty(pendingInstanceId))
+                        {
+                            <p class="text-muted">No operations recorded for this assignment.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped table-sm" id="operationsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Operation</th>
+                                            <th>Status</th>
+                                            <th>Started</th>
+                                            <th>Completed</th>
+                                            <th>Duration</th>
+                                            <th>Instance</th>
+                                            <th>Error</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (Model.Operations.Count == 0 && !string.IsNullOrEmpty(pendingInstanceId))
+                                        {
+                                            <tr class="table-info pending-bootstrap-row" data-instance-id="@pendingInstanceId">
+                                                <td>—</td>
+                                                <td><span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> Starting...</span></td>
+                                                <td colspan="3"><span class="text-muted">Operation is being initialized...</span></td>
+                                                <td><code class="small" title="@pendingInstanceId">@(pendingInstanceId.Length > 20 ? pendingInstanceId[..20] + "…" : pendingInstanceId)</code></td>
+                                                <td></td>
+                                            </tr>
+                                            <tr class="progress-detail-row">
+                                                <td colspan="7" class="p-0 border-0">
+                                                    <div class="px-3 py-2 bg-light">
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span class="progress-label">Waiting for orchestration to start...</span>
+                                                            <span class="progress-percent"></span>
+                                                        </div>
+                                                        <div class="progress mb-2" style="height: 20px;">
+                                                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%"></div>
+                                                        </div>
+                                                        <div class="progress-map-list"></div>
+                                                        <div class="progress-orchestration-status mt-2"></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                        @foreach (var op in Model.Operations)
+                                        {
+                                            var isInProgress = op.Status == AssignmentOperationStatus.InProgress;
+                                            var elapsedMinutes = isInProgress ? (DateTime.UtcNow - op.StartedAt).TotalMinutes : 0;
+                                            <tr class="@(op.Status == AssignmentOperationStatus.Failed ? "table-danger" : isInProgress ? "table-info" : "")"
+                                                @if (isInProgress && !string.IsNullOrEmpty(op.DurableFunctionInstanceId))
+                                                {
+                                                    <text>data-instance-id="@op.DurableFunctionInstanceId"</text>
+                                                }
+                                                data-started-at="@op.StartedAt.ToString("o")">
+                                                <td>@op.OperationType</td>
+                                                <td>
+                                                    @switch (op.Status)
+                                                    {
+                                                        case AssignmentOperationStatus.InProgress:
+                                                            <span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>
+                                                            if (elapsedMinutes > 15)
+                                                            {
+                                                                <span class="badge bg-warning text-dark stale-badge" title="This operation has been running for over 15 minutes and may be stuck">⚠️ Stale</span>
+                                                            }
+                                                            break;
+                                                        case AssignmentOperationStatus.Succeeded:
+                                                            <span class="badge bg-success">Succeeded</span>
+                                                            break;
+                                                        case AssignmentOperationStatus.Failed:
+                                                            <span class="badge bg-danger">Failed</span>
+                                                            break;
+                                                        case AssignmentOperationStatus.Cancelled:
+                                                            <span class="badge bg-warning">Cancelled</span>
+                                                            break;
+                                                    }
+                                                </td>
+                                                <td>@op.StartedAt.ToString("dd MMM yyyy HH:mm:ss")</td>
+                                                <td>@(op.CompletedAt?.ToString("dd MMM yyyy HH:mm:ss") ?? "—")</td>
+                                                <td>
+                                                    @if (op.CompletedAt.HasValue)
+                                                    {
+                                                        var duration = op.CompletedAt.Value - op.StartedAt;
+                                                        @($"{(int)duration.TotalMinutes}m {duration.Seconds}s")
+                                                    }
+                                                    else if (isInProgress)
+                                                    {
+                                                        <span class="elapsed-timer" data-started-at="@op.StartedAt.ToString("o")">Calculating...</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(op.DurableFunctionInstanceId))
+                                                    {
+                                                        <code class="small" title="@op.DurableFunctionInstanceId">@(op.DurableFunctionInstanceId.Length > 20 ? op.DurableFunctionInstanceId[..20] + "…" : op.DurableFunctionInstanceId)</code>
+                                                    }
+                                                    else if (isInProgress)
+                                                    {
+                                                        <span class="text-muted small">No tracking ID</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(op.Error))
+                                                    {
+                                                        <span class="text-danger" title="@op.Error">@(op.Error.Length > 60 ? op.Error[..60] + "..." : op.Error)</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                            @if (isInProgress)
+                                            {
+                                                <tr class="progress-detail-row">
+                                                    <td colspan="7" class="p-0 border-0">
+                                                        <div class="px-3 py-2 bg-light">
+                                                            @if (string.IsNullOrEmpty(op.DurableFunctionInstanceId))
+                                                            {
+                                                                <p class="text-muted mb-0"><i class="fa-solid fa-info-circle"></i> Live progress details are unavailable — no orchestration tracking ID recorded for this operation.</p>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="d-flex justify-content-between mb-1">
+                                                                    <span class="progress-label">Waiting for progress data...</span>
+                                                                    <span class="progress-percent"></span>
+                                                                </div>
+                                                                <div class="progress mb-2" style="height: 20px;">
+                                                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%"></div>
+                                                                </div>
+                                                                <div class="progress-map-list"></div>
+                                                                <div class="progress-orchestration-status mt-2"></div>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
 
                 <div class="ibox">
                     <div class="ibox-title">
@@ -202,79 +314,6 @@
                                         </div>
                                     }
                                 }
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <div class="ibox">
-                    <div class="ibox-title">
-                        <h5>Recent Operations (@Model.Operations.Count)</h5>
-                    </div>
-                    <div class="ibox-content">
-                        @if (Model.Operations.Count == 0)
-                        {
-                            <p class="text-muted">No operations recorded for this assignment.</p>
-                        }
-                        else
-                        {
-                            <div class="table-responsive">
-                                <table class="table table-striped table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Operation</th>
-                                            <th>Status</th>
-                                            <th>Started</th>
-                                            <th>Completed</th>
-                                            <th>Duration</th>
-                                            <th>Error</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var op in Model.Operations)
-                                        {
-                                            <tr class="@(op.Status == AssignmentOperationStatus.Failed ? "table-danger" : op.Status == AssignmentOperationStatus.InProgress ? "table-info" : "")">
-                                                <td>@op.OperationType</td>
-                                                <td>
-                                                    @switch (op.Status)
-                                                    {
-                                                        case AssignmentOperationStatus.InProgress:
-                                                            <span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>
-                                                            break;
-                                                        case AssignmentOperationStatus.Succeeded:
-                                                            <span class="badge bg-success">Succeeded</span>
-                                                            break;
-                                                        case AssignmentOperationStatus.Failed:
-                                                            <span class="badge bg-danger">Failed</span>
-                                                            break;
-                                                        case AssignmentOperationStatus.Cancelled:
-                                                            <span class="badge bg-warning">Cancelled</span>
-                                                            break;
-                                                    }
-                                                </td>
-                                                <td>@op.StartedAt.ToString("dd MMM yyyy HH:mm:ss")</td>
-                                                <td>@(op.CompletedAt?.ToString("dd MMM yyyy HH:mm:ss") ?? "—")</td>
-                                                <td>
-                                                    @if (op.CompletedAt.HasValue)
-                                                    {
-                                                        var duration = op.CompletedAt.Value - op.StartedAt;
-                                                        @($"{(int)duration.TotalMinutes}m {duration.Seconds}s")
-                                                    }
-                                                    else if (op.Status == AssignmentOperationStatus.InProgress)
-                                                    {
-                                                        <span class="text-muted">Running...</span>
-                                                    }
-                                                </td>
-                                                <td>
-                                                    @if (!string.IsNullOrEmpty(op.Error))
-                                                    {
-                                                        <span class="text-danger" title="@op.Error">@(op.Error.Length > 60 ? op.Error[..60] + "..." : op.Error)</span>
-                                                    }
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
                             </div>
                         }
                     </div>

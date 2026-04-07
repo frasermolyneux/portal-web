@@ -608,7 +608,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertSuccess("Sync triggered successfully.");
-                TempData["ActiveInstanceId"] = $"maprot-sync-{assignmentId}";
+                TempData["PendingInstanceId"] = $"maprot-sync-{assignmentId}";
             }
             else
             {
@@ -650,7 +650,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertSuccess("Activation triggered successfully.");
-                TempData["ActiveInstanceId"] = $"maprot-activate-{assignmentId}";
+                TempData["PendingInstanceId"] = $"maprot-activate-{assignmentId}";
             }
             else
             {
@@ -692,7 +692,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertSuccess("Deactivation triggered successfully.");
-                TempData["ActiveInstanceId"] = $"maprot-deactivate-{assignmentId}";
+                TempData["PendingInstanceId"] = $"maprot-deactivate-{assignmentId}";
             }
             else
             {
@@ -706,9 +706,21 @@ public class MapRotationsController(
     [HttpGet]
     public async Task<IActionResult> GetSyncProgress(string instanceId, CancellationToken cancellationToken = default)
     {
-        var result = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
-        if (result == null)
-            return Json(new { status = "unknown" });
-        return Json(result);
+        var queryResult = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
+        return queryResult.Outcome switch
+        {
+            Services.OrchestrationStatusQueryOutcome.Found => Json(new
+            {
+                status = "found",
+                instanceId = queryResult.Result!.InstanceId,
+                runtimeStatus = queryResult.Result.RuntimeStatus,
+                createdAt = queryResult.Result.CreatedAt,
+                lastUpdatedAt = queryResult.Result.LastUpdatedAt,
+                progress = queryResult.Result.Progress
+            }),
+            Services.OrchestrationStatusQueryOutcome.NotFound => Json(new { status = "not_found" }),
+            Services.OrchestrationStatusQueryOutcome.Error => Json(new { status = "error" }),
+            _ => Json(new { status = "error" })
+        };
     }
 }

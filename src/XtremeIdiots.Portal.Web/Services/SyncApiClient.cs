@@ -31,7 +31,7 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
         return TriggerOrchestration($"/api/map-rotations/remove/{assignmentId}", cancellationToken);
     }
 
-    public async Task<OrchestrationStatusResult?> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
+    public async Task<OrchestrationStatusQueryResult> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -42,15 +42,24 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Token);
 
             var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) return null;
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.NotFound);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Sync API returned {StatusCode} for orchestration status {InstanceId}", (int)response.StatusCode, instanceId);
+                return new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Error);
+            }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            return System.Text.Json.JsonSerializer.Deserialize<OrchestrationStatusResult>(json, jsonOptions);
+            var result = System.Text.Json.JsonSerializer.Deserialize<OrchestrationStatusResult>(json, jsonOptions);
+            return new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found, result);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get orchestration status for {InstanceId}", instanceId);
-            return null;
+            return new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Error);
         }
     }
 

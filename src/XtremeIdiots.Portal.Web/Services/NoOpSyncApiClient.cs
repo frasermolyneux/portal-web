@@ -22,8 +22,8 @@ public class NoOpSyncApiClient : ISyncApiClient
         return Task.FromResult(new SyncTriggerResult(false, Error: "Sync API not configured"));
     }
 
-    public Task<OrchestrationStatusResult?> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
+    public Task<OrchestrationStatusQueryResult> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<OrchestrationStatusResult?>(null);
+        return Task.FromResult(new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Error));
     }
 }
