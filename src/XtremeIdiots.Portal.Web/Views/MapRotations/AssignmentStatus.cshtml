@@ -4,6 +4,9 @@
 @{
     ViewData["Title"] = "Assignment Status - " + Model.GameServerDisplayName;
     var pendingInstanceId = TempData["PendingInstanceId"] as string;
+    var hasPendingWithNoRow = !string.IsNullOrEmpty(pendingInstanceId)
+        && !Model.Operations.Any(o => o.Status == AssignmentOperationStatus.InProgress
+            && o.DurableFunctionInstanceId == pendingInstanceId);
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -148,7 +151,7 @@
                         <h5>Recent Operations (@Model.Operations.Count)</h5>
                     </div>
                     <div class="ibox-content">
-                        @if (Model.Operations.Count == 0 && string.IsNullOrEmpty(pendingInstanceId))
+                        @if (Model.Operations.Count == 0 && !hasPendingWithNoRow)
                         {
                             <p class="text-muted">No operations recorded for this assignment.</p>
                         }
@@ -169,7 +172,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @if (Model.Operations.Count == 0 && !string.IsNullOrEmpty(pendingInstanceId))
+                                        @if (hasPendingWithNoRow)
                                         {
                                             <tr class="table-info pending-bootstrap-row" data-instance-id="@pendingInstanceId">
                                                 <td>—</td>
