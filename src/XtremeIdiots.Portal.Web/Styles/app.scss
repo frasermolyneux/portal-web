@@ -46,6 +46,7 @@
 @use 'features/banfilemonitors';
 @use 'features/rcon';
 @use 'features/changelog';
+@use 'features/map-rotations';
 
 // 7. Vendor - Third-party library overrides
 @use 'vendor/bootstrap-overrides';

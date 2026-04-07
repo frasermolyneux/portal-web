@@ -1,0 +1,34 @@
+@use '../tokens/colors' as *;
+
+// Map Rotation Editor - drag-and-drop list styles
+
+.map-rotation-item {
+    cursor: grab;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        border-color: $border-color-light !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    &--dragging {
+        cursor: grabbing;
+    }
+}
+
+.map-rotation-drag-handle {
+    cursor: grab;
+    color: $xi-text-muted;
+    font-size: 1.1rem;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+
+    &:hover {
+        color: $xi-text;
+    }
+
+    .map-rotation-item--dragging & {
+        cursor: grabbing;
+    }
+}

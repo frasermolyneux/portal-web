@@ -40,10 +40,11 @@
                 );
 
                 // Visual card
-                const $card = $('<div class="d-flex align-items-center border rounded p-2 mb-2 bg-light" draggable="true"></div>');
+                const $card = $('<div class="map-rotation-item d-flex align-items-center border rounded p-2 mb-2 bg-light" draggable="true"></div>');
                 $card.attr('data-index', index);
                 $card.attr('data-map-id', map.id);
 
+                $card.append('<span class="map-rotation-drag-handle me-2" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></span>');
                 $card.append('<span class="badge bg-secondary me-2" style="min-width:28px;">' + (index + 1) + '</span>');
                 $card.append($('<img>').attr('src', map.imageUrl || '/images/noimage.jpg').attr('alt', map.text).css({ width: '48px', height: '32px', objectFit: 'cover', borderRadius: '4px' }).addClass('me-2'));
                 $card.append($('<span>').addClass('flex-grow-1').text(map.text));
@@ -58,10 +59,10 @@
                 // Drag and drop
                 $card.on('dragstart', function (e) {
                     e.originalEvent.dataTransfer.setData('text/plain', index.toString());
-                    $(this).addClass('opacity-50');
+                    $(this).addClass('opacity-50 map-rotation-item--dragging');
                 });
                 $card.on('dragend', function () {
-                    $(this).removeClass('opacity-50');
+                    $(this).removeClass('opacity-50 map-rotation-item--dragging');
                 });
                 $card.on('dragover', function (e) {
                     e.preventDefault();

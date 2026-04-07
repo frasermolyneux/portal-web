@@ -74,14 +74,10 @@
                                     var mapDto = Model.Maps.FirstOrDefault(m => m.MapId == rotationMap.MapId);
                                     if (mapDto != null)
                                     {
-                                        <div class="col-md-3 col-sm-4 col-6 mb-3">
-                                            <div class="card h-100">
-                                                <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="card-img-top" alt="@mapDto.MapName" loading="lazy" style="max-height:120px;object-fit:cover;" />
-                                                <div class="card-body p-2">
-                                                    <small class="text-muted">#@(i + 1)</small>
-                                                    <h6 class="card-title mb-0">@mapDto.MapName</h6>
-                                                </div>
-                                            </div>
+                                        <div class="col-md-3 col-sm-4 col-6 mb-3 text-center">
+                                            <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid" alt="Map image for @mapDto.MapName" loading="lazy" />
+                                            <small class="text-muted">#@(i + 1)</small>
+                                            <h6 class="mb-0">@mapDto.MapName</h6>
                                         </div>
                                     }
                                 }
