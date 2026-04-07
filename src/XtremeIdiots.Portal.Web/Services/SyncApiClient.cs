@@ -63,7 +63,7 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
         }
     }
 
-    public async Task<bool> TerminateOrchestration(string instanceId, CancellationToken cancellationToken = default)
+    public async Task<SyncTriggerResult> TerminateOrchestration(string instanceId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -78,16 +78,17 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
             if (response.IsSuccessStatusCode)
             {
                 logger.LogInformation("Successfully terminated orchestration {InstanceId}", instanceId);
-                return true;
+                return new SyncTriggerResult(true);
             }
 
-            logger.LogWarning("Failed to terminate orchestration {InstanceId}, status {StatusCode}", instanceId, (int)response.StatusCode);
-            return false;
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            logger.LogWarning("Failed to terminate orchestration {InstanceId}, status {StatusCode}: {ErrorBody}", instanceId, (int)response.StatusCode, errorBody);
+            return new SyncTriggerResult(false, Error: $"Sync service returned HTTP {(int)response.StatusCode}: {errorBody}");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to terminate orchestration {InstanceId}", instanceId);
-            return false;
+            return new SyncTriggerResult(false, Error: ex.Message);
         }
     }
 

@@ -848,15 +848,15 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var terminated = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
+            var terminateResult = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
 
-            if (terminated)
+            if (terminateResult.Success)
             {
                 this.AddAlertSuccess($"Orchestration '{instanceId}' terminated. You can now re-trigger the operation.");
             }
             else
             {
-                this.AddAlertDanger($"Failed to terminate orchestration '{instanceId}'. It may have already completed or the sync service is unavailable.");
+                this.AddAlertDanger($"Failed to terminate orchestration '{instanceId}': {terminateResult.Error}");
             }
 
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });

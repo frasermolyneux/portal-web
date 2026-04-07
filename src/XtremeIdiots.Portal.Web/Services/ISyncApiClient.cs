@@ -7,7 +7,7 @@ public interface ISyncApiClient
     Task<SyncTriggerResult> TriggerDeactivate(Guid assignmentId, CancellationToken cancellationToken = default);
     Task<SyncTriggerResult> TriggerRemove(Guid assignmentId, CancellationToken cancellationToken = default);
     Task<OrchestrationStatusQueryResult> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default);
-    Task<bool> TerminateOrchestration(string instanceId, CancellationToken cancellationToken = default);
+    Task<SyncTriggerResult> TerminateOrchestration(string instanceId, CancellationToken cancellationToken = default);
 }
 
 public record SyncTriggerResult(bool Success, string? InstanceId = null, string? Error = null);
