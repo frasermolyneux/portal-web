@@ -13,23 +13,29 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[4, 'desc']], // Last Seen desc (index 4 after Name, IP, Guid, FirstSeen, LastSeen)
         stateSaveParams: function (settings, data) {
-            data._playersStructureVersion = 3; // bump when changing column/filter persistence structure
+            data._playersStructureVersion = 4; // bump when changing column/filter persistence structure
+            if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
             if (playersFilterSel) data.playersFilter = playersFilterSel.value || 'UsernameAndGuid';
             const gtSel = document.getElementById('filterGameType');
             if (gtSel) data.gameType = gtSel.value || '';
         },
         stateLoadParams: function (settings, data) {
-            if (data._playersStructureVersion !== 3) return false; // invalidate older structures
+            if (data._playersStructureVersion !== 4) {
+                var key = 'DataTables_dataTable_' + window.location.pathname;
+                try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+                return false;
+            }
+            if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
             if (playersFilterSel && data.playersFilter) playersFilterSel.value = data.playersFilter;
             const gtSel = document.getElementById('filterGameType');
             if (gtSel && typeof data.gameType !== 'undefined') gtSel.value = data.gameType;
         },
         columnDefs: [
             { targets: 0, responsivePriority: 1, visible: true }, // Name (force visible)
-            { targets: 1, responsivePriority: 5 }, // Player IP
-            { targets: 2, responsivePriority: 3 }, // Guid
-            { targets: 3, responsivePriority: 4 }, // First Seen
-            { targets: 4, responsivePriority: 2 }  // Last Seen
+            { targets: 1, responsivePriority: 2, visible: true }, // Player IP (force visible)
+            { targets: 2, responsivePriority: 4 }, // Guid
+            { targets: 3, responsivePriority: 5 }, // First Seen
+            { targets: 4, responsivePriority: 3 }  // Last Seen
         ],
         ajax: {
             url: dataUrl,
@@ -95,8 +101,14 @@ $(document).ready(function () {
         } catch { /* swallow */ }
     }
 
-    table.on('init.dt', function(){ relocateSearch(); });
-    setTimeout(relocateSearch, 1000);
+    table.on('init.dt', function () {
+        relocateSearch();
+        table.columns.adjust().responsive.recalc();
+    });
+    setTimeout(function () {
+        relocateSearch();
+        if (table.responsive) table.columns.adjust().responsive.recalc();
+    }, 1000);
 
     function reloadTable() { table.ajax.reload(null, false); }
 
