@@ -165,6 +165,7 @@
                                             <th>Duration</th>
                                             <th>Instance</th>
                                             <th>Error</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -176,9 +177,10 @@
                                                 <td colspan="3"><span class="text-muted">Operation is being initialized...</span></td>
                                                 <td><code class="small" title="@pendingInstanceId">@(pendingInstanceId.Length > 20 ? pendingInstanceId[..20] + "…" : pendingInstanceId)</code></td>
                                                 <td></td>
+                                                <td></td>
                                             </tr>
                                             <tr class="progress-detail-row">
-                                                <td colspan="7" class="p-0 border-0">
+                                                <td colspan="8" class="p-0 border-0">
                                                     <div class="px-3 py-2 bg-light">
                                                         <div class="d-flex justify-content-between mb-1">
                                                             <span class="progress-label">Waiting for orchestration to start...</span>
@@ -254,11 +256,24 @@
                                                         <span class="text-danger" title="@op.Error">@(op.Error.Length > 60 ? op.Error[..60] + "..." : op.Error)</span>
                                                     }
                                                 </td>
+                                                <td>
+                                                    @if (isInProgress)
+                                                    {
+                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="CancelOperation" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="operationId" value="@op.MapRotationAssignmentOperationId" />
+                                                            <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Cancel this operation? The assignment state will be reset so you can retry.')">
+                                                                <i class="fa-solid fa-ban"></i> Cancel
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                </td>
                                             </tr>
                                             @if (isInProgress)
                                             {
                                                 <tr class="progress-detail-row">
-                                                    <td colspan="7" class="p-0 border-0">
+                                                    <td colspan="8" class="p-0 border-0">
                                                         <div class="px-3 py-2 bg-light">
                                                             @if (string.IsNullOrEmpty(op.DurableFunctionInstanceId))
                                                             {

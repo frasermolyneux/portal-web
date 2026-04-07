@@ -723,4 +723,72 @@ public class MapRotationsController(
             _ => Json(new { status = "error" })
         };
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelOperation(Guid operationId, Guid assignmentId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var assignmentResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (assignmentResponse.IsNotFound || assignmentResponse.Result?.Data is null)
+                return NotFound();
+
+            var assignment = assignmentResponse.Result.Data;
+
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.MapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(CancelOperation),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var updateResult = await repositoryApiClient.MapRotations.V1.UpdateAssignmentOperation(
+                operationId, AssignmentOperationStatus.Cancelled, "Manually cancelled by user").ConfigureAwait(false);
+
+            if (updateResult.IsSuccess)
+            {
+                // Also reset the assignment state so the user can retry
+                var deploymentReset = assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
+                    ? DeploymentState.Failed
+                    : (DeploymentState?)null;
+
+                var activationReset = assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating
+                    ? ActivationState.Inactive
+                    : (ActivationState?)null;
+
+                if (deploymentReset.HasValue || activationReset.HasValue)
+                {
+                    var resetDto = new UpdateMapRotationServerAssignmentDto(assignmentId)
+                    {
+                        DeploymentState = deploymentReset,
+                        ActivationState = activationReset,
+                        LastError = "Operation cancelled by user",
+                        LastErrorAt = DateTime.UtcNow
+                    };
+
+                    await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(resetDto, cancellationToken).ConfigureAwait(false);
+                }
+
+                this.AddAlertSuccess("Operation cancelled successfully.");
+            }
+            else
+            {
+                this.AddAlertDanger("Failed to cancel operation. Please try again.");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(CancelOperation)).ConfigureAwait(false);
+    }
 }
