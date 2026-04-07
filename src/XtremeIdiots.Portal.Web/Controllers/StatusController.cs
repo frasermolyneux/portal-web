@@ -139,14 +139,17 @@ public class StatusController(
                     EventsLastHour = summary?.EventsLastHour ?? 0,
                     PlayerCount = summary?.PlayerCount ?? 0,
                     CurrentMap = summary?.CurrentMap ?? gs.LiveMap,
-                    IsAgentActive = summary?.IsAgentActive ?? false
+                    IsAgentActive = summary?.IsAgentActive ?? false,
+                    ActivityStatus = summary?.ActivityStatus ?? AgentActivityStatus.Offline
                 };
             }).ToList();
 
             TrackSuccessTelemetry("AgentStatusRetrieved", nameof(AgentStatus), new Dictionary<string, string>
             {
                 { "ServerCount", models.Count.ToString() },
-                { "ActiveCount", models.Count(m => m.IsAgentActive).ToString() }
+                { "ActiveCount", models.Count(m => m.ActivityStatus == AgentActivityStatus.Active).ToString() },
+                { "IdleCount", models.Count(m => m.ActivityStatus == AgentActivityStatus.Idle).ToString() },
+                { "OfflineCount", models.Count(m => m.ActivityStatus == AgentActivityStatus.Offline).ToString() }
             });
 
             Logger.LogInformation("User {UserId} retrieved agent status for {ServerCount} servers",

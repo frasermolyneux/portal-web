@@ -21,10 +21,17 @@
                         <h5>Agent Status Overview</h5>
                         <span class="float-end">
                             @{
-                                var activeCount = Model.Count(m => m.IsAgentActive);
+                                var activeCount = Model.Count(m => m.ActivityStatus == AgentActivityStatus.Active);
+                                var idleCount = Model.Count(m => m.ActivityStatus == AgentActivityStatus.Idle);
+                                var offlineCount = Model.Count(m => m.ActivityStatus == AgentActivityStatus.Offline);
                                 var totalCount = Model.Count;
                             }
                             <span class="badge bg-success">@activeCount Active</span>
+                            <span class="badge bg-info">@idleCount Idle</span>
+                            @if (offlineCount > 0)
+                            {
+                                <span class="badge bg-danger">@offlineCount Offline</span>
+                            }
                             <span class="badge bg-secondary">@totalCount Total</span>
                         </span>
                     </div>
@@ -61,13 +68,17 @@
                                                 </td>
                                                 <td>@server.GameType</td>
                                                 <td>
-                                                    @if (server.IsAgentActive)
+                                                    @switch (server.ActivityStatus)
                                                     {
-                                                        <span class="badge bg-success">Active</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-danger">Inactive</span>
+                                                        case AgentActivityStatus.Active:
+                                                            <span class="badge bg-success">Active</span>
+                                                            break;
+                                                        case AgentActivityStatus.Idle:
+                                                            <span class="badge bg-info">Idle</span>
+                                                            break;
+                                                        case AgentActivityStatus.Offline:
+                                                            <span class="badge bg-danger">Offline</span>
+                                                            break;
                                                     }
                                                 </td>
                                                 <td>

@@ -12,6 +12,7 @@ public class AgentTelemetryService(
     ILogger<AgentTelemetryService> logger) : IAgentTelemetryService
 {
     private const int AgentActiveThresholdMinutes = 5;
+    private const int AgentIdleThresholdMinutes = 60;
 
     public async Task<AgentServerStatus> GetServerStatusAsync(Guid serverId, CancellationToken ct = default)
     {
@@ -62,6 +63,8 @@ public class AgentTelemetryService(
             var isActive = lastEvent.HasValue &&
                            (DateTime.UtcNow - lastEvent.Value).TotalMinutes <= AgentActiveThresholdMinutes;
 
+            var activityStatus = ResolveActivityStatus(lastEvent);
+
             status = status with
             {
                 LastEventReceived = lastEvent,
@@ -70,7 +73,8 @@ public class AgentTelemetryService(
                 ChatMessagesLastHour = chatMessages,
                 BansDetectedLast24h = bansDetected,
                 ModerationTriggersLast24h = moderationTriggers,
-                IsAgentActive = isActive
+                IsAgentActive = isActive,
+                ActivityStatus = activityStatus
             };
         }
 
@@ -95,16 +99,17 @@ public class AgentTelemetryService(
 
         var query = new StringBuilder();
         query.Append("customEvents");
-        query.Append(" | where timestamp > ago(1h)");
+        query.Append(" | where timestamp > ago(2h)");
         query.Append(" | extend serverId = tostring(customDimensions.ServerId)");
         query.Append(" | where isnotempty(serverId)");
-        query.Append(" | summarize lastEvent=max(timestamp), eventCount=count(),");
-        query.Append(" playerConnects=countif(name == 'PlayerConnected'),");
+        query.Append(" | summarize lastEvent=max(timestamp),");
+        query.Append(" eventCount=countif(timestamp > ago(1h)),");
+        query.Append(" playerConnects=countif(name == 'PlayerConnected' and timestamp > ago(1h)),");
         query.Append(" lastMap=take_any(tostring(customDimensions.MapName))");
         query.Append(" by serverId");
         query.Append(" | order by lastEvent desc");
 
-        var response = await ExecuteQueryAsync(resourceId, query.ToString(), TimeSpan.FromHours(1), ct).ConfigureAwait(false);
+        var response = await ExecuteQueryAsync(resourceId, query.ToString(), TimeSpan.FromHours(2), ct).ConfigureAwait(false);
 
         var results = new List<AgentServerSummary>();
 
@@ -120,6 +125,8 @@ public class AgentTelemetryService(
             var isActive = lastEvent.HasValue &&
                            (DateTime.UtcNow - lastEvent.Value).TotalMinutes <= AgentActiveThresholdMinutes;
 
+            var activityStatus = ResolveActivityStatus(lastEvent);
+
             results.Add(new AgentServerSummary
             {
                 ServerId = serverId,
@@ -127,7 +134,8 @@ public class AgentTelemetryService(
                 EventsLastHour = GetIntValue(row, columns, "eventCount"),
                 PlayerCount = GetIntValue(row, columns, "playerConnects"),
                 CurrentMap = GetStringValue(row, columns, "lastMap"),
-                IsAgentActive = isActive
+                IsAgentActive = isActive,
+                ActivityStatus = activityStatus
             });
         }
 
@@ -146,6 +154,22 @@ public class AgentTelemetryService(
             cancellationToken: ct).ConfigureAwait(false);
 
         return response.Value;
+    }
+
+    private static AgentActivityStatus ResolveActivityStatus(DateTime? lastEvent)
+    {
+        if (!lastEvent.HasValue)
+            return AgentActivityStatus.Offline;
+
+        var minutesAgo = (DateTime.UtcNow - lastEvent.Value).TotalMinutes;
+
+        if (minutesAgo <= AgentActiveThresholdMinutes)
+            return AgentActivityStatus.Active;
+
+        if (minutesAgo <= AgentIdleThresholdMinutes)
+            return AgentActivityStatus.Idle;
+
+        return AgentActivityStatus.Offline;
     }
 
     private string GetAppInsightsResourceId()
