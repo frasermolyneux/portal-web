@@ -178,7 +178,7 @@
                                                 <td>—</td>
                                                 <td><span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> Starting...</span></td>
                                                 <td colspan="3"><span class="text-muted">Operation is being initialized...</span></td>
-                                                <td><code class="small" title="@pendingInstanceId">@(pendingInstanceId.Length > 20 ? pendingInstanceId[..20] + "…" : pendingInstanceId)</code></td>
+                                                <td><code class="small" title="@pendingInstanceId">@(pendingInstanceId!.Length > 20 ? pendingInstanceId[..20] + "…" : pendingInstanceId)</code></td>
                                                 <td></td>
                                                 <td></td>
                                             </tr>
