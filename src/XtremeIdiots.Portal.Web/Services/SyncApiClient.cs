@@ -63,6 +63,34 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
         }
     }
 
+    public async Task<bool> TerminateOrchestration(string instanceId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var tokenResult = await sharedCredential.GetTokenAsync(
+                new TokenRequestContext([applicationAudience + "/.default"]), cancellationToken).ConfigureAwait(false);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + $"/api/map-rotations/terminate/{instanceId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Token);
+
+            var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                logger.LogInformation("Successfully terminated orchestration {InstanceId}", instanceId);
+                return true;
+            }
+
+            logger.LogWarning("Failed to terminate orchestration {InstanceId}, status {StatusCode}", instanceId, (int)response.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to terminate orchestration {InstanceId}", instanceId);
+            return false;
+        }
+    }
+
     private async Task<SyncTriggerResult> TriggerOrchestration(string path, CancellationToken cancellationToken)
     {
         try

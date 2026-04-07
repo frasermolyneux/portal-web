@@ -26,4 +26,9 @@ public class NoOpSyncApiClient : ISyncApiClient
     {
         return Task.FromResult(new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Error));
     }
+
+    public Task<bool> TerminateOrchestration(string instanceId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(false);
+    }
 }

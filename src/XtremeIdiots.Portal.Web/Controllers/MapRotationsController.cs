@@ -726,7 +726,7 @@ public class MapRotationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CancelOperation(Guid operationId, Guid assignmentId, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> CancelOperation(Guid operationId, Guid assignmentId, string? instanceId, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -759,6 +759,24 @@ public class MapRotationsController(
 
             if (updateResult.IsSuccess)
             {
+                // Terminate the durable function orchestration so a new one can be started
+                if (!string.IsNullOrEmpty(instanceId))
+                {
+                    // Validate the instance ID belongs to this assignment
+                    var allowedPrefixes = new[]
+                    {
+                        $"maprot-sync-{assignmentId}",
+                        $"maprot-activate-{assignmentId}",
+                        $"maprot-deactivate-{assignmentId}",
+                        $"maprot-remove-{assignmentId}"
+                    };
+
+                    if (allowedPrefixes.Any(p => string.Equals(instanceId, p, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
                 // Also reset the assignment state so the user can retry
                 var deploymentReset = assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
                     ? DeploymentState.Failed
@@ -790,5 +808,58 @@ public class MapRotationsController(
 
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
         }, nameof(CancelOperation)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TerminateOrchestration(string instanceId, Guid assignmentId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            // Validate the instance ID belongs to this assignment
+            var allowedPrefixes = new[]
+            {
+                $"maprot-sync-{assignmentId}",
+                $"maprot-activate-{assignmentId}",
+                $"maprot-deactivate-{assignmentId}",
+                $"maprot-remove-{assignmentId}"
+            };
+
+            if (!allowedPrefixes.Any(p => string.Equals(instanceId, p, StringComparison.OrdinalIgnoreCase)))
+                return BadRequest("The instance ID does not belong to the specified assignment.");
+
+            var assignmentResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (assignmentResponse.IsNotFound || assignmentResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignmentResponse.Result.Data.MapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotationResponse.Result.Data.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(TerminateOrchestration),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var terminated = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
+
+            if (terminated)
+            {
+                this.AddAlertSuccess($"Orchestration '{instanceId}' terminated. You can now re-trigger the operation.");
+            }
+            else
+            {
+                this.AddAlertDanger($"Failed to terminate orchestration '{instanceId}'. It may have already completed or the sync service is unavailable.");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(TerminateOrchestration)).ConfigureAwait(false);
     }
 }

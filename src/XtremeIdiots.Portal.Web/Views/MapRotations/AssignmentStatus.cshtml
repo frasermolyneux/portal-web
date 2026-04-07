@@ -263,8 +263,20 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="operationId" value="@op.MapRotationAssignmentOperationId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Cancel this operation? The assignment state will be reset so you can retry.')">
                                                                 <i class="fa-solid fa-ban"></i> Cancel
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                    @if (op.Status is AssignmentOperationStatus.Cancelled or AssignmentOperationStatus.Failed && !string.IsNullOrEmpty(op.DurableFunctionInstanceId))
+                                                    {
+                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="TerminateOrchestration" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
+                                                            <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                                            <button type="submit" class="btn btn-outline-warning btn-sm" onclick="return confirm('Terminate the underlying orchestration? This clears the stuck durable function so you can re-trigger.')">
+                                                                <i class="fa-solid fa-skull-crossbones"></i> Terminate
                                                             </button>
                                                         </form>
                                                     }
