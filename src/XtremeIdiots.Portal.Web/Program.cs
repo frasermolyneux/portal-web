@@ -105,6 +105,7 @@ builder.Services.AddSingleton(_ => new LogsQueryClient(new DefaultAzureCredentia
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<IAgentTelemetryService, AgentTelemetryService>();
 builder.Services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+builder.Services.AddSingleton<IExternalTokenService, ExternalTokenService>();
 
 builder.Services.AddRepositoryApiClient(options => options
     .WithBaseUrl(GetConfigValue(builder.Configuration, "RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))
