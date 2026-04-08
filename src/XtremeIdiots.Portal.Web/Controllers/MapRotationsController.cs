@@ -338,6 +338,13 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            // Check for active assignments before attempting delete
+            if (rotation.ServerAssignments?.Any(a => a.DeploymentState != DeploymentState.Removed) == true)
+            {
+                this.AddAlertDanger("Cannot delete a map rotation that has active server assignments. Unassign all servers first.");
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
             var deleteResponse = await repositoryApiClient.MapRotations.V1.DeleteMapRotation(id, cancellationToken).ConfigureAwait(false);
 
             if (!deleteResponse.IsSuccess)
@@ -489,30 +496,42 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            // Verify the assignment belongs to this rotation
             if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
-            {
                 return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+
+            // If already removed, delete the DB record directly
+            if (assignment.DeploymentState == DeploymentState.Removed)
+            {
+                var deleteResponse = await repositoryApiClient.MapRotations.V1.DeleteServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+
+                if (!deleteResponse.IsSuccess)
+                {
+                    this.AddAlertDanger("An error occurred while removing the server assignment.");
+                }
+                else
+                {
+                    this.AddAlertSuccess("Server assignment has been removed.");
+                }
+
+                return RedirectToAction(nameof(Details), new { id = mapRotationId });
             }
 
-            var deleteResponse = await repositoryApiClient.MapRotations.V1.DeleteServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+            // Trigger the Remove orchestration to clean up maps from the server
+            var result = await syncApiClient.TriggerRemove(assignmentId, cancellationToken).ConfigureAwait(false);
 
-            if (!deleteResponse.IsSuccess)
+            if (result.Success)
             {
-                this.AddAlertDanger("An error occurred while removing the server assignment.");
+                this.AddAlertSuccess("Unassign triggered. Maps are being removed from the server.");
+                TempData["PendingInstanceId"] = $"maprot-remove-{assignmentId}";
             }
             else
             {
-                TrackSuccessTelemetry(nameof(DeleteAssignment), "MapRotationAssignmentDeleted", new Dictionary<string, string>
-                {
-                    { "AssignmentId", assignmentId.ToString() },
-                    { "MapRotationId", mapRotationId.ToString() }
-                });
-
-                this.AddAlertSuccess("Server assignment has been removed.");
+                this.AddAlertDanger($"Failed to trigger unassign: {result.Error}");
             }
 
-            return RedirectToAction(nameof(Details), new { id = mapRotationId });
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
         }, nameof(DeleteAssignment)).ConfigureAwait(false);
     }
 
