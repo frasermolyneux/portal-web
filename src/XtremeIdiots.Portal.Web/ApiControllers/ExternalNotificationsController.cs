@@ -106,12 +106,21 @@ public class ExternalNotificationsController(
 
             var userProfileId = userResult.Result.Data.UserProfileId;
 
-            // Fetch the notification to verify ownership
+            // Verify the notification belongs to this user by fetching their notifications
+            // and checking the target ID is among them
             var notificationsResult = await repositoryApiClient.Notifications.V1
-                .GetNotifications(userProfileId, null, 0, 1, null, cancellationToken)
+                .GetNotifications(userProfileId, null, 0, 100, null, cancellationToken)
                 .ConfigureAwait(false);
 
-            // Mark as read (the repository API should verify ownership)
+            var userOwnsNotification = notificationsResult.Result?.Data?.Items?
+                .Any(n => n.NotificationId == id) ?? false;
+
+            if (!userOwnsNotification)
+            {
+                Logger.LogWarning("External mark-as-read rejected: notification {NotificationId} does not belong to user {UserProfileId}", id, userProfileId);
+                return NotFound();
+            }
+
             await repositoryApiClient.Notifications.V1
                 .MarkNotificationAsRead(id, cancellationToken)
                 .ConfigureAwait(false);
