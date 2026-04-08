@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin name="XtremeIdiots Portal Notifications" version_long="10004" version_human="1.0.4" author="XtremeIdiots" website="https://portal.xtremeidiots.com" update_check=""><hooks/><settings><setting><key>portal_notifications_enabled</key><default>1</default></setting><setting><key>portal_hmac_secret</key><default></default></setting><setting><key>portal_base_url</key><default>https://portal.xtremeidiots.com</default></setting></settings><settingsCode><![CDATA[//<?php
+
+$form->addHeader('Portal Notifications Widget');
+$form->add( new \IPS\Helpers\Form\YesNo( 'portal_notifications_enabled', \IPS\Settings::i()->portal_notifications_enabled, FALSE, array(), NULL, NULL, NULL, 'portal_notifications_enabled' ) );
+$form->add( new \IPS\Helpers\Form\Text( 'portal_hmac_secret', \IPS\Settings::i()->portal_hmac_secret, FALSE, array(), NULL, NULL, NULL, 'portal_hmac_secret' ) );
+$form->add( new \IPS\Helpers\Form\Url( 'portal_base_url', \IPS\Settings::i()->portal_base_url ?: 'https://portal.xtremeidiots.com', FALSE, array(), NULL, NULL, NULL, 'portal_base_url' ) );
+
+if ( $values = $form->values() )
+{
+	$form->saveAsSettings();
+	return TRUE;
+}
+
+return $form;]]></settingsCode><tasks/><widgets/><htmlFiles/><cssFiles/><jsFiles/><resourcesFiles/><lang><word key="portal_notifications_enabled" js="0">Enable Widget</word><word key="portal_hmac_secret" js="0">HMAC Shared Secret</word><word key="portal_hmac_secret_desc" js="0">Copy from Azure Key Vault (external-widget-hmac-secret). Must match the portal value.</word><word key="portal_base_url" js="0">Portal Base URL</word><word key="portal_base_url_desc" js="0">The base URL of the XtremeIdiots Portal (no trailing slash).</word></lang><versions><version long="10004" human="1.0.4"><![CDATA[//<?php
+
+if ( !defined( '\IPS\SUITE_UNIQUE_KEY' ) )
+{
+	header( ( isset( $_SERVER['SERVER_PROTOCOL'] ) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0' ) . ' 403 Forbidden' );
+	exit;
+}
+
+class ips_plugins_setup_install
+{
+	public function step1()
+	{
+		return TRUE;
+	}
+}]]></version></versions></plugin>

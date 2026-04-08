@@ -4,122 +4,58 @@
 
 This document describes how to embed the XtremeIdiots Portal notification widget on the xtremeidiots.com Invision Community forum. The widget shows personalised notifications for logged-in forum users and a public activity feed for guests.
 
-## Prerequisites
+## Installation (2 steps)
 
-1. The HMAC shared secret must be configured in both:
-   - **Portal**: via Azure App Configuration key `XtremeIdiots:ExternalWidget:HmacSecret` (auto-provisioned by portal-environments Terraform)
-   - **Forum**: as a custom Invision Community setting (see step 2 below)
+### Step 1: Install the Settings Plugin
 
-2. The portal must be deployed with the external notifications API (`/api/external/notifications`)
+1. Upload `docs/invision-plugin/plugin.xml` via **ACP → System → Plugins → Install New Plugin**
+2. Click the cog icon next to the plugin to open settings
+3. Set **HMAC Shared Secret** — paste from Azure Key Vault (`external-widget-hmac-secret`)
+4. Set **Portal Base URL** — `https://portal.xtremeidiots.com` (default)
+5. Set **Enable Widget** — Yes
 
-## Step 1: Add the HMAC Secret to Invision Community
+This plugin only registers settings — it does not inject any code or hooks.
 
-1. Go to **ACP → System → Settings** (or use a custom plugin settings page)
-2. Add a custom setting:
-   - **Key**: `portal_hmac_secret`
-   - **Value**: Copy the HMAC secret from Azure Key Vault (`external-widget-hmac-secret` in the shared Key Vault)
+### Step 2: Create a Custom PHP Block
 
-> **Important**: The secret value must match exactly between the portal and forum. After the initial Terraform apply, retrieve the value from Azure Key Vault and paste it into the forum setting.
+1. Go to **ACP → Pages → Blocks → Create New Block → Custom → PHP**
+2. Give it a name (e.g., "Portal Notifications")
+3. Paste the following as the block content:
 
-## Step 2: Add the Widget to the Forum Template
-
-Edit the Invision Community theme template where you want the widget to appear (e.g., sidebar, footer, or a custom page block).
-
-### Option A: Global Template (sidebar on all pages)
-
-Edit the **globalTemplate** or **sidebar** template in your theme:
-
-```html
-{{if member.member_id}}
-    <?php
-        $secret = \IPS\Settings::i()->portal_hmac_secret;
-        $memberId = \IPS\Member::loggedIn()->member_id;
-        $timestamp = time();
-        $hmac = hash_hmac('sha256', "{$memberId}:{$timestamp}", $secret);
-        $token = base64_encode("{$memberId}:{$timestamp}:{$hmac}");
-    ?>
-    <div id="portal-notifications-widget"
-         data-token="<?php echo $token; ?>"
-         data-portal-url="https://portal.xtremeidiots.com">
-    </div>
-{{else}}
-    <div id="portal-notifications-widget"
-         data-token=""
-         data-portal-url="https://portal.xtremeidiots.com">
-    </div>
-{{endif}}
-<script src="https://portal.xtremeidiots.com/js/forum-widget.js" defer></script>
-```
-
-### Option B: Using an Invision Community Plugin Hook
-
-If you prefer not to mix PHP into templates, create a simple plugin:
-
-**File: `hooks/portalWidget.php`**
 ```php
-class portalWidget
-{
-    public function globalTemplate($html)
-    {
-        $member = \IPS\Member::loggedIn();
-        $token = '';
-
-        if ($member->member_id) {
-            $secret = \IPS\Settings::i()->portal_hmac_secret;
-            $memberId = $member->member_id;
-            $timestamp = time();
-            $hmac = hash_hmac('sha256', "{$memberId}:{$timestamp}", $secret);
-            $token = base64_encode("{$memberId}:{$timestamp}:{$hmac}");
-        }
-
-        $widget = <<<HTML
-<div id="portal-notifications-widget"
-     data-token="{$token}"
-     data-portal-url="https://portal.xtremeidiots.com">
-</div>
-<script src="https://portal.xtremeidiots.com/js/forum-widget.js" defer></script>
-HTML;
-
-        // Insert before </body>
-        return str_replace('</body>', $widget . '</body>', $html);
+$portalToken = '';
+$portalUrl = rtrim( \IPS\Settings::i()->portal_base_url ?: 'https://portal.xtremeidiots.com', '/' );
+$member = \IPS\Member::loggedIn();
+if ( $member->member_id ) {
+    $secret = \IPS\Settings::i()->portal_hmac_secret;
+    if ( !empty( $secret ) ) {
+        $memberId = (string) $member->member_id;
+        $timestamp = (string) time();
+        $hmac = hash_hmac( 'sha256', "{$memberId}:{$timestamp}", $secret );
+        $portalToken = base64_encode( "{$memberId}:{$timestamp}:{$hmac}" );
     }
 }
+echo '<div id="portal-notifications-widget" data-token="' . htmlspecialchars( $portalToken, ENT_QUOTES, 'UTF-8' ) . '" data-portal-url="' . htmlspecialchars( $portalUrl, ENT_QUOTES, 'UTF-8' ) . '"></div>';
+echo '<script src="' . htmlspecialchars( $portalUrl, ENT_QUOTES, 'UTF-8' ) . '/js/forum-widget.js" defer></script>';
 ```
 
-### Option C: Custom HTML Block (simplest)
+4. Save the block
+5. Place the block via the front-end widget manager — drag it into the sidebar or wherever you want it
 
-If you just want a quick test, use the **Pages** app or a **Custom Block**:
+## Prerequisites
 
-1. Go to **ACP → Pages → Blocks → Create New Block**
-2. Choose **Custom HTML**
-3. Paste:
-```html
-<?php
-$token = '';
-$member = \IPS\Member::loggedIn();
-if ($member->member_id) {
-    $secret = \IPS\Settings::i()->portal_hmac_secret;
-    $memberId = $member->member_id;
-    $timestamp = time();
-    $hmac = hash_hmac('sha256', "{$memberId}:{$timestamp}", $secret);
-    $token = base64_encode("{$memberId}:{$timestamp}:{$hmac}");
-}
-?>
-<div id="portal-notifications-widget"
-     data-token="<?php echo $token; ?>"
-     data-portal-url="https://portal.xtremeidiots.com">
-</div>
-<script src="https://portal.xtremeidiots.com/js/forum-widget.js" defer></script>
-```
-4. Place the block in your desired sidebar/widget area
+- The HMAC shared secret must be configured in both:
+  - **Portal**: via Azure App Configuration key `XtremeIdiots:ExternalWidget:HmacSecret` (auto-provisioned by portal-environments Terraform)
+  - **Forum**: via the plugin settings page (Step 1 above)
+- The portal must be deployed with the external notifications API (`/api/external/notifications`)
 
 ## How It Works
 
-1. **Token generation** (forum-side): When a logged-in forum user loads a page, the PHP template generates an HMAC-SHA256 signed token containing their forum member ID and a Unix timestamp, signed with the shared secret.
+1. **Token generation** (forum-side): The plugin widget generates an HMAC-SHA256 signed token containing the logged-in forum member's ID and a Unix timestamp, signed with the shared secret.
 
 2. **Token format**: `Base64({forumMemberId}:{timestampUnix}:{hmacHex})`
 
-3. **Widget load**: The JavaScript widget (`forum-widget.js`) reads the token from the `data-token` attribute and calls the portal API.
+3. **Widget load**: The JavaScript widget (`forum-widget.js`, served from the portal) reads the token from the `data-token` attribute and calls the portal API.
 
 4. **API response**:
    - **No token / invalid token**: Returns a public feed (recent admin actions)
@@ -157,7 +93,13 @@ To customise, override the styles in your forum theme CSS:
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| Widget shows "Portal URL not configured" | Missing `data-portal-url` attribute | Ensure the attribute is set in the template |
+| Widget shows "Portal URL not configured" | Missing portal base URL in plugin settings | Check plugin settings in ACP |
 | Widget shows "Unable to load notifications" | CORS or network error | Check browser console; verify portal CORS allows the forum domain |
-| All users see public feed only | HMAC secret mismatch | Ensure the forum `portal_hmac_secret` matches the Azure Key Vault value |
+| All users see public feed only | HMAC secret mismatch | Ensure the plugin's HMAC secret matches the Azure Key Vault value |
 | Token always expired | Server clock drift | Ensure both servers have NTP synced clocks (±1 minute tolerance) |
+
+## Updating
+
+To update the plugin, upload the new `plugin.xml` via ACP → System → Plugins. Settings are preserved across updates.
+
+To rotate the HMAC secret: update both the Azure Key Vault value and the plugin setting in ACP. Changes take effect immediately.

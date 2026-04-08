@@ -219,28 +219,28 @@
         var style = document.createElement('style');
         style.id = 'xi-pw-styles';
         style.textContent =
-            '.xi-portal-widget{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;border:1px solid #ddd;border-radius:6px;background:#fff;overflow:hidden;max-width:400px}' +
-            '.xi-pw-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#2b3a4a;color:#fff;font-weight:600}' +
+            '.xi-portal-widget{font-family:inherit;font-size:13px;border:1px solid #333;border-radius:4px;background:#262626;overflow:hidden;max-width:400px;color:#ccc}' +
+            '.xi-pw-header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#1a1a1a;color:#e0e0e0;font-weight:600;border-bottom:1px solid #333}' +
             '.xi-pw-title{display:flex;align-items:center;gap:6px}' +
             '.xi-pw-bell{font-size:16px}' +
-            '.xi-pw-badge{background:#e74c3c;color:#fff;font-size:11px;padding:1px 6px;border-radius:10px;margin-left:4px}' +
-            '.xi-pw-mark-all{color:#aec6e0;font-size:11px;text-decoration:none;white-space:nowrap}' +
-            '.xi-pw-mark-all:hover{color:#fff}' +
+            '.xi-pw-badge{background:#c0392b;color:#fff;font-size:11px;padding:1px 6px;border-radius:10px;margin-left:4px}' +
+            '.xi-pw-mark-all{color:#7eaac4;font-size:11px;text-decoration:none;white-space:nowrap}' +
+            '.xi-pw-mark-all:hover{color:#aed6f1}' +
             '.xi-pw-list{max-height:360px;overflow-y:auto}' +
-            '.xi-pw-item{display:block;padding:10px 14px;border-bottom:1px solid #f0f0f0;text-decoration:none;color:#333;transition:background .15s}' +
-            '.xi-pw-item:hover{background:#f8f9fa;text-decoration:none;color:#333}' +
-            '.xi-pw-unread{background:#f0f7ff;border-left:3px solid #3498db}' +
+            '.xi-pw-item{display:block;padding:8px 12px;border-bottom:1px solid #333;text-decoration:none;color:#ccc;transition:background .15s}' +
+            '.xi-pw-item:hover{background:#2f2f2f;text-decoration:none;color:#fff}' +
+            '.xi-pw-unread{background:#1e2a35;border-left:3px solid #3498db}' +
             '.xi-pw-item-header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}' +
-            '.xi-pw-item-title{font-weight:600;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-            '.xi-pw-item-time{font-size:11px;color:#999;white-space:nowrap}' +
-            '.xi-pw-item-msg{font-size:12px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-            '.xi-pw-unclaimed{display:block;padding:8px 14px;background:#fff3cd;color:#856404;font-size:12px;text-decoration:none;border-top:1px solid #ffeaa7}' +
-            '.xi-pw-unclaimed:hover{background:#ffe69c;text-decoration:none;color:#856404}' +
-            '.xi-pw-footer{padding:8px 14px;text-align:center;background:#f8f9fa;border-top:1px solid #eee}' +
-            '.xi-pw-footer a{color:#3498db;text-decoration:none;font-size:12px;font-weight:500}' +
-            '.xi-pw-footer a:hover{text-decoration:underline}' +
-            '.xi-pw-empty{padding:24px;text-align:center;color:#999}' +
-            '.xi-pw-loading{padding:24px;text-align:center;color:#999}' +
+            '.xi-pw-item-title{font-weight:600;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e0e0e0}' +
+            '.xi-pw-item-time{font-size:11px;color:#777;white-space:nowrap}' +
+            '.xi-pw-item-msg{font-size:12px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+            '.xi-pw-unclaimed{display:block;padding:8px 12px;background:#3d2f0a;color:#f0c040;font-size:12px;text-decoration:none;border-top:1px solid #4a3a10}' +
+            '.xi-pw-unclaimed:hover{background:#4a3a10;text-decoration:none;color:#ffd54f}' +
+            '.xi-pw-footer{padding:8px 12px;text-align:center;background:#1a1a1a;border-top:1px solid #333}' +
+            '.xi-pw-footer a{color:#7eaac4;text-decoration:none;font-size:12px;font-weight:500}' +
+            '.xi-pw-footer a:hover{color:#aed6f1;text-decoration:underline}' +
+            '.xi-pw-empty{padding:24px;text-align:center;color:#777}' +
+            '.xi-pw-loading{padding:24px;text-align:center;color:#777}' +
             '.xi-pw-error{padding:16px;text-align:center;color:#e74c3c;font-size:12px}';
         document.head.appendChild(style);
     }
