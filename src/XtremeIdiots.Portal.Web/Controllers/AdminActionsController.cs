@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -19,6 +20,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class AdminActionsController(
     IAuthorizationService authorizationService,
     IAdminActionTopics adminActionTopics,
+    INotificationDispatcher notificationDispatcher,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<AdminActionsController> logger,
@@ -119,6 +121,14 @@ public class AdminActionsController(
             };
 
             await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
+
+            await notificationDispatcher.DispatchAdminActionCreatedAsync(new AdminActionNotificationContext(
+                playerData.GameType,
+                model.Type,
+                playerData.Username,
+                playerData.PlayerId,
+                User.Identity?.Name,
+                Guid.TryParse(User.UserProfileId(), out var upId) ? upId : null), cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("AdminActionCreated", "CreateAdminAction", new Dictionary<string, string>
             {
@@ -329,6 +339,14 @@ public class AdminActionsController(
                 { "AdminActionType", adminActionData.Type.ToString() }
             });
 
+            await notificationDispatcher.DispatchAdminActionLiftedAsync(new AdminActionNotificationContext(
+                playerData.GameType,
+                adminActionData.Type,
+                playerData.Username,
+                playerData.PlayerId,
+                User.Identity?.Name,
+                Guid.TryParse(User.UserProfileId(), out var liftUpId) ? liftUpId : null), cancellationToken).ConfigureAwait(false);
+
             this.AddAlertSuccess(CreateActionOperationMessage(adminActionData.Type, playerData.Username, "lifted"));
 
             return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = playerId });
@@ -446,6 +464,14 @@ public class AdminActionsController(
                 { nameof(playerId), playerId.ToString() },
                 { "AdminActionType", adminActionData.Type.ToString() }
             });
+
+            await notificationDispatcher.DispatchAdminActionClaimedAsync(new AdminActionNotificationContext(
+                playerData.GameType,
+                adminActionData.Type,
+                playerData.Username,
+                playerData.PlayerId,
+                User.Identity?.Name,
+                Guid.TryParse(User.UserProfileId(), out var claimUpId) ? claimUpId : null), cancellationToken).ConfigureAwait(false);
 
             this.AddAlertSuccess($"The {adminActionData.Type} has been successfully claimed for {playerData.Username}");
 

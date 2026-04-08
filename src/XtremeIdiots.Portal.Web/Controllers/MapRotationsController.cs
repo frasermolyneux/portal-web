@@ -339,7 +339,11 @@ public class MapRotationsController(
                 return authResult;
 
             // Check for active assignments before attempting delete
-            if (rotation.ServerAssignments?.Any(a => a.DeploymentState != DeploymentState.Removed) == true)
+            var activeAssignments = rotation.ServerAssignments?
+                .Where(a => a.DeploymentState is not DeploymentState.Removed and not DeploymentState.Failed)
+                .ToList() ?? [];
+
+            if (activeAssignments.Count > 0)
             {
                 this.AddAlertDanger("Cannot delete a map rotation that has active server assignments. Unassign all servers first.");
                 return RedirectToAction(nameof(Details), new { id });
