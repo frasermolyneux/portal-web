@@ -44,6 +44,8 @@ public static class PolicyExtensions
 
         options.AddPolicy(AuthPolicies.AccessHome, policy => policy.Requirements.Add(new AccessHome()));
 
+        options.AddPolicy(AuthPolicies.AccessDashboard, policy => policy.Requirements.Add(new AccessDashboard()));
+
         options.AddPolicy(AuthPolicies.AccessProfile, policy => policy.Requirements.Add(new AccessProfile()));
 
         options.AddPolicy(AuthPolicies.AccessMaps, policy => policy.Requirements.Add(new AccessMaps()));

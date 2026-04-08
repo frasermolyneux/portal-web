@@ -148,6 +148,18 @@
                                     </button>
                                 </form>
                             }
+                            @if (Model.Assignment.DeploymentState is not DeploymentState.Removing)
+                            {
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline"
+                                      onsubmit="return confirm('Are you sure you want to unassign this server? Maps will be removed from the server.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm me-1">
+                                        <i class="fa-solid fa-unlink"></i> Unassign
+                                    </button>
+                                </form>
+                            }
                         </div>
                     </div>
                 </div>
@@ -349,7 +361,7 @@
                                     if (mapDto != null)
                                     {
                                         <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-2 text-center">
-                                            <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid rounded" alt="Map image for @mapDto.MapName" loading="lazy" />
+                                            <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid rounded" alt="Map image for @mapDto.MapName" loading="lazy" onerror="this.onerror=null;this.src='/images/noimage.jpg';" />
                                             <small class="text-muted d-block">#@(i + 1)</small>
                                             <small class="fw-bold">@mapDto.MapName</small>
                                         </div>

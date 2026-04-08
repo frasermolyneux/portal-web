@@ -88,6 +88,11 @@
                 <i class="fa-solid fa-house fa-fw" aria-hidden="true"></i> Home
             </a>
 
+            <a policy="@AuthPolicies.AccessDashboard" class="nav-link text-white @Html.IsSelected("Dashboard", "Index")" 
+               asp-controller="Dashboard" asp-action="Index" data-testid="nav-dashboard">
+                <i class="fa-solid fa-gauge fa-fw" aria-hidden="true"></i> Dashboard
+            </a>
+
             <div policy="@AuthPolicies.AccessServers">
                 <a class="nav-link text-white @Html.IsSelected("Servers", "Index")" href="#serversMenu" 
                    data-bs-toggle="collapse" data-testid="nav-servers-toggle" 

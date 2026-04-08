@@ -47,6 +47,9 @@ public static class AuthPolicies
     // Home policies
     public const string AccessHome = nameof(AccessHome);
 
+    // Dashboard policies
+    public const string AccessDashboard = nameof(AccessDashboard);
+
     // Profile policies
     public const string AccessProfile = nameof(AccessProfile);
 
