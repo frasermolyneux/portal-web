@@ -142,7 +142,7 @@
                                                 </td>
                                                 <td>
                                                     @await Html.PartialAsync("_AssignmentStatusBadge", ("Deployment", assignment.DeploymentState.ToString()))
-                                                    @if (!string.IsNullOrEmpty(assignment.LastError))
+                                                    @if (!string.IsNullOrEmpty(assignment.LastError) && assignment.DeploymentState == DeploymentState.Failed)
                                                     {
                                                         <div class="text-danger small mt-1" title="@assignment.LastError">
                                                             <i class="fa-solid fa-exclamation-triangle"></i> @(assignment.LastError.Length > 80 ? assignment.LastError[..80] + "..." : assignment.LastError)

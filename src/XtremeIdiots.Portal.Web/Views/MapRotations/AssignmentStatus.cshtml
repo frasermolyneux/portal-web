@@ -80,7 +80,7 @@
                             }
                         </dl>
 
-                        @if (!string.IsNullOrEmpty(Model.Assignment.LastError))
+                        @if (!string.IsNullOrEmpty(Model.Assignment.LastError) && Model.Assignment.DeploymentState == DeploymentState.Failed)
                         {
                             <div class="alert alert-danger mt-3 mb-0">
                                 <i class="fa-solid fa-exclamation-triangle"></i> <strong>Last Error</strong>
@@ -329,7 +329,7 @@
                         }
                         else
                         {
-                            <div class="row">
+                            <div class="row g-2">
                                 @{ var sortedMaps = Model.Rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? []; }
                                 @for (var i = 0; i < sortedMaps.Count; i++)
                                 {
@@ -337,10 +337,10 @@
                                     var mapDto = Model.Maps.FirstOrDefault(m => m.MapId == rotationMap.MapId);
                                     if (mapDto != null)
                                     {
-                                        <div class="col-md-3 col-sm-4 col-6 mb-3 text-center">
-                                            <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid" alt="Map image for @mapDto.MapName" loading="lazy" />
-                                            <small class="text-muted">#@(i + 1)</small>
-                                            <h6 class="mb-0">@mapDto.MapName</h6>
+                                        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-2 text-center">
+                                            <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid rounded" alt="Map image for @mapDto.MapName" loading="lazy" style="max-height: 80px; object-fit: cover; width: 100%;" />
+                                            <small class="text-muted d-block">#@(i + 1)</small>
+                                            <small class="fw-bold">@mapDto.MapName</small>
                                         </div>
                                     }
                                 }
