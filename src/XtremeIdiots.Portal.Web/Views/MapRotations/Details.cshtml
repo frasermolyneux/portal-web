@@ -66,7 +66,7 @@
                         }
                         else
                         {
-                            <div class="row g-2">
+                            <div class="row g-2 map-image-grid">
                                 @{ var sortedMaps = Model.Rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? []; }
                                 @for (var i = 0; i < sortedMaps.Count; i++)
                                 {
