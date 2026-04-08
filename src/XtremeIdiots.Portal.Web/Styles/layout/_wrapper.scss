@@ -16,7 +16,7 @@
 }
 
 .wrapper-content {
-    padding: $content-padding;
+    padding: 10px $content-padding $content-padding;
 }
 
 .alerts-container {
@@ -30,6 +30,6 @@ main {
 
 @include media-lg {
     .wrapper-content {
-        padding: $content-padding * 1.5;
+        padding: 15px ($content-padding * 1.5) ($content-padding * 1.5);
     }
 }

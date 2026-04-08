@@ -28,12 +28,9 @@ public class MapImageTagHelper : TagHelper
 
         output.Attributes.SetAttribute("src", src);
         output.Attributes.SetAttribute("alt", Map ?? "map");
-        var style = "border: 5px solid #021a40; display: block; margin: auto;";
-        output.Attributes.SetAttribute("style", style);
-        if (!string.IsNullOrWhiteSpace(CssClass))
-        {
-            output.Attributes.SetAttribute("class", CssClass);
-        }
+
+        var cssClass = string.IsNullOrWhiteSpace(CssClass) ? "map-image" : $"map-image {CssClass}";
+        output.Attributes.SetAttribute("class", cssClass);
         // Add client-side fallback in case the resolved image 404s at runtime.
         output.Attributes.SetAttribute("onerror", "this.onerror=null;this.src='/images/noimage.jpg';");
         output.TagMode = TagMode.SelfClosing;

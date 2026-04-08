@@ -14,10 +14,12 @@
 }
 
 .map-image {
-    border: 5px solid $map-border-color;
+    border: 2px solid $map-border-color;
     display: block;
     margin: 0 auto;
-    max-width: 200px;
+    width: 100%;
+    object-fit: cover;
+    aspect-ratio: 4 / 3;
 }
 
 .vote-stats {

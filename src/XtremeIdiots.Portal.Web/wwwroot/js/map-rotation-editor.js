@@ -46,7 +46,7 @@
 
                 $card.append('<span class="map-rotation-drag-handle me-2" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></span>');
                 $card.append('<span class="badge bg-secondary me-2" style="min-width:28px;">' + (index + 1) + '</span>');
-                $card.append($('<img>').attr('src', map.imageUrl || '/images/noimage.jpg').attr('alt', map.text).css({ width: '48px', height: '32px', objectFit: 'cover', borderRadius: '4px' }).addClass('me-2'));
+                $card.append($('<img>').attr('src', map.imageUrl || '/images/noimage.jpg').attr('alt', map.text).css({ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px' }).addClass('me-2'));
                 $card.append($('<span>').addClass('flex-grow-1').text(map.text));
 
                 const $removeBtn = $('<button type="button" class="btn btn-outline-danger btn-sm ms-2"><i class="fa-solid fa-times"></i></button>');
