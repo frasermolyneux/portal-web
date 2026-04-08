@@ -137,6 +137,17 @@
                                     </button>
                                 </form>
                             }
+                            @if (Model.Assignment.DeploymentState == DeploymentState.Synced)
+                            {
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="VerifyAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <button type="submit" class="btn btn-outline-info btn-sm me-1">
+                                        <i class="fa-solid fa-clipboard-check"></i> Verify Maps
+                                    </button>
+                                </form>
+                            }
                         </div>
                     </div>
                 </div>

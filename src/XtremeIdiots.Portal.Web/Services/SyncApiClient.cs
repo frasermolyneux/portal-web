@@ -31,6 +31,11 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
         return TriggerOrchestration($"/api/map-rotations/remove/{assignmentId}", cancellationToken);
     }
 
+    public Task<SyncTriggerResult> TriggerVerify(Guid assignmentId, CancellationToken cancellationToken = default)
+    {
+        return TriggerOrchestration($"/api/map-rotations/verify/{assignmentId}", cancellationToken);
+    }
+
     public async Task<OrchestrationStatusQueryResult> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
     {
         try

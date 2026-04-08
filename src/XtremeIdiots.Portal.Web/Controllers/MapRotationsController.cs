@@ -703,6 +703,48 @@ public class MapRotationsController(
         }, nameof(DeactivateAssignment)).ConfigureAwait(false);
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> VerifyAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(mapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(VerifyAssignment),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var result = await syncApiClient.TriggerVerify(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                this.AddAlertSuccess("Verification triggered successfully.");
+                TempData["PendingInstanceId"] = $"maprot-verify-{assignmentId}";
+            }
+            else
+            {
+                this.AddAlertDanger($"Failed to trigger verification: {result.Error}");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(VerifyAssignment)).ConfigureAwait(false);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetSyncProgress(string instanceId, CancellationToken cancellationToken = default)
     {
@@ -768,7 +810,8 @@ public class MapRotationsController(
                         $"maprot-sync-{assignmentId}",
                         $"maprot-activate-{assignmentId}",
                         $"maprot-deactivate-{assignmentId}",
-                        $"maprot-remove-{assignmentId}"
+                        $"maprot-remove-{assignmentId}",
+                        $"maprot-verify-{assignmentId}"
                     };
 
                     if (allowedPrefixes.Any(p => string.Equals(instanceId, p, StringComparison.OrdinalIgnoreCase)))
@@ -822,7 +865,8 @@ public class MapRotationsController(
                 $"maprot-sync-{assignmentId}",
                 $"maprot-activate-{assignmentId}",
                 $"maprot-deactivate-{assignmentId}",
-                $"maprot-remove-{assignmentId}"
+                $"maprot-remove-{assignmentId}",
+                $"maprot-verify-{assignmentId}"
             };
 
             if (!allowedPrefixes.Any(p => string.Equals(instanceId, p, StringComparison.OrdinalIgnoreCase)))
