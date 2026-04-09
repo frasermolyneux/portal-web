@@ -6,7 +6,8 @@ namespace XtremeIdiots.Portal.Web.Tests.Extensions;
 
 public class GameServerDtoExtensionsTests
 {
-    private static GameServerDto CreateGameServerDto(bool botEnabled = false, bool agentEnabled = false)
+    private static GameServerDto CreateGameServerDto(bool botEnabled = false, bool agentEnabled = false,
+        bool ftpEnabled = false, bool rconEnabled = false, bool banFileSyncEnabled = false, bool serverListEnabled = false)
     {
         // GameServerDto uses internal setters, so we serialize/deserialize to set values
         var json = System.Text.Json.JsonSerializer.Serialize(new
@@ -21,7 +22,11 @@ public class GameServerDtoExtensionsTests
             AgentEnabled = agentEnabled,
             BannerServerListEnabled = true,
             PortalServerListEnabled = true,
-            LiveTrackingEnabled = true
+            LiveTrackingEnabled = true,
+            FtpEnabled = ftpEnabled,
+            RconEnabled = rconEnabled,
+            BanFileSyncEnabled = banFileSyncEnabled,
+            ServerListEnabled = serverListEnabled
         });
 
         return Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(json)!;
@@ -31,7 +36,8 @@ public class GameServerDtoExtensionsTests
     public void ToViewModel_MapsAllProperties()
     {
         // Arrange
-        var dto = CreateGameServerDto(botEnabled: true, agentEnabled: true);
+        var dto = CreateGameServerDto(botEnabled: true, agentEnabled: true,
+            ftpEnabled: true, rconEnabled: true, banFileSyncEnabled: true, serverListEnabled: true);
 
         // Act
         var viewModel = dto.ToViewModel();
@@ -48,6 +54,10 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.LiveTrackingEnabled, viewModel.LiveTrackingEnabled);
         Assert.Equal(dto.BotEnabled, viewModel.BotEnabled);
         Assert.Equal(dto.AgentEnabled, viewModel.AgentEnabled);
+        Assert.Equal(dto.FtpEnabled, viewModel.FtpEnabled);
+        Assert.Equal(dto.RconEnabled, viewModel.RconEnabled);
+        Assert.Equal(dto.BanFileSyncEnabled, viewModel.BanFileSyncEnabled);
+        Assert.Equal(dto.ServerListEnabled, viewModel.ServerListEnabled);
     }
 
     [Theory]

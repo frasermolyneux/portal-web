@@ -113,4 +113,28 @@ public class GameServerViewModel
     /// </summary>
     [DisplayName("Agent Enabled")]
     public bool AgentEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether FTP integration is enabled for this server
+    /// </summary>
+    [DisplayName("FTP")]
+    public bool FtpEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether RCON integration is enabled for this server
+    /// </summary>
+    [DisplayName("RCON")]
+    public bool RconEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether ban file synchronization is enabled for this server
+    /// </summary>
+    [DisplayName("Ban File Sync")]
+    public bool BanFileSyncEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this server appears in server lists
+    /// </summary>
+    [DisplayName("Server List")]
+    public bool ServerListEnabled { get; set; }
 }

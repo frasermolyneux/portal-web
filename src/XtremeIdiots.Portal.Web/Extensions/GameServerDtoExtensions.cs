@@ -25,7 +25,11 @@ public static class GameServerDtoExtensions
             HtmlBanner = gameServerDto.HtmlBanner,
             PortalServerListEnabled = gameServerDto.PortalServerListEnabled,
             BotEnabled = gameServerDto.BotEnabled,
-            AgentEnabled = gameServerDto.AgentEnabled
+            AgentEnabled = gameServerDto.AgentEnabled,
+            FtpEnabled = gameServerDto.FtpEnabled,
+            RconEnabled = gameServerDto.RconEnabled,
+            BanFileSyncEnabled = gameServerDto.BanFileSyncEnabled,
+            ServerListEnabled = gameServerDto.ServerListEnabled
         };
 
         return viewModel;
