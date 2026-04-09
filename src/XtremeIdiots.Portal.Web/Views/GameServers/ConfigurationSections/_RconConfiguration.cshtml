@@ -1,0 +1,16 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model GameServerEditViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        RCON Configuration
+    </div>
+    <div class="ibox-content">
+        <div class="mb-3">
+            <label asp-for="RconConfigPassword" class="control-label"></label>
+            <input asp-for="RconConfigPassword" class="form-control" type="password" />
+            <span asp-validation-for="RconConfigPassword" class="text-danger"></span>
+            <small class="form-text text-muted">The RCON password used for remote server administration.</small>
+        </div>
+    </div>
+</div>

@@ -75,18 +75,21 @@ public class GameServerViewModel
     /// Gets or sets whether live player tracking is enabled for this server
     /// </summary>
     [DisplayName("Live Tracking")]
+    [Obsolete("Will be reviewed in a future version.")]
     public bool LiveTrackingEnabled { get; set; }
 
     /// <summary>
     /// Gets or sets whether this server appears in the banner server list
     /// </summary>
     [DisplayName("Banner Server List")]
+    [Obsolete("Replaced by ServerListEnabled. Will be removed in a future version.")]
     public bool BannerServerListEnabled { get; set; }
 
     /// <summary>
     /// Gets or sets the display position in server lists
     /// </summary>
     [DisplayName("Position")]
+    [Obsolete("Replaced by position in serverlist config namespace. Will be removed in a future version.")]
     public int ServerListPosition { get; set; }
 
     /// <summary>
@@ -94,18 +97,21 @@ public class GameServerViewModel
     /// </summary>
     [DataType(DataType.MultilineText)]
     [DisplayName("HTML Banner")]
+    [Obsolete("Replaced by htmlBanner in serverlist config namespace. Will be removed in a future version.")]
     public string? HtmlBanner { get; set; }
 
     /// <summary>
     /// Gets or sets whether this server appears in the portal server list
     /// </summary>
     [DisplayName("Portal Server List")]
+    [Obsolete("Will be reviewed in a future version.")]
     public bool PortalServerListEnabled { get; set; }
 
     /// <summary>
     /// Gets or sets whether bot functionality is enabled for this server
     /// </summary>
     [DisplayName("Bot")]
+    [Obsolete("Legacy feature. Will be removed in a future version.")]
     public bool BotEnabled { get; set; }
 
     /// <summary>

@@ -1,8 +1,5 @@
-﻿@inject IAuthorizationService AuthorizationService
-@using Microsoft.AspNetCore.Authorization
-@using XtremeIdiots.Portal.Web.Auth.Constants
-@using XtremeIdiots.Portal.Web.ViewModels
-@model GameServerViewModel
+﻿@using XtremeIdiots.Portal.Web.ViewModels
+@model GameServerEditViewModel
 
 @{
     ViewData["Title"] = "Edit Game Server";
@@ -10,195 +7,100 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <form asp-action="Edit">
+    <form asp-action="Edit" method="post">
 
-        <input type="hidden" asp-for="GameServerId" />
-
-        <div class="row">
-            <div class="col-12">
-
-                <div class="container-fluid">
-                    <div class="ibox">
-                        <div class="ibox-title">
-                            General
-                        </div>
-                        <div class="ibox-content">
-                            <div class="mb-3">
-                                <label asp-for="GameType" class="control-label"></label>
-                                <select asp-for="GameType" class="form-control" asp-items="ViewBag.GameType"
-                                    disabled="disabled"></select>
-                                <span asp-validation-for="GameType" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="Title" class="control-label"></label>
-                                <input asp-for="Title" class="form-control" />
-                                <span asp-validation-for="Title" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="Hostname" class="control-label"></label>
-                                <input asp-for="Hostname" class="form-control" />
-                                <span asp-validation-for="Hostname" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="QueryPort" class="control-label"></label>
-                                <input asp-for="QueryPort" class="form-control" />
-                                <span asp-validation-for="QueryPort" class="text-danger"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        @{
-            var canEditFtpCredentials = (await AuthorizationService.AuthorizeAsync(User, Model.GameType,
-            AuthPolicies.EditGameServerFtp)).Succeeded;
-            var canEditRconCredentials = (await AuthorizationService.AuthorizeAsync(User, Model.GameType,
-            AuthPolicies.EditGameServerRcon)).Succeeded;
-        }
-
-        @if (canEditFtpCredentials || canEditRconCredentials)
-        {
-            <div class="row">
-                <div class="col-12">
-
-                    <div class="container-fluid">
-                        <div class="ibox">
-                            <div class="ibox-title">
-                                Credentials
-                            </div>
-                            <div class="ibox-content">
-                                @if (canEditFtpCredentials)
-                                {
-                                    <div class="mb-3">
-                                        <label asp-for="FtpHostname" class="control-label"></label>
-                                        <input asp-for="FtpHostname" class="form-control" />
-                                        <span asp-validation-for="FtpHostname" class="text-danger"></span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label asp-for="FtpPort" class="control-label"></label>
-                                        <input asp-for="FtpPort" class="form-control" />
-                                        <span asp-validation-for="FtpPort" class="text-danger"></span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label asp-for="FtpUsername" class="control-label"></label>
-                                        <input asp-for="FtpUsername" class="form-control" />
-                                        <span asp-validation-for="FtpUsername" class="text-danger"></span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label asp-for="FtpPassword" class="control-label"></label>
-                                        <input asp-for="FtpPassword" class="form-control" />
-                                        <span asp-validation-for="FtpPassword" class="text-danger"></span>
-                                    </div>
-                                }
-                                @if (canEditRconCredentials)
-                                {
-                                    <div class="mb-3">
-                                        <label asp-for="RconPassword" class="control-label"></label>
-                                        <input asp-for="RconPassword" class="form-control" />
-                                        <span asp-validation-for="RconPassword" class="text-danger"></span>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        }
+        <input type="hidden" asp-for="GameServer.GameServerId" />
 
         <div class="row">
             <div class="col-12">
 
                 <div class="container-fluid">
-                    <div class="ibox">
-                        <div class="ibox-title">
-                            Display Options
+
+                    <ul class="nav nav-tabs" id="serverConfigTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="general-tab-btn" data-bs-toggle="tab"
+                                data-bs-target="#general-tab" type="button" role="tab"
+                                aria-controls="general-tab" aria-selected="true">General</button>
+                        </li>
+                        @if (Model.CanEditFtp)
+                        {
+                            <li class="nav-item" role="presentation"
+                                id="ftp-tab-item" style="@(Model.GameServer.FtpEnabled ? "" : "display:none")">
+                                <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#ftp-tab" type="button" role="tab"
+                                    aria-controls="ftp-tab" aria-selected="false">FTP</button>
+                            </li>
+                        }
+                        @if (Model.CanEditRcon)
+                        {
+                            <li class="nav-item" role="presentation"
+                                id="rcon-tab-item" style="@(Model.GameServer.RconEnabled ? "" : "display:none")">
+                                <button class="nav-link" id="rcon-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#rcon-tab" type="button" role="tab"
+                                    aria-controls="rcon-tab" aria-selected="false">RCON</button>
+                            </li>
+                        }
+                        <li class="nav-item" role="presentation"
+                            id="agent-tab-item" style="@(Model.GameServer.AgentEnabled ? "" : "display:none")">
+                            <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab"
+                                data-bs-target="#agent-tab" type="button" role="tab"
+                                aria-controls="agent-tab" aria-selected="false">Agent</button>
+                        </li>
+                        <li class="nav-item" role="presentation"
+                            id="banfilesync-tab-item" style="@(Model.GameServer.BanFileSyncEnabled ? "" : "display:none")">
+                            <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
+                                data-bs-target="#banfilesync-tab" type="button" role="tab"
+                                aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
+                        </li>
+                        <li class="nav-item" role="presentation"
+                            id="serverlist-tab-item" style="@(Model.GameServer.ServerListEnabled ? "" : "display:none")">
+                            <button class="nav-link" id="serverlist-tab-btn" data-bs-toggle="tab"
+                                data-bs-target="#serverlist-tab" type="button" role="tab"
+                                aria-controls="serverlist-tab" aria-selected="false">Server List</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="serverConfigTabContent">
+
+                        <div class="tab-pane fade show active" id="general-tab" role="tabpanel"
+                            aria-labelledby="general-tab-btn">
+                            @await Html.PartialAsync("ConfigurationSections/_GeneralConfiguration", Model)
                         </div>
-                        <div class="ibox-content">
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="LiveTrackingEnabled" />
-                                    @Html.DisplayNameFor(model => model.LiveTrackingEnabled)
-                                </label>
+
+                        @if (Model.CanEditFtp)
+                        {
+                            <div class="tab-pane fade" id="ftp-tab" role="tabpanel"
+                                aria-labelledby="ftp-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_FtpConfiguration", Model)
                             </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="BannerServerListEnabled" />
-                                    @Html.DisplayNameFor(model => model.BannerServerListEnabled)
-                                </label>
+                        }
+
+                        @if (Model.CanEditRcon)
+                        {
+                            <div class="tab-pane fade" id="rcon-tab" role="tabpanel"
+                                aria-labelledby="rcon-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_RconConfiguration", Model)
                             </div>
-                            <div class="mb-3">
-                                <label asp-for="ServerListPosition" class="control-label"></label>
-                                <input asp-for="ServerListPosition" class="form-control" />
-                                <span asp-validation-for="ServerListPosition" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="HtmlBanner" class="control-label"></label>
-                                <textarea asp-for="HtmlBanner" class="form-control" style="height: 200px"></textarea>
-                                <span asp-validation-for="HtmlBanner" class="text-danger"></span>
-                            </div>
-                            <hr />
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="PortalServerListEnabled" />
-                                    @Html.DisplayNameFor(model => model.PortalServerListEnabled)
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="BotEnabled" />
-                                    @Html.DisplayNameFor(model => model.BotEnabled)
-                                    <span class="badge bg-warning text-dark">Legacy</span>
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="AgentEnabled" />
-                                    @Html.DisplayNameFor(model => model.AgentEnabled)
-                                </label>
-                            </div>
-                            <hr />
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="FtpEnabled" />
-                                    @Html.DisplayNameFor(model => model.FtpEnabled)
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="RconEnabled" />
-                                    @Html.DisplayNameFor(model => model.RconEnabled)
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="BanFileSyncEnabled" />
-                                    @Html.DisplayNameFor(model => model.BanFileSyncEnabled)
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="ServerListEnabled" />
-                                    @Html.DisplayNameFor(model => model.ServerListEnabled)
-                                </label>
-                            </div>
+                        }
+
+                        <div class="tab-pane fade" id="agent-tab" role="tabpanel"
+                            aria-labelledby="agent-tab-btn">
+                            @await Html.PartialAsync("ConfigurationSections/_AgentConfiguration", Model)
                         </div>
+
+                        <div class="tab-pane fade" id="banfilesync-tab" role="tabpanel"
+                            aria-labelledby="banfilesync-tab-btn">
+                            @await Html.PartialAsync("ConfigurationSections/_BanFileSyncConfiguration", Model)
+                        </div>
+
+                        <div class="tab-pane fade" id="serverlist-tab" role="tabpanel"
+                            aria-labelledby="serverlist-tab-btn">
+                            @await Html.PartialAsync("ConfigurationSections/_ServerListConfiguration", Model)
+                        </div>
+
                     </div>
-                </div>
 
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-12">
-
-                <div class="container-fluid">
-                    <div class="ibox">
-                        <div class="ibox-title">
-                            @ViewData["Title"]
-                        </div>
+                    <div class="ibox mt-3">
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
@@ -214,6 +116,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
 
             </div>
@@ -229,4 +132,22 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script>
+        // Toggle tab visibility when feature checkboxes change
+        document.querySelectorAll('.feature-toggle[data-toggle-tab]').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                var tabBtnId = this.getAttribute('data-toggle-tab');
+                var tabBtn = document.getElementById(tabBtnId);
+                var tabItem = tabBtn?.closest('.nav-item');
+                if (tabItem) {
+                    if (!this.checked && tabBtn.classList.contains('active')) {
+                        var generalTab = document.getElementById('general-tab-btn');
+                        var bsTab = new bootstrap.Tab(generalTab);
+                        bsTab.show();
+                    }
+                    tabItem.style.display = this.checked ? '' : 'none';
+                }
+            });
+        });
+    </script>
 }
