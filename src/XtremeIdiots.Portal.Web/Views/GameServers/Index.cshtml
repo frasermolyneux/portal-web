@@ -40,32 +40,19 @@
                                         <th scope="col">
                                             @Html.DisplayNameFor(model => model.Hostname)
                                         </th>
-                                    <th>
-                                        @Html.DisplayNameFor(model => model.LiveTrackingEnabled)
-                                    </th>
-                                    <th>
-                                        @Html.DisplayNameFor(model => model.PortalServerListEnabled)
-                                    </th>
-                                    <th>
-                                        @Html.DisplayNameFor(model => model.BannerServerListEnabled)
-                                    </th>
-                                    <th>
-                                        @Html.DisplayNameFor(model => model.BotEnabled)
-                                        <span class="badge bg-warning text-dark">Legacy</span>
-                                    </th>
-                                    <th>
-                                        @Html.DisplayNameFor(model => model.AgentEnabled)
-                                    </th>
-                                    <th>
+                                    <th scope="col">
                                         @Html.DisplayNameFor(model => model.FtpEnabled)
                                     </th>
-                                    <th>
+                                    <th scope="col">
                                         @Html.DisplayNameFor(model => model.RconEnabled)
                                     </th>
-                                    <th>
+                                    <th scope="col">
+                                        @Html.DisplayNameFor(model => model.AgentEnabled)
+                                    </th>
+                                    <th scope="col">
                                         @Html.DisplayNameFor(model => model.BanFileSyncEnabled)
                                     </th>
-                                    <th>
+                                    <th scope="col">
                                         @Html.DisplayNameFor(model => model.ServerListEnabled)
                                     </th>
                                     <th></th>
@@ -88,25 +75,13 @@
                                             <server-host host="@item.Hostname" port="@item.QueryPort"></server-host>
                                         </td>
                                         <td>
-                                            @Html.DisplayFor(modelItem => item.LiveTrackingEnabled)
-                                        </td>
-                                        <td>
-                                            @Html.DisplayFor(modelItem => item.PortalServerListEnabled)
-                                        </td>
-                                        <td>
-                                            @Html.DisplayFor(modelItem => item.BannerServerListEnabled)
-                                        </td>
-                                        <td>
-                                            @Html.DisplayFor(modelItem => item.BotEnabled)
-                                        </td>
-                                        <td>
-                                            @Html.DisplayFor(modelItem => item.AgentEnabled)
-                                        </td>
-                                        <td>
                                             @Html.DisplayFor(modelItem => item.FtpEnabled)
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.RconEnabled)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.AgentEnabled)
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.BanFileSyncEnabled)
