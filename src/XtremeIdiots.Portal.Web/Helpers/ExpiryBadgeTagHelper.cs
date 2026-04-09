@@ -1,23 +1,23 @@
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using System.Security.Claims;
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
 namespace XtremeIdiots.Portal.Web.Helpers;
 
 /// <summary>
-/// Renders an expiry date with Active / Expired badge inside a <span>.
-/// Usage: <expiry-badge expires-utc="@Model.Expires" user="@User" />
+/// Renders an expiry date with Active / Expired / Permanent badge inside a <span>.
+/// Expiry status is determined server-side (authoritative).
+/// Client-side JS re-formats the date portion in the user's locale.
+/// Usage: <expiry-badge expires-utc="@Model.Expires" />
 /// </summary>
 [HtmlTargetElement("expiry-badge")]
 public class ExpiryBadgeTagHelper : TagHelper
 {
     [HtmlAttributeName("expires-utc")] public DateTime? ExpiresUtc { get; set; }
-    [HtmlAttributeName("user")] public ClaimsPrincipal? User { get; set; }
 
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagName = "span";
         output.TagMode = TagMode.StartTagAndEndTag;
+
         if (ExpiresUtc is null)
         {
             output.Content.SetHtmlContent("<span title=\"No expiry\">Never</span>");
@@ -26,24 +26,16 @@ public class ExpiryBadgeTagHelper : TagHelper
 
         var now = DateTime.UtcNow;
         var expired = ExpiresUtc.Value <= now;
-        var displayDate = ExpiresUtc.Value;
-        // timezone via claim (same logic as existing helper)
-        var tzClaim = User?.Claims.SingleOrDefault(c => c.Type == UserProfileClaimType.TimeZone);
-        if (tzClaim is not null)
-        {
-            try
-            {
-                var tz = TimeZoneInfo.FindSystemTimeZoneById(tzClaim.Value);
-                displayDate = TimeZoneInfo.ConvertTime(displayDate, tz);
-            }
-            catch { }
-        }
+        var utc = DateTime.SpecifyKind(ExpiresUtc.Value, DateTimeKind.Utc);
+        var dateStr = utc.ToString("yyyy-MM-dd");
 
-        var dateStr = displayDate.ToString("D", System.Globalization.CultureInfo.CurrentUICulture);
         var badgeClass = expired ? "text-bg-danger" : "text-bg-success";
         var badgeText = expired ? "Expired" : "Active";
+        var status = expired ? "expired" : "active";
         var title = expired ? $"Expired on {dateStr}" : $"Expires on {dateStr}";
-        output.Attributes.SetAttribute("title", title);
-        output.Content.SetHtmlContent($"{dateStr} <span class='badge {badgeClass} ms-1'>{badgeText}</span>");
+
+        output.Content.SetHtmlContent(
+            $"<time datetime=\"{utc:o}\" data-dt=\"expiry\" data-dt-status=\"{status}\" title=\"{title}\">" +
+            $"{dateStr} <span class=\"badge {badgeClass} ms-1\">{badgeText}</span></time>");
     }
 }

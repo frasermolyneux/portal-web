@@ -68,7 +68,7 @@
                 'data-notification-id="' + escapeHtml(String(n.notificationId)) + '" style="white-space: normal;">' +
                 '<div class="d-flex justify-content-between">' +
                 '<strong class="small">' + escapeHtml(n.title || '') + '</strong>' +
-                '<small class="text-muted ms-2 flex-shrink-0">' + timeAgo(n.createdAt) + '</small>' +
+                '<small class="text-muted ms-2 flex-shrink-0">' + portalDate.formatRelativeTime(n.createdAt) + '</small>' +
                 '</div>' +
                 '<div class="small text-muted text-truncate">' + escapeHtml(n.message || '') + '</div>' +
                 '</a>';

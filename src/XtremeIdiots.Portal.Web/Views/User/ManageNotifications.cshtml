@@ -135,7 +135,7 @@
                                         @foreach (var notification in Model.Notifications.OrderByDescending(n => n.SentAt))
                                         {
                                             <tr>
-                                                <td>@notification.SentAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                                <td><time user-time utc="@notification.SentAt"></time></td>
                                                 <td>@notification.NotificationType</td>
                                                 <td>
                                                     @notification.Title

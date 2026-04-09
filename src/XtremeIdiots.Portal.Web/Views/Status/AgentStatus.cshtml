@@ -84,19 +84,7 @@
                                                 <td>
                                                     @if (server.LastEventReceived.HasValue)
                                                     {
-                                                        var ago = DateTime.UtcNow - server.LastEventReceived.Value;
-                                                        if (ago.TotalSeconds < 60)
-                                                        {
-                                                            @($"{(int)ago.TotalSeconds}s ago")
-                                                        }
-                                                        else if (ago.TotalMinutes < 60)
-                                                        {
-                                                            @($"{(int)ago.TotalMinutes}m ago")
-                                                        }
-                                                        else
-                                                        {
-                                                            @($"{(int)ago.TotalHours}h ago")
-                                                        }
+                                                        <time time-ago utc="@server.LastEventReceived.Value" show-absolute="false"></time>
                                                     }
                                                     else
                                                     {

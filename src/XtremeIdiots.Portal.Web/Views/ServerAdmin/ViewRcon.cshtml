@@ -270,18 +270,8 @@
         function updateRefreshBadge(badgeId, lastRefreshTime) {
             const badge = $('#' + badgeId);
             if (badge.length && lastRefreshTime) {
-                badge.text('Updated ' + timeAgo(formatDateTimeForTimeAgo(lastRefreshTime)));
+                badge.text('Updated ' + portalDate.formatRelativeTime(lastRefreshTime.toISOString()));
             }
-        }
-        
-        // Helper to format Date object for timeAgo function
-        function formatDateTimeForTimeAgo(date) {
-            const year = date.getUTCFullYear();
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            const hours = String(date.getUTCHours()).padStart(2, '0');
-            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-            return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
         }
         
         // AJAX error handler
@@ -941,7 +931,7 @@
                                 const lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
                                 
                                 messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
-                                messagesHtml += '<small class="text-muted">' + timeAgo(msg.timestamp) + '</small> ';
+                                messagesHtml += '<small class="text-muted">' + portalDate.formatRelativeTime(msg.timestamp) + '</small> ';
                                 
                                 if (msg.playerId) {
                                     messagesHtml += '<strong><a href="/Players/Details/' + msg.playerId + '" class="alert-link">' + escapeHtml(msg.username) + '</a></strong>';

@@ -31,12 +31,12 @@ $(document).ready(function () {
             }
         },
         columns: [
-            { data: 'created', name: 'created', orderable: true, render: function (data) { return '<span title="' + data + '">' + timeAgo(data) + '</span>'; } },
+            { data: 'created', name: 'created', orderable: true, render: function (data) { return '<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatRelativeTime(data) + '</span>'; } },
             { data: 'type', name: 'type', orderable: false, render: function (data) { return adminActionTypeIcon(data); } },
             { data: 'player', name: 'player', orderable: false, render: function (data, type, row) { 
                 return renderPlayerName(row.gameType, data, row.playerId) + '<br/><small class="text-muted">' + (row.guid || '') + '</small>'; 
             } },
-            { data: 'expires', name: 'expires', orderable: false, className: 'expires-cell', render: function (data) { return formatExpiryDate(data); } },
+            { data: 'expiresUtc', name: 'expires', orderable: false, className: 'expires-cell', defaultContent: '', render: function (data, type, row) { return portalDate.formatExpiryBadge(row.expiresUtc, row.isExpired, row.isPermanent); } },
             {
                 data: null, name: 'action', orderable: false, className: 'text-center', render: function (data, type, row) {
                     if (!row.canClaim) return '';

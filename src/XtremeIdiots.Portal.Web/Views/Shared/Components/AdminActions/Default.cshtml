@@ -79,7 +79,7 @@
                                 </h5>
                                 <small class="text-white-75">
                                     <i class="fa-solid fa-calendar me-1"></i>
-                                    @item.Created.ToString("MMM dd, yyyy HH:mm") UTC
+                                    <time time-ago utc="@item.Created" show-absolute="false"></time>
                                 </small>
                             </div>
                         </div>
@@ -152,8 +152,7 @@
                                                 @if (item.Expires != null)
                                                 {
                                                     <text>Expires: </text>
-                                                    @item.Expires.Value.ToString("MMM dd, yyyy HH:mm")
-                                                    <small class="text-muted">UTC</small>
+                                                    <time user-time utc="@item.Expires.Value"></time>
                                                 }
                                                 else
                                                 {

@@ -157,7 +157,7 @@ public class MapsController(
                     playerId = v.PlayerId,
                     serverName = v.GameServer?.Title,
                     like = v.Like,
-                    timestamp = v.Timestamp.ToString("yyyy-MM-dd HH:mm")
+                    timestamp = DateTime.SpecifyKind(v.Timestamp, DateTimeKind.Utc).ToString("o")
                 })
             });
         }, nameof(GetMapVotesAjax)).ConfigureAwait(false);

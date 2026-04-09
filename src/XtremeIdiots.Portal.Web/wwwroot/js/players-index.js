@@ -64,8 +64,8 @@ $(document).ready(function () {
                 }
             },
             { data: 'guid', name: 'guid', orderable: false, defaultContent: '' },
-            { data: 'firstSeen', name: 'firstSeen', orderable: true, render: function (data) { return data ? ('<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
-            { data: 'lastSeen', name: 'lastSeen', orderable: true, render: function (data) { return data ? ('<span title="' + data + '">' + timeAgo(data) + '</span>') : ''; } }
+            { data: 'firstSeen', name: 'firstSeen', orderable: true, render: function (data) { return data ? ('<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
+            { data: 'lastSeen', name: 'lastSeen', orderable: true, render: function (data) { return data ? ('<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatRelativeTime(data) + '</span>') : ''; } }
         ]
     });
 

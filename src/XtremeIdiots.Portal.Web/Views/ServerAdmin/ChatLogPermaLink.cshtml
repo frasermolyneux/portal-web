@@ -51,9 +51,7 @@
                                 <dt class="col-sm-4">Timestamp</dt>
                                 <dd class="col-sm-8">
                                     <i class="fa-solid fa-clock text-muted" aria-hidden="true"></i>
-                                    <time class="ms-1" datetime="@Model.Timestamp.ToString("O")" title="@Model.Timestamp.ToString("u")">
-                                        @Model.Timestamp
-                                    </time>
+                                    <time user-time utc="@Model.Timestamp"></time>
                                 </dd>
 
                                 <dt class="col-sm-4">Locked</dt>

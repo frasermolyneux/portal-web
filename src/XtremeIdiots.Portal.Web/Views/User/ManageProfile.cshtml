@@ -68,7 +68,7 @@
                                 <dt class="col-sm-4">Lockout Enabled</dt>
                                 <dd class="col-sm-8">@(Model.Identity.LockoutEnabled ? "Yes" : "No")</dd>
                                 <dt class="col-sm-4">Lockout End</dt>
-                                <dd class="col-sm-8">@(Model.Identity.LockoutEnd?.UtcDateTime.ToString("u") ?? "-")</dd>
+                                <dd class="col-sm-8">@if (Model.Identity.LockoutEnd.HasValue) { <time user-time utc="@Model.Identity.LockoutEnd.Value.UtcDateTime"></time> } else { <text>-</text> }</dd>
                                 <dt class="col-sm-4">Access Failed Count</dt>
                                 <dd class="col-sm-8">@Model.Identity.AccessFailedCount</dd>
                                 <dt class="col-sm-4">Phone</dt>

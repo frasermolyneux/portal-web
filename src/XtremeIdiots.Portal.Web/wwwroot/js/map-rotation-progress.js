@@ -112,8 +112,8 @@ $(document).ready(function () {
 
         var html = '<small class="text-muted">';
         html += '<strong>Orchestration:</strong> ' + (data.runtimeStatus || '—');
-        if (data.createdAt) html += ' | Created: ' + new Date(data.createdAt).toLocaleString();
-        if (data.lastUpdatedAt) html += ' | Last updated: ' + new Date(data.lastUpdatedAt).toLocaleString();
+        if (data.createdAt) html += ' | Created: ' + portalDate.formatDateTime(data.createdAt);
+        if (data.lastUpdatedAt) html += ' | Last updated: ' + portalDate.formatDateTime(data.lastUpdatedAt);
         html += '</small>';
         $orchStatus.html(html);
     }

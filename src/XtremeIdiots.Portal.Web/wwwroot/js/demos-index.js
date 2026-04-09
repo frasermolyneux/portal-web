@@ -82,7 +82,7 @@ $(document).ready(function () {
         columns: [
             { data: 'game', name: 'game', orderable: true, render: function (data, type, row) { return gameTypeIcon(row['game']); } },
             { data: 'name', name: 'name', orderable: true, render: function (data, type, row) { return downloadDemoLink(row['name'], row['demoId']); } },
-            { data: 'date', name: 'date', orderable: true, render: function (data) { return data ? '<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>' : ''; } },
+            { data: 'date', name: 'date', orderable: true, render: function (data) { return data ? '<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>' : ''; } },
             { data: 'map', name: 'map', orderable: false },
             { data: 'mod', name: 'mod', orderable: false },
             { data: 'gameType', name: 'gameType', orderable: false },

@@ -330,7 +330,7 @@
                                     {
                                         var total = day.Bans + day.TempBans + day.Kicks + day.Warnings + day.Observations;
                                         <tr>
-                                            <td>@day.Date.ToString("dd MMM")</td>
+                                            <td><time user-time utc="@day.Date"></time></td>
                                             <td class="text-center">
                                                 @if (day.Bans > 0) { <span class="badge bg-danger">@day.Bans</span> } else { <span class="text-muted">0</span> }
                                             </td>

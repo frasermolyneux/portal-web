@@ -25,7 +25,7 @@ $(document).ready(function () {
     const structureVersion = 5; // bumped after adding server filter
 
     const columns = [
-        { data: 'timestamp', name: 'timestamp', orderable: true, render: function (data) { return data ? ('<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
+        { data: 'timestamp', name: 'timestamp', orderable: true, render: function (data) { return data ? ('<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
         {
             data: 'username', name: 'username', orderable: false, render: function (data, type, row) {
                 // Prefer numeric enum (player.gameType or gameServer.gameType); fall back to top-level gameType.

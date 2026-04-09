@@ -81,7 +81,7 @@ $(document).ready(function () {
                 data: 'timestamp', name: 'timestamp', orderable: true,
                 render: function (data) {
                     if (!data) return '';
-                    return '<span title="' + data + '">' + formatDateTime(data, { showRelative: true }) + '</span>';
+                    return '<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>';
                 }
             },
             {

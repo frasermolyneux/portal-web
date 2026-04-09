@@ -47,10 +47,10 @@
                             }
 
                             <dt class="col-sm-3">Created</dt>
-                            <dd class="col-sm-9">@Model.Rotation.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                            <dd class="col-sm-9"><time user-time utc="@Model.Rotation.CreatedAt"></time></dd>
 
                             <dt class="col-sm-3">Updated</dt>
-                            <dd class="col-sm-9">@Model.Rotation.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                            <dd class="col-sm-9"><time user-time utc="@Model.Rotation.UpdatedAt"></time></dd>
                         </dl>
                     </div>
                 </div>
@@ -165,7 +165,7 @@
                                                     @if (latestOp != null)
                                                     {
                                                         <small class="text-muted d-block">
-                                                            Last: @latestOp.OperationType (@latestOp.Status) — @latestOp.StartedAt.ToString("dd MMM HH:mm")
+                                                            Last: @latestOp.OperationType (@latestOp.Status) — <time user-time utc="@latestOp.StartedAt"></time>
                                                         </small>
                                                     }
                                                 </td>

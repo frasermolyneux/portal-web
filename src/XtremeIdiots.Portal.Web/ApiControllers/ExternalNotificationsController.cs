@@ -193,6 +193,8 @@ public class ExternalNotificationsController(
                 publicNotifications.Add(new
                 {
                     type = "admin-action",
+                    actionType = action.Type.ToString(),
+                    gameType = action.Player?.GameType.ToString(),
                     title = $"{action.UserProfile?.DisplayName ?? "Admin"} {actionText} {action.Player?.Username}",
                     message = $"{action.Type} on {action.Player?.GameType}",
                     iconUrl = $"{portalBaseUrl}/images/game-icons/{action.Player?.GameType}.png",

@@ -1082,7 +1082,7 @@ public class ServerAdminController(
                 .Select(m => new
                 {
                     chatMessageId = m.ChatMessageId,
-                    timestamp = m.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+                    timestamp = DateTime.SpecifyKind(m.Timestamp, DateTimeKind.Utc).ToString("o"),
                     username = m.Username,
                     message = m.Message,
                     playerId = m.PlayerId,
@@ -1108,7 +1108,7 @@ public class ServerAdminController(
             {
                 messages,
                 count = messages.Count,
-                serverTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                serverTime = DateTime.UtcNow.ToString("o")
             });
         }, nameof(GetServerLiveChatLog)).ConfigureAwait(false);
     }

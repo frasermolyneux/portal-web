@@ -11,13 +11,6 @@
       ]
     },
     {
-      "library": "moment.js@2.30.1",
-      "destination": "wwwroot/lib/moment",
-      "files": [
-        "moment.min.js"
-      ]
-    },
-    {
       "library": "datatables.net-dt@1.13.8",
       "destination": "wwwroot/lib/datatables",
       "files": [

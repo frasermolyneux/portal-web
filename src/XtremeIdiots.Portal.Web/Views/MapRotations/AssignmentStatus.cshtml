@@ -68,15 +68,15 @@
                             }
 
                             <dt class="col-sm-3">Created</dt>
-                            <dd class="col-sm-9">@Model.Assignment.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                            <dd class="col-sm-9"><time user-time utc="@Model.Assignment.CreatedAt"></time></dd>
 
                             <dt class="col-sm-3">Updated</dt>
-                            <dd class="col-sm-9">@Model.Assignment.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                            <dd class="col-sm-9"><time user-time utc="@Model.Assignment.UpdatedAt"></time></dd>
 
                             @if (Model.Assignment.UnassignedAt.HasValue)
                             {
                                 <dt class="col-sm-3">Unassigned</dt>
-                                <dd class="col-sm-9">@Model.Assignment.UnassignedAt.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                                <dd class="col-sm-9"><time user-time utc="@Model.Assignment.UnassignedAt.Value"></time></dd>
                             }
                         </dl>
 
@@ -86,7 +86,7 @@
                                 <i class="fa-solid fa-exclamation-triangle"></i> <strong>Last Error</strong>
                                 @if (Model.Assignment.LastErrorAt.HasValue)
                                 {
-                                    <small class="text-muted">(@Model.Assignment.LastErrorAt.Value.ToString("dd MMM yyyy HH:mm:ss"))</small>
+                                    <small class="text-muted">(<time user-time utc="@Model.Assignment.LastErrorAt.Value"></time>)</small>
                                 }
                                 <p class="mb-0 mt-1">@Model.Assignment.LastError</p>
                             </div>
@@ -253,8 +253,8 @@
                                                             break;
                                                     }
                                                 </td>
-                                                <td>@op.StartedAt.ToString("dd MMM yyyy HH:mm:ss")</td>
-                                                <td>@(op.CompletedAt?.ToString("dd MMM yyyy HH:mm:ss") ?? "—")</td>
+                                                <td><time user-time utc="@op.StartedAt"></time></td>
+                                                <td>@if (op.CompletedAt.HasValue) { <time user-time utc="@op.CompletedAt.Value"></time> } else { <text>—</text> }</td>
                                                 <td>
                                                     @if (op.CompletedAt.HasValue)
                                                     {

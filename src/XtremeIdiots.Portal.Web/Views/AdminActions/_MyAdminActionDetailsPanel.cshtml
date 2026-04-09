@@ -45,7 +45,7 @@
             <div class="small text-muted">Created <time time-ago utc="@adminAction.Created"></time>
                 @if (adminAction.Expires.HasValue)
                 {
-                    <span>| <expiry-badge expires-utc="@adminAction.Expires" user="@User"></expiry-badge></span>
+                    <span>| <expiry-badge expires-utc="@adminAction.Expires"></expiry-badge></span>
                 }
  @if (player?.GameType is not null)
 {

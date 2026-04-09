@@ -4,6 +4,7 @@ namespace XtremeIdiots.Portal.Web.Helpers;
 
 /// <summary>
 /// Renders a <time> element with a relative "time ago" description and the absolute datetime in attributes.
+/// Client-side JS (portalDate.enhanceDateElements) re-formats in the user's locale and timezone.
 /// Usage: <time time-ago utc="@Model.Created" show-absolute="true"></time>
 /// </summary>
 [HtmlTargetElement("time", Attributes = AttributeName)]
@@ -21,13 +22,18 @@ public class TimeAgoTagHelper : TagHelper
 
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
-        // Always render <time>
         output.TagName = "time";
         output.TagMode = TagMode.StartTagAndEndTag;
-        output.Attributes.SetAttribute("datetime", Utc.ToString("o"));
-        var rel = BuildRelative(Utc);
-        var absolute = Utc.ToString("yyyy-MM-dd HH:mm");
+
+        var utc = DateTime.SpecifyKind(Utc, DateTimeKind.Utc);
+        output.Attributes.SetAttribute("datetime", utc.ToString("o"));
+        output.Attributes.SetAttribute("data-dt", "relative");
+
+        // Server-rendered fallback for noscript users
+        var rel = BuildRelative(utc);
+        var absolute = utc.ToString("yyyy-MM-dd HH:mm");
         output.Content.SetHtmlContent(ShowAbsolute ? $"{rel} ({absolute} UTC)" : rel);
+
         output.Attributes.RemoveAll(AttributeName);
         output.Attributes.RemoveAll(UtcAttributeName);
         output.Attributes.RemoveAll(ShowAbsoluteAttributeName);

@@ -30,7 +30,7 @@
                             View Player Profile
                         </a>
                     </td>
-                    <td>@protectedName.CreatedOn.ToString("yyyy-MM-dd")</td>
+                    <td><time user-time utc="@protectedName.CreatedOn"></time></td>
                     <td>@protectedName.CreatedByUserProfile?.DisplayName</td>
                     <td>
                         <div class="btn-group btn-group-sm" role="group">

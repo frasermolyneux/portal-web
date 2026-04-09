@@ -105,14 +105,16 @@ public class AdminActionsController(
                 data = items.Select(a => new
                 {
                     adminActionId = a.AdminActionId,
-                    created = a.Created.ToString("yyyy-MM-dd HH:mm"),
+                    created = DateTime.SpecifyKind(a.Created, DateTimeKind.Utc).ToString("o"),
                     gameType = a.Player?.GameType.ToString(),
                     type = a.Type.ToString(),
                     player = a.Player?.Username,
                     playerId = a.PlayerId,
                     guid = a.Player?.Guid,
                     admin = a.UserProfile?.DisplayName ?? "Unclaimed",
-                    expires = a.Expires?.ToString("yyyy-MM-dd HH:mm") ?? (a.Type == AdminActionType.Ban ? "Never" : string.Empty)
+                    expiresUtc = a.Expires.HasValue ? DateTime.SpecifyKind(a.Expires.Value, DateTimeKind.Utc).ToString("o") : null,
+                    isPermanent = !a.Expires.HasValue && a.Type == AdminActionType.Ban,
+                    isExpired = a.Expires.HasValue && a.Expires.Value <= DateTime.UtcNow
                 })
             });
         }, nameof(GetAdminActionsAjax)).ConfigureAwait(false);
@@ -185,14 +187,16 @@ public class AdminActionsController(
                 responseItems.Add(new
                 {
                     adminActionId = a.AdminActionId,
-                    created = a.Created.ToString("yyyy-MM-dd HH:mm"),
+                    created = DateTime.SpecifyKind(a.Created, DateTimeKind.Utc).ToString("o"),
                     gameType = a.Player?.GameType.ToString(),
                     type = a.Type.ToString(),
                     player = a.Player?.Username,
                     playerId = a.PlayerId,
                     guid = a.Player?.Guid,
                     admin = a.UserProfile?.DisplayName ?? "Unclaimed",
-                    expires = a.Expires?.ToString("yyyy-MM-dd HH:mm") ?? (a.Type == AdminActionType.Ban ? "Never" : string.Empty),
+                    expiresUtc = a.Expires.HasValue ? DateTime.SpecifyKind(a.Expires.Value, DateTimeKind.Utc).ToString("o") : null,
+                    isPermanent = !a.Expires.HasValue && a.Type == AdminActionType.Ban,
+                    isExpired = a.Expires.HasValue && a.Expires.Value <= DateTime.UtcNow,
                     canClaim
                 });
             }
@@ -292,13 +296,15 @@ public class AdminActionsController(
                 recordsFiltered = apiResponse.Result.Pagination?.FilteredCount,
                 data = items.Select(a => new
                 {
-                    created = a.Created.ToString("yyyy-MM-dd HH:mm"),
+                    created = DateTime.SpecifyKind(a.Created, DateTimeKind.Utc).ToString("o"),
                     gameType = a.Player?.GameType.ToString(),
                     type = a.Type.ToString(),
                     player = a.Player?.Username,
                     playerId = a.PlayerId,
                     guid = a.Player?.Guid,
-                    expires = a.Expires?.ToString("yyyy-MM-dd HH:mm") ?? (a.Type == AdminActionType.Ban ? "Never" : string.Empty),
+                    expiresUtc = a.Expires.HasValue ? DateTime.SpecifyKind(a.Expires.Value, DateTimeKind.Utc).ToString("o") : null,
+                    isPermanent = !a.Expires.HasValue && a.Type == AdminActionType.Ban,
+                    isExpired = a.Expires.HasValue && a.Expires.Value <= DateTime.UtcNow,
                     id = a.AdminActionId,
                     text = a.Text
                 })

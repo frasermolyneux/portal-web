@@ -11,7 +11,24 @@
 
     var POLL_INTERVAL = 60000;
     var pollTimer = null;
-    var widgetState = { token: null, portalUrl: '', authenticated: false };
+    var widgetState = { token: null, portalUrl: '', authenticated: false, filters: {} };
+
+    // Action type icons (Unicode)
+    var ACTION_ICONS = {
+        'Ban': '\u{1F6AB}',
+        'TempBan': '\u23F1\uFE0F',
+        'Kick': '\u{1F462}',
+        'Warning': '\u26A0\uFE0F',
+        'Observation': '\u{1F441}\uFE0F'
+    };
+
+    var ACTION_LABELS = {
+        'Ban': 'Bans',
+        'TempBan': 'Temp Bans',
+        'Kick': 'Kicks',
+        'Warning': 'Warnings',
+        'Observation': 'Observations'
+    };
 
     // --- Utilities ---
 
@@ -24,12 +41,28 @@
 
     function ago(dateStr) {
         if (!dateStr) return '';
-        var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-        if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-        return new Date(dateStr).toLocaleDateString();
+        return portalDate.formatRelativeTime(dateStr);
+    }
+
+    function getActionIcon(actionType) {
+        return ACTION_ICONS[actionType] || '\u{1F4CB}';
+    }
+
+    function loadFilters() {
+        try {
+            var saved = localStorage.getItem('xi-pw-filters');
+            if (saved) widgetState.filters = JSON.parse(saved);
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveFilters() {
+        try {
+            localStorage.setItem('xi-pw-filters', JSON.stringify(widgetState.filters));
+        } catch (e) { /* ignore */ }
+    }
+
+    function isFiltered(actionType) {
+        return widgetState.filters[actionType] === false;
     }
 
     // --- API ---
@@ -65,66 +98,119 @@
 
     // --- Rendering ---
 
+    var lastData = null;
+
     function renderWidget(container, data) {
+        lastData = data;
         widgetState.authenticated = data.authenticated;
         container.innerHTML = '';
 
         var wrapper = document.createElement('div');
         wrapper.className = 'xi-portal-widget';
-        wrapper.innerHTML = buildHeader(data) + buildBody(data) + buildFooter(data);
+        wrapper.innerHTML = buildHeader(data) + buildFilters(data) + buildBody(data) + buildFooter(data);
         container.appendChild(wrapper);
 
         bindEvents(container);
     }
 
     function buildHeader(data) {
+        var bellLink = widgetState.portalUrl + (data.authenticated ? '/Profile/Notifications' : '/');
         var badge = '';
         if (data.authenticated && data.unreadCount > 0) {
             var countText = data.unreadCount > 99 ? '99+' : data.unreadCount;
             badge = '<span class="xi-pw-badge">' + countText + '</span>';
         }
 
-        var title = data.authenticated
-            ? '<span class="xi-pw-bell">&#128276;</span> Notifications ' + badge
-            : '<span class="xi-pw-bell">&#128276;</span> Portal Activity';
+        var userInfo = '';
+        if (data.authenticated && data.displayName) {
+            userInfo = '<span class="xi-pw-user">' + esc(data.displayName) + '</span>';
+        }
+
+        var title = '<a href="' + esc(bellLink) + '" class="xi-pw-bell-link" target="_blank" title="View all notifications">' +
+            '<span class="xi-pw-bell">\u{1F514}</span>' + badge + '</a>' +
+            '<span class="xi-pw-header-text">' + (data.authenticated ? 'Portal Activity' : 'Portal Activity') + '</span>';
 
         var actions = '';
         if (data.authenticated && data.unreadCount > 0) {
-            actions = '<a href="#" class="xi-pw-mark-all" title="Mark all as read">&#10003; Read all</a>';
+            actions = '<a href="#" class="xi-pw-mark-all" title="Mark all as read">\u2713 Read all</a>';
         }
 
         return '<div class="xi-pw-header">' +
             '<div class="xi-pw-title">' + title + '</div>' +
-            actions +
+            '<div class="xi-pw-header-right">' + userInfo + actions + '</div>' +
             '</div>';
+    }
+
+    function buildFilters(data) {
+        var items = data.notifications || [];
+        // Collect unique action types from current data
+        var types = {};
+        for (var i = 0; i < items.length; i++) {
+            var at = items[i].actionType;
+            if (at && ACTION_LABELS[at]) types[at] = true;
+        }
+        var typeKeys = Object.keys(types);
+        if (typeKeys.length < 2) return ''; // No point filtering with 0-1 types
+
+        var html = '<div class="xi-pw-filters">';
+        for (var j = 0; j < typeKeys.length; j++) {
+            var t = typeKeys[j];
+            var active = !isFiltered(t);
+            html += '<button class="xi-pw-filter-btn' + (active ? ' xi-pw-filter-active' : '') + '" data-filter="' + esc(t) + '" title="' + esc(ACTION_LABELS[t]) + '">' +
+                getActionIcon(t) + '</button>';
+        }
+        html += '</div>';
+        return html;
     }
 
     function buildBody(data) {
         var items = data.notifications || [];
-        if (items.length === 0) {
+        // Apply filters
+        var filtered = [];
+        for (var i = 0; i < items.length; i++) {
+            if (!items[i].actionType || !isFiltered(items[i].actionType)) {
+                filtered.push(items[i]);
+            }
+        }
+
+        if (filtered.length === 0) {
             return '<div class="xi-pw-empty">No notifications</div>';
         }
 
         var html = '<div class="xi-pw-list">';
-        for (var i = 0; i < items.length; i++) {
-            var n = items[i];
+        for (var j = 0; j < filtered.length; j++) {
+            var n = filtered[j];
             var unread = (n.isRead === false) ? ' xi-pw-unread' : '';
             var url = n.actionUrl || (widgetState.portalUrl + '/');
+            var icon = '';
+
+            // Game icon
+            if (n.iconUrl) {
+                icon = '<img src="' + esc(n.iconUrl) + '" class="xi-pw-game-icon" alt="" onerror="this.style.display=\'none\'">';
+            }
+
+            // Action type icon
+            var actionIcon = n.actionType ? ('<span class="xi-pw-action-icon" title="' + esc(n.actionType) + '">' + getActionIcon(n.actionType) + '</span>') : '';
+
             html += '<a href="' + esc(url) + '" class="xi-pw-item' + unread + '" target="_blank"' +
                 (n.id ? ' data-nid="' + esc(String(n.id)) + '"' : '') + '>' +
+                '<div class="xi-pw-item-row">' +
+                '<div class="xi-pw-item-icons">' + icon + actionIcon + '</div>' +
+                '<div class="xi-pw-item-content">' +
                 '<div class="xi-pw-item-header">' +
                 '<span class="xi-pw-item-title">' + esc(n.title) + '</span>' +
                 '<span class="xi-pw-item-time">' + ago(n.createdAt) + '</span>' +
                 '</div>' +
                 '<div class="xi-pw-item-msg">' + esc(n.message) + '</div>' +
+                '</div>' +
+                '</div>' +
                 '</a>';
         }
         html += '</div>';
 
-        // Unclaimed actions banner
         if (data.authenticated && data.unclaimed && data.unclaimed.hasItems) {
             html += '<a href="' + esc(data.unclaimed.url) + '" class="xi-pw-unclaimed" target="_blank">' +
-                '&#9888; There are unclaimed admin actions that need review' +
+                '\u26A0 There are unclaimed admin actions that need review' +
                 '</a>';
         }
 
@@ -133,20 +219,15 @@
 
     function buildFooter(data) {
         var portalLink = data.portalUrl || widgetState.portalUrl;
-        if (data.authenticated) {
-            return '<div class="xi-pw-footer">' +
-                '<a href="' + esc(portalLink) + '/Profile/Notifications" target="_blank">View all in Portal</a>' +
-                '</div>';
-        }
         return '<div class="xi-pw-footer">' +
-            '<a href="' + esc(portalLink) + '" target="_blank">Open Portal</a>' +
+            '<a href="' + esc(portalLink) + (data.authenticated ? '/Profile/Notifications' : '') + '" target="_blank">' +
+            (data.authenticated ? 'View all in Portal' : 'Open Portal') + '</a>' +
             '</div>';
     }
 
     // --- Events ---
 
     function bindEvents(container) {
-        // Mark all as read
         var markAllBtn = container.querySelector('.xi-pw-mark-all');
         if (markAllBtn) {
             markAllBtn.addEventListener('click', function (e) {
@@ -157,13 +238,31 @@
             });
         }
 
-        // Mark individual as read on click
         var items = container.querySelectorAll('.xi-pw-item[data-nid]');
         for (var i = 0; i < items.length; i++) {
             items[i].addEventListener('click', function () {
                 var nid = this.getAttribute('data-nid');
                 if (nid && widgetState.token) {
                     apiPost('/api/external/notifications/' + nid + '/read', { token: widgetState.token }, function () { });
+                }
+            });
+        }
+
+        // Filter toggle buttons
+        var filterBtns = container.querySelectorAll('.xi-pw-filter-btn');
+        for (var j = 0; j < filterBtns.length; j++) {
+            filterBtns[j].addEventListener('click', function (e) {
+                e.preventDefault();
+                var type = this.getAttribute('data-filter');
+                if (widgetState.filters[type] === false) {
+                    delete widgetState.filters[type];
+                } else {
+                    widgetState.filters[type] = false;
+                }
+                saveFilters();
+                if (lastData) {
+                    var cont = document.getElementById('portal-notifications-widget');
+                    if (cont) renderWidget(cont, lastData);
                 }
             });
         }
@@ -175,7 +274,7 @@
         var container = document.getElementById('portal-notifications-widget');
         if (!container) return;
 
-        apiGet('/api/external/notifications?take=15', function (err, data) {
+        apiGet('/api/external/notifications?take=20', function (err, data) {
             if (err) {
                 container.innerHTML = '<div class="xi-pw-error">Unable to load notifications</div>';
                 return;
@@ -188,7 +287,6 @@
         var container = document.getElementById('portal-notifications-widget');
         if (!container) return;
 
-        // Clear any existing interval from prior init calls
         if (pollTimer) {
             clearInterval(pollTimer);
             pollTimer = null;
@@ -202,34 +300,46 @@
             return;
         }
 
-        // Initial load
+        loadFilters();
         container.innerHTML = '<div class="xi-pw-loading">Loading notifications...</div>';
         refresh();
 
-        // Poll for updates if authenticated
         if (widgetState.token) {
             pollTimer = setInterval(refresh, POLL_INTERVAL);
         }
     }
 
-    // --- Styles (injected once) ---
+    // --- Styles ---
 
     function injectStyles() {
         if (document.getElementById('xi-pw-styles')) return;
         var style = document.createElement('style');
         style.id = 'xi-pw-styles';
         style.textContent =
-            '.xi-portal-widget{font-family:inherit;font-size:13px;border:1px solid #333;border-radius:4px;background:#262626;overflow:hidden;max-width:400px;color:#ccc}' +
+            '.xi-portal-widget{font-family:inherit;font-size:13px;border:1px solid #333;border-radius:4px;background:#262626;overflow:hidden;width:100%;color:#ccc}' +
             '.xi-pw-header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#1a1a1a;color:#e0e0e0;font-weight:600;border-bottom:1px solid #333}' +
             '.xi-pw-title{display:flex;align-items:center;gap:6px}' +
-            '.xi-pw-bell{font-size:16px}' +
-            '.xi-pw-badge{background:#c0392b;color:#fff;font-size:11px;padding:1px 6px;border-radius:10px;margin-left:4px}' +
+            '.xi-pw-header-right{display:flex;align-items:center;gap:8px}' +
+            '.xi-pw-header-text{font-size:13px}' +
+            '.xi-pw-bell-link{text-decoration:none;display:flex;align-items:center;position:relative}' +
+            '.xi-pw-bell{font-size:18px;cursor:pointer}' +
+            '.xi-pw-badge{background:#c0392b;color:#fff;font-size:10px;padding:1px 5px;border-radius:10px;position:absolute;top:-4px;right:-8px;min-width:14px;text-align:center}' +
+            '.xi-pw-user{font-size:11px;color:#7eaac4;font-weight:400}' +
             '.xi-pw-mark-all{color:#7eaac4;font-size:11px;text-decoration:none;white-space:nowrap}' +
             '.xi-pw-mark-all:hover{color:#aed6f1}' +
-            '.xi-pw-list{max-height:360px;overflow-y:auto}' +
+            '.xi-pw-filters{display:flex;gap:4px;padding:6px 12px;background:#1f1f1f;border-bottom:1px solid #333}' +
+            '.xi-pw-filter-btn{background:none;border:1px solid #444;border-radius:3px;padding:2px 8px;cursor:pointer;font-size:13px;color:#777;transition:all .15s}' +
+            '.xi-pw-filter-btn:hover{border-color:#666;color:#ccc}' +
+            '.xi-pw-filter-active{border-color:#3498db;color:#e0e0e0;background:#1e2a35}' +
+            '.xi-pw-list{max-height:400px;overflow-y:auto}' +
             '.xi-pw-item{display:block;padding:8px 12px;border-bottom:1px solid #333;text-decoration:none;color:#ccc;transition:background .15s}' +
             '.xi-pw-item:hover{background:#2f2f2f;text-decoration:none;color:#fff}' +
             '.xi-pw-unread{background:#1e2a35;border-left:3px solid #3498db}' +
+            '.xi-pw-item-row{display:flex;gap:8px;align-items:flex-start}' +
+            '.xi-pw-item-icons{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;min-width:24px;padding-top:1px}' +
+            '.xi-pw-game-icon{width:20px;height:20px;border-radius:2px}' +
+            '.xi-pw-action-icon{font-size:12px;line-height:1}' +
+            '.xi-pw-item-content{flex:1;min-width:0}' +
             '.xi-pw-item-header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}' +
             '.xi-pw-item-title{font-weight:600;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e0e0e0}' +
             '.xi-pw-item-time{font-size:11px;color:#777;white-space:nowrap}' +

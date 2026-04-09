@@ -46,7 +46,7 @@
             dataSrc: function (json) { return json.data; }
         },
         columns: [
-            { data: 'created', orderable: true, render: function (d) { return window.timeAgo ? window.timeAgo(d) : d; } },
+            { data: 'created', orderable: true, render: function (d) { return portalDate.formatRelativeTime(d); } },
             { data: 'type', orderable: false, render: function (d) { return window.adminActionTypeIcon ? window.adminActionTypeIcon(d) : d; } },
             { data: 'player', orderable: false, render: function (data, type, row) {
                 return window.renderPlayerName ? window.renderPlayerName(row.gameType, data, row.playerId) : data;
