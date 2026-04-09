@@ -8,7 +8,12 @@
     <div class="ibox-content">
         <div class="mb-3">
             <label asp-for="RconConfigPassword" class="control-label"></label>
-            <input asp-for="RconConfigPassword" class="form-control" type="password" />
+            <div class="input-group">
+                <input asp-for="RconConfigPassword" class="form-control" type="password" id="rconPasswordInput" />
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('rconPasswordInput', this)">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+            </div>
             <span asp-validation-for="RconConfigPassword" class="text-danger"></span>
             <small class="form-text text-muted">The RCON password used for remote server administration.</small>
         </div>

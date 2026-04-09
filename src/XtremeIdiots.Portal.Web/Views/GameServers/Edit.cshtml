@@ -133,6 +133,20 @@
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
     <script>
+        // Password show/hide toggle
+        function togglePasswordVisibility(inputId, button) {
+            var input = document.getElementById(inputId);
+            if (!input) return;
+            var icon = button.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
         // Toggle tab visibility when feature checkboxes change
         document.querySelectorAll('.feature-toggle[data-toggle-tab]').forEach(function (checkbox) {
             checkbox.addEventListener('change', function () {

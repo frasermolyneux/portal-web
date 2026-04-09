@@ -257,6 +257,12 @@ public class GameServersController(
                 {
                     foreach (var config in configsResult.Result.Data.Items)
                     {
+                        // Skip credential namespaces if user lacks permission
+                        if (config.Namespace == "ftp" && !editModel.CanEditFtp)
+                            continue;
+                        if (config.Namespace == "rcon" && !editModel.CanEditRcon)
+                            continue;
+
                         PopulateConfigFromNamespace(editModel, config);
                     }
                 }

@@ -36,51 +36,41 @@
         Features
     </div>
     <div class="ibox-content">
-        <div class="row">
-            <div class="col-md-4 col-sm-6 mb-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input feature-toggle" asp-for="GameServer.FtpEnabled"
-                        data-toggle-tab="ftp-tab-btn" />
-                    <label class="form-check-label" asp-for="GameServer.FtpEnabled">
-                        <i class="fa-solid fa-folder-open text-muted me-1"></i> @Html.DisplayNameFor(m => m.GameServer.FtpEnabled)
-                    </label>
-                </div>
+        <div class="d-flex flex-wrap gap-4">
+            <div class="form-check form-switch">
+                <input class="form-check-input feature-toggle" asp-for="GameServer.FtpEnabled"
+                    data-toggle-tab="ftp-tab-btn" />
+                <label class="form-check-label ms-1" asp-for="GameServer.FtpEnabled">
+                    <i class="fa-solid fa-folder-open text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.FtpEnabled)
+                </label>
             </div>
-            <div class="col-md-4 col-sm-6 mb-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input feature-toggle" asp-for="GameServer.RconEnabled"
-                        data-toggle-tab="rcon-tab-btn" />
-                    <label class="form-check-label" asp-for="GameServer.RconEnabled">
-                        <i class="fa-solid fa-terminal text-muted me-1"></i> @Html.DisplayNameFor(m => m.GameServer.RconEnabled)
-                    </label>
-                </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input feature-toggle" asp-for="GameServer.RconEnabled"
+                    data-toggle-tab="rcon-tab-btn" />
+                <label class="form-check-label ms-1" asp-for="GameServer.RconEnabled">
+                    <i class="fa-solid fa-terminal text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.RconEnabled)
+                </label>
             </div>
-            <div class="col-md-4 col-sm-6 mb-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input feature-toggle" asp-for="GameServer.AgentEnabled"
-                        data-toggle-tab="agent-tab-btn" />
-                    <label class="form-check-label" asp-for="GameServer.AgentEnabled">
-                        <i class="fa-solid fa-robot text-muted me-1"></i> @Html.DisplayNameFor(m => m.GameServer.AgentEnabled)
-                    </label>
-                </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input feature-toggle" asp-for="GameServer.AgentEnabled"
+                    data-toggle-tab="agent-tab-btn" />
+                <label class="form-check-label ms-1" asp-for="GameServer.AgentEnabled">
+                    <i class="fa-solid fa-robot text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.AgentEnabled)
+                </label>
             </div>
-            <div class="col-md-4 col-sm-6 mb-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input feature-toggle" asp-for="GameServer.BanFileSyncEnabled"
-                        data-toggle-tab="banfilesync-tab-btn" />
-                    <label class="form-check-label" asp-for="GameServer.BanFileSyncEnabled">
-                        <i class="fa-solid fa-ban text-muted me-1"></i> @Html.DisplayNameFor(m => m.GameServer.BanFileSyncEnabled)
-                    </label>
-                </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input feature-toggle" asp-for="GameServer.BanFileSyncEnabled"
+                    data-toggle-tab="banfilesync-tab-btn" />
+                <label class="form-check-label ms-1" asp-for="GameServer.BanFileSyncEnabled">
+                    <i class="fa-solid fa-ban text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.BanFileSyncEnabled)
+                </label>
             </div>
-            <div class="col-md-4 col-sm-6 mb-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input feature-toggle" asp-for="GameServer.ServerListEnabled"
-                        data-toggle-tab="serverlist-tab-btn" />
-                    <label class="form-check-label" asp-for="GameServer.ServerListEnabled">
-                        <i class="fa-solid fa-list text-muted me-1"></i> @Html.DisplayNameFor(m => m.GameServer.ServerListEnabled)
-                    </label>
-                </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input feature-toggle" asp-for="GameServer.ServerListEnabled"
+                    data-toggle-tab="serverlist-tab-btn" />
+                <label class="form-check-label ms-1" asp-for="GameServer.ServerListEnabled">
+                    <i class="fa-solid fa-list text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.ServerListEnabled)
+                </label>
             </div>
         </div>
     </div>
