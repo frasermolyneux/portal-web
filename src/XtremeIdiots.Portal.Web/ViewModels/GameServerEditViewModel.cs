@@ -57,6 +57,11 @@ public class GameServerEditViewModel
     [DataType(DataType.MultilineText)]
     public string? ServerListConfigHtmlBanner { get; set; }
 
+    // Existing password indicators (for preserving passwords on save when fields are left blank)
+
+    public bool HasExistingFtpPassword { get; set; }
+    public bool HasExistingRconPassword { get; set; }
+
     // Auth flags for tab visibility
 
     public bool CanEditFtp { get; set; }

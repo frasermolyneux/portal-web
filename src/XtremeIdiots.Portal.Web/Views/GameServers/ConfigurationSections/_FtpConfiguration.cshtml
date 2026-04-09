@@ -27,13 +27,21 @@
         <div class="mb-3">
             <label asp-for="FtpConfigPassword" class="control-label"></label>
             <div class="input-group">
-                <input asp-for="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput" />
+                <input name="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput" value="@Model.FtpConfigPassword" />
                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('ftpPasswordInput', this)">
                     <i class="fa-solid fa-eye"></i>
                 </button>
             </div>
+            <input type="hidden" asp-for="HasExistingFtpPassword" />
             <span asp-validation-for="FtpConfigPassword" class="text-danger"></span>
-            <small class="form-text text-muted">Password for FTP authentication.</small>
+            @if (Model.HasExistingFtpPassword)
+            {
+                <small class="form-text text-success"><i class="fa-solid fa-check-circle"></i> A password is currently set. Leave blank to keep the existing password.</small>
+            }
+            else
+            {
+                <small class="form-text text-muted">Password for FTP authentication.</small>
+            }
         </div>
     </div>
 </div>

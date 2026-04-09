@@ -272,6 +272,10 @@ public class GameServersController(
                 Logger.LogWarning(ex, "Failed to fetch configurations for game server {GameServerId}", id);
             }
 
+            // Track whether passwords exist for UI display
+            editModel.HasExistingFtpPassword = !string.IsNullOrEmpty(editModel.FtpConfigPassword);
+            editModel.HasExistingRconPassword = !string.IsNullOrEmpty(editModel.RconConfigPassword);
+
             return View(editModel);
         }, nameof(Edit)).ConfigureAwait(false);
     }
@@ -328,6 +332,19 @@ public class GameServersController(
             };
 
             var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
+
+            // Preserve existing passwords when the user leaves password fields blank
+            // (ASP.NET Core suppresses password values in rendered HTML, so blank fields are expected)
+            var passwordsPreserved = await PreserveExistingPasswordsAsync(model, gameServerData.GameServerId, canEditGameServerFtp.Succeeded, canEditGameServerRcon.Succeeded, cancellationToken).ConfigureAwait(false);
+            if (!passwordsPreserved)
+            {
+                ModelState.AddModelError(string.Empty, "Failed to verify existing passwords. Please try again.");
+                AddGameTypeViewData(model.GameServer.GameType);
+                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                return View(model);
+            }
+
             if (canEditGameServerFtp.Succeeded)
             {
                 // Dual-write: keep legacy DTO fields populated for backward compatibility
@@ -337,7 +354,6 @@ public class GameServersController(
                 editGameServerDto.FtpPassword = model.FtpConfigPassword;
             }
 
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
             if (canEditGameServerRcon.Succeeded)
             {
                 editGameServerDto.RconPassword = model.RconConfigPassword;
@@ -587,6 +603,53 @@ public class GameServersController(
         var canEditRcon = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
         model.CanEditFtp = canEditFtp.Succeeded;
         model.CanEditRcon = canEditRcon.Succeeded;
+    }
+
+    private async Task<bool> PreserveExistingPasswordsAsync(
+        GameServerEditViewModel model,
+        Guid gameServerId,
+        bool canEditFtp,
+        bool canEditRcon,
+        CancellationToken cancellationToken)
+    {
+        var needsFtpPassword = canEditFtp && string.IsNullOrEmpty(model.FtpConfigPassword);
+        var needsRconPassword = canEditRcon && string.IsNullOrEmpty(model.RconConfigPassword);
+
+        if (!needsFtpPassword && !needsRconPassword)
+            return true;
+
+        try
+        {
+            var configsResult = await repositoryApiClient.GameServerConfigurations.V1
+                .GetConfigurations(gameServerId, cancellationToken).ConfigureAwait(false);
+
+            if (!configsResult.IsSuccess || configsResult.Result?.Data?.Items == null)
+                return false;
+
+            foreach (var config in configsResult.Result.Data.Items)
+            {
+                if (string.IsNullOrWhiteSpace(config.Configuration))
+                    continue;
+
+                if (needsFtpPassword && config.Namespace == "ftp")
+                {
+                    using var doc = JsonDocument.Parse(config.Configuration);
+                    model.FtpConfigPassword = GetStringProperty(doc.RootElement, "password");
+                }
+                else if (needsRconPassword && config.Namespace == "rcon")
+                {
+                    using var doc = JsonDocument.Parse(config.Configuration);
+                    model.RconConfigPassword = GetStringProperty(doc.RootElement, "password");
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to fetch existing configurations for password preservation on game server {GameServerId}", gameServerId);
+            return false;
+        }
     }
 
     private async Task SaveConfigNamespacesAsync(
