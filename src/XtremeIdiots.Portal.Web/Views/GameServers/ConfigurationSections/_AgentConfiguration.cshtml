@@ -8,7 +8,16 @@
     <div class="ibox-content">
         <div class="mb-3">
             <label asp-for="AgentConfigLogFilePath" class="control-label"></label>
-            <input asp-for="AgentConfigLogFilePath" class="form-control" />
+            <div class="input-group">
+                <input asp-for="AgentConfigLogFilePath" class="form-control" id="AgentConfigLogFilePath" />
+                @if (Model.GameServer.FtpEnabled && Model.CanEditFtp)
+                {
+                    <button class="btn btn-outline-secondary" type="button"
+                        onclick="openFtpBrowser('@Model.GameServer.GameServerId', 'AgentConfigLogFilePath', '.log')">
+                        <i class="fa-solid fa-folder-open me-1"></i>Browse
+                    </button>
+                }
+            </div>
             <span asp-validation-for="AgentConfigLogFilePath" class="text-danger"></span>
             <small class="form-text text-muted">The file system path to the game server log file that the agent monitors.</small>
         </div>

@@ -1,0 +1,57 @@
+<!-- FTP Browser Modal — Reusable file browser component -->
+<div class="modal fade" id="ftpBrowserModal" tabindex="-1" aria-labelledby="ftpBrowserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ftpBrowserModalLabel">
+                    <i class="fa-solid fa-folder-open me-2"></i>Browse Server Files
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Breadcrumb navigation -->
+                <nav aria-label="FTP path">
+                    <ol class="breadcrumb" id="ftpBreadcrumb">
+                        <li class="breadcrumb-item"><a href="#" data-ftp-path="/">/</a></li>
+                    </ol>
+                </nav>
+
+                <!-- Loading spinner -->
+                <div id="ftpLoading" class="text-center py-4" style="display:none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Error message -->
+                <div id="ftpError" class="alert alert-danger" style="display:none;"></div>
+
+                <!-- File listing table -->
+                <div id="ftpListingContainer">
+                    <table class="table table-hover table-sm" id="ftpListingTable">
+                        <thead>
+                            <tr>
+                                <th style="width:30px"></th>
+                                <th>Name</th>
+                                <th style="width:100px" class="text-end">Size</th>
+                                <th style="width:160px">Modified</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ftpListingBody">
+                        </tbody>
+                    </table>
+                    <p id="ftpEmptyMessage" class="text-muted text-center py-3" style="display:none;">
+                        This directory is empty.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="ftpSelectedPath" class="text-muted me-auto"></span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="ftpSelectBtn" disabled>
+                    <i class="fa-solid fa-check me-1"></i>Select
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
