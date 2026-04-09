@@ -304,6 +304,11 @@
                 <i class="fa-solid fa-gamepad fa-fw" aria-hidden="true"></i> Game Servers
             </a>
 
+            <a policy="@AuthPolicies.AccessGlobalSettings" class="nav-link text-white @Html.IsSelected("GlobalSettings", "Index")" 
+               asp-controller="GlobalSettings" asp-action="Index" data-testid="nav-global-settings">
+                <i class="fa-solid fa-gear fa-fw" aria-hidden="true"></i> Global Settings
+            </a>
+
             <div policy="@AuthPolicies.AccessDemos">
                 <a class="nav-link text-white @Html.IsSelected("Demos", "Index")" href="#demosMenu" 
                    data-bs-toggle="collapse" data-testid="nav-demos-toggle" 

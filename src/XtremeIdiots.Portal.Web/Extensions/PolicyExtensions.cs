@@ -32,6 +32,8 @@ public static class PolicyExtensions
         options.AddPolicy(AuthPolicies.AccessDemos, policy => policy.Requirements.Add(new AccessDemos()));
         options.AddPolicy(AuthPolicies.DeleteDemo, policy => policy.Requirements.Add(new DeleteDemo()));
 
+        options.AddPolicy(AuthPolicies.AccessGlobalSettings, policy => policy.Requirements.Add(new AccessGlobalSettings()));
+
         options.AddPolicy(AuthPolicies.AccessGameServers, policy => policy.Requirements.Add(new AccessGameServers()));
         options.AddPolicy(AuthPolicies.CreateGameServer, policy => policy.Requirements.Add(new CreateGameServer()));
         options.AddPolicy(AuthPolicies.DeleteGameServer, policy => policy.Requirements.Add(new DeleteGameServer()));

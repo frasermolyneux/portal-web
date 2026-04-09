@@ -33,6 +33,9 @@ public static class AuthPolicies
     public const string AccessDemos = nameof(AccessDemos);
     public const string DeleteDemo = nameof(DeleteDemo);
 
+    // Global Settings policies
+    public const string AccessGlobalSettings = nameof(AccessGlobalSettings);
+
     // Game Server policies
     public const string AccessGameServers = nameof(AccessGameServers);
     public const string CreateGameServer = nameof(CreateGameServer);
