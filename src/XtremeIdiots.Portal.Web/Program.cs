@@ -135,7 +135,10 @@ builder.Services.AddAuthorization(options => options.AddXtremeIdiotsPolicies());
 
 builder.Services.AddCors(options =>
 {
-    var corsOrigin = GetConfigValue(builder.Configuration, "XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required");
+    var corsBaseUrl = GetConfigValue(builder.Configuration, "XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required");
+    if (!Uri.TryCreate(corsBaseUrl, UriKind.Absolute, out var corsUri))
+        throw new InvalidOperationException($"XtremeIdiots:Forums:BaseUrl value '{corsBaseUrl}' is not a valid absolute URI for CORS origin configuration");
+    var corsOrigin = corsUri.GetLeftPart(UriPartial.Authority);
     options.AddPolicy("CorsPolicy",
         policy => policy
             .WithOrigins(corsOrigin)

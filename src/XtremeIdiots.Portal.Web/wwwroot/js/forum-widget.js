@@ -41,7 +41,12 @@
 
     function ago(dateStr) {
         if (!dateStr) return '';
-        return portalDate.formatRelativeTime(dateStr);
+        var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+        return new Date(dateStr).toLocaleDateString();
     }
 
     function getActionIcon(actionType) {
@@ -279,7 +284,12 @@
                 container.innerHTML = '<div class="xi-pw-error">Unable to load notifications</div>';
                 return;
             }
-            renderWidget(container, data);
+            try {
+                renderWidget(container, data);
+            } catch (e) {
+                console.error('Forum widget render error:', e);
+                container.innerHTML = '<div class="xi-pw-error">Unable to display notifications</div>';
+            }
         });
     }
 

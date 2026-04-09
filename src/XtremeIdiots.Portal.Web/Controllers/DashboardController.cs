@@ -2,6 +2,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -70,7 +71,43 @@ public class DashboardController(
             // Agent telemetry (non-critical — dashboard renders without it)
             try
             {
-                viewModel.AgentStatuses = await agentTelemetryService.GetAllServersStatusAsync(cancellationToken).ConfigureAwait(false);
+                var telemetryTask = agentTelemetryService.GetAllServersStatusAsync(cancellationToken);
+                var gameServersTask = repositoryApiClient.GameServers.V1.GetGameServers(
+                    null, null, GameServerFilter.AgentEnabled, 0, 100,
+                    GameServerOrder.BannerServerListPosition, cancellationToken);
+
+                await Task.WhenAll(telemetryTask, gameServersTask).ConfigureAwait(false);
+
+                var telemetry = await telemetryTask.ConfigureAwait(false);
+                var gameServersResponse = await gameServersTask.ConfigureAwait(false);
+
+                var serverLookup = gameServersResponse.IsSuccess && gameServersResponse.Result?.Data?.Items is not null
+                    ? gameServersResponse.Result.Data.Items
+                        .GroupBy(gs => gs.GameServerId)
+                        .ToDictionary(g => g.Key, g => g.First())
+                    : [];
+
+                // Enrich telemetry with server names from the repository API
+                var telemetryByServer = telemetry
+                    .GroupBy(t => t.ServerId)
+                    .ToDictionary(g => g.Key, g => g.First());
+                viewModel.AgentStatuses = serverLookup.Values.Select(gs =>
+                {
+                    telemetryByServer.TryGetValue(gs.GameServerId, out var summary);
+
+                    return new AgentServerSummary
+                    {
+                        ServerId = gs.GameServerId,
+                        ServerTitle = string.IsNullOrWhiteSpace(gs.LiveTitle) ? gs.Title : gs.LiveTitle,
+                        GameType = gs.GameType.ToString(),
+                        LastEventReceived = summary?.LastEventReceived,
+                        EventsLastHour = summary?.EventsLastHour ?? 0,
+                        PlayerCount = summary?.PlayerCount ?? 0,
+                        CurrentMap = summary?.CurrentMap ?? gs.LiveMap,
+                        IsAgentActive = summary?.IsAgentActive ?? false,
+                        ActivityStatus = summary?.ActivityStatus ?? AgentActivityStatus.Offline
+                    };
+                }).ToList();
             }
             catch (Exception ex)
             {
