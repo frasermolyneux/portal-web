@@ -14,16 +14,8 @@
                     <i class="fa-solid fa-eye"></i>
                 </button>
             </div>
-            <input type="hidden" asp-for="HasExistingRconPassword" />
             <span asp-validation-for="RconConfigPassword" class="text-danger"></span>
-            @if (Model.HasExistingRconPassword)
-            {
-                <small class="form-text text-success"><i class="fa-solid fa-check-circle"></i> A password is currently set. Leave blank to keep the existing password.</small>
-            }
-            else
-            {
-                <small class="form-text text-muted">The RCON password used for remote server administration.</small>
-            }
+            <small class="form-text text-muted">The RCON password used for remote server administration.</small>
         </div>
     </div>
 </div>

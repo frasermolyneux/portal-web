@@ -272,10 +272,6 @@ public class GameServersController(
                 Logger.LogWarning(ex, "Failed to fetch configurations for game server {GameServerId}", id);
             }
 
-            // Track whether passwords exist for UI display
-            editModel.HasExistingFtpPassword = !string.IsNullOrEmpty(editModel.FtpConfigPassword);
-            editModel.HasExistingRconPassword = !string.IsNullOrEmpty(editModel.RconConfigPassword);
-
             return View(editModel);
         }, nameof(Edit)).ConfigureAwait(false);
     }
@@ -335,7 +331,6 @@ public class GameServersController(
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
 
             // Preserve existing passwords when the user leaves password fields blank
-            // (ASP.NET Core suppresses password values in rendered HTML, so blank fields are expected)
             var passwordsPreserved = await PreserveExistingPasswordsAsync(model, gameServerData.GameServerId, canEditGameServerFtp.Succeeded, canEditGameServerRcon.Succeeded, cancellationToken).ConfigureAwait(false);
             if (!passwordsPreserved)
             {

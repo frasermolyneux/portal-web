@@ -25,13 +25,11 @@ public class GameServerEditViewModel
     public string? FtpConfigUsername { get; set; }
 
     [DisplayName("FTP Password")]
-    [DataType(DataType.Password)]
     public string? FtpConfigPassword { get; set; }
 
     // RCON configuration (parsed from "rcon" config namespace)
 
     [DisplayName("RCON Password")]
-    [DataType(DataType.Password)]
     public string? RconConfigPassword { get; set; }
 
     // Agent configuration (parsed from "agent" config namespace)
@@ -56,11 +54,6 @@ public class GameServerEditViewModel
     [DisplayName("HTML Banner")]
     [DataType(DataType.MultilineText)]
     public string? ServerListConfigHtmlBanner { get; set; }
-
-    // Existing password indicators (for preserving passwords on save when fields are left blank)
-
-    public bool HasExistingFtpPassword { get; set; }
-    public bool HasExistingRconPassword { get; set; }
 
     // Auth flags for tab visibility
 
