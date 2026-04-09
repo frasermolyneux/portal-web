@@ -230,7 +230,7 @@
                                                 {
                                                     <text>data-instance-id="@op.DurableFunctionInstanceId"</text>
                                                 }
-                                                data-started-at="@op.StartedAt.ToString("o")">
+                                                data-started-at="@DateTime.SpecifyKind(op.StartedAt, DateTimeKind.Utc).ToString("o")">
                                                 <td>@op.OperationType</td>
                                                 <td>
                                                     @switch (op.Status)
@@ -263,7 +263,7 @@
                                                     }
                                                     else if (isInProgress)
                                                     {
-                                                        <span class="elapsed-timer" data-started-at="@op.StartedAt.ToString("o")">Calculating...</span>
+                                                        <span class="elapsed-timer" data-started-at="@DateTime.SpecifyKind(op.StartedAt, DateTimeKind.Utc).ToString("o")">Calculating...</span>
                                                     }
                                                 </td>
                                                 <td>
