@@ -161,5 +161,48 @@
                 }
             });
         }
+
+        // Toggle dependency enforcement
+        // AgentEnabled requires FtpEnabled AND RconEnabled
+        // BanFileSyncEnabled requires FtpEnabled AND AgentEnabled
+        function enforceToggleDependencies() {
+            var ftp = document.getElementById('GameServer_FtpEnabled');
+            var rcon = document.getElementById('GameServer_RconEnabled');
+            var agent = document.getElementById('GameServer_AgentEnabled');
+            var banSync = document.getElementById('GameServer_BanFileSyncEnabled');
+
+            if (!ftp || !rcon || !agent || !banSync) return;
+
+            // If Agent is checked but prerequisites aren't met, uncheck it
+            if (agent.checked && (!ftp.checked || !rcon.checked)) {
+                agent.checked = false;
+                agent.dispatchEvent(new Event('change'));
+            }
+
+            // If BanFileSync is checked but prerequisites aren't met, uncheck it
+            if (banSync.checked && (!ftp.checked || !agent.checked)) {
+                banSync.checked = false;
+                banSync.dispatchEvent(new Event('change'));
+            }
+
+            // Visual state for Agent
+            var agentSwitch = agent.closest('.form-check');
+            if (agentSwitch) {
+                agentSwitch.classList.toggle('opacity-50', !ftp.checked || !rcon.checked);
+            }
+
+            // Visual state for BanFileSync
+            var banSyncSwitch = banSync.closest('.form-check');
+            if (banSyncSwitch) {
+                banSyncSwitch.classList.toggle('opacity-50', !ftp.checked || !agent.checked);
+            }
+        }
+
+        enforceToggleDependencies();
+
+        ['GameServer_FtpEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', enforceToggleDependencies);
+        });
     </script>
 }
