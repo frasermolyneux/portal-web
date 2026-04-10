@@ -1,0 +1,34 @@
+@use '../tokens/colors' as *;
+
+// Game Server Reorder - drag-and-drop list styles
+
+.game-server-item {
+    cursor: grab;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        border-color: $border-color-light !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    &--dragging {
+        cursor: grabbing;
+    }
+}
+
+.game-server-drag-handle {
+    cursor: grab;
+    color: $xi-text-muted;
+    font-size: 1.1rem;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+
+    &:hover {
+        color: $xi-text;
+    }
+
+    .game-server-item--dragging & {
+        cursor: grabbing;
+    }
+}

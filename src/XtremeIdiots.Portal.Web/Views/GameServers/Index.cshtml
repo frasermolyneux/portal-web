@@ -52,9 +52,6 @@
                                     <th scope="col">
                                         @Html.DisplayNameFor(model => model.ServerListEnabled)
                                     </th>
-                                    <th scope="col">
-                                        @Html.DisplayNameFor(model => model.ServerListPosition)
-                                    </th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -85,9 +82,6 @@
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.ServerListEnabled)
-                                        </td>
-                                        <td>
-                                            @Html.DisplayFor(modelItem => item.ServerListPosition)
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
@@ -132,6 +126,11 @@
                         <div class="btn-group btn-group-sm" role="group">
                             <a type="button" class="btn btn-primary" asp-action="Create"><i class="fa-solid fa-plus"></i>
                                 Create New</a>
+                            @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer)).Succeeded)
+                            {
+                                <a type="button" class="btn btn-secondary" asp-action="Reorder"><i class="fa-solid fa-grip-vertical"></i>
+                                    Reorder Servers</a>
+                            }
                         </div>
                     </div>
                 </div>

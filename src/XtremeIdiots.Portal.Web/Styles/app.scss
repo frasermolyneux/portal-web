@@ -47,6 +47,7 @@
 @use 'features/rcon';
 @use 'features/changelog';
 @use 'features/map-rotations';
+@use 'features/game-servers';
 
 // 7. Vendor - Third-party library overrides
 @use 'vendor/bootstrap-overrides';

@@ -64,6 +64,40 @@ public class GameServersController(
     }
 
     /// <summary>
+    /// Displays the drag-drop reorder page for game servers (SeniorAdmin only)
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>View with all game servers in a reorderable list</returns>
+    [HttpGet]
+    public async Task<IActionResult> Reorder(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                null!,
+                AuthPolicies.DeleteGameServer,
+                nameof(Reorder),
+                "GameServer",
+                "Reorder").ConfigureAwait(false);
+
+            if (authResult is not null)
+                return authResult;
+
+            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                null, null, null, 0, 200, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+
+            if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to retrieve game servers for reorder by user {UserId}", User.XtremeIdiotsId());
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController).Replace("Controller", ""), new { id = 500 });
+            }
+
+            return View(gameServersApiResponse.Result.Data.Items);
+        }, nameof(Reorder)).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Displays the create game server form
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
@@ -106,7 +140,6 @@ public class GameServersController(
             createGameServerDto.Title = model.Title;
             createGameServerDto.Hostname = model.Hostname;
             createGameServerDto.QueryPort = model.QueryPort;
-            createGameServerDto.ServerListPosition = model.ServerListPosition;
 
             createGameServerDto.AgentEnabled = model.AgentEnabled;
             createGameServerDto.FtpEnabled = model.FtpEnabled;
@@ -361,8 +394,7 @@ public class GameServersController(
             {
                 Title = model.GameServer.Title,
                 Hostname = model.GameServer.Hostname,
-                QueryPort = model.GameServer.QueryPort,
-                ServerListPosition = model.GameServer.ServerListPosition
+                QueryPort = model.GameServer.QueryPort
             };
 
             var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
