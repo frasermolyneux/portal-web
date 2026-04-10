@@ -29,9 +29,6 @@
                                 <thead>
                                     <tr>
                                         <th scope="col">
-                                            @Html.DisplayNameFor(model => model.ServerListPosition)
-                                        </th>
-                                        <th scope="col">
                                             @Html.DisplayNameFor(model => model.GameType)
                                         </th>
                                         <th scope="col">
@@ -62,9 +59,6 @@
                                 @foreach (var item in Model)
                                 {
                                     <tr>
-                                        <td>
-                                            @Html.DisplayFor(modelItem => item.ServerListPosition)
-                                        </td>
                                         <td>
                                             <game-type-icon game="@item.GameType"></game-type-icon>
                                         </td>

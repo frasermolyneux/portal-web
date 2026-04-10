@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -46,7 +47,13 @@ public class BanFileMonitorsController(
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            return View(banFileMonitorsApiResponse.Result.Data.Items);
+            var items = banFileMonitorsApiResponse.Result.Data.Items;
+            var serverIds = items.Where(i => i.GameServer != null).Select(i => i.GameServerId).Distinct();
+            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
+            ViewBag.ServerConfigs = serverConfigs;
+
+            return View(items);
         }, nameof(Index)).ConfigureAwait(false);
     }
 
@@ -138,7 +145,14 @@ public class BanFileMonitorsController(
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
                 id, AuthPolicies.ViewBanFileMonitor, nameof(Details), cancellationToken).ConfigureAwait(false);
 
-            return actionResult is not null ? actionResult : View(banFileMonitorData);
+            if (actionResult is not null)
+                return actionResult;
+
+            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, [banFileMonitorData!.GameServerId], Logger, cancellationToken).ConfigureAwait(false);
+            ViewBag.ServerConfigs = serverConfigs;
+
+            return View(banFileMonitorData);
         }, nameof(Details)).ConfigureAwait(false);
     }
 
@@ -235,6 +249,10 @@ public class BanFileMonitorsController(
                 return actionResult;
 
             await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken).ConfigureAwait(false);
+
+            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, [banFileMonitorData.GameServerId], Logger, cancellationToken).ConfigureAwait(false);
+            ViewBag.ServerConfigs = serverConfigs;
 
             return View(banFileMonitorData);
         }, nameof(Delete)).ConfigureAwait(false);

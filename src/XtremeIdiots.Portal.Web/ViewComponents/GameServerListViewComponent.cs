@@ -2,6 +2,7 @@
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ViewComponents;
 
@@ -29,9 +30,17 @@ public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClien
             return View(Array.Empty<object>());
         }
 
-        var filtered = gameServersApiResponse.Result.Data.Items
-            .Where(s => !string.IsNullOrWhiteSpace(s.HtmlBanner))
+        var allServers = gameServersApiResponse.Result.Data.Items.ToList();
+
+        var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+            repositoryApiClient, allServers.Select(s => s.GameServerId)).ConfigureAwait(false);
+
+        var filtered = allServers
+            .Where(s => !string.IsNullOrWhiteSpace(
+                GameServerConfigHelper.GetConfigValue(serverConfigs, s.GameServerId, "serverlist", "htmlBanner")))
             .ToList();
+
+        ViewBag.ServerConfigs = serverConfigs;
 
         return View(filtered);
     }

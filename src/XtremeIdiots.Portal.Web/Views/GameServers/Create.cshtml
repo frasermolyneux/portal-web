@@ -1,7 +1,4 @@
-﻿@inject IAuthorizationService AuthorizationService
-@using Microsoft.AspNetCore.Authorization
-@using XtremeIdiots.Portal.Web.Auth.Constants
-@using XtremeIdiots.Portal.Web.ViewModels
+﻿@using XtremeIdiots.Portal.Web.ViewModels
 @model GameServerViewModel
 
 @{
@@ -48,63 +45,6 @@
             </div>
         </div>
 
-        @{
-            var canEditFtpCredentials = (await AuthorizationService.AuthorizeAsync(User, Model.GameType,
-            AuthPolicies.EditGameServerFtp)).Succeeded;
-            var canEditRconCredentials = (await AuthorizationService.AuthorizeAsync(User, Model.GameType,
-            AuthPolicies.EditGameServerRcon)).Succeeded;
-        }
-
-        @if (canEditFtpCredentials || canEditRconCredentials)
-        {
-            <div class="row">
-                <div class="col-12">
-
-                    <div class="container-fluid">
-                        <div class="ibox">
-                            <div class="ibox-title">
-                                Credentials
-                            </div>
-                            <div class="ibox-content">
-                                @if (canEditFtpCredentials)
-                                {
-                                    <div class="mb-3">
-                                        <label asp-for="FtpHostname" class="control-label"></label>
-                                        <input asp-for="FtpHostname" class="form-control" />
-                                        <span asp-validation-for="FtpHostname" class="text-danger"></span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label asp-for="FtpPort" class="control-label"></label>
-                                        <input asp-for="FtpPort" class="form-control" />
-                                        <span asp-validation-for="FtpPort" class="text-danger"></span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label asp-for="FtpUsername" class="control-label"></label>
-                                        <input asp-for="FtpUsername" class="form-control" />
-                                        <span asp-validation-for="FtpUsername" class="text-danger"></span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label asp-for="FtpPassword" class="control-label"></label>
-                                        <input asp-for="FtpPassword" class="form-control" />
-                                        <span asp-validation-for="FtpPassword" class="text-danger"></span>
-                                    </div>
-                                }
-                                @if (canEditRconCredentials)
-                                {
-                                    <div class="mb-3">
-                                        <label asp-for="RconPassword" class="control-label"></label>
-                                        <input asp-for="RconPassword" class="form-control" />
-                                        <span asp-validation-for="RconPassword" class="text-danger"></span>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        }
-
         <div class="row">
             <div class="col-12">
 
@@ -125,16 +65,6 @@
                                     <input class="form-check-input" asp-for="BannerServerListEnabled" />
                                     @Html.DisplayNameFor(model => model.BannerServerListEnabled)
                                 </label>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="ServerListPosition" class="control-label"></label>
-                                <input asp-for="ServerListPosition" class="form-control" />
-                                <span asp-validation-for="ServerListPosition" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="HtmlBanner" class="control-label"></label>
-                                <textarea asp-for="HtmlBanner" class="form-control" style="height: 200px"></textarea>
-                                <span asp-validation-for="HtmlBanner" class="text-danger"></span>
                             </div>
                             <hr />
                             <div class="form-check mb-3">

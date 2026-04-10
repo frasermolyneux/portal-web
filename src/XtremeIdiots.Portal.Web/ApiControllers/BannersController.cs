@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameTracker;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
@@ -84,10 +85,17 @@ public class BannersController(
                 return StatusCode(500, "Failed to retrieve game servers banner data");
             }
 
-            var htmlBanners = gameServersApiResponse.Result.Data.Items
-                .Where(gs => !string.IsNullOrEmpty(gs.HtmlBanner))
-                .Select(gs => gs.HtmlBanner)
-                .ToList();
+            var htmlBanners = new List<string?>();
+            var serverIds = gameServersApiResponse.Result.Data.Items.Select(gs => gs.GameServerId);
+            var configs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
+
+            foreach (var gs in gameServersApiResponse.Result.Data.Items)
+            {
+                var banner = GameServerConfigHelper.GetConfigValue(configs, gs.GameServerId, "serverlist", "htmlBanner");
+                if (!string.IsNullOrEmpty(banner))
+                    htmlBanners.Add(banner);
+            }
 
             TrackSuccessTelemetry("GameServersBannersRetrieved", nameof(GetGameServers), new Dictionary<string, string>
             {

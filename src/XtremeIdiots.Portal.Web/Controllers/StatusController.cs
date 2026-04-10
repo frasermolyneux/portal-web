@@ -92,6 +92,11 @@ public class StatusController(
             Logger.LogInformation("User {UserId} successfully retrieved {MonitorCount} ban file monitor statuses",
                 User.XtremeIdiotsId(), models.Count);
 
+            var serverIds = models.Where(m => m.GameServer != null).Select(m => m.GameServerId).Distinct();
+            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
+            ViewBag.ServerConfigs = serverConfigs;
+
             return View(models);
         }, nameof(BanFileStatus)).ConfigureAwait(false);
     }

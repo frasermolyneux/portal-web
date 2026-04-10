@@ -1,9 +1,35 @@
-﻿@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
+﻿@using System.Text.Json
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
 @model IEnumerable<BanFileMonitorDto>
 
 @{
     ViewData["Title"] = "Ban File Monitor Index";
     ViewData["Description"] = "Manage ban file monitors for game servers";
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+}
+
+@functions {
+    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.String)
+            return v.GetString() ?? "";
+        return "";
+    }
+
+    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.Number)
+            return v.GetInt32();
+        return def;
+    }
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -42,13 +68,18 @@
                                         <td>
                                             @if (item.GameServer?.GameType != null && item.GameServer?.GameServerId != null)
                                             {
+                                                var ftpHost = GetCfg(serverConfigs, item.GameServerId, "ftp", "hostname");
+                                                var ftpPort = GetCfgInt(serverConfigs, item.GameServerId, "ftp", "port", 21);
+                                                var ftpUser = GetCfg(serverConfigs, item.GameServerId, "ftp", "username");
+                                                var ftpPass = GetCfg(serverConfigs, item.GameServerId, "ftp", "password");
+
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.ViewFtpCredential)).Succeeded)
                                                 {
-                                                    <ftp-path host="@item.GameServer?.FtpHostname" port="@(item.GameServer?.FtpPort ?? 0)" path="@item.FilePath" user="@item.GameServer?.FtpUsername" password="@item.GameServer?.FtpPassword"></ftp-path>
+                                                    <ftp-path host="@ftpHost" port="@ftpPort" path="@item.FilePath" user="@ftpUser" password="@ftpPass"></ftp-path>
                                                 }
                                                 else
                                                 {
-                                                    <ftp-path host="@item.GameServer?.FtpHostname" port="@(item.GameServer?.FtpPort ?? 0)" path="@item.FilePath" show-credentials="false"></ftp-path>
+                                                    <ftp-path host="@ftpHost" port="@ftpPort" path="@item.FilePath" show-credentials="false"></ftp-path>
                                                 }
                                             }
                                             else

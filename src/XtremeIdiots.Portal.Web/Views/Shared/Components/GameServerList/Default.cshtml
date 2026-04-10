@@ -1,8 +1,23 @@
-﻿@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
+﻿@using System.Text.Json
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
 @model List<GameServerDto>
 
 @{
     Layout = null;
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+}
+
+@functions {
+    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.String)
+            return v.GetString() ?? "";
+        return "";
+    }
 }
 
 <!DOCTYPE html>
@@ -11,10 +26,11 @@
     <tbody>
         @foreach (var item in Model)
         {
+            var htmlBanner = GetCfg(serverConfigs, item.GameServerId, "serverlist", "htmlBanner");
             <tr>
                 <td style="padding: 2px;">
                     <div style="text-align: center;">
-                        @Html.Raw(item.HtmlBanner)
+                        @Html.Raw(htmlBanner)
                     </div>
                 </td>
             </tr>

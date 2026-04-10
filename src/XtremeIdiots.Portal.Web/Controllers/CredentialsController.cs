@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
@@ -50,6 +51,10 @@ public class CredentialsController(
             }
 
             await ApplyCredentialAuthorizationAsync(gameServersList, cancellationToken).ConfigureAwait(false);
+
+            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, gameServersList.Select(s => s.GameServerId), Logger, cancellationToken).ConfigureAwait(false);
+            ViewBag.ServerConfigs = serverConfigs;
 
             TrackSuccessTelemetry(nameof(Index), nameof(CredentialsController), new Dictionary<string, string>
             {

@@ -1,9 +1,35 @@
-﻿@using XtremeIdiots.Portal.Web.Extensions
+﻿@using System.Text.Json
+@using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
 @model BanFileMonitorDto
 
 @{
     ViewData["Title"] = "Ban File Monitor Details";
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+}
+
+@functions {
+    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.String)
+            return v.GetString() ?? "";
+        return "";
+    }
+
+    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.Number)
+            return v.GetInt32();
+        return def;
+    }
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -29,9 +55,9 @@
                                 @Html.DisplayNameFor(model => model.FilePath)
                             </dt>
                             <dd class="col-sm-10" data-testid="ban-file-monitor-details-filepath">
-                                <ftp-path host="@Model.GameServer.FtpHostname" port="@(Model.GameServer.FtpPort ?? 0)"
-                                    path="@Model.FilePath" user="@Model.GameServer.FtpUsername"
-                                    password="@Model.GameServer.FtpPassword"></ftp-path>
+                                <ftp-path host="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "hostname")" port="@GetCfgInt(serverConfigs, Model.GameServerId, "ftp", "port", 21)"
+                                    path="@Model.FilePath" user="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "username")"
+                                    password="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "password")"></ftp-path>
                             </dd>
                             <dt class="col-sm-2">
                                 @Html.DisplayNameFor(model => model.RemoteFileSize)

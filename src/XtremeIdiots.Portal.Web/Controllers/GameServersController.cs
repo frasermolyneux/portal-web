@@ -107,23 +107,8 @@ public class GameServersController(
             createGameServerDto.Hostname = model.Hostname;
             createGameServerDto.QueryPort = model.QueryPort;
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, createGameServerDto.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
-            if (canEditGameServerFtp.Succeeded)
-            {
-                createGameServerDto.FtpHostname = model.FtpHostname;
-                createGameServerDto.FtpPort = model.FtpPort;
-                createGameServerDto.FtpUsername = model.FtpUsername;
-                createGameServerDto.FtpPassword = model.FtpPassword;
-            }
-
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, createGameServerDto.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
-            if (canEditGameServerRcon.Succeeded)
-                createGameServerDto.RconPassword = model.RconPassword;
-
             createGameServerDto.LiveTrackingEnabled = model.LiveTrackingEnabled;
             createGameServerDto.BannerServerListEnabled = model.BannerServerListEnabled;
-            createGameServerDto.ServerListPosition = model.ServerListPosition;
-            createGameServerDto.HtmlBanner = model.HtmlBanner;
             createGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
             createGameServerDto.BotEnabled = model.BotEnabled;
             createGameServerDto.AgentEnabled = model.AgentEnabled;
@@ -193,6 +178,48 @@ public class GameServersController(
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
+
+            // Fetch configuration namespaces so the view reads from config API instead of legacy DTO properties
+            try
+            {
+                var configsResult = await repositoryApiClient.GameServerConfigurations.V1
+                    .GetConfigurations(gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
+
+                if (configsResult.IsSuccess && configsResult.Result?.Data?.Items != null)
+                {
+                    foreach (var config in configsResult.Result.Data.Items)
+                    {
+                        if (string.IsNullOrWhiteSpace(config.Configuration))
+                            continue;
+
+                        using var doc = JsonDocument.Parse(config.Configuration);
+                        var root = doc.RootElement;
+
+                        switch (config.Namespace)
+                        {
+                            case "ftp":
+                                ViewBag.FtpHostname = GetStringProperty(root, "hostname");
+                                ViewBag.FtpPort = GetIntProperty(root, "port", 21);
+                                ViewBag.FtpUsername = GetStringProperty(root, "username");
+                                ViewBag.FtpPassword = GetStringProperty(root, "password");
+                                break;
+                            case "rcon":
+                                ViewBag.RconPassword = GetStringProperty(root, "password");
+                                break;
+                            case "serverlist":
+                                ViewBag.ServerListPosition = GetIntProperty(root, "position", 0);
+                                ViewBag.HtmlBanner = GetStringProperty(root, "htmlBanner");
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to fetch configurations for game server {GameServerId} details view", id);
+            }
 
             return View(gameServerData);
         }, nameof(Details)).ConfigureAwait(false);
@@ -340,24 +367,8 @@ public class GameServersController(
                 return View(model);
             }
 
-            if (canEditGameServerFtp.Succeeded)
-            {
-                // Dual-write: keep legacy DTO fields populated for backward compatibility
-                editGameServerDto.FtpHostname = model.FtpConfigHostname;
-                editGameServerDto.FtpPort = model.FtpConfigPort;
-                editGameServerDto.FtpUsername = model.FtpConfigUsername;
-                editGameServerDto.FtpPassword = model.FtpConfigPassword;
-            }
-
-            if (canEditGameServerRcon.Succeeded)
-            {
-                editGameServerDto.RconPassword = model.RconConfigPassword;
-            }
-
             editGameServerDto.LiveTrackingEnabled = model.GameServer.LiveTrackingEnabled;
             editGameServerDto.BannerServerListEnabled = model.GameServer.BannerServerListEnabled;
-            editGameServerDto.ServerListPosition = model.ServerListConfigPosition;
-            editGameServerDto.HtmlBanner = model.ServerListConfigHtmlBanner;
             editGameServerDto.PortalServerListEnabled = model.GameServer.PortalServerListEnabled;
             editGameServerDto.BotEnabled = model.GameServer.BotEnabled;
             editGameServerDto.AgentEnabled = model.GameServer.AgentEnabled;

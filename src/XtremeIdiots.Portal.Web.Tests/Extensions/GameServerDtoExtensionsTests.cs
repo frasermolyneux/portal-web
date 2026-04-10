@@ -48,7 +48,6 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.GameType, viewModel.GameType);
         Assert.Equal(dto.Hostname, viewModel.Hostname);
         Assert.Equal(dto.QueryPort, viewModel.QueryPort);
-        Assert.Equal(dto.ServerListPosition, viewModel.ServerListPosition);
         Assert.Equal(dto.BannerServerListEnabled, viewModel.BannerServerListEnabled);
         Assert.Equal(dto.PortalServerListEnabled, viewModel.PortalServerListEnabled);
         Assert.Equal(dto.LiveTrackingEnabled, viewModel.LiveTrackingEnabled);

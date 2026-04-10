@@ -2,12 +2,38 @@
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Web.Extensions
 @using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
 @using XtremeIdiots.Portal.Web.ViewModels
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @model List<EditBanFileMonitorViewModel>
 
 @{
     ViewData["Title"] = "Ban File Status";
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+}
+
+@functions {
+    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.String)
+            return v.GetString() ?? "";
+        return "";
+    }
+
+    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
+    {
+        if (configs != null &&
+            configs.TryGetValue(id, out var nc) &&
+            nc.TryGetValue(ns, out var r) &&
+            r.TryGetProperty(prop, out var v) &&
+            v.ValueKind == JsonValueKind.Number)
+            return v.GetInt32();
+        return def;
+    }
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -101,15 +127,23 @@
                                                                 Guid>(item.GameServer.GameType, item.GameServer.GameServerId),
                                                                 AuthPolicies.ViewFtpCredential)).Succeeded)
                                     {
+                                        var ftpHost = GetCfg(serverConfigs, item.GameServerId, "ftp", "hostname");
+                                        var ftpPort = GetCfgInt(serverConfigs, item.GameServerId, "ftp", "port", 21);
+                                        var ftpUser = GetCfg(serverConfigs, item.GameServerId, "ftp", "username");
+                                        var ftpPass = GetCfg(serverConfigs, item.GameServerId, "ftp", "password");
+
                                         <strong>File Path: </strong>
-                                        <ftp-path host="@item.GameServer.FtpHostname" port="@(item.GameServer.FtpPort ?? 0)" path="@item.FilePath" user="@item.GameServer.FtpUsername" password="@item.GameServer.FtpPassword"></ftp-path>
+                                        <ftp-path host="@ftpHost" port="@ftpPort" path="@item.FilePath" user="@ftpUser" password="@ftpPass"></ftp-path>
 
                                 <br />
                                                             }
                                     else
                                     {
+                                        var ftpHostNoCred = GetCfg(serverConfigs, item.GameServerId, "ftp", "hostname");
+                                        var ftpPortNoCred = GetCfgInt(serverConfigs, item.GameServerId, "ftp", "port", 21);
+
                                         <strong>File Path: </strong>
-                                        <ftp-path host="@item.GameServer.FtpHostname" port="@(item.GameServer.FtpPort ?? 0)" path="@item.FilePath" show-credentials="false"></ftp-path>
+                                        <ftp-path host="@ftpHostNoCred" port="@ftpPortNoCred" path="@item.FilePath" show-credentials="false"></ftp-path>
 
                                 <br />
                                                             }

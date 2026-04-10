@@ -42,36 +42,6 @@ public class GameServerViewModel
     public int QueryPort { get; set; }
 
     /// <summary>
-    /// Gets or sets the FTP hostname for file transfers (maps, logs, etc.)
-    /// </summary>
-    [DisplayName("Ftp Hostname")]
-    public string? FtpHostname { get; set; }
-
-    /// <summary>
-    /// Gets or sets the FTP port number
-    /// </summary>
-    [DisplayName("Ftp Port")]
-    public int? FtpPort { get; set; }
-
-    /// <summary>
-    /// Gets or sets the FTP username for authentication
-    /// </summary>
-    [DisplayName("Ftp Username")]
-    public string? FtpUsername { get; set; }
-
-    /// <summary>
-    /// Gets or sets the FTP password for authentication
-    /// </summary>
-    [DisplayName("Ftp Password")]
-    public string? FtpPassword { get; set; }
-
-    /// <summary>
-    /// Gets or sets the RCON password for remote server administration
-    /// </summary>
-    [DisplayName("Rcon Password")]
-    public string? RconPassword { get; set; }
-
-    /// <summary>
     /// Gets or sets whether live player tracking is enabled for this server
     /// </summary>
     [DisplayName("Live Tracking")]
@@ -84,21 +54,6 @@ public class GameServerViewModel
     [DisplayName("Banner Server List")]
     [Obsolete("Replaced by ServerListEnabled. Will be removed in a future version.")]
     public bool BannerServerListEnabled { get; set; }
-
-    /// <summary>
-    /// Gets or sets the display position in server lists
-    /// </summary>
-    [DisplayName("Position")]
-    [Obsolete("Replaced by position in serverlist config namespace. Will be removed in a future version.")]
-    public int ServerListPosition { get; set; }
-
-    /// <summary>
-    /// Gets or sets the custom HTML banner content for this server
-    /// </summary>
-    [DataType(DataType.MultilineText)]
-    [DisplayName("HTML Banner")]
-    [Obsolete("Replaced by htmlBanner in serverlist config namespace. Will be removed in a future version.")]
-    public string? HtmlBanner { get; set; }
 
     /// <summary>
     /// Gets or sets whether this server appears in the portal server list
