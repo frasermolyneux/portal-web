@@ -52,6 +52,36 @@ public class GameServerEditViewModel
     [DataType(DataType.MultilineText)]
     public string? ServerListConfigHtmlBanner { get; set; }
 
+    // Moderation configuration (parsed from "moderation" config namespace)
+
+    [DisplayName("Protected Name Enforcement")]
+    public bool ModerationProtectedNameEnforcementEnabled { get; set; } = true;
+
+    [DisplayName("Severity Threshold")]
+    [Range(0, 6, ErrorMessage = "Severity threshold must be between 0 and 6.")]
+    public int? ModerationSeverityThreshold { get; set; }
+
+    [DisplayName("Minimum Message Length")]
+    [Range(1, int.MaxValue, ErrorMessage = "Minimum message length must be at least 1.")]
+    public int? ModerationMinMessageLength { get; set; }
+
+    // Events configuration (parsed from "events" config namespace)
+
+    [DisplayName("Stale Event Threshold (s)")]
+    [Range(1, int.MaxValue, ErrorMessage = "Stale event threshold must be at least 1 second.")]
+    public int? EventsStaleThresholdSeconds { get; set; }
+
+    [DisplayName("Player Cache Expiration (s)")]
+    [Range(1, int.MaxValue, ErrorMessage = "Player cache expiration must be at least 1 second.")]
+    public int? EventsPlayerCacheExpirationSeconds { get; set; }
+
+    // Global defaults (for placeholder display in override fields)
+
+    public int GlobalModerationSeverityThreshold { get; set; } = 4;
+    public int GlobalModerationMinMessageLength { get; set; } = 5;
+    public int GlobalEventsStaleThresholdSeconds { get; set; } = 120;
+    public int GlobalEventsPlayerCacheExpirationSeconds { get; set; } = 900;
+
     // Auth flags for tab visibility
 
     public bool CanEditFtp { get; set; }

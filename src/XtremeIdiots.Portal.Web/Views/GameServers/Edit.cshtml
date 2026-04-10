@@ -46,6 +46,19 @@
                                 data-bs-target="#agent-tab" type="button" role="tab"
                                 aria-controls="agent-tab" aria-selected="false">Agent</button>
                         </li>
+                        @if (Model.GameServer.AgentEnabled)
+                        {
+                            <li class="nav-item" role="presentation" id="moderation-tab-item">
+                                <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#moderation-tab" type="button" role="tab"
+                                    aria-controls="moderation-tab" aria-selected="false">Moderation</button>
+                            </li>
+                            <li class="nav-item" role="presentation" id="events-tab-item">
+                                <button class="nav-link" id="events-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#events-tab" type="button" role="tab"
+                                    aria-controls="events-tab" aria-selected="false">Event Processing</button>
+                            </li>
+                        }
                         <li class="nav-item" role="presentation"
                             id="banfilesync-tab-item" style="@(Model.GameServer.BanFileSyncEnabled ? "" : "display:none")">
                             <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
@@ -87,6 +100,19 @@
                             aria-labelledby="agent-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_AgentConfiguration", Model)
                         </div>
+
+                        @if (Model.GameServer.AgentEnabled)
+                        {
+                            <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
+                                aria-labelledby="moderation-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_ModerationConfiguration", Model)
+                            </div>
+
+                            <div class="tab-pane fade" id="events-tab" role="tabpanel"
+                                aria-labelledby="events-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_EventsConfiguration", Model)
+                            </div>
+                        }
 
                         <div class="tab-pane fade" id="banfilesync-tab" role="tabpanel"
                             aria-labelledby="banfilesync-tab-btn">

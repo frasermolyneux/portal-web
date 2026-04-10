@@ -1,0 +1,40 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model GameServerEditViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        Player Protection
+    </div>
+    <div class="ibox-content">
+        <div class="form-check mb-3">
+            <label class="form-check-label">
+                <input class="form-check-input" asp-for="ModerationProtectedNameEnforcementEnabled" />
+                @Html.DisplayNameFor(m => m.ModerationProtectedNameEnforcementEnabled)
+            </label>
+            <small class="form-text text-muted d-block">Whether players using protected names are kicked if they don't match the expected identity.</small>
+        </div>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title">
+        Overrides
+        <small class="text-muted ms-2">Override global defaults for this server</small>
+    </div>
+    <div class="ibox-content">
+        <div class="mb-3">
+            <label asp-for="ModerationSeverityThreshold" class="control-label"></label>
+            <input asp-for="ModerationSeverityThreshold" class="form-control" type="number" min="0" max="6"
+                placeholder="@Model.GlobalModerationSeverityThreshold" />
+            <span asp-validation-for="ModerationSeverityThreshold" class="text-danger"></span>
+            <small class="form-text text-muted">Override the global toxicity severity threshold for this server. Lower values are more aggressive. Leave empty to use global default (currently: @Model.GlobalModerationSeverityThreshold).</small>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ModerationMinMessageLength" class="control-label"></label>
+            <input asp-for="ModerationMinMessageLength" class="form-control" type="number" min="1"
+                placeholder="@Model.GlobalModerationMinMessageLength" />
+            <span asp-validation-for="ModerationMinMessageLength" class="text-danger"></span>
+            <small class="form-text text-muted">Override the global minimum message length for content safety analysis on this server. Leave empty to use global default (currently: @Model.GlobalModerationMinMessageLength).</small>
+        </div>
+    </div>
+</div>

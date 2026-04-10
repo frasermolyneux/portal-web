@@ -290,6 +290,25 @@ public class GameServersController(
                 Logger.LogWarning(ex, "Failed to fetch configurations for game server {GameServerId}", id);
             }
 
+            // Fetch global defaults for moderation and events override placeholders
+            try
+            {
+                var globalConfigsResult = await repositoryApiClient.GlobalConfigurations.V1
+                    .GetConfigurations(cancellationToken).ConfigureAwait(false);
+
+                if (globalConfigsResult.IsSuccess && globalConfigsResult.Result?.Data?.Items != null)
+                {
+                    foreach (var config in globalConfigsResult.Result.Data.Items)
+                    {
+                        PopulateGlobalDefaults(editModel, config);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to fetch global configurations for placeholder defaults");
+            }
+
             return View(editModel);
         }, nameof(Edit)).ConfigureAwait(false);
     }
@@ -381,6 +400,14 @@ public class GameServersController(
             // Save configuration namespaces
             var configErrors = new List<string>();
             await SaveConfigNamespacesAsync(model, gameServerData.GameServerId, canEditGameServerFtp.Succeeded, canEditGameServerRcon.Succeeded, configErrors, cancellationToken).ConfigureAwait(false);
+
+            // Track toggle changes for audit trail
+            var serverTitle = model.GameServer.Title ?? "";
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.AgentEnabled), gameServerData.AgentEnabled, model.GameServer.AgentEnabled);
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.FtpEnabled), gameServerData.FtpEnabled, model.GameServer.FtpEnabled);
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.RconEnabled), gameServerData.RconEnabled, model.GameServer.RconEnabled);
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.BanFileSyncEnabled), gameServerData.BanFileSyncEnabled, model.GameServer.BanFileSyncEnabled);
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.ServerListEnabled), gameServerData.ServerListEnabled, model.GameServer.ServerListEnabled);
 
             TrackSuccessTelemetry("GameServerUpdated", nameof(Edit), new Dictionary<string, string>
             {
@@ -545,6 +572,15 @@ public class GameServersController(
                 case "serverlist":
                     editModel.ServerListConfigHtmlBanner = GetStringProperty(root, "htmlBanner");
                     break;
+                case "moderation":
+                    editModel.ModerationProtectedNameEnforcementEnabled = GetBoolProperty(root, "protectedNameEnforcementEnabled", true);
+                    editModel.ModerationSeverityThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
+                    editModel.ModerationMinMessageLength = GetNullableIntProperty(root, "minMessageLength");
+                    break;
+                case "events":
+                    editModel.EventsStaleThresholdSeconds = GetNullableIntProperty(root, "staleThresholdSeconds");
+                    editModel.EventsPlayerCacheExpirationSeconds = GetNullableIntProperty(root, "playerCacheExpirationSeconds");
+                    break;
                 default:
                     Logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
                     break;
@@ -588,6 +624,43 @@ public class GameServersController(
             };
         }
         return defaultValue;
+    }
+
+    private static int? GetNullableIntProperty(JsonElement root, string propertyName)
+    {
+        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number
+            ? prop.GetInt32()
+            : null;
+    }
+
+    private void PopulateGlobalDefaults(GameServerEditViewModel editModel, ConfigurationDto config)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(config.Configuration))
+                return;
+
+            using var doc = JsonDocument.Parse(config.Configuration);
+            var root = doc.RootElement;
+
+            switch (config.Namespace)
+            {
+                case "moderation":
+                    editModel.GlobalModerationSeverityThreshold = GetIntProperty(root, "contentSafetySeverityThreshold", editModel.GlobalModerationSeverityThreshold);
+                    editModel.GlobalModerationMinMessageLength = GetIntProperty(root, "minMessageLength", editModel.GlobalModerationMinMessageLength);
+                    break;
+                case "events":
+                    editModel.GlobalEventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", editModel.GlobalEventsStaleThresholdSeconds);
+                    editModel.GlobalEventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", editModel.GlobalEventsPlayerCacheExpirationSeconds);
+                    break;
+                default:
+                    break;
+            }
+        }
+        catch (JsonException ex)
+        {
+            Logger.LogWarning(ex, "Failed to parse global configuration for namespace '{Namespace}'", config.Namespace);
+        }
     }
 
     private async Task RepopulateAuthFlags(GameServerEditViewModel model, GameType gameType)
@@ -653,6 +726,8 @@ public class GameServersController(
         List<string> errors,
         CancellationToken cancellationToken)
     {
+        var serverTitle = model.GameServer.Title ?? "";
+
         // Save FTP config
         if (canEditFtp)
         {
@@ -662,7 +737,7 @@ public class GameServersController(
                 port = model.FtpConfigPort,
                 username = model.FtpConfigUsername,
                 password = model.FtpConfigPassword
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 
         // Save RCON config
@@ -671,7 +746,7 @@ public class GameServersController(
             await UpsertConfigSafeAsync(gameServerId, "rcon", JsonSerializer.Serialize(new
             {
                 password = model.RconConfigPassword
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 
         // Save Agent config
@@ -681,7 +756,7 @@ public class GameServersController(
             {
                 logFilePath = model.AgentConfigLogFilePath,
                 rconSyncEnabled = model.AgentConfigRconSyncEnabled
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 
         // Save Ban File Sync config
@@ -690,7 +765,7 @@ public class GameServersController(
             await UpsertConfigSafeAsync(gameServerId, "banfiles", JsonSerializer.Serialize(new
             {
                 checkIntervalSeconds = model.BanFileSyncConfigCheckIntervalSeconds
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 
         // Save Server List config
@@ -699,7 +774,65 @@ public class GameServersController(
             await UpsertConfigSafeAsync(gameServerId, "serverlist", JsonSerializer.Serialize(new
             {
                 htmlBanner = model.ServerListConfigHtmlBanner
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Save Moderation config (only when Agent is enabled)
+        if (model.GameServer.AgentEnabled)
+        {
+            var hasOverrides = model.ModerationSeverityThreshold.HasValue
+                || model.ModerationMinMessageLength.HasValue
+                || !model.ModerationProtectedNameEnforcementEnabled;
+
+            if (hasOverrides)
+            {
+                var moderationConfig = new Dictionary<string, object?>
+                {
+                    ["protectedNameEnforcementEnabled"] = model.ModerationProtectedNameEnforcementEnabled
+                };
+
+                if (model.ModerationSeverityThreshold.HasValue)
+                    moderationConfig["contentSafetySeverityThreshold"] = model.ModerationSeverityThreshold.Value;
+                if (model.ModerationMinMessageLength.HasValue)
+                    moderationConfig["minMessageLength"] = model.ModerationMinMessageLength.Value;
+
+                await UpsertConfigSafeAsync(gameServerId, "moderation",
+                    JsonSerializer.Serialize(moderationConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                // All defaults — upsert with just the boolean to keep the namespace clean
+                await UpsertConfigSafeAsync(gameServerId, "moderation", JsonSerializer.Serialize(new
+                {
+                    protectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
+                }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // Save Events config (only when Agent is enabled)
+        if (model.GameServer.AgentEnabled)
+        {
+            var hasOverrides = model.EventsStaleThresholdSeconds.HasValue
+                || model.EventsPlayerCacheExpirationSeconds.HasValue;
+
+            if (hasOverrides)
+            {
+                var eventsConfig = new Dictionary<string, object?>();
+
+                if (model.EventsStaleThresholdSeconds.HasValue)
+                    eventsConfig["staleThresholdSeconds"] = model.EventsStaleThresholdSeconds.Value;
+                if (model.EventsPlayerCacheExpirationSeconds.HasValue)
+                    eventsConfig["playerCacheExpirationSeconds"] = model.EventsPlayerCacheExpirationSeconds.Value;
+
+                await UpsertConfigSafeAsync(gameServerId, "events",
+                    JsonSerializer.Serialize(eventsConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                // Clear any existing overrides so server falls back to global defaults
+                await UpsertConfigSafeAsync(gameServerId, "events",
+                    "{}", serverTitle, errors, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
@@ -707,6 +840,7 @@ public class GameServersController(
         Guid gameServerId,
         string ns,
         string configJson,
+        string serverTitle,
         List<string> errors,
         CancellationToken cancellationToken)
     {
@@ -720,11 +854,35 @@ public class GameServersController(
                 Logger.LogWarning("Failed to upsert configuration namespace '{Namespace}' for game server {GameServerId}", ns, gameServerId);
                 errors.Add(ns);
             }
+            else
+            {
+                TrackSuccessTelemetry("GameServerConfigChanged", "EditConfig", new Dictionary<string, string>
+                {
+                    { "GameServerId", gameServerId.ToString() },
+                    { "ServerTitle", serverTitle },
+                    { "Namespace", ns }
+                });
+            }
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Error upserting configuration namespace '{Namespace}' for game server {GameServerId}", ns, gameServerId);
             errors.Add(ns);
+        }
+    }
+
+    private void TrackToggleChange(Guid gameServerId, string serverTitle, string toggleName, bool oldValue, bool newValue)
+    {
+        if (oldValue != newValue)
+        {
+            TrackSuccessTelemetry("GameServerToggleChanged", "EditToggle", new Dictionary<string, string>
+            {
+                { "GameServerId", gameServerId.ToString() },
+                { "ServerTitle", serverTitle },
+                { "Toggle", toggleName },
+                { "OldValue", oldValue.ToString() },
+                { "NewValue", newValue.ToString() }
+            });
         }
     }
 }

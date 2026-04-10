@@ -1,0 +1,25 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model GameServerEditViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        Overrides
+        <small class="text-muted ms-2">Override global defaults for this server</small>
+    </div>
+    <div class="ibox-content">
+        <div class="mb-3">
+            <label asp-for="EventsStaleThresholdSeconds" class="control-label"></label>
+            <input asp-for="EventsStaleThresholdSeconds" class="form-control" type="number" min="1"
+                placeholder="@Model.GlobalEventsStaleThresholdSeconds" />
+            <span asp-validation-for="EventsStaleThresholdSeconds" class="text-danger"></span>
+            <small class="form-text text-muted">Override the global stale event threshold for this server. Leave empty to use global default (currently: @Model.GlobalEventsStaleThresholdSeconds).</small>
+        </div>
+        <div class="mb-3">
+            <label asp-for="EventsPlayerCacheExpirationSeconds" class="control-label"></label>
+            <input asp-for="EventsPlayerCacheExpirationSeconds" class="form-control" type="number" min="1"
+                placeholder="@Model.GlobalEventsPlayerCacheExpirationSeconds" />
+            <span asp-validation-for="EventsPlayerCacheExpirationSeconds" class="text-danger"></span>
+            <small class="form-text text-muted">Override the global player cache expiration for this server. Leave empty to use global default (currently: @Model.GlobalEventsPlayerCacheExpirationSeconds).</small>
+        </div>
+    </div>
+</div>
