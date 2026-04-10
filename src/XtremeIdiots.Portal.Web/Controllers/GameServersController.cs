@@ -108,10 +108,6 @@ public class GameServersController(
             createGameServerDto.QueryPort = model.QueryPort;
             createGameServerDto.ServerListPosition = model.ServerListPosition;
 
-            createGameServerDto.LiveTrackingEnabled = model.LiveTrackingEnabled;
-
-            createGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
-            createGameServerDto.BotEnabled = model.BotEnabled;
             createGameServerDto.AgentEnabled = model.AgentEnabled;
             createGameServerDto.FtpEnabled = model.FtpEnabled;
             createGameServerDto.RconEnabled = model.RconEnabled;
@@ -363,10 +359,6 @@ public class GameServersController(
                 return View(model);
             }
 
-            editGameServerDto.LiveTrackingEnabled = model.GameServer.LiveTrackingEnabled;
-
-            editGameServerDto.PortalServerListEnabled = model.GameServer.PortalServerListEnabled;
-            editGameServerDto.BotEnabled = model.GameServer.BotEnabled;
             editGameServerDto.AgentEnabled = model.GameServer.AgentEnabled;
             editGameServerDto.FtpEnabled = model.GameServer.FtpEnabled;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;

@@ -6,7 +6,7 @@ namespace XtremeIdiots.Portal.Web.Tests.Extensions;
 
 public class GameServerDtoExtensionsTests
 {
-    private static GameServerDto CreateGameServerDto(bool botEnabled = false, bool agentEnabled = false,
+    private static GameServerDto CreateGameServerDto(bool agentEnabled = false,
         bool ftpEnabled = false, bool rconEnabled = false, bool banFileSyncEnabled = false, bool serverListEnabled = false,
         int serverListPosition = 0)
     {
@@ -18,10 +18,7 @@ public class GameServerDtoExtensionsTests
             GameType = GameType.CallOfDuty4,
             Hostname = "127.0.0.1",
             QueryPort = 28960,
-            BotEnabled = botEnabled,
             AgentEnabled = agentEnabled,
-            PortalServerListEnabled = true,
-            LiveTrackingEnabled = true,
             FtpEnabled = ftpEnabled,
             RconEnabled = rconEnabled,
             BanFileSyncEnabled = banFileSyncEnabled,
@@ -36,7 +33,7 @@ public class GameServerDtoExtensionsTests
     public void ToViewModel_MapsAllProperties()
     {
         // Arrange
-        var dto = CreateGameServerDto(botEnabled: true, agentEnabled: true,
+        var dto = CreateGameServerDto(agentEnabled: true,
             ftpEnabled: true, rconEnabled: true, banFileSyncEnabled: true, serverListEnabled: true,
             serverListPosition: 5);
 
@@ -49,9 +46,6 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.GameType, viewModel.GameType);
         Assert.Equal(dto.Hostname, viewModel.Hostname);
         Assert.Equal(dto.QueryPort, viewModel.QueryPort);
-        Assert.Equal(dto.PortalServerListEnabled, viewModel.PortalServerListEnabled);
-        Assert.Equal(dto.LiveTrackingEnabled, viewModel.LiveTrackingEnabled);
-        Assert.Equal(dto.BotEnabled, viewModel.BotEnabled);
         Assert.Equal(dto.AgentEnabled, viewModel.AgentEnabled);
         Assert.Equal(dto.FtpEnabled, viewModel.FtpEnabled);
         Assert.Equal(dto.RconEnabled, viewModel.RconEnabled);
@@ -61,20 +55,17 @@ public class GameServerDtoExtensionsTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void ToViewModel_MapsBotEnabledAndAgentEnabled(bool botEnabled, bool agentEnabled)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ToViewModel_MapsAgentEnabled(bool agentEnabled)
     {
         // Arrange
-        var dto = CreateGameServerDto(botEnabled: botEnabled, agentEnabled: agentEnabled);
+        var dto = CreateGameServerDto(agentEnabled: agentEnabled);
 
         // Act
         var viewModel = dto.ToViewModel();
 
         // Assert
-        Assert.Equal(botEnabled, viewModel.BotEnabled);
         Assert.Equal(agentEnabled, viewModel.AgentEnabled);
     }
 }

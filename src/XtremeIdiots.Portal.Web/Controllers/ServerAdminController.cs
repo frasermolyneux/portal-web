@@ -52,7 +52,7 @@ public class ServerAdminController(
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, GameServerFilter.LiveTrackingEnabled, 0, 50,
+                gameTypes, gameServerIds, GameServerFilter.AgentEnabled, 0, 50,
                 GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)

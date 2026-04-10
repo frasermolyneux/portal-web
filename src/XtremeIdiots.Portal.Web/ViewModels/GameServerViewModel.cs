@@ -42,28 +42,6 @@ public class GameServerViewModel
     public int QueryPort { get; set; }
 
     /// <summary>
-    /// Gets or sets whether live player tracking is enabled for this server
-    /// </summary>
-    [DisplayName("Live Tracking")]
-    [Obsolete("Will be reviewed in a future version.")]
-    public bool LiveTrackingEnabled { get; set; }
-
-
-    /// <summary>
-    /// Gets or sets whether this server appears in the portal server list
-    /// </summary>
-    [DisplayName("Portal Server List")]
-    [Obsolete("Will be reviewed in a future version.")]
-    public bool PortalServerListEnabled { get; set; }
-
-    /// <summary>
-    /// Gets or sets whether bot functionality is enabled for this server
-    /// </summary>
-    [DisplayName("Bot")]
-    [Obsolete("Legacy feature. Will be removed in a future version.")]
-    public bool BotEnabled { get; set; }
-
-    /// <summary>
     /// Gets or sets whether agent functionality is enabled for this server
     /// </summary>
     [DisplayName("Agent Enabled")]

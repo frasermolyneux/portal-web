@@ -14,10 +14,6 @@ public static class GameServerDtoExtensions
             GameType = gameServerDto.GameType,
             Hostname = gameServerDto.Hostname,
             QueryPort = gameServerDto.QueryPort,
-            LiveTrackingEnabled = gameServerDto.LiveTrackingEnabled,
-
-            PortalServerListEnabled = gameServerDto.PortalServerListEnabled,
-            BotEnabled = gameServerDto.BotEnabled,
             AgentEnabled = gameServerDto.AgentEnabled,
             FtpEnabled = gameServerDto.FtpEnabled,
             RconEnabled = gameServerDto.RconEnabled,
