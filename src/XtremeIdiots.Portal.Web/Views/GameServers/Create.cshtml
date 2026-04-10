@@ -38,6 +38,12 @@
                                 <input asp-for="QueryPort" class="form-control" />
                                 <span asp-validation-for="QueryPort" class="text-danger"></span>
                             </div>
+                            <div class="mb-3">
+                                <label asp-for="ServerListPosition" class="control-label"></label>
+                                <input asp-for="ServerListPosition" class="form-control" type="number" />
+                                <span asp-validation-for="ServerListPosition" class="text-danger"></span>
+                                <small class="form-text text-muted">Display order in server lists. Lower numbers appear first.</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -60,13 +66,6 @@
                                     @Html.DisplayNameFor(model => model.LiveTrackingEnabled)
                                 </label>
                             </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="BannerServerListEnabled" />
-                                    @Html.DisplayNameFor(model => model.BannerServerListEnabled)
-                                </label>
-                            </div>
-                            <hr />
                             <div class="form-check mb-3">
                                 <label class="form-check-label">
                                     <input class="form-check-input" asp-for="PortalServerListEnabled" />

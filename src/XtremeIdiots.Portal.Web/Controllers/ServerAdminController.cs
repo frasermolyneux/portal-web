@@ -53,7 +53,7 @@ public class ServerAdminController(
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 gameTypes, gameServerIds, GameServerFilter.LiveTrackingEnabled, 0, 50,
-                GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -1150,7 +1150,7 @@ public class ServerAdminController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                null, null, null, 0, 300, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                null, null, null, 0, 300, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {

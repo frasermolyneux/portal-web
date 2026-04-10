@@ -50,7 +50,7 @@ public class StatusController(
                 User.XtremeIdiotsId(), gameTypes.Length, banFileMonitorIds.Length);
 
             var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(
-                gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (banFileMonitorsApiResponse.IsNotFound || banFileMonitorsApiResponse.Result?.Data?.Items is null)
             {
@@ -113,7 +113,7 @@ public class StatusController(
         {
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 null, null, GameServerFilter.AgentEnabled, 0, 100,
-                GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             var servers = gameServersApiResponse.IsSuccess && gameServersApiResponse.Result?.Data?.Items is not null
                 ? [.. gameServersApiResponse.Result.Data.Items]

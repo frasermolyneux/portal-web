@@ -15,14 +15,15 @@ public static class GameServerDtoExtensions
             Hostname = gameServerDto.Hostname,
             QueryPort = gameServerDto.QueryPort,
             LiveTrackingEnabled = gameServerDto.LiveTrackingEnabled,
-            BannerServerListEnabled = gameServerDto.BannerServerListEnabled,
+
             PortalServerListEnabled = gameServerDto.PortalServerListEnabled,
             BotEnabled = gameServerDto.BotEnabled,
             AgentEnabled = gameServerDto.AgentEnabled,
             FtpEnabled = gameServerDto.FtpEnabled,
             RconEnabled = gameServerDto.RconEnabled,
             BanFileSyncEnabled = gameServerDto.BanFileSyncEnabled,
-            ServerListEnabled = gameServerDto.ServerListEnabled
+            ServerListEnabled = gameServerDto.ServerListEnabled,
+            ServerListPosition = gameServerDto.ServerListPosition
         };
 
         return viewModel;

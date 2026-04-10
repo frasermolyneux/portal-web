@@ -52,6 +52,9 @@
                                     <th scope="col">
                                         @Html.DisplayNameFor(model => model.ServerListEnabled)
                                     </th>
+                                    <th scope="col">
+                                        @Html.DisplayNameFor(model => model.ServerListPosition)
+                                    </th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -82,6 +85,9 @@
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.ServerListEnabled)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.ServerListPosition)
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">

@@ -28,6 +28,12 @@
             <input asp-for="GameServer.QueryPort" class="form-control" />
             <span asp-validation-for="GameServer.QueryPort" class="text-danger"></span>
         </div>
+        <div class="mb-3">
+            <label asp-for="GameServer.ServerListPosition" class="control-label"></label>
+            <input asp-for="GameServer.ServerListPosition" class="form-control" type="number" />
+            <span asp-validation-for="GameServer.ServerListPosition" class="text-danger"></span>
+            <small class="form-text text-muted">Display order in server lists. Lower numbers appear first.</small>
+        </div>
     </div>
 </div>
 
@@ -98,14 +104,6 @@
                         <input class="form-check-input feature-toggle" asp-for="GameServer.LiveTrackingEnabled" />
                         <label class="form-check-label" asp-for="GameServer.LiveTrackingEnabled">
                             @Html.DisplayNameFor(m => m.GameServer.LiveTrackingEnabled)
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-4 col-sm-6 mb-2">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input feature-toggle" asp-for="GameServer.BannerServerListEnabled" />
-                        <label class="form-check-label" asp-for="GameServer.BannerServerListEnabled">
-                            @Html.DisplayNameFor(m => m.GameServer.BannerServerListEnabled)
                         </label>
                     </div>
                 </div>

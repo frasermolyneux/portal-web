@@ -82,24 +82,6 @@
                             }
 
                             <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.BannerServerListEnabled)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.BannerServerListEnabled)
-                            </dd>
-                            <dt class="col-sm-2">
-                                Server List Position
-                            </dt>
-                            <dd class="col-sm-10">
-                                @ViewBag.ServerListPosition
-                            </dd>
-                            <dt class="col-sm-2">
-                                HTML Banner
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.Raw(ViewBag.HtmlBanner)
-                            </dd>
-                            <dt class="col-sm-2">
                                 @Html.DisplayNameFor(model => model.PortalServerListEnabled)
                             </dt>
                             <dd class="col-sm-10">
@@ -141,6 +123,12 @@
                             </dt>
                             <dd class="col-sm-10">
                                 @Html.DisplayFor(model => model.ServerListEnabled)
+                            </dd>
+                            <dt class="col-sm-2">
+                                @Html.DisplayNameFor(model => model.ServerListPosition)
+                            </dt>
+                            <dd class="col-sm-10">
+                                @Html.DisplayFor(model => model.ServerListPosition)
                             </dd>
                         </dl>
                     </div>

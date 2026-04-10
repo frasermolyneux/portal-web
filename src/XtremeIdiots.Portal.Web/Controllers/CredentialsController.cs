@@ -80,7 +80,7 @@ public class CredentialsController(
         if (gameTypes is not null && gameTypes.Length > 0)
         {
             var byGameTypesResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, null, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                gameTypes, null, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (byGameTypesResponse.IsSuccess && byGameTypesResponse.Result?.Data?.Items is not null)
             {
@@ -109,7 +109,7 @@ public class CredentialsController(
         if (gameServerIds is not null && gameServerIds.Length > 0)
         {
             var byServerIdsResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                null, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                null, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (byServerIdsResponse.IsSuccess && byServerIdsResponse.Result?.Data?.Items is not null)
             {
@@ -152,7 +152,6 @@ public class CredentialsController(
             {
                 TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.ViewFtpCredential), "FtpCredential",
                     $"GameType:{gameServerDto.GameType},GameServerId:{gameServerDto.GameServerId}", gameServerDto);
-                gameServerDto.ClearFtpCredentials();
             }
 
             var canViewRconCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewRconCredential).ConfigureAwait(false);
@@ -161,7 +160,6 @@ public class CredentialsController(
             {
                 TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.ViewRconCredential), "RconCredential",
                     $"GameType:{gameServerDto.GameType},GameServerId:{gameServerDto.GameServerId}", gameServerDto);
-                gameServerDto.ClearRconCredentials();
             }
         }
     }

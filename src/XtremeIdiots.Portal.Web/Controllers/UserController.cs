@@ -95,7 +95,7 @@ public class UserController(
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             var userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
 

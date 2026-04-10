@@ -74,7 +74,7 @@ public class DashboardController(
                 var telemetryTask = agentTelemetryService.GetAllServersStatusAsync(cancellationToken);
                 var gameServersTask = repositoryApiClient.GameServers.V1.GetGameServers(
                     null, null, GameServerFilter.AgentEnabled, 0, 100,
-                    GameServerOrder.BannerServerListPosition, cancellationToken);
+                    GameServerOrder.ServerListPosition, cancellationToken);
 
                 await Task.WhenAll(telemetryTask, gameServersTask).ConfigureAwait(false);
 

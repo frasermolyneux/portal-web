@@ -23,7 +23,7 @@ public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClien
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-            null, null, GameServerFilter.BannerServerListEnabled, 0, 50, GameServerOrder.BannerServerListPosition).ConfigureAwait(false);
+            null, null, GameServerFilter.ServerListEnabled, 0, 50, GameServerOrder.ServerListPosition).ConfigureAwait(false);
 
         if (gameServersApiResponse.Result?.Data?.Items is null)
         {

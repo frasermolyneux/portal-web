@@ -69,8 +69,8 @@ public class BannersController(
                 Logger.LogDebug("Fetching game servers data from API for user {UserId}", User.XtremeIdiotsId());
 
                 gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                    null, null, GameServerFilter.BannerServerListEnabled, 0, 50,
-                    GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                    null, null, GameServerFilter.ServerListEnabled, 0, 50,
+                    GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
                 if (gameServersApiResponse != null)
                 {

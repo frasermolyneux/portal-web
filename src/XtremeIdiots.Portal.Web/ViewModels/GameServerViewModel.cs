@@ -48,12 +48,6 @@ public class GameServerViewModel
     [Obsolete("Will be reviewed in a future version.")]
     public bool LiveTrackingEnabled { get; set; }
 
-    /// <summary>
-    /// Gets or sets whether this server appears in the banner server list
-    /// </summary>
-    [DisplayName("Banner Server List")]
-    [Obsolete("Replaced by ServerListEnabled. Will be removed in a future version.")]
-    public bool BannerServerListEnabled { get; set; }
 
     /// <summary>
     /// Gets or sets whether this server appears in the portal server list
@@ -98,4 +92,10 @@ public class GameServerViewModel
     /// </summary>
     [DisplayName("Server List")]
     public bool ServerListEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the display order position in server lists
+    /// </summary>
+    [DisplayName("Position")]
+    public int ServerListPosition { get; set; }
 }

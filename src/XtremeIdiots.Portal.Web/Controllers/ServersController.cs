@@ -46,7 +46,7 @@ public class ServersController(
         {
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 null, null, GameServerFilter.PortalServerListEnabled, 0, 50,
-                GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {

@@ -48,9 +48,6 @@ public class GameServerEditViewModel
 
     // Server List configuration (parsed from "serverlist" config namespace)
 
-    [DisplayName("Position")]
-    public int ServerListConfigPosition { get; set; }
-
     [DisplayName("HTML Banner")]
     [DataType(DataType.MultilineText)]
     public string? ServerListConfigHtmlBanner { get; set; }

@@ -47,7 +47,7 @@ public class GameServersController(
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.BannerServerListPosition, cancellationToken).ConfigureAwait(false);
+                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -106,9 +106,10 @@ public class GameServersController(
             createGameServerDto.Title = model.Title;
             createGameServerDto.Hostname = model.Hostname;
             createGameServerDto.QueryPort = model.QueryPort;
+            createGameServerDto.ServerListPosition = model.ServerListPosition;
 
             createGameServerDto.LiveTrackingEnabled = model.LiveTrackingEnabled;
-            createGameServerDto.BannerServerListEnabled = model.BannerServerListEnabled;
+
             createGameServerDto.PortalServerListEnabled = model.PortalServerListEnabled;
             createGameServerDto.BotEnabled = model.BotEnabled;
             createGameServerDto.AgentEnabled = model.AgentEnabled;
@@ -207,8 +208,6 @@ public class GameServersController(
                                 ViewBag.RconPassword = GetStringProperty(root, "password");
                                 break;
                             case "serverlist":
-                                ViewBag.ServerListPosition = GetIntProperty(root, "position", 0);
-                                ViewBag.HtmlBanner = GetStringProperty(root, "htmlBanner");
                                 break;
                             default:
                                 break;
@@ -260,12 +259,8 @@ public class GameServersController(
                 return authResult;
 
             var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
-            if (!canEditGameServerFtp.Succeeded)
-                gameServerData.ClearFtpCredentials();
 
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
-            if (!canEditGameServerRcon.Succeeded)
-                gameServerData.ClearRconCredentials();
 
             var editModel = new GameServerEditViewModel
             {
@@ -351,7 +346,8 @@ public class GameServersController(
             {
                 Title = model.GameServer.Title,
                 Hostname = model.GameServer.Hostname,
-                QueryPort = model.GameServer.QueryPort
+                QueryPort = model.GameServer.QueryPort,
+                ServerListPosition = model.GameServer.ServerListPosition
             };
 
             var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
@@ -368,7 +364,7 @@ public class GameServersController(
             }
 
             editGameServerDto.LiveTrackingEnabled = model.GameServer.LiveTrackingEnabled;
-            editGameServerDto.BannerServerListEnabled = model.GameServer.BannerServerListEnabled;
+
             editGameServerDto.PortalServerListEnabled = model.GameServer.PortalServerListEnabled;
             editGameServerDto.BotEnabled = model.GameServer.BotEnabled;
             editGameServerDto.AgentEnabled = model.GameServer.AgentEnabled;
@@ -555,7 +551,6 @@ public class GameServersController(
                     editModel.BanFileSyncConfigCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", 60);
                     break;
                 case "serverlist":
-                    editModel.ServerListConfigPosition = GetIntProperty(root, "position", 0);
                     editModel.ServerListConfigHtmlBanner = GetStringProperty(root, "htmlBanner");
                     break;
                 default:
@@ -711,7 +706,6 @@ public class GameServersController(
         {
             await UpsertConfigSafeAsync(gameServerId, "serverlist", JsonSerializer.Serialize(new
             {
-                position = model.ServerListConfigPosition,
                 htmlBanner = model.ServerListConfigHtmlBanner
             }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
         }

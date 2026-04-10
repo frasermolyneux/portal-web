@@ -7,7 +7,8 @@ namespace XtremeIdiots.Portal.Web.Tests.Extensions;
 public class GameServerDtoExtensionsTests
 {
     private static GameServerDto CreateGameServerDto(bool botEnabled = false, bool agentEnabled = false,
-        bool ftpEnabled = false, bool rconEnabled = false, bool banFileSyncEnabled = false, bool serverListEnabled = false)
+        bool ftpEnabled = false, bool rconEnabled = false, bool banFileSyncEnabled = false, bool serverListEnabled = false,
+        int serverListPosition = 0)
     {
         // GameServerDto uses internal setters, so we serialize/deserialize to set values
         var json = System.Text.Json.JsonSerializer.Serialize(new
@@ -17,16 +18,15 @@ public class GameServerDtoExtensionsTests
             GameType = GameType.CallOfDuty4,
             Hostname = "127.0.0.1",
             QueryPort = 28960,
-            ServerListPosition = 1,
             BotEnabled = botEnabled,
             AgentEnabled = agentEnabled,
-            BannerServerListEnabled = true,
             PortalServerListEnabled = true,
             LiveTrackingEnabled = true,
             FtpEnabled = ftpEnabled,
             RconEnabled = rconEnabled,
             BanFileSyncEnabled = banFileSyncEnabled,
-            ServerListEnabled = serverListEnabled
+            ServerListEnabled = serverListEnabled,
+            ServerListPosition = serverListPosition
         });
 
         return Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(json)!;
@@ -37,7 +37,8 @@ public class GameServerDtoExtensionsTests
     {
         // Arrange
         var dto = CreateGameServerDto(botEnabled: true, agentEnabled: true,
-            ftpEnabled: true, rconEnabled: true, banFileSyncEnabled: true, serverListEnabled: true);
+            ftpEnabled: true, rconEnabled: true, banFileSyncEnabled: true, serverListEnabled: true,
+            serverListPosition: 5);
 
         // Act
         var viewModel = dto.ToViewModel();
@@ -48,7 +49,6 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.GameType, viewModel.GameType);
         Assert.Equal(dto.Hostname, viewModel.Hostname);
         Assert.Equal(dto.QueryPort, viewModel.QueryPort);
-        Assert.Equal(dto.BannerServerListEnabled, viewModel.BannerServerListEnabled);
         Assert.Equal(dto.PortalServerListEnabled, viewModel.PortalServerListEnabled);
         Assert.Equal(dto.LiveTrackingEnabled, viewModel.LiveTrackingEnabled);
         Assert.Equal(dto.BotEnabled, viewModel.BotEnabled);
@@ -57,6 +57,7 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.RconEnabled, viewModel.RconEnabled);
         Assert.Equal(dto.BanFileSyncEnabled, viewModel.BanFileSyncEnabled);
         Assert.Equal(dto.ServerListEnabled, viewModel.ServerListEnabled);
+        Assert.Equal(dto.ServerListPosition, viewModel.ServerListPosition);
     }
 
     [Theory]
