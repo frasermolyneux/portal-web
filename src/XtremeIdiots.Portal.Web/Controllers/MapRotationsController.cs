@@ -400,10 +400,13 @@ public class MapRotationsController(
 
             ViewData["RotationTitle"] = rotation.Title;
 
+            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+
             return View(new CreateMapRotationAssignmentViewModel
             {
                 MapRotationId = mapRotationId,
-                AvailableServers = servers
+                AvailableServers = servers,
+                CanBrowseFtp = canBrowseFtp.Succeeded
             });
         }, nameof(CreateAssignment)).ConfigureAwait(false);
     }
@@ -440,6 +443,9 @@ public class MapRotationsController(
                     ? [.. serversResponse.Result.Data.Items]
                     : [];
                 m.AvailableServers = serverList;
+
+                var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+                m.CanBrowseFtp = canBrowseFtp.Succeeded;
             }
 
             var modelValidationResult = await CheckModelStateAsync(model, RepopulateServers).ConfigureAwait(false);

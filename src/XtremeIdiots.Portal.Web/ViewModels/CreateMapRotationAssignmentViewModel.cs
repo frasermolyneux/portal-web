@@ -19,4 +19,6 @@ public class CreateMapRotationAssignmentViewModel
     public string? ConfigVariableName { get; set; }
 
     public List<GameServerDto> AvailableServers { get; set; } = [];
+
+    public bool CanBrowseFtp { get; set; }
 }
