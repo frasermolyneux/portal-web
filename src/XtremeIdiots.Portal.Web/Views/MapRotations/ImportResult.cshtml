@@ -1,0 +1,110 @@
+@model XtremeIdiots.Portal.Web.ViewModels.ImportMapRotationsResultViewModel
+
+@{
+    ViewData["Title"] = "Import Complete";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-12">
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>@ViewData["Title"]</h5>
+                    </div>
+                    <div class="ibox-content">
+
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card text-bg-success">
+                                    <div class="card-body text-center">
+                                        <h3>@Model.ImportedCount</h3>
+                                        <small>Imported</small>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (Model.FailedCount > 0)
+                            {
+                                <div class="col-md-3">
+                                    <div class="card text-bg-danger">
+                                        <div class="card-body text-center">
+                                            <h3>@Model.FailedCount</h3>
+                                            <small>Failed</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            @if (Model.MapsCreatedCount > 0)
+                            {
+                                <div class="col-md-3">
+                                    <div class="card text-bg-info">
+                                        <div class="card-body text-center">
+                                            <h3>@Model.MapsCreatedCount</h3>
+                                            <small>Maps Created</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Rotation</th>
+                                    <th>Status</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var result in Model.Results)
+                                {
+                                    <tr class="@(result.Status == "Failed" ? "table-danger" : result.Status == "Imported" ? "table-success" : "")">
+                                        <td>
+                                            @if (result.MapRotationId.HasValue)
+                                            {
+                                                <a asp-action="Details" asp-route-id="@result.MapRotationId">@result.Title</a>
+                                            }
+                                            else
+                                            {
+                                                @result.Title
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (result.Status == "Imported")
+                                            {
+                                                <span class="badge bg-success">Imported</span>
+                                            }
+                                            else if (result.Status == "Failed")
+                                            {
+                                                <span class="badge bg-danger">Failed</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@result.Status</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(result.Error))
+                                            {
+                                                <small class="text-danger">@result.Error</small>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        <div class="mb-3">
+                            <a asp-action="Index" asp-route-gameType="@Model.GameType" class="btn btn-primary">
+                                <i class="fa-solid fa-list me-1"></i> View All Rotations
+                            </a>
+                            <a asp-action="Import" class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-file-import me-1"></i> Import More
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

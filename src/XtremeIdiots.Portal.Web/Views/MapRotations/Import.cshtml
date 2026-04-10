@@ -1,0 +1,57 @@
+@model XtremeIdiots.Portal.Web.ViewModels.ImportMapRotationsViewModel
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+
+@{
+    ViewData["Title"] = "Import Map Rotations from Config";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <form asp-action="Import" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-12">
+                <div class="container-fluid">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>@ViewData["Title"]</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                            <div class="mb-3">
+                                <label asp-for="@Model.GameType" class="control-label"></label>
+                                <select asp-for="@Model.GameType" class="form-select">
+                                    <option value="@GameType.CallOfDuty4">Call of Duty 4</option>
+                                    <option value="@GameType.CallOfDuty5">Call of Duty 5</option>
+                                </select>
+                                <span asp-validation-for="@Model.GameType" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="@Model.CfgFile" class="control-label"></label>
+                                <input asp-for="@Model.CfgFile" type="file" class="form-control" accept=".cfg,.txt" />
+                                <small class="form-text text-muted">Upload a .cfg file, or paste the content below.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="@Model.CfgContent" class="control-label"></label>
+                                <textarea asp-for="@Model.CfgContent" class="form-control font-monospace" rows="15"
+                                          placeholder="Paste map rotation config content here...&#10;&#10;Example:&#10;set sv_maprotation &quot;gametype ftag map mp_backlot map mp_crash map mp_crossfire&quot;"></textarea>
+                                <small class="form-text text-muted">
+                                    Paste the contents of your maprotation.cfg, mapcontrol.cfg, or advancedacp.cfg file.
+                                    Both active (uncommented) and inactive (commented with //) rotations will be detected.
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-file-import me-1"></i> Parse &amp; Preview
+                                </button>
+                                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

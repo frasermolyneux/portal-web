@@ -1,0 +1,130 @@
+@model XtremeIdiots.Portal.Web.ViewModels.ImportMapRotationsPreviewViewModel
+
+@{
+    ViewData["Title"] = "Import Preview — " + Model.Rotations.Count + " rotation(s) found";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <form asp-action="ImportConfirm" method="post">
+        <input type="hidden" name="DraftId" value="@Model.DraftId" />
+
+        <div class="row">
+            <div class="col-12">
+                <div class="container-fluid">
+
+                    @if (Model.Warnings.Count > 0)
+                    {
+                        <div class="alert alert-warning">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            <strong>Warnings:</strong>
+                            <ul class="mb-0 mt-1">
+                                @foreach (var warning in Model.Warnings)
+                                {
+                                    <li>@warning</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <div class="ibox">
+                        <div class="ibox-title d-flex justify-content-between align-items-center">
+                            <h5>@ViewData["Title"]</h5>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAll">Select All</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="selectNone">Select None</button>
+                            </div>
+                        </div>
+                        <div class="ibox-content">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40px;"><i class="fa-solid fa-check"></i></th>
+                                            <th>Title</th>
+                                            <th>Mode</th>
+                                            <th>Maps</th>
+                                            <th>Variable</th>
+                                            <th>Status</th>
+                                            <th>Author</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model.Rotations)
+                                        {
+                                            <tr class="@(item.IsDuplicate ? "table-warning" : "")">
+                                                <td>
+                                                    <input type="checkbox" name="SelectedIndices" value="@item.Index"
+                                                           class="form-check-input rotation-checkbox"
+                                                           @(item.Selected ? "checked" : "") />
+                                                </td>
+                                                <td>
+                                                    <strong>@item.Title</strong>
+                                                    @if (item.DateText != null)
+                                                    {
+                                                        <br /><small class="text-muted">@item.DateText</small>
+                                                    }
+                                                    @if (item.IsDuplicate)
+                                                    {
+                                                        <br /><small class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> @item.DuplicateWarning</small>
+                                                    }
+                                                </td>
+                                                <td><span class="badge bg-info">@item.GameMode</span></td>
+                                                <td>
+                                                    <span class="badge bg-secondary">@item.MapCount maps</span>
+                                                    <br />
+                                                    <small class="text-muted" title="@string.Join(", ", item.MapNames)">
+                                                        @string.Join(", ", item.MapNames.Take(5))@(item.MapNames.Count > 5 ? $" +{item.MapNames.Count - 5} more" : "")
+                                                    </small>
+                                                </td>
+                                                <td><code>@item.ConfigVariableName</code></td>
+                                                <td>
+                                                    @if (item.IsActive)
+                                                    {
+                                                        <span class="badge bg-success">Active</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Inactive</span>
+                                                    }
+                                                </td>
+                                                <td>@(item.Author ?? "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            @if (Model.NewMapNames.Count > 0)
+                            {
+                                <div class="alert alert-info mt-3">
+                                    <i class="fa-solid fa-circle-info me-1"></i>
+                                    <strong>@Model.NewMapNames.Count new map(s)</strong> will be created in the database:
+                                    <br />
+                                    <small class="font-monospace">@string.Join(", ", Model.NewMapNames)</small>
+                                </div>
+                            }
+
+                            <div class="mb-3 mt-3">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fa-solid fa-file-import me-1"></i> Import Selected Rotations
+                                </button>
+                                <a asp-action="Import" class="btn btn-outline-secondary">Back</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('selectAll')?.addEventListener('click', function () {
+            document.querySelectorAll('.rotation-checkbox').forEach(cb => cb.checked = true);
+        });
+        document.getElementById('selectNone')?.addEventListener('click', function () {
+            document.querySelectorAll('.rotation-checkbox').forEach(cb => cb.checked = false);
+        });
+    </script>
+}

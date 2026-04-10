@@ -1,8 +1,12 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+
+using Newtonsoft.Json;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -17,6 +21,7 @@ public class MapRotationsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     ISyncApiClient syncApiClient,
+    IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
     ILogger<MapRotationsController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -934,5 +939,314 @@ public class MapRotationsController(
 
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
         }, nameof(TerminateOrchestration)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public IActionResult Import()
+    {
+        return View(new ImportMapRotationsViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Import(ImportMapRotationsViewModel model, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!supportedGameTypes.Contains(model.GameType))
+            {
+                ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4 and Call of Duty 5 are supported.");
+                return View(model);
+            }
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                model.GameType,
+                AuthPolicies.CreateMapRotation,
+                nameof(Import),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            // Read cfg content from textarea or uploaded file
+            var cfgContent = model.CfgContent;
+            if (model.CfgFile is { Length: > 0 })
+            {
+                if (model.CfgFile.Length > 1_000_000)
+                {
+                    ModelState.AddModelError(nameof(model.CfgFile), "Config file must be under 1 MB.");
+                    return View(model);
+                }
+
+                using var reader = new StreamReader(model.CfgFile.OpenReadStream());
+                cfgContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrWhiteSpace(cfgContent))
+            {
+                ModelState.AddModelError("", "Please paste config content or upload a .cfg file.");
+                return View(model);
+            }
+
+            // Parse the cfg content
+            var parsed = MapRotationCfgParser.Parse(cfgContent);
+
+            if (parsed.Count == 0)
+            {
+                ModelState.AddModelError("", "No map rotations found in the config content. Expected lines like: set sv_maprotation \"gametype ftag map mp_xxx map mp_yyy\"");
+                return View(model);
+            }
+
+            // Collect all unique map names for duplicate/new-map detection
+            var allMapNames = parsed.SelectMany(r => r.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var existingMaps = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+
+            if (allMapNames.Length > 0)
+            {
+                // Bulk lookup existing maps (paginate if needed)
+                for (var skip = 0; skip < allMapNames.Length; skip += 100)
+                {
+                    var batch = allMapNames.Skip(skip).Take(100).ToArray();
+                    var mapsResponse = await repositoryApiClient.Maps.V1.GetMaps(
+                        model.GameType, batch, null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
+
+                    if (mapsResponse.IsSuccess && mapsResponse.Result?.Data?.Items != null)
+                    {
+                        foreach (var map in mapsResponse.Result.Data.Items)
+                        {
+                            if (map.MapName != null && !existingMaps.ContainsKey(map.MapName))
+                                existingMaps[map.MapName] = map.MapId;
+                        }
+                    }
+                }
+            }
+
+            var newMapNames = allMapNames.Where(m => !existingMaps.ContainsKey(m)).OrderBy(m => m).ToList();
+
+            // Check for existing rotations with matching titles for duplicate detection (best-effort, capped at 200)
+            var existingRotations = await repositoryApiClient.MapRotations.V1.GetMapRotations(
+                [model.GameType], null, null, 0, 200, MapRotationsOrder.TitleAsc, cancellationToken).ConfigureAwait(false);
+
+            var existingTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (existingRotations.IsSuccess && existingRotations.Result?.Data?.Items != null)
+            {
+                foreach (var r in existingRotations.Result.Data.Items)
+                    existingTitles.Add(r.Title);
+            }
+
+            // Build preview items
+            var previewItems = new List<ImportRotationPreviewItem>();
+            var warnings = new List<string>();
+
+            for (var i = 0; i < parsed.Count; i++)
+            {
+                var rotation = parsed[i];
+                var isDuplicate = existingTitles.Contains(rotation.Title);
+
+                previewItems.Add(new ImportRotationPreviewItem
+                {
+                    Index = i,
+                    Title = rotation.Title,
+                    GameMode = rotation.GameMode,
+                    MapCount = rotation.MapNames.Count,
+                    MapNames = rotation.MapNames,
+                    ConfigVariableName = rotation.ConfigVariableName,
+                    IsActive = rotation.IsActive,
+                    Author = rotation.Author,
+                    DateText = rotation.DateText,
+                    Selected = !isDuplicate,
+                    IsDuplicate = isDuplicate,
+                    DuplicateWarning = isDuplicate ? $"A rotation named \"{rotation.Title}\" already exists" : null
+                });
+            }
+
+            if (newMapNames.Count > 0)
+            {
+                warnings.Add($"{newMapNames.Count} new map(s) will be created: {string.Join(", ", newMapNames.Take(20))}{(newMapNames.Count > 20 ? $" and {newMapNames.Count - 20} more..." : "")}");
+            }
+
+            // Store parsed data server-side via memory cache (TempData is cookie-based and too small for large imports)
+            var draftId = Guid.NewGuid().ToString("N");
+            var cacheKey = $"ImportDraft_{draftId}";
+            memoryCache.Set(cacheKey, JsonConvert.SerializeObject(new
+            {
+                GameType = model.GameType,
+                Rotations = parsed,
+                NewMapNames = newMapNames
+            }), TimeSpan.FromMinutes(15));
+
+            return View("ImportPreview", new ImportMapRotationsPreviewViewModel
+            {
+                GameType = model.GameType,
+                Rotations = previewItems,
+                NewMapNames = newMapNames,
+                Warnings = warnings,
+                DraftId = draftId
+            });
+        }, nameof(Import)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportConfirm(ImportMapRotationsConfirmViewModel model, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            // Retrieve the server-side draft from memory cache
+            var cacheKey = $"ImportDraft_{model.DraftId}";
+            var draftJson = memoryCache.Get<string>(cacheKey);
+            if (string.IsNullOrEmpty(draftJson))
+            {
+                this.AddAlertDanger("Import session expired. Please start the import again.");
+                return RedirectToAction(nameof(Import));
+            }
+
+            // Remove draft after retrieval (one-time use)
+            memoryCache.Remove(cacheKey);
+
+            var draft = JsonConvert.DeserializeAnonymousType(draftJson, new
+            {
+                GameType = default(GameType),
+                Rotations = new List<ParsedRotation>(),
+                NewMapNames = new List<string>()
+            })!;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                draft.GameType,
+                AuthPolicies.CreateMapRotation,
+                nameof(ImportConfirm),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var selectedIndices = new HashSet<int>(model.SelectedIndices);
+            var selectedRotations = draft.Rotations
+                .Select((r, i) => (Rotation: r, Index: i))
+                .Where(x => selectedIndices.Contains(x.Index))
+                .Select(x => x.Rotation)
+                .ToList();
+
+            if (selectedRotations.Count == 0)
+            {
+                this.AddAlertWarning("No rotations selected for import.");
+                return RedirectToAction(nameof(Import));
+            }
+
+            // Step 1: Create missing maps (batch, best-effort — may fail on concurrent imports)
+            var mapsCreated = 0;
+            if (draft.NewMapNames.Count > 0)
+            {
+                try
+                {
+                    var mapDtos = draft.NewMapNames
+                        .Select(name => new CreateMapDto(draft.GameType, name))
+                        .ToList();
+
+                    var createResult = await repositoryApiClient.Maps.V1.CreateMaps(mapDtos, cancellationToken).ConfigureAwait(false);
+                    if (createResult.IsSuccess)
+                        mapsCreated = mapDtos.Count;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Bulk map creation failed (maps may already exist from concurrent import)");
+                }
+            }
+
+            // Step 2: Resolve ALL map names to GUIDs (always re-resolve after creation attempt)
+            var allMapNames = selectedRotations.SelectMany(r => r.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var mapLookup = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+
+            for (var skip = 0; skip < allMapNames.Length; skip += 100)
+            {
+                var batch = allMapNames.Skip(skip).Take(100).ToArray();
+                var mapsResponse = await repositoryApiClient.Maps.V1.GetMaps(
+                    draft.GameType, batch, null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
+
+                if (mapsResponse.IsSuccess && mapsResponse.Result?.Data?.Items != null)
+                {
+                    foreach (var map in mapsResponse.Result.Data.Items)
+                    {
+                        if (map.MapName != null && !mapLookup.ContainsKey(map.MapName))
+                            mapLookup[map.MapName] = map.MapId;
+                    }
+                }
+            }
+
+            // Step 3: Create rotations
+            var results = new List<ImportResultItem>();
+
+            foreach (var rotation in selectedRotations)
+            {
+                try
+                {
+                    var mapIds = rotation.MapNames
+                        .Where(m => mapLookup.ContainsKey(m))
+                        .Select(m => mapLookup[m])
+                        .ToList();
+
+                    var unresolvedMaps = rotation.MapNames.Where(m => !mapLookup.ContainsKey(m)).ToList();
+                    if (unresolvedMaps.Count > 0)
+                    {
+                        results.Add(new ImportResultItem
+                        {
+                            Title = rotation.Title,
+                            Status = "Failed",
+                            Error = $"Could not resolve maps: {string.Join(", ", unresolvedMaps)}"
+                        });
+                        continue;
+                    }
+
+                    var createDto = new CreateMapRotationDto(draft.GameType, rotation.Title, rotation.GameMode)
+                    {
+                        Description = rotation.RawComment,
+                        MapIds = mapIds
+                    };
+
+                    var createResult = await repositoryApiClient.MapRotations.V1
+                        .CreateMapRotation(createDto, cancellationToken).ConfigureAwait(false);
+
+                    if (createResult.IsSuccess && createResult.Result?.Data != null)
+                    {
+                        results.Add(new ImportResultItem
+                        {
+                            Title = rotation.Title,
+                            Status = "Imported",
+                            MapRotationId = createResult.Result.Data.MapRotationId
+                        });
+                    }
+                    else
+                    {
+                        results.Add(new ImportResultItem
+                        {
+                            Title = rotation.Title,
+                            Status = "Failed",
+                            Error = "API returned failure"
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new ImportResultItem
+                    {
+                        Title = rotation.Title,
+                        Status = "Failed",
+                        Error = ex.Message
+                    });
+                }
+            }
+
+            return View("ImportResult", new ImportMapRotationsResultViewModel
+            {
+                GameType = draft.GameType,
+                ImportedCount = results.Count(r => r.Status == "Imported"),
+                SkippedCount = selectedRotations.Count - results.Count,
+                FailedCount = results.Count(r => r.Status == "Failed"),
+                MapsCreatedCount = mapsCreated,
+                Results = results
+            });
+        }, nameof(ImportConfirm)).ConfigureAwait(false);
     }
 }
