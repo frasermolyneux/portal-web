@@ -24,8 +24,8 @@
                         </li>
                         @if (Model.CanEditFtp)
                         {
-                            <li class="nav-item" role="presentation"
-                                id="ftp-tab-item" style="@(Model.GameServer.FtpEnabled ? "" : "display:none")">
+                            <li class="nav-item @(Model.GameServer.FtpEnabled ? "" : "d-none")" role="presentation"
+                                id="ftp-tab-item">
                                 <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#ftp-tab" type="button" role="tab"
                                     aria-controls="ftp-tab" aria-selected="false">FTP</button>
@@ -33,15 +33,15 @@
                         }
                         @if (Model.CanEditRcon)
                         {
-                            <li class="nav-item" role="presentation"
-                                id="rcon-tab-item" style="@(Model.GameServer.RconEnabled ? "" : "display:none")">
+                            <li class="nav-item @(Model.GameServer.RconEnabled ? "" : "d-none")" role="presentation"
+                                id="rcon-tab-item">
                                 <button class="nav-link" id="rcon-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#rcon-tab" type="button" role="tab"
                                     aria-controls="rcon-tab" aria-selected="false">RCON</button>
                             </li>
                         }
-                        <li class="nav-item" role="presentation"
-                            id="agent-tab-item" style="@(Model.GameServer.AgentEnabled ? "" : "display:none")">
+                        <li class="nav-item @(Model.GameServer.AgentEnabled ? "" : "d-none")" role="presentation"
+                            id="agent-tab-item">
                             <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab"
                                 data-bs-target="#agent-tab" type="button" role="tab"
                                 aria-controls="agent-tab" aria-selected="false">Agent</button>
@@ -59,14 +59,14 @@
                                     aria-controls="events-tab" aria-selected="false">Event Processing</button>
                             </li>
                         }
-                        <li class="nav-item" role="presentation"
-                            id="banfilesync-tab-item" style="@(Model.GameServer.BanFileSyncEnabled ? "" : "display:none")">
+                        <li class="nav-item @(Model.GameServer.BanFileSyncEnabled ? "" : "d-none")" role="presentation"
+                            id="banfilesync-tab-item">
                             <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
                                 data-bs-target="#banfilesync-tab" type="button" role="tab"
                                 aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
                         </li>
-                        <li class="nav-item" role="presentation"
-                            id="serverlist-tab-item" style="@(Model.GameServer.ServerListEnabled ? "" : "display:none")">
+                        <li class="nav-item @(Model.GameServer.ServerListEnabled ? "" : "d-none")" role="presentation"
+                            id="serverlist-tab-item">
                             <button class="nav-link" id="serverlist-tab-btn" data-bs-toggle="tab"
                                 data-bs-target="#serverlist-tab" type="button" role="tab"
                                 aria-controls="serverlist-tab" aria-selected="false">Server List</button>
@@ -129,17 +129,14 @@
                     <div class="ibox mt-3">
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                            <div class="mb-3">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-save" aria-hidden="true"></i> Save
-                                </button>
-                            </div>
                         </div>
-                        <div class="ibox-footer">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a type="button" class="btn btn-primary" asp-action="Index"><i
-                                        class="fa-solid fa-arrow-left"></i> Back to List</a>
-                            </div>
+                        <div class="ibox-footer ibox-footer--sticky">
+                            <a class="btn btn-outline-secondary" asp-action="Index">
+                                <i class="fa-solid fa-fw fa-arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-fw fa-floppy-disk" aria-hidden="true"></i> Save
+                            </button>
                         </div>
                     </div>
 
@@ -188,7 +185,7 @@
                         var bsTab = new bootstrap.Tab(generalTab);
                         bsTab.show();
                     }
-                    tabItem.style.display = this.checked ? '' : 'none';
+                    tabItem.classList.toggle('d-none', !this.checked);
                 }
             });
         });

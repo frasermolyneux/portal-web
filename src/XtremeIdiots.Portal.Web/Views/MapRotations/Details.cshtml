@@ -38,53 +38,66 @@
                                 <span class="badge bg-outline-secondary">@Model.Rotation.Category</span>
                             }
                             <a policy="@AuthPolicies.CreateMapRotation" asp-action="Clone" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
-                                <i class="fa-solid fa-clone"></i> Clone
+                                <i class="fa-solid fa-fw fa-clone"></i> Clone
                             </a>
                             <a policy="@AuthPolicies.EditMapRotation" asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
-                                <i class="fa-solid fa-edit"></i> Edit
+                                <i class="fa-solid fa-fw fa-pen-to-square"></i> Edit
                             </a>
                             <form policy="@AuthPolicies.DeleteMapRotation" asp-action="Delete" asp-route-id="@Model.Rotation.MapRotationId" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this map rotation?');">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <i class="fa-solid fa-trash"></i> Delete
+                                    <i class="fa-solid fa-fw fa-trash"></i> Delete
                                 </button>
                             </form>
                         </div>
                     </div>
                     <div class="ibox-content">
-                        <dl class="row mb-0">
-                            <dt class="col-sm-3">Game Type</dt>
-                            <dd class="col-sm-9">@Model.Rotation.GameType</dd>
-
-                            <dt class="col-sm-3">Game Mode</dt>
-                            <dd class="col-sm-9">@Model.Rotation.GameMode</dd>
-
-                            <dt class="col-sm-3">Version</dt>
-                            <dd class="col-sm-9">@Model.Rotation.Version</dd>
+                        <dl class="detail-fields row mb-0">
+                            <div class="detail-field col-sm-4">
+                                <dt class="detail-label">Game Type</dt>
+                                <dd class="detail-value">@Model.Rotation.GameType</dd>
+                            </div>
+                            <div class="detail-field col-sm-4">
+                                <dt class="detail-label">Game Mode</dt>
+                                <dd class="detail-value">@Model.Rotation.GameMode</dd>
+                            </div>
+                            <div class="detail-field col-sm-4">
+                                <dt class="detail-label">Version</dt>
+                                <dd class="detail-value">@Model.Rotation.Version</dd>
+                            </div>
 
                             @if (!string.IsNullOrEmpty(Model.Rotation.Category))
                             {
-                                <dt class="col-sm-3">Category</dt>
-                                <dd class="col-sm-9">@Model.Rotation.Category</dd>
+                                <div class="detail-field col-sm-4">
+                                    <dt class="detail-label">Category</dt>
+                                    <dd class="detail-value">@Model.Rotation.Category</dd>
+                                </div>
                             }
 
                             @if (Model.Rotation.SequenceOrder.HasValue)
                             {
-                                <dt class="col-sm-3">Sequence Order</dt>
-                                <dd class="col-sm-9">#@Model.Rotation.SequenceOrder</dd>
+                                <div class="detail-field col-sm-4">
+                                    <dt class="detail-label">Sequence Order</dt>
+                                    <dd class="detail-value">#@Model.Rotation.SequenceOrder</dd>
+                                </div>
                             }
 
                             @if (!string.IsNullOrEmpty(Model.Rotation.Description))
                             {
-                                <dt class="col-sm-3">Description</dt>
-                                <dd class="col-sm-9">@Model.Rotation.Description</dd>
+                                <div class="detail-field col-sm-8">
+                                    <dt class="detail-label">Description</dt>
+                                    <dd class="detail-value">@Model.Rotation.Description</dd>
+                                </div>
                             }
 
-                            <dt class="col-sm-3">Created</dt>
-                            <dd class="col-sm-9"><time user-time utc="@Model.Rotation.CreatedAt"></time></dd>
-
-                            <dt class="col-sm-3">Updated</dt>
-                            <dd class="col-sm-9"><time user-time utc="@Model.Rotation.UpdatedAt"></time></dd>
+                            <div class="detail-field col-sm-4">
+                                <dt class="detail-label">Created</dt>
+                                <dd class="detail-value"><time user-time utc="@Model.Rotation.CreatedAt"></time></dd>
+                            </div>
+                            <div class="detail-field col-sm-4">
+                                <dt class="detail-label">Updated</dt>
+                                <dd class="detail-value"><time user-time utc="@Model.Rotation.UpdatedAt"></time></dd>
+                            </div>
                         </dl>
                     </div>
                 </div>
@@ -96,7 +109,15 @@
                     <div class="ibox-content">
                         @if (Model.Maps.Count == 0)
                         {
-                            <p class="text-muted">No maps in this rotation. <a asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId">Add maps</a></p>
+                            <div class="empty-state">
+                                <i class="fa-regular fa-map empty-state-icon"></i>
+                                <p class="empty-state-message">No maps in this rotation</p>
+                                <div class="empty-state-action">
+                                    <a asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-primary btn-sm">
+                                        <i class="fa-solid fa-fw fa-plus"></i> Add maps
+                                    </a>
+                                </div>
+                            </div>
                         }
                         else
                         {
@@ -125,14 +146,17 @@
                         <h5>Server Assignments (@(Model.Rotation.ServerAssignments?.Count ?? 0))</h5>
                         <div class="ibox-tools">
                             <a policy="@AuthPolicies.ManageMapRotations" asp-action="CreateAssignment" asp-route-mapRotationId="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
-                                <i class="fa-solid fa-plus"></i> Assign to Server
+                                <i class="fa-solid fa-fw fa-plus"></i> Assign to Server
                             </a>
                         </div>
                     </div>
                     <div class="ibox-content">
                         @if (Model.Rotation.ServerAssignments == null || Model.Rotation.ServerAssignments.Count == 0)
                         {
-                            <p class="text-muted">No servers assigned to this rotation.</p>
+                            <div class="empty-state">
+                                <i class="fa-regular fa-server empty-state-icon"></i>
+                                <p class="empty-state-message">No servers assigned to this rotation</p>
+                            </div>
                         }
                         else
                         {
@@ -144,8 +168,8 @@
                                             <th>Config Target</th>
                                             <th>Deployment</th>
                                             <th>Activation</th>
-                                            <th>Deployed Ver.</th>
-                                            <th>Actions</th>
+                                            <th class="table-date-col">Deployed Ver.</th>
+                                            <th class="table-action-col">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -179,7 +203,7 @@
                                                     @if (!string.IsNullOrEmpty(assignment.LastError) && assignment.DeploymentState == DeploymentState.Failed)
                                                     {
                                                         <div class="text-danger small mt-1" title="@assignment.LastError">
-                                                            <i class="fa-solid fa-exclamation-triangle"></i> @(assignment.LastError.Length > 80 ? assignment.LastError[..80] + "..." : assignment.LastError)
+                                                            <i class="fa-solid fa-fw fa-exclamation-triangle"></i> @(assignment.LastError.Length > 80 ? assignment.LastError[..80] + "..." : assignment.LastError)
                                                         </div>
                                                     }
                                                 </td>
@@ -204,8 +228,8 @@
                                                     }
                                                 </td>
                                                 <td>
-                                                    <a asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-info btn-xs me-1">
-                                                        <i class="fa-solid fa-eye"></i> Status
+                                                    <a asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-secondary btn-sm me-1">
+                                                        <i class="fa-solid fa-fw fa-eye"></i> Status
                                                     </a>
                                                     @if (assignment.DeploymentState == DeploymentState.Pending || assignment.DeploymentState == DeploymentState.Failed)
                                                     {
@@ -213,8 +237,8 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-success btn-xs me-1">
-                                                                <i class="fa-solid fa-sync"></i> Sync
+                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1">
+                                                                <i class="fa-solid fa-fw fa-sync"></i> Sync
                                                             </button>
                                                         </form>
                                                     }
@@ -224,8 +248,8 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-warning btn-xs me-1">
-                                                                <i class="fa-solid fa-sync"></i> Re-sync
+                                                            <button type="submit" class="btn btn-outline-warning btn-sm me-1">
+                                                                <i class="fa-solid fa-fw fa-sync"></i> Re-sync
                                                             </button>
                                                         </form>
                                                     }
@@ -235,8 +259,8 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-primary btn-xs me-1">
-                                                                <i class="fa-solid fa-play"></i> Activate
+                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1">
+                                                                <i class="fa-solid fa-fw fa-play"></i> Activate
                                                             </button>
                                                         </form>
                                                     }
@@ -246,8 +270,8 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-secondary btn-xs me-1">
-                                                                <i class="fa-solid fa-stop"></i> Deactivate
+                                                            <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
+                                                                <i class="fa-solid fa-fw fa-stop"></i> Deactivate
                                                             </button>
                                                         </form>
                                                     }
@@ -256,8 +280,8 @@
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                         <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                        <button type="submit" class="btn btn-outline-danger btn-xs">
-                                                            <i class="fa-solid fa-unlink"></i> Unassign
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                            <i class="fa-solid fa-fw fa-unlink"></i> Unassign
                                                         </button>
                                                     </form>
                                                 </td>

@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Login";
     Layout = null;
 }
@@ -38,7 +38,7 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                     <button type="submit" class="btn btn-primary">
-                        <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> XtremeIdiots Login
+                        <i class="fa-solid fa-fw fa-arrow-right-to-bracket" aria-hidden="true"></i> XtremeIdiots Login
                     </button>
                 </form>
             </div>

@@ -7,7 +7,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-lg-12">
-            <div class="ibox float-e-margins">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>Delete Tag</h5>
                 </div>
@@ -19,30 +19,34 @@
 
                     <div class="row">
                         <div class="col-md-6">
-                            <dl class="dl-horizontal">
-                                <dt>Name:</dt>
-                                <dd>@Model.Name</dd>
-
-                                <dt>Description:</dt>
-                                <dd>@Model.Description</dd>
-
-                                <dt>Tag Preview:</dt>
-                                <dd>@Html.Raw(Model.TagHtml)</dd>
+                            <dl class="detail-fields">
+                                <div class="detail-field">
+                                    <dt class="detail-label">Name</dt>
+                                    <dd class="detail-value">@Model.Name</dd>
+                                </div>
+                                <div class="detail-field">
+                                    <dt class="detail-label">Description</dt>
+                                    <dd class="detail-value">@Model.Description</dd>
+                                </div>
+                                <div class="detail-field">
+                                    <dt class="detail-label">Tag Preview</dt>
+                                    <dd class="detail-value">@Html.Raw(Model.TagHtml)</dd>
+                                </div>
                             </dl>
                         </div>
                     </div>
 
-                    <form asp-action="Delete" method="post">
+                    <form asp-action="Delete" method="post" id="deleteTagForm">
                         <input type="hidden" name="id" value="@Model.TagId" />
-                        <div class="mb-3">
-                            <a asp-action="Index" class="btn btn-secondary">
-                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to List
-                            </a>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete
-                            </button>
-                        </div>
                     </form>
+                </div>
+                <div class="ibox-footer">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to List
+                    </a>
+                    <button type="submit" form="deleteTagForm" class="btn btn-danger">
+                        <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Delete
+                    </button>
                 </div>
             </div>
         </div>

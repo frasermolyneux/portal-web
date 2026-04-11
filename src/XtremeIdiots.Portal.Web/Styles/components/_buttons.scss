@@ -129,3 +129,9 @@
         color: #fff;
     }
 }
+
+// Bridge class: btn-xs maps to btn-sm for Bootstrap 5 compatibility
+.btn-xs {
+    padding: 0.25rem 0.5rem;
+    font-size: $font-size-sm;
+}

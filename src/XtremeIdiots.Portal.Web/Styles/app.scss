@@ -33,6 +33,10 @@
 @use 'components/forms';
 @use 'components/badges';
 @use 'components/pagination';
+@use 'components/detail-fields';
+@use 'components/empty-state';
+@use 'components/page-header';
+@use 'components/sticky-footer';
 
 // 6. Features - Page-specific styles
 @use 'features/admin-actions';

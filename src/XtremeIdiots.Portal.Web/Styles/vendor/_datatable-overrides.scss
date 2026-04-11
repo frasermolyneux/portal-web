@@ -79,3 +79,14 @@ table.dataTable {
     -webkit-appearance: none;
     appearance: none;
 }
+
+// Table column width utilities
+.table-action-col {
+    white-space: nowrap;
+    width: 1%;
+}
+
+.table-date-col {
+    white-space: nowrap;
+    width: 1%;
+}

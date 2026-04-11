@@ -1,4 +1,4 @@
-﻿@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Extensions.V1
 @{
     ViewData["Title"] = "Demos Index";
@@ -13,7 +13,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-12">
-            <div class="admin-actions-filters mb-2" id="demosFilters">
+            <div class="list-filters mb-2" id="demosFilters">
                 <div class="filter-group">
                     <label for="filterGameType" class="form-label">Game Type</label>
                     <select id="filterGameType" class="form-select">
@@ -58,7 +58,7 @@
                 </div>
             </div>
             <div class="alert alert-primary mt-2" role="alert">
-                <i class="fa-solid fa-circle-info"></i> Demos are only visible to the uploader and the admin team for that
+                <i class="fa-solid fa-fw fa-circle-info"></i> Demos are only visible to the uploader and the admin team for that
                 game. Demos can be managed (e.g. deleted) by the uploader or a head admin of the relevant game.
             </div>
         </div>

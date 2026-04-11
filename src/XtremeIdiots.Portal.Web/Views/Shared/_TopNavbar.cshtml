@@ -1,10 +1,10 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom fixed-top" aria-label="Top navigation">
     <div class="container-fluid">
         <button class="btn btn-primary me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideNav" 
                 aria-controls="sideNav" aria-label="Toggle navigation menu" data-testid="topnav-menu-toggle">
-            <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            <i class="fa-solid fa-fw fa-bars" aria-hidden="true"></i>
         </button>
         
         @{
@@ -14,7 +14,7 @@
             var assemblyVersion = entryAssembly?.GetName().Version?.ToString() ?? "unknown";
         }
         <span class="navbar-text d-none d-md-inline me-auto">
-            <i class="fa-solid fa-house fa-fw" aria-hidden="true"></i> Welcome to the XI Portal
+            <i class="fa-solid fa-fw fa-house" aria-hidden="true"></i> Welcome to the XI Portal
             <span class="text-muted" style="font-size: 0.75rem; margin-left: 4px;" title="Full: @informationalVersion&#10;Assembly: @assemblyVersion">v@(buildVersion)</span>
         </span>
 
@@ -25,7 +25,7 @@
                     <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button"
                        data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications"
                        data-testid="topnav-notifications-dropdown">
-                        <i class="fa-solid fa-bell fa-fw" aria-hidden="true"></i>
+                        <i class="fa-solid fa-fw fa-bell" aria-hidden="true"></i>
                         <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none"
                               id="notificationBadge" style="font-size: 0.6rem;">0</span>
                     </a>
@@ -37,7 +37,7 @@
                         </div>
                         <div id="notificationList" style="max-height: 350px; overflow-y: auto;">
                             <div class="text-center py-3 text-muted">
-                                <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+                                <i class="fa-solid fa-fw fa-spinner fa-spin"></i> Loading...
                             </div>
                         </div>
                         <div class="border-top px-3 py-2 text-center">
@@ -50,20 +50,20 @@
                 <a class="nav-link dropdown-toggle" href="#" id="helpDropdown" role="button"
                    data-bs-toggle="dropdown" aria-expanded="false" aria-label="Help and information" 
                    data-testid="topnav-help-dropdown">
-                    <i class="fa-solid fa-circle-question fa-fw" aria-hidden="true"></i>
+                    <i class="fa-solid fa-fw fa-circle-question" aria-hidden="true"></i>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="helpDropdown">
                     <li>
                         <a class="dropdown-item" href="https://www.xtremeidiots.com/" target="_blank" 
                            rel="noopener noreferrer" data-testid="topnav-help-website">
-                            <i class="fa-solid fa-arrow-up-right-from-square fa-fw" aria-hidden="true"></i> XtremeIdiots Website
+                            <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> XtremeIdiots Website
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item" href="https://www.xtremeidiots.com/forums/" target="_blank" 
                            rel="noopener noreferrer" data-testid="topnav-help-forums">
-                            <i class="fa-solid fa-comments fa-fw" aria-hidden="true"></i> Forums
+                            <i class="fa-solid fa-fw fa-comments" aria-hidden="true"></i> Forums
                         </a>
                     </li>
                 </ul>

@@ -1,0 +1,26 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+
+// Empty state component for pages with no data
+
+.empty-state {
+    text-align: center;
+    padding: $spacing-xxl $spacing-md;
+    color: $xi-text-muted;
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: $spacing-md;
+        opacity: 0.5;
+    }
+
+    .empty-state-message {
+        font-size: $font-size-lg;
+        margin-bottom: $spacing-md;
+    }
+
+    .empty-state-action {
+        margin-top: $spacing-sm;
+    }
+}

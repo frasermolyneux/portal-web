@@ -1,4 +1,4 @@
-﻿@using XtremeIdiots.Portal.Web.ViewModels
+@using XtremeIdiots.Portal.Web.ViewModels
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1;
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles
@@ -13,13 +13,13 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-circle-info"></i> To understand how the permissions work and what the additional permissions
+        <i class="fa-solid fa-fw fa-circle-info"></i> To understand how the permissions work and what the additional permissions
         mean please see the <a href="@Url.ActionLink("Permissions", "User")">Permissions Overview</a>
     </div>
 
     <div class="mb-3">
         <a asp-action="ManageNotifications" asp-route-id="@Model.Profile.UserProfileId" class="btn btn-outline-primary">
-            <i class="fa-solid fa-bell"></i> Manage Notifications
+            <i class="fa-solid fa-fw fa-bell"></i> Manage Notifications
         </a>
     </div>
 
@@ -52,7 +52,7 @@
 
             <div class="container-fluid">
                 <div class="ibox">
-                    <div class="ibox-title">Identity Details</div>
+                    <div class="ibox-title"><h5>Identity Details</h5></div>
                     <div class="ibox-content">
                         @if (Model.Identity is null)
                         {
@@ -90,13 +90,13 @@
 
             <div class="container-fluid">
                 <div class="ibox">
-                    <div class="ibox-title">Add Additional Portal Permission</div>
+                    <div class="ibox-title"><h5>Add Additional Portal Permission</h5></div>
                     <div class="ibox-content">
                         <form asp-action="CreateUserClaim">
                             <input id="id" name="id" type="hidden" value="@Model.Profile.UserProfileId" />
                             <div class="mb-3">
-                                <label class="control-label">Permission Type</label>
-                                <select name="claimType" id="claimType" class="form-control">
+                                <label class="form-label">Permission Type</label>
+                                <select name="claimType" id="claimType" class="form-select">
                                     <option value="FtpCredentials">FtpCredentials</option>
                                     <option value="RconCredentials">RconCredentials</option>
                                     <option value="GameServer">GameServer</option>
@@ -108,13 +108,13 @@
                             </div>
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
-                                <label class="control-label">Game Server</label>
-                                <select id="claimValue" name="claimValue" class="form-control"
+                                <label class="form-label">Game Server</label>
+                                <select id="claimValue" name="claimValue" class="form-select"
                                     asp-items="ViewBag.GameServersSelect"></select>
                             </div>
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Additional Permission
+                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Additional Permission
                                 </button>
                             </div>
                         </form>
@@ -177,7 +177,7 @@
                                                             value="@claim.UserProfileClaimId" />
 
                                                         <button class="btn btn-danger btn-sm" type="submit">
-                                                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete Permission
+                                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Delete Permission
                                                         </button>
                                                     </form>
                                                 }

@@ -13,7 +13,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-12">
-            <div class="admin-actions-filters mb-2" id="mapRotationsFilters">
+            <div class="list-filters mb-2" id="mapRotationsFilters">
                 <div class="filter-group">
                     <label for="filterGameType" class="form-label">Game Type</label>
                     <select id="filterGameType" class="form-select">
@@ -49,7 +49,7 @@
                     <label class="form-label">Quick Filter</label>
                     <button type="button" id="filterMyRotations" class="btn btn-outline-primary btn-sm"
                             data-user-profile-id="@User.UserProfileId()">
-                        <i class="fa-solid fa-user me-1"></i> My Rotations
+                        <i class="fa-solid fa-fw fa-user"></i> My Rotations
                     </button>
                 </div>
                 <div class="filter-group" id="searchFilterGroup">
@@ -57,7 +57,7 @@
                 </div>
                 <div class="filter-group">
                     <label class="form-label" for="resetFilters">Reset</label>
-                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
                 </div>
             </div>
             <div class="ibox">
@@ -65,10 +65,10 @@
                     <h5>@ViewData["Title"]</h5>
                     <div class="ibox-tools">
                         <a policy="@AuthPolicies.CreateMapRotation" asp-controller="MapRotations" asp-action="Import" class="btn btn-outline-secondary btn-sm me-1">
-                            <i class="fa-solid fa-file-import"></i> Import from Config
+                            <i class="fa-solid fa-fw fa-file-import"></i> Import from Config
                         </a>
                         <a policy="@AuthPolicies.CreateMapRotation" asp-controller="MapRotations" asp-action="Create" class="btn btn-outline-primary btn-sm">
-                            <i class="fa-solid fa-plus"></i> Create
+                            <i class="fa-solid fa-fw fa-plus"></i> Create
                         </a>
                     </div>
                 </div>
@@ -84,9 +84,9 @@
                                     <th scope="col">Status</th>
                                     <th scope="col">Maps</th>
                                     <th scope="col">Servers</th>
-                                    <th scope="col">Updated</th>
+                                    <th scope="col" class="table-date-col">Updated</th>
                                     <th scope="col">Author</th>
-                                    <th scope="col">Actions</th>
+                                    <th scope="col" class="table-action-col">Actions</th>
                                 </tr>
                             </thead>
                         </table>

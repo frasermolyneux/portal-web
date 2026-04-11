@@ -8,7 +8,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-lg-12">
-            <div class="ibox float-e-margins">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>Remove Tag from Player: @player?.Username</h5>
                 </div>
@@ -17,32 +17,36 @@
 
                     <div class="row">
                         <div class="col-md-6">
-                            <dl class="dl-horizontal">
-                                <dt>Tag:</dt>
-                                <dd>@Model.Tag?.Name @Html.Raw(Model.Tag?.TagHtml)</dd>
-
-                                <dt>Assigned By:</dt>
-                                <dd>@Model.UserProfile?.DisplayName</dd>
-
-                                <dt>Assigned On:</dt>
-                                <dd><time time-ago utc="@Model.Assigned"></time></dd>
+                            <dl class="detail-fields">
+                                <div class="detail-field">
+                                    <dt class="detail-label">Tag</dt>
+                                    <dd class="detail-value">@Model.Tag?.Name @Html.Raw(Model.Tag?.TagHtml)</dd>
+                                </div>
+                                <div class="detail-field">
+                                    <dt class="detail-label">Assigned By</dt>
+                                    <dd class="detail-value">@Model.UserProfile?.DisplayName</dd>
+                                </div>
+                                <div class="detail-field">
+                                    <dt class="detail-label">Assigned On</dt>
+                                    <dd class="detail-value"><time time-ago utc="@Model.Assigned"></time></dd>
+                                </div>
                             </dl>
                         </div>
                     </div>
 
-                    <form asp-controller="PlayerTags" asp-action="Remove" method="post">
+                    <form asp-controller="PlayerTags" asp-action="Remove" method="post" id="removeTagForm">
                         <input type="hidden" name="id" value="@Model.PlayerId" />
                         <input type="hidden" name="playerTagId" value="@Model.PlayerTagId" />
-                        <div class="mb-3">
-                            <a asp-action="Details" asp-controller="Players" asp-route-id="@Model.PlayerId"
-                                class="btn btn-secondary">
-                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player
-                            </a>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fa-solid fa-xmark" aria-hidden="true"></i> Remove Tag
-                            </button>
-                        </div>
                     </form>
+                </div>
+                <div class="ibox-footer">
+                    <a asp-action="Details" asp-controller="Players" asp-route-id="@Model.PlayerId"
+                        class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to Player
+                    </a>
+                    <button type="submit" form="removeTagForm" class="btn btn-danger">
+                        <i class="fa-solid fa-fw fa-xmark" aria-hidden="true"></i> Remove Tag
+                    </button>
                 </div>
             </div>
         </div>

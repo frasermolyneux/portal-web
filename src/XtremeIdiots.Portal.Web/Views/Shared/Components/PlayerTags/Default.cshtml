@@ -20,7 +20,7 @@
                     {
                         <a asp-controller="PlayerTags" asp-action="Remove" asp-route-id="@playerTag.PlayerId"
                             asp-route-playerTagId="@playerTag.PlayerTagId" class="btn btn-sm btn-danger ms-2" aria-label="Remove tag">
-                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            <i class="fa-solid fa-fw fa-xmark" aria-hidden="true"></i>
                         </a>
                     }
                 </div>
@@ -37,7 +37,7 @@
     {
         <p>
             <a asp-controller="PlayerTags" asp-action="Add" asp-route-id="@ViewBag.PlayerId" class="btn btn-primary">
-                <i class="fa-solid fa-plus"></i> Add Tag
+                <i class="fa-solid fa-fw fa-plus"></i> Add Tag
             </a>
         </p>
     }

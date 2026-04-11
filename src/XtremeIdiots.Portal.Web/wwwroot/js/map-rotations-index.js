@@ -111,10 +111,10 @@ $(document).ready(function () {
                 data: null, name: 'actions', orderable: false,
                 render: function (data, type, row) {
                     var html = '<div class="btn-group btn-group-sm" role="group">';
-                    html += '<a href="/MapRotations/Details/' + row.mapRotationId + '" class="btn btn-outline-primary btn-xs" title="Details"><i class="fa-solid fa-eye"></i></a>';
-                    html += '<a href="/MapRotations/Edit/' + row.mapRotationId + '" class="btn btn-outline-primary btn-xs" title="Edit"><i class="fa-solid fa-edit"></i></a>';
-                    html += '<a href="/MapRotations/Clone/' + row.mapRotationId + '" class="btn btn-outline-primary btn-xs" title="Clone"><i class="fa-solid fa-clone"></i></a>';
-                    html += '<button type="button" class="btn btn-outline-danger btn-xs btn-delete" data-id="' + row.mapRotationId + '" data-title="' + escapeHtml(row.title) + '" title="Delete"><i class="fa-solid fa-trash"></i></button>';
+                    html += '<a href="/MapRotations/Details/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm" title="Details"><i class="fa-solid fa-fw fa-eye"></i></a>';
+                    html += '<a href="/MapRotations/Edit/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm" title="Edit"><i class="fa-solid fa-fw fa-pen-to-square"></i></a>';
+                    html += '<a href="/MapRotations/Clone/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm" title="Clone"><i class="fa-solid fa-fw fa-clone"></i></a>';
+                    html += '<button type="button" class="btn btn-outline-danger btn-sm btn-delete" data-id="' + row.mapRotationId + '" data-title="' + escapeHtml(row.title) + '" title="Delete"><i class="fa-solid fa-fw fa-trash"></i></button>';
                     html += '</div>';
                     return html;
                 }

@@ -5,7 +5,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="alert alert-info" role="alert">
-        <i class="fa-solid fa-circle-info"></i> Activity log shows user actions tracked via Application Insights. Data is subject to the configured retention period.
+        <i class="fa-solid fa-fw fa-circle-info"></i> Activity log shows user actions tracked via Application Insights. Data is subject to the configured retention period.
     </div>
 
     <div class="activity-log-filters mb-3" id="activityLogFilters">
@@ -48,13 +48,13 @@
 
         <div class="filter-group reset-group">
             <label class="form-label" for="resetFilters">Reset</label>
-            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
         </div>
     </div>
 
     <div class="ibox">
         <div class="ibox-title">
-            <i class="fa-solid fa-clipboard-list"></i> @ViewData["Title"]
+            <i class="fa-solid fa-fw fa-clipboard-list"></i> @ViewData["Title"]
         </div>
         <div class="ibox-content">
             <div class="table-responsive">

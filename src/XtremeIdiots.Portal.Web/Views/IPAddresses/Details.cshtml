@@ -25,14 +25,14 @@
                     </div>
                     <div class="stats-container">
                         <div class="stat-item">
-                            <i class="fa-solid fa-users fa-2x text-navy"></i>
+                            <i class="fa-solid fa-fw fa-users fa-2x text-navy"></i>
                             <h3>@Model.TotalPlayersCount</h3>
                             <p>Players used this IP</p>
                         </div>
                         @if (hasGeo)
                         {
                             <div class="stat-item">                <span class="fa-stack fa-2x">
-                                    <i class="fa-solid fa-circle fa-stack-2x text-navy"></i>
+                                    <i class="fa-solid fa-fw fa-circle fa-stack-2x text-navy"></i>
                                     @{
                                         var countryCode = Model.Intelligence?.CountryCode ?? "unknown";
                                         var flagSrc = !string.IsNullOrWhiteSpace(Model.Intelligence?.CountryCode)
@@ -48,7 +48,7 @@
                         @if (hasProxyCheck)
                         {
                             <div class="stat-item">
-                                <i class="fa-solid fa-shield fa-2x @(Model.Intelligence!.ProxyCheck!.RiskScore >= 50 ? "text-danger" : "text-success")"></i>
+                                <i class="fa-solid fa-fw fa-shield fa-2x @(Model.Intelligence!.ProxyCheck!.RiskScore >= 50 ? "text-danger" : "text-success")"></i>
                                 <h3>Risk Score: @Model.Intelligence.ProxyCheck.RiskScore</h3>
                                 <p>
                                     @if (Model.Intelligence.ProxyCheck.IsProxy || Model.Intelligence.ProxyCheck.IsVpn)
@@ -114,14 +114,14 @@
 
                             <div id="map" style="height: 250px; width: 100%; margin-top: 15px;"></div>
                             <a href="https://www.geo-location.net/Home/LookupAddress/@Model.IpAddress" target="_blank" class="btn btn-outline btn-primary btn-sm mt-2" data-testid="ipaddress-details-geolocation-link">
-                                <i class="fa-solid fa-arrow-up-right-from-square me-1" aria-hidden="true"></i>View on geo-location.net
+                                <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i>View on geo-location.net
                             </a>
                         </div>
                     }
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa-solid fa-circle-info"></i> No GeoLocation data available for this IP address.
+                            <i class="fa-solid fa-fw fa-circle-info"></i> No GeoLocation data available for this IP address.
                         </div>
                     }
                 </div>
@@ -211,7 +211,7 @@
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa-solid fa-circle-info"></i> No risk assessment data available for this IP address.
+                            <i class="fa-solid fa-fw fa-circle-info"></i> No risk assessment data available for this IP address.
                         </div>
                     }
                 </div>
@@ -281,14 +281,14 @@
                         @if (Model.TotalPlayersCount > Model.Players.Count())
                         {
                             <div class="alert alert-info">
-                                <i class="fa-solid fa-circle-info"></i> Showing @Model.Players.Count() of @Model.TotalPlayersCount players.
+                                <i class="fa-solid fa-fw fa-circle-info"></i> Showing @Model.Players.Count() of @Model.TotalPlayersCount players.
                             </div>
                         }
                     }
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa-solid fa-circle-info"></i> No players found using this IP address.
+                            <i class="fa-solid fa-fw fa-circle-info"></i> No players found using this IP address.
                         </div>
                     }
                 </div>

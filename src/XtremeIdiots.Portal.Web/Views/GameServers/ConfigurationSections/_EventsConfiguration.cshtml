@@ -8,14 +8,14 @@
     </div>
     <div class="ibox-content">
         <div class="mb-3">
-            <label asp-for="EventsStaleThresholdSeconds" class="control-label"></label>
+            <label asp-for="EventsStaleThresholdSeconds" class="form-label"></label>
             <input asp-for="EventsStaleThresholdSeconds" class="form-control" type="number" min="1"
                 placeholder="@Model.GlobalEventsStaleThresholdSeconds" />
             <span asp-validation-for="EventsStaleThresholdSeconds" class="text-danger"></span>
             <small class="form-text text-muted">Override the global stale event threshold for this server. Leave empty to use global default (currently: @Model.GlobalEventsStaleThresholdSeconds).</small>
         </div>
         <div class="mb-3">
-            <label asp-for="EventsPlayerCacheExpirationSeconds" class="control-label"></label>
+            <label asp-for="EventsPlayerCacheExpirationSeconds" class="form-label"></label>
             <input asp-for="EventsPlayerCacheExpirationSeconds" class="form-control" type="number" min="1"
                 placeholder="@Model.GlobalEventsPlayerCacheExpirationSeconds" />
             <span asp-validation-for="EventsPlayerCacheExpirationSeconds" class="text-danger"></span>

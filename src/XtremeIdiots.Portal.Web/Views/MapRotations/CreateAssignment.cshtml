@@ -18,7 +18,7 @@
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
-                                <label asp-for="@Model.GameServerId" class="control-label"></label>
+                                <label asp-for="@Model.GameServerId" class="form-label"></label>
                                 <select asp-for="@Model.GameServerId" class="form-select" id="GameServerIdSelect">
                                     <option value="">-- Select Server --</option>
                                     @foreach (var server in Model.AvailableServers)
@@ -29,7 +29,7 @@
                                 <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="@Model.ConfigFilePath" class="control-label"></label>
+                                <label asp-for="@Model.ConfigFilePath" class="form-label"></label>
                                 <div class="input-group">
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                            placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
@@ -37,7 +37,7 @@
                                     {
                                         <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
                                                 style="display: none;" title="Browse server files via FTP">
-                                            <i class="fa-solid fa-folder-open me-1"></i>Browse
+                                            <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                                         </button>
                                     }
                                 </div>
@@ -45,7 +45,7 @@
                                 <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="@Model.ConfigVariableName" class="control-label"></label>
+                                <label asp-for="@Model.ConfigVariableName" class="form-label"></label>
                                 <input asp-for="@Model.ConfigVariableName" class="form-control" id="ConfigVariableNameInput"
                                        list="configVariableSuggestions"
                                        placeholder="e.g. sv_maprotation" />
@@ -60,26 +60,26 @@
                                 <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
                             </div>
                             <div class="alert alert-info small mb-3">
-                                <i class="fa-solid fa-circle-info me-1"></i>
+                                <i class="fa-solid fa-fw fa-circle-info"></i>
                                 <strong>AACP Servers:</strong> If the server uses the Advanced Admin Control Panel (OpenWarfare AACP), create two assignments for the same rotation:
                                 one targeting <code>sv_maprotation</code> in your map rotation config, and another targeting <code>scr_aacp_maps_1</code> in advancedacp.cfg.
                                 Both will be formatted correctly (standard vs semicolon-separated). Activate both assignments to keep the AACP map picker in sync.
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label asp-for="@Model.PlayerCountMin" class="control-label"></label>
+                                    <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
                                     <input asp-for="@Model.PlayerCountMin" type="number" class="form-control" min="0" placeholder="Optional — min players for this rotation" />
                                     <small class="form-text text-muted">For player-count-based rotation: minimum players for this tier.</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label asp-for="@Model.PlayerCountMax" class="control-label"></label>
+                                    <label asp-for="@Model.PlayerCountMax" class="form-label"></label>
                                     <input asp-for="@Model.PlayerCountMax" type="number" class="form-control" min="0" placeholder="Optional — max players for this rotation" />
                                     <small class="form-text text-muted">For player-count-based rotation: maximum players for this tier.</small>
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-link" aria-hidden="true"></i> Assign Server
+                                    <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i> Assign Server
                                 </button>
                                 <a asp-action="Details" asp-route-id="@Model.MapRotationId" class="btn btn-outline-secondary">Cancel</a>
                             </div>

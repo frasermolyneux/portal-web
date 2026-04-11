@@ -30,7 +30,7 @@
                     {
                         <a asp-controller="GameServers" asp-action="Edit" asp-route-id="@serverId"
                            class="btn btn-sm btn-outline-secondary" title="Server configuration">
-                            <i class="fa-solid fa-gear"></i> Settings
+                            <i class="fa-solid fa-fw fa-gear"></i> Settings
                         </a>
                     }
                 </div>
@@ -43,7 +43,7 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview"
                     type="button" role="tab" aria-controls="overview" aria-selected="true">
-                <i class="fa-solid fa-circle-info fa-fw"></i> Overview
+                <i class="fa-solid fa-fw fa-circle-info"></i> Overview
             </button>
         </li>
         @if (Model.CanViewChatLog)
@@ -51,7 +51,7 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="chatlog-tab" data-bs-toggle="tab" data-bs-target="#chatlog"
                         type="button" role="tab" aria-controls="chatlog" aria-selected="false">
-                    <i class="fa-solid fa-commenting fa-fw"></i> Chat Log
+                    <i class="fa-solid fa-fw fa-commenting"></i> Chat Log
                 </button>
             </li>
         }
@@ -60,7 +60,7 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="mapcontrol-tab" data-bs-toggle="tab" data-bs-target="#mapcontrol"
                         type="button" role="tab" aria-controls="mapcontrol" aria-selected="false">
-                    <i class="fa-solid fa-map fa-fw"></i> Map Control
+                    <i class="fa-solid fa-fw fa-map"></i> Map Control
                 </button>
             </li>
         }
@@ -69,7 +69,7 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="agentstatus-tab" data-bs-toggle="tab" data-bs-target="#agentstatus"
                         type="button" role="tab" aria-controls="agentstatus" aria-selected="false">
-                    <i class="fa-solid fa-robot fa-fw"></i> Agent & Ban File
+                    <i class="fa-solid fa-fw fa-robot"></i> Agent & Ban File
                 </button>
             </li>
         }
@@ -168,14 +168,14 @@
                                 @if (Model.CanViewRcon)
                                 {
                                     <button id="sd-restartServer" class="btn btn-danger btn-sm" type="button">
-                                        <i class="fa-solid fa-arrows-rotate"></i> Restart Server
+                                        <i class="fa-solid fa-fw fa-arrows-rotate"></i> Restart Server
                                     </button>
                                 }
                                 @if (Model.CanEditServer)
                                 {
                                     <a asp-controller="GameServers" asp-action="Edit" asp-route-id="@serverId"
                                        class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-gear"></i> Server Settings
+                                        <i class="fa-solid fa-fw fa-gear"></i> Server Settings
                                     </a>
                                 }
                             </div>
@@ -315,13 +315,13 @@
                             <div class="ibox-content">
                                 <div class="d-grid gap-2">
                                     <button id="sd-restartMap" class="btn btn-primary" type="button">
-                                        <i class="fa-solid fa-arrows-rotate"></i> Restart Map
+                                        <i class="fa-solid fa-fw fa-arrows-rotate"></i> Restart Map
                                     </button>
                                     <button id="sd-fastRestartMap" class="btn btn-primary" type="button">
-                                        <i class="fa-solid fa-arrows-rotate"></i> Fast Restart
+                                        <i class="fa-solid fa-fw fa-arrows-rotate"></i> Fast Restart
                                     </button>
                                     <button id="sd-nextMap" class="btn btn-primary" type="button">
-                                        <i class="fa-solid fa-forward"></i> Next Map
+                                        <i class="fa-solid fa-fw fa-forward"></i> Next Map
                                     </button>
                                 </div>
                             </div>
@@ -377,7 +377,7 @@
                                 else
                                 {
                                     <div class="alert alert-warning mb-0">
-                                        <i class="fa-solid fa-triangle-exclamation"></i> Agent telemetry is unavailable for this server.
+                                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Agent telemetry is unavailable for this server.
                                     </div>
                                 }
                             </div>

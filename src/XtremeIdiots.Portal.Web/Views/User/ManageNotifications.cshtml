@@ -9,7 +9,7 @@
 
     <div class="mb-3">
         <a asp-action="ManageProfile" asp-route-id="@Model.UserProfileId" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Back to Profile
+            <i class="fa-solid fa-fw fa-arrow-left"></i> Back to Profile
         </a>
     </div>
 
@@ -19,13 +19,13 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        <i class="fa-solid fa-bell"></i> Notification Preferences for @Model.DisplayName
+                        <i class="fa-solid fa-fw fa-bell"></i> Notification Preferences for @Model.DisplayName
                     </div>
                     <div class="ibox-content">
                         @if (Model.NotificationTypes.Count == 0)
                         {
                             <div class="alert alert-info mb-0">
-                                <i class="fa-solid fa-circle-info"></i> No notification types are currently configured.
+                                <i class="fa-solid fa-fw fa-circle-info"></i> No notification types are currently configured.
                                 Notification preferences will appear here once notification types are available in the system.
                             </div>
                         }
@@ -91,7 +91,7 @@
 
                                 <div class="mb-3">
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="fa-solid fa-floppy-disk"></i> Save Preferences
+                                        <i class="fa-solid fa-fw fa-floppy-disk"></i> Save Preferences
                                     </button>
                                 </div>
                             </form>
@@ -109,13 +109,13 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        <i class="fa-solid fa-clock-rotate-left"></i> Notification History
+                        <i class="fa-solid fa-fw fa-clock-rotate-left"></i> Notification History
                     </div>
                     <div class="ibox-content">
                         @if (Model.Notifications.Count == 0)
                         {
                             <div class="alert alert-info mb-0">
-                                <i class="fa-solid fa-circle-info"></i> No notifications have been sent to this user yet.
+                                <i class="fa-solid fa-fw fa-circle-info"></i> No notifications have been sent to this user yet.
                             </div>
                         }
                         else

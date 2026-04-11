@@ -1,4 +1,4 @@
-﻿@inject IAuthorizationService AuthorizationService
+@inject IAuthorizationService AuthorizationService
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Web.Constants
@@ -70,10 +70,10 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group" aria-label="Server admin actions">
-                                                <a type="button" class="btn btn-success" asp-action="ServerDetail"
+                                                <a class="btn btn-outline-secondary" asp-action="ServerDetail"
                                                     asp-route-id="@item.GameServer.GameServerId"
                                                     data-testid="server-@(item.GameServer.GameServerId)-detail">
-                                                    <i class="fa-solid fa-gauge" aria-hidden="true"></i> 
+                                                    <i class="fa-solid fa-fw fa-gauge" aria-hidden="true"></i> 
                                                     <span class="d-none d-sm-inline">Detail</span>
                                                 </a>
 
@@ -81,10 +81,10 @@
                                                                                             item.GameServer.GameType, AuthPolicies.ViewServerChatLog)).Succeeded
                                                                                             && ChatLogSupportedGames.Games.Contains(item.GameServer.GameType))
                                                 {
-                                                    <a type="button" class="btn btn-primary" asp-action="ServerChatLog"
+                                                    <a class="btn btn-outline-secondary" asp-action="ServerChatLog"
                                                         asp-route-id="@item.GameServer.GameServerId"
                                                         data-testid="server-@(item.GameServer.GameServerId)-view-chatlog">
-                                                        <i class="fa-solid fa-comments" aria-hidden="true"></i> 
+                                                        <i class="fa-solid fa-fw fa-comments" aria-hidden="true"></i> 
                                                         <span class="d-none d-sm-inline">View ChatLog</span>
                                                     </a>
                                                 }
@@ -92,10 +92,10 @@
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
                                                                                             item.GameServer.GameType, AuthPolicies.ManageMaps)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-primary" asp-controller="MapManager"
+                                                    <a class="btn btn-outline-secondary" asp-controller="MapManager"
                                                         asp-action="Manage" asp-route-id="@item.GameServer.GameServerId"
                                                         data-testid="server-@(item.GameServer.GameServerId)-manage-maps">
-                                                        <i class="fa-solid fa-map" aria-hidden="true"></i> 
+                                                        <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> 
                                                         <span class="d-none d-sm-inline">Manage Maps</span>
                                                     </a>
                                                 }

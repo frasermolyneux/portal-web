@@ -7,11 +7,11 @@
     </div>
     <div class="ibox-content">
         <div class="mb-3">
-            <label asp-for="RconConfigPassword" class="control-label"></label>
+            <label asp-for="RconConfigPassword" class="form-label"></label>
             <div class="input-group">
                 <input name="RconConfigPassword" class="form-control" type="password" id="rconPasswordInput" value="@Model.RconConfigPassword" />
                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('rconPasswordInput', this)">
-                    <i class="fa-solid fa-eye"></i>
+                    <i class="fa-solid fa-fw fa-eye"></i>
                 </button>
             </div>
             <span asp-validation-for="RconConfigPassword" class="text-danger"></span>

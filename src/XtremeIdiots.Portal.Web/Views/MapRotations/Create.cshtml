@@ -17,7 +17,7 @@
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
-                                <label asp-for="@Model.GameType" class="control-label"></label>
+                                <label asp-for="@Model.GameType" class="form-label"></label>
                                 <select asp-for="@Model.GameType" class="form-select">
                                     <option value="@GameType.CallOfDuty4">Call of Duty 4</option>
                                     <option value="@GameType.CallOfDuty5">Call of Duty 5</option>
@@ -25,17 +25,17 @@
                                 <span asp-validation-for="@Model.GameType" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="@Model.Title" class="control-label"></label>
+                                <label asp-for="@Model.Title" class="form-label"></label>
                                 <input asp-for="@Model.Title" class="form-control" />
                                 <span asp-validation-for="@Model.Title" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="@Model.Description" class="control-label"></label>
+                                <label asp-for="@Model.Description" class="form-label"></label>
                                 <textarea asp-for="@Model.Description" class="form-control" rows="3"></textarea>
                                 <span asp-validation-for="@Model.Description" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="@Model.GameMode" class="control-label"></label>
+                                <label asp-for="@Model.GameMode" class="form-label"></label>
                                 <select asp-for="@Model.GameMode" class="form-select">
                                     <option value="">-- Select Mode --</option>
                                     <optgroup label="Standard Modes">
@@ -70,7 +70,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label asp-for="@Model.Status" class="control-label"></label>
+                                    <label asp-for="@Model.Status" class="form-label"></label>
                                     <select asp-for="@Model.Status" class="form-select">
                                         <option value="@MapRotationStatus.Draft">Draft</option>
                                         <option value="@MapRotationStatus.Testing">Testing</option>
@@ -79,7 +79,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label asp-for="@Model.Category" class="control-label"></label>
+                                    <label asp-for="@Model.Category" class="form-label"></label>
                                     <input asp-for="@Model.Category" class="form-control" list="categorySuggestions"
                                            placeholder="e.g. Standard, Holiday/Xmas" />
                                     <datalist id="categorySuggestions">
@@ -90,14 +90,14 @@
                                     </datalist>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label asp-for="@Model.SequenceOrder" class="control-label"></label>
+                                    <label asp-for="@Model.SequenceOrder" class="form-label"></label>
                                     <input asp-for="@Model.SequenceOrder" type="number" class="form-control" placeholder="Optional" />
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label class="control-label">Maps</label>
+                                <label class="form-label">Maps</label>
                                 <input type="text" id="mapSearch" class="form-control" placeholder="Search for maps by name..." autocomplete="off" />
-                                <small class="form-text text-muted">Type at least 2 characters to search. Use the <i class="fa-solid fa-grip-vertical"></i> handle to drag and reorder maps. Click × to remove.</small>
+                                <small class="form-text text-muted">Type at least 2 characters to search. Use the <i class="fa-solid fa-fw fa-grip-vertical"></i> handle to drag and reorder maps. Click × to remove.</small>
                             </div>
                             <div id="selectedMapsList" class="mb-3"></div>
                             <div id="mapIdsContainer">
@@ -111,7 +111,7 @@
                             </div>
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
+                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create
                                 </button>
                                 <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
                             </div>

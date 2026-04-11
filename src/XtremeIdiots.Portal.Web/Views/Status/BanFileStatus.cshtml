@@ -1,4 +1,4 @@
-﻿@inject IAuthorizationService AuthorizationService
+@inject IAuthorizationService AuthorizationService
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Web.Extensions
 @using Microsoft.AspNetCore.Authorization
@@ -39,12 +39,12 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-circle-info"></i> This confirms that the ban files on the game servers have been updated with
+        <i class="fa-solid fa-fw fa-circle-info"></i> This confirms that the ban files on the game servers have been updated with
         the latest bans and any new bans have been imported.
     </div>
 
     <div class="alert alert-warning" role="alert">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> This page is used for monitoring but at present does not alert. If there is an
+        <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> This page is used for monitoring but at present does not alert. If there is an
         error displaying below then please contact Sitting-Duc.
     </div>
 
@@ -180,9 +180,9 @@
                                 @if (item.GameServer is not null && (await AuthorizationService.AuthorizeAsync(User, item.GameServer.GameType,
                                                             AuthPolicies.EditGameServer)).Succeeded)
                                 {
-                                    <a type="button" class="btn btn-primary" asp-controller="GameServers" asp-action="Edit"
+                                    <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit"
                                         asp-route-id="@item.GameServer.GameServerId">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit Game Server
+                                        <i class="fa-solid fa-fw fa-pen-to-square"></i> Edit Game Server
                                     </a>
                                 }
 
@@ -190,9 +190,9 @@
                                                             Guid>(item.GameServer.GameType, item.GameServer.GameServerId),
                                                             AuthPolicies.EditBanFileMonitor)).Succeeded)
                                 {
-                                    <a type="button" class="btn btn-primary" asp-controller="BanFileMonitors" asp-action="Edit"
+                                    <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors" asp-action="Edit"
                                         asp-route-id="@item.BanFileMonitorId">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit Ban File Monitor
+                                        <i class="fa-solid fa-fw fa-pen-to-square"></i> Edit Ban File Monitor
                                     </a>
                                 }
                             </div>

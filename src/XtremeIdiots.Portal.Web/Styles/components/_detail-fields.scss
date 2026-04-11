@@ -1,0 +1,31 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+
+// Detail field component for consistent label-value display on detail pages
+// Uses <dl> semantics: <dl class="detail-fields row"> <div class="detail-field col-md-6"> <dt>…</dt> <dd>…</dd> </div> </dl>
+
+.detail-fields {
+    margin-bottom: 0;
+}
+
+.detail-field {
+    margin-bottom: $spacing-md;
+}
+
+.detail-label {
+    font-weight: $font-weight-semibold;
+    color: $xi-text-muted;
+    font-size: $font-size-sm;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: $spacing-xs;
+}
+
+.detail-value {
+    font-weight: $font-weight-normal;
+    color: $xi-text;
+    font-size: $font-size-base;
+    margin-left: 0;
+    word-break: break-word;
+}

@@ -78,6 +78,16 @@ function adminActionTypeIcon(actionType) {
     return "<i class='" + iconClass + "' aria-hidden='true'></i> <span class='action-text'>" + actionType + "</span>";
 }
 
+// Global DataTables defaults for consistent empty state messaging
+if (typeof $.fn !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
+    $.extend(true, $.fn.dataTable.defaults, {
+        language: {
+            emptyTable: 'No records found',
+            zeroRecords: 'No matching records found'
+        }
+    });
+}
+
 // Global DataTables footer spacing helper: ensures wrapper gets padding to avoid footer overlap.
 (function () {
     function applyDataTableSpacing() {
@@ -176,15 +186,15 @@ function downloadDemoLink(demoName, demoId) {
 function deleteDemoLink(demoId, gameType = null) {
     if (gameType === null) {
         return '<div class="btn-group btn-group-sm" role="group">' +
-            '<a type="button" class="btn btn-danger"  href="/Demos/Delete/' +
+            '<a type="button" class="btn btn-outline-danger"  href="/Demos/Delete/' +
             demoId +
-            '"><i class="fa-solid fa-trash"></i> Delete Demo</a>' +
+            '"><i class="fa-solid fa-fw fa-trash"></i> Delete Demo</a>' +
             "</div>";
     } else {
         return '<div class="btn-group btn-group-sm" role="group">' +
-            '<a type="button" class="btn btn-danger"  href="/Demos/Delete/' +
+            '<a type="button" class="btn btn-outline-danger"  href="/Demos/Delete/' +
             demoId +
-            '?filterGame=true"><i class="fa-solid fa-trash"></i> Delete Demo</a>' +
+            '?filterGame=true"><i class="fa-solid fa-fw fa-trash"></i> Delete Demo</a>' +
             "</div>";
     }
 }
@@ -256,9 +266,9 @@ function formatIPAddress(ipAddress, riskScore, isProxy, isVpn, type = '', countr
 
 function manageClaimsLink(userId) {
     return '<div class="btn-group btn-group-sm" role="group">' +
-        '<a type="button" class="btn btn-primary"  href="/User/ManageProfile/' +
+        '<a type="button" class="btn btn-outline-secondary"  href="/User/ManageProfile/' +
         userId +
-        '?filterGame=true"><i class="fa-solid fa-key"></i> Manage Claims</a>' +
+        '?filterGame=true"><i class="fa-solid fa-fw fa-key"></i> Manage Claims</a>' +
         "</div>";
 }
 
@@ -267,7 +277,7 @@ function logOutUserLink(id, antiForgeryToken) {
         '<input id="id" name="id" type="hidden" value="' +
         id +
         '\"/>' +
-        '<button class="btn btn-primary" type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout User</button>' +
+        '<button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-fw fa-arrow-right-from-bracket"></i> Logout User</button>' +
         antiForgeryToken +
         '</form>';
 }

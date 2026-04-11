@@ -7,7 +7,7 @@
     </div>
     <div class="ibox-content">
         <div class="mb-3">
-            <label asp-for="BanFileSyncConfigCheckIntervalSeconds" class="control-label"></label>
+            <label asp-for="BanFileSyncConfigCheckIntervalSeconds" class="form-label"></label>
             <input asp-for="BanFileSyncConfigCheckIntervalSeconds" class="form-control" type="number" min="10" max="86400" />
             <span asp-validation-for="BanFileSyncConfigCheckIntervalSeconds" class="text-danger"></span>
             <small class="form-text text-muted">How often (in seconds) to check for ban file updates. Valid range: 10–86400 (default: 60).</small>

@@ -1,4 +1,4 @@
-﻿@using XtremeIdiots.Portal.Web.ViewModels
+@using XtremeIdiots.Portal.Web.ViewModels
 @model GameServerViewModel
 
 @{
@@ -19,22 +19,22 @@
                         </div>
                         <div class="ibox-content">
                             <div class="mb-3">
-                                <label asp-for="GameType" class="control-label"></label>
-                                <select asp-for="GameType" class="form-control" asp-items="ViewBag.GameType"></select>
+                                <label asp-for="GameType" class="form-label"></label>
+                                <select asp-for="GameType" class="form-select" asp-items="ViewBag.GameType"></select>
                                 <span asp-validation-for="GameType" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="Title" class="control-label"></label>
+                                <label asp-for="Title" class="form-label"></label>
                                 <input asp-for="Title" class="form-control" />
                                 <span asp-validation-for="Title" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="Hostname" class="control-label"></label>
+                                <label asp-for="Hostname" class="form-label"></label>
                                 <input asp-for="Hostname" class="form-control" />
                                 <span asp-validation-for="Hostname" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
-                                <label asp-for="QueryPort" class="control-label"></label>
+                                <label asp-for="QueryPort" class="form-label"></label>
                                 <input asp-for="QueryPort" class="form-control" />
                                 <span asp-validation-for="QueryPort" class="text-danger"></span>
                             </div>
@@ -105,15 +105,15 @@
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
+                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create
                                 </button>
                             </div>
 
                         </div>
                         <div class="ibox-footer">
                             <div class="btn-group btn-group-sm" role="group">
-                                <a type="button" class="btn btn-primary" asp-action="Index"><i
-                                        class="fa-solid fa-arrow-left"></i> Back to List</a>
+                                <a class="btn btn-outline-secondary" asp-action="Index"><i
+                                        class="fa-solid fa-fw fa-arrow-left"></i> Back to List</a>
                             </div>
                         </div>
                     </div>

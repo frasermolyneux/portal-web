@@ -18,7 +18,7 @@
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                             <div class="mb-3">
-                                <label asp-for="@Model.GameType" class="control-label"></label>
+                                <label asp-for="@Model.GameType" class="form-label"></label>
                                 <select asp-for="@Model.GameType" class="form-select">
                                     <option value="@GameType.CallOfDuty4">Call of Duty 4</option>
                                     <option value="@GameType.CallOfDuty5">Call of Duty 5</option>
@@ -27,13 +27,13 @@
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="@Model.CfgFile" class="control-label"></label>
+                                <label asp-for="@Model.CfgFile" class="form-label"></label>
                                 <input asp-for="@Model.CfgFile" type="file" class="form-control" accept=".cfg,.txt" />
                                 <small class="form-text text-muted">Upload a .cfg file, or paste the content below.</small>
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="@Model.CfgContent" class="control-label"></label>
+                                <label asp-for="@Model.CfgContent" class="form-label"></label>
                                 <textarea asp-for="@Model.CfgContent" class="form-control font-monospace" rows="15"
                                           placeholder="Paste map rotation config content here...&#10;&#10;Example:&#10;set sv_maprotation &quot;gametype ftag map mp_backlot map mp_crash map mp_crossfire&quot;"></textarea>
                                 <small class="form-text text-muted">
@@ -44,7 +44,7 @@
 
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-file-import me-1"></i> Parse &amp; Preview
+                                    <i class="fa-solid fa-fw fa-file-import"></i> Parse &amp; Preview
                                 </button>
                                 <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
                             </div>

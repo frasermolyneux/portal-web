@@ -16,7 +16,7 @@
                 <div class="ibox">
                     <div class="ibox-title">
                         <h5>@ViewData["Title"]</h5>
-                        <small>Drag servers using the <i class="fa-solid fa-grip-vertical"></i> handle to reorder. Click "Save Order" when done.</small>
+                        <small>Drag servers using the <i class="fa-solid fa-fw fa-grip-vertical"></i> handle to reorder. Click "Save Order" when done.</small>
                     </div>
                     <div class="ibox-content">
                         @Html.AntiForgeryToken()
@@ -30,7 +30,7 @@
                                      data-server-id="@item.GameServerId"
                                      data-index="@index">
                                     <span class="game-server-drag-handle me-2" title="Drag to reorder">
-                                        <i class="fa-solid fa-grip-vertical"></i>
+                                        <i class="fa-solid fa-fw fa-grip-vertical"></i>
                                     </span>
                                     <span class="badge bg-secondary me-2 game-server-position-badge" style="min-width:28px;">@(index + 1)</span>
                                     <game-type-icon game="@item.GameType"></game-type-icon>
@@ -45,13 +45,13 @@
 
                         <div class="mt-3">
                             <button type="button" id="saveOrderBtn" class="btn btn-primary">
-                                <i class="fa-solid fa-floppy-disk"></i> Save Order
+                                <i class="fa-solid fa-fw fa-floppy-disk"></i> Save Order
                             </button>
                         </div>
                     </div>
                     <div class="ibox-footer">
                         <div class="btn-group btn-group-sm" role="group">
-                            <a type="button" class="btn btn-primary" asp-action="Index"><i class="fa-solid fa-arrow-left"></i> Back to List</a>
+                            <a class="btn btn-outline-secondary" asp-action="Index"><i class="fa-solid fa-fw fa-arrow-left"></i> Back to List</a>
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-﻿@inject IAuthorizationService AuthorizationService
+@inject IAuthorizationService AuthorizationService
 @inject IConfiguration Configuration
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Web.Auth.Constants
@@ -35,19 +35,19 @@
                                     <div class="row">                                        
                                         <div class="col-12 col-lg-6 mb-2 mb-lg-0">
                                             <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                <i class="fa-solid fa-id-card me-1"></i> Player ID: 
+                                                <i class="fa-solid fa-fw fa-id-card"></i> Player ID: 
                                                 <span id="playerId" class="mx-1 font-weight-bold">@player.PlayerId.ToString()</span>
-                                                <i class="fa-solid fa-copy cursor-pointer" onclick="copyToClipboard('playerId')" title="Copy Player ID"></i>
+                                                <i class="fa-solid fa-fw fa-copy cursor-pointer" onclick="copyToClipboard('playerId')" title="Copy Player ID"></i>
                                             </span>
                                             <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                <i class="fa-solid fa-key me-1"></i> GUID: 
+                                                <i class="fa-solid fa-fw fa-key"></i> GUID: 
                                                 <span id="playerGuid" class="mx-1 font-weight-bold text-truncate"><guid-link guid="@player.Guid" game="@player.GameType.ToString()"></guid-link></span>
-                                                <i class="fa-solid fa-copy cursor-pointer" onclick="copyToClipboard('playerGuid')" title="Copy GUID"></i>
+                                                <i class="fa-solid fa-fw fa-copy cursor-pointer" onclick="copyToClipboard('playerGuid')" title="Copy GUID"></i>
                                             </span>
                                             @if (player.Tags != null && player.Tags.Any())
                                             {
                                                 <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                    <i class="fa-solid fa-tag me-1"></i> Tags: 
+                                                    <i class="fa-solid fa-fw fa-tag"></i> Tags: 
                                                     <span class="mx-1">
                                                         @foreach (var playerTag in player.Tags)
                                                         {
@@ -64,45 +64,45 @@
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Observation), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Observation" class="btn btn-outline-primary btn-sm">
-                                                        <i class="fa-solid fa-eye"></i> Observation
+                                                        <i class="fa-solid fa-fw fa-eye"></i> Observation
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Warning), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Warning" class="btn btn-outline-warning btn-sm">
-                                                        <i class="fa-solid fa-triangle-exclamation"></i> Warning
+                                                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Warning
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Kick), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Kick" class="btn btn-outline-info btn-sm">
-                                                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Kick
+                                                        <i class="fa-solid fa-fw fa-arrow-right-from-bracket"></i> Kick
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.TempBan), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="TempBan" class="btn btn-outline-secondary btn-sm">
-                                                        <i class="fa-solid fa-clock"></i> Temp Ban
+                                                        <i class="fa-solid fa-fw fa-clock"></i> Temp Ban
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Ban), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Ban" class="btn btn-outline-danger btn-sm">
-                                                        <i class="fa-solid fa-ban"></i> Ban
+                                                        <i class="fa-solid fa-fw fa-ban"></i> Ban
                                                     </a>
                                                 }
 
                                                 <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-success btn-sm">
-                                                    <i class="fa-solid fa-shield"></i> Protected Name
+                                                    <i class="fa-solid fa-fw fa-shield"></i> Protected Name
                                                 </a>
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag)).Succeeded)
                                                 {
                                                     <a asp-controller="PlayerTags" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-dark btn-sm">
-                                                        <i class="fa-solid fa-tag"></i> Tag
+                                                        <i class="fa-solid fa-fw fa-tag"></i> Tag
                                                     </a>
                                                 }
                                                 </div>
@@ -153,13 +153,13 @@
                             }
                             <li class="list-group-item">
                                 <span class="float-end text-end">
-                                    <i class="fa-solid fa-clock"></i> <time user-time utc="@player.FirstSeen"></time>
+                                    <i class="fa-solid fa-fw fa-clock"></i> <time user-time utc="@player.FirstSeen"></time>
                                 </span>
                                 First Seen
                             </li>                    
                             <li class="list-group-item">
                                 <span class="float-end text-end">
-                                    <i class="fa-solid fa-clock"></i> <time user-time utc="@player.LastSeen"></time>
+                                    <i class="fa-solid fa-fw fa-clock"></i> <time user-time utc="@player.LastSeen"></time>
                                 </span>
                                 Last Seen
                             </li>
@@ -307,12 +307,12 @@
                                                 <td>@protectedName.CreatedByUserProfile?.DisplayName</td>
                                                 <td>
                                                     <div class="btn-group btn-group-sm" role="group">
-                                                        <a asp-controller="ProtectedNames" asp-action="Report" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-info btn-sm">
-                                                            <i class="fa-solid fa-file-text"></i> <span class="d-none d-sm-inline">Usage Report</span>
+                                                        <a asp-controller="ProtectedNames" asp-action="Report" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-outline-secondary btn-sm">
+                                                            <i class="fa-solid fa-fw fa-flag"></i> <span class="d-none d-sm-inline">Usage Report</span>
                                                         </a>
                                                         <a asp-controller="ProtectedNames" asp-action="Delete" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-danger btn-sm"
                                                            onclick="return confirm('Are you sure you want to delete this protected name?');">
-                                                            <i class="fa-solid fa-trash"></i> <span class="d-none d-sm-inline">Delete</span>
+                                                            <i class="fa-solid fa-fw fa-trash"></i> <span class="d-none d-sm-inline">Delete</span>
                                                         </a>
                                                     </div>
                                                 </td>
@@ -323,7 +323,7 @@
                             </div>
                               <p>
                                 <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus"></i> Add Another Protected Name
+                                    <i class="fa-solid fa-fw fa-plus"></i> Add Another Protected Name
                                 </a>
                             </p>
                         }
@@ -334,7 +334,7 @@
                             </div>
                               <p>
                                 <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus"></i> Add Protected Name
+                                    <i class="fa-solid fa-fw fa-plus"></i> Add Protected Name
                                 </a>
                             </p>                        }
                     </div>
@@ -388,7 +388,7 @@
                     }
 
                     <div class="ibox-content tab-pane container fade" style="height: 100%" id="chatLog" role="tabpanel" aria-labelledby="chatLog-tab">
-                        <div class="admin-actions-filters mb-2" id="chatLogFilters">
+                        <div class="list-filters mb-2" id="chatLogFilters">
                             <div class="filter-group">
                                 <label for="filterLocked" class="form-label">Locked</label>
                                 <select id="filterLocked" class="form-select">
@@ -398,7 +398,7 @@
                             </div>
                             <div class="filter-group">
                                 <label class="form-label" for="resetFilters">Reset</label>
-                                <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+                                <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
                             </div>
                         </div>
                         @{

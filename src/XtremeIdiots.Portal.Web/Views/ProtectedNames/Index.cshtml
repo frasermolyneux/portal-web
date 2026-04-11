@@ -11,14 +11,14 @@
         <p class="text-muted">Usernames exclusively owned by specific players. Unauthorized use triggers automatic bans.</p>
         <hr />
         <div class="mb-3">
-            <i class="fa-solid fa-shield"></i>
+            <i class="fa-solid fa-fw fa-shield"></i>
             <span class="ms-1">Total Protected Names: @(Model?.ProtectedNames?.Count ?? 0)</span>
         </div>
     </div>
-    <div class="admin-actions-filters mb-2" id="protectedNamesFilters">
+    <div class="list-filters mb-2" id="protectedNamesFilters">
         <div class="filter-group">
             <label class="form-label" for="resetFilters">Reset</label>
-            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
         </div>
     </div>
     <div class="ibox">

@@ -17,20 +17,28 @@
             <div class="card-body">
                 @if (Model.Report != null)
                 {
-                    <dl class="dl-horizontal">
-                        <dt>Name:</dt>
-                        <dd>@Model.Report.ProtectedName.Name</dd>
-                        <dt>Created:</dt>
-                        <dd><time time-ago utc="@Model.Report.ProtectedName.CreatedOn" show-absolute="false"></time></dd>
-                        <dt>Created By:</dt>
-                        <dd>@Model.Report.ProtectedName.CreatedByUserProfile?.DisplayName</dd>
-                        <dt>Owner:</dt>
-                        <dd>
-                            <a asp-controller="Players" asp-action="Details"
-                                asp-route-id="@Model.Report.OwningPlayer.PlayerId">
-                                @Model.Report.OwningPlayer.Username
-                            </a>
-                        </dd>
+                    <dl class="detail-fields">
+                        <div class="detail-field">
+                            <dt class="detail-label">Name</dt>
+                            <dd class="detail-value">@Model.Report.ProtectedName.Name</dd>
+                        </div>
+                        <div class="detail-field">
+                            <dt class="detail-label">Created</dt>
+                            <dd class="detail-value"><time time-ago utc="@Model.Report.ProtectedName.CreatedOn" show-absolute="false"></time></dd>
+                        </div>
+                        <div class="detail-field">
+                            <dt class="detail-label">Created By</dt>
+                            <dd class="detail-value">@Model.Report.ProtectedName.CreatedByUserProfile?.DisplayName</dd>
+                        </div>
+                        <div class="detail-field">
+                            <dt class="detail-label">Owner</dt>
+                            <dd class="detail-value">
+                                <a asp-controller="Players" asp-action="Details"
+                                    asp-route-id="@Model.Report.OwningPlayer.PlayerId">
+                                    @Model.Report.OwningPlayer.Username
+                                </a>
+                            </dd>
+                        </div>
                     </dl>
                 }
             </div>
@@ -57,8 +65,8 @@
 </div>
 
 <div>
-    <a asp-controller="ProtectedNames" asp-action="Index" class="btn btn-secondary">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Protected Names
+    <a asp-controller="ProtectedNames" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to Protected Names
     </a>
 </div>
 

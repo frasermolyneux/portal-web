@@ -1,0 +1,23 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+
+// Page header component for page-level headings above ibox cards
+
+.page-header {
+    margin-bottom: $spacing-lg;
+
+    .page-title {
+        font-size: $h2-size;
+        font-weight: $font-weight-semibold;
+        color: $xi-text;
+        margin: 0 0 $spacing-xs;
+    }
+
+    .page-subtitle {
+        font-size: $font-size-base;
+        font-weight: $font-weight-normal;
+        color: $xi-text-muted;
+        margin: 0;
+    }
+}

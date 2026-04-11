@@ -1,4 +1,4 @@
-﻿@using XtremeIdiots.Portal.Integrations.Forums.Models
+@using XtremeIdiots.Portal.Integrations.Forums.Models
 @model DemoManagerClientDto
 
 @{
@@ -23,13 +23,13 @@
                     </p>
 
                     <div class="alert alert-warning" role="alert">
-                        <i class="fa-solid fa-circle-info"></i> The demo manager auth key is used in the desktop application
+                        <i class="fa-solid fa-fw fa-circle-info"></i> The demo manager auth key is used in the desktop application
                         to allow you to use the demo manager. It should not be shared with anyone!
                     </div>
 
                     <form asp-action="RegenerateAuthKey">
                         <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Regenerate
+                            <i class="fa-solid fa-fw fa-arrows-rotate" aria-hidden="true"></i> Regenerate
                         </button>
                     </form>
                 </div>

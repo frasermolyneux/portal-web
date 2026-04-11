@@ -7,64 +7,51 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-lg-12">
-            <div class="ibox float-e-margins">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>Create New Tag</h5>
                 </div>
                 <div class="ibox-content">
-                    <form asp-action="Create" method="post" class="">
+                    <form asp-action="Create" method="post" id="createTagForm">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                         <div class="mb-3">
-                            <label asp-for="Name" class="col-sm-2 control-label"></label>
-                            <div class="col-sm-10">
-                                <input asp-for="Name" class="form-control" />
-                                <span asp-validation-for="Name" class="text-danger"></span>
-                            </div>
+                            <label asp-for="Name" class="form-label"></label>
+                            <input asp-for="Name" class="form-control" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="Description" class="col-sm-2 control-label"></label>
-                            <div class="col-sm-10">
-                                <textarea asp-for="Description" class="form-control"></textarea>
-                                <span asp-validation-for="Description" class="text-danger"></span>
-                            </div>
+                            <label asp-for="Description" class="form-label"></label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="TagHtml" class="col-sm-2 control-label"></label>
-                            <div class="col-sm-10">
-                                <textarea asp-for="TagHtml" class="form-control"></textarea>
-                                <span asp-validation-for="TagHtml" class="text-danger"></span>
-                                <span class="help-block m-b-none">HTML that will be displayed as the tag (e.g., &lt;span
-                                    class="badge bg-primary"&gt;VIP&lt;/span&gt;)</span>
-                            </div>
+                            <label asp-for="TagHtml" class="form-label"></label>
+                            <textarea asp-for="TagHtml" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="TagHtml" class="text-danger"></span>
+                            <small class="form-text">HTML that will be displayed as the tag (e.g., &lt;span
+                                class="badge bg-primary"&gt;VIP&lt;/span&gt;)</small>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="UserDefined" class="col-sm-2 control-label"></label>
-                            <div class="col-sm-10">
-                                <div class="checkbox">
-                                    <label>
-                                        <input asp-for="UserDefined" /> Users can assign this tag to players
-                                    </label>
-                                </div>
-                                <span class="help-block m-b-none">If checked, users can add and remove this tag from
-                                    players on the player details page.</span>
+                            <div class="form-check">
+                                <input asp-for="UserDefined" class="form-check-input" />
+                                <label asp-for="UserDefined" class="form-check-label">Users can assign this tag to players</label>
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="col-sm-10 col-sm-offset-2">
-                                <a asp-action="Index" class="btn btn-secondary">
-                                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to List
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
-                                </button>
-                            </div>
+                            <small class="form-text">If checked, users can add and remove this tag from
+                                players on the player details page.</small>
                         </div>
                     </form>
+                </div>
+                <div class="ibox-footer">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to List
+                    </a>
+                    <button type="submit" form="createTagForm" class="btn btn-primary">
+                        <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create
+                    </button>
                 </div>
             </div>
         </div>

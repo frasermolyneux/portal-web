@@ -40,7 +40,7 @@ $(document).ready(function () {
             {
                 data: null, name: 'action', orderable: false, className: 'text-center', render: function (data, type, row) {
                     if (!row.canClaim) return '';
-                    return '<a href="/AdminActions/Claim/' + row.adminActionId + '" class="btn btn-outline-info btn-sm claim-btn"><i class="fa-solid fa-user me-1"></i> Claim Ban</a>';
+                    return '<a href="/AdminActions/Claim/' + row.adminActionId + '" class="btn btn-outline-primary btn-sm claim-btn"><i class="fa-solid fa-fw fa-user"></i> Claim Ban</a>';
                 }
             }
         ]

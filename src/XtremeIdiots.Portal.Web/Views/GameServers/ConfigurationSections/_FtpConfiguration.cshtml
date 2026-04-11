@@ -7,29 +7,29 @@
     </div>
     <div class="ibox-content">
         <div class="mb-3">
-            <label asp-for="FtpConfigHostname" class="control-label"></label>
+            <label asp-for="FtpConfigHostname" class="form-label"></label>
             <input asp-for="FtpConfigHostname" class="form-control" />
             <span asp-validation-for="FtpConfigHostname" class="text-danger"></span>
             <small class="form-text text-muted">The hostname or IP address of the FTP server for file transfers.</small>
         </div>
         <div class="mb-3">
-            <label asp-for="FtpConfigPort" class="control-label"></label>
+            <label asp-for="FtpConfigPort" class="form-label"></label>
             <input asp-for="FtpConfigPort" class="form-control" type="number" />
             <span asp-validation-for="FtpConfigPort" class="text-danger"></span>
             <small class="form-text text-muted">FTP port number (default: 21).</small>
         </div>
         <div class="mb-3">
-            <label asp-for="FtpConfigUsername" class="control-label"></label>
+            <label asp-for="FtpConfigUsername" class="form-label"></label>
             <input asp-for="FtpConfigUsername" class="form-control" />
             <span asp-validation-for="FtpConfigUsername" class="text-danger"></span>
             <small class="form-text text-muted">Username for FTP authentication.</small>
         </div>
         <div class="mb-3">
-            <label asp-for="FtpConfigPassword" class="control-label"></label>
+            <label asp-for="FtpConfigPassword" class="form-label"></label>
             <div class="input-group">
                 <input name="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput" value="@Model.FtpConfigPassword" />
                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('ftpPasswordInput', this)">
-                    <i class="fa-solid fa-eye"></i>
+                    <i class="fa-solid fa-fw fa-eye"></i>
                 </button>
             </div>
             <span asp-validation-for="FtpConfigPassword" class="text-danger"></span>

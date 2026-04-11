@@ -8,7 +8,7 @@
 
 <div class="wrapper wrapper-content animated FadeInRight">
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
         Admin actions should only be deleted for data correction or to remove test data.
     </div>
 
@@ -46,12 +46,12 @@
                         <input type="hidden" asp-for="AdminActionId" />
                         <input type="hidden" asp-for="PlayerId" />
                         <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-danger" type="submit" aria-label="Confirm deletion">
-                                <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete
+                            <button type="submit" class="btn btn-danger" type="submit" aria-label="Confirm deletion">
+                                <i class="fa-solid fa-fw fa-trash"></i> Delete
                             </button>
                             <a class="btn btn-primary" asp-controller="Players" asp-action="Details"
                                 asp-route-id="@Model?.PlayerId" aria-label="Return to player details">
-                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player
+                                <i class="fa-solid fa-fw fa-arrow-left"></i> Back to Player
                             </a>
                         </div>
                     </form>

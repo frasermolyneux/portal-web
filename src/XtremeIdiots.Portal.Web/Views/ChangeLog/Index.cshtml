@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Portal Development Dashboard";
 }
 
@@ -6,7 +6,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-info" role="alert">
-        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> This dashboard displays real-time development activity
+        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i> This dashboard displays real-time development activity
         across all XtremeIdiots
         Portal microservices and repositories.
         <div class="float-end">
@@ -21,7 +21,7 @@
                 <div class="ibox-content">
                     <h5>Commits This Month</h5>
                     <h2 class="no-margins" id="commitsThisMonth" data-testid="changelog-stats-commits">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-fw fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Across all repositories</small>
                 </div>
@@ -41,7 +41,7 @@
                 <div class="ibox-content">
                     <h5>Open PRs</h5>
                     <h2 class="no-margins text-info" id="openPRs" data-testid="changelog-stats-prs">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-fw fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Pull requests</small>
                 </div>
@@ -52,7 +52,7 @@
                 <div class="ibox-content">
                     <h5>Build Status</h5>
                     <h2 class="no-margins" id="buildStatus" data-testid="changelog-stats-builds">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-fw fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Overall health</small>
                 </div>
@@ -63,7 +63,7 @@
                 <div class="ibox-content">
                     <h5>Issues</h5>
                     <h2 class="no-margins text-warning" id="totalIssues" data-testid="changelog-stats-issues">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-fw fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Open issues</small>
                 </div>
@@ -74,7 +74,7 @@
                 <div class="ibox-content">
                     <h5>Last Activity</h5>
                     <h2 class="no-margins text-success" id="lastActivity" data-testid="changelog-stats-activity">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <i class="fa-solid fa-fw fa-spinner fa-spin"></i>
                     </h2>
                     <small class="text-muted">Most recent commit</small>
                 </div>
@@ -87,12 +87,12 @@
         <div class="col-lg-12">
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5><i class="fa-solid fa-github" aria-hidden="true"></i> Repository Status Overview</h5>
+                    <h5><i class="fa-solid fa-fw fa-github" aria-hidden="true"></i> Repository Status Overview</h5>
                 </div>
                 <div class="ibox-content">
                     <div id="repositoryStatus" data-testid="changelog-repository-status">
                         <div class="text-center">
-                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <i class="fa-solid fa-fw fa-spinner fa-spin fa-2x"></i>
                             <p class="text-muted">Loading repository information...</p>
                         </div>
                     </div>
@@ -106,20 +106,20 @@
         <div class="col-lg-12">
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5><i class="fa-solid fa-code-branch" aria-hidden="true"></i> Recent Development Activity</h5>
+                    <h5><i class="fa-solid fa-fw fa-code-branch" aria-hidden="true"></i> Recent Development Activity</h5>
                     <div class="ibox-tools">
                         <a class="btn btn-primary btn-sm" id="refreshActivity" data-testid="changelog-refresh-activity">
-                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Refresh
+                            <i class="fa-solid fa-fw fa-arrows-rotate" aria-hidden="true"></i> Refresh
                         </a>
                         <a class="btn btn-warning btn-sm" id="clearCache" data-testid="changelog-clear-cache">
-                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Clear Cache
+                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Clear Cache
                         </a>
                     </div>
                 </div>
                 <div class="ibox-content">
                     <div id="activityStream" data-testid="changelog-activity-stream">
                         <div class="text-center">
-                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <i class="fa-solid fa-fw fa-spinner fa-spin fa-2x"></i>
                             <p class="text-muted">Loading recent commits...</p>
                         </div>
                     </div>
@@ -172,12 +172,12 @@
                     const isValid = cacheAge < CACHE_DURATION;
 
                     if (isValid) {
-                        $('#cacheStatus').html(`<i class="fa-solid fa-check-circle text-success"></i> Cache: ${minutesAgo}m old (valid)`);
+                        $('#cacheStatus').html(`<i class="fa-solid fa-fw fa-check-circle text-success"></i> Cache: ${minutesAgo}m old (valid)`);
                     } else {
-                        $('#cacheStatus').html(`<i class="fa-solid fa-triangle-exclamation text-warning"></i> Cache: ${minutesAgo}m old (expired)`);
+                        $('#cacheStatus').html(`<i class="fa-solid fa-fw fa-triangle-exclamation text-warning"></i> Cache: ${minutesAgo}m old (expired)`);
                     }
                 } else {
-                    $('#cacheStatus').html('<i class="fa-solid fa-circle-info text-info"></i> Cache: No data cached');
+                    $('#cacheStatus').html('<i class="fa-solid fa-fw fa-circle-info text-info"></i> Cache: No data cached');
                 }
             }
 
@@ -254,14 +254,14 @@
 
                 switch (status) {
                     case 'success':
-                        return `<span class="badge bg-primary" ${tooltip} ${link}><i class="fa-solid fa-check"></i> Passing</span>`;
+                        return `<span class="badge bg-primary" ${tooltip} ${link}><i class="fa-solid fa-fw fa-check"></i> Passing</span>`;
                     case 'failure':
-                        return `<span class="badge bg-danger" ${tooltip} ${link}><i class="fa-solid fa-xmark"></i> Failed</span>`;
+                        return `<span class="badge bg-danger" ${tooltip} ${link}><i class="fa-solid fa-fw fa-xmark"></i> Failed</span>`;
                     case 'pending':
                     case 'in_progress':
-                        return `<span class="badge bg-warning" ${tooltip} ${link}><i class="fa-solid fa-clock"></i> Running</span>`;
+                        return `<span class="badge bg-warning" ${tooltip} ${link}><i class="fa-solid fa-fw fa-clock"></i> Running</span>`;
                     default:
-                        return '<span class="badge bg-secondary"><i class="fa-solid fa-question"></i> Unknown</span>';
+                        return '<span class="badge bg-secondary"><i class="fa-solid fa-fw fa-question"></i> Unknown</span>';
                 }
             }
 
@@ -481,8 +481,8 @@
                                                                 <div class="col-8">
                                                                     <h4 class="card-title">
                                                                         <a href="${data.url}" target="_blank" class="text-decoration-none">
-                                                                            <i class="fa-solid fa-github fa-lg"></i> ${repo.name}
-                                                                            <i class="fa-solid fa-arrow-up-right-from-square fa-sm"></i>
+                                                                            <i class="fa-solid fa-fw fa-github fa-lg"></i> ${repo.name}
+                                                                            <i class="fa-solid fa-fw fa-arrow-up-right-from-square fa-sm"></i>
                                                                         </a>
                                                                     </h4>
                                                                     <small class="text-muted">${data.description}</small>
@@ -500,19 +500,19 @@
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Stars</small>
-                                                                    <div><i class="fa-solid fa-star text-warning"></i> ${data.stars}</div>
+                                                                    <div><i class="fa-solid fa-fw fa-star text-warning"></i> ${data.stars}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Open PRs</small>
-                                                                    <div><i class="fa-solid fa-code-fork text-info"></i> ${pullRequestData[repo.name] || 0}</div>
+                                                                    <div><i class="fa-solid fa-fw fa-code-fork text-info"></i> ${pullRequestData[repo.name] || 0}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Issues</small>
-                                                                    <div><i class="fa-solid fa-circle-exclamation text-warning"></i> ${data.openIssues}</div>
+                                                                    <div><i class="fa-solid fa-fw fa-circle-exclamation text-warning"></i> ${data.openIssues}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Forks</small>
-                                                                    <div><i class="fa-solid fa-code-fork text-muted"></i> ${data.forks}</div>
+                                                                    <div><i class="fa-solid fa-fw fa-code-fork text-muted"></i> ${data.forks}</div>
                                                                 </div>
                                                                 <div class="col-md-2 col-sm-4 col-6 repo-stat">
                                                                     <small class="text-muted">Last Push</small>
@@ -561,8 +561,8 @@
                                                             <div class="activity-meta">
                                                                 <div class="text-muted" style="font-size: 12px;">${formatDate(commit.commit.author.date)}</div>
                                                                 <div style="margin-top: 5px;">
-                                                                    <a href="${commit.html_url}" target="_blank" class="btn btn-xs btn-outline btn-primary">
-                                                                        <i class="fa-solid fa-code"></i> ${shortSha}
+                                                                    <a href="${commit.html_url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                                        <i class="fa-solid fa-fw fa-code"></i> ${shortSha}
                                                                     </a>
                                                                 </div>
                                                             </div>

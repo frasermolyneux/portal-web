@@ -19,7 +19,7 @@
             <div class="ibox">
                 <div class="ibox-content">
                     <h5 class="text-muted fw-normal mt-0">Servers</h5>
-                    <h2 class="mt-2 mb-1">
+                    <h2 class="stat-value mt-2 mb-1">
                         <span class="text-success">@(summary?.OnlineServerCount ?? 0)</span>
                         <small class="text-muted fs-6">/ @(summary?.TotalServers ?? 0)</small>
                     </h2>
@@ -38,7 +38,7 @@
             <div class="ibox">
                 <div class="ibox-content">
                     <h5 class="text-muted fw-normal mt-0">Players Online</h5>
-                    <h2 class="mt-2 mb-1">@(summary?.TotalPlayersOnline ?? 0)</h2>
+                    <h2 class="stat-value mt-2 mb-1">@(summary?.TotalPlayersOnline ?? 0)</h2>
                     <small class="text-muted">Across all servers</small>
                 </div>
             </div>
@@ -47,13 +47,13 @@
             <div class="ibox">
                 <div class="ibox-content">
                     <h5 class="text-muted fw-normal mt-0">Unclaimed Bans</h5>
-                    <h2 class="mt-2 mb-1 @(summary?.UnclaimedBanCount > 0 ? "text-warning" : "text-success")">
+                    <h2 class="stat-value mt-2 mb-1 @(summary?.UnclaimedBanCount > 0 ? "text-warning" : "text-success")">
                         @(summary?.UnclaimedBanCount ?? 0)
                     </h2>
                     @if (summary?.UnclaimedBanCount > 0)
                     {
                         <a asp-controller="AdminActions" asp-action="Unclaimed" class="text-warning text-decoration-none">
-                            <small><i class="fa-solid fa-arrow-right"></i> View unclaimed</small>
+                            <small><i class="fa-solid fa-fw fa-arrow-right"></i> View unclaimed</small>
                         </a>
                     }
                     else
@@ -67,7 +67,7 @@
             <div class="ibox">
                 <div class="ibox-content">
                     <h5 class="text-muted fw-normal mt-0">Open Reports</h5>
-                    <h2 class="mt-2 mb-1 @(summary?.OpenReportCount > 0 ? "text-warning" : "text-success")">
+                    <h2 class="stat-value mt-2 mb-1 @(summary?.OpenReportCount > 0 ? "text-warning" : "text-success")">
                         @(summary?.OpenReportCount ?? 0)
                     </h2>
                     <small class="text-muted">Awaiting review</small>
@@ -121,7 +121,7 @@
                     @if (Model.AgentTelemetryUnavailable)
                     {
                         <div class="alert alert-warning mb-3">
-                            <i class="fa-solid fa-triangle-exclamation"></i> Agent telemetry is currently unavailable.
+                            <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Agent telemetry is currently unavailable.
                         </div>
                     }
 

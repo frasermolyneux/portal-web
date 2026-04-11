@@ -18,114 +18,86 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        @ViewData["Title"]
+                        <h5>@ViewData["Title"]</h5>
                     </div>
                     <div class="ibox-content">
-                        <dl class="row">
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.Title)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.Title)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.GameType)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.GameType)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.Hostname)
-                            </dt>
-                            <dd class="col-sm-10">
-                                <server-host host="@Model.Hostname" port="@Model.QueryPort"></server-host>
-                            </dd>
+                        <dl class="detail-fields row">
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.Title)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.Title)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.GameType)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.GameType)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.Hostname)</dt>
+                                <dd class="detail-value">
+                                    <server-host host="@Model.Hostname" port="@Model.QueryPort"></server-host>
+                                </dd>
+                            </div>
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                         Guid>(Model.GameType, Model.GameServerId), AuthPolicies.ViewFtpCredential)).Succeeded)
                             {
-                                <dt class="col-sm-2">
-                                    FTP Hostname
-                                </dt>
-                                <dd class="col-sm-10">
-                                    @ViewBag.FtpHostname
-                                </dd>
-                                <dt class="col-sm-2">
-                                    FTP Port
-                                </dt>
-                                <dd class="col-sm-10">
-                                    @ViewBag.FtpPort
-                                </dd>
-                                <dt class="col-sm-2">
-                                    FTP Username
-                                </dt>
-                                <dd class="col-sm-10">
-                                    @ViewBag.FtpUsername
-                                </dd>
-                                <dt class="col-sm-2">
-                                    FTP Password
-                                </dt>
-                                <dd class="col-sm-10">
-                                    @ViewBag.FtpPassword
-                                </dd>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">FTP Hostname</dt>
+                                    <dd class="detail-value">@ViewBag.FtpHostname</dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">FTP Port</dt>
+                                    <dd class="detail-value">@ViewBag.FtpPort</dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">FTP Username</dt>
+                                    <dd class="detail-value">@ViewBag.FtpUsername</dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">FTP Password</dt>
+                                    <dd class="detail-value">@ViewBag.FtpPassword</dd>
+                                </div>
                             }
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                         Guid>(Model.GameType, Model.GameServerId), AuthPolicies.ViewRconCredential)).Succeeded)
                             {
-                                <dt class="col-sm-2">
-                                    RCON Password
-                                </dt>
-                                <dd class="col-sm-10">
-                                    @ViewBag.RconPassword
-                                </dd>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">RCON Password</dt>
+                                    <dd class="detail-value">@ViewBag.RconPassword</dd>
+                                </div>
                             }
 
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.AgentEnabled)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.AgentEnabled)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.FtpEnabled)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.FtpEnabled)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.RconEnabled)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.RconEnabled)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.BanFileSyncEnabled)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.BanFileSyncEnabled)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.ServerListEnabled)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.ServerListEnabled)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.ServerListPosition)
-                            </dt>
-                            <dd class="col-sm-10">
-                                @Html.DisplayFor(model => model.ServerListPosition)
-                            </dd>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.AgentEnabled)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.AgentEnabled)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.FtpEnabled)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.FtpEnabled)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.RconEnabled)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.RconEnabled)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.BanFileSyncEnabled)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.BanFileSyncEnabled)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.ServerListEnabled)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.ServerListEnabled)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.ServerListPosition)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.ServerListPosition)</dd>
+                            </div>
                         </dl>
                     </div>
                     <div class="ibox-footer">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a type="button" class="btn btn-primary" asp-action="Edit"
-                                asp-route-id="@Model.GameServerId"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
-                            <a type="button" class="btn btn-primary" asp-action="Index"><i class="fa-solid fa-arrow-left"></i>
-                                Back to List</a>
-                        </div>
+                        <a class="btn btn-primary" asp-action="Edit"
+                            asp-route-id="@Model.GameServerId"><i class="fa-solid fa-fw fa-pen-to-square"></i> Edit</a>
+                        <a class="btn btn-outline-secondary" asp-action="Index"><i class="fa-solid fa-fw fa-arrow-left"></i>
+                            Back to List</a>
                     </div>
                 </div>
             </div>
@@ -139,7 +111,7 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        Ban File Monitors
+                        <h5>Ban File Monitors</h5>
                     </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
@@ -149,10 +121,10 @@
                                         <th scope="col">
                                             File Path
                                         </th>
-                                        <th scope="col">
+                                        <th scope="col" class="table-date-col">
                                             Last Sync
                                         </th>
-                                        <th scope="col"></th>
+                                        <th scope="col" class="table-action-col"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -183,27 +155,27 @@
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.EditBanFileMonitor)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-primary" asp-controller="BanFileMonitors"
+                                                    <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors"
                                                         asp-action="Edit" asp-route-id="@item.BanFileMonitorId"><i
-                                                            class="fa-solid fa-pen-to-square"></i> Edit Monitor</a>
+                                                            class="fa-solid fa-fw fa-pen-to-square"></i> Edit</a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.ViewBanFileMonitor)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-primary" asp-controller="BanFileMonitors"
+                                                    <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors"
                                                         asp-action="Details" asp-route-id="@item.BanFileMonitorId"><i
-                                                            class="fa-solid fa-circle-info"></i> Details</a>
+                                                            class="fa-solid fa-fw fa-eye"></i> Details</a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.DeleteBanFileMonitor)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-danger" asp-controller="BanFileMonitors"
+                                                    <a class="btn btn-outline-danger" asp-controller="BanFileMonitors"
                                                         asp-action="Delete" asp-route-id="@item.BanFileMonitorId"><i
-                                                            class="fa-solid fa-trash"></i> Delete</a>
+                                                            class="fa-solid fa-fw fa-trash"></i> Delete</a>
                                                 }
                                             </div>
                                         </td>

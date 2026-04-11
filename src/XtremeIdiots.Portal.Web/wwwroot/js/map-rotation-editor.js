@@ -49,7 +49,7 @@
                 $card.append($('<img>').attr('src', map.imageUrl || '/images/noimage.jpg').attr('alt', map.text).css({ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px' }).addClass('me-2'));
                 $card.append($('<span>').addClass('flex-grow-1').text(map.text));
 
-                const $removeBtn = $('<button type="button" class="btn btn-outline-danger btn-sm ms-2"><i class="fa-solid fa-times"></i></button>');
+                const $removeBtn = $('<button type="button" class="btn btn-outline-danger btn-sm ms-2"><i class="fa-solid fa-fw fa-times"></i></button>');
                 $removeBtn.on('click', function () {
                     selectedMaps.splice(index, 1);
                     renderList();

@@ -14,13 +14,13 @@
                 @* Agent Defaults *@
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5><i class="fa-solid fa-robot fa-fw" aria-hidden="true"></i> Agent Defaults</h5>
+                        <h5><i class="fa-solid fa-fw fa-robot" aria-hidden="true"></i> Agent Defaults</h5>
                     </div>
                     <div class="ibox-content">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="AgentPollIntervalMs" class="control-label"></label>
+                                    <label asp-for="AgentPollIntervalMs" class="form-label"></label>
                                     <input asp-for="AgentPollIntervalMs" class="form-control" type="number" />
                                     <span asp-validation-for="AgentPollIntervalMs" class="text-danger"></span>
                                     <small class="form-text text-muted">How frequently agents check for new log data.</small>
@@ -28,7 +28,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="AgentStatusPublishIntervalSeconds" class="control-label"></label>
+                                    <label asp-for="AgentStatusPublishIntervalSeconds" class="form-label"></label>
                                     <input asp-for="AgentStatusPublishIntervalSeconds" class="form-control" type="number" />
                                     <span asp-validation-for="AgentStatusPublishIntervalSeconds" class="text-danger"></span>
                                     <small class="form-text text-muted">How often agents publish server status snapshots.</small>
@@ -38,7 +38,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="AgentRconSyncIntervalSeconds" class="control-label"></label>
+                                    <label asp-for="AgentRconSyncIntervalSeconds" class="form-label"></label>
                                     <input asp-for="AgentRconSyncIntervalSeconds" class="form-control" type="number" />
                                     <span asp-validation-for="AgentRconSyncIntervalSeconds" class="text-danger"></span>
                                     <small class="form-text text-muted">How often agents query game servers via RCON/Query.</small>
@@ -46,7 +46,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="AgentOffsetSaveIntervalSeconds" class="control-label"></label>
+                                    <label asp-for="AgentOffsetSaveIntervalSeconds" class="form-label"></label>
                                     <input asp-for="AgentOffsetSaveIntervalSeconds" class="form-control" type="number" />
                                     <span asp-validation-for="AgentOffsetSaveIntervalSeconds" class="text-danger"></span>
                                     <small class="form-text text-muted">How often agents persist log file read position.</small>
@@ -59,13 +59,13 @@
                 @* Ban File Sync Defaults *@
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5><i class="fa-solid fa-ban fa-fw" aria-hidden="true"></i> Ban File Sync Defaults</h5>
+                        <h5><i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban File Sync Defaults</h5>
                     </div>
                     <div class="ibox-content">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="BanFileSyncCheckIntervalSeconds" class="control-label"></label>
+                                    <label asp-for="BanFileSyncCheckIntervalSeconds" class="form-label"></label>
                                     <input asp-for="BanFileSyncCheckIntervalSeconds" class="form-control" type="number" />
                                     <span asp-validation-for="BanFileSyncCheckIntervalSeconds" class="text-danger"></span>
                                     <small class="form-text text-muted">How often agents check ban files for new entries.</small>
@@ -78,13 +78,13 @@
                 @* Moderation Defaults *@
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5><i class="fa-solid fa-shield fa-fw" aria-hidden="true"></i> Chat Moderation Defaults</h5>
+                        <h5><i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Chat Moderation Defaults</h5>
                     </div>
                     <div class="ibox-content">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="ModerationSeverityThreshold" class="control-label"></label>
+                                    <label asp-for="ModerationSeverityThreshold" class="form-label"></label>
                                     <input asp-for="ModerationSeverityThreshold" class="form-control" type="number" min="0" max="6" />
                                     <span asp-validation-for="ModerationSeverityThreshold" class="text-danger"></span>
                                     <small class="form-text text-muted">Minimum toxicity severity (0–6) that triggers moderation.</small>
@@ -92,7 +92,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="ModerationMinMessageLength" class="control-label"></label>
+                                    <label asp-for="ModerationMinMessageLength" class="form-label"></label>
                                     <input asp-for="ModerationMinMessageLength" class="form-control" type="number" />
                                     <span asp-validation-for="ModerationMinMessageLength" class="text-danger"></span>
                                     <small class="form-text text-muted">Messages shorter than this skip content safety analysis.</small>
@@ -105,13 +105,13 @@
                 @* Event Processing Defaults *@
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5><i class="fa-solid fa-timeline fa-fw" aria-hidden="true"></i> Event Processing Defaults</h5>
+                        <h5><i class="fa-solid fa-fw fa-timeline" aria-hidden="true"></i> Event Processing Defaults</h5>
                     </div>
                     <div class="ibox-content">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="EventsStaleThresholdSeconds" class="control-label"></label>
+                                    <label asp-for="EventsStaleThresholdSeconds" class="form-label"></label>
                                     <input asp-for="EventsStaleThresholdSeconds" class="form-control" type="number" />
                                     <span asp-validation-for="EventsStaleThresholdSeconds" class="text-danger"></span>
                                     <small class="form-text text-muted">Events older than this are logged as warnings.</small>
@@ -119,7 +119,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="EventsPlayerCacheExpirationSeconds" class="control-label"></label>
+                                    <label asp-for="EventsPlayerCacheExpirationSeconds" class="form-label"></label>
                                     <input asp-for="EventsPlayerCacheExpirationSeconds" class="form-control" type="number" />
                                     <span asp-validation-for="EventsPlayerCacheExpirationSeconds" class="text-danger"></span>
                                     <small class="form-text text-muted">How long player data is cached before re-fetch.</small>
@@ -133,7 +133,7 @@
                 <div class="ibox">
                     <div class="ibox-content">
                         <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-save" aria-hidden="true"></i> Save Settings
+                            <i class="fa-solid fa-fw fa-floppy-disk" aria-hidden="true"></i> Save Settings
                         </button>
                     </div>
                 </div>

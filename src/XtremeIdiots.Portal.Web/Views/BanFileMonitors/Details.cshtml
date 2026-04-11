@@ -40,47 +40,47 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        @ViewData["Title"]
+                        <h5>@ViewData["Title"]</h5>
                     </div>
                     <div class="ibox-content">
-                        <dl class="row">
-                            <dt class="col-sm-2">
-                                Game Server
-                            </dt>
-                            <dd class="col-sm-10" data-testid="ban-file-monitor-details-gameserver">
-                                <server-name title="@Model.GameServer.Title"
-                                    live-title="@Model.GameServer.LiveTitle"></server-name>
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.FilePath)
-                            </dt>
-                            <dd class="col-sm-10" data-testid="ban-file-monitor-details-filepath">
-                                <ftp-path host="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "hostname")" port="@GetCfgInt(serverConfigs, Model.GameServerId, "ftp", "port", 21)"
-                                    path="@Model.FilePath" user="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "username")"
-                                    password="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "password")"></ftp-path>
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.RemoteFileSize)
-                            </dt>
-                            <dd class="col-sm-10" data-testid="ban-file-monitor-details-filesize">
-                                @Html.DisplayFor(model => model.RemoteFileSize)
-                            </dd>
-                            <dt class="col-sm-2">
-                                @Html.DisplayNameFor(model => model.LastSync)
-                            </dt>
-                            <dd class="col-sm-10" data-testid="ban-file-monitor-details-lastsync">
-                                @Html.DisplayFor(model => model.LastSync)
-                            </dd>
+                        <dl class="detail-fields row">
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">Game Server</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-gameserver">
+                                    <server-name title="@Model.GameServer.Title"
+                                        live-title="@Model.GameServer.LiveTitle"></server-name>
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.FilePath)</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-filepath">
+                                    <ftp-path host="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "hostname")" port="@GetCfgInt(serverConfigs, Model.GameServerId, "ftp", "port", 21)"
+                                        path="@Model.FilePath" user="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "username")"
+                                        password="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "password")"></ftp-path>
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.RemoteFileSize)</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-filesize">
+                                    @Html.DisplayFor(model => model.RemoteFileSize)
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.LastSync)</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastsync">
+                                    @Html.DisplayFor(model => model.LastSync)
+                                </dd>
+                            </div>
                         </dl>
                     </div>
                     <div class="ibox-footer">
                         <div class="btn-group btn-group-sm" role="group">
                             <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.BanFileMonitorId"
                                 data-testid="ban-file-monitor-details-edit">
-                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Edit
+                                <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit
                             </a>
-                            <a class="btn btn-primary" asp-action="Index" data-testid="ban-file-monitor-details-back">
-                                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to List
+                            <a class="btn btn-outline-secondary" asp-action="Index" data-testid="ban-file-monitor-details-back">
+                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to List
                             </a>
                         </div>
                     </div>

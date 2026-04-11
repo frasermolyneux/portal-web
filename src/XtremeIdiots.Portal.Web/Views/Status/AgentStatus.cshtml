@@ -8,7 +8,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-circle-info"></i> This page shows the current status of game server agents, based on
+        <i class="fa-solid fa-fw fa-circle-info"></i> This page shows the current status of game server agents, based on
         telemetry events received in Application Insights.
     </div>
 
@@ -39,7 +39,7 @@
                         @if (!Model.Any())
                         {
                             <div class="alert alert-warning">
-                                <i class="fa-solid fa-triangle-exclamation"></i> No agent-enabled servers found.
+                                <i class="fa-solid fa-fw fa-triangle-exclamation"></i> No agent-enabled servers found.
                             </div>
                         }
                         else

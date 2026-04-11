@@ -7,7 +7,7 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-12">
-            <div class="admin-actions-filters mb-2" id="serverEventsFilters">
+            <div class="list-filters mb-2" id="serverEventsFilters">
                 <div class="filter-group">
                     <label for="filterGameType" class="form-label">Game Type</label>
                     <select id="filterGameType" class="form-select">
@@ -26,13 +26,13 @@
                 </div>
                 <div class="filter-group reset-group">
                     <label class="form-label" for="resetFilters">Reset</label>
-                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
                 </div>
             </div>
 
             <div class="ibox">
                 <div class="ibox-title">
-                    <i class="fa-solid fa-timeline"></i> @ViewData["Title"]
+                    <i class="fa-solid fa-fw fa-timeline"></i> @ViewData["Title"]
                 </div>
                 <div class="ibox-content">
                     <div class="table-responsive">

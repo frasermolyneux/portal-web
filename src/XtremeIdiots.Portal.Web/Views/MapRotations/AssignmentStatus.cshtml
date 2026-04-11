@@ -16,7 +16,7 @@
 
                 <div class="mb-3">
                     <a asp-action="Details" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
-                        <i class="fa-solid fa-arrow-left"></i> Back to @Model.Rotation.Title
+                        <i class="fa-solid fa-fw fa-arrow-left"></i> Back to @Model.Rotation.Title
                     </a>
                 </div>
 
@@ -83,7 +83,7 @@
                         @if (!string.IsNullOrEmpty(Model.Assignment.LastError) && Model.Assignment.DeploymentState == DeploymentState.Failed)
                         {
                             <div class="alert alert-danger mt-3 mb-0">
-                                <i class="fa-solid fa-exclamation-triangle"></i> <strong>Last Error</strong>
+                                <i class="fa-solid fa-fw fa-exclamation-triangle"></i> <strong>Last Error</strong>
                                 @if (Model.Assignment.LastErrorAt.HasValue)
                                 {
                                     <small class="text-muted">(<time user-time utc="@Model.Assignment.LastErrorAt.Value"></time>)</small>
@@ -100,7 +100,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-success btn-sm me-1">
-                                        <i class="fa-solid fa-sync"></i> Sync
+                                        <i class="fa-solid fa-fw fa-sync"></i> Sync
                                     </button>
                                 </form>
                             }
@@ -111,7 +111,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-warning btn-sm me-1">
-                                        <i class="fa-solid fa-sync"></i> Re-sync
+                                        <i class="fa-solid fa-fw fa-sync"></i> Re-sync
                                     </button>
                                 </form>
                             }
@@ -122,7 +122,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-primary btn-sm me-1">
-                                        <i class="fa-solid fa-play"></i> Activate
+                                        <i class="fa-solid fa-fw fa-play"></i> Activate
                                     </button>
                                 </form>
                             }
@@ -133,7 +133,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
-                                        <i class="fa-solid fa-stop"></i> Deactivate
+                                        <i class="fa-solid fa-fw fa-stop"></i> Deactivate
                                     </button>
                                 </form>
                             }
@@ -144,7 +144,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-info btn-sm me-1">
-                                        <i class="fa-solid fa-clipboard-check"></i> Verify Maps
+                                        <i class="fa-solid fa-fw fa-clipboard-check"></i> Verify Maps
                                     </button>
                                 </form>
                             }
@@ -156,7 +156,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-danger btn-sm me-1">
-                                        <i class="fa-solid fa-unlink"></i> Unassign
+                                        <i class="fa-solid fa-fw fa-unlink"></i> Unassign
                                     </button>
                                 </form>
                             }
@@ -199,7 +199,7 @@
                                         {
                                             <tr class="table-info pending-bootstrap-row" data-instance-id="@pendingInstanceId">
                                                 <td>—</td>
-                                                <td><span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> Starting...</span></td>
+                                                <td><span class="badge bg-info"><i class="fa-solid fa-fw fa-spinner fa-spin"></i> Starting...</span></td>
                                                 <td colspan="3"><span class="text-muted">Operation is being initialized...</span></td>
                                                 <td><code class="small" title="@pendingInstanceId">@(pendingInstanceId!.Length > 20 ? pendingInstanceId[..20] + "…" : pendingInstanceId)</code></td>
                                                 <td></td>
@@ -236,7 +236,7 @@
                                                     @switch (op.Status)
                                                     {
                                                         case AssignmentOperationStatus.InProgress:
-                                                            <span class="badge bg-info"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>
+                                                            <span class="badge bg-info"><i class="fa-solid fa-fw fa-spinner fa-spin"></i> In Progress</span>
                                                             if (elapsedMinutes > 15)
                                                             {
                                                                 <span class="badge bg-warning text-dark stale-badge" title="This operation has been running for over 15 minutes and may be stuck">⚠️ Stale</span>
@@ -291,7 +291,7 @@
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Cancel this operation? The assignment state will be reset so you can retry.')">
-                                                                <i class="fa-solid fa-ban"></i> Cancel
+                                                                <i class="fa-solid fa-fw fa-ban"></i> Cancel
                                                             </button>
                                                         </form>
                                                     }
@@ -302,7 +302,7 @@
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <button type="submit" class="btn btn-outline-warning btn-sm" onclick="return confirm('Terminate the underlying orchestration? This clears the stuck durable function so you can re-trigger.')">
-                                                                <i class="fa-solid fa-skull-crossbones"></i> Terminate
+                                                                <i class="fa-solid fa-fw fa-skull-crossbones"></i> Terminate
                                                             </button>
                                                         </form>
                                                     }
@@ -315,7 +315,7 @@
                                                         <div class="px-3 py-2 bg-light">
                                                             @if (string.IsNullOrEmpty(op.DurableFunctionInstanceId))
                                                             {
-                                                                <p class="text-muted mb-0"><i class="fa-solid fa-info-circle"></i> Live progress details are unavailable — no orchestration tracking ID recorded for this operation.</p>
+                                                                <p class="text-muted mb-0"><i class="fa-solid fa-fw fa-info-circle"></i> Live progress details are unavailable — no orchestration tracking ID recorded for this operation.</p>
                                                             }
                                                             else
                                                             {

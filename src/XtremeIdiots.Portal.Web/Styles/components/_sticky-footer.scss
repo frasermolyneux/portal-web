@@ -1,0 +1,16 @@
+@use '../tokens/colors' as *;
+@use '../tokens/spacing' as *;
+@use '../tokens/typography' as *;
+
+// Sticky form footer — sticks to the bottom of the viewport on long forms
+// Usage: add .ibox-footer--sticky to an ibox-footer element
+
+.ibox-footer--sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background-color: $white-bg;
+    border-top: 1px solid $border-color;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    padding: 12px 20px;
+}

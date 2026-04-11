@@ -16,10 +16,10 @@
         <div class="col-12">
 
             <div class="container-fluid">
-                <div class="admin-actions-filters mb-2" id="gameServersFilters">
+                <div class="list-filters mb-2" id="gameServersFilters">
                     <div class="filter-group">
                         <label class="form-label" for="resetFilters">Reset</label>
-                        <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
+                        <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
                     </div>
                 </div>
                 <div class="ibox">
@@ -52,7 +52,7 @@
                                     <th scope="col">
                                         @Html.DisplayNameFor(model => model.ServerListEnabled)
                                     </th>
-                                    <th></th>
+                                    <th class="table-action-col"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -89,30 +89,30 @@
                                                                                             AuthPolicies.ManageMaps)).Succeeded && item.GameType ==
                                                                                             GameType.CallOfDuty4)
                                                 {
-                                                    <a type="button" class="btn btn-secondary" asp-controller="MapManager"
+                                                    <a class="btn btn-secondary" asp-controller="MapManager"
                                                         asp-action="Manage" asp-route-id="@item.GameServerId"><i
-                                                            class="fa-solid fa-pen-to-square"></i> <span class="d-none d-sm-inline">Map Manager</span></a>
+                                                            class="fa-solid fa-fw fa-pen-to-square"></i> <span class="d-none d-sm-inline">Map Manager</span></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
                                                                                             AuthPolicies.EditGameServer)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-primary" asp-action="Edit"
-                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-pen-to-square"></i> <span class="d-none d-sm-inline">Edit</span></a>
+                                                    <a class="btn btn-outline-secondary" asp-action="Edit"
+                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-pen-to-square"></i> <span class="d-none d-sm-inline">Edit</span></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
                                                                                             AuthPolicies.ViewGameServer)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-primary" asp-action="Details"
-                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-circle-info"></i> <span class="d-none d-sm-inline">Details</span></a>
+                                                    <a class="btn btn-outline-secondary" asp-action="Details"
+                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-eye"></i> <span class="d-none d-sm-inline">Details</span></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
                                                                                             AuthPolicies.DeleteGameServer)).Succeeded)
                                                 {
-                                                    <a type="button" class="btn btn-danger" asp-action="Delete"
-                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-trash"></i> <span class="d-none d-sm-inline">Delete</span></a>
+                                                    <a class="btn btn-outline-danger" asp-action="Delete"
+                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-trash"></i> <span class="d-none d-sm-inline">Delete</span></a>
                                                 }
                                             </div>
                                         </td>
@@ -124,11 +124,11 @@
                     </div>
                     <div class="ibox-footer">
                         <div class="btn-group btn-group-sm" role="group">
-                            <a type="button" class="btn btn-primary" asp-action="Create"><i class="fa-solid fa-plus"></i>
+                            <a class="btn btn-primary" asp-action="Create"><i class="fa-solid fa-fw fa-plus"></i>
                                 Create New</a>
                             @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer)).Succeeded)
                             {
-                                <a type="button" class="btn btn-secondary" asp-action="Reorder"><i class="fa-solid fa-grip-vertical"></i>
+                                <a class="btn btn-secondary" asp-action="Reorder"><i class="fa-solid fa-fw fa-grip-vertical"></i>
                                     Reorder Servers</a>
                             }
                         </div>

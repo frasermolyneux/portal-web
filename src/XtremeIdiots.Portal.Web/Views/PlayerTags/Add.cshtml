@@ -7,41 +7,36 @@
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="row">
         <div class="col-lg-12">
-            <div class="ibox float-e-margins">
+            <div class="ibox">
                 <div class="ibox-title">
                     <h5>Add Tag to Player: @Model.Player?.Username</h5>
                 </div>
                 <div class="ibox-content">
-                    <form asp-controller="PlayerTags" asp-action="Add" method="post" class="">
+                    <form asp-controller="PlayerTags" asp-action="Add" method="post" id="addTagForm">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="PlayerId" />
 
                         <div class="mb-3">
-                            <label asp-for="TagId" class="col-sm-2 control-label"></label>
-                            <div class="col-sm-10">
-                                <select asp-for="TagId" class="form-control">
-                                    <option value="">-- Select a Tag --</option>
-                                    @foreach (var tag in Model.AvailableTags)
-                                    {
-                                        <option value="@tag.TagId">@tag.Name - @Html.Raw(tag.TagHtml)</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="TagId" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="col-sm-10 col-sm-offset-2">
-                                <a asp-action="Details" asp-controller="Players" asp-route-id="@Model.PlayerId"
-                                    class="btn btn-secondary">
-                                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Player
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Tag
-                                </button>
-                            </div>
+                            <label asp-for="TagId" class="form-label"></label>
+                            <select asp-for="TagId" class="form-select">
+                                <option value="">-- Select a Tag --</option>
+                                @foreach (var tag in Model.AvailableTags)
+                                {
+                                    <option value="@tag.TagId">@tag.Name - @Html.Raw(tag.TagHtml)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="TagId" class="text-danger"></span>
                         </div>
                     </form>
+                </div>
+                <div class="ibox-footer">
+                    <a asp-action="Details" asp-controller="Players" asp-route-id="@Model.PlayerId"
+                        class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to Player
+                    </a>
+                    <button type="submit" form="addTagForm" class="btn btn-primary">
+                        <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Tag
+                    </button>
                 </div>
             </div>
         </div>
