@@ -18,6 +18,9 @@
                     <a asp-action="Details" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
                         <i class="fa-solid fa-fw fa-arrow-left"></i> Back to @Model.Rotation.Title
                     </a>
+                    <a policy="@AuthPolicies.ManageMapRotations" asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId" class="btn btn-outline-primary btn-sm">
+                        <i class="fa-solid fa-fw fa-edit"></i> Edit Assignment
+                    </a>
                 </div>
 
                 <div class="ibox">

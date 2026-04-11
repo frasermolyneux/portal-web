@@ -1,0 +1,90 @@
+@model XtremeIdiots.Portal.Web.ViewModels.EditMapRotationAssignmentViewModel
+
+@{
+    ViewData["Title"] = "Edit Server Assignment" + (ViewData["RotationTitle"] != null ? " — " + ViewData["RotationTitle"] : "");
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <form asp-action="EditAssignment" method="post">
+        <input type="hidden" asp-for="@Model.MapRotationServerAssignmentId" />
+        <input type="hidden" asp-for="@Model.MapRotationId" />
+        <input type="hidden" asp-for="@Model.GameServerId" />
+
+        <div class="row">
+            <div class="col-12">
+                <div class="container-fluid">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>@ViewData["Title"]</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            <div class="mb-3">
+                                <label class="control-label">Game Server</label>
+                                <input type="text" class="form-control" value="@Model.GameServerTitle" disabled />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.ConfigFilePath" class="control-label"></label>
+                                <div class="input-group">
+                                    <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
+                                           placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
+                                    @if (Model.CanBrowseFtp && Model.FtpEnabled)
+                                    {
+                                        <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
+                                                title="Browse server files via FTP"
+                                                onclick="openFtpBrowser('@Model.GameServerId', 'ConfigFilePathInput', '.cfg')">
+                                            <i class="fa-solid fa-folder-open me-1"></i>Browse
+                                        </button>
+                                    }
+                                </div>
+                                <small class="form-text text-muted">Path to the config file on the game server.</small>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="@Model.ConfigVariableName" class="control-label"></label>
+                                <input asp-for="@Model.ConfigVariableName" class="form-control"
+                                       list="configVariableSuggestions"
+                                       placeholder="e.g. sv_maprotation" />
+                                <datalist id="configVariableSuggestions">
+                                    <option value="sv_maprotation" label="Standard map rotation"></option>
+                                    <option value="scr_aacp_maps_1" label="AACP map list (semicolon-separated)"></option>
+                                    <option value="sv_maprotation_low" label="Load-based: low player count"></option>
+                                    <option value="sv_maprotation_medium" label="Load-based: medium player count"></option>
+                                    <option value="sv_maprotation_high" label="Load-based: high player count"></option>
+                                </datalist>
+                                <small class="form-text text-muted">The config variable to write the rotation string to.</small>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="@Model.PlayerCountMin" class="control-label"></label>
+                                    <input asp-for="@Model.PlayerCountMin" type="number" class="form-control" min="0" placeholder="Optional" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="@Model.PlayerCountMax" class="control-label"></label>
+                                    <input asp-for="@Model.PlayerCountMax" type="number" class="form-control" min="0" placeholder="Optional" />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-save" aria-hidden="true"></i> Save Changes
+                                </button>
+                                <a asp-action="Details" asp-route-id="@Model.MapRotationId" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@if (Model.CanBrowseFtp && Model.FtpEnabled)
+{
+    @await Html.PartialAsync("_FtpBrowserModal")
+}
+
+@section Scripts {
+    @if (Model.CanBrowseFtp && Model.FtpEnabled)
+    {
+        <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
+    }
+}

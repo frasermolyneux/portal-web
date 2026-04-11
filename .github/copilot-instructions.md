@@ -33,10 +33,11 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 ## Key Documentation
 
 - [Development Workflows](docs/development-workflows.md) — Branch strategy, CI/CD triggers, and PR flows.
+- [UI Standards Guide](docs/ui-standards-guide.md) — Button hierarchy, icons, forms, detail pages, filters, destructive operation gating, and legacy patterns to avoid.
 - [Datatable Implementation Guide](docs/DATATABLE-IMPLEMENTATION-GUIDE.md) — Server-backed data table patterns.
 - [Credentials Permissions Matrix](docs/credentials-permissions-matrix.md) — Roles, claims, and access mapping.
 - [Permissions Matrices](docs/permissions/) — Per-area authorization matrices (players, game servers, admin actions, etc.).
-- [CSS Architecture Guide](docs/css-architecture-guide.md) — Styling conventions and structure.
+- [CSS Architecture Guide](docs/css-architecture-guide.md) — SCSS structure, tokens, components, and build process.
 - [Manual Steps](docs/manual-steps.md) — Post-deployment configuration.
 
 ## Conventions and Patterns
@@ -47,3 +48,17 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 - Sensitive settings use user secrets locally (`UserSecretsId` in csproj) or environment variables; Azure App Configuration and managed identity in deployed environments.
 - PRs trigger dev Terraform plans automatically; prod plans require the `run-prd-plan` label.
 - Copilot and Dependabot PRs skip Terraform plans unless explicitly labeled.
+
+## UI Conventions (Razor Views)
+
+**Always read [docs/ui-standards-guide.md](docs/ui-standards-guide.md) before creating or modifying views.** Key rules:
+
+- Wrap all content in `ibox > ibox-title (with h5) + ibox-content`. Action buttons go in `ibox-footer`.
+- Buttons: `btn-primary` for primary actions, `btn-outline-secondary` for cancel/back, `btn-danger` for destructive confirms, `btn-outline-danger btn-sm` for inline delete links.
+- Icons: always use `fa-solid fa-fw fa-[icon]` with `aria-hidden="true"`. Use `fa-pen-to-square` (edit), `fa-eye` (details), `fa-trash` (delete), `fa-plus` (create), `fa-floppy-disk` (save), `fa-arrow-left` (back).
+- Forms: vertical labels (`form-label`), `form-select` for dropdowns, `form-text` for help text, `mb-3` spacing.
+- Detail pages: use `detail-fields` component with `detail-label` / `detail-value` in a `row` grid.
+- Filters: use `list-filters` class, label reset button "Reset Filters".
+- Destructive actions: Tier 1 (confirmation page) for entity deletes, Tier 2 (`data-confirm` attribute) for inline actions. Never use inline `onclick`/`onsubmit` confirm handlers.
+- Tables: `table table-striped table-hover`, `table-date-col` on date headers, `table-action-col` on action headers.
+- Do not use legacy patterns: `control-label`, `help-block`, `float-e-margins`, `btn-xs`, `dl-horizontal`, `admin-actions-filters`, `fa-save`, `fa-edit`, `type="button"` on `<a>` tags.

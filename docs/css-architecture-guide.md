@@ -13,16 +13,16 @@ Styles/
 ├── tokens/              # Design system variables
 │   ├── _colors.scss     # Color palette and CSS custom properties
 │   ├── _spacing.scss    # Spacing scale and component spacing
-│   └── _typography.scss # Font families, sizes, weights
+│   └── _typography.scss # Font families, sizes, weights, $stat-value-size
 ├── base/                # Foundation styles
 │   ├── _reset.scss      # CSS reset
 │   ├── _base.scss       # HTML element styles
-│   └── _accessibility.scss # Accessibility improvements
+│   ├── _accessibility.scss # Accessibility improvements
+│   └── _animations.scss # CSS animations (fadeInRight etc.)
 ├── layout/              # Page structure
 │   ├── _responsive.scss # Breakpoints and responsive mixins
 │   ├── _navbar.scss     # Top navigation bar
 │   ├── _sidebar.scss    # Off-canvas sidebar
-│   ├── _footer.scss     # Page footer
 │   └── _wrapper.scss    # Main content wrapper
 ├── utilities/           # Helper classes
 │   ├── _spacing.scss    # Margin and padding utilities
@@ -30,22 +30,30 @@ Styles/
 │   ├── _text.scss       # Text alignment, colors, sizing
 │   └── _zindex.scss     # Z-index layering utilities
 ├── components/          # Reusable UI components
-│   ├── _buttons.scss    # Button styles
-│   ├── _cards.scss      # ibox card component
+│   ├── _buttons.scss    # Button styles + btn-xs bridge
+│   ├── _cards.scss      # ibox card component + float-e-margins no-op
 │   ├── _tables.scss     # Table styles
 │   ├── _forms.scss      # Form controls
 │   ├── _badges.scss     # Badge components
-│   └── _pagination.scss # Pagination controls
+│   ├── _pagination.scss # Pagination controls
+│   ├── _detail-fields.scss # Label-value display for detail pages
+│   ├── _empty-state.scss   # Empty state placeholder component
+│   ├── _page-header.scss   # Page-level heading component
+│   └── _sticky-footer.scss # Sticky form footer for long pages
 ├── features/            # Page-specific styles
-│   ├── _admin-actions.scss # Admin actions pages
+│   ├── _admin-actions.scss # Admin actions + list-filters component
 │   ├── _players.scss    # Players pages
 │   ├── _chatlog.scss    # Chat log pages
 │   ├── _maps.scss       # Maps pages
 │   ├── _demos.scss      # Demos pages
-│   └── _users.scss      # User management pages
+│   ├── _users.scss      # User management pages
+│   ├── _game-servers.scss  # Game server reorder
+│   ├── _map-rotations.scss # Map rotation editor
+│   ├── _changelog.scss  # Change log dashboard
+│   └── ...              # Other feature files
 ├── vendor/              # Third-party overrides
 │   ├── _bootstrap-overrides.scss  # Bootstrap customizations
-│   └── _datatable-overrides.scss  # DataTables customizations
+│   └── _datatable-overrides.scss  # DataTables + table column utilities
 └── app.scss             # Main entry point (imports all partials)
 ```
 
@@ -229,6 +237,7 @@ The previous Inspinia theme (inspinia.css) has been absorbed into the structured
 5. **Avoid !important** - Use proper specificity instead
 6. **Mobile-first** - Design for mobile first, enhance for desktop
 7. **Test responsive** - Always test changes across breakpoints
+8. **Follow UI standards** - See [UI Standards Guide](ui-standards-guide.md) for button hierarchy, icon usage, form layout, detail-field patterns, and destructive operation gating
 
 ## Troubleshooting
 

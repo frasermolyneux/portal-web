@@ -524,7 +524,7 @@ public class MapRotationsController(
             var createDto = new CreateMapRotationServerAssignmentDto(model.MapRotationId, model.GameServerId)
             {
                 ConfigFilePath = model.ConfigFilePath,
-                ConfigVariableName = model.ConfigVariableName,
+                ConfigVariableName = model.ConfigVariableName?.ToLowerInvariant(),
                 PlayerCountMin = model.PlayerCountMin,
                 PlayerCountMax = model.PlayerCountMax
             };
@@ -549,6 +549,110 @@ public class MapRotationsController(
 
             return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
         }, nameof(CreateAssignment)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> EditAssignment(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var assignmentResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(id, cancellationToken).ConfigureAwait(false);
+
+            if (assignmentResponse.IsNotFound || assignmentResponse.Result?.Data is null)
+                return NotFound();
+
+            var assignment = assignmentResponse.Result.Data;
+
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.MapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(EditAssignment),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
+            var server = serverResponse.IsSuccess ? serverResponse.Result?.Data : null;
+
+            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+
+            ViewData["RotationTitle"] = rotation.Title;
+
+            return View(new EditMapRotationAssignmentViewModel
+            {
+                MapRotationServerAssignmentId = assignment.MapRotationServerAssignmentId,
+                MapRotationId = assignment.MapRotationId,
+                GameServerId = assignment.GameServerId,
+                GameServerTitle = server?.Title ?? assignment.GameServerId.ToString(),
+                ConfigFilePath = assignment.ConfigFilePath,
+                ConfigVariableName = assignment.ConfigVariableName,
+                PlayerCountMin = assignment.PlayerCountMin,
+                PlayerCountMax = assignment.PlayerCountMax,
+                CanBrowseFtp = canBrowseFtp.Succeeded,
+                FtpEnabled = server?.FtpEnabled ?? false
+            });
+        }, nameof(EditAssignment)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditAssignment(EditMapRotationAssignmentViewModel model, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var assignmentResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(model.MapRotationServerAssignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (assignmentResponse.IsNotFound || assignmentResponse.Result?.Data is null)
+                return NotFound();
+
+            var assignment = assignmentResponse.Result.Data;
+
+            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.MapRotationId, cancellationToken).ConfigureAwait(false);
+
+            if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = rotationResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.ManageMapRotations,
+                nameof(EditAssignment),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var updateDto = new UpdateMapRotationServerAssignmentDto(model.MapRotationServerAssignmentId)
+            {
+                ConfigFilePath = model.ConfigFilePath,
+                ConfigVariableName = model.ConfigVariableName?.ToLowerInvariant(),
+                PlayerCountMin = model.PlayerCountMin,
+                PlayerCountMax = model.PlayerCountMax
+            };
+
+            var apiResponse = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(updateDto, cancellationToken).ConfigureAwait(false);
+
+            if (!apiResponse.IsSuccess)
+            {
+                this.AddAlertDanger("Failed to update server assignment.");
+                return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
+            }
+
+            this.AddAlertSuccess("Server assignment updated successfully.");
+
+            return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
+        }, nameof(EditAssignment)).ConfigureAwait(false);
     }
 
     [HttpPost]
