@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -29,6 +30,7 @@ public class MapManagerController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     IServersApiClient serversApiClient,
+    ISyncApiClient syncApiClient,
     TelemetryClient telemetryClient,
     ILogger<MapManagerController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -135,7 +137,7 @@ public class MapManagerController(
             if (actionResult != null)
                 return actionResult;
 
-            await serversApiClient.Maps.V1.PushServerMapToHost(viewModel.GameServerId, viewModel.MapName!).ConfigureAwait(false);
+            await syncApiClient.TriggerPushMap(viewModel.GameServerId, viewModel.MapName!, cancellationToken).ConfigureAwait(false);
 
             TrackSuccessTelemetry("MapPushedToRemote", nameof(PushMapToRemote), new Dictionary<string, string>
             {
@@ -143,7 +145,7 @@ public class MapManagerController(
                 { nameof(viewModel.MapName), viewModel.MapName ?? "Unknown" }
             });
 
-            this.AddAlertSuccess($"Map '{viewModel.MapName}' has been successfully pushed to the remote server.");
+            this.AddAlertSuccess($"Map '{viewModel.MapName}' push has been triggered. The map will be synced to the server shortly.");
             return RedirectToAction(nameof(Manage), new { id = viewModel.GameServerId });
         }, nameof(PushMapToRemote)).ConfigureAwait(false);
     }

@@ -36,6 +36,11 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
         return TriggerOrchestration($"/api/map-rotations/verify/{assignmentId}", cancellationToken);
     }
 
+    public Task<SyncTriggerResult> TriggerPushMap(Guid gameServerId, string mapName, CancellationToken cancellationToken = default)
+    {
+        return TriggerOrchestration($"/api/maps/push/{gameServerId}/{Uri.EscapeDataString(mapName)}", cancellationToken);
+    }
+
     public async Task<OrchestrationStatusQueryResult> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
     {
         try
