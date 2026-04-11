@@ -21,6 +21,9 @@
                     <a policy="@AuthPolicies.ManageMapRotations" asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId" class="btn btn-outline-primary btn-sm">
                         <i class="fa-solid fa-fw fa-edit"></i> Edit Assignment
                     </a>
+                    <a policy="@AuthPolicies.ManageMaps" asp-controller="MapManager" asp-action="Manage" asp-route-id="@Model.Assignment.GameServerId" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-fw fa-hard-drive"></i> Manage Server Maps
+                    </a>
                 </div>
 
                 <div class="ibox">

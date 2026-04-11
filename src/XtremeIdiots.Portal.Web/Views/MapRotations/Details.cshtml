@@ -246,6 +246,9 @@
                                                     <a policy="@AuthPolicies.ManageMapRotations" asp-action="EditAssignment" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-secondary btn-sm me-1">
                                                         <i class="fa-solid fa-fw fa-edit"></i> Edit
                                                     </a>
+                                                    <a policy="@AuthPolicies.ManageMaps" asp-controller="MapManager" asp-action="Manage" asp-route-id="@assignment.GameServerId" class="btn btn-outline-secondary btn-sm me-1" title="Manage maps on this server">
+                                                        <i class="fa-solid fa-fw fa-hard-drive"></i> Maps
+                                                    </a>
                                                     @if (assignment.DeploymentState == DeploymentState.Pending || assignment.DeploymentState == DeploymentState.Failed)
                                                     {
                                                         <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
