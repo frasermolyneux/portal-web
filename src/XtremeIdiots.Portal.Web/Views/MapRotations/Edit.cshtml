@@ -1,4 +1,5 @@
 @model XtremeIdiots.Portal.Web.ViewModels.EditMapRotationViewModel
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 
 @{
     ViewData["Title"] = "Edit Map Rotation - " + Model.Title;
@@ -62,9 +63,36 @@
                                         <option value="ss">Sharp Shooter (ss)</option>
                                         <option value="tgr">Team Greed (tgr)</option>
                                         <option value="twar">War (twar)</option>
+                                        <option value="cooperative">Cooperative / Zombie (cooperative)</option>
                                     </optgroup>
                                 </select>
                                 <span asp-validation-for="@Model.GameMode" class="text-danger"></span>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="@Model.Status" class="control-label"></label>
+                                    <select asp-for="@Model.Status" class="form-select">
+                                        <option value="@MapRotationStatus.Draft">Draft</option>
+                                        <option value="@MapRotationStatus.Testing">Testing</option>
+                                        <option value="@MapRotationStatus.Active">Active</option>
+                                        <option value="@MapRotationStatus.Archived">Archived</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="@Model.Category" class="control-label"></label>
+                                    <input asp-for="@Model.Category" class="form-control" list="categorySuggestions"
+                                           placeholder="e.g. Standard, Holiday/Xmas" />
+                                    <datalist id="categorySuggestions">
+                                        <option value="Standard"></option>
+                                        <option value="Holiday/Halloween"></option>
+                                        <option value="Holiday/Xmas"></option>
+                                        <option value="Archive/Bad"></option>
+                                    </datalist>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="@Model.SequenceOrder" class="control-label"></label>
+                                    <input asp-for="@Model.SequenceOrder" type="number" class="form-control" placeholder="Optional" />
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="control-label">Maps</label>

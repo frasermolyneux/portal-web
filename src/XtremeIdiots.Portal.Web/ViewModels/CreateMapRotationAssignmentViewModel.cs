@@ -18,6 +18,12 @@ public class CreateMapRotationAssignmentViewModel
     [DisplayName("Config Variable")]
     public string? ConfigVariableName { get; set; }
 
+    [DisplayName("Min Players")]
+    public int? PlayerCountMin { get; set; }
+
+    [DisplayName("Max Players")]
+    public int? PlayerCountMax { get; set; }
+
     public List<GameServerDto> AvailableServers { get; set; } = [];
 
     public bool CanBrowseFtp { get; set; }

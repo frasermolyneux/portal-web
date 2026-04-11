@@ -108,6 +108,10 @@ public class MapRotationsController(
             var createDto = new CreateMapRotationDto(model.GameType, model.Title, model.GameMode)
             {
                 Description = model.Description,
+                Status = model.Status,
+                Category = model.Category,
+                SequenceOrder = model.SequenceOrder,
+                CreatedByUserId = Guid.TryParse(User.UserProfileId(), out var upId) ? upId : null,
                 MapIds = model.MapIds
             };
 
@@ -190,6 +194,9 @@ public class MapRotationsController(
                 Title = rotation.Title,
                 Description = rotation.Description,
                 GameMode = rotation.GameMode,
+                Status = rotation.Status,
+                Category = rotation.Category,
+                SequenceOrder = rotation.SequenceOrder,
                 GameType = rotation.GameType,
                 Version = rotation.Version,
                 MapIds = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? []
@@ -230,6 +237,9 @@ public class MapRotationsController(
                 Title = model.Title,
                 Description = model.Description,
                 GameMode = model.GameMode,
+                Status = model.Status,
+                Category = model.Category,
+                SequenceOrder = model.SequenceOrder,
                 MapIds = model.MapIds
             };
 
@@ -463,7 +473,9 @@ public class MapRotationsController(
             var createDto = new CreateMapRotationServerAssignmentDto(model.MapRotationId, model.GameServerId)
             {
                 ConfigFilePath = model.ConfigFilePath,
-                ConfigVariableName = model.ConfigVariableName
+                ConfigVariableName = model.ConfigVariableName,
+                PlayerCountMin = model.PlayerCountMin,
+                PlayerCountMax = model.PlayerCountMax
             };
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.CreateServerAssignment(createDto, cancellationToken).ConfigureAwait(false);

@@ -19,6 +19,15 @@ public class EditMapRotationViewModel
     [DisplayName("Game Mode")]
     public required string GameMode { get; set; }
 
+    [DisplayName("Status")]
+    public MapRotationStatus Status { get; set; }
+
+    [DisplayName("Category")]
+    public string? Category { get; set; }
+
+    [DisplayName("Sequence Order")]
+    public int? SequenceOrder { get; set; }
+
     public GameType GameType { get; set; }
     public int Version { get; set; }
     public List<Guid> MapIds { get; set; } = [];

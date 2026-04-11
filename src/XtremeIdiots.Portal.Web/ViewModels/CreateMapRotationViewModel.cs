@@ -21,5 +21,14 @@ public class CreateMapRotationViewModel
     [DisplayName("Game Mode")]
     public required string GameMode { get; set; }
 
+    [DisplayName("Status")]
+    public MapRotationStatus Status { get; set; } = MapRotationStatus.Active;
+
+    [DisplayName("Category")]
+    public string? Category { get; set; }
+
+    [DisplayName("Sequence Order")]
+    public int? SequenceOrder { get; set; }
+
     public List<Guid> MapIds { get; set; } = [];
 }

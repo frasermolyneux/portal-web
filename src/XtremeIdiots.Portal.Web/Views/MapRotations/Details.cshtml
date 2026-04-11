@@ -18,6 +18,25 @@
                         <div class="ibox-tools">
                             <span class="badge bg-info">@Model.Rotation.GameType</span>
                             <span class="badge bg-secondary">Version @Model.Rotation.Version</span>
+                            @switch (Model.Rotation.Status)
+                            {
+                                case MapRotationStatus.Draft:
+                                    <span class="badge bg-warning text-dark">Draft</span>
+                                    break;
+                                case MapRotationStatus.Testing:
+                                    <span class="badge bg-primary">Testing</span>
+                                    break;
+                                case MapRotationStatus.Active:
+                                    <span class="badge bg-success">Active</span>
+                                    break;
+                                case MapRotationStatus.Archived:
+                                    <span class="badge bg-dark">Archived</span>
+                                    break;
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Rotation.Category))
+                            {
+                                <span class="badge bg-outline-secondary">@Model.Rotation.Category</span>
+                            }
                             <a policy="@AuthPolicies.EditMapRotation" asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
                                 <i class="fa-solid fa-edit"></i> Edit
                             </a>
@@ -39,6 +58,18 @@
 
                             <dt class="col-sm-3">Version</dt>
                             <dd class="col-sm-9">@Model.Rotation.Version</dd>
+
+                            @if (!string.IsNullOrEmpty(Model.Rotation.Category))
+                            {
+                                <dt class="col-sm-3">Category</dt>
+                                <dd class="col-sm-9">@Model.Rotation.Category</dd>
+                            }
+
+                            @if (Model.Rotation.SequenceOrder.HasValue)
+                            {
+                                <dt class="col-sm-3">Sequence Order</dt>
+                                <dd class="col-sm-9">#@Model.Rotation.SequenceOrder</dd>
+                            }
 
                             @if (!string.IsNullOrEmpty(Model.Rotation.Description))
                             {
