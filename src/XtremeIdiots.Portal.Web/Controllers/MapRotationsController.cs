@@ -1388,6 +1388,7 @@ public class MapRotationsController(
                     var createDto = new CreateMapRotationDto(draft.GameType, title, rotation.GameMode)
                     {
                         Description = description,
+                        CreatedByUserId = Guid.TryParse(User.UserProfileId(), out var importUpId) ? importUpId : null,
                         MapIds = mapIds
                     };
 
