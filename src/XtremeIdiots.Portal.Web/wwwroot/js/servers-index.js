@@ -15,7 +15,7 @@ $(document).ready(function () {
             pageLength: 25,
             order: [], // Preserve server-side ordering (ServerListPosition)
             columnDefs: [
-                { targets: 0, responsivePriority: 6, orderable: false }, // Game icon - not sortable
+                { targets: 0, responsivePriority: 6, orderable: false, width: '30px' }, // Game icon - not sortable
                 { targets: 1, responsivePriority: 1 }, // Title - always visible, sortable
                 { targets: 2, responsivePriority: 3 }, // Hostname - medium priority, sortable
                 { targets: 3, responsivePriority: 5, orderable: false }, // Links - not sortable

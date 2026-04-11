@@ -50,7 +50,7 @@ $(document).ready(function () {
             if (gtSel && typeof data.gameType !== 'undefined') gtSel.value = data.gameType;
         },
         columnDefs: [
-            { targets: 0, responsivePriority: 1 }, // Game icon
+            { targets: 0, responsivePriority: 1, width: '30px' }, // Game icon
             { targets: 1, responsivePriority: 2 }, // Name
             { targets: 2, responsivePriority: 3 }, // Date
             { targets: 3, responsivePriority: 6 }, // Map

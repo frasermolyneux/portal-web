@@ -12,7 +12,7 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[5, 'desc']],
         columnDefs: [
-            { targets: 0, responsivePriority: 3 }, // Game
+            { targets: 0, responsivePriority: 3, width: '30px' }, // Game
             { targets: 1, responsivePriority: 1 }, // Map
             { targets: 2, responsivePriority: 2 }, // Player
             { targets: 3, responsivePriority: 5 }, // Server

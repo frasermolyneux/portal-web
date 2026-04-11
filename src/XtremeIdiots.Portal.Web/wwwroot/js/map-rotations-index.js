@@ -30,7 +30,7 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[1, 'asc']],
         columnDefs: [
-            { targets: 0, responsivePriority: 3, width: '40px' },
+            { targets: 0, responsivePriority: 3, width: '30px' },
             { targets: 1, responsivePriority: 1 },
             { targets: 2, responsivePriority: 4, width: '70px' },
             { targets: 3, responsivePriority: 5, width: '80px' },

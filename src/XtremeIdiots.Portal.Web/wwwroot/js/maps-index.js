@@ -12,11 +12,11 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[1, 'asc']],
         columnDefs: [
-            { targets: 0, responsivePriority: 2 }, // Game
-            { targets: 1, responsivePriority: 1 }, // Name
-            { targets: 2, responsivePriority: 5 }, // Map Files
-            { targets: 3, responsivePriority: 3 }, // Popularity
-            { targets: 4, responsivePriority: 4 }  // Image
+            { targets: 0, responsivePriority: 2, width: '30px' },  // Game (icon only)
+            { targets: 1, responsivePriority: 1, width: '20%' },  // Name
+            { targets: 2, responsivePriority: 5, width: '25%' },  // Map Files
+            { targets: 3, responsivePriority: 3, width: '30%' },  // Popularity
+            { targets: 4, responsivePriority: 4, width: '20%' }   // Image
         ],
         ajax: {
             url: dataUrl,
