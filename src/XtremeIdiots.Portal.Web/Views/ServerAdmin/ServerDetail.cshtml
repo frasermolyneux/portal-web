@@ -161,6 +161,17 @@
                         </div>
                     </div>
 
+                    @* Player Count Chart *@
+                    @if (Model.GameServerStats.Any())
+                    {
+                        <div class="ibox">
+                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
+                            <div class="ibox-content">
+                                <div id="sd-playerCountChart" style="height: 200px; width: 100%;"></div>
+                            </div>
+                        </div>
+                    }
+
                     @* Quick Actions + Server Control *@
                     <div class="ibox">
                         <div class="ibox-title"><h5>Server Control</h5></div>
@@ -217,16 +228,6 @@
                         </div>
                     }
 
-                    @* Player Count Chart *@
-                    @if (Model.GameServerStats.Any())
-                    {
-                        <div class="ibox">
-                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
-                            <div class="ibox-content">
-                                <div id="sd-playerCountChart" style="height: 200px; width: 100%;"></div>
-                            </div>
-                        </div>
-                    }
                 </div>
             </div>
         </div>
