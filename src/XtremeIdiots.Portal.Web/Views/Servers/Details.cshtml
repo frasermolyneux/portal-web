@@ -1,0 +1,440 @@
+@using XtremeIdiots.Portal.Web.Extensions
+@using XtremeIdiots.Portal.Web.ViewModels
+@inject IConfiguration Configuration
+@model ServerInfoViewModel
+
+@{
+    ViewData["Title"] = "Server Info - " + (string.IsNullOrWhiteSpace(Model.LiveStatus?.Title) ? Model.GameServer.Title : Model.LiveStatus.Title);
+
+    var gs = Model.GameServer;
+    var liveStatus = Model.LiveStatus;
+    var serverTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title;
+    var serverId = gs.GameServerId;
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+
+    @* ─── Server Header ─── *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="mb-0">
+                    <game-type-icon game="@gs.GameType" size="24" class="me-2" />
+                    <server-name title="@gs.Title" live-title="@liveStatus?.Title"></server-name>
+                    @if (liveStatus != null)
+                    {
+                        <small class="text-muted ms-2">@liveStatus.CurrentPlayers / @liveStatus.MaxPlayers players</small>
+                        @if (liveStatus.IsOnline)
+                        {
+                            <span class="badge bg-success ms-2">Online</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger ms-2">Offline</span>
+                        }
+                    }
+                </h4>
+                <div class="d-flex gap-2">
+                    <server-link type="steam" game="@gs.GameType" host="@gs.Hostname" port="@gs.QueryPort"></server-link>
+                    <server-link type="gametracker" host="@gs.Hostname" port="@gs.QueryPort"></server-link>
+                    <server-link type="hlsw" game="@gs.GameType" host="@gs.Hostname" port="@gs.QueryPort"></server-link>
+                    <a asp-controller="Servers" asp-action="Index" class="btn btn-sm btn-outline-secondary" title="Back to Servers">
+                        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Servers
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ─── Tabs ─── *@
+    <ul class="nav nav-tabs" id="serverInfoTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview"
+                    type="button" role="tab" aria-controls="overview" aria-selected="true">
+                <i class="fa-solid fa-fw fa-circle-info"></i> Overview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="maps-tab" data-bs-toggle="tab" data-bs-target="#maps"
+                    type="button" role="tab" aria-controls="maps" aria-selected="false">
+                <i class="fa-solid fa-fw fa-map"></i> Maps
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="playermap-tab" data-bs-toggle="tab" data-bs-target="#playermap"
+                    type="button" role="tab" aria-controls="playermap" aria-selected="false">
+                <i class="fa-solid fa-fw fa-earth-americas"></i> Player Map
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content pt-3" id="serverInfoTabContent">
+
+        @* ═══ OVERVIEW TAB ═══ *@
+        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <div class="row">
+                @* Server Info Card *@
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="ibox">
+                        <div class="ibox-title"><h5>Server Information</h5></div>
+                        <div class="ibox-content">
+                            <dl class="row mb-0">
+                                <dt class="col-5">Hostname</dt>
+                                <dd class="col-7"><server-host host="@gs.Hostname" port="@gs.QueryPort"></server-host></dd>
+
+                                <dt class="col-5">Game</dt>
+                                <dd class="col-7"><game-type-icon game="@gs.GameType" size="16" /> @gs.GameType</dd>
+
+                                <dt class="col-5">Current Map</dt>
+                                <dd class="col-7">@(liveStatus?.Map ?? "—")</dd>
+
+                                <dt class="col-5">Mod</dt>
+                                <dd class="col-7">@(liveStatus?.Mod ?? "—")</dd>
+
+                                <dt class="col-5">Players</dt>
+                                <dd class="col-7">@(liveStatus?.CurrentPlayers ?? 0) / @(liveStatus?.MaxPlayers ?? 0)</dd>
+
+                                @if (liveStatus?.LastUpdated != null)
+                                {
+                                    var elapsed = DateTime.UtcNow - liveStatus.LastUpdated.Value;
+                                    var freshness = elapsed.TotalMinutes < 5 ? "text-success" : elapsed.TotalMinutes < 15 ? "text-warning" : "text-danger";
+                                    <dt class="col-5">Last Updated</dt>
+                                    <dd class="col-7">
+                                        <span class="@freshness">
+                                            @if (elapsed.TotalMinutes < 1) { <text>Just now</text> }
+                                            else if (elapsed.TotalMinutes < 60) { <text>@((int)elapsed.TotalMinutes)m ago</text> }
+                                            else { <text>@((int)elapsed.TotalHours)h @(elapsed.Minutes)m ago</text> }
+                                        </span>
+                                    </dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                @* Connected Players *@
+                <div class="col-lg-8 col-md-6 mb-3">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>Connected Players <span id="si-playerCount" class="badge bg-secondary ms-1">@(liveStatus?.CurrentPlayers ?? 0)</span></h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div class="table-responsive">
+                                <table id="si-playersTable" class="table table-striped table-hover w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Score</th>
+                                            <th scope="col">Ping</th>
+                                            <th scope="col">Country</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Player Count Chart *@
+            @if (Model.GameServerStats.Any())
+            {
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="ibox">
+                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
+                            <div class="ibox-content">
+                                <div id="si-playerCountChart" style="height: 300px; width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ═══ MAPS TAB ═══ *@
+        <div class="tab-pane fade" id="maps" role="tabpanel" aria-labelledby="maps-tab">
+
+            @* Map Rotation *@
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <div class="ibox">
+                        <div class="ibox-title"><h5>Map Rotation</h5></div>
+                        <div class="ibox-content">
+                            <div id="si-mapRotationCarousel" class="d-flex overflow-auto gap-2 pb-2" style="scroll-behavior: smooth; display: none !important;"></div>
+                            <div id="si-mapRotationLoading" class="text-center text-muted">
+                                <i class="fa fa-spinner fa-spin"></i> Loading map rotation...
+                            </div>
+                            <div id="si-mapRotationError" class="text-center text-muted" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Map Timeline *@
+            @if (Model.MapTimelineDataPoints.Any())
+            {
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="ibox">
+                            <div class="ibox-title"><h5>Map Timeline <small class="text-muted">(24h)</small></h5></div>
+                            <div class="ibox-content">
+                                @{
+                                    var mapTimelineHeight = Model.GameServerStats.GroupBy(m => m.MapName).ToList().Count * 41 + 50;
+                                }
+                                <div id="si-mapsTimeline" style="height: @(mapTimelineHeight)px; width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ═══ PLAYER MAP TAB ═══ *@
+        <div class="tab-pane fade" id="playermap" role="tabpanel" aria-labelledby="playermap-tab">
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>Recent Players <small class="text-muted">(last 48 hours)</small></h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div id="si-playerMap" style="height: 500px; width: 100%;"></div>
+                            <div id="si-playerMapLoading" class="text-center text-muted">
+                                <i class="fa fa-spinner fa-spin"></i> Map loads when tab is activated...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <script>
+        var serverId = '@serverId';
+        var currentMap = '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(liveStatus?.Map ?? ""))';
+
+        // ─── Live Players Table ───
+        (function() {
+            var table = $('#si-playersTable').DataTable({
+                processing: true,
+                paging: false,
+                info: false,
+                searching: false,
+                autoWidth: false,
+                order: [[0, "asc"]],
+                ajax: {
+                    url: '/Servers/GetLivePlayers/' + serverId,
+                    dataSrc: function(json) {
+                        $('#si-playerCount').text(json.data ? json.data.length : 0);
+                        return json.data || [];
+                    }
+                },
+                columns: [
+                    { data: 'num', width: '50px' },
+                    {
+                        data: 'name',
+                        render: function(data) {
+                            var el = document.createElement('span');
+                            el.textContent = data || '';
+                            return el.outerHTML;
+                        }
+                    },
+                    { data: 'score', width: '70px' },
+                    { data: 'ping', width: '70px' },
+                    {
+                        data: 'countryCode',
+                        width: '80px',
+                        render: function(data, type, row) {
+                            if (!data) return '';
+                            var code = data.toLowerCase().replace(/[^a-z]/g, '');
+                            var name = row.countryName || data;
+                            var img = document.createElement('img');
+                            img.src = 'https://flagcdn.com/16x12/' + code + '.png';
+                            img.width = 16;
+                            img.height = 12;
+                            img.alt = name;
+                            img.title = name;
+                            return img.outerHTML;
+                        }
+                    }
+                ]
+            });
+
+            // Auto-refresh every 30 seconds
+            setInterval(function() { table.ajax.reload(null, false); }, 30000);
+        })();
+
+        // ─── Map Rotation (loads once) ───
+        (function() {
+            $.ajax({
+                type: 'GET',
+                url: '/Servers/GetPublicMapRotation/' + serverId,
+                success: function(result) {
+                    if (result.success && result.maps && result.maps.length > 0) {
+                        var carousel = $('#si-mapRotationCarousel');
+                        carousel.empty();
+
+                        result.maps.forEach(function(map) {
+                            var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/noimage.jpg';
+                            var isCurrent = map.mapName === currentMap;
+
+                            var card = $('<div>', { class: 'map-card' + (isCurrent ? ' border border-success border-2 rounded' : '') });
+                            var img = $('<img>', {
+                                src: imgSrc,
+                                class: 'map-card-image',
+                                alt: map.mapTitle,
+                                onerror: "this.src='/images/noimage.jpg'"
+                            });
+                            var body = $('<div>', { class: 'map-card-body' });
+                            var title = $('<div>', { class: 'map-card-title', title: map.mapTitle });
+                            title.text(map.mapName);
+                            if (isCurrent) {
+                                title.append(' <span class="badge bg-success">Current</span>');
+                            }
+
+                            body.append(title);
+                            card.append(img).append(body);
+                            carousel.append(card);
+                        });
+
+                        $('#si-mapRotationLoading').hide();
+                        carousel.css('display', '');
+
+                        // Scroll current map into view
+                        if (currentMap) {
+                            carousel.find('.border-success')[0]?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                        }
+                    } else {
+                        $('#si-mapRotationLoading').hide();
+                        $('#si-mapRotationError').text('No map rotation configured for this server').show();
+                    }
+                },
+                error: function() {
+                    $('#si-mapRotationLoading').hide();
+                    $('#si-mapRotationError').text('Failed to load map rotation').show();
+                }
+            });
+        })();
+
+        // ─── Google Charts: Player Count ───
+        @if (Model.GameServerStats.Any())
+        {
+            <text>
+            google.charts.load('current', { 'packages': ['corechart', 'timeline'] });
+            google.charts.setOnLoadCallback(function() {
+                var data = new google.visualization.DataTable();
+                data.addColumn('datetime', 'Timestamp');
+                data.addColumn('number', 'Player Count');
+                data.addRows([
+                    @foreach (var item in Model.GameServerStats)
+                    {
+                        <text>[new Date(@item.Timestamp.Year, @(item.Timestamp.Month-1), @item.Timestamp.Day, @item.Timestamp.Hour, @item.Timestamp.Minute, @item.Timestamp.Second), @item.PlayerCount],</text>
+                    }
+                ]);
+                var chart = new google.visualization.LineChart(document.getElementById('si-playerCountChart'));
+                chart.draw(data, {
+                    title: 'Player Count (Last 48 hours)',
+                    curveType: 'function',
+                    legend: { position: 'bottom' },
+                    seriesType: 'line',
+                    height: 300
+                });
+            });
+            </text>
+        }
+
+        // ─── Google Charts: Map Timeline (draw on tab show) ───
+        @if (Model.MapTimelineDataPoints.Any())
+        {
+            <text>
+            google.charts.setOnLoadCallback(function() {
+                $('button[data-bs-target="#maps"]').on('shown.bs.tab', function() {
+                    var container = document.getElementById('si-mapsTimeline');
+                    if (!container || container.dataset.drawn) return;
+
+                    var chart = new google.visualization.Timeline(container);
+                    var dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn({ type: 'string', id: 'Map Name' });
+                    dataTable.addColumn({ type: 'datetime', id: 'Start' });
+                    dataTable.addColumn({ type: 'datetime', id: 'End' });
+                    dataTable.addRows([
+                        @foreach (var dp in Model.MapTimelineDataPoints)
+                        {
+                            <text>['@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(dp.MapName))', new Date(@dp.Start.Year, @(dp.Start.Month-1), @dp.Start.Day, @dp.Start.Hour, @dp.Start.Minute, @dp.Start.Second), new Date(@dp.End.Year, @(dp.End.Month-1), @dp.End.Day, @dp.End.Hour, @dp.End.Minute, @dp.End.Second)],</text>
+                        }
+                    ]);
+                    chart.draw(dataTable);
+                    container.dataset.drawn = 'true';
+                });
+            });
+            </text>
+        }
+
+        // ─── Google Maps: Player Map (load on tab show) ───
+        @{
+            var mapsApiKey = Configuration["Google:MapsApiKey"];
+            var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @@"^[A-Za-z0-9_-]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
+        }
+        @if (isValidMapsApiKey)
+        {
+            <text>
+            var playerMapLoaded = false;
+            $('button[data-bs-target="#playermap"]').on('shown.bs.tab', function() {
+                if (playerMapLoaded) return;
+                playerMapLoaded = true;
+
+                $('#si-playerMapLoading').hide();
+
+                var script = document.createElement('script');
+                script.src = 'https://maps.googleapis.com/maps/api/js?key=@mapsApiKey&callback=initPlayerMap';
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+            });
+
+            window.initPlayerMap = function() {
+                var map = new google.maps.Map(document.getElementById('si-playerMap'), {
+                    zoom: 2,
+                    center: { lat: 30.0, lng: 0.0 }
+                });
+
+                // Fetch recent players for this server
+                $.ajax({
+                    type: 'GET',
+                    url: '/Servers/GetRecentPlayersForMap/' + serverId,
+                    success: function(result) {
+                        if (result.players) {
+                            result.players.forEach(function(player) {
+                                new google.maps.Marker({
+                                    position: new google.maps.LatLng(player.lat, player.lng),
+                                    map: map,
+                                    title: 'Player',
+                                    icon: {
+                                        url: '/images/game-icons/' + player.gameType + '.png'
+                                    }
+                                });
+                            });
+                        }
+                    }
+                });
+            };
+            </text>
+        }
+        else
+        {
+            <text>
+            $('button[data-bs-target="#playermap"]').on('shown.bs.tab', function() {
+                $('#si-playerMapLoading').text('Player map is not available (Google Maps API key not configured)').show();
+            });
+            </text>
+        }
+    </script>
+}
