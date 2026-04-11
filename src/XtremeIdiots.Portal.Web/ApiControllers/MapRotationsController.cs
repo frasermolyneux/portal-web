@@ -49,6 +49,7 @@ public class MapRotationsApiController(
                     "mapCount" => searchOrder == "asc" ? MapRotationsOrder.MapCountAsc : MapRotationsOrder.MapCountDesc,
                     "serverCount" => searchOrder == "asc" ? MapRotationsOrder.ServerCountAsc : MapRotationsOrder.ServerCountDesc,
                     "updatedAt" => searchOrder == "asc" ? MapRotationsOrder.UpdatedAtAsc : MapRotationsOrder.UpdatedAtDesc,
+                    "createdBy" => searchOrder == "asc" ? MapRotationsOrder.CreatedByAsc : MapRotationsOrder.CreatedByDesc,
                     _ => MapRotationsOrder.TitleAsc
                 };
             }
@@ -60,16 +61,19 @@ public class MapRotationsApiController(
             // Extract server-side filter parameters from column search values
             MapRotationStatus? statusFilter = null;
             string? gameModeFilter = null;
+            Guid? createdByFilter = null;
             foreach (var col in model.Columns)
             {
                 if (col.Name == "status" && !string.IsNullOrWhiteSpace(col.Search?.Value) && Enum.TryParse<MapRotationStatus>(col.Search.Value, out var parsedStatus))
                     statusFilter = parsedStatus;
                 if (col.Name == "gameMode" && !string.IsNullOrWhiteSpace(col.Search?.Value))
                     gameModeFilter = col.Search.Value;
+                if (col.Name == "createdBy" && !string.IsNullOrWhiteSpace(col.Search?.Value) && Guid.TryParse(col.Search.Value, out var parsedUserId))
+                    createdByFilter = parsedUserId;
             }
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.GetMapRotations(
-                gameTypes, gameModeFilter, statusFilter, searchValue, null, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+                gameTypes, gameModeFilter, statusFilter, searchValue, createdByFilter, null, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!apiResponse.IsSuccess || apiResponse.Result?.Data is null)
             {
@@ -105,6 +109,7 @@ public class MapRotationsApiController(
                     serverCount = r.ServerAssignments?.Count ?? 0,
                     version = r.Version,
                     createdByDisplayName = r.CreatedByDisplayName,
+                    lastModifiedByDisplayName = r.LastModifiedByDisplayName,
                     createdAt = r.CreatedAt.ToString("yyyy-MM-dd"),
                     updatedAt = r.UpdatedAt.ToString("yyyy-MM-dd")
                 })

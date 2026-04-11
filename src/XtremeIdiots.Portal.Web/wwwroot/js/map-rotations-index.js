@@ -81,12 +81,13 @@ $(document).ready(function () {
                 data: 'updatedAt', name: 'updatedAt', orderable: true,
                 render: function (data, type, row) {
                     var html = '<small>' + escapeHtml(data) + '</small>';
-                    if (row.createdByDisplayName) html += '<br><small class="text-muted">' + escapeHtml(row.createdByDisplayName) + '</small>';
+                    var author = row.lastModifiedByDisplayName || row.createdByDisplayName;
+                    if (author) html += '<br><small class="text-muted"><i class="fa-solid fa-user fa-xs me-1"></i>' + escapeHtml(author) + '</small>';
                     return html;
                 }
             },
             {
-                data: 'createdByDisplayName', name: 'createdBy', orderable: false, visible: false
+                data: 'createdByDisplayName', name: 'createdBy', orderable: true, visible: false
             },
             {
                 data: null, name: 'actions', orderable: false,
@@ -169,11 +170,36 @@ $(document).ready(function () {
             var el = document.getElementById(id);
             if (el) el.value = '';
         });
+        var myBtn = document.getElementById('filterMyRotations');
+        if (myBtn) {
+            myBtn.classList.remove('active', 'btn-primary');
+            myBtn.classList.add('btn-outline-primary');
+        }
         applyGameColumnVisibility();
         table.columns().search('');
         table.search('');
         table.page('first').draw(false);
     });
+
+    // "My Rotations" toggle
+    var myRotationsBtn = document.getElementById('filterMyRotations');
+    if (myRotationsBtn) {
+        myRotationsBtn.addEventListener('click', function () {
+            var isActive = this.classList.contains('active');
+            if (isActive) {
+                this.classList.remove('active', 'btn-primary');
+                this.classList.add('btn-outline-primary');
+                table.column('createdBy:name').search('').draw();
+            } else {
+                this.classList.add('active', 'btn-primary');
+                this.classList.remove('btn-outline-primary');
+                var userId = this.dataset.userProfileId;
+                if (userId) {
+                    table.column('createdBy:name').search(userId).draw();
+                }
+            }
+        });
+    }
 
     // Delete handler
     tableEl.on('click', '.btn-delete', function () {

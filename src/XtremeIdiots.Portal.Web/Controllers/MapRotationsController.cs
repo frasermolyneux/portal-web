@@ -290,6 +290,7 @@ public class MapRotationsController(
                 Status = model.Status,
                 Category = model.Category,
                 SequenceOrder = model.SequenceOrder,
+                LastModifiedByUserId = Guid.TryParse(User.UserProfileId(), out var editUpId) ? editUpId : null,
                 MapIds = model.MapIds
             };
 
