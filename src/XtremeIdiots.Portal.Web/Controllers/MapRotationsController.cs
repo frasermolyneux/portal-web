@@ -1111,6 +1111,7 @@ public class MapRotationsController(
                 {
                     Index = i,
                     Title = rotation.Title,
+                    Description = rotation.RawComment ?? "",
                     GameMode = rotation.GameMode,
                     MapCount = rotation.MapNames.Count,
                     MapNames = rotation.MapNames,
@@ -1186,13 +1187,16 @@ public class MapRotationsController(
                 return authResult;
 
             var selectedIndices = new HashSet<int>(model.SelectedIndices);
-            var selectedRotations = draft.Rotations
+            var editLookup = model.Edits
+                .Where(e => e != null)
+                .ToDictionary(e => e.Index, e => e);
+            var prefix = model.ImportPrefix?.Trim() ?? "";
+            var selectedRotationsWithIndex = draft.Rotations
                 .Select((r, i) => (Rotation: r, Index: i))
                 .Where(x => selectedIndices.Contains(x.Index))
-                .Select(x => x.Rotation)
                 .ToList();
 
-            if (selectedRotations.Count == 0)
+            if (selectedRotationsWithIndex.Count == 0)
             {
                 this.AddAlertWarning("No rotations selected for import.");
                 return RedirectToAction(nameof(Import));
@@ -1219,7 +1223,7 @@ public class MapRotationsController(
             }
 
             // Step 2: Resolve ALL map names to GUIDs (always re-resolve after creation attempt)
-            var allMapNames = selectedRotations.SelectMany(r => r.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var allMapNames = selectedRotationsWithIndex.SelectMany(x => x.Rotation.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var mapLookup = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
             for (var skip = 0; skip < allMapNames.Length; skip += 100)
@@ -1241,7 +1245,7 @@ public class MapRotationsController(
             // Step 3: Create rotations
             var results = new List<ImportResultItem>();
 
-            foreach (var rotation in selectedRotations)
+            foreach (var (rotation, rotationIndex) in selectedRotationsWithIndex)
             {
                 try
                 {
@@ -1262,9 +1266,24 @@ public class MapRotationsController(
                         continue;
                     }
 
-                    var createDto = new CreateMapRotationDto(draft.GameType, rotation.Title, rotation.GameMode)
+                    // Apply user edits (title/description) and prefix
+                    var title = rotation.Title;
+                    var description = rotation.RawComment;
+                    if (editLookup.TryGetValue(rotationIndex, out var edit))
                     {
-                        Description = rotation.RawComment,
+                        if (!string.IsNullOrWhiteSpace(edit.Title))
+                            title = edit.Title.Trim();
+                        description = edit.Description?.Trim();
+                    }
+
+                    if (!string.IsNullOrEmpty(prefix) && !title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        title = $"{prefix} — {title}";
+                    }
+
+                    var createDto = new CreateMapRotationDto(draft.GameType, title, rotation.GameMode)
+                    {
+                        Description = description,
                         MapIds = mapIds
                     };
 
@@ -1275,7 +1294,7 @@ public class MapRotationsController(
                     {
                         results.Add(new ImportResultItem
                         {
-                            Title = rotation.Title,
+                            Title = title,
                             Status = "Imported",
                             MapRotationId = createResult.Result.Data.MapRotationId
                         });
@@ -1284,7 +1303,7 @@ public class MapRotationsController(
                     {
                         results.Add(new ImportResultItem
                         {
-                            Title = rotation.Title,
+                            Title = title,
                             Status = "Failed",
                             Error = "API returned failure"
                         });
@@ -1305,7 +1324,7 @@ public class MapRotationsController(
             {
                 GameType = draft.GameType,
                 ImportedCount = results.Count(r => r.Status == "Imported"),
-                SkippedCount = selectedRotations.Count - results.Count,
+                SkippedCount = selectedRotationsWithIndex.Count - results.Count,
                 FailedCount = results.Count(r => r.Status == "Failed"),
                 MapsCreatedCount = mapsCreated,
                 Results = results

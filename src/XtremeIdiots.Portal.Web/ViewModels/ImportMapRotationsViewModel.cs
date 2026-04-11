@@ -30,6 +30,7 @@ public class ImportRotationPreviewItem
 {
     public int Index { get; set; }
     public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
     public string GameMode { get; set; } = "";
     public int MapCount { get; set; }
     public List<string> MapNames { get; set; } = [];
@@ -45,7 +46,16 @@ public class ImportRotationPreviewItem
 public class ImportMapRotationsConfirmViewModel
 {
     public string DraftId { get; set; } = "";
+    public string ImportPrefix { get; set; } = "";
     public List<int> SelectedIndices { get; set; } = [];
+    public List<ImportRotationEditItem> Edits { get; set; } = [];
+}
+
+public class ImportRotationEditItem
+{
+    public int Index { get; set; }
+    public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
 }
 
 public class ImportMapRotationsResultViewModel

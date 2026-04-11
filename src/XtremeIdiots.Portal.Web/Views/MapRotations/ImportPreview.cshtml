@@ -27,6 +27,31 @@
                     }
 
                     <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>Import Prefix</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div class="row align-items-end">
+                                <div class="col-md-6">
+                                    <label for="ImportPrefix" class="form-label">
+                                        Title Prefix <small class="text-muted">(optional — prepended to all titles on import)</small>
+                                    </label>
+                                    <input type="text" class="form-control" id="ImportPrefix" name="ImportPrefix"
+                                           placeholder="e.g. COD4 - Knife Maps" />
+                                </div>
+                                <div class="col-md-6 mt-2 mt-md-0">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="applyPrefix">
+                                        <i class="fa-solid fa-fw fa-pen"></i> Preview Prefix
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearPrefix">
+                                        <i class="fa-solid fa-fw fa-eraser"></i> Clear Prefix
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ibox">
                         <div class="ibox-title d-flex justify-content-between align-items-center">
                             <h5>@ViewData["Title"]</h5>
                             <div>
@@ -40,7 +65,7 @@
                                     <thead>
                                         <tr>
                                             <th style="width: 40px;"><i class="fa-solid fa-fw fa-check"></i></th>
-                                            <th>Title</th>
+                                            <th>Title / Description</th>
                                             <th>Mode</th>
                                             <th>Maps</th>
                                             <th>Variable</th>
@@ -49,8 +74,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in Model.Rotations)
+                                        @for (var i = 0; i < Model.Rotations.Count; i++)
                                         {
+                                            var item = Model.Rotations[i];
                                             <tr class="@(item.IsDuplicate ? "table-warning" : "")">
                                                 <td>
                                                     <input type="checkbox" name="SelectedIndices" value="@item.Index"
@@ -58,10 +84,17 @@
                                                            @(item.Selected ? "checked" : "") />
                                                 </td>
                                                 <td>
-                                                    <strong>@item.Title</strong>
+                                                    <input type="hidden" name="Edits[@i].Index" value="@item.Index" />
+                                                    <input type="text" name="Edits[@i].Title" value="@item.Title"
+                                                           class="form-control form-control-sm mb-1 rotation-title"
+                                                           data-original-title="@item.Title"
+                                                           placeholder="Rotation title" />
+                                                    <input type="text" name="Edits[@i].Description" value="@item.Description"
+                                                           class="form-control form-control-sm rotation-description"
+                                                           placeholder="Description (optional)" />
                                                     @if (item.DateText != null)
                                                     {
-                                                        <br /><small class="text-muted">@item.DateText</small>
+                                                        <small class="text-muted mt-1 d-inline-block">@item.DateText</small>
                                                     }
                                                     @if (item.IsDuplicate)
                                                     {
@@ -125,6 +158,25 @@
         });
         document.getElementById('selectNone')?.addEventListener('click', function () {
             document.querySelectorAll('.rotation-checkbox').forEach(cb => cb.checked = false);
+        });
+
+        document.getElementById('applyPrefix')?.addEventListener('click', function () {
+            var prefix = document.getElementById('ImportPrefix').value.trim();
+            if (!prefix) return;
+            var separator = ' — ';
+            document.querySelectorAll('.rotation-title').forEach(function (input) {
+                var original = input.getAttribute('data-original-title');
+                if (!input.value.startsWith(prefix + separator)) {
+                    input.value = prefix + separator + original;
+                }
+            });
+        });
+
+        document.getElementById('clearPrefix')?.addEventListener('click', function () {
+            document.getElementById('ImportPrefix').value = '';
+            document.querySelectorAll('.rotation-title').forEach(function (input) {
+                input.value = input.getAttribute('data-original-title');
+            });
         });
     </script>
 }
