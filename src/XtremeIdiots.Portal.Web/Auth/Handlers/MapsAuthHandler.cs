@@ -30,15 +30,6 @@ public class MapsAuthHandler : IAuthorizationHandler
                 case ManageMaps:
                     HandleManageMaps(context, requirement);
                     break;
-                case CreateMapPack:
-                    HandleCreateMapPack(context, requirement);
-                    break;
-                case EditMapPack:
-                    HandleEditMapPack(context, requirement);
-                    break;
-                case DeleteMapPack:
-                    HandleDeleteMapPack(context, requirement);
-                    break;
                 case PushMapToRemote:
                     HandlePushMapToRemote(context, requirement);
                     break;
@@ -66,21 +57,6 @@ public class MapsAuthHandler : IAuthorizationHandler
     }
 
     private static void HandleManageMaps(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
-    }
-
-    private static void HandleCreateMapPack(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
-    }
-
-    private static void HandleEditMapPack(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
-    }
-
-    private static void HandleDeleteMapPack(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
     }

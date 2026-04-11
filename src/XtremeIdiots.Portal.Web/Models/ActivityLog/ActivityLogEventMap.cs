@@ -70,7 +70,6 @@ public static class ActivityLogEventMap
         // Maps
         ["MapDeletedFromHost"] = (ActivityLogCategory.Maps, true),
         ["MapPushedToRemote"] = (ActivityLogCategory.Maps, true),
-        ["MapPackCreated"] = (ActivityLogCategory.Maps, true),
         ["MapsListRetrieved"] = (ActivityLogCategory.Maps, false),
         ["MapLoaded"] = (ActivityLogCategory.Maps, false),
         ["MapImageRetrieved"] = (ActivityLogCategory.Maps, false),

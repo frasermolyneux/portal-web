@@ -60,9 +60,6 @@ public static class AuthPolicies
     public const string AccessMaps = nameof(AccessMaps);
     public const string AccessMapManagerController = nameof(AccessMapManagerController);
     public const string ManageMaps = nameof(ManageMaps);
-    public const string CreateMapPack = nameof(CreateMapPack);
-    public const string EditMapPack = nameof(EditMapPack);
-    public const string DeleteMapPack = nameof(DeleteMapPack);
     public const string PushMapToRemote = nameof(PushMapToRemote);
     public const string DeleteMapFromHost = nameof(DeleteMapFromHost);
 

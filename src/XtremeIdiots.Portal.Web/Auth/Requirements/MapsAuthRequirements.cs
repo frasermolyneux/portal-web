@@ -24,27 +24,6 @@ public class ManageMaps : IAuthorizationRequirement
 }
 
 /// <summary>
-/// Authorization requirement for creating map packs
-/// </summary>
-public class CreateMapPack : IAuthorizationRequirement
-{
-}
-
-/// <summary>
-/// Authorization requirement for editing map packs
-/// </summary>
-public class EditMapPack : IAuthorizationRequirement
-{
-}
-
-/// <summary>
-/// Authorization requirement for deleting map packs
-/// </summary>
-public class DeleteMapPack : IAuthorizationRequirement
-{
-}
-
-/// <summary>
 /// Authorization requirement for pushing maps to remote servers
 /// </summary>
 public class PushMapToRemote : IAuthorizationRequirement

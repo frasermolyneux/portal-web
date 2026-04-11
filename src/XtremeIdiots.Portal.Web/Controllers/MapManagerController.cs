@@ -51,7 +51,6 @@ public class MapManagerController(
 
             var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id).ConfigureAwait(false);
             var getLoadedServerMapsFromHostResult = await serversApiClient.Maps.V1.GetLoadedServerMapsFromHost(id).ConfigureAwait(false);
-            var mapPacks = await repositoryApiClient.MapPacks.V1.GetMapPacks(null, [id], null, 0, 50, MapPacksOrder.Title).ConfigureAwait(false);
 
             var mapsCollectionApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                 gameServerData!.GameType,
@@ -62,8 +61,7 @@ public class MapManagerController(
             {
                 Maps = mapsCollectionApiResponse.Result?.Data?.Items?.ToList() ?? [],
                 ServerMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?.ToList() ?? [],
-                RconMaps = getServerMapsResult.Result?.Data?.Items?.ToList() ?? [],
-                MapPacks = mapPacks.Result?.Data?.Items?.ToList() ?? []
+                RconMaps = getServerMapsResult.Result?.Data?.Items?.ToList() ?? []
             };
 
             return View(viewModel);

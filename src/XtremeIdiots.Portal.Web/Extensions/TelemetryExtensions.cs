@@ -4,7 +4,6 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Demos;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapPacks;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
@@ -86,21 +85,6 @@ public static class TelemetryExtensions
         eventTelemetry.Properties.TryAdd("DemoId", demoDto.DemoId.ToString());
         eventTelemetry.Properties.TryAdd("GameType", demoDto.GameType.ToString());
         eventTelemetry.Properties.TryAdd("DemoTitle", demoDto.Title ?? "Unknown");
-
-        return eventTelemetry;
-    }
-
-    public static EventTelemetry Enrich(this EventTelemetry eventTelemetry, MapPackDto mapPackDto)
-    {
-        eventTelemetry.Properties.TryAdd("MapPackId", mapPackDto.MapPackId.ToString());
-        eventTelemetry.Properties.TryAdd("GameServerId", mapPackDto.GameServerId.ToString());
-
-        return eventTelemetry;
-    }
-
-    public static EventTelemetry Enrich(this EventTelemetry eventTelemetry, CreateMapPackDto createMapPackDto)
-    {
-        eventTelemetry.Properties.TryAdd("GameServerId", createMapPackDto.GameServerId.ToString());
 
         return eventTelemetry;
     }
@@ -196,21 +180,6 @@ public static class TelemetryExtensions
         exceptionTelemetry.Properties.TryAdd("DemoId", demoDto.DemoId.ToString());
         exceptionTelemetry.Properties.TryAdd("GameType", demoDto.GameType.ToString());
         exceptionTelemetry.Properties.TryAdd("DemoTitle", demoDto.Title ?? "Unknown");
-
-        return exceptionTelemetry;
-    }
-
-    public static ExceptionTelemetry Enrich(this ExceptionTelemetry exceptionTelemetry, MapPackDto mapPackDto)
-    {
-        exceptionTelemetry.Properties.TryAdd("MapPackId", mapPackDto.MapPackId.ToString());
-        exceptionTelemetry.Properties.TryAdd("GameServerId", mapPackDto.GameServerId.ToString());
-
-        return exceptionTelemetry;
-    }
-
-    public static ExceptionTelemetry Enrich(this ExceptionTelemetry exceptionTelemetry, CreateMapPackDto createMapPackDto)
-    {
-        exceptionTelemetry.Properties.TryAdd("GameServerId", createMapPackDto.GameServerId.ToString());
 
         return exceptionTelemetry;
     }

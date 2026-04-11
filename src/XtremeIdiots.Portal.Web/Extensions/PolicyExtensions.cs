@@ -53,9 +53,6 @@ public static class PolicyExtensions
         options.AddPolicy(AuthPolicies.AccessMaps, policy => policy.Requirements.Add(new AccessMaps()));
         options.AddPolicy(AuthPolicies.AccessMapManagerController, policy => policy.Requirements.Add(new AccessMapManagerController()));
         options.AddPolicy(AuthPolicies.ManageMaps, policy => policy.Requirements.Add(new ManageMaps()));
-        options.AddPolicy(AuthPolicies.CreateMapPack, policy => policy.Requirements.Add(new CreateMapPack()));
-        options.AddPolicy(AuthPolicies.EditMapPack, policy => policy.Requirements.Add(new EditMapPack()));
-        options.AddPolicy(AuthPolicies.DeleteMapPack, policy => policy.Requirements.Add(new DeleteMapPack()));
         options.AddPolicy(AuthPolicies.PushMapToRemote, policy => policy.Requirements.Add(new PushMapToRemote()));
         options.AddPolicy(AuthPolicies.DeleteMapFromHost, policy => policy.Requirements.Add(new DeleteMapFromHost()));
 

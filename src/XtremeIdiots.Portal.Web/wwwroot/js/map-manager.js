@@ -1,28 +1,5 @@
 // Map Manager - Initialize DataTables with responsive for all tables
 $(document).ready(function () {
-    // Map Packs Table
-    const mapPacksTable = $('#mapPacksTable');
-    if (mapPacksTable.length && mapPacksTable.find('tbody tr').length > 0) {
-        mapPacksTable.DataTable({
-            responsive: {
-                details: {
-                    type: 'inline',
-                    target: 'tr'
-                }
-            },
-            autoWidth: false,
-            paging: false, // Small dataset
-            searching: false,
-            order: [[0, 'asc']], // Title ascending
-            columnDefs: [
-                { targets: 0, responsivePriority: 1, orderable: true }, // Title - always visible
-                { targets: 1, responsivePriority: 3, orderable: false }, // Game Mode - not sortable
-                { targets: 2, responsivePriority: 4, orderable: false }, // Count - not sortable
-                { targets: 3, responsivePriority: 2, orderable: false }  // Actions - not sortable
-            ]
-        });
-    }
-
     // Current Map Rotation Table
     const mapRotationTable = $('#mapRotationTable');
     if (mapRotationTable.length && mapRotationTable.find('tbody tr').length > 0) {
