@@ -79,9 +79,28 @@ public class MapManagerController(
                 }
             }
 
+            // Also fetch map DTOs for maps in the active rotation (they may not be in the RCON set)
+            var allMaps = mapsCollectionApiResponse.Result?.Data?.Items?.ToList() ?? [];
+            var existingMapIds = allMaps.Select(m => m.MapId).ToHashSet();
+            var activeAssignment = assignments.FirstOrDefault(a => a.ActivationState == ActivationState.Active);
+            if (activeAssignment != null && rotations.TryGetValue(activeAssignment.MapRotationId, out var activeRotation))
+            {
+                var missingMapIds = (activeRotation.MapRotationMaps ?? [])
+                    .Select(m => m.MapId)
+                    .Where(id => !existingMapIds.Contains(id))
+                    .ToList();
+
+                foreach (var mapId in missingMapIds)
+                {
+                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(mapId, cancellationToken).ConfigureAwait(false);
+                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
+                        allMaps.Add(mapResponse.Result.Data);
+                }
+            }
+
             var viewModel = new ManageMapsViewModel(gameServerData)
             {
-                Maps = mapsCollectionApiResponse.Result?.Data?.Items?.ToList() ?? [],
+                Maps = allMaps,
                 ServerMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?.ToList() ?? [],
                 RconMaps = getServerMapsResult.Result?.Data?.Items?.ToList() ?? [],
                 RotationAssignments = assignments,

@@ -193,96 +193,128 @@
 
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5>Current Map Rotation - sv_mapRotation</h5>
+                    @if (Model.ActiveRotation != null)
+                    {
+                        <h5>Active Rotation — <a asp-controller="MapRotations" asp-action="Details" asp-route-id="@Model.ActiveRotation.MapRotationId">@Model.ActiveRotation.Title</a></h5>
+                    }
+                    else
+                    {
+                        <h5>Current Map Rotation — sv_mapRotation (RCON)</h5>
+                    }
                 </div>
 
                 <div class="ibox-content">
-                    <div class="table-responsive">
-                        <table id="mapRotationTable" class="table table-striped table-hover w-100">
-                        <thead>
-                        <tr>
-                            <th>
-                                @Html.Label("Name")
-                            </th>
-                            <th>
-                                @Html.Label("Game Type")
-                            </th>
-                            <th>
-                                @Html.Label("Files")
-                            </th>
-                            <th>
-                                @Html.Label("Remote Status")
-                            </th>
-                            <th>
-                                @Html.Label("Popularity")
-                            </th>
-                            <th>
-                            </th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var item in Model.RconMaps.OrderBy(x => x.MapName))
-{
-    var map = Model.Maps.FirstOrDefault(x => x.MapName == item.MapName);
-
-                        <tr>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.MapName)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.GameType)
-                            </td>
-                            <td>
-                                @{
-    if (map != null)
-    {
-        foreach (var mapFile in map.MapFiles)
-        {
-                                    <li>
-                                        <a href="@mapFile.Url">@mapFile.FileName</a>
-                                    </li>
-        }
-    }
-    else
-    {
-                                    <strong>No files found on redirect</strong>
-    }
+                    @if (Model.ActiveRotation != null)
+                    {
+                        <div class="mb-2">
+                            <span class="badge bg-info">@Model.ActiveRotation.GameMode</span>
+                            <span class="badge bg-success">Active</span>
+                            <small class="text-muted ms-2">
+                                <code>@Model.ActiveAssignment?.ConfigVariableName</code>
+                                @if (!string.IsNullOrEmpty(Model.ActiveAssignment?.ConfigFilePath))
+                                {
+                                    <span>in <code>@Model.ActiveAssignment.ConfigFilePath</code></span>
                                 }
-                            </td>
-                            <td>
-                                @{
-    var remoteMatch = Model.ServerMaps.FirstOrDefault(x => x.Name == item.MapName);
-    if (remoteMatch != null)
-    {
-                                    <span class="badge bg-success">On Host</span>
-    }
-    else
-    {
-                                    <span class="badge bg-danger">Not On Host</span>
-    }
-                                }
-                            </td>
-                            <td>
-                                @if (map != null)
-    {
-                                <map-popularity name="@item.MapName" like-percentage="@map.LikePercentage" dislike-percentage="@map.DislikePercentage" total-likes="@map.TotalLikes" total-dislikes="@map.TotalDislikes" votes="@map.TotalVotes"></map-popularity>
-    }
-    else
-    {
-                                <strong>No popularity data found</strong>
-    }
-                            </td>
-                            <td>
-                                @if (map != null)
-    {
-                                <map-image uri="@map.MapImageUri"></map-image>
-    }
-                            </td>
-                        </tr>
-}
-                        </tbody>
-                    </table>
-                    </div>
+                                · @(Model.ActiveRotation.MapRotationMaps?.Count ?? 0) maps · Version @Model.ActiveRotation.Version
+                            </small>
+                        </div>
+                        <div class="table-responsive">
+                            <table id="mapRotationTable" class="table table-striped table-hover w-100">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Remote Status</th>
+                                        <th>Popularity</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ var sortedRotMaps = Model.ActiveRotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? []; }
+                                    @for (var i = 0; i < sortedRotMaps.Count; i++)
+                                    {
+                                        var rotMap = sortedRotMaps[i];
+                                        var map = Model.Maps.FirstOrDefault(m => m.MapId == rotMap.MapId);
+                                        var mapName = map?.MapName ?? rotMap.MapId.ToString();
+                                        var remoteMatch = Model.ServerMaps.FirstOrDefault(x => string.Equals(x.Name, mapName, StringComparison.OrdinalIgnoreCase));
+                                        <tr>
+                                            <td><small class="text-muted">@(i + 1)</small></td>
+                                            <td>@mapName</td>
+                                            <td>
+                                                @if (remoteMatch != null)
+                                                {
+                                                    <span class="badge bg-success">On Host</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Not On Host</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (map != null)
+                                                {
+                                                    <map-popularity name="@mapName" like-percentage="@map.LikePercentage" dislike-percentage="@map.DislikePercentage" total-likes="@map.TotalLikes" total-dislikes="@map.TotalDislikes" votes="@map.TotalVotes"></map-popularity>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (map != null)
+                                                {
+                                                    <map-image uri="@map.MapImageUri"></map-image>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table id="mapRotationTable" class="table table-striped table-hover w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Remote Status</th>
+                                        <th>Popularity</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.RconMaps.OrderBy(x => x.MapName))
+                                    {
+                                        var map = Model.Maps.FirstOrDefault(x => x.MapName == item.MapName);
+                                        var remoteMatch = Model.ServerMaps.FirstOrDefault(x => x.Name == item.MapName);
+                                        <tr>
+                                            <td>@item.MapName</td>
+                                            <td>
+                                                @if (remoteMatch != null)
+                                                {
+                                                    <span class="badge bg-success">On Host</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Not On Host</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (map != null)
+                                                {
+                                                    <map-popularity name="@item.MapName" like-percentage="@map.LikePercentage" dislike-percentage="@map.DislikePercentage" total-likes="@map.TotalLikes" total-dislikes="@map.TotalDislikes" votes="@map.TotalVotes"></map-popularity>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (map != null)
+                                                {
+                                                    <map-image uri="@map.MapImageUri"></map-image>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
                 </div>
             </div>
 
@@ -325,14 +357,16 @@
                             </td>
                             <td>
                                 @{
-    if (Model.RconMaps.Any(x => x.MapName == item.Name))
-    {
-                                    <span class="badge bg-success">In Rotation</span>
-    }
-    else
-    {
-                                    <span class="badge bg-danger">Not In Rotation</span>
-    }
+                                    var inPortalRotation = Model.ActiveRotationMapNames.Contains(item.Name);
+                                    var inRconRotation = Model.RconMaps.Any(x => x.MapName == item.Name);
+                                    if (inPortalRotation || inRconRotation)
+                                    {
+                                        <span class="badge bg-success">In Rotation</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Not In Rotation</span>
+                                    }
                                 }
                             </td>
                             <td>
