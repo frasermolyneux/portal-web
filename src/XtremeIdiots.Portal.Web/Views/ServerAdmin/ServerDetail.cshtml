@@ -467,7 +467,8 @@
                 antiForgeryToken: antiForgeryToken,
                 mapNameSelector: '#sd-currentMapName',
                 mapImageSelector: '#sd-currentMapImage',
-                playerCountSelector: '#sd-playerCount'
+                playerCountSelector: '#sd-playerCount',
+                onUpdated: highlightCurrentMap
             });
             RconPlayers.init({ serverId: serverId, antiForgeryToken: antiForgeryToken, tableSelector: '#sd-playersTable' });
             RconMapControl.init({
@@ -541,7 +542,12 @@
         // Highlight current map in the rotation carousel
         function highlightCurrentMap() {
             var mapName = $('#sd-currentMapName').text().trim();
-            if (!mapName) return;
+
+            // Clear existing highlights
+            $('#sd-mapRotationCarousel .map-card').removeClass('border border-success border-2 rounded');
+            $('#sd-mapRotationCarousel .map-card .map-card-title .badge.bg-success').remove();
+
+            if (!mapName || mapName === 'Loading...' || mapName === 'Unknown') return;
 
             $('#sd-mapRotationCarousel .map-card').each(function() {
                 var btn = $(this).find('.load-map-btn');

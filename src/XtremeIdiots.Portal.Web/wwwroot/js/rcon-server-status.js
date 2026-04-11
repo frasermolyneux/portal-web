@@ -11,10 +11,12 @@ var RconServerStatus = (function () {
     var _refreshEnabled = true;
     var _lastRefreshTime = new Date();
     var _selectors = {};
+    var _onUpdated = null;
 
     function init(options) {
         _serverId = options.serverId;
         _antiForgeryToken = options.antiForgeryToken;
+        _onUpdated = options.onUpdated || null;
         _selectors = {
             mapName: options.mapNameSelector || '#currentMapName',
             mapImage: options.mapImageSelector || '#currentMapImage',
@@ -27,7 +29,7 @@ var RconServerStatus = (function () {
         };
     }
 
-    function load() {
+    function load(callback) {
         if (!_refreshEnabled || !_serverId) return;
 
         $(_selectors.loadingIndicator).show();
@@ -45,11 +47,14 @@ var RconServerStatus = (function () {
                 }
                 $(_selectors.loadingIndicator).hide();
                 $(_selectors.contentContainer).css('opacity', '1');
+                if (typeof _onUpdated === 'function') _onUpdated();
+                if (typeof callback === 'function') callback();
             },
             error: function () {
                 $(_selectors.statusIndicator).removeClass('bg-success').addClass('bg-danger').text('Error');
                 $(_selectors.loadingIndicator).hide();
                 $(_selectors.contentContainer).css('opacity', '1');
+                if (typeof callback === 'function') callback();
             }
         });
     }
