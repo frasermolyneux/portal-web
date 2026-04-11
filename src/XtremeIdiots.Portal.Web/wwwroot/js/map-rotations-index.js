@@ -24,8 +24,8 @@ $(document).ready(function () {
             { targets: 3, responsivePriority: 5, width: '80px' },
             { targets: 4, responsivePriority: 6, width: '50px' },
             { targets: 5, responsivePriority: 7, width: '50px' },
-            { targets: 6, responsivePriority: 8, width: '100px' },
-            { targets: 7, responsivePriority: 10, visible: false },
+            { targets: 6, responsivePriority: 8, width: '90px' },
+            { targets: 7, responsivePriority: 9, width: '100px' },
             { targets: 8, responsivePriority: 2, orderable: false, width: '120px' }
         ],
         ajax: {
@@ -79,15 +79,21 @@ $(document).ready(function () {
             },
             {
                 data: 'updatedAt', name: 'updatedAt', orderable: true,
-                render: function (data, type, row) {
-                    var html = '<small>' + escapeHtml(data) + '</small>';
-                    var author = row.lastModifiedByDisplayName || row.createdByDisplayName;
-                    if (author) html += '<br><small class="text-muted"><i class="fa-solid fa-user fa-xs me-1"></i>' + escapeHtml(author) + '</small>';
-                    return html;
+                render: function (data) {
+                    return '<small>' + escapeHtml(data) + '</small>';
                 }
             },
             {
-                data: 'createdByDisplayName', name: 'createdBy', orderable: true, visible: false
+                data: 'createdByDisplayName', name: 'createdBy', orderable: true,
+                render: function (data, type, row) {
+                    var author = row.lastModifiedByDisplayName || data;
+                    if (!author) return '<small class="text-muted">—</small>';
+                    var html = '<small>' + escapeHtml(author) + '</small>';
+                    if (row.lastModifiedByDisplayName && data && row.lastModifiedByDisplayName !== data) {
+                        html += '<br><small class="text-muted">Created: ' + escapeHtml(data) + '</small>';
+                    }
+                    return html;
+                }
             },
             {
                 data: null, name: 'actions', orderable: false,
