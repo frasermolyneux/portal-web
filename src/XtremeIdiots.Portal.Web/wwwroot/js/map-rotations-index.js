@@ -223,7 +223,7 @@ $(document).ready(function () {
     tableEl.on('click', '.btn-delete', function () {
         var id = $(this).data('id');
         var title = $(this).data('title');
-        if (!confirm('Are you sure you want to delete "' + title + '"?')) return;
+        if (!confirm('Are you sure you want to delete "' + title + '"? This cannot be undone.')) return;
 
         var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
         $.ajax({

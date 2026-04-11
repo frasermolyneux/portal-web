@@ -5,11 +5,13 @@ $(document).ready(function () {
     // Add tooltips to all elements with title attributes
     $('[title]').tooltip();
 
-    // Add confirmation dialogs to delete buttons
-    $('.btn-danger[data-confirm]').on('click', function (e) {
-        var message = $(this).data('confirm') || 'Are you sure you want to perform this action?';
-        if (!confirm(message)) {
+    // Confirmation dialogs via data-confirm attribute
+    $(document).on('click', '[data-confirm]', function (e) {
+        var message = $(this).data('confirm');
+        if (message && !confirm(message)) {
             e.preventDefault();
+            e.stopPropagation();
+            return false;
         }
     });
 

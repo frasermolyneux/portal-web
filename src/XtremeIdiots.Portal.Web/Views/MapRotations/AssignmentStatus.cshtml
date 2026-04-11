@@ -150,12 +150,11 @@
                             }
                             @if (Model.Assignment.DeploymentState is not DeploymentState.Removing)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline"
-                                      onsubmit="return confirm('Are you sure you want to unassign this server? Maps will be removed from the server.');">
+                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                    <button type="submit" class="btn btn-outline-danger btn-sm me-1">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm me-1" data-confirm="Are you sure you want to unassign this server? Maps will be removed from the server.">
                                         <i class="fa-solid fa-fw fa-unlink"></i> Unassign
                                     </button>
                                 </form>
@@ -290,7 +289,7 @@
                                                             <input type="hidden" name="operationId" value="@op.MapRotationAssignmentOperationId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
-                                                            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Cancel this operation? The assignment state will be reset so you can retry.')">
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Are you sure you want to cancel this operation? The assignment state will be reset.">
                                                                 <i class="fa-solid fa-fw fa-ban"></i> Cancel
                                                             </button>
                                                         </form>
@@ -301,7 +300,7 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
-                                                            <button type="submit" class="btn btn-outline-warning btn-sm" onclick="return confirm('Terminate the underlying orchestration? This clears the stuck durable function so you can re-trigger.')">
+                                                            <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Are you sure you want to terminate this operation? The underlying process will be cleared so you can retry.">
                                                                 <i class="fa-solid fa-fw fa-skull-crossbones"></i> Terminate
                                                             </button>
                                                         </form>

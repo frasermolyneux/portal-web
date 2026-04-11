@@ -60,16 +60,14 @@
                     <form asp-action="Claim" method="post">
                         <input type="hidden" asp-for="AdminActionId" />
                         <input type="hidden" asp-for="PlayerId" />
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="submit" class="btn btn-danger" aria-label="Confirm claim">
-                                <i class="fa-solid fa-fw fa-check"></i> Claim @(Model?.Type.ToString() ??
-                                                                "Action")
-                            </button>
-                            <a class="btn btn-primary" asp-controller="Players" asp-action="Details"
-                                asp-route-id="@Model?.PlayerId" aria-label="Return to player details">
-                                <i class="fa-solid fa-fw fa-arrow-left"></i> Back to Player
-                            </a>
-                        </div>
+                        <a class="btn btn-outline-secondary" asp-controller="Players" asp-action="Details"
+                            asp-route-id="@Model?.PlayerId" aria-label="Return to player details">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" aria-label="Confirm claim">
+                            <i class="fa-solid fa-fw fa-check"></i> Claim @(Model?.Type.ToString() ??
+                                                            "Action")
+                        </button>
                     </form>
                 </div>
             </div>
