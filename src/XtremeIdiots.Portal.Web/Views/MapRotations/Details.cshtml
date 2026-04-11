@@ -37,6 +37,9 @@
                             {
                                 <span class="badge bg-outline-secondary">@Model.Rotation.Category</span>
                             }
+                            <a policy="@AuthPolicies.CreateMapRotation" asp-action="Clone" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-clone"></i> Clone
+                            </a>
                             <a policy="@AuthPolicies.EditMapRotation" asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
                                 <i class="fa-solid fa-edit"></i> Edit
                             </a>

@@ -152,6 +152,56 @@ public class MapRotationsController(
     }
 
     [HttpGet]
+    public async Task<IActionResult> Clone(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var apiResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(id, cancellationToken).ConfigureAwait(false);
+
+            if (apiResponse.IsNotFound || apiResponse.Result?.Data is null)
+                return NotFound();
+
+            var rotation = apiResponse.Result.Data;
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.CreateMapRotation,
+                nameof(Clone),
+                "MapRotation").ConfigureAwait(false);
+
+            if (authResult != null)
+                return authResult;
+
+            var initialMaps = new List<object>();
+            if (rotation.MapRotationMaps?.Count > 0)
+            {
+                foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
+                {
+                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
+                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
+                    {
+                        var map = mapResponse.Result.Data;
+                        initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
+                    }
+                }
+            }
+            ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
+
+            return View("Create", new CreateMapRotationViewModel
+            {
+                GameType = rotation.GameType,
+                Title = $"{rotation.Title} (Copy)",
+                Description = rotation.Description,
+                GameMode = rotation.GameMode,
+                Status = MapRotationStatus.Draft,
+                Category = rotation.Category,
+                MapIds = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? []
+            });
+        }, nameof(Clone)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>

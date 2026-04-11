@@ -100,7 +100,15 @@
                                 <small class="form-text text-muted">Type at least 2 characters to search. Use the <i class="fa-solid fa-grip-vertical"></i> handle to drag and reorder maps. Click × to remove.</small>
                             </div>
                             <div id="selectedMapsList" class="mb-3"></div>
-                            <div id="mapIdsContainer"></div>
+                            <div id="mapIdsContainer">
+                                @if (Model.MapIds.Count > 0)
+                                {
+                                    for (var i = 0; i < Model.MapIds.Count; i++)
+                                    {
+                                        <input type="hidden" name="MapIds[@i]" value="@Model.MapIds[i]" />
+                                    }
+                                }
+                            </div>
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fa-solid fa-plus" aria-hidden="true"></i> Create
@@ -118,9 +126,11 @@
 @section Scripts {
     <script src="~/js/map-rotation-editor.js" asp-append-version="true"></script>
     <script>
+        var initialMaps = @Html.Raw(ViewBag.InitialMaps ?? "[]");
         $(document).ready(function () {
             initMapRotationEditor({
-                gameType: document.getElementById('GameType')?.value || ''
+                gameType: document.getElementById('GameType')?.value || '',
+                initialMaps: initialMaps
             });
 
             // Update gameType when dropdown changes
