@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -75,16 +76,22 @@ public class DashboardController(
                 var gameServersTask = repositoryApiClient.GameServers.V1.GetGameServers(
                     null, null, GameServerFilter.AgentEnabled, 0, 100,
                     GameServerOrder.ServerListPosition, cancellationToken);
+                var liveStatusTask = repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
 
-                await Task.WhenAll(telemetryTask, gameServersTask).ConfigureAwait(false);
+                await Task.WhenAll(telemetryTask, gameServersTask, liveStatusTask).ConfigureAwait(false);
 
                 var telemetry = await telemetryTask.ConfigureAwait(false);
                 var gameServersResponse = await gameServersTask.ConfigureAwait(false);
+                var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
 
                 var serverLookup = gameServersResponse.IsSuccess && gameServersResponse.Result?.Data?.Items is not null
                     ? gameServersResponse.Result.Data.Items
                         .GroupBy(gs => gs.GameServerId)
                         .ToDictionary(g => g.Key, g => g.First())
+                    : [];
+
+                var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+                    ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
                     : [];
 
                 // Enrich telemetry with server names from the repository API
@@ -94,16 +101,17 @@ public class DashboardController(
                 viewModel.AgentStatuses = serverLookup.Values.Select(gs =>
                 {
                     telemetryByServer.TryGetValue(gs.GameServerId, out var summary);
+                    liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
 
                     return new AgentServerSummary
                     {
                         ServerId = gs.GameServerId,
-                        ServerTitle = string.IsNullOrWhiteSpace(gs.LiveTitle) ? gs.Title : gs.LiveTitle,
+                        ServerTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title,
                         GameType = gs.GameType.ToString(),
                         LastEventReceived = summary?.LastEventReceived,
                         EventsLastHour = summary?.EventsLastHour ?? 0,
                         PlayerCount = summary?.PlayerCount ?? 0,
-                        CurrentMap = summary?.CurrentMap ?? gs.LiveMap,
+                        CurrentMap = summary?.CurrentMap ?? liveStatus?.Map,
                         IsAgentActive = summary?.IsAgentActive ?? false,
                         ActivityStatus = summary?.ActivityStatus ?? AgentActivityStatus.Offline
                     };

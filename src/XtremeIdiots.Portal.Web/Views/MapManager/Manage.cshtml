@@ -11,20 +11,20 @@
 
     <div class="ibox">
         <div class="ibox-title">
-            <h5><server-name title="@Model.GameServer.Title" live-title="@Model.GameServer.LiveTitle"></server-name> — Map Manager</h5>
+            <h5><server-name title="@Model.GameServer.Title" live-title="@Model.LiveStatus?.Title"></server-name> — Map Manager</h5>
             <div class="ibox-tools">
                 <span class="badge bg-info me-1">@Model.GameServer.GameType</span>
-                @if (Model.GameServer.LiveCurrentPlayers != 0)
+                @if (Model.LiveStatus != null && Model.LiveStatus.CurrentPlayers != 0)
                 {
-                    <span class="badge bg-secondary me-1">@Model.GameServer.LiveCurrentPlayers / @Model.GameServer.LiveMaxPlayers players</span>
+                    <span class="badge bg-secondary me-1">@Model.LiveStatus.CurrentPlayers / @Model.LiveStatus.MaxPlayers players</span>
                 }
-                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
+                @if (!string.IsNullOrWhiteSpace(Model.LiveStatus?.Map))
                 {
-                    <span class="badge bg-secondary me-1">@Model.GameServer.LiveMap</span>
+                    <span class="badge bg-secondary me-1">@Model.LiveStatus.Map</span>
                 }
-                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
+                @if (!string.IsNullOrWhiteSpace(Model.LiveStatus?.Mod))
                 {
-                    <span class="badge bg-secondary me-1">@Model.GameServer.LiveMod</span>
+                    <span class="badge bg-secondary me-1">@Model.LiveStatus.Mod</span>
                 }
                 <server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host>
                 <server-link type="gametracker" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>

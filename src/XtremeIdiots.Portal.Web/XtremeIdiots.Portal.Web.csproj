@@ -47,7 +47,7 @@
     <PackageReference Include="MX.Api.Abstractions" Version="2.3.31" />
     <PackageReference Include="MX.Api.Client" Version="2.3.31" />
     <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="2.1.138" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.188" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.192" />
     <PackageReference Include="MX.GeoLocation.Api.Client.V1" Version="1.2.39" />
   </ItemGroup>
 

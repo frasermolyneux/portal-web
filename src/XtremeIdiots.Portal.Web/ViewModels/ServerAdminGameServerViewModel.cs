@@ -1,5 +1,6 @@
 ﻿using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -12,6 +13,11 @@ public class ServerAdminGameServerViewModel
     /// Gets or sets the game server configuration and details
     /// </summary>
     public required GameServerDto GameServer { get; set; }
+
+    /// <summary>
+    /// Gets or sets the live status data for the server
+    /// </summary>
+    public GameServerLiveStatusDto? LiveStatus { get; set; }
 
     /// <summary>
     /// Gets or sets the current query status of the game server

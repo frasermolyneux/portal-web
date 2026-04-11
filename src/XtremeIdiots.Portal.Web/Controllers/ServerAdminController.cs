@@ -13,6 +13,7 @@ using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -63,11 +64,21 @@ public class ServerAdminController(
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            var results = gameServersApiResponse.Result.Data.Items.Select(gs => new ServerAdminGameServerViewModel
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
+            var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+                ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
+                : [];
+
+            var results = gameServersApiResponse.Result.Data.Items.Select(gs =>
             {
-                GameServer = gs,
-                GameServerQueryStatus = new ServerQueryStatusResponseDto(),
-                GameServerRconStatus = new ServerRconStatusResponseDto()
+                liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
+                return new ServerAdminGameServerViewModel
+                {
+                    GameServer = gs,
+                    LiveStatus = liveStatus,
+                    GameServerQueryStatus = new ServerQueryStatusResponseDto(),
+                    GameServerRconStatus = new ServerRconStatusResponseDto()
+                };
             }).ToList();
 
             Logger.LogInformation("Successfully loaded {Count} game servers for user {UserId} server admin dashboard",
@@ -132,6 +143,10 @@ public class ServerAdminController(
 
             var gs = gameServerApiResponse.Result.Data;
 
+            // Fetch live status for this server
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetGameServerLiveStatus(gs.GameServerId, cancellationToken).ConfigureAwait(false);
+            var liveStatus = liveStatusResponse.IsSuccess ? liveStatusResponse.Result?.Data : null;
+
             // Check per-tab permissions in parallel
             var rconAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ViewLiveRcon);
             var chatAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ViewServerChatLog);
@@ -144,6 +159,7 @@ public class ServerAdminController(
             var viewModel = new ServerDetailViewModel
             {
                 GameServer = gs,
+                LiveStatus = liveStatus,
                 CanViewRcon = (await rconAuth.ConfigureAwait(false)).Succeeded,
                 CanViewChatLog = (await chatAuth.ConfigureAwait(false)).Succeeded,
                 CanViewMapRotation = (await mapRotAuth.ConfigureAwait(false)).Succeeded,
@@ -1239,12 +1255,22 @@ public class ServerAdminController(
                 return Json(Array.Empty<object>());
             }
 
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
+            var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+                ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
+                : [];
+
             var results = gameServersApiResponse.Result.Data.Items
-                    .Select(gs => new
+                    .Select(gs =>
                     {
-                        id = gs.GameServerId,
-                        title = string.IsNullOrWhiteSpace(gs.LiveTitle) ? gs.Title : gs.LiveTitle,
-                        gameType = gs.GameType.ToString()
+                        liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
+                        var title = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title;
+                        return new
+                        {
+                            id = gs.GameServerId,
+                            title,
+                            gameType = gs.GameType.ToString()
+                        };
                     })
                 .OrderBy(r => r.gameType)
                 .ThenBy(r => r.title)

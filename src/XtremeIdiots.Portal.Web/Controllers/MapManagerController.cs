@@ -109,6 +109,9 @@ public class MapManagerController(
                 Rotations = rotations
             };
 
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetGameServerLiveStatus(gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
+            viewModel.LiveStatus = liveStatusResponse.IsSuccess ? liveStatusResponse.Result?.Data : null;
+
             return View(viewModel);
         }, nameof(Manage)).ConfigureAwait(false);
     }

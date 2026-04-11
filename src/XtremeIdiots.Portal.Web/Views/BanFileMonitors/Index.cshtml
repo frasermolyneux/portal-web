@@ -63,7 +63,7 @@
                                             {
                                                 <game-type-icon game="@item.GameServer.GameType"></game-type-icon>
                                             }
-                                            <server-name title="@item.GameServer?.Title" live-title="@item.GameServer?.LiveTitle"></server-name>
+                                            <server-name title="@item.GameServer?.Title" live-title="@item.GameServer?.Title"></server-name>
                                         </td>
                                         <td>
                                             @if (item.GameServer?.GameType != null && item.GameServer?.GameServerId != null)
@@ -88,19 +88,9 @@
                                             }
                                         </td>
                                         <td>
-                                            @if (!string.IsNullOrWhiteSpace(item.FilePath) && !string.IsNullOrWhiteSpace(item.GameServer?.LiveMod) 
-                                                && item.FilePath.ToLower().Contains(item.GameServer.LiveMod.ToLower()))
-                                            {
-                                                <span class="badge bg-success" title="Mod check passed">
-                                                    @item.GameServer.LiveMod is included in path
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-danger" title="Mod check failed">
-                                                    @(item.GameServer?.LiveMod ?? "Unknown mod") is not included in path
-                                                </span>
-                                            }
+                                            <span class="badge bg-secondary" title="Mod check requires live status">
+                                                Mod check unavailable
+                                            </span>
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.LastSync)

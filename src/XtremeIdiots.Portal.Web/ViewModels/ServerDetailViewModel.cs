@@ -1,5 +1,6 @@
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services;
 
@@ -11,6 +12,7 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 public class ServerDetailViewModel
 {
     public required GameServerDto GameServer { get; set; }
+    public GameServerLiveStatusDto? LiveStatus { get; set; }
 
     // Tab permission flags — determines which tabs are rendered
     public bool CanViewRcon { get; set; }

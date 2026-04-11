@@ -43,7 +43,7 @@
                                         </td>
                                         <td>
                                             <server-name title="@item.GameServer.Title"
-                                                live-title="@item.GameServer.LiveTitle"></server-name>
+                                                live-title="@item.LiveStatus?.Title"></server-name>
                                         </td>
                                         <td>
                                             <server-host host="@item.GameServer.Hostname"
@@ -63,12 +63,11 @@
                                         <td>
                                             @{
                                                 double percentage = 0;
-                                                if (item.GameServer.LiveCurrentPlayers != null &&
-                                                item.GameServer.LiveCurrentPlayers != 0 && item.GameServer.LiveMaxPlayers !=
-                                                null && item.GameServer.LiveMaxPlayers != 0)
+                                                if (item.LiveStatus != null &&
+                                                item.LiveStatus.CurrentPlayers != 0 && item.LiveStatus.MaxPlayers != 0)
                                                 {
-                                                    percentage = (double)item.GameServer.LiveCurrentPlayers.Value /
-                                                    item.GameServer.LiveMaxPlayers.Value * 100;
+                                                    percentage = (double)item.LiveStatus.CurrentPlayers /
+                                                    item.LiveStatus.MaxPlayers * 100;
                                                 }
                                             }
 
@@ -80,10 +79,10 @@
                                             </div>
                                         </td>
                                         <td>
-                                            @item.GameServer.LiveMap
+                                            @item.LiveStatus?.Map
                                         </td>
                                         <td>
-                                            @item.GameServer.LiveMod
+                                            @item.LiveStatus?.Mod
                                         </td>
                                         <td>
                                             <a class="btn btn-sm btn-primary" asp-controller="ServerAdmin"

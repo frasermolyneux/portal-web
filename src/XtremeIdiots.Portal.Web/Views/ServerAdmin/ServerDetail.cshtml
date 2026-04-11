@@ -4,10 +4,11 @@
 @model ServerDetailViewModel
 
 @{
-    ViewData["Title"] = "Server Detail - " + (string.IsNullOrWhiteSpace(Model.GameServer.LiveTitle) ? Model.GameServer.Title : Model.GameServer.LiveTitle);
+    ViewData["Title"] = "Server Detail - " + (string.IsNullOrWhiteSpace(Model.LiveStatus?.Title) ? Model.GameServer.Title : Model.LiveStatus.Title);
 
     var gs = Model.GameServer;
-    var serverTitle = string.IsNullOrWhiteSpace(gs.LiveTitle) ? gs.Title : gs.LiveTitle;
+    var liveStatus = Model.LiveStatus;
+    var serverTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title;
     var serverId = gs.GameServerId;
 }
 
@@ -20,9 +21,9 @@
                 <h4 class="mb-0">
                     <game-type-icon game="@gs.GameType" size="24" class="me-2" />
                     @serverTitle
-                    @if (gs.LiveCurrentPlayers.HasValue)
+                    @if (liveStatus != null)
                     {
-                        <small class="text-muted ms-2">@gs.LiveCurrentPlayers / @gs.LiveMaxPlayers players</small>
+                        <small class="text-muted ms-2">@liveStatus.CurrentPlayers / @liveStatus.MaxPlayers players</small>
                     }
                 </h4>
                 <div>
@@ -89,24 +90,24 @@
                                 <dd class="col-7"><server-host host="@gs.Hostname" port="@gs.QueryPort"></server-host></dd>
                                 <dt class="col-5">Game</dt>
                                 <dd class="col-7"><game-type-icon game="@gs.GameType" size="16" /> @gs.GameType</dd>
-                                @if (!string.IsNullOrWhiteSpace(gs.LiveMap))
+                                @if (!string.IsNullOrWhiteSpace(liveStatus?.Map))
                                 {
                                     <dt class="col-5">Current Map</dt>
-                                    <dd class="col-7">@gs.LiveMap</dd>
+                                    <dd class="col-7">@liveStatus.Map</dd>
                                 }
-                                @if (!string.IsNullOrWhiteSpace(gs.LiveMod))
+                                @if (!string.IsNullOrWhiteSpace(liveStatus?.Mod))
                                 {
                                     <dt class="col-5">Mod</dt>
-                                    <dd class="col-7">@gs.LiveMod</dd>
+                                    <dd class="col-7">@liveStatus.Mod</dd>
                                 }
                                 <dt class="col-5">Players</dt>
-                                <dd class="col-7">@(gs.LiveCurrentPlayers ?? 0) / @(gs.LiveMaxPlayers ?? 0)</dd>
-                                @if (gs.LiveLastUpdated.HasValue)
+                                <dd class="col-7">@(liveStatus?.CurrentPlayers ?? 0) / @(liveStatus?.MaxPlayers ?? 0)</dd>
+                                @if (liveStatus?.LastUpdated.HasValue == true)
                                 {
                                     <dt class="col-5">Last Updated</dt>
                                     <dd class="col-7">
                                         @{
-                                            var elapsed = DateTime.UtcNow - gs.LiveLastUpdated.Value;
+                                            var elapsed = DateTime.UtcNow - liveStatus.LastUpdated.Value;
                                             var freshness = elapsed.TotalMinutes < 2 ? "text-success" : elapsed.TotalMinutes < 5 ? "text-warning" : "text-danger";
                                         }
                                         <span class="@freshness">
@@ -272,9 +273,9 @@
                                              class="img-fluid" style="max-height: 100px; width: auto;">
                                     </div>
                                     <div>
-                                        <h5 class="mb-1" id="sd-currentMapName">@(gs.LiveMap ?? "Loading...")</h5>
+                                        <h5 class="mb-1" id="sd-currentMapName">@(liveStatus?.Map ?? "Loading...")</h5>
                                         <small class="text-muted">
-                                            <span id="sd-playerCount">@(gs.LiveCurrentPlayers ?? 0)</span> / <span id="sd-maxPlayers">@(gs.LiveMaxPlayers ?? 0)</span> players
+                                            <span id="sd-playerCount">@(liveStatus?.CurrentPlayers ?? 0)</span> / <span id="sd-maxPlayers">@(liveStatus?.MaxPlayers ?? 0)</span> players
                                         </small>
                                     </div>
                                 </div>
@@ -453,7 +454,7 @@
     <script type="text/javascript">
         var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
         var serverId = '@Model.GameServer.GameServerId';
-        var currentMap = '@(gs.LiveMap ?? "")';
+        var currentMap = '@(liveStatus?.Map ?? "")';
         var refreshEnabled = true;
         var modulesStarted = { players: false, chatlog: false, mapcontrol: false };
 

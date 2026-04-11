@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -50,8 +51,17 @@ public class ServersController(
                 return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController).Replace("Controller", ""), new { id = 500 });
             }
 
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
+            var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+                ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
+                : [];
+
             var result = gameServersApiResponse.Result.Data.Items
-                .Select(gs => new ServersGameServerViewModel(gs))
+                .Select(gs =>
+                {
+                    liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
+                    return new ServersGameServerViewModel(gs, liveStatus);
+                })
                 .ToList();
 
             Logger.LogInformation("User {UserId} successfully retrieved {ServerCount} servers",
