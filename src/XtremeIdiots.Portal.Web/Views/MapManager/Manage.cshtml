@@ -9,204 +9,66 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <div class="row">
-        <div class="col-sm-2">
-
-            <div class="ibox">
-                <div class="ibox-title">
-                    <h5><server-name title="@Model.GameServer.Title" live-title="@Model.GameServer.LiveTitle"></server-name></h5>
-                </div>
-
-                <div class="ibox-content">
-                    <div class="table-responsive">
-                        <table class="table w-100">
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <strong>Hostname</strong>
-                                    </td>
-                                    <td><server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host></td>
-                                </tr>
-
-                                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
-                                {
-                                    <tr>
-                                        <td>
-                                            <strong>Mod</strong>
-                                        </td>
-                                        <td>@Model.GameServer.LiveMod</td>
-                                    </tr>
-                                }
-
-                                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
-                            {
-                                <tr>
-                                    <td>
-                                        <strong>Map</strong>
-                                    </td>
-                                    <td>@Model.GameServer.LiveMap</td>
-                                </tr>
-                            }
-
-                            @if (Model.GameServer.LiveCurrentPlayers != 0 && Model.GameServer.LiveMaxPlayers != 0)
-                            {
-                                <tr>
-                                    <td>
-                                        <strong>Player Count</strong>
-                                    </td>
-                                    <td>@Model.GameServer.LiveCurrentPlayers / @Model.GameServer.LiveMaxPlayers</td>
-                                </tr>
-                            }
-
-                            <tr>
-                                <td>
-                                    <strong>Connect</strong>
-                                </td>
-                                <td>
-                                    <server-link type="gametracker" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>
-                                    <server-link type="steam" game="@Model.GameServer.GameType" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>
-                                    <server-link type="hlsw" game="@Model.GameServer.GameType" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>
-                                </td>
-                            </tr>
-
-
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
+    <div class="ibox">
+        <div class="ibox-title">
+            <h5><server-name title="@Model.GameServer.Title" live-title="@Model.GameServer.LiveTitle"></server-name> — Map Manager</h5>
+            <div class="ibox-tools">
+                <span class="badge bg-info me-1">@Model.GameServer.GameType</span>
+                @if (Model.GameServer.LiveCurrentPlayers != 0)
+                {
+                    <span class="badge bg-secondary me-1">@Model.GameServer.LiveCurrentPlayers / @Model.GameServer.LiveMaxPlayers players</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMap))
+                {
+                    <span class="badge bg-secondary me-1">@Model.GameServer.LiveMap</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.GameServer.LiveMod))
+                {
+                    <span class="badge bg-secondary me-1">@Model.GameServer.LiveMod</span>
+                }
+                <server-host host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-host>
+                <server-link type="gametracker" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>
+                <server-link type="steam" game="@Model.GameServer.GameType" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>
+                <server-link type="hlsw" game="@Model.GameServer.GameType" host="@Model.GameServer.Hostname" port="@Model.GameServer.QueryPort"></server-link>
             </div>
-
-            <partial name="PushMapToRemotePartial"
-                model="@(new PushMapToRemoteViewModel(Model.GameServer.GameServerId))"></partial>
-
-            <div class="ibox">
-                <div class="ibox-title">
-                    <h5>Map Rotations (@Model.RotationAssignments.Count)</h5>
-                    <div class="ibox-tools">
-                        <a asp-controller="MapRotations" asp-action="Index" asp-route-gameType="@Model.GameServer.GameType" class="btn btn-outline-secondary btn-sm me-1">
-                            <i class="fa-solid fa-fw fa-list"></i> All Rotations
-                        </a>
-                    </div>
-                </div>
-
-                <div class="ibox-content">
-                    @if (Model.RotationAssignments.Count == 0)
-                    {
-                        <div class="text-center text-muted py-3">
-                            <i class="fa-solid fa-rotate fa-2x mb-2 d-block"></i>
-                            <p>No map rotations assigned to this server.</p>
-                            <a asp-controller="MapRotations" asp-action="Index" asp-route-gameType="@Model.GameServer.GameType" class="btn btn-outline-primary btn-sm">
-                                <i class="fa-solid fa-fw fa-plus"></i> Manage Rotations
-                            </a>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Rotation</th>
-                                        <th style="width: 80px;">Mode</th>
-                                        <th style="width: 90px;">Deploy</th>
-                                        <th style="width: 90px;">Active</th>
-                                        <th style="width: 80px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var assignment in Model.RotationAssignments)
-                                    {
-                                        Model.Rotations.TryGetValue(assignment.MapRotationId, out var rotation);
-                                        <tr>
-                                            <td>
-                                                <a asp-controller="MapRotations" asp-action="Details" asp-route-id="@assignment.MapRotationId">
-                                                    <strong>@(rotation?.Title ?? "Unknown")</strong>
-                                                </a>
-                                                <br />
-                                                <small class="text-muted">
-                                                    <code>@assignment.ConfigVariableName</code>
-                                                    @if (rotation?.MapRotationMaps != null)
-                                                    {
-                                                        <span>· @rotation.MapRotationMaps.Count maps</span>
-                                                    }
-                                                </small>
-                                            </td>
-                                            <td><span class="badge bg-info">@(rotation?.GameMode ?? "—")</span></td>
-                                            <td>
-                                                @switch (assignment.DeploymentState)
-                                                {
-                                                    case DeploymentState.Pending:
-                                                        <span class="badge bg-warning text-dark">Pending</span>
-                                                        break;
-                                                    case DeploymentState.Syncing:
-                                                        <span class="badge bg-info">Syncing</span>
-                                                        break;
-                                                    case DeploymentState.Synced:
-                                                        <span class="badge bg-success">Synced</span>
-                                                        break;
-                                                    case DeploymentState.Failed:
-                                                        <span class="badge bg-danger">Failed</span>
-                                                        break;
-                                                    default:
-                                                        <span class="badge bg-secondary">@assignment.DeploymentState</span>
-                                                        break;
-                                                }
-                                            </td>
-                                            <td>
-                                                @switch (assignment.ActivationState)
-                                                {
-                                                    case ActivationState.Active:
-                                                        <span class="badge bg-success">Active</span>
-                                                        break;
-                                                    case ActivationState.Activating:
-                                                        <span class="badge bg-info">Activating</span>
-                                                        break;
-                                                    case ActivationState.Inactive:
-                                                        <span class="badge bg-secondary">Inactive</span>
-                                                        break;
-                                                    case ActivationState.Failed:
-                                                        <span class="badge bg-danger">Failed</span>
-                                                        break;
-                                                    default:
-                                                        <span class="badge bg-secondary">@assignment.ActivationState</span>
-                                                        break;
-                                                }
-                                            </td>
-                                            <td>
-                                                <a asp-controller="MapRotations" asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId"
-                                                   class="btn btn-outline-secondary btn-xs" title="View Status">
-                                                    <i class="fa-solid fa-fw fa-eye"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-            </div>
-
         </div>
+        <div class="ibox-content">
+            <ul class="nav nav-tabs" id="mapManagerTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="rotation-tab-btn" data-bs-toggle="tab"
+                        data-bs-target="#rotation-tab" type="button" role="tab"
+                        aria-controls="rotation-tab" aria-selected="true">
+                        <i class="fa-solid fa-fw fa-rotate me-1"></i>Current Rotation
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="remote-tab-btn" data-bs-toggle="tab"
+                        data-bs-target="#remote-tab" type="button" role="tab"
+                        aria-controls="remote-tab" aria-selected="false">
+                        <i class="fa-solid fa-fw fa-server me-1"></i>Maps on Server
+                        <span class="badge bg-secondary ms-1">@Model.ServerMaps.Count</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="assignments-tab-btn" data-bs-toggle="tab"
+                        data-bs-target="#assignments-tab" type="button" role="tab"
+                        aria-controls="assignments-tab" aria-selected="false">
+                        <i class="fa-solid fa-fw fa-list me-1"></i>Map Rotations
+                        <span class="badge bg-secondary ms-1">@Model.RotationAssignments.Count</span>
+                    </button>
+                </li>
+            </ul>
 
-        <div class="col-sm-6">
+            <div class="tab-content pt-3">
 
-            <div class="ibox">
-                <div class="ibox-title">
+                @* Tab 1: Current Rotation *@
+                <div class="tab-pane fade show active" id="rotation-tab" role="tabpanel" aria-labelledby="rotation-tab-btn">
                     @if (Model.ActiveRotation != null)
                     {
-                        <h5>Active Rotation — <a asp-controller="MapRotations" asp-action="Details" asp-route-id="@Model.ActiveRotation.MapRotationId">@Model.ActiveRotation.Title</a></h5>
-                    }
-                    else
-                    {
-                        <h5>Current Map Rotation — sv_mapRotation (RCON)</h5>
-                    }
-                </div>
-
-                <div class="ibox-content">
-                    @if (Model.ActiveRotation != null)
-                    {
-                        <div class="mb-2">
+                        <div class="mb-3">
+                            <h6>
+                                <a asp-controller="MapRotations" asp-action="Details" asp-route-id="@Model.ActiveRotation.MapRotationId">@Model.ActiveRotation.Title</a>
+                            </h6>
                             <span class="badge bg-info">@Model.ActiveRotation.GameMode</span>
                             <span class="badge bg-success">Active</span>
                             <small class="text-muted ms-2">
@@ -222,11 +84,11 @@
                             <table id="mapRotationTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
-                                        <th>#</th>
+                                        <th style="width: 40px;">#</th>
                                         <th>Name</th>
-                                        <th>Remote Status</th>
-                                        <th>Popularity</th>
-                                        <th></th>
+                                        <th style="width: 110px;">Remote Status</th>
+                                        <th style="width: 120px;">Popularity</th>
+                                        <th style="width: 80px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -268,16 +130,20 @@
                             </table>
                         </div>
                     }
-                    else
+                    else if (Model.RconMaps.Count > 0)
                     {
+                        <div class="mb-3">
+                            <h6>sv_mapRotation (from RCON)</h6>
+                            <small class="text-muted">No portal-managed rotation is active. Showing maps parsed from RCON.</small>
+                        </div>
                         <div class="table-responsive">
                             <table id="mapRotationTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        <th>Remote Status</th>
-                                        <th>Popularity</th>
-                                        <th></th>
+                                        <th style="width: 110px;">Remote Status</th>
+                                        <th style="width: 120px;">Popularity</th>
+                                        <th style="width: 80px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -315,76 +181,155 @@
                             </table>
                         </div>
                     }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-rotate fa-2x mb-2 d-block"></i>
+                            <p>No map rotation data available.</p>
+                            <a asp-controller="MapRotations" asp-action="Index" asp-route-gameType="@Model.GameServer.GameType" class="btn btn-outline-primary btn-sm">
+                                <i class="fa-solid fa-fw fa-plus"></i> Set Up a Rotation
+                            </a>
+                        </div>
+                    }
                 </div>
-            </div>
 
-        </div>
-
-        <div class="col-sm-4">
-
-            <div class="ibox">
-                <div class="ibox-title">
-                    <h5>Remote Server Maps</h5>
-                </div>
-
-                <div class="ibox-content">
-                    <div class="table-responsive">
-                        <table id="remoteMapsTable" class="table table-striped table-hover w-100">
-                        <tr>
-                            <th>
-                                @Html.Label("Name")
-                            </th>
-                            <th>
-                                @Html.Label("Path")
-                            </th>
-                            <th>
-                                @Html.Label("Rotation Status")
-                            </th>
-                            <th>
-                                @Html.Label("Modified")
-                            </th>
-                            <th></th
-                        </tr>
-
-                        @foreach (var item in Model.ServerMaps)
-{
-                        <tr>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.Name)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.FullName)
-                            </td>
-                            <td>
-                                @{
-                                    var inPortalRotation = Model.ActiveRotationMapNames.Contains(item.Name);
-                                    var inRconRotation = Model.RconMaps.Any(x => x.MapName == item.Name);
-                                    if (inPortalRotation || inRconRotation)
-                                    {
-                                        <span class="badge bg-success">In Rotation</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger">Not In Rotation</span>
-                                    }
-                                }
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.Modified)
-                            </td>
-                            <td>
-                                <partial name="DeleteMapFromHostPartial" model="@(new DeleteMapFromHostModel(Model.GameServer.GameServerId, item.Name))"></partial>
-                            </td>
-                        </tr>
-}
-
-                    </table>
+                @* Tab 2: Maps on Server *@
+                <div class="tab-pane fade" id="remote-tab" role="tabpanel" aria-labelledby="remote-tab-btn">
+                    <div class="row">
+                        <div class="col-md-9">
+                            <div class="table-responsive">
+                                <table id="remoteMapsTable" class="table table-striped table-hover w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Path</th>
+                                            <th style="width: 110px;">Rotation Status</th>
+                                            <th style="width: 120px;">Modified</th>
+                                            <th style="width: 60px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model.ServerMaps)
+                                        {
+                                            <tr>
+                                                <td>@item.Name</td>
+                                                <td><small class="text-muted">@item.FullName</small></td>
+                                                <td>
+                                                    @{
+                                                        var inPortalRotation = Model.ActiveRotationMapNames.Contains(item.Name);
+                                                        var inRconRotation = Model.RconMaps.Any(x => x.MapName == item.Name);
+                                                        if (inPortalRotation || inRconRotation)
+                                                        {
+                                                            <span class="badge bg-success">In Rotation</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-danger">Not In Rotation</span>
+                                                        }
+                                                    }
+                                                </td>
+                                                <td><small>@item.Modified.ToString("yyyy-MM-dd")</small></td>
+                                                <td>
+                                                    <partial name="DeleteMapFromHostPartial" model="@(new DeleteMapFromHostModel(Model.GameServer.GameServerId, item.Name))"></partial>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <partial name="PushMapToRemotePartial"
+                                model="@(new PushMapToRemoteViewModel(Model.GameServer.GameServerId))"></partial>
+                        </div>
                     </div>
                 </div>
+
+                @* Tab 3: Map Rotations *@
+                <div class="tab-pane fade" id="assignments-tab" role="tabpanel" aria-labelledby="assignments-tab-btn">
+                    @if (Model.RotationAssignments.Count == 0)
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-rotate fa-2x mb-2 d-block"></i>
+                            <p>No map rotations assigned to this server.</p>
+                            <a asp-controller="MapRotations" asp-action="Index" asp-route-gameType="@Model.GameServer.GameType" class="btn btn-outline-primary btn-sm">
+                                <i class="fa-solid fa-fw fa-plus"></i> Manage Rotations
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-2">
+                            <a asp-controller="MapRotations" asp-action="Index" asp-route-gameType="@Model.GameServer.GameType" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-fw fa-list"></i> All Rotations
+                            </a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Rotation</th>
+                                        <th style="width: 80px;">Mode</th>
+                                        <th style="width: 90px;">Deploy</th>
+                                        <th style="width: 90px;">Active</th>
+                                        <th style="width: 80px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var assignment in Model.RotationAssignments)
+                                    {
+                                        Model.Rotations.TryGetValue(assignment.MapRotationId, out var rotation);
+                                        <tr>
+                                            <td>
+                                                <a asp-controller="MapRotations" asp-action="Details" asp-route-id="@assignment.MapRotationId">
+                                                    <strong>@(rotation?.Title ?? "Unknown")</strong>
+                                                </a>
+                                                <br />
+                                                <small class="text-muted">
+                                                    <code>@assignment.ConfigVariableName</code>
+                                                    @if (rotation?.MapRotationMaps != null)
+                                                    {
+                                                        <span>· @rotation.MapRotationMaps.Count maps</span>
+                                                    }
+                                                </small>
+                                            </td>
+                                            <td><span class="badge bg-info">@(rotation?.GameMode ?? "—")</span></td>
+                                            <td>
+                                                @switch (assignment.DeploymentState)
+                                                {
+                                                    case DeploymentState.Pending: <span class="badge bg-warning text-dark">Pending</span> break;
+                                                    case DeploymentState.Syncing: <span class="badge bg-info">Syncing</span> break;
+                                                    case DeploymentState.Synced: <span class="badge bg-success">Synced</span> break;
+                                                    case DeploymentState.Failed: <span class="badge bg-danger">Failed</span> break;
+                                                    default: <span class="badge bg-secondary">@assignment.DeploymentState</span> break;
+                                                }
+                                            </td>
+                                            <td>
+                                                @switch (assignment.ActivationState)
+                                                {
+                                                    case ActivationState.Active: <span class="badge bg-success">Active</span> break;
+                                                    case ActivationState.Activating: <span class="badge bg-info">Activating</span> break;
+                                                    case ActivationState.Inactive: <span class="badge bg-secondary">Inactive</span> break;
+                                                    case ActivationState.Failed: <span class="badge bg-danger">Failed</span> break;
+                                                    default: <span class="badge bg-secondary">@assignment.ActivationState</span> break;
+                                                }
+                                            </td>
+                                            <td>
+                                                <a asp-controller="MapRotations" asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId"
+                                                   class="btn btn-outline-secondary btn-xs" title="View Status">
+                                                    <i class="fa-solid fa-fw fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+
             </div>
-
         </div>
-
     </div>
 
 </div>
