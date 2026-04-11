@@ -61,7 +61,7 @@ public class BanFileMonitorsController(
 
             var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
             ViewBag.LiveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
-                ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
+                ? liveStatusResponse.Result.Data.Items.DistinctBy(ls => ls.ServerId).ToDictionary(ls => ls.ServerId)
                 : [];
 
             return View(items);
