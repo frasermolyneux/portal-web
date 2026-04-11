@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -57,11 +58,34 @@ public class MapManagerController(
                 getServerMapsResult.Result?.Data?.Items?.Select(m => m.MapName).ToArray(),
                 null, null, 0, 50, MapsOrder.MapNameAsc).ConfigureAwait(false);
 
+            // Fetch rotation assignments for this server
+            var assignmentsResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignments(
+                null, id, null, 0, 20, cancellationToken).ConfigureAwait(false);
+
+            var assignments = assignmentsResponse.IsSuccess && assignmentsResponse.Result?.Data?.Items != null
+                ? assignmentsResponse.Result.Data.Items
+                    .Where(a => a.DeploymentState != DeploymentState.Removed)
+                    .ToList()
+                : [];
+
+            var rotations = new Dictionary<Guid, MapRotationDto>();
+            foreach (var assignment in assignments)
+            {
+                if (!rotations.ContainsKey(assignment.MapRotationId))
+                {
+                    var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.MapRotationId, cancellationToken).ConfigureAwait(false);
+                    if (rotationResponse.IsSuccess && rotationResponse.Result?.Data != null)
+                        rotations[assignment.MapRotationId] = rotationResponse.Result.Data;
+                }
+            }
+
             var viewModel = new ManageMapsViewModel(gameServerData)
             {
                 Maps = mapsCollectionApiResponse.Result?.Data?.Items?.ToList() ?? [],
                 ServerMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?.ToList() ?? [],
-                RconMaps = getServerMapsResult.Result?.Data?.Items?.ToList() ?? []
+                RconMaps = getServerMapsResult.Result?.Data?.Items?.ToList() ?? [],
+                RotationAssignments = assignments,
+                Rotations = rotations
             };
 
             return View(viewModel);
