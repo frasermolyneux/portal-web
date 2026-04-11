@@ -14,6 +14,18 @@ $(document).ready(function () {
         serverSide: true,
         searchDelay: 800,
         stateSave: true,
+        stateSaveParams: function (settings, data) {
+            data._mapRotationsStructureVersion = 2;
+            if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
+        },
+        stateLoadParams: function (settings, data) {
+            if (data._mapRotationsStructureVersion !== 2) {
+                var key = 'DataTables_dataTable_' + window.location.pathname;
+                try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+                return false;
+            }
+            if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
+        },
         responsive: { details: { type: 'inline', target: 'tr' } },
         autoWidth: false,
         order: [[1, 'asc']],
