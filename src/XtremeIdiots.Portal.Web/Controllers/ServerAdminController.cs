@@ -224,7 +224,13 @@ public class ServerAdminController(
             {
                 try
                 {
-                    viewModel.BanFileMonitors = [.. gs.BanFileMonitors];
+                    var bfmResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(
+                        null, null, gs.GameServerId, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+
+                    if (bfmResponse.IsSuccess && bfmResponse.Result?.Data?.Items is not null)
+                    {
+                        viewModel.BanFileMonitors = [.. bfmResponse.Result.Data.Items];
+                    }
                 }
                 catch (Exception ex)
                 {

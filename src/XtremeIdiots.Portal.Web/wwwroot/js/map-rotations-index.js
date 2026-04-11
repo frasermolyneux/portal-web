@@ -117,17 +117,25 @@ $(document).ready(function () {
                 var input = label.querySelector('input');
                 if (input) {
                     input.classList.add('form-control', 'form-control-sm');
+                    input.classList.remove('form-control-sm');
                     input.setAttribute('placeholder', 'Search rotations...');
-                    label.textContent = '';
-                    label.appendChild(input);
+
+                    // Rebuild the filter group to match other filters
+                    var newGroup = document.createElement('div');
+                    newGroup.className = 'filter-group';
+                    var newLabel = document.createElement('label');
+                    newLabel.className = 'form-label';
+                    newLabel.textContent = 'Search';
+                    newGroup.appendChild(newLabel);
+                    newGroup.appendChild(input);
+
+                    var resetGroup = document.getElementById('resetFilters')?.closest('.filter-group');
+                    if (resetGroup && resetGroup.parentElement) {
+                        resetGroup.parentElement.insertBefore(newGroup, resetGroup);
+                    }
                 }
             }
-            dtFilter.classList.add('filter-group');
-
-            var resetGroup = document.getElementById('resetFilters')?.closest('.filter-group');
-            if (resetGroup && resetGroup.parentElement) {
-                resetGroup.parentElement.insertBefore(dtFilter, resetGroup);
-            }
+            dtFilter.style.display = 'none';
             placeholder.remove();
         } catch (e) { /* swallow */ }
     }

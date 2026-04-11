@@ -3,13 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
-using XtremeIdiots.Portal.Web.Models;
-using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -29,7 +25,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.AccessServers)]
 public class ServersController(
     IRepositoryApiClient repositoryApiClient,
-    IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<ServersController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -95,121 +90,11 @@ public class ServersController(
     }
 
     /// <summary>
-    /// Displays detailed information for a specific game server including statistics and map timeline
+    /// Redirects to the admin ServerDetail page (legacy URL support)
     /// </summary>
-    /// <param name="id">The unique identifier of the game server</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>Server details view with maps, statistics, and timeline data or NotFound if server doesn't exist</returns>
     [HttpGet]
-    public async Task<IActionResult> ServerInfo(Guid id, CancellationToken cancellationToken = default)
+    public IActionResult ServerInfo(Guid id)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-
-            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
-            {
-                Logger.LogWarning("Server {ServerId} not found when accessing server info for user {UserId}",
-                    id, User.XtremeIdiotsId());
-                return NotFound();
-            }
-
-            var gameServerData = gameServerApiResponse.Result.Data;
-
-            MapDto? mapDto = null;
-            if (!string.IsNullOrWhiteSpace(gameServerData.LiveMap))
-            {
-                try
-                {
-                    var mapApiResponse = await repositoryApiClient.Maps.V1.GetMap(
-                        gameServerData.GameType, gameServerData.LiveMap, cancellationToken).ConfigureAwait(false);
-                    mapDto = mapApiResponse.Result?.Data;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to retrieve map {MapName} for server {ServerId}",
-                        gameServerData.LiveMap, id);
-                }
-            }
-
-            var gameServerStatsResponseDto = await repositoryApiClient.GameServersStats.V1
-                .GetGameServerStatusStats(gameServerData.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken).ConfigureAwait(false);
-
-            List<MapTimelineDataPoint> mapTimelineDataPoints = [];
-            List<GameServerStatDto> gameServerStatDtos = [];
-            List<MapDto> maps = [];
-
-            if (gameServerStatsResponseDto.IsSuccess && gameServerStatsResponseDto.Result?.Data?.Items is not null)
-            {
-                gameServerStatDtos = [.. gameServerStatsResponseDto.Result.Data.Items];
-
-                GameServerStatDto? current = null;
-                var orderedStats = gameServerStatsResponseDto.Result.Data.Items.OrderBy(gss => gss.Timestamp).ToList();
-
-                foreach (var gameServerStatusStatDto in orderedStats)
-                {
-                    if (current is null)
-                    {
-                        current = gameServerStatusStatDto;
-                        continue;
-                    }
-
-                    if (current.MapName != gameServerStatusStatDto.MapName)
-                    {
-                        mapTimelineDataPoints.Add(new MapTimelineDataPoint(
-                            current.MapName, current.Timestamp, gameServerStatusStatDto.Timestamp));
-                        current = gameServerStatusStatDto;
-                        continue;
-                    }
-
-                    if (current == orderedStats.Last())
-                        mapTimelineDataPoints.Add(new MapTimelineDataPoint(
-                            current.MapName, current.Timestamp, DateTime.UtcNow));
-                }
-
-                try
-                {
-                    var mapNames = gameServerStatsResponseDto.Result.Data.Items
-                        .GroupBy(m => m.MapName)
-                        .Select(m => m.Key)
-                        .ToArray();
-
-                    var mapsCollectionApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
-                        gameServerData.GameType, mapNames, null, null, 0, 50,
-                        MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
-
-                    if (mapsCollectionApiResponse.Result?.Data?.Items is not null)
-                        maps = [.. mapsCollectionApiResponse.Result.Data.Items];
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to retrieve map details for server {ServerId}", id);
-                }
-            }
-
-            var viewModel = new ServersGameServerViewModel(gameServerData)
-            {
-                Map = mapDto,
-                Maps = maps,
-                GameServerStats = gameServerStatDtos,
-                MapTimelineDataPoints = mapTimelineDataPoints
-            };
-
-            // Fetch agent telemetry (non-critical — page renders without it)
-            try
-            {
-                viewModel.AgentStatus = await agentTelemetryService.GetServerStatusAsync(
-                    gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to retrieve agent telemetry for server {ServerId}", id);
-            }
-
-            Logger.LogInformation("User {UserId} successfully retrieved server info for server {ServerId} with {MapCount} maps and {StatCount} statistics",
-                User.XtremeIdiotsId(), id, maps.Count, gameServerStatDtos.Count);
-
-            return View(viewModel);
-        }, nameof(ServerInfo)).ConfigureAwait(false);
+        return RedirectToAction("ServerDetail", "ServerAdmin", new { id });
     }
 }

@@ -53,15 +53,6 @@
                 <i class="fa-solid fa-circle-info fa-fw"></i> Overview
             </button>
         </li>
-        @if (Model.CanViewRcon)
-        {
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="players-tab" data-bs-toggle="tab" data-bs-target="#players"
-                        type="button" role="tab" aria-controls="players" aria-selected="false">
-                    <i class="fa-solid fa-users fa-fw"></i> Live Players
-                </button>
-            </li>
-        }
         @if (Model.CanViewChatLog)
         {
             <li class="nav-item" role="presentation">
@@ -93,7 +84,7 @@
 
     <div class="tab-content pt-3" id="serverDetailTabContent">
 
-        @* ═══ OVERVIEW TAB ═══ *@
+        @* ═══ OVERVIEW TAB (merged with Live Players) ═══ *@
         <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div class="row">
                 <div class="col-md-4">
@@ -135,9 +126,8 @@
                             </dl>
                         </div>
                     </div>
-                </div>
 
-                <div class="col-md-4">
+                    @* Agent Status Card *@
                     <div class="ibox">
                         <div class="ibox-title"><h5>Agent Status</h5></div>
                         <div class="ibox-content">
@@ -176,24 +166,22 @@
                             }
                         </div>
                     </div>
-                </div>
 
-                <div class="col-md-4">
+                    @* Quick Actions + Server Control *@
                     <div class="ibox">
-                        <div class="ibox-title"><h5>Quick Actions</h5></div>
+                        <div class="ibox-title"><h5>Server Control</h5></div>
                         <div class="ibox-content">
                             <div class="d-grid gap-2">
                                 @if (Model.CanViewRcon)
                                 {
+                                    <button id="sd-restartServer" class="btn btn-danger btn-sm" type="button">
+                                        <i class="fa-solid fa-arrows-rotate"></i> Restart Server
+                                    </button>
                                     <a asp-controller="ServerAdmin" asp-action="ViewRcon" asp-route-id="@serverId"
                                        class="btn btn-primary btn-sm">
                                         <i class="fa-solid fa-terminal"></i> Open RCON Console
                                     </a>
                                 }
-                                <a asp-controller="Servers" asp-action="ServerInfo" asp-route-id="@serverId"
-                                   class="btn btn-outline-info btn-sm">
-                                    <i class="fa-solid fa-circle-info"></i> Public Server Info
-                                </a>
                                 @if (Model.CanEditServer)
                                 {
                                     <a asp-controller="GameServers" asp-action="Edit" asp-route-id="@serverId"
@@ -205,73 +193,53 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            @* Map Timeline *@
-            @if (Model.MapTimelineDataPoints.Any())
-            {
-                <div class="row">
-                    <div class="col-12">
+                @* Live Players (merged into Overview) *@
+                <div class="col-md-8">
+                    @if (Model.CanViewRcon)
+                    {
                         <div class="ibox">
-                            <div class="ibox-title"><h5>Map Timeline <small class="text-muted">(48h)</small></h5></div>
+                            <div class="ibox-title">
+                                <h5>Connected Players</h5>
+                                <div class="ibox-tools">
+                                    <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info">
+                                        <i class="fa fa-pause"></i> Pause
+                                    </button>
+                                </div>
+                            </div>
                             <div class="ibox-content">
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-striped w-100">
-                                        <thead><tr><th>Map</th><th>Start</th><th>End</th><th>Duration</th></tr></thead>
-                                        <tbody>
-                                            @foreach (var mp in Model.MapTimelineDataPoints.OrderByDescending(m => m.Start).Take(20))
-                                            {
-                                                var duration = mp.End - mp.Start;
-                                                <tr>
-                                                    <td>@mp.MapName</td>
-                                                    <td><small>@mp.Start.ToString("dd MMM HH:mm")</small></td>
-                                                    <td><small>@mp.End.ToString("dd MMM HH:mm")</small></td>
-                                                    <td><small>@($"{(int)duration.TotalMinutes}m")</small></td>
-                                                </tr>
-                                            }
-                                        </tbody>
+                                    <table id="sd-playersTable" class="table table-striped table-hover w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">#</th>
+                                                <th scope="col">Username</th>
+                                                <th scope="col">Guid</th>
+                                                <th scope="col">IP Address</th>
+                                                <th scope="col">Rate</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            }
-        </div>
+                    }
 
-        @* ═══ LIVE PLAYERS TAB ═══ *@
-        @if (Model.CanViewRcon)
-        {
-            <div class="tab-pane fade" id="players" role="tabpanel" aria-labelledby="players-tab">
-                <div class="ibox">
-                    <div class="ibox-title">
-                        <h5>Connected Players</h5>
-                        <div class="ibox-tools">
-                            <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info">
-                                <i class="fa fa-pause"></i> Pause
-                            </button>
+                    @* Player Count Chart *@
+                    @if (Model.GameServerStats.Any())
+                    {
+                        <div class="ibox">
+                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
+                            <div class="ibox-content">
+                                <div id="sd-playerCountChart" style="height: 200px; width: 100%;"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="ibox-content">
-                        <div class="table-responsive">
-                            <table id="sd-playersTable" class="table table-striped table-hover w-100">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">#</th>
-                                        <th scope="col">Username</th>
-                                        <th scope="col">Guid</th>
-                                        <th scope="col">IP Address</th>
-                                        <th scope="col">Rate</th>
-                                        <th scope="col">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
+                    }
                 </div>
             </div>
-        }
+        </div>
 
         @* ═══ CHAT LOG TAB ═══ *@
         @if (Model.CanViewChatLog)
@@ -299,12 +267,32 @@
             </div>
         }
 
-        @* ═══ MAP CONTROL TAB ═══ *@
+        @* ═══ MAP CONTROL TAB (with timeline + current map highlight) ═══ *@
         @if (Model.CanViewRcon)
         {
             <div class="tab-pane fade" id="mapcontrol" role="tabpanel" aria-labelledby="mapcontrol-tab">
                 <div class="row">
                     <div class="col-lg-8">
+                        @* Current Map Display *@
+                        <div class="ibox">
+                            <div class="ibox-title"><h5>Current Map</h5></div>
+                            <div class="ibox-content">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <img id="sd-currentMapImage" src="/images/noimage.jpg" alt="Current Map"
+                                             class="img-fluid" style="max-height: 100px; width: auto;">
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1" id="sd-currentMapName">@(gs.LiveMap ?? "Loading...")</h5>
+                                        <small class="text-muted">
+                                            <span id="sd-playerCount">@(gs.LiveCurrentPlayers ?? 0)</span> / <span id="sd-maxPlayers">@(gs.LiveMaxPlayers ?? 0)</span> players
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Map Rotation Carousel *@
                         <div class="ibox">
                             <div class="ibox-title"><h5>Map Rotation</h5></div>
                             <div class="ibox-content">
@@ -317,10 +305,24 @@
                                 <div id="sd-mapRotationError" class="text-center text-danger" style="display: none;"></div>
                             </div>
                         </div>
+
+                        @* Map Timeline (Google Charts) *@
+                        @if (Model.MapTimelineDataPoints.Any())
+                        {
+                            <div class="ibox">
+                                <div class="ibox-title"><h5>Map Timeline <small class="text-muted">(24h)</small></h5></div>
+                                <div class="ibox-content">
+                                    @{
+                                        var mapTimelineHeight = Model.GameServerStats.GroupBy(m => m.MapName).ToList().Count * 41 + 50;
+                                    }
+                                    <div id="sd-mapsTimeline" style="height: @(mapTimelineHeight)px; width: 100%;"></div>
+                                </div>
+                            </div>
+                        }
                     </div>
                     <div class="col-lg-4">
                         <div class="ibox">
-                            <div class="ibox-title"><h5>Server Control</h5></div>
+                            <div class="ibox-title"><h5>Map Actions</h5></div>
                             <div class="ibox-content">
                                 <div class="d-grid gap-2">
                                     <button id="sd-restartMap" class="btn btn-primary" type="button">
@@ -331,9 +333,6 @@
                                     </button>
                                     <button id="sd-nextMap" class="btn btn-primary" type="button">
                                         <i class="fa-solid fa-forward"></i> Next Map
-                                    </button>
-                                    <button id="sd-restartServer" class="btn btn-danger" type="button">
-                                        <i class="fa-solid fa-arrows-rotate"></i> Restart Server
                                     </button>
                                 </div>
                             </div>
@@ -458,16 +457,28 @@
     <script src="~/js/rcon-map-control.js"></script>
 
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+
+    @* Google Charts for timeline + player count *@
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
     <script type="text/javascript">
         var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
         var serverId = '@Model.GameServer.GameServerId';
+        var currentMap = '@(gs.LiveMap ?? "")';
         var refreshEnabled = true;
         var modulesStarted = { players: false, chatlog: false, mapcontrol: false };
 
-        // Initialize modules (but don't start polling until tab is shown)
+        // Initialize modules (players start immediately since they're on the overview tab)
         @if (Model.CanViewRcon)
         {
             <text>
+            RconServerStatus.init({
+                serverId: serverId,
+                antiForgeryToken: antiForgeryToken,
+                mapNameSelector: '#sd-currentMapName',
+                mapImageSelector: '#sd-currentMapImage',
+                playerCountSelector: '#sd-playerCount'
+            });
             RconPlayers.init({ serverId: serverId, antiForgeryToken: antiForgeryToken, tableSelector: '#sd-playersTable' });
             RconMapControl.init({
                 serverId: serverId,
@@ -479,8 +490,14 @@
                 restartMapSelector: '#sd-restartMap',
                 fastRestartMapSelector: '#sd-fastRestartMap',
                 nextMapSelector: '#sd-nextMap',
-                restartServerSelector: '#sd-restartServer'
+                restartServerSelector: '#sd-restartServer',
+                onMapChanged: function () { RconServerStatus.load(); }
             });
+
+            // Start players immediately (visible on overview tab)
+            RconPlayers.start(10000);
+            RconServerStatus.start(10000);
+            modulesStarted.players = true;
             </text>
         }
         @if (Model.CanViewChatLog)
@@ -504,16 +521,13 @@
             $(this).html(refreshEnabled ? '<i class="fa fa-pause"></i> Pause' : '<i class="fa fa-play"></i> Resume');
             if (typeof RconPlayers !== 'undefined' && modulesStarted.players) RconPlayers.setRefreshEnabled(refreshEnabled);
             if (typeof RconChatLog !== 'undefined' && modulesStarted.chatlog) RconChatLog.setRefreshEnabled(refreshEnabled);
+            if (typeof RconServerStatus !== 'undefined') RconServerStatus.setRefreshEnabled(refreshEnabled);
         });
 
         // Start/stop modules on tab visibility
         $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
             var target = $(e.target).attr('data-bs-target');
 
-            if (target === '#players' && !modulesStarted.players) {
-                RconPlayers.start(10000);
-                modulesStarted.players = true;
-            }
             if (target === '#chatlog' && !modulesStarted.chatlog) {
                 RconChatLog.start(15000);
                 modulesStarted.chatlog = true;
@@ -521,21 +535,95 @@
             if (target === '#mapcontrol' && !modulesStarted.mapcontrol) {
                 RconMapControl.start();
                 modulesStarted.mapcontrol = true;
+
+                // Highlight current map in rotation after load
+                setTimeout(function() {
+                    highlightCurrentMap();
+                }, 1500);
             }
         });
 
         $('button[data-bs-toggle="tab"]').on('hidden.bs.tab', function (e) {
             var target = $(e.target).attr('data-bs-target');
-
-            if (target === '#players') { RconPlayers.stop(); modulesStarted.players = false; }
             if (target === '#chatlog') { RconChatLog.stop(); modulesStarted.chatlog = false; }
         });
 
+        // Highlight current map in the rotation carousel
+        function highlightCurrentMap() {
+            var mapName = $('#sd-currentMapName').text().trim();
+            if (!mapName) return;
+
+            $('#sd-mapRotationCarousel .map-card').each(function() {
+                var btn = $(this).find('.load-map-btn');
+                if (btn.data('map-name') === mapName) {
+                    $(this).addClass('border border-success border-2 rounded');
+                    $(this).find('.map-card-title').append(' <span class="badge bg-success">Current</span>');
+                    // Scroll to current map
+                    this.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                }
+            });
+        }
+
         // Cleanup
         window.addEventListener('beforeunload', function () {
+            if (typeof RconServerStatus !== 'undefined') RconServerStatus.dispose();
             if (typeof RconPlayers !== 'undefined') RconPlayers.dispose();
             if (typeof RconChatLog !== 'undefined') RconChatLog.dispose();
             if (typeof RconMapControl !== 'undefined') RconMapControl.dispose();
         });
+
+        // Google Charts: Player Count
+        @if (Model.GameServerStats.Any())
+        {
+            <text>
+            google.charts.load('current', { 'packages': ['corechart', 'timeline'] });
+            google.charts.setOnLoadCallback(function() {
+                var playerCountData = new google.visualization.DataTable();
+                playerCountData.addColumn('datetime', 'Timestamp');
+                playerCountData.addColumn('number', 'Player Count');
+                playerCountData.addRows([
+                    @foreach (var item in Model.GameServerStats)
+                    {
+                        <text>[new Date(@item.Timestamp.Year, @(item.Timestamp.Month-1), @item.Timestamp.Day, @item.Timestamp.Hour, @item.Timestamp.Minute, @item.Timestamp.Second), @item.PlayerCount],</text>
+                    }
+                ]);
+                var chart = new google.visualization.LineChart(document.getElementById('sd-playerCountChart'));
+                chart.draw(playerCountData, {
+                    title: 'Player Count (Last 48 hours)',
+                    curveType: 'function',
+                    legend: { position: 'bottom' },
+                    seriesType: 'line'
+                });
+            });
+            </text>
+        }
+
+        // Google Charts: Map Timeline
+        @if (Model.MapTimelineDataPoints.Any())
+        {
+            <text>
+            google.charts.setOnLoadCallback(function() {
+                // Only draw when map control tab is shown
+                $('button[data-bs-target="#mapcontrol"]').on('shown.bs.tab', function() {
+                    var container = document.getElementById('sd-mapsTimeline');
+                    if (!container || container.dataset.drawn) return;
+
+                    var chart = new google.visualization.Timeline(container);
+                    var dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn({ type: 'string', id: 'Map Name' });
+                    dataTable.addColumn({ type: 'datetime', id: 'Start' });
+                    dataTable.addColumn({ type: 'datetime', id: 'End' });
+                    dataTable.addRows([
+                        @foreach (var dp in Model.MapTimelineDataPoints)
+                        {
+                            <text>['@dp.MapName', new Date(@dp.Start.Year, @(dp.Start.Month-1), @dp.Start.Day, @dp.Start.Hour, @dp.Start.Minute, @dp.Start.Second), new Date(@dp.End.Year, @(dp.End.Month-1), @dp.End.Day, @dp.End.Hour, @dp.End.Minute, @dp.End.Second)],</text>
+                        }
+                    ]);
+                    chart.draw(dataTable);
+                    container.dataset.drawn = 'true';
+                });
+            });
+            </text>
+        }
     </script>
 }
