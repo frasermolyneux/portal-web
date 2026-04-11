@@ -414,7 +414,7 @@ Create when page needs custom styling:
 | Maps/Index | maps-index.js | ✅ | ✅ (5 cols) | Complete |
 | User/Index | user-index.js | ✅ | ✅ (5 cols) | Complete |
 | ServerAdmin/ChatLogIndex | chatlog-index.js | ✅ | ✅ (6-7 cols) | Complete |
-| ServerAdmin/ViewRcon | (inline JS) | ✅ | ✅ (6 cols) | Complete |
+| ServerAdmin/ServerDetail | rcon-players.js | ✅ | ✅ (6 cols) | Complete |
 
 ### ✅ Fully Implemented (DataTable-Static)
 
@@ -439,7 +439,6 @@ Create when page needs custom styling:
 | View | Table Content | Recommendation |
 |------|--------------|----------------|
 | Servers/Index | Server list with status | Convert to DataTable-Static |
-| Servers/ServerInfo | Players list, Map rotation | Convert players to DataTable-Static |
 | GameServers/Index | Server management list | Convert to DataTable-AJAX |
 | GameServers/Details | Ban file monitors | Convert to DataTable-Static |
 | Credentials/Index | Server credentials | Keep static (security sensitive) |

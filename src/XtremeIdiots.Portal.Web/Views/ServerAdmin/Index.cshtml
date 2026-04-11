@@ -7,7 +7,7 @@
 @model List<ServerAdminGameServerViewModel>
 
 @{
-    ViewData["Title"] = "Live Rcon";
+    ViewData["Title"] = "Server Admin";
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -76,16 +76,6 @@
                                                     <i class="fa-solid fa-gauge" aria-hidden="true"></i> 
                                                     <span class="d-none d-sm-inline">Detail</span>
                                                 </a>
-                                                @if ((await AuthorizationService.AuthorizeAsync(User,
-                                                                                            item.GameServer.GameType, AuthPolicies.ViewLiveRcon)).Succeeded)
-                                                {
-                                                    <a type="button" class="btn btn-primary" asp-action="ViewRcon"
-                                                        asp-route-id="@item.GameServer.GameServerId"
-                                                        data-testid="server-@(item.GameServer.GameServerId)-view-rcon">
-                                                        <i class="fa-solid fa-terminal" aria-hidden="true"></i> 
-                                                        <span class="d-none d-sm-inline">View Rcon</span>
-                                                    </a>
-                                                }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
                                                                                             item.GameServer.GameType, AuthPolicies.ViewServerChatLog)).Succeeded

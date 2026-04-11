@@ -1,5 +1,5 @@
 /**
- * Shared RCON utilities used across ViewRcon modules.
+ * Shared RCON utilities used across server admin modules.
  * Provides toast notifications, HTML escaping, refresh badge management, and AJAX helpers.
  */
 var RconUtils = (function () {

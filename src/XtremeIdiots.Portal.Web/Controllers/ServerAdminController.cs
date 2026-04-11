@@ -111,22 +111,6 @@ public class ServerAdminController(
     }
 
     /// <summary>
-    /// Displays the RCON interface for a specific game server
-    /// </summary>
-    /// <param name="id">Game server ID</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>RCON interface view for the server</returns>
-    [HttpGet]
-    public async Task<IActionResult> ViewRcon(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(ViewRcon), cancellationToken).ConfigureAwait(false);
-            return actionResult is not null ? actionResult : View(gameServerData);
-        }, nameof(ViewRcon)).ConfigureAwait(false);
-    }
-
-    /// <summary>
     /// Displays the unified server detail page with tabbed admin sections.
     /// Tab visibility is determined by the user's permissions for each feature area.
     /// </summary>
@@ -1136,35 +1120,6 @@ public class ServerAdminController(
             Logger.LogError(ex, "Failed to create admin action for RCON operation on player {PlayerName} ({Guid})",
                 playerName, playerGuidStr);
         }
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> KickPlayer(Guid id, string num, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(KickPlayer), cancellationToken).ConfigureAwait(false);
-            if (actionResult is not null)
-                return actionResult;
-
-            if (string.IsNullOrWhiteSpace(num))
-            {
-                Logger.LogWarning("Invalid player slot number provided by user {UserId} for server {ServerId}: {PlayerSlot}",
-                    User.XtremeIdiotsId(), id, num);
-                return NotFound();
-            }
-
-            this.AddAlertSuccess($"Player in slot {num} has been kicked");
-
-            TrackSuccessTelemetry("PlayerKicked", nameof(KickPlayer), new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "PlayerSlot", num },
-                { "GameType", gameServerData!.GameType.ToString() }
-            });
-
-            return RedirectToAction(nameof(ViewRcon), new { id });
-        }, nameof(KickPlayer)).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -88,13 +88,4 @@ public class ServersController(
             return View(response.Result.Data.Items.ToList());
         }, nameof(Map)).ConfigureAwait(false);
     }
-
-    /// <summary>
-    /// Redirects to the admin ServerDetail page (legacy URL support)
-    /// </summary>
-    [HttpGet]
-    public IActionResult ServerInfo(Guid id)
-    {
-        return RedirectToAction("ServerDetail", "ServerAdmin", new { id });
-    }
 }

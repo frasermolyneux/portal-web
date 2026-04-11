@@ -26,13 +26,6 @@
                     }
                 </h4>
                 <div>
-                    @if (Model.CanViewRcon)
-                    {
-                        <a asp-controller="ServerAdmin" asp-action="ViewRcon" asp-route-id="@serverId"
-                           class="btn btn-sm btn-outline-primary" title="Open full RCON console">
-                            <i class="fa-solid fa-terminal"></i> RCON Console
-                        </a>
-                    }
                     @if (Model.CanEditServer)
                     {
                         <a asp-controller="GameServers" asp-action="Edit" asp-route-id="@serverId"
@@ -177,10 +170,6 @@
                                     <button id="sd-restartServer" class="btn btn-danger btn-sm" type="button">
                                         <i class="fa-solid fa-arrows-rotate"></i> Restart Server
                                     </button>
-                                    <a asp-controller="ServerAdmin" asp-action="ViewRcon" asp-route-id="@serverId"
-                                       class="btn btn-primary btn-sm">
-                                        <i class="fa-solid fa-terminal"></i> Open RCON Console
-                                    </a>
                                 }
                                 @if (Model.CanEditServer)
                                 {

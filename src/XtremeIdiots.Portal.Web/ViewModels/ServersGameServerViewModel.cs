@@ -1,12 +1,9 @@
 ﻿using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
-using XtremeIdiots.Portal.Web.Models;
-using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
 /// <summary>
-/// View model for displaying game server information in the servers section
+/// View model for displaying game server information in the public servers list
 /// </summary>
 /// <param name="gameServer">The game server data transfer object</param>
 public class ServersGameServerViewModel(GameServerDto gameServer)
@@ -15,29 +12,4 @@ public class ServersGameServerViewModel(GameServerDto gameServer)
     /// Gets the game server data
     /// </summary>
     public GameServerDto GameServer { get; private set; } = gameServer;
-
-    /// <summary>
-    /// Gets or sets the current map being played on the server
-    /// </summary>
-    public MapDto? Map { get; set; }
-
-    /// <summary>
-    /// Gets or sets the list of available maps for the server
-    /// </summary>
-    public List<MapDto> Maps { get; set; } = [];
-
-    /// <summary>
-    /// Gets or sets the server statistics
-    /// </summary>
-    public List<GameServerStatDto> GameServerStats { get; set; } = [];
-
-    /// <summary>
-    /// Gets or sets the map timeline data points for visualization
-    /// </summary>
-    public List<MapTimelineDataPoint> MapTimelineDataPoints { get; set; } = [];
-
-    /// <summary>
-    /// Gets or sets the agent telemetry status for this server (null if unavailable)
-    /// </summary>
-    public AgentServerStatus? AgentStatus { get; set; }
 }

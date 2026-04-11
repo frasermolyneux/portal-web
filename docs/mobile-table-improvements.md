@@ -47,7 +47,6 @@ These tables received `<div class="table-responsive">` wrappers:
 - Players/ProtectedNames.cshtml
 - Players/ProtectedNameReport.cshtml
 - MapManager/Manage.cshtml (3 tables)
-- Servers/ServerInfo.cshtml (2 tables)
 
 **Already Compliant:**
 - Credentials/Index.cshtml
