@@ -48,6 +48,7 @@ if (!string.IsNullOrWhiteSpace(appConfigEndpoint))
             .Select("GameTracker:*", environmentLabel)
             .Select("Google:*", environmentLabel)
             .Select("FeatureManagement:*", environmentLabel)
+            .Select("ApplicationInsights:*", environmentLabel)
             .ConfigureRefresh(refresh =>
                 refresh.Register("Sentinel", environmentLabel, refreshAll: true)
                        .SetRefreshInterval(TimeSpan.FromMinutes(5)));
@@ -80,6 +81,7 @@ builder.Services.AddLogging();
 builder.Services.Configure<TelemetryConfiguration>(telemetryConfiguration =>
 {
     var telemetryProcessorChainBuilder = telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder;
+    telemetryProcessorChainBuilder.Use(next => new DependencyFilterTelemetryProcessor(next, builder.Configuration));
     telemetryProcessorChainBuilder.UseAdaptiveSampling(
         settings: samplingSettings,
         callback: null,
