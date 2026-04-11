@@ -13,7 +13,7 @@ $(document).ready(function () {
             autoWidth: false,
             paging: true,
             pageLength: 25,
-            order: [[3, 'desc']], // Last Sync descending
+            order: [], // Preserve server-side ordering (ServerListPosition)
             columnDefs: [
                 { targets: 0, responsivePriority: 1 }, // Game Server - always visible
                 { targets: 1, responsivePriority: 3 }, // File Path - medium priority

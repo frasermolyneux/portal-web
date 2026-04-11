@@ -20,7 +20,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">
                     <game-type-icon game="@gs.GameType" size="24" class="me-2" />
-                    @serverTitle
+                    <server-name title="@gs.Title" live-title="@liveStatus?.Title" />
                     @if (liveStatus != null)
                     {
                         <small class="text-muted ms-2">@liveStatus.CurrentPlayers / @liveStatus.MaxPlayers players</small>

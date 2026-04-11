@@ -13,7 +13,7 @@ $(document).ready(function () {
             autoWidth: false,
             paging: false,
             searching: false,
-            order: [[0, 'asc']], // Title ascending
+            order: [], // Preserve server-side ordering (ServerListPosition)
             columnDefs: [
                 { targets: 0, responsivePriority: 1, orderable: true }, // Title - always visible
                 { targets: 1, responsivePriority: 4, orderable: true }, // Hostname - collapsible

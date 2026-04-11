@@ -13,7 +13,7 @@ $(document).ready(function () {
             autoWidth: false,
             paging: true,
             pageLength: 25,
-            order: [[1, 'asc']], // Title ascending
+            order: [], // Preserve server-side ordering (ServerListPosition)
             columnDefs: [
                 { targets: 0, responsivePriority: 6, orderable: false }, // Game icon - not sortable
                 { targets: 1, responsivePriority: 1 }, // Title - always visible, sortable
