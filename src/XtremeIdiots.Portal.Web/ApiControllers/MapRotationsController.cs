@@ -82,10 +82,16 @@ public class MapRotationsApiController(
                     mapRotationId = r.MapRotationId,
                     gameType = r.GameType.ToString(),
                     title = r.Title,
+                    description = r.Description,
                     gameMode = r.GameMode,
+                    status = r.Status.ToString(),
+                    category = r.Category,
+                    sequenceOrder = r.SequenceOrder,
                     mapCount = r.MapRotationMaps?.Count ?? 0,
                     serverCount = r.ServerAssignments?.Count ?? 0,
-                    version = r.Version
+                    version = r.Version,
+                    createdAt = r.CreatedAt.ToString("yyyy-MM-dd"),
+                    updatedAt = r.UpdatedAt.ToString("yyyy-MM-dd")
                 })
             });
         }, nameof(GetMapRotationsAjax)).ConfigureAwait(false);

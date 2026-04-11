@@ -22,6 +22,9 @@
                         <option value="@GameType.CallOfDuty5" selected="@(Model.SelectedGameType != null && Model.SelectedGameType == GameType.CallOfDuty5 ? "selected" : null)">Call of Duty 5</option>
                     </select>
                 </div>
+                <div class="filter-group" id="searchFilterGroup">
+                    <label class="form-label">Search</label>
+                </div>
                 <div class="filter-group">
                     <label class="form-label" for="resetFilters">Reset</label>
                     <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear Filters</button>
@@ -47,9 +50,11 @@
                                 <tr>
                                     <th scope="col">Game</th>
                                     <th scope="col">Title</th>
-                                    <th scope="col">Game Mode</th>
+                                    <th scope="col">Mode</th>
+                                    <th scope="col">Status</th>
                                     <th scope="col">Maps</th>
                                     <th scope="col">Servers</th>
+                                    <th scope="col">Updated</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
