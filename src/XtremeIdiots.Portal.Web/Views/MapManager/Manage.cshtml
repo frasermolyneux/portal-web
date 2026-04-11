@@ -65,6 +65,16 @@
                     var mapsByName = Model.Maps.ToDictionary(m => m.MapName, StringComparer.OrdinalIgnoreCase);
                     var serverMapNames = Model.ServerMaps.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     var serverMapsByName = Model.ServerMaps.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
+
+                    var activeRotMaps = Model.ActiveRotation?.MapRotationMaps ?? [];
+                    var missingFromHost = activeRotMaps.Count(rm =>
+                    {
+                        var mn = mapsById.TryGetValue(rm.MapId, out var m) ? m.MapName : null;
+                        return mn != null && !serverMapNames.Contains(mn);
+                    });
+                    var problematicCount = activeRotMaps.Count(rm => mapsById.TryGetValue(rm.MapId, out var m) && m.MapStatus == MapHealthStatus.Problematic);
+                    var blacklistedCount = activeRotMaps.Count(rm => mapsById.TryGetValue(rm.MapId, out var m) && m.MapStatus == MapHealthStatus.Blacklisted);
+                    var sortedRotMaps = Model.ActiveRotation?.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? [];
                 }
 
                 @* Tab 1: Current Rotation *@
@@ -86,16 +96,6 @@
                                 · @(Model.ActiveRotation.MapRotationMaps?.Count ?? 0) maps · Version @Model.ActiveRotation.Version
                             </small>
                         </div>
-                        @{
-                            var rotMapsForHealth = Model.ActiveRotation.MapRotationMaps ?? [];
-                            var missingFromHost = rotMapsForHealth.Count(rm =>
-                            {
-                                var mapName = mapsById.TryGetValue(rm.MapId, out var m) ? m.MapName : null;
-                                return mapName != null && !serverMapNames.Contains(mapName);
-                            });
-                            var problematicCount = rotMapsForHealth.Count(rm => mapsById.TryGetValue(rm.MapId, out var m) && m.MapStatus == MapHealthStatus.Problematic);
-                            var blacklistedCount = rotMapsForHealth.Count(rm => mapsById.TryGetValue(rm.MapId, out var m) && m.MapStatus == MapHealthStatus.Blacklisted);
-                        }
                         @if (missingFromHost > 0 || problematicCount > 0 || blacklistedCount > 0)
                         {
                             <div class="alert alert-warning py-2 mb-3">
@@ -127,7 +127,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @{ var sortedRotMaps = Model.ActiveRotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? []; }
                                     @for (var i = 0; i < sortedRotMaps.Count; i++)
                                     {
                                         var rotMap = sortedRotMaps[i];
@@ -370,10 +369,7 @@
                                                 @{
                                                     var rotMaps = rotation?.MapRotationMaps ?? [];
                                                     var healthIssues = rotMaps.Count(rm => mapsById.TryGetValue(rm.MapId, out var m) && m.MapStatus != MapHealthStatus.OK);
-                                                    var notOnHost = rotMaps.Count(rm => {
-                                                        var mapName = mapsById.TryGetValue(rm.MapId, out var m) ? m.MapName : null;
-                                                        return mapName != null && !serverMapNames.Contains(mapName);
-                                                    });
+                                                    var notOnHost = rotMaps.Count(rm => mapsById.TryGetValue(rm.MapId, out var m) && m.MapName != null && !serverMapNames.Contains(m.MapName));
                                                     var totalWarnings = healthIssues + notOnHost;
                                                 }
                                                 @if (totalWarnings > 0)
