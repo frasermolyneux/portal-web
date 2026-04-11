@@ -22,6 +22,29 @@
                         <option value="@GameType.CallOfDuty5" selected="@(Model.SelectedGameType != null && Model.SelectedGameType == GameType.CallOfDuty5 ? "selected" : null)">Call of Duty 5</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <label for="filterGameMode" class="form-label">Game Mode</label>
+                    <select id="filterGameMode" class="form-select">
+                        <option value="">All Modes</option>
+                        <option value="dm">DM</option>
+                        <option value="tdm">TDM</option>
+                        <option value="war">War</option>
+                        <option value="ftag">Freeze Tag</option>
+                        <option value="sd">S&amp;D</option>
+                        <option value="dom">Domination</option>
+                        <option value="cooperative">Cooperative</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterStatus" class="form-label">Status</label>
+                    <select id="filterStatus" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Testing">Testing</option>
+                        <option value="Active">Active</option>
+                        <option value="Archived">Archived</option>
+                    </select>
+                </div>
                 <div class="filter-group" id="searchFilterGroup">
                     <label class="form-label">Search</label>
                 </div>
@@ -55,6 +78,7 @@
                                     <th scope="col">Maps</th>
                                     <th scope="col">Servers</th>
                                     <th scope="col">Updated</th>
+                                    <th scope="col" style="display:none;">Author</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>

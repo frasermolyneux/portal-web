@@ -45,7 +45,10 @@ public class MapRotationsApiController(
                 order = orderColumn switch
                 {
                     "title" => searchOrder == "asc" ? MapRotationsOrder.TitleAsc : MapRotationsOrder.TitleDesc,
-                    "gameMode" => searchOrder == "asc" ? MapRotationsOrder.GameModeAsc : MapRotationsOrder.GameModeAsc, // GameModeDesc not available in API; ascending used as fallback
+                    "gameMode" => searchOrder == "asc" ? MapRotationsOrder.GameModeAsc : MapRotationsOrder.GameModeDesc,
+                    "mapCount" => searchOrder == "asc" ? MapRotationsOrder.MapCountAsc : MapRotationsOrder.MapCountDesc,
+                    "serverCount" => searchOrder == "asc" ? MapRotationsOrder.ServerCountAsc : MapRotationsOrder.ServerCountDesc,
+                    "updatedAt" => searchOrder == "asc" ? MapRotationsOrder.UpdatedAtAsc : MapRotationsOrder.UpdatedAtDesc,
                     _ => MapRotationsOrder.TitleAsc
                 };
             }
@@ -54,8 +57,19 @@ public class MapRotationsApiController(
 
             var searchValue = !string.IsNullOrWhiteSpace(model.Search?.Value) ? model.Search.Value : null;
 
+            // Extract server-side filter parameters from column search values
+            MapRotationStatus? statusFilter = null;
+            string? gameModeFilter = null;
+            foreach (var col in model.Columns)
+            {
+                if (col.Name == "status" && !string.IsNullOrWhiteSpace(col.Search?.Value) && Enum.TryParse<MapRotationStatus>(col.Search.Value, out var parsedStatus))
+                    statusFilter = parsedStatus;
+                if (col.Name == "gameMode" && !string.IsNullOrWhiteSpace(col.Search?.Value))
+                    gameModeFilter = col.Search.Value;
+            }
+
             var apiResponse = await repositoryApiClient.MapRotations.V1.GetMapRotations(
-                gameTypes, searchValue, null, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+                gameTypes, gameModeFilter, statusFilter, searchValue, null, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!apiResponse.IsSuccess || apiResponse.Result?.Data is null)
             {
@@ -90,6 +104,7 @@ public class MapRotationsApiController(
                     mapCount = r.MapRotationMaps?.Count ?? 0,
                     serverCount = r.ServerAssignments?.Count ?? 0,
                     version = r.Version,
+                    createdByDisplayName = r.CreatedByDisplayName,
                     createdAt = r.CreatedAt.ToString("yyyy-MM-dd"),
                     updatedAt = r.UpdatedAt.ToString("yyyy-MM-dd")
                 })
