@@ -222,7 +222,7 @@
                                 <a class="nav-link text-white-50 @Html.IsSelected("ServerAdmin", "GameChatLog", id: game.ToString())" 
                                    asp-controller="ServerAdmin" asp-action="GameChatLog" asp-route-id="@game"
                                    data-testid="nav-chatlog-@game.ToString().ToLower()">
-                                    <game-type-icon game="@game"></game-type-icon> @game.DisplayName() Chat
+                                    <game-type-icon game="@game" class="me-1"></game-type-icon> @game.DisplayName() Chat
                                 </a>
                             }
                         </nav>
@@ -250,7 +250,7 @@
                             {
                                 <a class="nav-link text-white-50 @Html.IsSelected("Players", "GameIndex", id: game.ToString())" 
                                    asp-controller="Players" asp-action="GameIndex" asp-route-id="@game">
-                                    <game-type-icon game="@game"></game-type-icon> @game.DisplayName()
+                                    <game-type-icon game="@game" class="me-1"></game-type-icon> @game.DisplayName()
                                 </a>
                             }
                         }
