@@ -151,7 +151,7 @@
                                         <tr>
                                             <td>
                                                 <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
-                                                    @server.ServerTitle
+                                                        <server-name title="@server.ServerTitle"></server-name>
                                                 </a>
                                             </td>
                                             <td><span class="badge @statusClass">@server.ActivityStatus</span></td>
@@ -275,7 +275,7 @@
                                         <tr>
                                             <td>
                                                 <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
-                                                    @server.Title
+                                                        <server-name title="@server.Title"></server-name>
                                                 </a>
                                             </td>
                                             <td><small>@server.GameType</small></td>

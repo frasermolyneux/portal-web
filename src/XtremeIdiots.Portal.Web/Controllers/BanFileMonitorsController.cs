@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -49,9 +50,19 @@ public class BanFileMonitorsController(
 
             var items = banFileMonitorsApiResponse.Result.Data.Items;
             var serverIds = items.Where(i => i.GameServer != null).Select(i => i.GameServerId).Distinct();
-            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
-                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
-            ViewBag.ServerConfigs = serverConfigs;
+
+            var serverConfigsTask = GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, serverIds, Logger, cancellationToken);
+            var liveStatusTask = repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
+
+            await Task.WhenAll(serverConfigsTask, liveStatusTask).ConfigureAwait(false);
+
+            ViewBag.ServerConfigs = await serverConfigsTask.ConfigureAwait(false);
+
+            var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
+            ViewBag.LiveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+                ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
+                : [];
 
             return View(items);
         }, nameof(Index)).ConfigureAwait(false);

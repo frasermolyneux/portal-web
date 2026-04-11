@@ -63,7 +63,7 @@
                                             <tr>
                                                 <td>
                                                     <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
-                                                        @(server.ServerTitle ?? server.ServerId.ToString())
+                                                        <server-name title="@(server.ServerTitle ?? server.ServerId.ToString())"></server-name>
                                                     </a>
                                                 </td>
                                                 <td>@server.GameType</td>
