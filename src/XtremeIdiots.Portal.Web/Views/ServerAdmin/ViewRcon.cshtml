@@ -1,4 +1,4 @@
-﻿@using XtremeIdiots.Portal.Web.Extensions
+@using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1;
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
 @model GameServerDto
@@ -239,792 +239,83 @@
         <script src="~/lib/toastr/toastr.min.js"></script>
     </environment>
 
+    <script src="~/js/rcon-utils.js"></script>
+    <script src="~/js/rcon-server-status.js"></script>
+    <script src="~/js/rcon-players.js"></script>
+    <script src="~/js/rcon-chat-log.js"></script>
+    <script src="~/js/rcon-map-control.js"></script>
+
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
     <script type="text/javascript">
 
-        // Configuration constants
-        const REFRESH_INTERVALS = {
-            CHAT: 15000,        // 15 seconds
-            PLAYERS: 10000,     // 10 seconds
-            SERVER_STATUS: 10000, // 10 seconds
-            BADGES: 5000        // 5 seconds
-        };
+        var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
+        var serverId = '@Model.GameServerId';
+        var refreshEnabled = true;
 
-        // State variables
-        let lastChatMessageId = null;
-        let refreshEnabled = true;
-        let selectedPlayerSlot = null;
-        
-        // Track active intervals for cleanup
-        const activeIntervals = [];
-        
-        // Track last refresh times for each section
-        const lastRefreshTimes = {
-            serverStatus: new Date(),
-            players: new Date(),
-            chatLog: new Date(),
-            mapRotation: new Date()
-        };
-        
-        // Helper function to update refresh badge
-        function updateRefreshBadge(badgeId, lastRefreshTime) {
-            const badge = $('#' + badgeId);
-            if (badge.length && lastRefreshTime) {
-                badge.text('Updated ' + portalDate.formatRelativeTime(lastRefreshTime.toISOString()));
-            }
-        }
-        
-        // AJAX error handler
-        function handleAjaxError(xhr, textStatus, errorThrown) {
-            console.error('AJAX Error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown });
-            // Don't show toast for expected 404s or when paused
-            if (xhr.status !== 404 && refreshEnabled) {
-                showToast('error', 'Failed to load data. Please refresh the page.');
-            }
-        }
-        
-        // Cleanup function for page unload
-        function cleanup() {
-            // Clear all active intervals
-            activeIntervals.forEach(intervalId => clearInterval(intervalId));
-            activeIntervals.splice(0); // Clear array
-            console.log('Cleaned up all intervals');
-        }
-        
-        // Register cleanup on page unload
-        window.addEventListener('beforeunload', cleanup);
-        window.addEventListener('pagehide', cleanup);
-        
-        // Update all refresh badges
-        function updateAllRefreshBadges() {
-            updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
-            updateRefreshBadge('playersTableRefresh', lastRefreshTimes.players);
-            updateRefreshBadge('chatLogRefresh', lastRefreshTimes.chatLog);
-            updateRefreshBadge('mapRotationRefresh', lastRefreshTimes.mapRotation);
-        }
-        
-        // Helper function to show toast notifications
-        function showToast(type, message, title) {
-            toastr.options = {
-                closeButton: true,
-                progressBar: true,
-                positionClass: "toast-top-right",
-                timeOut: 5000
-            };
-            
-            if (type === 'success') {
-                toastr.success(message, title || 'Success');
-            } else if (type === 'error') {
-                toastr.error(message, title || 'Error');
-            } else if (type === 'warning') {
-                toastr.warning(message, title || 'Warning');
-            } else {
-                toastr.info(message, title || 'Info');
-            }
-        }
+        // Initialize Bootstrap tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
 
-        $(document).ready(function () {
+        // Initialize all modules
+        RconServerStatus.init({ serverId: serverId, antiForgeryToken: antiForgeryToken });
+        RconPlayers.init({ serverId: serverId, antiForgeryToken: antiForgeryToken });
+        RconChatLog.init({ serverId: serverId, antiForgeryToken: antiForgeryToken });
+        RconMapControl.init({
+            serverId: serverId,
+            antiForgeryToken: antiForgeryToken,
+            onMapChanged: function () { RconServerStatus.load(); }
+        });
 
-            var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
-            
-            // Initialize Bootstrap tooltips
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl)
-            });
+        // Toggle refresh for all modules
+        $('#toggleRefresh').click(function () {
+            refreshEnabled = !refreshEnabled;
+            $(this).html(refreshEnabled ?
+                '<i class="fa fa-pause"></i> Pause Refresh' :
+                '<i class="fa fa-play"></i> Resume Refresh');
+            RconServerStatus.setRefreshEnabled(refreshEnabled);
+            RconPlayers.setRefreshEnabled(refreshEnabled);
+            RconChatLog.setRefreshEnabled(refreshEnabled);
+        });
 
-            // Toggle refresh button
-            $('#toggleRefresh').click(function() {
-                refreshEnabled = !refreshEnabled;
-                $(this).html(refreshEnabled ? 
-                    '<i class="fa fa-pause"></i> Pause Refresh' : 
-                    '<i class="fa fa-play"></i> Resume Refresh');
-            });
-            
-            // Show info modal
-            function showInfoModal(title, content) {
-                var modalHtml = '<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">' +
-                    '<div class="modal-dialog modal-lg modal-dialog-scrollable">' +
-                        '<div class="modal-content">' +
-                            '<div class="modal-header">' +
-                                '<h5 class="modal-title" id="infoModalLabel">' + escapeHtml(title) + '</h5>' +
-                                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
-                            '</div>' +
-                            '<div class="modal-body">' +
-                                '<pre class="mb-0" style="font-size: 11px; max-height: 500px; overflow-y: auto;">' + escapeHtml(content) + '</pre>' +
-                            '</div>' +
-                            '<div class="modal-footer">' +
-                                '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-                
-                // Remove any existing modal
-                $('#infoModal').remove();
-                $('body').append(modalHtml);
-                var modal = new bootstrap.Modal(document.getElementById('infoModal'));
-                modal.show();
-                
-                // Clean up modal when hidden
-                $('#infoModal').on('hidden.bs.modal', function () {
-                    $(this).remove();
-                });
-            }
-            
-            // Load server info for tooltip on Connected Players box
-            function loadServerInfoForTooltip() {
-                $.ajax({
-                    url: '/ServerAdmin/GetServerStatus/@Model.GameServerId',
-                    type: 'GET',
-                    success: function(result) {
-                        if (result.success) {
-                            // Create a summary for the tooltip
-                            var summaryHtml = 'Map: ' + (result.currentMap || 'Unknown') + '<br/>' +
-                                             'Players: ' + (result.playerCount || 0) + '/' + (result.maxPlayers || 0);
-                            
-                            $('#connectedPlayersInfoBtn').attr('data-bs-original-title', 
-                                '<div class="text-start"><strong>Server Status</strong><br/>' + summaryHtml + '</div>');
-                            
-                            // Update tooltip if already shown
-                            var tooltip = bootstrap.Tooltip.getInstance(document.getElementById('connectedPlayersInfoBtn'));
-                            if (tooltip) {
-                                tooltip.setContent({
-                                    '.tooltip-inner': '<div class="text-start"><strong>Server Status</strong><br/>' + summaryHtml + '</div>'
-                                });
-                            }
-                        }
-                    },
-                    error: function() {
-                        console.error('Failed to load server status for tooltip');
-                    }
-                });
-            }
-            
-            // Handle server info button click
-            $('#serverInfoBtn').click(function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: '/ServerAdmin/GetServerInfo/@Model.GameServerId',
-                    type: 'GET',
-                    success: function(result) {
-                        if (result.success && result.serverInfo) {
-                            showInfoModal('Server Information', result.serverInfo);
-                        } else {
-                            console.error('Server info request returned success=false:', result);
-                            showToast('error', result.message || 'Failed to load server info');
-                        }
-                    },
-                    error: function(xhr, textStatus, errorThrown) {
-                        console.error('Server info AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
-                        showToast('error', 'Failed to load server info: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
-                    }
-                });
-            });
-            
-            // Handle system info button click
-            $('#systemInfoBtn').click(function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: '/ServerAdmin/GetSystemInfo/@Model.GameServerId',
-                    type: 'GET',
-                    success: function(result) {
-                        if (result.success && result.systemInfo) {
-                            showInfoModal('System Information', result.systemInfo);
-                        } else {
-                            console.error('System info request returned success=false:', result);
-                            showToast('error', result.message || 'Failed to load system info');
-                        }
-                    },
-                    error: function(xhr, textStatus, errorThrown) {
-                        console.error('System info AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
-                        showToast('error', 'Failed to load system info: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
-                    }
-                });
-            });
-            
-            // Handle command list button click
-            $('#commandListBtn').click(function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: '/ServerAdmin/GetCommandList/@Model.GameServerId',
-                    type: 'GET',
-                    success: function(result) {
-                        if (result.success && result.commandList) {
-                            showInfoModal('Command List', result.commandList);
-                        } else {
-                            console.error('Command list request returned success=false:', result);
-                            showToast('error', result.message || 'Failed to load command list');
-                        }
-                    },
-                    error: function(xhr, textStatus, errorThrown) {
-                        console.error('Command list AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
-                        showToast('error', 'Failed to load command list: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
-                    }
-                });
-            });
+        // Manual refresh buttons
+        $('#manualRefreshBtn').click(function (e) {
+            e.preventDefault();
+            RconServerStatus.load();
+            RconUtils.showToast('info', 'Refreshing server status...');
+        });
+        $('#manualRefreshPlayersBtn').click(function (e) {
+            e.preventDefault();
+            RconPlayers.reload();
+            RconUtils.showToast('info', 'Refreshing connected players...');
+        });
+        $('#manualRefreshChatBtn').click(function (e) {
+            e.preventDefault();
+            RconChatLog.load();
+            RconUtils.showToast('info', 'Refreshing chat log...');
+        });
+        $('#manualRefreshMapRotationBtn').click(function (e) {
+            e.preventDefault();
+            RconMapControl.loadRotation();
+            RconUtils.showToast('info', 'Refreshing map rotation...');
+        });
 
-            // Load server status (current map and player count)
-            function loadServerStatus() {
-                if (!refreshEnabled) return;
-                
-                // Show loading indicator
-                $('#serverInfoLoading').show();
-                $('#serverInfoContent').css('opacity', '0.5');
-                
-                $.ajax({
-                    url: '/ServerAdmin/GetCurrentMap/@Model.GameServerId',
-                    type: 'GET',
-                    success: function(result) {
-                        if (result.success) {
-                            $('#currentMapName').text(result.currentMap || 'Unknown');
-                            
-                            if (result.mapImageUri) {
-                                $('#currentMapImage').attr('src', result.mapImageUri);
-                            } else {
-                                $('#currentMapImage').attr('src', '/images/noimage.jpg');
-                            }
-                            
-                            lastRefreshTimes.serverStatus = new Date();
-                            updateRefreshBadge('serverStatusRefresh', lastRefreshTimes.serverStatus);
-                        }
-                        
-                        // Hide loading indicator
-                        $('#serverInfoLoading').hide();
-                        $('#serverInfoContent').css('opacity', '1');
-                    },
-                    error: function() {
-                        $('#serverStatusIndicator').removeClass('bg-success').addClass('bg-danger').text('Error');
-                        
-                        // Hide loading indicator
-                        $('#serverInfoLoading').hide();
-                        $('#serverInfoContent').css('opacity', '1');
-                    }
-                });
-            }
+        // Info modal buttons
+        $('#serverInfoBtn').click(function (e) { e.preventDefault(); RconServerStatus.loadServerInfo(); });
+        $('#systemInfoBtn').click(function (e) { e.preventDefault(); RconServerStatus.loadSystemInfo(); });
+        $('#commandListBtn').click(function (e) { e.preventDefault(); RconServerStatus.loadCommandList(); });
 
-            // Manual refresh button handler
-            $('#manualRefreshBtn').click(function(e) {
-                e.preventDefault();
-                loadServerStatus();
-                showToast('info', 'Refreshing server status...');
-            });
+        // Start all modules
+        RconServerStatus.start(10000);
+        RconPlayers.start(10000);
+        RconChatLog.start(15000);
+        RconMapControl.start();
 
-            // Manual refresh button for players table
-            $('#manualRefreshPlayersBtn').click(function(e) {
-                e.preventDefault();
-                playersTable.ajax.reload(null, false);
-                showToast('info', 'Refreshing connected players...');
-            });
-
-            // Manual refresh button for chat log
-            $('#manualRefreshChatBtn').click(function(e) {
-                e.preventDefault();
-                loadChatLog();
-                showToast('info', 'Refreshing chat log...');
-            });
-
-            // Manual refresh button for map rotation
-            $('#manualRefreshMapRotationBtn').click(function(e) {
-                e.preventDefault();
-                loadMapRotation();
-                showToast('info', 'Refreshing map rotation...');
-            });
-
-            $("#restartServer").click(function (e) {
-                e.preventDefault();
-                if (!confirm('Are you sure you want to restart the server?')) return;
-                $.ajax({
-                    type: "POST",
-                    url: "/ServerAdmin/RestartServer/@Model.GameServerId",
-                    data: { __RequestVerificationToken: antiForgeryToken },
-                    success: function (result) {
-                        showToast('success', 'Server restart command sent successfully');
-                    },
-                    error: function (xhr) {
-                        showToast('error', 'Failed to restart server: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            $("#restartMap").click(function (e) {
-                e.preventDefault();
-                if (!confirm('Are you sure you want to restart the map?')) return;
-                $.ajax({
-                    type: "POST",
-                    url: "/ServerAdmin/RestartMap/@Model.GameServerId",
-                    data: { __RequestVerificationToken: antiForgeryToken },
-                    success: function (result) {
-                        showToast('success', 'Map restart command sent successfully');
-                        // Refresh server status after map command
-                        setTimeout(function() {
-                            loadServerStatus();
-                        }, 2000);
-                    },
-                    error: function (xhr) {
-                        showToast('error', 'Failed to restart map: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            $("#fastRestartMap").click(function (e) {
-                e.preventDefault();
-                if (!confirm('Are you sure you want to fast restart the map?')) return;
-                $.ajax({
-                    type: "POST",
-                    url: "/ServerAdmin/FastRestartMap/@Model.GameServerId",
-                    data: { __RequestVerificationToken: antiForgeryToken },
-                    success: function (result) {
-                        showToast('success', 'Fast restart command sent successfully');
-                        // Refresh server status after map command
-                        setTimeout(function() {
-                            loadServerStatus();
-                        }, 2000);
-                    },
-                    error: function (xhr) {
-                        showToast('error', 'Failed to fast restart map: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            $("#nextMap").click(function (e) {
-                e.preventDefault();
-                if (!confirm('Are you sure you want to load the next map?')) return;
-                $.ajax({
-                    type: "POST",
-                    url: "/ServerAdmin/NextMap/@Model.GameServerId",
-                    data: { __RequestVerificationToken: antiForgeryToken },
-                    success: function (result) {
-                        showToast('success', 'Next map command sent successfully');
-                        // Refresh server status after map command
-                        setTimeout(function() {
-                            loadServerStatus();
-                        }, 2000);
-                    },
-                    error: function (xhr) {
-                        showToast('error', 'Failed to load next map: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            // Load map rotation
-            function loadMapRotation() {
-                $.ajax({
-                    type: "GET",
-                    url: "/ServerAdmin/GetMapRotation/@Model.GameServerId",
-                    success: function (result) {
-                        if (result.success && result.maps && result.maps.length > 0) {
-                            var carousel = $('#mapRotationCarousel');
-                            carousel.empty();
-                            
-                            result.maps.forEach(function(map) {
-                                var mapCard = $('<div>', { class: 'map-card', 'data-testid': 'map-card-' + map.mapName });
-                                
-                                // Map image
-                                var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/noimage.jpg';
-                                var mapImg = $('<img>', { 
-                                    src: imgSrc, 
-                                    class: 'map-card-image',
-                                    alt: map.mapTitle,
-                                    onerror: "this.src='/images/noimage.jpg'"
-                                });
-                                
-                                // Map card body
-                                var cardBody = $('<div>', { class: 'map-card-body' });
-                                var mapTitle = $('<div>', { class: 'map-card-title', title: map.mapTitle }).text(map.mapTitle);
-                                var loadBtn = $('<button>', { 
-                                    class: 'btn btn-sm btn-primary map-card-btn load-map-btn',
-                                    'data-map-name': map.mapName,
-                                    'data-testid': 'load-map-' + map.mapName
-                                }).html('<i class="fa-solid fa-play"></i> Load Map');
-                                
-                                cardBody.append(mapTitle);
-                                cardBody.append(loadBtn);
-                                mapCard.append(mapImg);
-                                mapCard.append(cardBody);
-                                carousel.append(mapCard);
-                            });
-                            
-                            $('#mapRotationLoading').hide();
-                            $('#mapRotationContainer').show();
-                            
-                            lastRefreshTimes.mapRotation = new Date();
-                            updateRefreshBadge('mapRotationRefresh', lastRefreshTimes.mapRotation);
-                        } else {
-                            $('#mapRotationLoading').hide();
-                            $('#mapRotationError').text('No maps in rotation').show();
-                        }
-                    },
-                    error: function (xhr) {
-                        $('#mapRotationLoading').hide();
-                        $('#mapRotationError').text('Failed to load map rotation').show();
-                    }
-                });
-            }
-            
-            // Handle load map button clicks
-            $(document).on('click', '.load-map-btn', function(e) {
-                e.preventDefault();
-                var mapName = $(this).data('map-name');
-                
-                if (!confirm('Load map "' + mapName + '"?')) return;
-                
-                $.ajax({
-                    type: 'POST',
-                    url: '/ServerAdmin/LoadMap/@Model.GameServerId',
-                    data: { 
-                        mapName: mapName,
-                        __RequestVerificationToken: antiForgeryToken 
-                    },
-                    success: function(result) {
-                        if (result.success) {
-                            showToast('success', result.message || 'Map load command sent');
-                            // Refresh server status after map command
-                            setTimeout(function() {
-                                loadServerStatus();
-                            }, 2000);
-                        } else {
-                            console.error('Load map request returned success=false:', result);
-                            showToast('error', result.message || 'Failed to load map');
-                        }
-                    },
-                    error: function(xhr, textStatus, errorThrown) {
-                        console.error('Load map AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
-                        showToast('error', 'Error loading map: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
-                    }
-                });
-            });
-            
-            // Initial load of map rotation
-            loadMapRotation();
-
-            var playersTable = $('#dataTable').DataTable({
-                processing: true,
-                paging: false,
-                info: false,
-                searching: false,
-                stateSave: true,
-                responsive: {
-                    details: {
-                        type: 'inline',
-                        target: 'tr'
-                    }
-                },
-                autoWidth: false,
-                order: [[0, "asc"]],
-                ajax: {
-                    url: '/ServerAdmin/GetRconPlayers/@Model.GameServerId',
-                    dataSrc: function(json) {
-                        lastRefreshTimes.players = new Date();
-                        updateRefreshBadge('playersTableRefresh', lastRefreshTimes.players);
-                        
-                        // Update player count in server info
-                        if (json.data) {
-                            $('#playerCount').text(json.data.length || 0);
-                        }
-                        
-                        return json.data;
-                    },
-                    error: handleAjaxError
-                },
-                columnDefs: [
-                    { targets: 0, responsivePriority: 1 }, // # (Num) - always visible
-                    { targets: 1, responsivePriority: 2 }, // Username - always visible
-                    { targets: 2, responsivePriority: 5 }, // Guid - hide first on small screens
-                    { targets: 3, responsivePriority: 4 }, // IP Address - hide on smaller screens
-                    { targets: 4, responsivePriority: 6 }, // Rate - hide first on small screens
-                    { targets: 5, responsivePriority: 3 }  // Actions - keep visible
-                ],
-                columns: [
-                    {
-                        data: 'num',
-                        name: 'num',
-                        width: '50px'
-                    },
-                    {
-                        data: 'name',
-                        name: 'name',
-                        render: function (data, type, row) {
-                            // Player name with profile link if available
-                            if (row.playerId) {
-                                return '<a href="/Players/Details/' + row.playerId + '">' + escapeHtml(row.name) + '</a>';
-                            } else {
-                                return escapeHtml(row.name);
-                            }
-                        }
-                    },
-                    {
-                        data: 'guid',
-                        name: 'guid',
-                        sortable: false
-                    },
-                    {
-                        data: 'ipAddress',
-                        name: 'ipAddress',
-                        sortable: false,
-                        render: function (data, type, row) {
-                            if (!data) return '';
-                            return formatIPAddress(
-                                row.ipAddress,
-                                row.proxyCheckRiskScore || 0,
-                                row.isProxy === true,
-                                row.isVpn === true,
-                                row.proxyType || '',
-                                row.countryCode || '',
-                                true
-                            );
-                        }
-                    },
-                    {
-                        data: 'rate',
-                        name: 'rate',
-                        sortable: false
-                    },
-                    {
-                        data: null,
-                        sortable: false,
-                        render: function (data, type, row) {
-                            if (row.num == null) return '';
-                            
-                            var playerSlot = row.num;
-                            var playerGuid = row.guid || '';
-                            var playerName = escapeHtml(row.name || 'Unknown');
-                            
-                            var kickBtn = '<button class="btn btn-sm btn-warning kick-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-kick"><i class="fa-solid fa-user-xmark"></i> Kick</button> ';
-                            var tempBanBtn = '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-tempban"><i class="fa-solid fa-clock"></i> TempBan</button> ';
-                            var banBtn = '<button class="btn btn-sm btn-danger ban-player" data-slot="' + playerSlot + '" data-guid="' + playerGuid + '" data-name="' + playerName + '" data-testid="rcon-player-' + playerSlot + '-ban"><i class="fa-solid fa-ban"></i> Ban</button>';
-                            
-                            return '<div class="btn-group btn-group-sm" role="group">' + kickBtn + tempBanBtn + banBtn + '</div>';
-                        }
-                    }
-                ]
-            });
-
-            // Handle kick button clicks
-            $('#dataTable').on('click', '.kick-player', function() {
-                var playerSlot = $(this).data('slot');
-                var playerGuid = $(this).data('guid') || '';
-                var playerName = $(this).data('name') || 'this player';
-                
-                if (!confirm('Are you sure you want to kick ' + playerName + '?')) return;
-                
-                $.ajax({
-                    type: 'POST',
-                    url: '/ServerAdmin/KickRconPlayer/@Model.GameServerId',
-                    data: { 
-                        playerSlot: playerSlot,
-                        playerGuid: playerGuid,
-                        playerName: playerName,
-                        __RequestVerificationToken: antiForgeryToken 
-                    },
-                    success: function(result) {
-                        if (result.success) {
-                            showToast('success', result.message || 'Player kicked successfully');
-                            playersTable.ajax.reload();
-                        } else {
-                            showToast('error', result.message || 'Failed to kick player');
-                        }
-                    },
-                    error: function(xhr) {
-                        showToast('error', 'Error kicking player: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            // Handle temp ban button clicks
-            $('#dataTable').on('click', '.tempban-player', function() {
-                var playerSlot = $(this).data('slot');
-                var playerGuid = $(this).data('guid') || '';
-                var playerName = $(this).data('name') || 'this player';
-                
-                if (!confirm('Are you sure you want to temporarily ban ' + playerName + ' for 7 days?')) return;
-                
-                $.ajax({
-                    type: 'POST',
-                    url: '/ServerAdmin/TempBanRconPlayer/@Model.GameServerId',
-                    data: { 
-                        playerSlot: playerSlot,
-                        playerGuid: playerGuid,
-                        playerName: playerName,
-                        __RequestVerificationToken: antiForgeryToken 
-                    },
-                    success: function(result) {
-                        if (result.success) {
-                            showToast('warning', result.message || 'Player temp banned successfully');
-                            playersTable.ajax.reload();
-                        } else {
-                            showToast('error', result.message || 'Failed to temp ban player');
-                        }
-                    },
-                    error: function(xhr) {
-                        showToast('error', 'Error temp banning player: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            // Handle ban button clicks
-            $('#dataTable').on('click', '.ban-player', function() {
-                var playerSlot = $(this).data('slot');
-                var playerGuid = $(this).data('guid') || '';
-                var playerName = $(this).data('name') || 'this player';
-                
-                if (!confirm('Are you sure you want to permanently ban ' + playerName + '?')) return;
-                
-                $.ajax({
-                    type: 'POST',
-                    url: '/ServerAdmin/BanRconPlayer/@Model.GameServerId',
-                    data: { 
-                        playerSlot: playerSlot,
-                        playerGuid: playerGuid,
-                        playerName: playerName,
-                        __RequestVerificationToken: antiForgeryToken 
-                    },
-                    success: function(result) {
-                        if (result.success) {
-                            showToast('warning', result.message || 'Player banned successfully', 'Player Banned');
-                            playersTable.ajax.reload();
-                        } else {
-                            showToast('error', result.message || 'Failed to ban player');
-                        }
-                    },
-                    error: function(xhr) {
-                        showToast('error', 'Error banning player: ' + (xhr.responseText || 'Unknown error'));
-                    }
-                });
-            });
-
-            // Reload player data every 10 seconds (respecting pause state)
-            activeIntervals.push(setInterval(function () {
-                if (refreshEnabled && !selectedPlayerSlot) {
-                    playersTable.ajax.reload(null, false);
-                }
-            }, REFRESH_INTERVALS.PLAYERS));
-
-            // Reload server status every 10 seconds
-            activeIntervals.push(setInterval(function () {
-                if (refreshEnabled) {
-                    loadServerStatus();
-                }
-            }, REFRESH_INTERVALS.SERVER_STATUS));
-
-            // Load and refresh chat log
-            function loadChatLog() {
-                if (!refreshEnabled) return;
-                let url = '/ServerAdmin/GetServerLiveChatLog/@Model.GameServerId?minutes=30';
-                if (lastChatMessageId) {
-                    url += '&lastMessageId=' + lastChatMessageId;
-                }
-
-                $.ajax({
-                    url: url,
-                    type: 'GET',
-                    success: function(result) {
-                        if (result.messages && result.messages.length > 0) {
-                            // Update the last message ID
-                            lastChatMessageId = result.messages[0].chatMessageId;
-                            
-                            // Build messages HTML (newest first at top)
-                            let messagesHtml = '';
-                            for (let i = 0; i < result.messages.length; i++) {
-                                const msg = result.messages[i];
-                                const msgClass = msg.locked ? 'alert-warning' : 'alert-info';
-                                const lockedBadge = msg.locked ? '<span class="badge bg-warning ms-2">Locked</span>' : '';
-                                
-                                messagesHtml += '<div class="alert ' + msgClass + ' alert-sm mb-1" data-testid="chat-message-' + msg.chatMessageId + '">';
-                                messagesHtml += '<small class="text-muted">' + portalDate.formatRelativeTime(msg.timestamp) + '</small> ';
-                                
-                                if (msg.playerId) {
-                                    messagesHtml += '<strong><a href="/Players/Details/' + msg.playerId + '" class="alert-link">' + escapeHtml(msg.username) + '</a></strong>';
-                                } else {
-                                    messagesHtml += '<strong>' + escapeHtml(msg.username) + '</strong>';
-                                }
-                                
-                                messagesHtml += lockedBadge + ': ';
-                                messagesHtml += escapeHtml(msg.message);
-                                messagesHtml += '</div>';
-                            }
-                            
-                            const container = $('#chatMessages');
-                            if (container.find('p.text-muted').length > 0) {
-                                // First load - replace loading message
-                                container.html(messagesHtml);
-                                $('#chatMessageCount').text(result.messages.length);
-                            } else {
-                                // Prepend new messages at the top (newest messages at top)
-                                container.prepend(messagesHtml);
-                                $('#chatMessageCount').text(result.messages.length + ' new');
-                            }
-                            
-                            // Scroll to top to show newest messages
-                            $('#chatLogContainer').scrollTop(0);
-                            
-                            // Update refresh time
-                            lastRefreshTimes.chatLog = new Date();
-                            updateRefreshBadge('chatLogRefresh', lastRefreshTimes.chatLog);
-                        } else if (!lastChatMessageId) {
-                            $('#chatMessages').html('<p class="text-muted text-center">No recent chat messages</p>');
-                            $('#chatMessageCount').text('0');
-                        } else {
-                            $('#chatMessageCount').text('0 new');
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error('Failed to load chat log:', xhr);
-                        if (!lastChatMessageId) {
-                            $('#chatMessages').html('<p class="text-danger text-center">Failed to load chat messages</p>');
-                        }
-                    }
-                });
-            }
-            
-            // Handle Say form submission
-            $('#sayForm').submit(function(e) {
-                e.preventDefault();
-                const message = $('#sayMessage').val().trim();
-                
-                if (!message) {
-                    showToast('warning', 'Please enter a message');
-                    return;
-                }
-                
-                $.ajax({
-                    type: 'POST',
-                    url: '/ServerAdmin/SendSayCommand/@Model.GameServerId',
-                    data: {
-                        message: message,
-                        __RequestVerificationToken: antiForgeryToken
-                    },
-                    success: function(result) {
-                        if (result.success) {
-                            showToast('success', result.message || 'Message sent successfully');
-                            $('#sayMessage').val('');
-                            // Reload chat log after a short delay to see the message
-                            setTimeout(loadChatLog, 1000);
-                        } else {
-                            console.error('Send say command returned success=false:', result);
-                            showToast('error', result.message || 'Failed to send message');
-                        }
-                    },
-                    error: function(xhr, textStatus, errorThrown) {
-                        console.error('Send say command AJAX error:', { status: xhr.status, statusText: xhr.statusText, error: errorThrown, responseText: xhr.responseText });
-                        showToast('error', 'Error sending message: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
-                    }
-                });
-            });
-
-            // Initial load
-            loadChatLog();
-            loadServerStatus();
-            loadServerInfoForTooltip();
-
-            // Refresh chat log periodically
-            activeIntervals.push(setInterval(loadChatLog, REFRESH_INTERVALS.CHAT));
-            
-            // Update all refresh badges every 5 seconds
-            activeIntervals.push(setInterval(updateAllRefreshBadges, REFRESH_INTERVALS.BADGES));
-            
-            // Initial load of map rotation
-            loadMapRotation();
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function () {
+            RconServerStatus.dispose();
+            RconPlayers.dispose();
+            RconChatLog.dispose();
+            RconMapControl.dispose();
         });
 
     </script>

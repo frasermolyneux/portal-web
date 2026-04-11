@@ -70,6 +70,12 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group" aria-label="Server admin actions">
+                                                <a type="button" class="btn btn-success" asp-action="ServerDetail"
+                                                    asp-route-id="@item.GameServer.GameServerId"
+                                                    data-testid="server-@(item.GameServer.GameServerId)-detail">
+                                                    <i class="fa-solid fa-gauge" aria-hidden="true"></i> 
+                                                    <span class="d-none d-sm-inline">Detail</span>
+                                                </a>
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
                                                                                             item.GameServer.GameType, AuthPolicies.ViewLiveRcon)).Succeeded)
                                                 {

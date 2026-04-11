@@ -19,6 +19,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -33,6 +34,7 @@ public class ServerAdminController(
     IServersApiClient serversApiClient,
     IGeoLocationApiClient geoLocationClient,
     IAdminActionTopics adminActionTopics,
+    IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<ServerAdminController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -122,6 +124,124 @@ public class ServerAdminController(
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(ViewRcon), cancellationToken).ConfigureAwait(false);
             return actionResult is not null ? actionResult : View(gameServerData);
         }, nameof(ViewRcon)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Displays the unified server detail page with tabbed admin sections.
+    /// Tab visibility is determined by the user's permissions for each feature area.
+    /// </summary>
+    /// <param name="id">Game server ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Tabbed server detail view</returns>
+    [HttpGet]
+    public async Task<IActionResult> ServerDetail(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+
+            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Game server {ServerId} not found for ServerDetail", id);
+                return NotFound();
+            }
+
+            var gs = gameServerApiResponse.Result.Data;
+
+            // Check per-tab permissions in parallel
+            var rconAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ViewLiveRcon);
+            var chatAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ViewServerChatLog);
+            var mapRotAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.AccessMapRotations);
+            var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.AccessStatus);
+            var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.EditGameServer);
+
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth).ConfigureAwait(false);
+
+            var viewModel = new ServerDetailViewModel
+            {
+                GameServer = gs,
+                CanViewRcon = (await rconAuth.ConfigureAwait(false)).Succeeded,
+                CanViewChatLog = (await chatAuth.ConfigureAwait(false)).Succeeded,
+                CanViewMapRotation = (await mapRotAuth.ConfigureAwait(false)).Succeeded,
+                CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
+                CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded
+            };
+
+            // Fetch overview data (non-critical — page renders without it)
+            try
+            {
+                var statsTask = repositoryApiClient.GameServersStats.V1.GetGameServerStatusStats(
+                    gs.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken);
+
+                var agentTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        return await agentTelemetryService.GetServerStatusAsync(
+                            gs.GameServerId, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Failed to get agent status for server {ServerId}", id);
+                        return null;
+                    }
+                }, cancellationToken);
+
+                await Task.WhenAll(statsTask, agentTask).ConfigureAwait(false);
+
+                var statsResponse = await statsTask.ConfigureAwait(false);
+                if (statsResponse.IsSuccess && statsResponse.Result?.Data?.Items is not null)
+                {
+                    viewModel.GameServerStats = [.. statsResponse.Result.Data.Items];
+
+                    // Build map timeline
+                    GameServerStatDto? current = null;
+                    var orderedStats = statsResponse.Result.Data.Items.OrderBy(s => s.Timestamp).ToList();
+                    foreach (var stat in orderedStats)
+                    {
+                        if (current is null) { current = stat; continue; }
+                        if (current.MapName != stat.MapName)
+                        {
+                            viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
+                                current.MapName, current.Timestamp, stat.Timestamp));
+                            current = stat;
+                        }
+                        if (stat == orderedStats.Last())
+                            viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
+                                current.MapName, current.Timestamp, DateTime.UtcNow));
+                    }
+                }
+
+                viewModel.AgentStatus = await agentTask.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to load overview data for server {ServerId}", id);
+            }
+
+            // Load ban file monitors if user has status access
+            if (viewModel.CanViewStatus)
+            {
+                try
+                {
+                    viewModel.BanFileMonitors = [.. gs.BanFileMonitors];
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to load ban file monitors for server {ServerId}", id);
+                }
+            }
+
+            TrackSuccessTelemetry("ServerDetailLoaded", nameof(ServerDetail), new Dictionary<string, string>
+            {
+                { "ServerId", id.ToString() },
+                { "ServerTitle", gs.Title }
+            });
+
+            Logger.LogInformation("User {UserId} loaded server detail for {ServerId}", User.XtremeIdiotsId(), id);
+
+            return View(viewModel);
+        }, nameof(ServerDetail)).ConfigureAwait(false);
     }
 
     /// <summary>
