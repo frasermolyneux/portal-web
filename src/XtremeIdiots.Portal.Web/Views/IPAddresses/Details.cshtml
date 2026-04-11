@@ -251,7 +251,7 @@
                                             <td><game-type-icon game="@player.GameType"></game-type-icon></td>
                                         <td>
                                             <a asp-controller="Players" asp-action="Details" asp-route-id="@player.PlayerId">
-                                                @player.Username
+                                                <player-name value="@player.Username"></player-name>
                                             </a>
                                         </td>
                                         <td><guid-link guid="@player.Guid" game="@player.GameType.ToString()"></guid-link></td>

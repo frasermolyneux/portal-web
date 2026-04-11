@@ -63,9 +63,9 @@ var RconPlayers = (function () {
                     data: 'name', name: 'name',
                     render: function (data, type, row) {
                         if (row.playerId) {
-                            return '<a href="/Players/Details/' + row.playerId + '">' + escapeHtml(row.name) + '</a>';
+                            return '<a href="/Players/Details/' + row.playerId + '">' + CodColors.renderSafe(row.name) + '</a>';
                         }
-                        return escapeHtml(row.name);
+                        return CodColors.renderSafe(row.name);
                     }
                 },
                 { data: 'guid', name: 'guid', sortable: false },

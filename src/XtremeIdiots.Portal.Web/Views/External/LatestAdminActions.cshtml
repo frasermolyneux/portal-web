@@ -40,7 +40,7 @@
                         @Html.Raw(text)
 
                         <a target="_blank"
-                            href="@((Configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/'))/Players/Details/@item.PlayerId">@item.Player?.Username</a>
+                            href="@((Configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/'))/Players/Details/@item.PlayerId"><player-name value="@item.Player?.Username"></player-name></a>
                     </p>
                 </div>
 

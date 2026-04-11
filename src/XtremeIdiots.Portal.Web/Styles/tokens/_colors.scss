@@ -42,6 +42,18 @@ $info: $info-color !default;
 $warning: $warning-color !default;
 $danger: $danger-color !default;
 
+// Call of Duty / Quake color codes (^0 through ^9)
+$cod-color-0: #333333 !default; // Black (dark grey for visibility)
+$cod-color-1: #FF0000 !default; // Red
+$cod-color-2: #00FF00 !default; // Green
+$cod-color-3: #FFFF00 !default; // Yellow
+$cod-color-4: #0000FF !default; // Dark Blue
+$cod-color-5: #00FFFF !default; // Light Blue
+$cod-color-6: #FF00FF !default; // Purple
+$cod-color-7: #FFFFFF !default; // White
+$cod-color-8: #FF8C00 !default; // Orange (multicolor default)
+$cod-color-9: #808080 !default; // Grey
+
 // CSS Custom Properties (for runtime theming)
 :root {
     --xi-primary: #{$xi-primary};
@@ -51,4 +63,16 @@ $danger: $danger-color !default;
     --xi-accent: #{$xi-accent};
     --xi-text: #{$xi-text};
     --xi-link: #{$xi-link};
+
+    // CoD color code tokens
+    --cod-color-0: #{$cod-color-0};
+    --cod-color-1: #{$cod-color-1};
+    --cod-color-2: #{$cod-color-2};
+    --cod-color-3: #{$cod-color-3};
+    --cod-color-4: #{$cod-color-4};
+    --cod-color-5: #{$cod-color-5};
+    --cod-color-6: #{$cod-color-6};
+    --cod-color-7: #{$cod-color-7};
+    --cod-color-8: #{$cod-color-8};
+    --cod-color-9: #{$cod-color-9};
 }

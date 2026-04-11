@@ -68,7 +68,7 @@
                                         <text>@item.Type for
                                             <a asp-controller="Players" asp-action="Details" asp-route-id="@item.PlayerId"
                                                 class="btn btn-sm btn-outline-light ms-2 fw-bold">
-                                                <i class="fa-solid fa-fw fa-user"></i>@item.Player.Username
+                                                <i class="fa-solid fa-fw fa-user"></i><player-name value="@item.Player.Username"></player-name>
                                             </a>
                                         </text>
                                     }

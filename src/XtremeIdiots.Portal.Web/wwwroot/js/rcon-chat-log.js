@@ -52,13 +52,13 @@ var RconChatLog = (function () {
                         messagesHtml += '<small class="text-muted">' + portalDate.formatRelativeTime(msg.timestamp) + '</small> ';
 
                         if (msg.playerId) {
-                            messagesHtml += '<strong><a href="/Players/Details/' + msg.playerId + '" class="alert-link">' + escapeHtml(msg.username) + '</a></strong>';
+                            messagesHtml += '<strong><a href="/Players/Details/' + msg.playerId + '" class="alert-link">' + CodColors.renderSafe(msg.username) + '</a></strong>';
                         } else {
-                            messagesHtml += '<strong>' + escapeHtml(msg.username) + '</strong>';
+                            messagesHtml += '<strong>' + CodColors.renderSafe(msg.username) + '</strong>';
                         }
 
                         messagesHtml += lockedBadge + ': ';
-                        messagesHtml += escapeHtml(msg.message);
+                        messagesHtml += CodColors.renderSafe(msg.message);
                         messagesHtml += '</div>';
                     }
 

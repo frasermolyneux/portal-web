@@ -93,7 +93,7 @@ $(document).ready(function () {
             {
                 data: null, name: 'serverName', orderable: false,
                 render: function (data, type, row) {
-                    return escapeHtml(row['gameServer']?.['liveTitle'] || row['gameServer']?.['title'] || '');
+                    return CodColors.renderSafe(row['gameServer']?.['liveTitle'] || row['gameServer']?.['title'] || '');
                 }
             },
             {

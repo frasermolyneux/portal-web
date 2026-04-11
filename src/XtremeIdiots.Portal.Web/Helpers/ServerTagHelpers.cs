@@ -35,14 +35,9 @@ public class ServerNameTagHelper : TagHelper
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagName = "span";
+        output.Attributes.SetAttribute("class", "cod-colored");
         var value = string.IsNullOrWhiteSpace(LiveTitle) ? Title ?? string.Empty : LiveTitle;
-        string[] toRemove = ["^1", "^2", "^3", "^4", "^5", "^6", "^7", "^8", "^9"];
-        foreach (var code in toRemove)
-        {
-            value = value?.Replace(code, string.Empty);
-        }
-
-        output.Content.SetContent(value ?? string.Empty);
+        output.Content.SetHtmlContent(CodColorHelper.RenderColorCodes(value ?? string.Empty));
     }
 }
 

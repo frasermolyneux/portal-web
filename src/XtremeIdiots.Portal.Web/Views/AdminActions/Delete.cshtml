@@ -31,7 +31,7 @@
                         </div>
                         <div class="detail-field col-sm-6">
                             <dt class="detail-label">@Html.DisplayNameFor(model => model.Player.Username)</dt>
-                            <dd class="detail-value">@Html.DisplayFor(model => model.Player.Username)</dd>
+                            <dd class="detail-value"><player-name value="@Model.Player?.Username"></player-name></dd>
                         </div>
                         <div class="detail-field col-sm-12">
                             <dt class="detail-label">@Html.DisplayNameFor(model => model.Text)</dt>

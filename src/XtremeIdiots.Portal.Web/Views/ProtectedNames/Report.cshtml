@@ -35,7 +35,7 @@
                             <dd class="detail-value">
                                 <a asp-controller="Players" asp-action="Details"
                                     asp-route-id="@Model.Report.OwningPlayer.PlayerId">
-                                    @Model.Report.OwningPlayer.Username
+                                    <player-name value="@Model.Report.OwningPlayer.Username"></player-name>
                                 </a>
                             </dd>
                         </div>

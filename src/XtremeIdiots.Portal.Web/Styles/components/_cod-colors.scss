@@ -1,0 +1,44 @@
+// CoD / Quake Color Code Component
+// Renders ^0–^9 color codes as colored spans
+
+@use '../tokens/colors' as *;
+
+.cod-colored {
+    // Container for colored text — ensures inline display and inherits font
+    display: inline;
+    font-family: inherit;
+}
+
+// Individual color classes
+.cod-color-0 { color: var(--cod-color-0); }
+.cod-color-1 { color: var(--cod-color-1); }
+.cod-color-2 { color: var(--cod-color-2); }
+.cod-color-3 { color: var(--cod-color-3); }
+.cod-color-4 { color: var(--cod-color-4); }
+.cod-color-5 { color: var(--cod-color-5); }
+.cod-color-6 { color: var(--cod-color-6); }
+.cod-color-7 {
+    color: var(--cod-color-7);
+    text-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.cod-color-8 { color: var(--cod-color-8); }
+.cod-color-9 { color: var(--cod-color-9); }
+
+// Ensure colored spans within anchors keep their colors, override link default
+a .cod-colored span[class^="cod-color-"],
+a .cod-colored span[class*=" cod-color-"],
+a span[class^="cod-color-"],
+a span[class*=" cod-color-"] {
+    color: unset;
+}
+
+// Links wrapping colored content should not impose their own color
+a:has(> .cod-colored),
+a:has(> span[class^="cod-color-"]) {
+    color: unset;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}

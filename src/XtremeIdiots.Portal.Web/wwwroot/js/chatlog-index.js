@@ -36,7 +36,7 @@ $(document).ready(function () {
                         ? row['gameServer']['gameType']
                         : (row['gameType'] !== undefined ? row['gameType'] : fixedGameType);
 
-                var safeUsername = escapeHtml(row['username'] || '');
+                var safeUsername = CodColors.renderSafe(row['username'] || '');
                 var playerId = row['playerId'];
 
                 function usernameAnchor() {
@@ -55,11 +55,11 @@ $(document).ready(function () {
             }
         },
         { data: 'chatType', name: 'chatType', orderable: false },
-        { data: 'message', name: 'message', orderable: false, render: function (data) { return data ? escapeHtml(data) : ''; } }
+        { data: 'message', name: 'message', orderable: false, render: function (data) { return data ? CodColors.renderSafe(data) : ''; } }
     ];
     if (showServer) {
         // Use data: null so DataTables doesn't expect a primitive at serverName path; render from nested object
-        columns.push({ data: null, name: 'serverName', orderable: false, render: function (data, type, row) { return row['gameServer']?.['liveTitle'] || row['serverName'] || ''; } });
+        columns.push({ data: null, name: 'serverName', orderable: false, render: function (data, type, row) { return CodColors.renderSafe(row['gameServer']?.['liveTitle'] || row['serverName'] || ''); } });
     }
     columns.push(
         {

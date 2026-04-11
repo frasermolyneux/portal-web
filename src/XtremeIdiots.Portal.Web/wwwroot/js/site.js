@@ -12,11 +12,11 @@ function handleAjaxError(xhr, textStatus, error) {
 }
 
 function renderPlayerName(gameType, username, playerId) {
-    var safeUsername = escapeHtml(username);
+    var coloredName = CodColors.renderSafe(username);
     if (playerId) {
-        return gameTypeIconEnum(gameType) + " <a href='/Players/Details/" + playerId + "'>" + safeUsername + "</a>";
+        return gameTypeIconEnum(gameType) + " <a href='/Players/Details/" + playerId + "'>" + coloredName + "</a>";
     }
-    return gameTypeIconEnum(gameType) + " " + safeUsername;
+    return gameTypeIconEnum(gameType) + " " + coloredName;
 }
 
 function chatLogUrl(chatMessageId) {

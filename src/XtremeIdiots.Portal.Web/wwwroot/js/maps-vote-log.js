@@ -54,17 +54,17 @@ $(document).ready(function () {
             {
                 data: null, name: 'playerName', orderable: false, render: function (data, type, row) {
                     if (!row.playerName) return '<span class="text-muted">Unknown</span>';
-                    var safeName = escapeHtml(row.playerName);
+                    var coloredName = CodColors.renderSafe(row.playerName);
                     if (row.playerId) {
-                        return '<a href="/Players/Details/' + row.playerId + '">' + safeName + '</a>';
+                        return '<a href="/Players/Details/' + row.playerId + '">' + coloredName + '</a>';
                     }
-                    return safeName;
+                    return coloredName;
                 }
             },
             {
                 data: 'serverName', name: 'serverName', orderable: false, render: function (data) {
                     if (!data) return '<span class="text-muted">N/A</span>';
-                    return escapeHtml(data);
+                    return CodColors.renderSafe(data);
                 }
             },
             {

@@ -27,7 +27,7 @@
                 <tr class="@(usage.IsOwner ? "table-success" : "table-danger")">
                     <td>
                         <a asp-controller="Players" asp-action="Details" asp-route-id="@usage.PlayerId">
-                            @usage.Username
+                            <player-name value="@usage.Username"></player-name>
                         </a>
                     </td>
                     <td><time time-ago utc="@usage.LastUsed" show-absolute="false"></time></td>

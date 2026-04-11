@@ -35,7 +35,7 @@
         <div class="flex-grow-1 min-w-0">
             <h5 class="mb-1 text-truncate">@adminAction.Type on @if (player is not null){
             <a asp-controller="Players"
-                    asp-action="Details" asp-route-id="@adminAction.PlayerId">@player.Username</a>
+                    asp-action="Details" asp-route-id="@adminAction.PlayerId"><player-name value="@player.Username"></player-name></a>
                         } else
                 {
 
@@ -64,7 +64,7 @@
         <div class="col-sm-6 col-md-5">
             <div class="border rounded p-2 h-100">
                 <div class="fw-semibold mb-1 small text-uppercase text-muted">Player</div>
-                <div class="mb-1"><strong>@player?.Username</strong></div>
+                <div class="mb-1"><strong><player-name value="@player?.Username"></player-name></strong></div>
                 <div class="small text-muted">Guid: @player?.Guid</div>
                 @* Country information not available on PlayerDto (CountryCode removed) *@
             </div>

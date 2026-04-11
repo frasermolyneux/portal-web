@@ -30,7 +30,7 @@
                                 <game-type-icon game="@player.GameType"></game-type-icon>
                             </div>
                             <div class="flex-grow-1">
-                                <h2 class="mb-2 text-center text-md-start">@(player.Username ?? "Unknown Player")</h2>                                
+                                <h2 class="mb-2 text-center text-md-start"><player-name value="@(player.Username ?? "Unknown Player")"></player-name></h2>                                
                                 <div class="text-muted mb-3">
                                     <div class="row">                                        
                                         <div class="col-12 col-lg-6 mb-2 mb-lg-0">
@@ -129,7 +129,7 @@
                     <div>                        
                         <ul class="list-group clear-list">
                             <li class="list-group-item">
-                                <span class="float-end text-end"> @player.Username</span>
+                                <span class="float-end text-end"> <player-name value="@player.Username"></player-name></span>
                                 Alias
                             </li>                            
                             @if (Model.Intelligence != null)
@@ -233,7 +233,7 @@
                                         @foreach(var aliasDto in player.PlayerAliases)
                                         {
                                         <tr>
-                                            <td>@aliasDto.Name</td>
+                                            <td><player-name value="@aliasDto.Name"></player-name></td>
                                             <td><time user-time utc="@aliasDto.Added"></time></td>
                                             <td><time user-time utc="@aliasDto.LastUsed"></time></td>
                                             <td><confidence-label score="@aliasDto.ConfidenceScore" last-used="@aliasDto.LastUsed"></confidence-label></td>
@@ -302,7 +302,7 @@
                                         @foreach (var protectedName in player.ProtectedNames)
                                         {
                                             <tr>
-                                                <td>@protectedName.Name</td>
+                                                <td><player-name value="@protectedName.Name"></player-name></td>
                                                 <td><time user-time utc="@protectedName.CreatedOn"></time></td>
                                                 <td>@protectedName.CreatedByUserProfile?.DisplayName</td>
                                                 <td>
