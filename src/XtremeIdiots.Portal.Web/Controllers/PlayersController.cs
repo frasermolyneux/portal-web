@@ -82,43 +82,29 @@ public class PlayersController(
 
             if (playerData.RelatedPlayers is not null && playerData.RelatedPlayers.Count != 0)
             {
+                // All related players share the same IP (the current player's IP) — reuse existing intelligence
+                var sharedIntelligence = playerDetailsViewModel.Intelligence;
+
                 foreach (var rp in playerData.RelatedPlayers)
                 {
-                    if (rp is null)
-                    {
-                        continue;
-                    }
+                    if (rp is null) continue;
 
                     var vm = RelatedPlayerEnrichedViewModel.FromRelatedPlayerDto(rp);
-                    try
+
+                    if (sharedIntelligence is not null)
                     {
-                        if (!string.IsNullOrWhiteSpace(vm.IpAddress))
+                        if (!string.IsNullOrWhiteSpace(sharedIntelligence.CountryCode))
+                            vm.CountryCode = sharedIntelligence.CountryCode;
+
+                        if (sharedIntelligence.ProxyCheck is not null)
                         {
-                            var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(vm.IpAddress, cancellationToken).ConfigureAwait(false);
-                            if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
-                            {
-                                var intelligence = intelligenceResult.Result.Data;
-
-                                if (!string.IsNullOrWhiteSpace(intelligence.CountryCode))
-                                {
-                                    vm.CountryCode = intelligence.CountryCode;
-                                }
-
-                                if (intelligence.ProxyCheck is not null)
-                                {
-                                    vm.RiskScore = intelligence.ProxyCheck.RiskScore;
-                                    vm.IsProxy = intelligence.ProxyCheck.IsProxy;
-                                    vm.IsVpn = intelligence.ProxyCheck.IsVpn;
-                                    vm.ProxyType = intelligence.ProxyCheck.ProxyType;
-                                }
-                            }
+                            vm.RiskScore = sharedIntelligence.ProxyCheck.RiskScore;
+                            vm.IsProxy = sharedIntelligence.ProxyCheck.IsProxy;
+                            vm.IsVpn = sharedIntelligence.ProxyCheck.IsVpn;
+                            vm.ProxyType = sharedIntelligence.ProxyCheck.ProxyType;
                         }
+                    }
 
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogWarning(ex, "Failed to enrich related player {RelatedPlayerId} for {PlayerId}", vm.PlayerId, id);
-                    }
                     playerDetailsViewModel.EnrichedRelatedPlayers.Add(vm);
                 }
             }
@@ -141,7 +127,7 @@ public class PlayersController(
     {
         var playerApiResponse = await repositoryApiClient.Players.V1.GetPlayer(id,
             PlayerEntityOptions.Aliases | PlayerEntityOptions.IpAddresses | PlayerEntityOptions.AdminActions |
-            PlayerEntityOptions.RelatedPlayers | PlayerEntityOptions.ProtectedNames | PlayerEntityOptions.Tags).ConfigureAwait(false);
+            PlayerEntityOptions.RelatedPlayers | PlayerEntityOptions.ProtectedNames | PlayerEntityOptions.Tags | PlayerEntityOptions.Counts).ConfigureAwait(false);
 
         if (playerApiResponse.IsNotFound)
         {
@@ -190,7 +176,8 @@ public class PlayersController(
 
     private async Task EnrichPlayerIpAddressesAsync(PlayerDetailsViewModel viewModel, PlayerDto playerData, Guid playerId, CancellationToken cancellationToken = default)
     {
-        foreach (var ipAddress in playerData.PlayerIpAddresses.OrderByDescending(x => x.LastUsed).Take(10))
+        var ipAddresses = playerData.PlayerIpAddresses.OrderByDescending(x => x.LastUsed).Take(10).ToList();
+        var tasks = ipAddresses.Select(async ipAddress =>
         {
             var enrichedIp = new PlayerIpAddressViewModel
             {
@@ -212,7 +199,10 @@ public class PlayersController(
                     ipAddress.Address, playerId);
             }
 
-            viewModel.EnrichedIpAddresses.Add(enrichedIp);
-        }
+            return enrichedIp;
+        }).ToList();
+
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        viewModel.EnrichedIpAddresses.AddRange(results);
     }
 }

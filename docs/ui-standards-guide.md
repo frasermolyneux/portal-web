@@ -267,6 +267,25 @@ Examples:
 
 ---
 
+## Copy to Clipboard
+
+Use the `data-copy-target` attribute pattern for copy-to-clipboard actions. Do **not** use inline `onclick` handlers.
+
+```html
+<span id="playerId" class="mx-1">some-value</span>
+<i class="fa-solid fa-fw fa-copy cursor-pointer" data-copy-target="playerId" title="Copy Player ID" aria-hidden="true"></i>
+```
+
+The click handler uses event delegation on `[data-copy-target]`, reads the `textContent` of the target element by ID, and copies it to the clipboard. Visual feedback is provided by temporarily swapping the icon to a checkmark.
+
+### Rules
+
+- The `data-copy-target` value must match the `id` of the element whose text content should be copied.
+- Use `fa-copy` icon with `cursor-pointer` class.
+- Never use `onclick="copyToClipboard(...)"` — use `data-copy-target` instead.
+
+---
+
 ## Badges & Status Indicators
 
 - Use SCSS-defined `badge-*` classes or Bootstrap 5 `bg-*` classes.
@@ -301,3 +320,6 @@ These patterns are deprecated. The SCSS retains bridge definitions for backward 
 | `fa-save` | `fa-floppy-disk` |
 | `fa-edit` | `fa-pen-to-square` |
 | `type="button"` on `<a>` | Remove — not valid HTML on anchors |
+| `onclick="copyToClipboard(...)"` | `data-copy-target` attribute |
+| `style="display:none"` on anti-forgery form | `af-hidden` CSS class |
+| Inline `style="height: ..."` on map divs | `player-location-map` CSS class |

@@ -18,36 +18,54 @@
 @if (Model?.Player != null)
 {
     var player = Model.Player;
+
+    // Detect active ban
+    var activeBan = player.AdminActions?.FirstOrDefault(a =>
+        (a.Type == AdminActionType.Ban && a.Expires is null) ||
+        (a.Type == AdminActionType.TempBan && a.Expires > DateTime.UtcNow));
+
+    // Admin action counts by type
+    var adminActions = player.AdminActions ?? new List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions.AdminActionDto>();
+    var banCount = adminActions.Count(a => a.Type == AdminActionType.Ban);
+    var tempBanCount = adminActions.Count(a => a.Type == AdminActionType.TempBan);
+    var kickCount = adminActions.Count(a => a.Type == AdminActionType.Kick);
+    var warningCount = adminActions.Count(a => a.Type == AdminActionType.Warning);
+    var observationCount = adminActions.Count(a => a.Type == AdminActionType.Observation);
+
+    // Risk level for gauge
+    var riskScore = Model.Intelligence?.ProxyCheck?.RiskScore ?? 0;
+    var riskLevel = riskScore >= 80 ? "critical" : (riskScore >= 50 ? "high" : (riskScore >= 25 ? "medium" : "low"));
+
 <!-- Player Banner -->
 <div class="row">
     <div class="col-12">
         <div class="ibox">
             <div class="ibox-content">
                 <div class="row">
-                    <div class="col-12">                        
-                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center">                            
-                            <div class="me-0 me-md-3 mb-2 mb-md-0 text-center text-md-start">                                
+                    <div class="col-12">
+                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center">
+                            <div class="me-0 me-md-3 mb-2 mb-md-0 text-center text-md-start">
                                 <game-type-icon game="@player.GameType"></game-type-icon>
                             </div>
                             <div class="flex-grow-1">
-                                <h2 class="mb-2 text-center text-md-start"><player-name value="@(player.Username ?? "Unknown Player")"></player-name></h2>                                
+                                <h2 class="mb-2 text-center text-md-start"><player-name value="@(player.Username ?? "Unknown Player")"></player-name></h2>
                                 <div class="text-muted mb-3">
-                                    <div class="row">                                        
+                                    <div class="row">
                                         <div class="col-12 col-lg-6 mb-2 mb-lg-0">
                                             <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                <i class="fa-solid fa-fw fa-id-card"></i> Player ID: 
+                                                <i class="fa-solid fa-fw fa-id-card" aria-hidden="true"></i> Player ID:
                                                 <span id="playerId" class="mx-1 font-weight-bold">@player.PlayerId.ToString()</span>
-                                                <i class="fa-solid fa-fw fa-copy cursor-pointer" onclick="copyToClipboard('playerId')" title="Copy Player ID"></i>
+                                                <i class="fa-solid fa-fw fa-copy cursor-pointer" data-copy-target="playerId" title="Copy Player ID" aria-hidden="true"></i>
                                             </span>
                                             <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                <i class="fa-solid fa-fw fa-key"></i> GUID: 
+                                                <i class="fa-solid fa-fw fa-key" aria-hidden="true"></i> GUID:
                                                 <span id="playerGuid" class="mx-1 font-weight-bold text-truncate"><guid-link guid="@player.Guid" game="@player.GameType.ToString()"></guid-link></span>
-                                                <i class="fa-solid fa-fw fa-copy cursor-pointer" onclick="copyToClipboard('playerGuid')" title="Copy GUID"></i>
+                                                <i class="fa-solid fa-fw fa-copy cursor-pointer" data-copy-target="playerGuid" title="Copy GUID" aria-hidden="true"></i>
                                             </span>
                                             @if (player.Tags != null && player.Tags.Any())
                                             {
                                                 <span class="d-flex align-items-center justify-content-center justify-content-md-start">
-                                                    <i class="fa-solid fa-fw fa-tag"></i> Tags: 
+                                                    <i class="fa-solid fa-fw fa-tag" aria-hidden="true"></i> Tags:
                                                     <span class="mx-1">
                                                         @foreach (var playerTag in player.Tags)
                                                         {
@@ -64,45 +82,45 @@
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Observation), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Observation" class="btn btn-outline-primary btn-sm">
-                                                        <i class="fa-solid fa-fw fa-eye"></i> Observation
+                                                        <i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i> Observation
                                                     </a>
                                                 }
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User,new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Warning), AuthPolicies.CreateAdminAction)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Warning), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Warning" class="btn btn-outline-warning btn-sm">
-                                                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Warning
+                                                        <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Warning
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Kick), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Kick" class="btn btn-outline-info btn-sm">
-                                                        <i class="fa-solid fa-fw fa-arrow-right-from-bracket"></i> Kick
+                                                        <i class="fa-solid fa-fw fa-arrow-right-from-bracket" aria-hidden="true"></i> Kick
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.TempBan), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="TempBan" class="btn btn-outline-secondary btn-sm">
-                                                        <i class="fa-solid fa-fw fa-clock"></i> Temp Ban
+                                                        <i class="fa-solid fa-fw fa-clock" aria-hidden="true"></i> Temp Ban
                                                     </a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Ban), AuthPolicies.CreateAdminAction)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Ban" class="btn btn-outline-danger btn-sm">
-                                                        <i class="fa-solid fa-fw fa-ban"></i> Ban
+                                                        <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban
                                                     </a>
                                                 }
 
-                                                <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-success btn-sm">
-                                                    <i class="fa-solid fa-fw fa-shield"></i> Protected Name
+                                                <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Protected Name
                                                 </a>
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag)).Succeeded)
                                                 {
                                                     <a asp-controller="PlayerTags" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-dark btn-sm">
-                                                        <i class="fa-solid fa-fw fa-tag"></i> Tag
+                                                        <i class="fa-solid fa-fw fa-tag" aria-hidden="true"></i> Tag
                                                     </a>
                                                 }
                                                 </div>
@@ -110,7 +128,7 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>                        
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -119,64 +137,184 @@
     </div>
 </div>
 
+@if (activeBan is not null)
+{
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="fa-solid fa-fw fa-ban me-2" aria-hidden="true"></i>
+                <div>
+                    <strong>Active @(activeBan.Type == AdminActionType.Ban ? "Ban" : "Temp Ban")</strong>
+                    @if (!string.IsNullOrWhiteSpace(activeBan.UserProfile?.DisplayName))
+                    {
+                        <span>by @activeBan.UserProfile.DisplayName</span>
+                    }
+                    @if (activeBan.Expires.HasValue)
+                    {
+                        <span>— expires <time user-time utc="@activeBan.Expires"></time></span>
+                    }
+                    else
+                    {
+                        <span>— permanent</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="row">
 
     <div class="col-12 col-lg-4 mb-4 mb-lg-0">
+        <!-- Player Summary -->
         <div class="ibox">
+            <div class="ibox-title"><h5>Player Summary</h5></div>
             <div class="ibox-content">
-
-                <div id="player" class="tab-pane active">                    
-                    <div>                        
-                        <ul class="list-group clear-list">
-                            <li class="list-group-item">
-                                <span class="float-end text-end"> <player-name value="@player.Username"></player-name></span>
-                                Alias
-                            </li>                            
-                            @if (Model.Intelligence != null)
-                            {                                  
-                                <li class="list-group-item">                                    
-                                    <span class="float-end text-end ip-address-container" 
-                                          data-ip="@player.IpAddress" 
-                                          data-risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)" 
-                                          data-is-proxy="@((Model.Intelligence.ProxyCheck?.IsProxy ?? false).ToString().ToLower())" 
-                                          data-is-vpn="@((Model.Intelligence.ProxyCheck?.IsVpn ?? false).ToString().ToLower())"
-                                          data-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"
-                                                                                    data-country-code="@(Model.Intelligence.CountryCode ?? "")">
-                                                                                <ip-address ip="@player.IpAddress" country-code="@Model.Intelligence.CountryCode" risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)" is-proxy="@(Model.Intelligence.ProxyCheck?.IsProxy ?? false)" is-vpn="@(Model.Intelligence.ProxyCheck?.IsVpn ?? false)" proxy-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"></ip-address>
-                                    </span>
-                                    IP Address
-                                </li>
-                                <li class="list-group-item">
-                                    <span class="float-end text-end"> <location-summary intelligence-model="@Model.Intelligence"></location-summary></span>
-                                    Country/City
-                                </li>
-                            }
-                            <li class="list-group-item">
-                                <span class="float-end text-end">
-                                    <i class="fa-solid fa-fw fa-clock"></i> <time user-time utc="@player.FirstSeen"></time>
-                                </span>
-                                First Seen
-                            </li>                    
-                            <li class="list-group-item">
-                                <span class="float-end text-end">
-                                    <i class="fa-solid fa-fw fa-clock"></i> <time user-time utc="@player.LastSeen"></time>
-                                </span>
-                                Last Seen
-                            </li>
-                        </ul>
-
+                <dl class="detail-fields row">
+                    <div class="detail-field col-sm-12">
+                        <dt class="detail-label">Current Alias</dt>
+                        <dd class="detail-value"><player-name value="@player.Username"></player-name></dd>
                     </div>
-                </div>
+                    @if (Model.Intelligence != null)
+                    {
+                        <div class="detail-field col-sm-12">
+                            <dt class="detail-label">IP Address</dt>
+                            <dd class="detail-value">
+                                <span class="ip-address-container"
+                                      data-ip="@player.IpAddress"
+                                      data-risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)"
+                                      data-is-proxy="@((Model.Intelligence.ProxyCheck?.IsProxy ?? false).ToString().ToLower())"
+                                      data-is-vpn="@((Model.Intelligence.ProxyCheck?.IsVpn ?? false).ToString().ToLower())"
+                                      data-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"
+                                      data-country-code="@(Model.Intelligence.CountryCode ?? "")">
+                                    <ip-address ip="@player.IpAddress" country-code="@Model.Intelligence.CountryCode" risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)" is-proxy="@(Model.Intelligence.ProxyCheck?.IsProxy ?? false)" is-vpn="@(Model.Intelligence.ProxyCheck?.IsVpn ?? false)" proxy-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"></ip-address>
+                                </span>
+                            </dd>
+                        </div>
+                        <div class="detail-field col-sm-12">
+                            <dt class="detail-label">Country/City</dt>
+                            <dd class="detail-value"><location-summary intelligence-model="@Model.Intelligence"></location-summary></dd>
+                        </div>
+                    }
+                    <div class="detail-field col-sm-6">
+                        <dt class="detail-label">First Seen</dt>
+                        <dd class="detail-value"><i class="fa-solid fa-fw fa-clock" aria-hidden="true"></i> <time user-time utc="@player.FirstSeen"></time></dd>
+                    </div>
+                    <div class="detail-field col-sm-6">
+                        <dt class="detail-label">Last Seen</dt>
+                        <dd class="detail-value"><i class="fa-solid fa-fw fa-clock" aria-hidden="true"></i> <time user-time utc="@player.LastSeen"></time></dd>
+                    </div>
+                </dl>
 
+                <h6 class="mt-3 mb-2 text-muted text-uppercase small fw-bold">Admin History</h6>
+                <div class="player-admin-summary">
+                    <dl class="detail-fields row mb-0">
+                        @if (banCount > 0)
+                        {
+                            <div class="detail-field col-6">
+                                <dt class="detail-label"><i class="fa-solid fa-fw fa-ban text-danger" aria-hidden="true"></i> Bans</dt>
+                                <dd class="detail-value">@banCount</dd>
+                            </div>
+                        }
+                        @if (tempBanCount > 0)
+                        {
+                            <div class="detail-field col-6">
+                                <dt class="detail-label"><i class="fa-solid fa-fw fa-clock text-danger" aria-hidden="true"></i> Temp Bans</dt>
+                                <dd class="detail-value">@tempBanCount</dd>
+                            </div>
+                        }
+                        @if (kickCount > 0)
+                        {
+                            <div class="detail-field col-6">
+                                <dt class="detail-label"><i class="fa-solid fa-fw fa-arrow-right-from-bracket text-info" aria-hidden="true"></i> Kicks</dt>
+                                <dd class="detail-value">@kickCount</dd>
+                            </div>
+                        }
+                        @if (warningCount > 0)
+                        {
+                            <div class="detail-field col-6">
+                                <dt class="detail-label"><i class="fa-solid fa-fw fa-triangle-exclamation text-warning" aria-hidden="true"></i> Warnings</dt>
+                                <dd class="detail-value">@warningCount</dd>
+                            </div>
+                        }
+                        @if (observationCount > 0)
+                        {
+                            <div class="detail-field col-6">
+                                <dt class="detail-label"><i class="fa-solid fa-fw fa-eye text-primary" aria-hidden="true"></i> Observations</dt>
+                                <dd class="detail-value">@observationCount</dd>
+                            </div>
+                        }
+                        @if (banCount == 0 && tempBanCount == 0 && kickCount == 0 && warningCount == 0 && observationCount == 0)
+                        {
+                            <div class="detail-field col-12">
+                                <dd class="detail-value text-muted">No admin actions</dd>
+                            </div>
+                        }
+                    </dl>
+                </div>
             </div>
         </div>
-       
+
+        <!-- IP Intelligence -->
         <div class="ibox">
-            <div class="ibox-title">
-                <h5>Player Location</h5>
-            </div>
+            <div class="ibox-title"><h5>IP Intelligence</h5></div>
             <div class="ibox-content">
-                <div id="map" style="height: 300px; width: 100%;"></div>
+                @if (Model.Intelligence != null)
+                {
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="risk-score-gauge">
+                                <div class="gauge-container">
+                                    <div class="gauge" data-risk-level="@riskLevel">
+                                        <span class="gauge-value">@riskScore</span>
+                                    </div>
+                                </div>
+                                <p class="mt-2"><small class="text-muted">Risk Score</small></p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <dl class="detail-fields mb-0">
+                                @if (Model.Intelligence.ProxyCheck?.IsProxy == true)
+                                {
+                                    <div class="detail-field">
+                                        <dd class="detail-value"><span class="badge bg-danger">Proxy</span></dd>
+                                    </div>
+                                }
+                                @if (Model.Intelligence.ProxyCheck?.IsVpn == true)
+                                {
+                                    <div class="detail-field">
+                                        <dd class="detail-value"><span class="badge bg-warning text-dark">VPN</span></dd>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.ProxyCheck?.ProxyType))
+                                {
+                                    <div class="detail-field">
+                                        <dt class="detail-label">Type</dt>
+                                        <dd class="detail-value">@Model.Intelligence.ProxyCheck.ProxyType</dd>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.CountryCode))
+                                {
+                                    <div class="detail-field">
+                                        <dt class="detail-label">Country</dt>
+                                        <dd class="detail-value">
+                                            <img src="/images/flags/@(Model.Intelligence.CountryCode.ToLower()).png" alt="@Model.Intelligence.CountryCode" />
+                                            @Model.Intelligence.CountryCode
+                                        </dd>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.City))
+                                {
+                                    <div class="detail-field">
+                                        <dt class="detail-label">City</dt>
+                                        <dd class="detail-value">@Model.Intelligence.City</dd>
+                                    </div>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                }
+                <div id="map" class="player-location-map"></div>
                 <div class="text-end mt-2">
                     <small><a target="_blank" href="https://www.geo-location.net/">Powered by geo-location.net</a></small>
                 </div>
@@ -186,106 +324,106 @@
     </div>
 
     <div class="col-12 col-lg-8 mb-8 mb-lg-0">
-        <div class="ibox ">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Player Data</h5></div>
             <div class="ibox-content">
 
                 <ul class="nav nav-tabs nav-tabs-responsive" id="playerDetailsTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <a class="nav-link active" id="aliases-tab" data-bs-toggle="tab" href="#aliases" role="tab" aria-controls="aliases" aria-selected="true">Aliases</a>
+                        <a class="nav-link active" id="aliases-tab" data-bs-toggle="tab" href="#aliases" role="tab" aria-controls="aliases" aria-selected="true">Aliases <span class="badge bg-secondary ms-1">@(player.AliasCount)</span></a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="ipAddresses-tab" data-bs-toggle="tab" href="#ipAddresses" role="tab" aria-controls="ipAddresses" aria-selected="false">IP Addresses</a>
+                        <a class="nav-link" id="ipAddresses-tab" data-bs-toggle="tab" href="#ipAddresses" role="tab" aria-controls="ipAddresses" aria-selected="false">IP History <span class="badge bg-secondary ms-1">@(player.IpAddressCount)</span></a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="protectedNames-tab" data-bs-toggle="tab" href="#protectedNames" role="tab" aria-controls="protectedNames" aria-selected="false">Protected Names</a>
+                        <a class="nav-link" id="protectedNames-tab" data-bs-toggle="tab" href="#protectedNames" role="tab" aria-controls="protectedNames" aria-selected="false">Protected Names <span class="badge bg-secondary ms-1">@(player.ProtectedNameCount)</span></a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="playerTags-tab" data-bs-toggle="tab" href="#playerTags" role="tab" aria-controls="playerTags" aria-selected="false">Tags</a>
+                        <a class="nav-link" id="playerTags-tab" data-bs-toggle="tab" href="#playerTags" role="tab" aria-controls="playerTags" aria-selected="false">Tags <span class="badge bg-secondary ms-1">@(player.TagCount)</span></a>
                     </li>
-                    @if (!string.IsNullOrWhiteSpace(player.IpAddress))
-                    {
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link" id="relatedPlayers-tab" data-bs-toggle="tab" href="#relatedPlayers" role="tab" aria-controls="relatedPlayers" aria-selected="false">Related Players</a>
-                        </li>
-                    }
                     <li class="nav-item" role="presentation">
                         <a class="nav-link" id="chatLog-tab" data-bs-toggle="tab" href="#chatLog" role="tab" aria-controls="chatLog" aria-selected="false">ChatLog</a>
                     </li>
                 </ul>
 
                 <div class="tab-content">
-                    <div class="ibox-content tab-pane container fade show active" style="height: 100%" id="aliases" role="tabpanel" aria-labelledby="aliases-tab">
+                    <div class="ibox-content tab-pane container fade show active" id="aliases" role="tabpanel" aria-labelledby="aliases-tab">
                         <div class="table-responsive">
                             <table id="aliasesTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        <th>Added</th>
-                                        <th>Last Used</th>
+                                        <th class="table-date-col">Added</th>
+                                        <th class="table-date-col">Last Used</th>
                                         <th data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the Alias has been linked to the GUID">
                                             Confidence
                                         </th>
                                     </tr>
-                                </thead>                            
+                                </thead>
                                 <tbody>
                                     @if (player.PlayerAliases != null)
                                     {
-                                        @foreach(var aliasDto in player.PlayerAliases)
+                                        @foreach (var aliasDto in player.PlayerAliases)
                                         {
                                         <tr>
                                             <td><player-name value="@aliasDto.Name"></player-name></td>
                                             <td><time user-time utc="@aliasDto.Added"></time></td>
                                             <td><time user-time utc="@aliasDto.LastUsed"></time></td>
                                             <td><confidence-label score="@aliasDto.ConfidenceScore" last-used="@aliasDto.LastUsed"></confidence-label></td>
-                                        </tr> 
+                                        </tr>
                                         }
                                     }
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    
-                    <div class="ibox-content tab-pane container fade" style="height: 100%" id="ipAddresses" role="tabpanel" aria-labelledby="ipAddresses-tab">
+
+                    <div class="ibox-content tab-pane container fade" id="ipAddresses" role="tabpanel" aria-labelledby="ipAddresses-tab">
+                        @if (player.IpAddressCount > 10)
+                        {
+                            <div class="alert alert-info mb-2">
+                                <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i> Showing 10 of @(player.IpAddressCount) IP addresses
+                            </div>
+                        }
                         <div class="table-responsive">
                             <table id="ipAddressesTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
                                         <th>Address</th>
-                                        <th>Added</th>
-                                        <th>Last Used</th>
+                                        <th class="table-date-col">Added</th>
+                                        <th class="table-date-col">Last Used</th>
                                         <th data-bs-toggle="tooltip" data-bs-placement="bottom" title="Confidence is determined by the amount of times that the IP Address has been linked to the GUID">
                                             Confidence
                                         </th>
                                     </tr>
-                                </thead>                            
+                                </thead>
                                 <tbody>
                                     @if (Model.EnrichedIpAddresses != null)
                                     {
-                                        @foreach(var ipAddress in Model.EnrichedIpAddresses)
-                                        {                                
-                                        <tr>                                        
-                                            <td class="ip-address-container" 
-                                              data-ip="@ipAddress.Address" 
-                                              data-risk="@ipAddress.RiskScore" 
-                                              data-is-proxy="@ipAddress.IsProxy.ToString().ToLower()" 
+                                        @foreach (var ipAddress in Model.EnrichedIpAddresses)
+                                        {
+                                        <tr>
+                                            <td class="ip-address-container"
+                                              data-ip="@ipAddress.Address"
+                                              data-risk="@ipAddress.RiskScore"
+                                              data-is-proxy="@ipAddress.IsProxy.ToString().ToLower()"
                                               data-is-vpn="@ipAddress.IsVpn.ToString().ToLower()"
                                               data-type="@ipAddress.ProxyType"
                                               data-country-code="@ipAddress.CountryCode">
-                                                <!-- This initial rendering will be replaced by JavaScript -->
-                                                <img src="/images/flags/@(ipAddress.CountryCode != "unknown" ? ipAddress.CountryCode.ToLower() : "unknown").png" /> @ipAddress.Address
+                                                <img src="/images/flags/@(ipAddress.CountryCode != "unknown" ? ipAddress.CountryCode.ToLower() : "unknown").png" alt="" /> @ipAddress.Address
                                             </td>
                                             <td><time user-time utc="@ipAddress.IpAddressDto.Added"></time></td>
                                             <td><time user-time utc="@ipAddress.IpAddressDto.LastUsed"></time></td>
                                             <td><confidence-label score="@ipAddress.IpAddressDto.ConfidenceScore" last-used="@ipAddress.IpAddressDto.LastUsed"></confidence-label></td>
-                                        </tr> 
+                                        </tr>
                                         }
                                     }
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    
-                    <div class="ibox-content tab-pane container fade" style="height: 100%" id="protectedNames" role="tabpanel" aria-labelledby="protectedNames-tab">
+
+                    <div class="ibox-content tab-pane container fade" id="protectedNames" role="tabpanel" aria-labelledby="protectedNames-tab">
                         @if (player.ProtectedNames != null && player.ProtectedNames.Any())
                         {
                             <div class="table-responsive">
@@ -293,9 +431,9 @@
                                     <thead>
                                         <tr>
                                             <th>Name</th>
-                                            <th>Created</th>
+                                            <th class="table-date-col">Created</th>
                                             <th>Created By</th>
-                                            <th>Actions</th>
+                                            <th class="table-action-col">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -308,11 +446,11 @@
                                                 <td>
                                                     <div class="btn-group btn-group-sm" role="group">
                                                         <a asp-controller="ProtectedNames" asp-action="Report" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-outline-secondary btn-sm">
-                                                            <i class="fa-solid fa-fw fa-flag"></i> <span class="d-none d-sm-inline">Usage Report</span>
+                                                            <i class="fa-solid fa-fw fa-flag" aria-hidden="true"></i> <span class="d-none d-sm-inline">Usage Report</span>
                                                         </a>
-                                                        <a asp-controller="ProtectedNames" asp-action="Delete" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-danger btn-sm"
+                                                        <a asp-controller="ProtectedNames" asp-action="Delete" asp-route-id="@protectedName.ProtectedNameId" class="btn btn-outline-danger btn-sm"
                                                            data-confirm="Are you sure you want to delete this protected name?">
-                                                            <i class="fa-solid fa-fw fa-trash"></i> <span class="d-none d-sm-inline">Delete</span>
+                                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> <span class="d-none d-sm-inline">Delete</span>
                                                         </a>
                                                     </div>
                                                 </td>
@@ -321,9 +459,9 @@
                                     </tbody>
                                 </table>
                             </div>
-                              <p>
+                            <p>
                                 <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-primary">
-                                    <i class="fa-solid fa-fw fa-plus"></i> Add Another Protected Name
+                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Another Protected Name
                                 </a>
                             </p>
                         }
@@ -332,62 +470,18 @@
                             <div class="alert alert-info">
                                 This player has no protected names.
                             </div>
-                              <p>
+                            <p>
                                 <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-primary">
-                                    <i class="fa-solid fa-fw fa-plus"></i> Add Protected Name
+                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Protected Name
                                 </a>
-                            </p>                        }
+                            </p>
+                        }
                     </div>
-                    <div class="ibox-content tab-pane container fade" style="height: 100%" id="playerTags" role="tabpanel" aria-labelledby="playerTags-tab">
+                    <div class="ibox-content tab-pane container fade" id="playerTags" role="tabpanel" aria-labelledby="playerTags-tab">
                         @await Component.InvokeAsync("PlayerTags", new { playerId = player.PlayerId })
                     </div>
-                    
-                    @if (!string.IsNullOrWhiteSpace(Model.Player?.IpAddress))
-                    {
-                        <div class="ibox-content tab-pane container fade" style="height: 100%" id="relatedPlayers" role="tabpanel" aria-labelledby="relatedPlayers-tab">
-                            <div class="table-responsive">
-                                <table class="table table-borderless" style="width: 100%;" id="relatedPlayersTable">
-                                    <thead>
-                                        <tr>
-                                            <th>
-                                                Player Name
-                                            </th>
-                                            <th>
-                                                Connected By IP
-                                            </th>
-                                        </tr>
-                                    </thead>                                
-                                    <tbody>
-                                        @if (Model.EnrichedRelatedPlayers != null && Model.EnrichedRelatedPlayers.Count != 0)
-                                        {
-                                            foreach (var related in Model.EnrichedRelatedPlayers)
-                                            {
-                                                <tr>
-                                                    <td>
-                                                        <span class="player-name"
-                                                              data-game-type="@related.GameType"
-                                                              data-username="@related.Username"
-                                                              data-player-id="@related.PlayerId"></span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="ip-address-container"
-                                                              data-ip="@related.IpAddress"
-                                                              data-risk="@related.RiskScore"
-                                                              data-is-proxy="@((related.IsProxy ?? false).ToString().ToLower())"
-                                                              data-is-vpn="@((related.IsVpn ?? false).ToString().ToLower())"
-                                                              data-type="@related.ProxyType"
-                                                              data-country-code="@related.CountryCode"></span>
-                                                    </td>
-                                                </tr>
-                                            }
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    }
 
-                    <div class="ibox-content tab-pane container fade" style="height: 100%" id="chatLog" role="tabpanel" aria-labelledby="chatLog-tab">
+                    <div class="ibox-content tab-pane container fade" id="chatLog" role="tabpanel" aria-labelledby="chatLog-tab">
                         <div class="list-filters mb-2" id="chatLogFilters">
                             <div class="filter-group">
                                 <label for="filterLocked" class="form-label">Locked</label>
@@ -407,7 +501,7 @@
                             ViewData["ChatLogTitle"] = "Player ChatLog";
                         }
                         <partial name="_ChatLogTable" />
-                    </div>                
+                    </div>
                 </div>
             </div>
         </div>
@@ -415,7 +509,82 @@
 
 </div>
 
-@await Component.InvokeAsync("AdminActions", new {adminActions = player.AdminActions, linkToPlayer = false, playerDto = player})
+<!-- Related Players -->
+@if (Model.EnrichedRelatedPlayers != null && Model.EnrichedRelatedPlayers.Count != 0)
+{
+<div class="row">
+    <div class="col-12">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Related Players <span class="badge bg-secondary ms-1">@(player.RelatedPlayerCount)</span></h5></div>
+            <div class="ibox-content">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover w-100" id="relatedPlayersTable">
+                        <thead>
+                            <tr>
+                                <th>Player Name</th>
+                                <th>Connected By IP</th>
+                                <th class="table-date-col">Last Seen</th>
+                                <th>Actions</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var related in Model.EnrichedRelatedPlayers)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="player-name"
+                                              data-game-type="@related.GameType"
+                                              data-username="@related.Username"
+                                              data-player-id="@related.PlayerId"></span>
+                                    </td>
+                                    <td>
+                                        <span class="ip-address-container"
+                                              data-ip="@related.IpAddress"
+                                              data-risk="@related.RiskScore"
+                                              data-is-proxy="@((related.IsProxy ?? false).ToString().ToLower())"
+                                              data-is-vpn="@((related.IsVpn ?? false).ToString().ToLower())"
+                                              data-type="@related.ProxyType"
+                                              data-country-code="@related.CountryCode"></span>
+                                    </td>
+                                    <td><time user-time utc="@related.LastSeen"></time></td>
+                                    <td>
+                                        @if (related.AdminActionCount > 0)
+                                        {
+                                            <span class="badge bg-warning text-dark">@related.AdminActionCount</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">0</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (related.HasActiveBan)
+                                        {
+                                            <span class="badge bg-danger">Banned</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">OK</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+<!-- Admin Actions -->
+<div class="row">
+    <div class="col-12">
+        @await Component.InvokeAsync("AdminActions", new { adminActions = player.AdminActions, linkToPlayer = false, playerDto = player })
+    </div>
+</div>
 }
 
 </div>
@@ -423,7 +592,7 @@
 @* ReSharper disable once Razor.SectionNotResolved *@
 
 @section scripts {
-    <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+    <form id="__af" method="post" class="af-hidden">@Html.AntiForgeryToken()</form>
     <script type="text/javascript">
 
         $(document).ready(function() {
@@ -441,8 +610,8 @@
                     }
                 });
             });
-        });        
-        
+        });
+
         // Initialize Google Map with player location
         function initMap() {
             @if (Model?.Intelligence != null && Model.Intelligence.Latitude.HasValue && Model.Intelligence.Longitude.HasValue)
@@ -481,20 +650,20 @@
     <script src="~/js/chatlog-index.js" asp-append-version="true"></script>
     <script src="~/js/player-details-tables.js" asp-append-version="true"></script>
     <script>
-        // Copy to clipboard functionality
-        function copyToClipboard(elementId) {
-            var element = document.getElementById(elementId);
+        // Copy to clipboard via data attributes
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-copy-target]');
+            if (!btn) return;
+            var targetId = btn.getAttribute('data-copy-target');
+            var element = document.getElementById(targetId);
+            if (!element) return;
             var text = element.textContent || element.innerText;
-            
+
             if (navigator.clipboard && window.isSecureContext) {
-                // Use modern clipboard API
                 navigator.clipboard.writeText(text).then(function() {
-                    showCopyFeedback(elementId);
-                }, function(err) {
-                    console.error('Could not copy text: ', err);
+                    showCopyFeedback(btn);
                 });
             } else {
-                // Fallback for older browsers
                 var textArea = document.createElement("textarea");
                 textArea.value = text;
                 textArea.style.position = "fixed";
@@ -503,27 +672,24 @@
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
-                
+
                 try {
                     document.execCommand('copy');
-                    showCopyFeedback(elementId);
+                    showCopyFeedback(btn);
                 } catch (err) {
                     console.error('Could not copy text: ', err);
                 }
-                
+
                 document.body.removeChild(textArea);
             }
-        }
-        
-        function showCopyFeedback(elementId) {
-            var icon = document.querySelector('#' + elementId + ' + .fa-copy');
-            if (icon) {
-                var originalClass = icon.className;
-                icon.className = 'fa-solid fa-check ms-1 cursor-pointer text-success';
-                setTimeout(function() {
-                    icon.className = originalClass;
-                }, 2000);
-            }
+        });
+
+        function showCopyFeedback(icon) {
+            var originalClass = icon.className;
+            icon.className = 'fa-solid fa-fw fa-check cursor-pointer text-success';
+            setTimeout(function() {
+                icon.className = originalClass;
+            }, 2000);
         }
 
         $(document).ready(function () {
@@ -536,9 +702,7 @@
                 var isVpn = container.data('is-vpn') === 'true';
                 var type = container.data('type') || '';
                 var countryCode = container.data('country-code') || '';
-                
-                // If we don't have a country code but have an IP address,
-                // just display with the unknown flag for now
+
                 container.html(formatIPAddress(ip, risk, isProxy, isVpn, type, countryCode));
             });
 
@@ -548,7 +712,6 @@
                 var gameType = parseInt(el.data('game-type'));
                 var username = el.data('username');
                 var playerId = el.data('player-id');
-                // renderPlayerName(gameTypeEnum, username, playerId)
                 try {
                     el.html(renderPlayerName(gameType, username, playerId));
                 } catch (e) {
@@ -558,4 +721,3 @@
         });
     </script>
 }
-

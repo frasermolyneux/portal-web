@@ -88,3 +88,23 @@
         margin-bottom: 0.5rem;
     }
 }
+
+// Player details page
+.player-location-map {
+    height: 200px;
+    width: 100%;
+}
+
+.player-admin-summary {
+    dt {
+        font-weight: $font-weight-semibold;
+        color: $xi-text-muted;
+        font-size: $font-size-sm;
+        text-transform: uppercase;
+    }
+}
+
+// Hidden anti-forgery form
+.af-hidden {
+    display: none;
+}

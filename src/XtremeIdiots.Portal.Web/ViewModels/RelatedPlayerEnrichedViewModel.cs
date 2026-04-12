@@ -12,23 +12,29 @@ public class RelatedPlayerEnrichedViewModel
     public string? IpAddress { get; set; }
     public int GameType { get; set; }
 
-    // Enrichment
+    // Fields from enriched RelatedPlayerDto
+    public DateTime LastSeen { get; set; }
+    public bool HasActiveBan { get; set; }
+    public int AdminActionCount { get; set; }
+
+    // Geo enrichment
     public int? RiskScore { get; set; }
     public bool? IsProxy { get; set; }
     public bool? IsVpn { get; set; }
     public string? ProxyType { get; set; }
     public string? CountryCode { get; set; }
 
-    public static RelatedPlayerEnrichedViewModel FromRelatedPlayerDto(object relatedPlayerDto)
+    public static RelatedPlayerEnrichedViewModel FromRelatedPlayerDto(RelatedPlayerDto dto)
     {
-        // We don't have the concrete type source here; map via dynamic to keep decoupled.
-        dynamic d = relatedPlayerDto;
         return new RelatedPlayerEnrichedViewModel
         {
-            PlayerId = d.PlayerId,
-            Username = d.Username,
-            IpAddress = d.IpAddress,
-            GameType = (int)d.GameType
+            PlayerId = dto.PlayerId,
+            Username = dto.Username,
+            IpAddress = dto.IpAddress,
+            GameType = (int)dto.GameType,
+            LastSeen = dto.LastSeen,
+            HasActiveBan = dto.HasActiveBan,
+            AdminActionCount = dto.AdminActionCount
         };
     }
 }
