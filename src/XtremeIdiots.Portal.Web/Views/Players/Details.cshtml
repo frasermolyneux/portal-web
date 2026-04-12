@@ -151,7 +151,7 @@
                     }
                     @if (activeBan.Expires.HasValue)
                     {
-                        <span>— expires <time user-time utc="@activeBan.Expires"></time></span>
+                        <span>— expires <time user-time utc="@activeBan.Expires.Value"></time></span>
                     }
                     else
                     {
@@ -303,11 +303,11 @@
                                         </dd>
                                     </div>
                                 }
-                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.City))
+                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.CityName))
                                 {
                                     <div class="detail-field">
                                         <dt class="detail-label">City</dt>
-                                        <dd class="detail-value">@Model.Intelligence.City</dd>
+                                        <dd class="detail-value">@Model.Intelligence.CityName</dd>
                                     </div>
                                 }
                             </dl>
@@ -510,7 +510,7 @@
 </div>
 
 <!-- Related Players -->
-@if (Model.EnrichedRelatedPlayers != null && Model.EnrichedRelatedPlayers.Count != 0)
+@if (Model?.EnrichedRelatedPlayers != null && Model.EnrichedRelatedPlayers.Count != 0)
 {
 <div class="row">
     <div class="col-12">
