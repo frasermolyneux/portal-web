@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +18,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// This controller handles FTP and RCON credentials for game servers based on user authorization levels.
 /// Users can view credentials only for servers they have explicit permission to access.
 /// </remarks>
-[Authorize(Policy = AuthPolicies.AccessCredentials)]
+[Authorize(Policy = AuthPolicies.GameServers_Read)]
 public class CredentialsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -38,7 +38,9 @@ public class CredentialsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.FtpCredentials, UserProfileClaimType.RconCredentials];
+#pragma warning restore CS0618
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             Logger.LogInformation("User {UserId} querying game servers for credentials with {GameTypeCount} game types and {GameServerIdCount} specific servers",
@@ -146,19 +148,19 @@ public class CredentialsController(
         foreach (var gameServerDto in gameServersList)
         {
             var ftpResource = new Tuple<GameType, Guid>(gameServerDto.GameType, gameServerDto.GameServerId);
-            var canViewFtpCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewFtpCredential).ConfigureAwait(false);
+            var canViewFtpCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.GameServers_Credentials_Ftp_Read).ConfigureAwait(false);
 
             if (!canViewFtpCredential.Succeeded)
             {
-                TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.ViewFtpCredential), "FtpCredential",
+                TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.GameServers_Credentials_Ftp_Read), "FtpCredential",
                     $"GameType:{gameServerDto.GameType},GameServerId:{gameServerDto.GameServerId}", gameServerDto);
             }
 
-            var canViewRconCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.ViewRconCredential).ConfigureAwait(false);
+            var canViewRconCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.GameServers_Credentials_Rcon_Read).ConfigureAwait(false);
 
             if (!canViewRconCredential.Succeeded)
             {
-                TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.ViewRconCredential), "RconCredential",
+                TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.GameServers_Credentials_Rcon_Read), "RconCredential",
                     $"GameType:{gameServerDto.GameType},GameServerId:{gameServerDto.GameServerId}", gameServerDto);
             }
         }

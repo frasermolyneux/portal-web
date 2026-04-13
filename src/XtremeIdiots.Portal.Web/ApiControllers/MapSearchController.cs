@@ -7,7 +7,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
-[Authorize(Policy = AuthPolicies.AccessMapRotations)]
+[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 [Route("MapSearch")]
 public class MapSearchController(
     IRepositoryApiClient repositoryApiClient,

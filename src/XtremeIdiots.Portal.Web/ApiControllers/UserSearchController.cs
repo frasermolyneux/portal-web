@@ -11,7 +11,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// API controller for user search operations (autocomplete)
 /// </summary>
-[Authorize(Policy = AuthPolicies.PerformUserSearch)]
+[Authorize(Policy = AuthPolicies.Users_Search)]
 [Route("UserSearch")]
 public class UserSearchController(
     IRepositoryApiClient repositoryApiClient,

@@ -13,7 +13,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// API controller for maps data operations
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessMapRotations)]
+[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 [Route("Maps")]
 public class MapsController(
     IRepositoryApiClient repositoryApiClient,

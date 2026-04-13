@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
@@ -13,7 +13,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// Provides REST API endpoints for server administration functions including chat log retrieval
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessServerAdmin)]
+[Authorize(Policy = AuthPolicies.GameServers_Admin_Read)]
 [Route("ServerAdmin")]
 public class ServerAdminController(
     IAuthorizationService authorizationService,
@@ -30,7 +30,7 @@ public class ServerAdminController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>JSON response formatted for DataTables with chat log data</returns>
     [HttpPost("GetChatLogAjax")]
-    [Authorize(Policy = AuthPolicies.ViewGlobalChatLog)]
+    [Authorize(Policy = AuthPolicies.ChatLog_Read)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetChatLogAjax(bool? lockedOnly = null, CancellationToken cancellationToken = default)
     {
@@ -53,7 +53,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 id,
-                AuthPolicies.ViewGameChatLog,
+                AuthPolicies.ChatLog_Read,
                 "GetGameChatLogAjax",
                 "GameChatLog",
                 $"GameType:{id}",
@@ -90,7 +90,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.ViewServerChatLog,
+                AuthPolicies.ChatLog_ReadServer,
                 "GetServerChatLogAjax",
                 "ServerChatLog",
                 $"ServerId:{id},GameType:{gameServerData.GameType}",

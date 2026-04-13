@@ -14,7 +14,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// API controller for user profile data operations
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessUsers)]
+[Authorize(Policy = AuthPolicies.Users_Read)]
 [Route("User")]
 public class UsersController(
     UserManager<IdentityUser> userManager,

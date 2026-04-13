@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,7 +22,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Application Insights telemetry client</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 public class ProtectedNamesController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -44,7 +44,7 @@ public class ProtectedNamesController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.ViewProtectedName,
+                AuthPolicies.Players_Read,
                 nameof(Index),
                 "ProtectedName",
                 "ViewAll").ConfigureAwait(false);
@@ -88,7 +88,7 @@ public class ProtectedNamesController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.CreateProtectedName,
+                AuthPolicies.Players_ProtectedNames_Write,
                 nameof(Add),
                 "ProtectedName",
                 $"PlayerId:{id}").ConfigureAwait(false);
@@ -149,7 +149,7 @@ public class ProtectedNamesController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.CreateProtectedName,
+                AuthPolicies.Players_ProtectedNames_Write,
                 nameof(Add),
                 "ProtectedName",
                 $"PlayerId:{model.PlayerId}",
@@ -212,7 +212,7 @@ public class ProtectedNamesController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.DeleteProtectedName,
+                AuthPolicies.Players_ProtectedNames_Write,
                 nameof(Delete),
                 "ProtectedName",
                 $"ProtectedNameId:{id}").ConfigureAwait(false);

@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +16,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry data</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 public class PlayerAnalyticsController(
     TelemetryClient telemetryClient,
     ILogger<PlayerAnalyticsController> logger,

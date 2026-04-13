@@ -28,10 +28,9 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <param name="telemetryClient">Client for tracking telemetry events</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessHome)]
+[Authorize]
 [Route("Banners")]
 public class BannersController(
-    IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
@@ -52,13 +51,6 @@ public class BannersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome).ConfigureAwait(false);
-            if (!authorizationResult.Succeeded)
-            {
-                TrackUnauthorizedAccessAttempt("Access", "GameServersBanners", "BannerData", null);
-                return Unauthorized();
-            }
-
             if (memoryCache.TryGetValue(GameServersListCacheKey, out
             ApiResult<CollectionModel<GameServerDto>>? gameServersApiResponse) && gameServersApiResponse != null)
             {
@@ -128,13 +120,6 @@ public class BannersController(
                     User.XtremeIdiotsId(), ipAddress, queryPort, imageName);
 
                 return BadRequest("Invalid parameters provided");
-            }
-
-            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome).ConfigureAwait(false);
-            if (!authorizationResult.Succeeded)
-            {
-                TrackUnauthorizedAccessAttempt("Access", "GameTrackerBanner", $"IpAddress:{ipAddress},QueryPort:{queryPort},ImageName:{imageName}", null);
-                return Unauthorized();
             }
 
             var cacheKey = $"{ipAddress}_{queryPort}_{imageName}";

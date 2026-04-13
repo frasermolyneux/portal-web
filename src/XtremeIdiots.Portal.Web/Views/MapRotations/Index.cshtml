@@ -64,10 +64,10 @@
                 <div class="ibox-title">
                     <h5>@ViewData["Title"]</h5>
                     <div class="ibox-tools">
-                        <a policy="@AuthPolicies.AccessMapRotations" asp-controller="MapRotations" asp-action="Import" class="btn btn-outline-secondary btn-sm me-1">
+                        <a policy="@AuthPolicies.MapRotations_Read" asp-controller="MapRotations" asp-action="Import" class="btn btn-outline-secondary btn-sm me-1">
                             <i class="fa-solid fa-fw fa-file-import"></i> Import from Config
                         </a>
-                        <a policy="@AuthPolicies.AccessMapRotations" asp-controller="MapRotations" asp-action="Create" class="btn btn-outline-primary btn-sm">
+                        <a policy="@AuthPolicies.MapRotations_Read" asp-controller="MapRotations" asp-action="Create" class="btn btn-outline-primary btn-sm">
                             <i class="fa-solid fa-fw fa-plus"></i> Create
                         </a>
                     </div>

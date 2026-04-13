@@ -16,7 +16,7 @@ using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
-[Authorize(Policy = AuthPolicies.AccessMapRotations)]
+[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 public class MapRotationsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -94,7 +94,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 model.GameType,
-                AuthPolicies.CreateMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(Create),
                 "MapRotation").ConfigureAwait(false);
 
@@ -166,7 +166,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.CreateMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(Clone),
                 "MapRotation").ConfigureAwait(false);
 
@@ -216,7 +216,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.EditMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(Edit),
                 "MapRotation").ConfigureAwait(false);
 
@@ -271,7 +271,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.EditMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(Edit),
                 "MapRotation").ConfigureAwait(false);
 
@@ -397,7 +397,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.DeleteMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(Delete),
                 "MapRotation").ConfigureAwait(false);
 
@@ -450,7 +450,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(CreateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -466,7 +466,7 @@ public class MapRotationsController(
 
             ViewData["RotationTitle"] = rotation.Title;
 
-            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
 
             return View(new CreateMapRotationAssignmentViewModel
             {
@@ -493,7 +493,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(CreateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -510,7 +510,7 @@ public class MapRotationsController(
                     : [];
                 m.AvailableServers = serverList;
 
-                var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+                var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
                 m.CanBrowseFtp = canBrowseFtp.Succeeded;
             }
 
@@ -573,7 +573,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(EditAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -583,7 +583,7 @@ public class MapRotationsController(
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
             var server = serverResponse.IsSuccess ? serverResponse.Result?.Data : null;
 
-            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
 
             ViewData["RotationTitle"] = rotation.Title;
 
@@ -626,7 +626,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(EditAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -671,7 +671,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(DeleteAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -740,7 +740,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.AccessMapRotations,
+                AuthPolicies.MapRotations_Read,
                 nameof(AssignmentStatus),
                 "MapRotation").ConfigureAwait(false);
 
@@ -794,7 +794,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(SyncAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -836,7 +836,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(ActivateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -878,7 +878,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(DeactivateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -920,7 +920,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(VerifyAssignment),
                 "MapRotation").ConfigureAwait(false);
 
@@ -990,7 +990,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotation.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(CancelOperation),
                 "MapRotation").ConfigureAwait(false);
 
@@ -1086,7 +1086,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 rotationResponse.Result.Data.GameType,
-                AuthPolicies.ManageMapRotations,
+                AuthPolicies.MapRotations_Deploy,
                 nameof(TerminateOrchestration),
                 "MapRotation").ConfigureAwait(false);
 
@@ -1129,7 +1129,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 model.GameType,
-                AuthPolicies.CreateMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(Import),
                 "MapRotation").ConfigureAwait(false);
 
@@ -1283,7 +1283,7 @@ public class MapRotationsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 draft.GameType,
-                AuthPolicies.CreateMapRotation,
+                AuthPolicies.MapRotations_Write,
                 nameof(ImportConfirm),
                 "MapRotation").ConfigureAwait(false);
 

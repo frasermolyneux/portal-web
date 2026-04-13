@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +18,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Manages player-related operations including viewing, searching, and analyzing player data
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 public class PlayersController(
     IAuthorizationService authorizationService,
     IGeoLocationApiClient geoLocationClient,
@@ -126,7 +126,7 @@ public class PlayersController(
         var authResult = await CheckAuthorizationAsync(
             authorizationService,
             playerData.GameType,
-            AuthPolicies.ViewPlayers,
+            AuthPolicies.Players_Read,
             action,
             "Player",
             $"GameType:{playerData.GameType}",

@@ -89,7 +89,7 @@
     <div class="d-flex flex-wrap gap-2 mb-2">
         @* Reuse original authorization logic *@
         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType,
-                string?>(gameType.Value, adminAction.Type, userForumId), AuthPolicies.EditAdminAction)).Succeeded)
+                string?>(gameType.Value, adminAction.Type, userForumId), AuthPolicies.AdminActions_Edit)).Succeeded)
         {
             <a asp-controller="AdminActions" asp-action="Edit" asp-route-id="@adminAction.AdminActionId"
                 class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-fw fa-pen-to-square"></i> Edit</a>
@@ -98,7 +98,7 @@
                 adminAction.Expires > DateTime.UtcNow))
         {
             if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-            string?>(gameType.Value, userForumId), AuthPolicies.LiftAdminAction)).Succeeded)
+            string?>(gameType.Value, userForumId), AuthPolicies.AdminActions_Lift)).Succeeded)
             {
                 <a asp-controller="AdminActions" asp-action="Lift" asp-route-id="@adminAction.AdminActionId"
                     class="btn btn-outline-warning btn-sm"><i class="fa-solid fa-fw fa-unlock"></i> Lift</a>
@@ -107,7 +107,7 @@
         @if (adminAction.Type == AdminActionType.Ban && adminAction.UserProfile is null)
         {
             if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, gameType.Value,
-            AuthPolicies.ClaimAdminAction)).Succeeded)
+            AuthPolicies.AdminActions_Claim)).Succeeded)
             {
                 <a asp-controller="AdminActions" asp-action="Claim" asp-route-id="@adminAction.AdminActionId"
                     class="btn btn-outline-info btn-sm"><i class="fa-solid fa-fw fa-user"></i> Claim</a>
@@ -116,13 +116,13 @@
         @if (adminAction.ForumTopicId == 0)
         {
             if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, gameType.Value,
-            AuthPolicies.CreateAdminActionTopic)).Succeeded)
+            AuthPolicies.AdminActions_CreateTopic)).Succeeded)
             {
                 <a asp-controller="AdminActions" asp-action="CreateDiscussionTopic" asp-route-id="@adminAction.AdminActionId"
                     class="btn btn-outline-success btn-sm"><i class="fa-solid fa-fw fa-plus"></i> Create Topic</a>
             }
         }
-        @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.DeleteAdminAction)).Succeeded)
+        @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.AdminActions_Delete)).Succeeded)
         {
             <a asp-controller="AdminActions" asp-action="Delete" asp-route-id="@adminAction.AdminActionId"
                 class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-fw fa-trash"></i> Delete</a>

@@ -30,6 +30,8 @@ public class PlayersAuthHandler : IAuthorizationHandler
                     BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
                     BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Players.Tags.Write");
                     break;
+                default:
+                    break;
             }
         }
 

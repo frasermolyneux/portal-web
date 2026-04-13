@@ -27,6 +27,8 @@ public class UsersAuthHandler : IAuthorizationHandler
                 case UsersActivityLog:
                     BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
                     break;
+                default:
+                    break;
             }
         }
 

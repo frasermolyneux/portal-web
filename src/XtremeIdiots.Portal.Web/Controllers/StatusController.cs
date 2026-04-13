@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,7 +25,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
 /// <exception cref="ArgumentNullException">Thrown when required dependencies are null</exception>
-[Authorize(Policy = AuthPolicies.AccessStatus)]
+[Authorize(Policy = AuthPolicies.GameServers_BanFileMonitors_Read)]
 public class StatusController(
     IRepositoryApiClient repositoryApiClient,
     IAgentTelemetryService agentTelemetryService,
@@ -44,7 +44,9 @@ public class StatusController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
+#pragma warning restore CS0618
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             Logger.LogInformation("User {UserId} has access to {GameTypeCount} game types and {MonitorCount} ban file monitors",

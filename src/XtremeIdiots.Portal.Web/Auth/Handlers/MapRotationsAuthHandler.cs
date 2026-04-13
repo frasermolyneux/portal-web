@@ -23,6 +23,8 @@ public class MapRotationsAuthHandler : IAuthorizationHandler
                     BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
                     BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "MapRotations.Deploy");
                     break;
+                default:
+                    break;
             }
         }
 

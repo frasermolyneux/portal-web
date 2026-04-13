@@ -58,7 +58,7 @@
 
                         @if (Model.PlayerDto is not null && (await AuthorizationService.AuthorizeAsync(User,
                                                 Model.PlayerDto.GameType,
-                                                AuthPolicies.ChangeAdminActionAdmin)).Succeeded)
+                                                AuthPolicies.AdminActions_Reassign)).Succeeded)
                         {
                             <div class="mb-3">
                                 <label asp-for="AdminId" class="form-label">Admin ID</label>

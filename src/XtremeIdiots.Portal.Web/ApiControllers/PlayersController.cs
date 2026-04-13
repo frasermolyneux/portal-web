@@ -17,7 +17,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// API controller for player data operations
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 [Route("Players")]
 public class PlayersController(
     IRepositoryApiClient repositoryApiClient,

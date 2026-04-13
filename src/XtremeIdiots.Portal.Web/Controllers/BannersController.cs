@@ -2,9 +2,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using XtremeIdiots.Portal.Web.Auth.Constants;
-using XtremeIdiots.Portal.Web.Extensions;
-
 namespace XtremeIdiots.Portal.Web.Controllers;
 
 /// <summary>
@@ -13,9 +10,8 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <remarks>
 /// API endpoints for banner data are in ApiControllers/BannersController
 /// </remarks>
-[Authorize(Policy = AuthPolicies.AccessHome)]
+[Authorize]
 public class BannersController(
-    IAuthorizationService authorizationService,
     TelemetryClient telemetryClient,
     ILogger<BannersController> logger,
     IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
@@ -31,13 +27,6 @@ public class BannersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var authorizationResult = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.AccessHome).ConfigureAwait(false);
-            if (!authorizationResult.Succeeded)
-            {
-                TrackUnauthorizedAccessAttempt("Access", nameof(GameServersList), "BannerManagement", null);
-                return Unauthorized();
-            }
-
             TrackSuccessTelemetry("GameServersListAccessed", nameof(GameServersList), new Dictionary<string, string>
             {
                 { "Controller", nameof(BannersController) },

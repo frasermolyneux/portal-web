@@ -10,7 +10,7 @@ using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
-[Authorize(Policy = AuthPolicies.AccessMapRotations)]
+[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 [Route("MapRotations")]
 public class MapRotationsApiController(
     IRepositoryApiClient repositoryApiClient,

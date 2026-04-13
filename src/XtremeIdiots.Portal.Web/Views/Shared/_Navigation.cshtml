@@ -83,17 +83,17 @@
     
     <div class="offcanvas-body p-0">
         <nav class="nav flex-column py-2" id="side-menu">
-            <a policy="@AuthPolicies.AccessHome" class="nav-link text-white @Html.IsSelected("Home", "Index")" 
+            <a class="nav-link text-white @Html.IsSelected("Home", "Index")" 
                asp-controller="Home" asp-action="Index" data-testid="nav-home">
                 <i class="fa-solid fa-fw fa-house" aria-hidden="true"></i> Home
             </a>
 
-            <a policy="@AuthPolicies.AccessDashboard" class="nav-link text-white @Html.IsSelected("Dashboard", "Index")" 
+            <a policy="@AuthPolicies.Dashboard_Read" class="nav-link text-white @Html.IsSelected("Dashboard", "Index")" 
                asp-controller="Dashboard" asp-action="Index" data-testid="nav-dashboard">
                 <i class="fa-solid fa-fw fa-gauge" aria-hidden="true"></i> Dashboard
             </a>
 
-            <div policy="@AuthPolicies.AccessServers">
+            <div>
                 <a class="nav-link text-white @Html.IsSelected("Servers", "Index")" href="#serversMenu" 
                    data-bs-toggle="collapse" data-testid="nav-servers-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("Servers", "Maps") ? "true" : "false")">
@@ -110,7 +110,7 @@
                            asp-controller="Servers" asp-action="Map" data-testid="nav-servers-playermap">
                             <i class="fa-solid fa-fw fa-location-dot" aria-hidden="true"></i> Player Map
                         </a>
-                        <a policy="@AuthPolicies.AccessMapRotations" class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" 
+                        <a policy="@AuthPolicies.MapRotations_Read" class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" 
                            asp-controller="Maps" asp-action="Index" data-testid="nav-servers-maps">
                             <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
                         </a>
@@ -118,12 +118,12 @@
                 </div>
             </div>
 
-            <a policy="@AuthPolicies.AccessCredentials" class="nav-link text-white @Html.IsSelected("Credentials", "Index")" 
+            <a policy="@AuthPolicies.GameServers_Credentials_Ftp_Read" class="nav-link text-white @Html.IsSelected("Credentials", "Index")" 
                asp-controller="Credentials" asp-action="Index" data-testid="nav-credentials">
                 <i class="fa-solid fa-fw fa-key" aria-hidden="true"></i> Credentials
             </a>
 
-            <div policy="@AuthPolicies.AccessAdminActionsController">
+            <div policy="@AuthPolicies.AdminActions_Read">
                 <a class="nav-link text-white @Html.IsSelected("AdminActions", "Global")" href="#adminActionsMenu" 
                    data-bs-toggle="collapse" 
                    aria-expanded="@(Html.IsSelected("AdminActions", "Global") != "" ? "true" : "false")">
@@ -148,7 +148,7 @@
                 </div>
             </div>
 
-            <div policy="@AuthPolicies.AccessServerAdmin">
+            <div policy="@AuthPolicies.GameServers_Admin_Read">
                 <a class="nav-link text-white @Html.IsSelected("ServerAdmin", "Index")" href="#serverAdminMenu" 
                    data-bs-toggle="collapse" data-testid="nav-serveradmin-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations") ? "true" : "false")">
@@ -161,15 +161,15 @@
                            asp-controller="ServerAdmin" asp-action="Index" data-testid="nav-serveradmin-dashboard">
                             <i class="fa-solid fa-fw fa-gauge" aria-hidden="true"></i> Dashboard
                         </a>
-                        <a policy="@AuthPolicies.AccessStatus" class="nav-link text-white-50 @Html.IsSelected("Status", "BanFileStatus")" 
+                        <a policy="@AuthPolicies.GameServers_BanFileMonitors_Read" class="nav-link text-white-50 @Html.IsSelected("Status", "BanFileStatus")" 
                            asp-controller="Status" asp-action="BanFileStatus" data-testid="nav-serveradmin-banfilestatus">
                             <i class="fa-solid fa-fw fa-heart-pulse" aria-hidden="true"></i> Ban File Status
                         </a>
-                        <a policy="@AuthPolicies.AccessStatus" class="nav-link text-white-50 @Html.IsSelected("Status", "AgentStatus")" 
+                        <a policy="@AuthPolicies.GameServers_BanFileMonitors_Read" class="nav-link text-white-50 @Html.IsSelected("Status", "AgentStatus")" 
                            asp-controller="Status" asp-action="AgentStatus" data-testid="nav-serveradmin-agentstatus">
                             <i class="fa-solid fa-fw fa-robot" aria-hidden="true"></i> Agent Status
                         </a>
-                        <a policy="@AuthPolicies.AccessBanFileMonitors" class="nav-link text-white-50 @Html.IsSelected("BanFileMonitors", "Index")" 
+                        <a policy="@AuthPolicies.GameServers_BanFileMonitors_Read" class="nav-link text-white-50 @Html.IsSelected("BanFileMonitors", "Index")" 
                            asp-controller="BanFileMonitors" asp-action="Index" data-testid="nav-serveradmin-banfilemonitors">
                             <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban File Monitors
                         </a>
@@ -177,7 +177,7 @@
                            asp-controller="ServerAdmin" asp-action="ServerEventsIndex" data-testid="nav-serveradmin-serverevents">
                             <i class="fa-solid fa-fw fa-timeline" aria-hidden="true"></i> Server Events
                         </a>
-                        <a policy="@AuthPolicies.AccessMapRotations" class="nav-link text-white-50 @Html.IsSelected("MapRotations")" 
+                        <a policy="@AuthPolicies.MapRotations_Read" class="nav-link text-white-50 @Html.IsSelected("MapRotations")" 
                            asp-controller="MapRotations" asp-action="Index" data-testid="nav-serveradmin-map-rotations">
                             <i class="fa-solid fa-fw fa-rotate" aria-hidden="true"></i> Map Rotations
                         </a>
@@ -186,12 +186,12 @@
             </div>
 
             @{
-                var canViewGlobalChatLog = (await AuthorizationService.AuthorizeAsync(User, AuthPolicies.ViewGlobalChatLog)).Succeeded;
+                var canViewGlobalChatLog = (await AuthorizationService.AuthorizeAsync(User, AuthPolicies.ChatLog_Read)).Succeeded;
                 var authorizedChatGames = new System.Collections.Generic.List<GameType>();
 
                 foreach (var game in ChatLogSupportedGames.Games)
                 {
-                    if ((await AuthorizationService.AuthorizeAsync(User, game, AuthPolicies.ViewGameChatLog)).Succeeded)
+                    if ((await AuthorizationService.AuthorizeAsync(User, game, AuthPolicies.ChatLog_Read)).Succeeded)
                     {
                         authorizedChatGames.Add(game);
                     }
@@ -230,7 +230,7 @@
                 </div>
             }
 
-            <div policy="@AuthPolicies.AccessPlayers">
+            <div policy="@AuthPolicies.Players_Read">
                 <a class="nav-link text-white @Html.IsSelected("Players", "Index")" href="#playersMenu" 
                    data-bs-toggle="collapse" data-testid="nav-players-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "true" : "false")">
@@ -246,7 +246,7 @@
 
                         @foreach (var game in new[] { GameType.CallOfDuty2, GameType.CallOfDuty4, GameType.CallOfDuty5, GameType.Insurgency })
                         {
-                            @if ((await AuthorizationService.AuthorizeAsync(User, game, AuthPolicies.ViewPlayers)).Succeeded)
+                            @if ((await AuthorizationService.AuthorizeAsync(User, game, AuthPolicies.Players_Read)).Succeeded)
                             {
                                 <a class="nav-link text-white-50 @Html.IsSelected("Players", "GameIndex", id: game.ToString())" 
                                    asp-controller="Players" asp-action="GameIndex" asp-route-id="@game">
@@ -267,7 +267,7 @@
                 </div>
             </div>
 
-            <div policy="@AuthPolicies.AccessUsers">
+            <div policy="@AuthPolicies.Users_Read">
                 <a class="nav-link text-white @(IsAnyControllerSelected("User") ? "active" : "")" href="#usersMenu" 
                    data-bs-toggle="collapse" 
                    aria-expanded="@(IsAnyControllerSelected("User") ? "true" : "false")">
@@ -284,7 +284,7 @@
                            asp-controller="User" asp-action="Permissions">
                             <i class="fa-solid fa-fw fa-lock" aria-hidden="true"></i> Permissions
                         </a>
-                        <div policy="@AuthPolicies.AccessActivityLog">
+                        <div policy="@AuthPolicies.Users_ActivityLog">
                             <a class="nav-link text-white-50 @Html.IsSelected("User", "ActivityLog")" 
                                asp-controller="User" asp-action="ActivityLog">
                                 <i class="fa-solid fa-fw fa-clipboard-list" aria-hidden="true"></i> Activity Log
@@ -294,22 +294,22 @@
                 </div>
             </div>
 
-            <a policy="@AuthPolicies.AccessChangeLog" class="nav-link text-white @Html.IsSelected("ChangeLog", "Index")" 
+            <a class="nav-link text-white @Html.IsSelected("ChangeLog", "Index")" 
                asp-controller="ChangeLog" asp-action="Index">
                 <i class="fa-solid fa-fw fa-history" aria-hidden="true"></i> Change Log
             </a>
 
-            <a policy="@AuthPolicies.AccessGameServers" class="nav-link text-white @Html.IsSelected("GameServers", "Index")" 
+            <a policy="@AuthPolicies.GameServers_Read" class="nav-link text-white @Html.IsSelected("GameServers", "Index")" 
                asp-controller="GameServers" asp-action="Index">
                 <i class="fa-solid fa-fw fa-gamepad" aria-hidden="true"></i> Game Servers
             </a>
 
-            <a policy="@AuthPolicies.AccessGlobalSettings" class="nav-link text-white @Html.IsSelected("GlobalSettings", "Index")" 
+            <a policy="@AuthPolicies.GlobalSettings_Admin" class="nav-link text-white @Html.IsSelected("GlobalSettings", "Index")" 
                asp-controller="GlobalSettings" asp-action="Index" data-testid="nav-global-settings">
                 <i class="fa-solid fa-fw fa-gear" aria-hidden="true"></i> Global Settings
             </a>
 
-            <div policy="@AuthPolicies.AccessDemos">
+            <div policy="@AuthPolicies.Demos_Read">
                 <a class="nav-link text-white @Html.IsSelected("Demos", "Index")" href="#demosMenu" 
                    data-bs-toggle="collapse" data-testid="nav-demos-toggle" 
                    aria-expanded="@(Html.IsSelected("Demos", "Index") != "" ? "true" : "false")">
@@ -330,7 +330,7 @@
                 </div>
             </div>
 
-            <a policy="@AuthPolicies.AccessPlayerTags" class="nav-link text-white @Html.IsSelected("Tags", "Index")" 
+            <a policy="@AuthPolicies.Tags_Read" class="nav-link text-white @Html.IsSelected("Tags", "Index")" 
                asp-controller="Tags" asp-action="Index">
                 <i class="fa-solid fa-fw fa-tags" aria-hidden="true"></i> Player Tags
             </a>

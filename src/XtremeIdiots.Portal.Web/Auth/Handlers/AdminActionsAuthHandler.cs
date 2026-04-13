@@ -39,6 +39,8 @@ public class AdminActionsAuthHandler : IAuthorizationHandler
                 case AdminActionsCreateTopic:
                     HandleCreateTopic(context, requirement);
                     break;
+                default:
+                    break;
             }
         }
 
@@ -173,6 +175,9 @@ public class AdminActionsAuthHandler : IAuthorizationHandler
             case AdminActionType.Ban:
                 if (isGameAdmin && isOwner)
                     context.Succeed(requirement);
+                break;
+
+            default:
                 break;
         }
     }

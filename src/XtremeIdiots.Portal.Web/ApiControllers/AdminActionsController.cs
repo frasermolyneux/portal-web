@@ -15,7 +15,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// API controller for admin actions data operations
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessAdminActionsController)]
+[Authorize(Policy = AuthPolicies.AdminActions_Read)]
 [Route("AdminActions")]
 public class AdminActionsController(
     IAuthorizationService authorizationService,
@@ -180,7 +180,7 @@ public class AdminActionsController(
                 var canClaim = false;
                 if (a.Player?.GameType is GameType gtClaim)
                 {
-                    var auth = await authorizationService.AuthorizeAsync(User, gtClaim, AuthPolicies.ClaimAdminAction).ConfigureAwait(false);
+                    var auth = await authorizationService.AuthorizeAsync(User, gtClaim, AuthPolicies.AdminActions_Claim).ConfigureAwait(false);
                     canClaim = auth.Succeeded;
                 }
 

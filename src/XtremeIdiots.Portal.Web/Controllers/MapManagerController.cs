@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,7 +25,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry data</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessMapManagerController)]
+[Authorize(Policy = AuthPolicies.GameServers_Maps_Read)]
 public class MapManagerController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -48,7 +48,7 @@ public class MapManagerController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(
-                id, AuthPolicies.ManageMaps, nameof(Manage), "Maps", cancellationToken).ConfigureAwait(false);
+                id, AuthPolicies.GameServers_Maps_Read, nameof(Manage), "Maps", cancellationToken).ConfigureAwait(false);
             if (actionResult != null)
                 return actionResult;
 
@@ -136,7 +136,7 @@ public class MapManagerController(
             }
 
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(
-                viewModel.GameServerId, AuthPolicies.PushMapToRemote, nameof(PushMapToRemote), "Map", cancellationToken).ConfigureAwait(false);
+                viewModel.GameServerId, AuthPolicies.GameServers_Maps_Deploy, nameof(PushMapToRemote), "Map", cancellationToken).ConfigureAwait(false);
             if (actionResult != null)
                 return actionResult;
 
@@ -173,7 +173,7 @@ public class MapManagerController(
             }
 
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(
-                model.GameServerId, AuthPolicies.DeleteMapFromHost, nameof(DeleteMapFromHost), "Map", cancellationToken).ConfigureAwait(false);
+                model.GameServerId, AuthPolicies.GameServers_Maps_Deploy, nameof(DeleteMapFromHost), "Map", cancellationToken).ConfigureAwait(false);
             if (actionResult != null)
                 return actionResult;
 

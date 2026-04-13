@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -18,7 +18,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry data</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessMapRotations)]
+[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 public class MapsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,

@@ -79,6 +79,8 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 case GameServersAdminRconRestart:
                     HandleAdminRconRestart(context, requirement);
                     break;
+                default:
+                    break;
             }
         }
 

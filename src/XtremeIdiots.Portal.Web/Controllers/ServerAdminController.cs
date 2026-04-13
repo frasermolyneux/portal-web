@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,7 +28,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for server administration functionality including RCON commands and chat log management
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessServerAdmin)]
+[Authorize(Policy = AuthPolicies.GameServers_Admin_Read)]
 public class ServerAdminController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -51,7 +51,9 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.ServerAdmin];
+#pragma warning restore CS0618
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -112,7 +114,7 @@ public class ServerAdminController(
         var authResult = await CheckAuthorizationAsync(
             authorizationService,
             gameServerData.GameType,
-            AuthPolicies.ViewLiveRcon,
+            AuthPolicies.GameServers_Admin_Rcon,
             action,
             "GameServer",
             $"ServerId:{id},GameType:{gameServerData.GameType}",
@@ -148,11 +150,11 @@ public class ServerAdminController(
             var liveStatus = liveStatusResponse.IsSuccess ? liveStatusResponse.Result?.Data : null;
 
             // Check per-tab permissions in parallel
-            var rconAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ViewLiveRcon);
-            var chatAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ViewServerChatLog);
-            var mapRotAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.AccessMapRotations);
-            var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.AccessStatus);
-            var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.EditGameServer);
+            var rconAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon);
+            var chatAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.ChatLog_ReadServer);
+            var mapRotAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.MapRotations_Read);
+            var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read);
+            var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Write);
 
             await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth).ConfigureAwait(false);
 
@@ -861,7 +863,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.CreateAdminAction,
+                AuthPolicies.AdminActions_Create,
                 "Kick",
                 "RconPlayer",
                 $"GameType:{gameServerData.GameType},ServerId:{id}",
@@ -939,7 +941,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.CreateAdminAction,
+                AuthPolicies.AdminActions_Create,
                 "TempBan",
                 "RconPlayer",
                 $"GameType:{gameServerData.GameType},ServerId:{id}",
@@ -1021,7 +1023,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.CreateAdminAction,
+                AuthPolicies.AdminActions_Create,
                 "Ban",
                 "RconPlayer",
                 $"GameType:{gameServerData.GameType},ServerId:{id}",
@@ -1211,7 +1213,7 @@ public class ServerAdminController(
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.ViewGlobalChatLog)]
+    [Authorize(Policy = AuthPolicies.ChatLog_Read)]
     public async Task<IActionResult> ChatLogIndex(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(ChatLogIndex)).ConfigureAwait(false);
@@ -1228,7 +1230,7 @@ public class ServerAdminController(
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthPolicies.ViewGlobalChatLog)]
+    [Authorize(Policy = AuthPolicies.ChatLog_Read)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetChatLogAjax(bool? lockedOnly = null, CancellationToken cancellationToken = default)
     {
@@ -1241,7 +1243,7 @@ public class ServerAdminController(
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>JSON array of servers</returns>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.AccessServerAdmin)]
+    [Authorize(Policy = AuthPolicies.GameServers_Admin_Read)]
     public async Task<IActionResult> GetGameServers(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -1288,7 +1290,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 id,
-                AuthPolicies.ViewGlobalChatLog,
+                AuthPolicies.ChatLog_Read,
                 "View",
                 "GameChatLog",
                 $"GameType:{id}",
@@ -1311,7 +1313,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 id,
-                AuthPolicies.ViewGameChatLog,
+                AuthPolicies.ChatLog_Read,
                 "GetGameChatLogAjax",
                 "GameChatLog",
                 $"GameType:{id}",
@@ -1339,7 +1341,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.ViewServerChatLog,
+                AuthPolicies.ChatLog_ReadServer,
                 "View",
                 "ServerChatLog",
                 $"ServerId:{id},GameType:{gameServerData.GameType}",
@@ -1372,7 +1374,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.ViewServerChatLog,
+                AuthPolicies.ChatLog_ReadServer,
                 "GetServerChatLogAjax",
                 "ServerChatLog",
                 $"ServerId:{id},GameType:{gameServerData.GameType}",
@@ -1401,7 +1403,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 playerData.GameType,
-                AuthPolicies.ViewServerChatLog,
+                AuthPolicies.ChatLog_ReadServer,
                 "GetPlayerChatLog",
                 "PlayerChatLog",
                 $"PlayerId:{id},GameType:{playerData.GameType}",
@@ -1431,7 +1433,7 @@ public class ServerAdminController(
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthPolicies.LockChatMessages)]
+    [Authorize(Policy = AuthPolicies.ChatLog_Lock)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleChatMessageLock(Guid id, CancellationToken cancellationToken = default)
     {
@@ -1450,7 +1452,7 @@ public class ServerAdminController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 chatMessageData.GameServer.GameType,
-                AuthPolicies.LockChatMessages,
+                AuthPolicies.ChatLog_Lock,
                 "ToggleLock",
                 "ChatMessage",
                 $"MessageId:{id},GameType:{chatMessageData.GameServer.GameType}",

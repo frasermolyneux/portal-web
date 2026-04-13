@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +24,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Application Insights telemetry client</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessGameServers)]
+[Authorize(Policy = AuthPolicies.GameServers_Read)]
 public class GameServersController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -43,7 +43,9 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameServer];
+#pragma warning restore CS0618
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -76,7 +78,7 @@ public class GameServersController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 null!,
-                AuthPolicies.DeleteGameServer,
+                AuthPolicies.GameServers_Delete,
                 nameof(Reorder),
                 "GameServer",
                 "Reorder").ConfigureAwait(false);
@@ -129,7 +131,7 @@ public class GameServersController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 createGameServerDto.GameType,
-                AuthPolicies.CreateGameServer,
+                AuthPolicies.GameServers_Write,
                 nameof(Create),
                 "GameServer",
                 $"GameType:{createGameServerDto.GameType}").ConfigureAwait(false);
@@ -195,7 +197,7 @@ public class GameServersController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.ViewGameServer,
+                AuthPolicies.GameServers_Read,
                 nameof(Details),
                 "GameServer",
                 $"GameType:{gameServerData.GameType},GameServerId:{id}",
@@ -204,7 +206,9 @@ public class GameServersController(
             if (authResult is not null)
                 return authResult;
 
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
+#pragma warning restore CS0618
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
@@ -278,7 +282,7 @@ public class GameServersController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.EditGameServer,
+                AuthPolicies.GameServers_Write,
                 nameof(Edit),
                 "GameServer",
                 $"GameType:{gameServerData.GameType},GameServerId:{id}",
@@ -287,9 +291,9 @@ public class GameServersController(
             if (authResult != null)
                 return authResult;
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
+            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
 
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
+            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
 
             var editModel = new GameServerEditViewModel
             {
@@ -381,7 +385,7 @@ public class GameServersController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.EditGameServer,
+                AuthPolicies.GameServers_Write,
                 nameof(Edit),
                 "GameServer",
                 $"GameType:{gameServerData.GameType},GameServerId:{model.GameServer.GameServerId}",
@@ -397,8 +401,8 @@ public class GameServersController(
                 QueryPort = model.GameServer.QueryPort
             };
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
-            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
+            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+            var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
 
             // Preserve existing passwords when the user leaves password fields blank
             var passwordsPreserved = await PreserveExistingPasswordsAsync(model, gameServerData.GameServerId, canEditGameServerFtp.Succeeded, canEditGameServerRcon.Succeeded, cancellationToken).ConfigureAwait(false);
@@ -482,7 +486,7 @@ public class GameServersController(
 
             var gameServerData = gameServerApiResponse.Result.Data;
 
-            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer).ConfigureAwait(false);
+            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_Delete).ConfigureAwait(false);
             if (!canDeleteGameServer.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt(nameof(Delete), "GameServer", $"GameType:{gameServerData.GameType},GameServerId:{id}", gameServerData);
@@ -516,7 +520,7 @@ public class GameServersController(
 
             var gameServerData = gameServerApiResponse.Result.Data;
 
-            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer).ConfigureAwait(false);
+            var canDeleteGameServer = await authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_Delete).ConfigureAwait(false);
             if (!canDeleteGameServer.Succeeded)
             {
                 TrackUnauthorizedAccessAttempt(nameof(Delete), "GameServer", $"GameType:{gameServerData.GameType},GameServerId:{id}", gameServerData);
@@ -697,8 +701,8 @@ public class GameServersController(
 
     private async Task RepopulateAuthFlags(GameServerEditViewModel model, GameType gameType)
     {
-        var canEditFtp = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.EditGameServerFtp).ConfigureAwait(false);
-        var canEditRcon = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.EditGameServerRcon).ConfigureAwait(false);
+        var canEditFtp = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+        var canEditRcon = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
         model.CanEditFtp = canEditFtp.Succeeded;
         model.CanEditRcon = canEditRcon.Succeeded;
     }

@@ -24,6 +24,8 @@ public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAutho
                 case DemosDelete:
                     HandleDemosDelete(context, requirement);
                     break;
+                default:
+                    break;
             }
         }
 

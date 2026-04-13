@@ -16,7 +16,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for public server information pages
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessServers)]
+[Authorize]
 public class ServersController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,

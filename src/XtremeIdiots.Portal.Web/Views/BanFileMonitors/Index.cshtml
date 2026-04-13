@@ -96,7 +96,7 @@
                                                 var ftpUser = GetCfg(serverConfigs, item.GameServerId, "ftp", "username");
                                                 var ftpPass = GetCfg(serverConfigs, item.GameServerId, "ftp", "password");
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.ViewFtpCredential)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
                                                 {
                                                     <ftp-path host="@ftpHost" port="@ftpPort" path="@item.FilePath" user="@ftpUser" password="@ftpPass"></ftp-path>
                                                 }
@@ -150,21 +150,21 @@
                                             <div class="btn-group btn-group-sm" role="group">
                                                 @if (item.GameServer?.GameType != null && item.GameServer?.GameServerId != null)
                                                 {
-                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.EditBanFileMonitor)).Succeeded)
+                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                                     {
                                                         <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@item.BanFileMonitorId" aria-label="Edit monitor">
                                                             <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> <span class="d-none d-sm-inline">Edit</span>
                                                         </a>
                                                     }
 
-                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.ViewBanFileMonitor)).Succeeded)
+                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Read)).Succeeded)
                                                     {
                                                         <a class="btn btn-outline-secondary btn-sm" asp-action="Details" asp-route-id="@item.BanFileMonitorId" aria-label="View details">
                                                             <i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i> <span class="d-none d-sm-inline">Details</span>
                                                         </a>
                                                     }
 
-                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.DeleteBanFileMonitor)).Succeeded)
+                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                                     {
                                                         <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@item.BanFileMonitorId" aria-label="Delete monitor">
                                                             <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> <span class="d-none d-sm-inline">Delete</span>

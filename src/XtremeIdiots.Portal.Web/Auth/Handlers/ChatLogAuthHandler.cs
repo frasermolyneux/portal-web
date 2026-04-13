@@ -24,6 +24,8 @@ public class ChatLogAuthHandler : IAuthorizationHandler
                 case ChatLogLock:
                     HandleChatLogLock(context, requirement);
                     break;
+                default:
+                    break;
             }
         }
 

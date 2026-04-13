@@ -22,6 +22,8 @@ public class TagsAuthHandler : IAuthorizationHandler
                     BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
                     BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Tags.Write");
                     break;
+                default:
+                    break;
             }
         }
 

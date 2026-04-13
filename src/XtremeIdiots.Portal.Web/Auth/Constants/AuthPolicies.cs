@@ -3,6 +3,9 @@ namespace XtremeIdiots.Portal.Web.Auth.Constants;
 /// <summary>
 /// Contains authorization policy constants used throughout the XtremeIdiots Portal application.
 /// Policy names follow the {Domain}.{Action} convention matching AdditionalPermission claim types.
+/// Underscores in member names represent dots in the policy string values.
+/// </summary>
+#pragma warning disable CA1707 // Identifiers should not contain underscores
 /// </summary>
 public static class AuthPolicies
 {

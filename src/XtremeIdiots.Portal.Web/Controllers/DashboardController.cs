@@ -15,7 +15,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for the admin dashboard, providing an at-a-glance operational overview.
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessDashboard)]
+[Authorize(Policy = AuthPolicies.Dashboard_Read)]
 public class DashboardController(
     IRepositoryApiClient repositoryApiClient,
     IAgentTelemetryService agentTelemetryService,

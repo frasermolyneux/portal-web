@@ -6,7 +6,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
-[Authorize(Policy = AuthPolicies.EditGameServerFtp)]
+[Authorize(Policy = AuthPolicies.GameServers_Credentials_Ftp_Write)]
 [Route("api/ftp")]
 public class FtpBrowseApiController(
     IServersApiClient serversApiClient,

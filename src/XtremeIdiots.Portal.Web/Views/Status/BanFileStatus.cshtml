@@ -125,7 +125,7 @@
                                 <p>
                                     @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                 Guid>(item.GameServer.GameType, item.GameServer.GameServerId),
-                                                                AuthPolicies.ViewFtpCredential)).Succeeded)
+                                                                AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
                                     {
                                         var ftpHost = GetCfg(serverConfigs, item.GameServerId, "ftp", "hostname");
                                         var ftpPort = GetCfgInt(serverConfigs, item.GameServerId, "ftp", "port", 21);
@@ -178,7 +178,7 @@
 
                             <div class="btn-group btn-group-sm" role="group">
                                 @if (item.GameServer is not null && (await AuthorizationService.AuthorizeAsync(User, item.GameServer.GameType,
-                                                            AuthPolicies.EditGameServer)).Succeeded)
+                                                            AuthPolicies.GameServers_Write)).Succeeded)
                                 {
                                     <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit"
                                         asp-route-id="@item.GameServer.GameServerId">
@@ -188,7 +188,7 @@
 
                                 @if (item.GameServer is not null && (await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                             Guid>(item.GameServer.GameType, item.GameServer.GameServerId),
-                                                            AuthPolicies.EditBanFileMonitor)).Succeeded)
+                                                            AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                 {
                                     <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors" asp-action="Edit"
                                         asp-route-id="@item.BanFileMonitorId">

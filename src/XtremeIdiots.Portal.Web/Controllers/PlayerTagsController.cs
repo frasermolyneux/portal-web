@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +23,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry events</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 public class PlayerTagsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -46,7 +46,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} accessing add player tag form for player {PlayerId}",
                 User.XtremeIdiotsId(), id);
 
-            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
+            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.Tags_Write).ConfigureAwait(false);
             if (!canCreatePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to create player tag for player {PlayerId}",
@@ -113,7 +113,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} attempting to add tag {TagId} to player {PlayerId}",
                 User.XtremeIdiotsId(), model.TagId, model.PlayerId);
 
-            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
+            var canCreatePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.Tags_Write).ConfigureAwait(false);
             if (!canCreatePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to add tag {TagId} to player {PlayerId}",
@@ -231,7 +231,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} accessing remove player tag confirmation for player {PlayerId} and tag {PlayerTagId}",
      User.XtremeIdiotsId(), id, playerTagId);
 
-            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.DeletePlayerTag).ConfigureAwait(false);
+            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.Tags_Write).ConfigureAwait(false);
             if (!canDeletePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to remove player tag {PlayerTagId} from player {PlayerId}",
@@ -297,7 +297,7 @@ public class PlayerTagsController(
             Logger.LogInformation("User {UserId} attempting to remove player tag {PlayerTagId} from player {PlayerId}",
      User.XtremeIdiotsId(), playerTagId, id);
 
-            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.DeletePlayerTag).ConfigureAwait(false);
+            var canDeletePlayerTag = await authorizationService.AuthorizeAsync(User, null, AuthPolicies.Tags_Write).ConfigureAwait(false);
             if (!canDeletePlayerTag.Succeeded)
             {
                 Logger.LogWarning("User {UserId} denied access to remove player tag {PlayerTagId} from player {PlayerId}",

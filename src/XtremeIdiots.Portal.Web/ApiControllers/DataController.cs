@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,7 +43,7 @@ public class DataController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>DataTables-compatible JSON response with map data</returns>
     [HttpPost("Maps/GetMapListAjax")]
-    [Authorize(Policy = AuthPolicies.AccessMaps)]
+    [Authorize(Policy = AuthPolicies.Maps_Read)]
     public async Task<IActionResult> GetMapListAjax(GameType? id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -103,7 +103,7 @@ public class DataController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>DataTables-compatible JSON response with user profile data</returns>
     [HttpPost("Users/GetUsersAjax")]
-    [Authorize(Policy = AuthPolicies.AccessUsers)]
+    [Authorize(Policy = AuthPolicies.Users_Read)]
     public async Task<IActionResult> GetUsersAjax(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>

@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -18,7 +18,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for managing ban file monitors across game servers
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessBanFileMonitors)]
+[Authorize(Policy = AuthPolicies.GameServers_BanFileMonitors_Read)]
 public class BanFileMonitorsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -37,7 +37,9 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
+#pragma warning restore CS0618
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
@@ -117,7 +119,7 @@ public class BanFileMonitorsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.CreateBanFileMonitor,
+                AuthPolicies.GameServers_BanFileMonitors_Write,
                 nameof(Create),
                 "BanFileMonitor",
                 $"GameType:{gameServerData.GameType},GameServerId:{gameServerData.GameServerId}",
@@ -154,7 +156,7 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.ViewBanFileMonitor, nameof(Details), cancellationToken).ConfigureAwait(false);
+                id, AuthPolicies.GameServers_BanFileMonitors_Read, nameof(Details), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
@@ -179,7 +181,7 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.EditBanFileMonitor, nameof(Edit), cancellationToken).ConfigureAwait(false);
+                id, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(Edit), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
@@ -213,7 +215,7 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                model.BanFileMonitorId, AuthPolicies.EditBanFileMonitor, nameof(Edit), cancellationToken).ConfigureAwait(false);
+                model.BanFileMonitorId, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(Edit), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
@@ -254,7 +256,7 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.DeleteBanFileMonitor, nameof(Delete), cancellationToken).ConfigureAwait(false);
+                id, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(Delete), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
@@ -283,7 +285,7 @@ public class BanFileMonitorsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.DeleteBanFileMonitor, nameof(DeleteConfirmed), cancellationToken).ConfigureAwait(false);
+                id, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(DeleteConfirmed), cancellationToken).ConfigureAwait(false);
 
             if (actionResult is not null)
                 return actionResult;
@@ -312,7 +314,9 @@ public class BanFileMonitorsController(
     {
         try
         {
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
+#pragma warning restore CS0618
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);

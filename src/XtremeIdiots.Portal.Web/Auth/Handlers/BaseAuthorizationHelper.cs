@@ -1,6 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
+// Suppress obsolete warnings — this file intentionally references legacy UserProfileClaimType
+// constants (BanFileMonitor, GameServer, etc.) because these are still the claim types that
+// portal-sync creates from forum group membership. The claim types themselves are not changing,
+// only the additional permission types are being renamed.
+#pragma warning disable CS0618
+
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
@@ -363,32 +369,44 @@ public static class BaseAuthorizationHelper
 
     /// <summary>
     /// Checks if the user has a direct additional permission grant matching the policy and resource.
+    /// Extracts the GameType from the resource (regardless of tuple shape) and checks for a matching claim.
     /// </summary>
     public static void CheckDirectPermissionGrant(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, string permissionClaimType)
     {
         if (context.HasSucceeded) return;
 
-        // Game-scoped check: if resource is a GameType, check for permission with that game type value
-        if (context.Resource is GameType gameType)
+        // Extract GameType from resource — handles all tuple patterns used across handlers
+        var resourceGameType = context.Resource switch
         {
-            if (context.User.HasClaim(permissionClaimType, gameType.ToString()))
-                context.Succeed(requirement);
-            return;
-        }
+            GameType gt => gt,
+            Tuple<GameType, Guid> t => t.Item1,
+            Tuple<GameType, AdminActionType> t => t.Item1,
+            Tuple<GameType, AdminActionType, string?> t => t.Item1,
+            (GameType gt, Guid) => gt,
+            (GameType gt, AdminActionType) => gt,
+            (GameType gt, AdminActionType, string) => gt,
+            _ => (GameType?)null
+        };
 
-        // Server-scoped check: if resource is a (GameType, Guid) tuple, check both game and server scope
-        if (context.Resource is Tuple<GameType, Guid> refTuple)
+        // Extract server GUID if present (for server-scoped permissions)
+        var resourceServerId = context.Resource switch
         {
-            if (context.User.HasClaim(permissionClaimType, refTuple.Item1.ToString()) ||
-                context.User.HasClaim(permissionClaimType, refTuple.Item2.ToString()))
-                context.Succeed(requirement);
-            return;
-        }
-        if (context.Resource is (GameType gt, Guid serverId))
+            Tuple<GameType, Guid> t => t.Item2,
+            (GameType, Guid id) => id,
+            _ => (Guid?)null
+        };
+
+        if (resourceGameType.HasValue)
         {
-            if (context.User.HasClaim(permissionClaimType, gt.ToString()) ||
-                context.User.HasClaim(permissionClaimType, serverId.ToString()))
+            // Check game-scoped permission
+            if (context.User.HasClaim(permissionClaimType, resourceGameType.Value.ToString()))
                 context.Succeed(requirement);
+
+            // Also check server-scoped permission if a server ID is present
+            if (resourceServerId.HasValue &&
+                context.User.HasClaim(permissionClaimType, resourceServerId.Value.ToString()))
+                context.Succeed(requirement);
+
             return;
         }
 

@@ -8,7 +8,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Handles the main dashboard and home page functionality
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessHome)]
+[Authorize]
 public class HomeController(
     TelemetryClient telemetryClient,
     ILogger<HomeController> logger,

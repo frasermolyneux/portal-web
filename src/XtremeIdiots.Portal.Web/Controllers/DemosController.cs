@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -33,7 +33,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Application insights telemetry client</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessDemos)]
+[Authorize(Policy = AuthPolicies.Demos_Read)]
 public class DemosController(
     IAuthorizationService authorizationService,
     UserManager<IdentityUser> userManager,
@@ -228,7 +228,7 @@ public class DemosController(
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)
                 {
-                    var canDeletePortalDemo = await authorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(demoDto.GameType, demoDto.UserProfileId), AuthPolicies.DeleteDemo).ConfigureAwait(false);
+                    var canDeletePortalDemo = await authorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(demoDto.GameType, demoDto.UserProfileId), AuthPolicies.Demos_Delete).ConfigureAwait(false);
 
                     var portalDemoDto = new PortalDemoDto(demoDto);
 
@@ -332,7 +332,7 @@ public class DemosController(
             }
 
             var authorizationResource = new Tuple<GameType, Guid>(demoApiResult.Result.Data.GameType, demoApiResult.Result.Data.UserProfileId);
-            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.DeleteDemo, nameof(Delete), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}").ConfigureAwait(false);
+            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.Demos_Delete, nameof(Delete), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}").ConfigureAwait(false);
             if (authorizationResult != null)
                 return authorizationResult;
 
@@ -364,7 +364,7 @@ public class DemosController(
             }
 
             var authorizationResource = new Tuple<GameType, Guid>(demoApiResult.Result.Data.GameType, demoApiResult.Result.Data.UserProfileId);
-            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.DeleteDemo, nameof(DeleteConfirmed), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}").ConfigureAwait(false);
+            var authorizationResult = await CheckAuthorizationAsync(authorizationService, authorizationResource, AuthPolicies.Demos_Delete, nameof(DeleteConfirmed), "Demo", $"GameType:{demoApiResult.Result.Data.GameType}").ConfigureAwait(false);
             if (authorizationResult != null)
                 return authorizationResult;
 

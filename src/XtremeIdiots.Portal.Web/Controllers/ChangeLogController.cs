@@ -9,7 +9,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for accessing and managing application change logs
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessChangeLog)]
+[Authorize]
 public class ChangeLogController(
     TelemetryClient telemetryClient,
     ILogger<ChangeLogController> logger,

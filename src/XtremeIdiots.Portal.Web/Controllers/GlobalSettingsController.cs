@@ -13,7 +13,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Manages fleet-wide global configuration defaults for agents, ban files, moderation, and events
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessGlobalSettings)]
+[Authorize(Policy = AuthPolicies.GlobalSettings_Admin)]
 public class GlobalSettingsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,

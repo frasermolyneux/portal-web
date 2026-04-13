@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -14,7 +14,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// Provides JSON endpoints for various player analytics charts and graphs
 /// including cumulative players, new players per game, and player drop-off rates
 /// </remarks>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 [Route("PlayerAnalytics")]
 public class PlayerAnalyticsController(
     IRepositoryApiClient repositoryApiClient,

@@ -215,7 +215,7 @@
 
                                     @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, new
                                                                     Tuple<GameType, AdminActionType, string?>(gameType.Value, item.Type, userForumId),
-                                                                    AuthPolicies.EditAdminAction)).Succeeded)
+                                                                    AuthPolicies.AdminActions_Edit)).Succeeded)
                                     {
                                         <a asp-controller="AdminActions" asp-action="Edit" asp-route-id="@item.AdminActionId"
                                             class="btn btn-outline-@cardStyle btn-sm">
@@ -228,7 +228,7 @@
                                     {
                                         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, new
                                                                         Tuple<GameType, string?>(gameType.Value, userForumId),
-                                                                        AuthPolicies.LiftAdminAction)).Succeeded)
+                                                                        AuthPolicies.AdminActions_Lift)).Succeeded)
                                         {
                                             <a asp-controller="AdminActions" asp-action="Lift" asp-route-id="@item.AdminActionId"
                                                 class="btn btn-outline-warning btn-sm">
@@ -240,7 +240,7 @@
                                     @if (item.Type == AdminActionType.Ban && item.UserProfile is null)
                                     {
                                         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User,
-                                                                        gameType.Value, AuthPolicies.ClaimAdminAction)).Succeeded)
+                                                                        gameType.Value, AuthPolicies.AdminActions_Claim)).Succeeded)
                                         {
                                             <a asp-controller="AdminActions" asp-action="Claim" asp-route-id="@item.AdminActionId"
                                                 class="btn btn-outline-info btn-sm">
@@ -252,7 +252,7 @@
                                     @if (item.ForumTopicId == 0)
                                     {
                                         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User,
-                                                                        gameType.Value, AuthPolicies.CreateAdminActionTopic)).Succeeded)
+                                                                        gameType.Value, AuthPolicies.AdminActions_CreateTopic)).Succeeded)
                                         {
                                             <a asp-controller="AdminActions" asp-action="CreateDiscussionTopic"
                                                 asp-route-id="@item.AdminActionId" class="btn btn-outline-success btn-sm">
@@ -262,7 +262,7 @@
                                     }
 
                                     @if ((await AuthorizationService.AuthorizeAsync(User,
-                                                                    AuthPolicies.DeleteAdminAction)).Succeeded)
+                                                                    AuthPolicies.AdminActions_Delete)).Succeeded)
                                     {
                                         <a asp-controller="AdminActions" asp-action="Delete" asp-route-id="@item.AdminActionId"
                                             class="btn btn-outline-danger btn-sm">

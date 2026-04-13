@@ -79,35 +79,35 @@
                                         <div class="col-12 col-lg-6 mb-2 mb-lg-0">
                                             <div class="btn-toolbar justify-content-center justify-content-md-start" role="toolbar">
                                                 <div class="btn-group flex-wrap" role="group">
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Observation), AuthPolicies.CreateAdminAction)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Observation), AuthPolicies.AdminActions_Create)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Observation" class="btn btn-outline-primary btn-sm">
                                                         <i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i> Observation
                                                     </a>
                                                 }
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Warning), AuthPolicies.CreateAdminAction)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Warning), AuthPolicies.AdminActions_Create)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Warning" class="btn btn-outline-warning btn-sm">
                                                         <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Warning
                                                     </a>
                                                 }
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Kick), AuthPolicies.CreateAdminAction)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Kick), AuthPolicies.AdminActions_Create)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Kick" class="btn btn-outline-info btn-sm">
                                                         <i class="fa-solid fa-fw fa-arrow-right-from-bracket" aria-hidden="true"></i> Kick
                                                     </a>
                                                 }
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.TempBan), AuthPolicies.CreateAdminAction)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.TempBan), AuthPolicies.AdminActions_Create)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="TempBan" class="btn btn-outline-secondary btn-sm">
                                                         <i class="fa-solid fa-fw fa-clock" aria-hidden="true"></i> Temp Ban
                                                     </a>
                                                 }
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Ban), AuthPolicies.CreateAdminAction)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, AdminActionType>(player.GameType, AdminActionType.Ban), AuthPolicies.AdminActions_Create)).Succeeded)
                                                 {
                                                     <a asp-controller="AdminActions" asp-action="Create" asp-route-id="@player.PlayerId" asp-route-adminActionType="Ban" class="btn btn-outline-danger btn-sm">
                                                         <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban
@@ -117,7 +117,7 @@
                                                 <a asp-controller="ProtectedNames" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-secondary btn-sm">
                                                     <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Protected Name
                                                 </a>
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag)).Succeeded)
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.Tags_Write)).Succeeded)
                                                 {
                                                     <a asp-controller="PlayerTags" asp-action="Add" asp-route-id="@player.PlayerId" class="btn btn-outline-dark btn-sm">
                                                         <i class="fa-solid fa-fw fa-tag" aria-hidden="true"></i> Tag

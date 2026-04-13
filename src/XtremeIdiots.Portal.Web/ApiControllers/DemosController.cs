@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,7 +14,7 @@ using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
-[Authorize(Policy = AuthPolicies.AccessDemos)]
+[Authorize(Policy = AuthPolicies.Demos_Read)]
 [Route("Demos")]
 public class DemosController(
         IAuthorizationService authorizationService,
@@ -66,7 +66,7 @@ public class DemosController(
             {
                 foreach (var demoDto in demosApiResponse.Result.Data.Items)
                 {
-                    var canDeletePortalDemo = await authorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(demoDto.GameType, demoDto.UserProfileId), AuthPolicies.DeleteDemo).ConfigureAwait(false);
+                    var canDeletePortalDemo = await authorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(demoDto.GameType, demoDto.UserProfileId), AuthPolicies.Demos_Delete).ConfigureAwait(false);
 
                     var portalDemoDto = new PortalDemoDto(demoDto);
 

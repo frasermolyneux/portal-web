@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +23,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
 /// <exception cref="ArgumentNullException">Thrown when required dependencies are null</exception>
-[Authorize(Policy = AuthPolicies.AccessPlayerTags)]
+[Authorize(Policy = AuthPolicies.Tags_Read)]
 public class TagsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -106,12 +106,12 @@ public class TagsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Create tag view or Unauthorized if user lacks permission</returns>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.CreatePlayerTag)]
+    [Authorize(Policy = AuthPolicies.Tags_Write)]
     public async Task<IActionResult> Create(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
+            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.Tags_Write).ConfigureAwait(false);
 
             if (!canCreateTag.Succeeded)
             {
@@ -131,7 +131,7 @@ public class TagsController(
     /// <returns>Redirects to index on success, returns view with validation errors on failure</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = AuthPolicies.CreatePlayerTag)]
+    [Authorize(Policy = AuthPolicies.Tags_Write)]
     public async Task<IActionResult> Create(CreateTagViewModel model, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -140,7 +140,7 @@ public class TagsController(
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
-            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.CreatePlayerTag).ConfigureAwait(false);
+            var canCreateTag = await authorizationService.AuthorizeAsync(User, AuthPolicies.Tags_Write).ConfigureAwait(false);
 
             if (!canCreateTag.Succeeded)
             {
@@ -186,12 +186,12 @@ public class TagsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Edit tag view with pre-populated data or error result if tag not found or unauthorized</returns>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.EditPlayerTag)]
+    [Authorize(Policy = AuthPolicies.Tags_Write)]
     public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.EditPlayerTag, nameof(Edit), cancellationToken).ConfigureAwait(false);
+            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.Tags_Write, nameof(Edit), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -216,7 +216,7 @@ public class TagsController(
     /// <returns>Redirects to index on success, returns view with validation errors on failure</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = AuthPolicies.EditPlayerTag)]
+    [Authorize(Policy = AuthPolicies.Tags_Write)]
     public async Task<IActionResult> Edit(EditTagViewModel model, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -225,7 +225,7 @@ public class TagsController(
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
-            var (actionResult, originalTagData) = await GetAuthorizedTagAsync(model.TagId, AuthPolicies.EditPlayerTag, nameof(Edit), cancellationToken).ConfigureAwait(false);
+            var (actionResult, originalTagData) = await GetAuthorizedTagAsync(model.TagId, AuthPolicies.Tags_Write, nameof(Edit), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
             {
                 if (actionResult is UnauthorizedResult)
@@ -276,12 +276,12 @@ public class TagsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Delete confirmation view with tag details or error result if tag not found or unauthorized</returns>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.DeletePlayerTag)]
+    [Authorize(Policy = AuthPolicies.Tags_Write)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.DeletePlayerTag, nameof(Delete), cancellationToken).ConfigureAwait(false);
+            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.Tags_Write, nameof(Delete), cancellationToken).ConfigureAwait(false);
             return actionResult is not null ? actionResult : View(tagData);
         }, nameof(Delete)).ConfigureAwait(false);
     }
@@ -296,12 +296,12 @@ public class TagsController(
     [HttpPost]
     [ActionName(nameof(Delete))]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = AuthPolicies.DeletePlayerTag)]
+    [Authorize(Policy = AuthPolicies.Tags_Write)]
     public async Task<IActionResult> DeleteConfirmed(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.DeletePlayerTag, nameof(Delete), cancellationToken).ConfigureAwait(false);
+            var (actionResult, tagData) = await GetAuthorizedTagAsync(id, AuthPolicies.Tags_Write, nameof(Delete), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
             {
                 if (actionResult is UnauthorizedResult)

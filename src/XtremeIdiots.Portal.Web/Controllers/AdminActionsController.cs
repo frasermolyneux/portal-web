@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Integrations.Forums;
@@ -16,7 +16,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Controller for managing admin actions against players in the gaming portal
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessAdminActionsController)]
+[Authorize(Policy = AuthPolicies.AdminActions_Read)]
 public class AdminActionsController(
     IAuthorizationService authorizationService,
     IAdminActionTopics adminActionTopics,
@@ -48,7 +48,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.CreateAdminAction,
+                AuthPolicies.AdminActions_Create,
                 "Create",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionType:{adminActionType}",
@@ -95,7 +95,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.CreateAdminAction,
+                AuthPolicies.AdminActions_Create,
                 "Create",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionType:{model.Type}",
@@ -164,7 +164,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.EditAdminAction,
+                AuthPolicies.AdminActions_Edit,
                 "Edit",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
@@ -214,7 +214,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.EditAdminAction,
+                AuthPolicies.AdminActions_Edit,
                 "Edit",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{model.AdminActionId}",
@@ -229,7 +229,7 @@ public class AdminActionsController(
                 Expires = model.Type == AdminActionType.TempBan ? model.Expires : null
             };
 
-            var canChangeAdminActionAdmin = await authorizationService.AuthorizeAsync(User, playerData.GameType, AuthPolicies.ChangeAdminActionAdmin).ConfigureAwait(false);
+            var canChangeAdminActionAdmin = await authorizationService.AuthorizeAsync(User, playerData.GameType, AuthPolicies.AdminActions_Reassign).ConfigureAwait(false);
 
             if (canChangeAdminActionAdmin.Succeeded && adminActionData.UserProfile?.XtremeIdiotsForumId != model.AdminId)
             {
@@ -280,7 +280,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.LiftAdminAction,
+                AuthPolicies.AdminActions_Lift,
                 "Lift",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
@@ -314,7 +314,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 authorizationResource,
-                AuthPolicies.LiftAdminAction,
+                AuthPolicies.AdminActions_Lift,
                 "Lift",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id},PlayerId:{playerId}",
@@ -390,7 +390,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 playerData.GameType,
-                AuthPolicies.ClaimAdminAction,
+                AuthPolicies.AdminActions_Claim,
                 "Claim",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
@@ -428,7 +428,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 playerData.GameType,
-                AuthPolicies.ClaimAdminAction,
+                AuthPolicies.AdminActions_Claim,
                 "Claim",
                 "AdminActions",
                 $"GameType:{playerData.GameType},AdminActionId:{id},PlayerId:{playerId}",
@@ -504,7 +504,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 playerData.GameType,
-                AuthPolicies.CreateAdminActionTopic,
+                AuthPolicies.AdminActions_CreateTopic,
                 "CreateDiscussionTopic",
                 "AdminActionTopic",
                 $"GameType:{playerData.GameType},AdminActionId:{id}",
@@ -568,7 +568,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 adminActionData,
-                AuthPolicies.DeleteAdminAction,
+                AuthPolicies.AdminActions_Delete,
                 "Delete",
                 "AdminActions",
                 $"AdminActionId:{id}",
@@ -606,7 +606,7 @@ public class AdminActionsController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 adminActionData,
-                AuthPolicies.DeleteAdminAction,
+                AuthPolicies.AdminActions_Delete,
                 "Delete",
                 "AdminActions",
                 $"AdminActionId:{id},PlayerId:{playerId}",

@@ -20,7 +20,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Application Insights telemetry client</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessProfile)]
+[Authorize]
 public class ProfileController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,

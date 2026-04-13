@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +27,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Application Insights telemetry client</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessUsers)]
+[Authorize(Policy = AuthPolicies.Users_Read)]
 public class UserController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -70,7 +70,7 @@ public class UserController(
     /// </summary>
     /// <returns>The activity log view</returns>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.AccessActivityLog)]
+    [Authorize(Policy = AuthPolicies.Users_ActivityLog)]
     public async Task<IActionResult> ActivityLog()
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -230,7 +230,7 @@ public class UserController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
-                AuthPolicies.CreateUserClaim,
+                AuthPolicies.Users_ManageClaims,
                 nameof(CreateUserClaim),
                 "UserClaim",
                 $"ProfileId:{id},GameType:{gameServerData.GameType},ClaimType:{claimType}").ConfigureAwait(false);
@@ -321,7 +321,7 @@ public class UserController(
                 var authResult = await CheckAuthorizationAsync(
                     authorizationService,
                     gameServerApiResponse.Result.Data.GameType,
-                    AuthPolicies.DeleteUserClaim,
+                    AuthPolicies.Users_ManageClaims,
                     nameof(RemoveUserClaim),
                     "UserClaim",
                     $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType}").ConfigureAwait(false);
@@ -376,7 +376,7 @@ public class UserController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.AccessUsers,
+                AuthPolicies.Users_Read,
                 nameof(ManageNotifications),
                 "UserNotifications").ConfigureAwait(false);
 
@@ -453,7 +453,7 @@ public class UserController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.AccessUsers,
+                AuthPolicies.Users_Read,
                 nameof(UpdateUserNotificationPreferences),
                 "UserNotifications").ConfigureAwait(false);
 

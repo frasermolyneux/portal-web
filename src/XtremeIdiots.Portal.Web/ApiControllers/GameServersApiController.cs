@@ -9,7 +9,7 @@ using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
-[Authorize(Policy = AuthPolicies.AccessGameServers)]
+[Authorize(Policy = AuthPolicies.GameServers_Read)]
 [Route("GameServers")]
 public class GameServersApiController(
     IRepositoryApiClient repositoryApiClient,
@@ -27,7 +27,7 @@ public class GameServersApiController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 null!,
-                AuthPolicies.DeleteGameServer,
+                AuthPolicies.GameServers_Delete,
                 nameof(UpdateOrder),
                 "GameServer",
                 "ReorderServers").ConfigureAwait(false);

@@ -1,4 +1,4 @@
-﻿@inject IAuthorizationService AuthorizationService
+@inject IAuthorizationService AuthorizationService
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Web.Extensions
 @using Microsoft.AspNetCore.Authorization
@@ -38,7 +38,7 @@
                             </div>
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-                                                        Guid>(Model.GameType, Model.GameServerId), AuthPolicies.ViewFtpCredential)).Succeeded)
+                                                        Guid>(Model.GameType, Model.GameServerId), AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
                             {
                                 <div class="detail-field col-sm-6">
                                     <dt class="detail-label">FTP Hostname</dt>
@@ -59,7 +59,7 @@
                             }
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-                                                        Guid>(Model.GameType, Model.GameServerId), AuthPolicies.ViewRconCredential)).Succeeded)
+                                                        Guid>(Model.GameType, Model.GameServerId), AuthPolicies.GameServers_Credentials_Rcon_Read)).Succeeded)
                             {
                                 <div class="detail-field col-sm-6">
                                     <dt class="detail-label">RCON Password</dt>
@@ -134,7 +134,7 @@
                                             <td>
                                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                     Guid>(Model.GameType, Model.GameServerId),
-                                                                                    AuthPolicies.ViewFtpCredential)).Succeeded)
+                                                                                    AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
                                             {
                                                 <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
                                                     path="@item.FilePath" user="@ViewBag.FtpUsername"
@@ -153,7 +153,7 @@
                                             <div class="btn-group btn-group-sm" role="group">
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
-                                                                                            AuthPolicies.EditBanFileMonitor)).Succeeded)
+                                                                                            AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors"
                                                         asp-action="Edit" asp-route-id="@item.BanFileMonitorId"><i
@@ -162,7 +162,7 @@
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
-                                                                                            AuthPolicies.ViewBanFileMonitor)).Succeeded)
+                                                                                            AuthPolicies.GameServers_BanFileMonitors_Read)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors"
                                                         asp-action="Details" asp-route-id="@item.BanFileMonitorId"><i
@@ -171,7 +171,7 @@
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
-                                                                                            AuthPolicies.DeleteBanFileMonitor)).Succeeded)
+                                                                                            AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-danger" asp-controller="BanFileMonitors"
                                                         asp-action="Delete" asp-route-id="@item.BanFileMonitorId"><i

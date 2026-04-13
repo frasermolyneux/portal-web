@@ -1,4 +1,4 @@
-﻿@inject IAuthorizationService AuthorizationService
+@inject IAuthorizationService AuthorizationService
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Web.Auth.Constants
 @using XtremeIdiots.Portal.Web.Extensions
@@ -86,7 +86,7 @@
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
-                                                                                            AuthPolicies.ManageMaps)).Succeeded && item.GameType ==
+                                                                                            AuthPolicies.GameServers_Maps_Read)).Succeeded && item.GameType ==
                                                                                             GameType.CallOfDuty4)
                                                 {
                                                     <a class="btn btn-secondary" asp-controller="MapManager"
@@ -95,21 +95,21 @@
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
-                                                                                            AuthPolicies.EditGameServer)).Succeeded)
+                                                                                            AuthPolicies.GameServers_Write)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-action="Edit"
                                                         asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-pen-to-square"></i> <span class="d-none d-sm-inline">Edit</span></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
-                                                                                            AuthPolicies.ViewGameServer)).Succeeded)
+                                                                                            AuthPolicies.GameServers_Read)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-action="Details"
                                                         asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-eye"></i> <span class="d-none d-sm-inline">Details</span></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
-                                                                                            AuthPolicies.DeleteGameServer)).Succeeded)
+                                                                                            AuthPolicies.GameServers_Delete)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-danger" asp-action="Delete"
                                                         asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-trash"></i> <span class="d-none d-sm-inline">Delete</span></a>
@@ -126,7 +126,7 @@
                         <div class="btn-group btn-group-sm" role="group">
                             <a class="btn btn-primary" asp-action="Create"><i class="fa-solid fa-fw fa-plus"></i>
                                 Create New</a>
-                            @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.DeleteGameServer)).Succeeded)
+                            @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_Delete)).Succeeded)
                             {
                                 <a class="btn btn-secondary" asp-action="Reorder"><i class="fa-solid fa-fw fa-grip-vertical"></i>
                                     Reorder Servers</a>

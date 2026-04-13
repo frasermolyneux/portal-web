@@ -12,7 +12,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 /// <summary>
 /// API controller providing activity log data for DataTables AJAX requests
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessActivityLog)]
+[Authorize(Policy = AuthPolicies.Users_ActivityLog)]
 [Route("User")]
 public class ActivityLogController(
     IActivityLogService activityLogService,

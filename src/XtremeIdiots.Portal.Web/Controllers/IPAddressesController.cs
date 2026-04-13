@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +15,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <summary>
 /// Handles IP address details and analytics for the XtremeIdiots Portal
 /// </summary>
-[Authorize(Policy = AuthPolicies.AccessPlayers)]
+[Authorize(Policy = AuthPolicies.Players_Read)]
 public class IPAddressesController(
     IAuthorizationService authorizationService,
     IGeoLocationApiClient geoLocationClient,
@@ -46,7 +46,7 @@ public class IPAddressesController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 ipAddress,
-                AuthPolicies.ViewPlayers,
+                AuthPolicies.Players_Read,
                 nameof(Details),
                 nameof(IPAddressesController),
                 $"IpAddress:{ipAddress}",
