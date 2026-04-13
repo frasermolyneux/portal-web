@@ -10,7 +10,7 @@
                 <option value="">All Games</option>
                 @foreach (var gt in new[] { GameType.CallOfDuty2, GameType.CallOfDuty4, GameType.CallOfDuty5, GameType.Insurgency })
                 {
-                    <option value="@gt">@gt.DisplayName()</option>
+                    <option value="@gt">@gt.ToDisplayName()</option>
                 }
             </select>
         </div>

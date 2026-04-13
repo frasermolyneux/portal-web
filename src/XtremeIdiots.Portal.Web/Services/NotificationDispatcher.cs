@@ -2,6 +2,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.Services;
 
@@ -176,19 +177,4 @@ public class NotificationDispatcher(
     }
 }
 
-internal static class GameTypeExtensions
-{
-    public static string ToDisplayName(this GameType gameType)
-    {
-        var memberInfo = typeof(GameType).GetMember(gameType.ToString());
-        if (memberInfo.Length > 0)
-        {
-            var displayAttr = memberInfo[0]
-                .GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false)
-                .FirstOrDefault() as System.ComponentModel.DataAnnotations.DisplayAttribute;
-            if (displayAttr?.Name is not null)
-                return displayAttr.Name;
-        }
-        return gameType.ToString();
-    }
-}
+
