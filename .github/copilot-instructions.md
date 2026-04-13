@@ -35,7 +35,7 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 - [Development Workflows](docs/development-workflows.md) — Branch strategy, CI/CD triggers, and PR flows.
 - [UI Standards Guide](docs/ui-standards-guide.md) — Button hierarchy, icons, forms, detail pages, filters, destructive operation gating, and legacy patterns to avoid.
 - [Datatable Implementation Guide](docs/DATATABLE-IMPLEMENTATION-GUIDE.md) — Server-backed data table patterns.
-- [Permissions Matrices](docs/permissions/) — Per-area authorization matrices (players, game servers, admin actions, etc.).
+- [Authorization Model](docs/authorization-model.md) — How roles, policies, and scoping work.
 - [CSS Architecture Guide](docs/css-architecture-guide.md) — SCSS structure, tokens, components, and build process.
 - [Manual Steps](docs/manual-steps.md) — Post-deployment configuration.
 
@@ -60,23 +60,11 @@ Every authorization handler checks **both** role claims (from forum sync) **and*
 - A user can also be granted specific `AdditionalPermission` claim types (e.g., `GameServers.Admin.Rcon`) for fine-grained access beyond their role.
 - Additional permissions use `{Domain}.{Action}` claim types with `PermissionScope` validation (Game, Server, or GameOrServer scoping).
 
-The `AdditionalPermission` class in the `portal-repository` abstractions package defines all 43 assignable permission constants, their metadata, display names, descriptions, domains, and scopes.
+The `AdditionalPermission` class in the `portal-repository` abstractions package defines the assignable permission constants, their metadata, display names, descriptions, domains, and scopes.
 
-### Policy Domains (9 total, 47 policies)
+### Policy Domains
 
-| Domain | Policies | Examples |
-|--------|----------|---------|
-| Map Rotations | 3 | `MapRotations.Read`, `MapRotations.Write`, `MapRotations.Deploy` |
-| Maps | 1 | `Maps.Read` |
-| Game Servers | 17 | Core (Read/Write/Delete), Credentials (FTP/RCON Read/Write), Maps, Ban File Monitors, Admin/RCON |
-| Chat Log | 3 | `ChatLog.Read`, `ChatLog.ReadServer`, `ChatLog.Lock` |
-| Admin Actions | 8 | `AdminActions.Create`, `AdminActions.Edit`, `AdminActions.Claim`, `AdminActions.Lift` |
-| Players | 4 | `Players.Read`, `Players.Delete`, `Players.ProtectedNames.Write`, `Players.Tags.Write` |
-| Player Tags | 2 | `Tags.Read`, `Tags.Write` |
-| Dashboard | 1 | `Dashboard.Read` |
-| Demos | 3 | `Demos.Read`, `Demos.Write`, `Demos.Delete` |
-
-Plus 4 non-assignable system policies: `GlobalSettings.Admin`, `Users.Read`, `Users.ManageClaims`, `Users.Search`, `Users.ActivityLog`.
+Policies are organised into domains (Map Rotations, Maps, Game Servers, Chat Log, Admin Actions, Players, Player Tags, Dashboard, Demos) plus a handful of non-assignable system policies (GlobalSettings, Users). For the full list, see `AuthPolicies.cs`.
 
 ### PolicyTagHelper
 
@@ -91,13 +79,13 @@ The `policy-resource` attribute passes a resource (typically `GameType`) to hand
 
 ### Key Files
 
-- `Auth/Constants/AuthPolicies.cs` — All 47 policy name constants
+- `Auth/Constants/AuthPolicies.cs` — Policy name constants
 - `Auth/Requirements/AuthRequirements.cs` — Marker requirement classes
-- `Auth/Handlers/` — Per-domain authorization handlers
+- `Auth/Handlers/` — Per-domain authorization handlers (source of truth for role→permission mappings)
 - `Auth/Handlers/BaseAuthorizationHelper.cs` — Shared claim group definitions
 - `Extensions/PolicyExtensions.cs` — Policy registration
 - `Helpers/PolicyTagHelper.cs` — Razor tag helper for conditional rendering
-- [Permissions Matrices](docs/permissions/) — Per-domain authorization matrices
+- [Authorization Model](docs/authorization-model.md) — Conceptual guide to the authorization model
 
 ## Conventions and Patterns
 

@@ -11,7 +11,7 @@
 
 ## Documentation
 
-* [Permissions Matrices](/docs/permissions/) - Per-area authorization matrices (players, game servers, admin actions, etc.).
+* [Authorization Model](/docs/authorization-model.md) - How roles, policies, and scoping work in the portal.
 * [CSS Architecture Guide](/docs/css-architecture-guide.md) - Styling conventions, structure, and tooling for the web UI.
 * [Datatable Implementation Guide](/docs/DATATABLE-IMPLEMENTATION-GUIDE.md) - Patterns for server-backed data tables and pagination.
 * [Development Workflows](/docs/development-workflows.md) - Branch strategy, CI/CD triggers, and development flows.
@@ -25,16 +25,9 @@ Web front end for the XtremeIdiots Portal providing player and game server manag
 
 ## Authorization
 
-The portal uses a structured `{Domain}.{Action}` permissions model with **47 policies** (43 assignable as additional permissions, 4 reserved for system use) across 9 domains: Map Rotations, Maps, Game Servers, Chat Log, Admin Actions, Players, Player Tags, Dashboard, and Demos.
+The portal uses a structured `{Domain}.{Action}` permissions model. Role claims (SeniorAdmin, HeadAdmin, GameAdmin, Moderator) are synced from forum group membership, while additional permissions can be directly assigned for fine-grained access. All authorization handlers check both paths, so a user's effective permissions are the union of role-based access and any direct grants.
 
-Permissions come from two tiers:
-
-1. **Role claims** (SeniorAdmin, HeadAdmin, GameAdmin, Moderator) — automatically synced from forum group membership by the `portal-sync` service. These provide baseline access per game type.
-2. **Additional permissions** — manually assigned `{Domain}.{Action}` claim types with game or server scoping for fine-grained access beyond the user's role (e.g., granting a user `GameServers.Admin.Rcon` for a specific game without a full GameAdmin role).
-
-All authorization handlers check both tiers, so a user's effective permissions are the union of their role-based access and any directly granted additional permissions.
-
-For detailed per-domain permission breakdowns, see the **Permissions Overview** page in the running application or the [Permissions Matrices](/docs/permissions/) documentation.
+For details on how the authorization model works, see the [Authorization Model](/docs/authorization-model.md) documentation. For exact role-to-permission mappings, the authorization handlers in `src/XtremeIdiots.Portal.Web/Auth/Handlers/` are the source of truth.
 
 ## Contributing
 
