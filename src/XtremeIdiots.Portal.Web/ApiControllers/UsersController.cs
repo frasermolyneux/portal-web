@@ -118,6 +118,82 @@ public class UsersController(
             });
         }, nameof(GetUsersAjax)).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Provides AJAX endpoint for retrieving permissions report data for DataTables
+    /// </summary>
+    /// <param name="gameType">Optional game type filter</param>
+    /// <param name="claimType">Optional claim type filter</param>
+    /// <param name="cancellationToken">Cancellation token for the async operation</param>
+    /// <returns>JSON response with permissions report data formatted for DataTables</returns>
+    [HttpPost("GetPermissionsReportAjax")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GetPermissionsReportAjax(GameType? gameType = null, string? claimType = null, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var reader = new StreamReader(Request.Body);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+            var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
+
+            if (model is null)
+            {
+                Logger.LogWarning("Invalid request body for permissions report AJAX endpoint from user {UserId}", User.XtremeIdiotsId());
+                return BadRequest("Invalid request data");
+            }
+
+            var rawGameType = HttpContext.Request.Query["gameType"].FirstOrDefault();
+            GameType? parsedGameType = null;
+            if (!string.IsNullOrWhiteSpace(rawGameType) && Enum.TryParse<GameType>(rawGameType, true, out var gt))
+            {
+                parsedGameType = gt;
+            }
+
+            var rawClaimType = HttpContext.Request.Query["claimType"].FirstOrDefault();
+            var parsedClaimType = !string.IsNullOrWhiteSpace(rawClaimType) ? rawClaimType : null;
+
+            var apiResponse = await repositoryApiClient.UserProfiles.V1.GetPermissionsReport(parsedGameType, parsedClaimType, cancellationToken).ConfigureAwait(false);
+
+            if (apiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Invalid API response for permissions report AJAX endpoint for user {UserId}", User.XtremeIdiotsId());
+                return StatusCode(500, "Failed to retrieve permissions report data");
+            }
+
+            var entries = apiResponse.Result.Data.Items?.ToList() ?? [];
+
+            var data = entries.Select(e =>
+            {
+                var definition = AdditionalPermission.GetDefinition(e.ClaimType);
+                return new
+                {
+                    e.UserProfileId,
+                    e.DisplayName,
+                    e.XtremeIdiotsForumId,
+                    e.ClaimType,
+                    ClaimTypeDisplayName = definition?.DisplayName ?? e.ClaimType,
+                    e.ClaimValue,
+                    e.SystemGenerated
+                };
+            }).ToList();
+
+            TrackSuccessTelemetry("PermissionsReportRetrieved", nameof(GetPermissionsReportAjax), new Dictionary<string, string>
+            {
+                { "ResultCount", data.Count.ToString() },
+                { "GameTypeFilter", parsedGameType?.ToString() ?? "None" },
+                { "ClaimTypeFilter", parsedClaimType ?? "None" }
+            });
+
+            return Ok(new
+            {
+                model.Draw,
+                recordsTotal = data.Count,
+                recordsFiltered = data.Count,
+                data
+            });
+        }, nameof(GetPermissionsReportAjax)).ConfigureAwait(false);
+    }
 }
 
 /// <summary>

@@ -2,6 +2,7 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1;
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @model XtremeIdiots.Portal.Web.ViewModels.ManageUserProfileViewModel
 
 @{
@@ -92,26 +93,55 @@
                 <div class="ibox">
                     <div class="ibox-title"><h5>Add Additional Portal Permission</h5></div>
                     <div class="ibox-content">
-                        <form asp-action="CreateUserClaim">
+                        <form asp-action="CreateUserClaim" id="createClaimForm">
                             <input id="id" name="id" type="hidden" value="@Model.Profile.UserProfileId" />
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
                             <div class="mb-3">
                                 <label class="form-label">Permission Type</label>
                                 <select name="claimType" id="claimType" class="form-select">
-                                    <option value="FtpCredentials">FtpCredentials</option>
-                                    <option value="RconCredentials">RconCredentials</option>
-                                    <option value="GameServer">GameServer</option>
-                                    <option value="BanFileMonitor">BanFileMonitor</option>
-                                    <option value="RconMonitor">RconMonitor</option>
-                                    <option value="ServerAdmin">ServerAdmin</option>
-                                    <option value="LiveRcon">LiveRcon</option>
+                                    <option value="">Select a permission...</option>
+                                    @foreach (var group in Model.AvailablePermissions.GroupBy(p => new { p.Domain, p.SubDomain }))
+                                    {
+                                        var label = !string.IsNullOrEmpty(group.Key.SubDomain)
+                                            ? $"{group.Key.Domain} — {group.Key.SubDomain}"
+                                            : group.Key.Domain;
+                                        <optgroup label="@label">
+                                            @foreach (var perm in group)
+                                            {
+                                                <option value="@perm.ClaimType"
+                                                        data-scope="@perm.Scope"
+                                                        data-description="@perm.Description">
+                                                    @perm.DisplayName
+                                                </option>
+                                            }
+                                        </optgroup>
+                                    }
                                 </select>
+                                <small class="form-text text-muted" id="permissionDescription"></small>
                             </div>
-                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                            <div class="mb-3">
-                                <label class="form-label">Game Server</label>
-                                <select id="claimValue" name="claimValue" class="form-select"
-                                    asp-items="ViewBag.GameServersSelect"></select>
+
+                            <div id="scopeSelector" class="mb-3" style="display:none;">
+                                <label class="form-label">Scope</label>
+                                <div id="gameScopeGroup">
+                                    <select id="gameTypeSelect" class="form-select">
+                                        <option value="">Select game type...</option>
+                                        @foreach (var gt in Model.AssignableGameTypes)
+                                        {
+                                            <option value="@gt">@gt</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div id="serverScopeGroup" class="mt-2" style="display:none;">
+                                    <select id="serverSelect" class="form-select"
+                                            asp-items="ViewBag.GameServersSelect">
+                                        <option value="">Select server...</option>
+                                    </select>
+                                </div>
                             </div>
+
+                            <input type="hidden" name="claimValue" id="claimValueInput" />
+
                             <div class="mb-3">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Additional Permission
@@ -135,12 +165,12 @@
                     </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
-                            <table class="table w-100">
+                            <table class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
-                                        <th scope="col">Claim Type</th>
-                                        <th scope="col">Claim Value</th>
-                                        <th scope="col"></th>
+                                        <th scope="col">Permission</th>
+                                        <th scope="col">Scope Value</th>
+                                        <th scope="col" class="table-action-col"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -148,26 +178,24 @@
                                     {
                                         <tr>
                                             @{
+                                                var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
                                                 Guid.TryParse(claim.ClaimValue, out var gameServerId);
                                                 var server = gameServers?.FirstOrDefault(s => s.GameServerId == gameServerId);
-                                        }
+                                            }
 
-                                        <td>@claim.ClaimType</td>
-                                        <td>
-                                            @{
-                                                if (server is null)
+                                            <td>@(definition?.DisplayName ?? claim.ClaimType)</td>
+                                            <td>
+                                                @if (server is not null)
                                                 {
-                                                    <text>@claim.ClaimValue</text>
+                                                    @server.Title
                                                 }
                                                 else
                                                 {
-                                                    <text>@server.Title</text>
+                                                    @claim.ClaimValue
                                                 }
-                                            }
-                                        </td>
-                                        <td>
-                                            @{
-                                                if (!claim.SystemGenerated)
+                                            </td>
+                                            <td>
+                                                @if (!claim.SystemGenerated)
                                                 {
                                                     <form class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
                                                         method="post">
@@ -176,17 +204,16 @@
                                                         <input id="claimId" name="claimId" type="hidden"
                                                             value="@claim.UserProfileClaimId" />
 
-                                                        <button class="btn btn-danger btn-sm" type="submit" data-confirm="Are you sure you want to remove this permission? It may take up to 15 minutes to take effect.">
-                                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Delete Permission
+                                                        <button class="btn btn-outline-danger btn-sm" type="submit" data-confirm="Are you sure you want to remove this permission? It may take up to 15 minutes to take effect.">
+                                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Delete
                                                         </button>
                                                     </form>
                                                 }
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -203,4 +230,76 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        (function () {
+            var claimTypeSelect = document.getElementById('claimType');
+            var descriptionEl = document.getElementById('permissionDescription');
+            var scopeSelector = document.getElementById('scopeSelector');
+            var gameGroup = document.getElementById('gameScopeGroup');
+            var serverGroup = document.getElementById('serverScopeGroup');
+            var gameTypeSelect = document.getElementById('gameTypeSelect');
+            var serverSelect = document.getElementById('serverSelect');
+            var claimValueInput = document.getElementById('claimValueInput');
+
+            claimTypeSelect.addEventListener('change', function () {
+                var selected = this.options[this.selectedIndex];
+                var scope = selected.dataset.scope;
+                var desc = selected.dataset.description || '';
+
+                descriptionEl.textContent = desc;
+
+                if (!scope || this.value === '') {
+                    scopeSelector.style.display = 'none';
+                    gameTypeSelect.value = '';
+                    serverSelect.value = '';
+                    return;
+                }
+
+                scopeSelector.style.display = '';
+
+                if (scope === 'Game') {
+                    gameGroup.style.display = '';
+                    serverGroup.style.display = 'none';
+                    serverSelect.value = '';
+                } else if (scope === 'Server') {
+                    gameGroup.style.display = 'none';
+                    serverGroup.style.display = '';
+                    gameTypeSelect.value = '';
+                } else {
+                    // GameOrServer — show both
+                    gameGroup.style.display = '';
+                    serverGroup.style.display = '';
+                }
+            });
+
+            document.getElementById('createClaimForm').addEventListener('submit', function (e) {
+                var selected = claimTypeSelect.options[claimTypeSelect.selectedIndex];
+                var scope = selected.dataset.scope;
+                var gameVal = gameTypeSelect.value;
+                var serverVal = serverSelect.value;
+
+                if (!claimTypeSelect.value) {
+                    e.preventDefault();
+                    alert('Please select a permission type.');
+                    return;
+                }
+
+                if (scope === 'Server') {
+                    claimValueInput.value = serverVal;
+                } else if (scope === 'Game') {
+                    claimValueInput.value = gameVal;
+                } else {
+                    // GameOrServer: prefer game if set, else server
+                    claimValueInput.value = gameVal || serverVal;
+                }
+
+                if (!claimValueInput.value) {
+                    e.preventDefault();
+                    alert('Please select a game type or server for this permission.');
+                    return;
+                }
+            });
+        })();
+    </script>
 }

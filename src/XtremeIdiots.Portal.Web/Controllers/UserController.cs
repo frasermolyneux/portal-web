@@ -66,6 +66,20 @@ public class UserController(
     }
 
     /// <summary>
+    /// Displays the permissions report page showing all assigned permissions
+    /// </summary>
+    /// <returns>The permissions report view</returns>
+    [HttpGet]
+    public async Task<IActionResult> PermissionsReport()
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return View();
+        }, nameof(PermissionsReport)).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Displays the activity log page showing Application Insights custom events
     /// </summary>
     /// <returns>The activity log view</returns>
@@ -139,7 +153,8 @@ public class UserController(
             var vm = new ManageUserProfileViewModel
             {
                 Profile = userProfileDtoApiResponse.Result.Data,
-                Identity = identitySummary
+                Identity = identitySummary,
+                AssignableGameTypes = User.GetGameTypesForGameServers()
             };
 
             return View(vm);
@@ -188,11 +203,11 @@ public class UserController(
     }
 
     /// <summary>
-    /// Creates a new claim for a user profile on a specific game server
+    /// Creates a new claim for a user profile
     /// </summary>
     /// <param name="id">The user profile ID</param>
-    /// <param name="claimType">The type of claim to create</param>
-    /// <param name="claimValue">The game server ID for the claim</param>
+    /// <param name="claimType">The type of claim to create (must be in AdditionalPermission.AllowedTypes)</param>
+    /// <param name="claimValue">The scope value — a GameType name or game server GUID</param>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Redirects to ManageProfile with success message</returns>
     [HttpPost]
@@ -201,6 +216,18 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            if (!AdditionalPermission.IsAllowed(claimType))
+            {
+                Logger.LogWarning("Invalid claim type '{ClaimType}' attempted for profile {ProfileId}", claimType, id);
+                return BadRequest($"Invalid permission type: {claimType}");
+            }
+
+            if (string.IsNullOrWhiteSpace(claimValue))
+            {
+                Logger.LogWarning("Empty claim value for claim type '{ClaimType}' on profile {ProfileId}", claimType, id);
+                return BadRequest("A scope value must be provided.");
+            }
+
             var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
 
             if (userProfileResponseDto.IsNotFound)
@@ -217,23 +244,43 @@ public class UserController(
 
             var userProfileData = userProfileResponseDto.Result.Data;
 
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(Guid.Parse(claimValue), cancellationToken).ConfigureAwait(false);
+            // Determine the authorization resource based on the claim value type
+            object authResource;
+            string gameTypeForTelemetry;
 
-            if (gameServerApiResponse.Result?.Data is null)
+            if (Guid.TryParse(claimValue, out var gameServerId))
             {
-                Logger.LogWarning("Game server {GameServerId} not found when creating user claim", claimValue);
-                return NotFound();
-            }
+                // Server-scoped claim — look up the server to get the GameType for auth
+                var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
 
-            var gameServerData = gameServerApiResponse.Result.Data;
+                if (gameServerApiResponse.Result?.Data is null)
+                {
+                    Logger.LogWarning("Game server {GameServerId} not found when creating user claim", claimValue);
+                    return NotFound();
+                }
+
+                authResource = gameServerApiResponse.Result.Data.GameType;
+                gameTypeForTelemetry = gameServerApiResponse.Result.Data.GameType.ToString();
+            }
+            else if (Enum.TryParse<GameType>(claimValue, out var gameType))
+            {
+                // Game-scoped claim — use the GameType directly for auth
+                authResource = gameType;
+                gameTypeForTelemetry = gameType.ToString();
+            }
+            else
+            {
+                Logger.LogWarning("Invalid claim value '{ClaimValue}' — not a valid GameType or server GUID", claimValue);
+                return BadRequest("Claim value must be a valid game type or server ID.");
+            }
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                gameServerData.GameType,
+                authResource,
                 AuthPolicies.Users_ManageClaims,
                 nameof(CreateUserClaim),
                 "UserClaim",
-                $"ProfileId:{id},GameType:{gameServerData.GameType},ClaimType:{claimType}").ConfigureAwait(false);
+                $"ProfileId:{id},GameType:{gameTypeForTelemetry},ClaimType:{claimType}").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -249,14 +296,16 @@ public class UserController(
                     ? await userManager.FindByIdAsync(userProfileData.XtremeIdiotsForumId)
                     : null;
 
-                this.AddAlertSuccess($"The {claimType} claim has been added to {user?.UserName ?? userProfileData.DisplayName}");
+                var definition = AdditionalPermission.GetDefinition(claimType);
+                var displayName = definition?.DisplayName ?? claimType;
+                this.AddAlertSuccess($"The '{displayName}' permission has been added to {user?.UserName ?? userProfileData.DisplayName}");
 
                 TrackSuccessTelemetry("UserClaimCreated", nameof(CreateUserClaim), new Dictionary<string, string>
                 {
                     { "ProfileId", id.ToString() },
                     { "ClaimType", claimType },
                     { "ClaimValue", claimValue },
-                    { "GameType", gameServerData.GameType.ToString() }
+                    { "GameType", gameTypeForTelemetry }
                 });
             }
             else
@@ -265,7 +314,9 @@ public class UserController(
                     ? await userManager.FindByIdAsync(userProfileData.XtremeIdiotsForumId)
                     : null;
 
-                this.AddAlertSuccess($"Nothing to do - {user?.UserName ?? userProfileData.DisplayName} already has the {claimType} claim");
+                var definition = AdditionalPermission.GetDefinition(claimType);
+                var displayName = definition?.DisplayName ?? claimType;
+                this.AddAlertSuccess($"Nothing to do - {user?.UserName ?? userProfileData.DisplayName} already has the '{displayName}' permission");
             }
 
             return RedirectToAction(nameof(ManageProfile), new { id });
@@ -308,19 +359,39 @@ public class UserController(
                 return NotFound();
             }
 
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(Guid.Parse(claim.ClaimValue), cancellationToken).ConfigureAwait(false);
-
             var canDeleteUserClaim = false;
-            if (gameServerApiResponse.IsNotFound)
+
+            if (Guid.TryParse(claim.ClaimValue, out var serverGuid))
             {
-                Logger.LogInformation("Legacy claim detected for user profile {ProfileId}, allowing deletion", id);
-                canDeleteUserClaim = true;
+                // Server-scoped claim — look up the server for auth
+                var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(serverGuid, cancellationToken).ConfigureAwait(false);
+
+                if (gameServerApiResponse.IsNotFound)
+                {
+                    Logger.LogInformation("Legacy claim detected for user profile {ProfileId}, allowing deletion", id);
+                    canDeleteUserClaim = true;
+                }
+                else if (gameServerApiResponse.Result?.Data is not null)
+                {
+                    var authResult = await CheckAuthorizationAsync(
+                        authorizationService,
+                        gameServerApiResponse.Result.Data.GameType,
+                        AuthPolicies.Users_ManageClaims,
+                        nameof(RemoveUserClaim),
+                        "UserClaim",
+                        $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType}").ConfigureAwait(false);
+
+                    if (authResult is not null)
+                        return authResult;
+                    canDeleteUserClaim = true;
+                }
             }
-            else if (gameServerApiResponse.Result?.Data is not null)
+            else if (Enum.TryParse<GameType>(claim.ClaimValue, out var gameType))
             {
+                // Game-scoped claim — use the GameType directly for auth
                 var authResult = await CheckAuthorizationAsync(
                     authorizationService,
-                    gameServerApiResponse.Result.Data.GameType,
+                    gameType,
                     AuthPolicies.Users_ManageClaims,
                     nameof(RemoveUserClaim),
                     "UserClaim",
@@ -328,6 +399,12 @@ public class UserController(
 
                 if (authResult is not null)
                     return authResult;
+                canDeleteUserClaim = true;
+            }
+            else
+            {
+                // Unknown claim value format — treat as legacy, allow deletion
+                Logger.LogInformation("Unrecognised claim value format for profile {ProfileId}, allowing deletion", id);
                 canDeleteUserClaim = true;
             }
 

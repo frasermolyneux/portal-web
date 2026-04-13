@@ -284,6 +284,10 @@
                            asp-controller="User" asp-action="Permissions">
                             <i class="fa-solid fa-fw fa-lock" aria-hidden="true"></i> Permissions
                         </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("User", "PermissionsReport")" 
+                           asp-controller="User" asp-action="PermissionsReport">
+                            <i class="fa-solid fa-fw fa-shield-halved" aria-hidden="true"></i> Permissions Report
+                        </a>
                         <div policy="@AuthPolicies.Users_ActivityLog">
                             <a class="nav-link text-white-50 @Html.IsSelected("User", "ActivityLog")" 
                                asp-controller="User" asp-action="ActivityLog">

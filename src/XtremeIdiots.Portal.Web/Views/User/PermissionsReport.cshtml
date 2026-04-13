@@ -1,0 +1,56 @@
+@{
+    ViewData["Title"] = "Permissions Report";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="list-filters mb-3" id="permissionsReportFilters">
+        <div class="filter-group">
+            <label for="filterGameType" class="form-label">Game Type</label>
+            <select id="filterGameType" class="form-select">
+                <option value="">All Games</option>
+                @foreach (var gt in new[] { GameType.CallOfDuty2, GameType.CallOfDuty4, GameType.CallOfDuty5, GameType.Insurgency })
+                {
+                    <option value="@gt">@gt.DisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterClaimType" class="form-label">Permission Type</label>
+            <select id="filterClaimType" class="form-select">
+                <option value="">All Permissions</option>
+                @foreach (var def in AdditionalPermission.Definitions)
+                {
+                    <option value="@def.ClaimType">@def.DisplayName</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group reset-group">
+            <label class="form-label" for="resetFilters">Reset</label>
+            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
+        </div>
+    </div>
+
+    <div class="ibox">
+        <div class="ibox-title"><h5>@ViewData["Title"]</h5></div>
+        <div class="ibox-content">
+            <div class="table-responsive">
+                <table id="dataTable" class="table table-striped table-hover w-100" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Permission</th>
+                            <th>Scope Value</th>
+                            <th>System Generated</th>
+                            <th class="table-action-col"></th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+    <script src="~/js/permissions-report.js" asp-append-version="true"></script>
+}

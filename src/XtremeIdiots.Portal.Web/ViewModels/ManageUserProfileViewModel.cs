@@ -1,3 +1,4 @@
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
@@ -16,6 +17,16 @@ public class ManageUserProfileViewModel
     /// Identity data for the associated user (may be partial / null if user not found in Identity store).
     /// </summary>
     public IdentityUserSummary? Identity { get; set; }
+
+    /// <summary>
+    /// All available additional permission definitions for the permission picker.
+    /// </summary>
+    public List<AdditionalPermissionDefinition> AvailablePermissions { get; set; } = [.. AdditionalPermission.Definitions];
+
+    /// <summary>
+    /// Game types the current admin user has authority to assign permissions for.
+    /// </summary>
+    public List<GameType> AssignableGameTypes { get; set; } = [];
 }
 
 /// <summary>
