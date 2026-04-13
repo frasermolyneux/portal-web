@@ -18,10 +18,10 @@
                     <a asp-action="Details" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
                         <i class="fa-solid fa-fw fa-arrow-left"></i> Back to @Model.Rotation.Title
                     </a>
-                    <a policy="@AuthPolicies.ManageMapRotations" asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId" class="btn btn-outline-primary btn-sm">
+                    <a policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId" class="btn btn-outline-primary btn-sm">
                         <i class="fa-solid fa-fw fa-edit"></i> Edit Assignment
                     </a>
-                    <a policy="@AuthPolicies.ManageMaps" asp-controller="MapManager" asp-action="Manage" asp-route-id="@Model.Assignment.GameServerId" class="btn btn-outline-secondary btn-sm">
+                    <a policy="@AuthPolicies.ManageMaps" policy-resource="@Model.Rotation.GameType" asp-controller="MapManager" asp-action="Manage" asp-route-id="@Model.Assignment.GameServerId" class="btn btn-outline-secondary btn-sm">
                         <i class="fa-solid fa-fw fa-hard-drive"></i> Manage Server Maps
                     </a>
                 </div>
@@ -101,7 +101,7 @@
                         <div class="mt-3">
                             @if (Model.Assignment.DeploymentState == DeploymentState.Pending || Model.Assignment.DeploymentState == DeploymentState.Failed)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
+                                <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="SyncAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
@@ -112,7 +112,7 @@
                             }
                             @if (Model.IsStale && Model.Assignment.DeploymentState == DeploymentState.Synced)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="SyncAssignment" method="post" class="d-inline">
+                                <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="SyncAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
@@ -123,7 +123,7 @@
                             }
                             @if (Model.Assignment.DeploymentState == DeploymentState.Synced && !Model.IsStale && !string.IsNullOrEmpty(Model.Assignment.ConfigFilePath) && Model.Assignment.ActivationState != ActivationState.Active)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="ActivateAssignment" method="post" class="d-inline">
+                                <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="ActivateAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
@@ -134,7 +134,7 @@
                             }
                             @if (Model.Assignment.ActivationState == ActivationState.Active)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeactivateAssignment" method="post" class="d-inline">
+                                <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="DeactivateAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
@@ -145,7 +145,7 @@
                             }
                             @if (Model.Assignment.DeploymentState == DeploymentState.Synced)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="VerifyAssignment" method="post" class="d-inline">
+                                <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="VerifyAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
@@ -156,7 +156,7 @@
                             }
                             @if (Model.Assignment.DeploymentState is not DeploymentState.Removing)
                             {
-                                <form policy="@AuthPolicies.ManageMapRotations" asp-action="DeleteAssignment" method="post" class="d-inline">
+                                <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="DeleteAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
@@ -290,7 +290,7 @@
                                                 <td>
                                                     @if (isInProgress)
                                                     {
-                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="CancelOperation" method="post" class="d-inline">
+                                                        <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="CancelOperation" method="post" class="d-inline">
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="operationId" value="@op.MapRotationAssignmentOperationId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
@@ -302,7 +302,7 @@
                                                     }
                                                     @if (op.Status is AssignmentOperationStatus.Cancelled or AssignmentOperationStatus.Failed && !string.IsNullOrEmpty(op.DurableFunctionInstanceId))
                                                     {
-                                                        <form policy="@AuthPolicies.ManageMapRotations" asp-action="TerminateOrchestration" method="post" class="d-inline">
+                                                        <form policy="@AuthPolicies.ManageMapRotations" policy-resource="@Model.Rotation.GameType" asp-action="TerminateOrchestration" method="post" class="d-inline">
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />

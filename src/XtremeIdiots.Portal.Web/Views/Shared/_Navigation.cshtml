@@ -110,7 +110,7 @@
                            asp-controller="Servers" asp-action="Map" data-testid="nav-servers-playermap">
                             <i class="fa-solid fa-fw fa-location-dot" aria-hidden="true"></i> Player Map
                         </a>
-                        <a policy="@AuthPolicies.AccessMaps" class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" 
+                        <a policy="@AuthPolicies.AccessMapRotations" class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" 
                            asp-controller="Maps" asp-action="Index" data-testid="nav-servers-maps">
                             <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
                         </a>

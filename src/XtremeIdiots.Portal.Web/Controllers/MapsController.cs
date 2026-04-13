@@ -18,7 +18,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry data</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.AccessMaps)]
+[Authorize(Policy = AuthPolicies.AccessMapRotations)]
 public class MapsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
