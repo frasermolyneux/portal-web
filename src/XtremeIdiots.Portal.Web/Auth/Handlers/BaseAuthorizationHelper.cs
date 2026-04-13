@@ -359,6 +359,46 @@ public static class BaseAuthorizationHelper
 
     #endregion
 
+    #region Direct Permission Grant
+
+    /// <summary>
+    /// Checks if the user has a direct additional permission grant matching the policy and resource.
+    /// </summary>
+    public static void CheckDirectPermissionGrant(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, string permissionClaimType)
+    {
+        if (context.HasSucceeded) return;
+
+        // Game-scoped check: if resource is a GameType, check for permission with that game type value
+        if (context.Resource is GameType gameType)
+        {
+            if (context.User.HasClaim(permissionClaimType, gameType.ToString()))
+                context.Succeed(requirement);
+            return;
+        }
+
+        // Server-scoped check: if resource is a (GameType, Guid) tuple, check both game and server scope
+        if (context.Resource is Tuple<GameType, Guid> refTuple)
+        {
+            if (context.User.HasClaim(permissionClaimType, refTuple.Item1.ToString()) ||
+                context.User.HasClaim(permissionClaimType, refTuple.Item2.ToString()))
+                context.Succeed(requirement);
+            return;
+        }
+        if (context.Resource is (GameType gt, Guid serverId))
+        {
+            if (context.User.HasClaim(permissionClaimType, gt.ToString()) ||
+                context.User.HasClaim(permissionClaimType, serverId.ToString()))
+                context.Succeed(requirement);
+            return;
+        }
+
+        // No resource: check if user has the permission claim with ANY value
+        if (context.User.Claims.Any(c => c.Type == permissionClaimType))
+            context.Succeed(requirement);
+    }
+
+    #endregion
+
     #region Utility Methods
 
     /// <summary>

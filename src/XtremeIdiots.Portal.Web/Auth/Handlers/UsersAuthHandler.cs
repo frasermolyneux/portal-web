@@ -1,43 +1,31 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
-/// Handles authorization for user management operations in the portal
+/// Authorization handler for user management operations — none are assignable as additional permissions.
 /// </summary>
 public class UsersAuthHandler : IAuthorizationHandler
 {
-    /// <summary>
-    /// Handles authorization requirements for user management operations
-    /// </summary>
-    /// <param name="context">The authorization handler context</param>
-    /// <returns>A task representing the asynchronous operation</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements;
-
-        foreach (var requirement in pendingRequirements)
+        foreach (var requirement in context.PendingRequirements)
         {
             switch (requirement)
             {
-                case AccessUsers accessUsers:
-                    HandleAccessUsers(context, accessUsers);
+                case UsersRead:
+                    BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.SeniorAndHeadAdminOnly);
                     break;
-                case CreateUserClaim createUserClaim:
-                    HandleCreateUserClaim(context, createUserClaim);
+                case UsersManageClaims:
+                    HandleManageClaims(context, requirement);
                     break;
-                case DeleteUserClaim deleteUserClaim:
-                    HandleDeleteUserClaim(context, deleteUserClaim);
+                case UsersSearch:
+                    BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
                     break;
-                case PerformUserSearch performUserSearch:
-                    HandlePerformUserSearch(context, performUserSearch);
-                    break;
-                case AccessActivityLog accessActivityLog:
-                    HandleAccessActivityLog(context, accessActivityLog);
-                    break;
-                default:
+                case UsersActivityLog:
+                    BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
                     break;
             }
         }
@@ -45,43 +33,11 @@ public class UsersAuthHandler : IAuthorizationHandler
         return Task.CompletedTask;
     }
 
-    #region Authorization Handlers
-
-    private static void HandleAccessUsers(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.SeniorAndHeadAdminOnly);
-    }
-
-    private static void HandleCreateUserClaim(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    private static void HandleManageClaims(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
 
         if (context.Resource is GameType gameType)
-        {
             BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
-        }
     }
-
-    private static void HandleDeleteUserClaim(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-
-        if (context.Resource is GameType gameType)
-        {
-            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
-        }
-    }
-
-    private static void HandlePerformUserSearch(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        // Any admin level (including moderators) can perform user search for autocomplete scenarios
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    private static void HandleAccessActivityLog(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-    }
-
-    #endregion
 }

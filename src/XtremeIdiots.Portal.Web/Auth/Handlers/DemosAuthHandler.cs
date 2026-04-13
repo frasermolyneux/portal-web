@@ -1,36 +1,28 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
-/// Authorization handler for demo file operations
+/// Authorization handler for demo operations including read, write, and delete.
 /// </summary>
-/// <param name="httpContextAccessor">HTTP context accessor for request header validation</param>
 public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAuthorizationHandler
 {
-
-    /// <summary>
-    /// Handles authorization requirements for demo operations
-    /// </summary>
-    /// <param name="context">The authorization context containing user claims and requirements</param>
-    /// <returns>A completed task indicating the authorization check is complete</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements;
-
-        foreach (var requirement in pendingRequirements)
+        foreach (var requirement in context.PendingRequirements)
         {
             switch (requirement)
             {
-                case AccessDemos accessReq:
-                    HandleAccessDemos(context, accessReq);
+                case DemosRead:
+                    HandleDemosReadWrite(context, requirement, "Demos.Read");
                     break;
-                case DeleteDemo deleteReq:
-                    HandleDeleteDemo(context, deleteReq);
+                case DemosWrite:
+                    HandleDemosReadWrite(context, requirement, "Demos.Write");
                     break;
-                default:
+                case DemosDelete:
+                    HandleDemosDelete(context, requirement);
                     break;
             }
         }
@@ -38,16 +30,25 @@ public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAutho
         return Task.CompletedTask;
     }
 
-    private static void HandleDeleteDemo(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    private void HandleDemosReadWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, string permissionClaimType)
+    {
+        BaseAuthorizationHelper.CheckAuthenticated(context, requirement);
+
+        var httpContext = httpContextAccessor.HttpContext;
+        if (httpContext?.Request.Headers.ContainsKey("demo-manager-auth-key") == true)
+            context.Succeed(requirement);
+
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, permissionClaimType);
+    }
+
+    private static void HandleDemosDelete(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
 
         if (context.Resource is Tuple<GameType, Guid> refTuple)
         {
-            var gameType = refTuple.Item1;
-            var userProfileId = refTuple.Item2;
-            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
-            if (BaseAuthorizationHelper.IsResourceOwner(context, userProfileId))
+            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, refTuple.Item1);
+            if (BaseAuthorizationHelper.IsResourceOwner(context, refTuple.Item2))
                 context.Succeed(requirement);
         }
         else if (context.Resource is (GameType gameType, Guid userProfileId))
@@ -56,16 +57,7 @@ public class DemosAuthHandler(IHttpContextAccessor httpContextAccessor) : IAutho
             if (BaseAuthorizationHelper.IsResourceOwner(context, userProfileId))
                 context.Succeed(requirement);
         }
-    }
 
-    private void HandleAccessDemos(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckAuthenticated(context, requirement);
-
-        var httpContext = httpContextAccessor.HttpContext;
-        if (httpContext?.Request.Headers.ContainsKey("demo-manager-auth-key") == true)
-        {
-            context.Succeed(requirement);
-        }
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Demos.Delete");
     }
 }

@@ -4,17 +4,15 @@ using XtremeIdiots.Portal.Web.Auth.Requirements;
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
-/// Authorization handler for global settings operations — restricted to senior admins only
+/// Authorization handler for global settings — restricted to senior admins only, not assignable.
 /// </summary>
 public class GlobalSettingsAuthHandler : IAuthorizationHandler
 {
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements;
-
-        foreach (var requirement in pendingRequirements)
+        foreach (var requirement in context.PendingRequirements)
         {
-            if (requirement is AccessGlobalSettings)
+            if (requirement is GlobalSettingsAdmin)
             {
                 BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
             }

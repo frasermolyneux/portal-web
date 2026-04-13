@@ -7,28 +7,21 @@ public class MapRotationsAuthHandler : IAuthorizationHandler
 {
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements;
-
-        foreach (var requirement in pendingRequirements)
+        foreach (var requirement in context.PendingRequirements)
         {
             switch (requirement)
             {
-                case AccessMapRotations:
+                case MapRotationsRead:
                     BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "MapRotations.Read");
                     break;
-                case ManageMapRotations:
+                case MapRotationsWrite:
                     BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "MapRotations.Write");
                     break;
-                case CreateMapRotation:
+                case MapRotationsDeploy:
                     BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
-                    break;
-                case EditMapRotation:
-                    BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
-                    break;
-                case DeleteMapRotation:
-                    BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
-                    break;
-                default:
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "MapRotations.Deploy");
                     break;
             }
         }

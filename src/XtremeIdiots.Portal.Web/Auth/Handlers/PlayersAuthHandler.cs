@@ -1,101 +1,38 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
+/// <summary>
+/// Authorization handler for player operations including read, delete, protected names, and tag assignment.
+/// </summary>
 public class PlayersAuthHandler : IAuthorizationHandler
 {
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements;
-
-        foreach (var requirement in pendingRequirements)
+        foreach (var requirement in context.PendingRequirements)
         {
             switch (requirement)
             {
-                case AccessPlayers:
-                    HandleAccessPlayers(context, requirement);
+                case PlayersRead:
+                    BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Players.Read");
                     break;
-                case DeletePlayer:
-                    HandleDeletePlayer(context, requirement);
+                case PlayersDelete:
+                    BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Players.Delete");
                     break;
-                case ViewPlayers:
-                    HandleViewPlayers(context, requirement);
+                case PlayersProtectedNamesWrite:
+                    BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Players.ProtectedNames.Write");
                     break;
-                case CreateProtectedName:
-                    HandleCreateProtectedName(context, requirement);
-                    break;
-                case DeleteProtectedName:
-                    HandleDeleteProtectedName(context, requirement);
-                    break;
-                case ViewProtectedName:
-                    HandleViewProtectedName(context, requirement);
-                    break;
-                case CreatePlayerTag:
-                    HandleCreatePlayerTag(context, requirement);
-                    break;
-                case DeletePlayerTag:
-                    HandleDeletePlayerTag(context, requirement);
-                    break;
-                case ViewPlayerTag:
-                    HandleViewPlayerTag(context, requirement);
-                    break;
-                default:
+                case PlayersTagsWrite:
+                    BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
+                    BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Players.Tags.Write");
                     break;
             }
         }
 
         return Task.CompletedTask;
     }
-
-    #region Authorization Handlers
-
-    private static void HandleAccessPlayers(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    private static void HandleDeletePlayer(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-    }
-
-    private static void HandleViewPlayers(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        // See-all-do-own: any admin can view players across all game types
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    private static void HandleCreateProtectedName(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    private static void HandleDeleteProtectedName(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    private static void HandleViewProtectedName(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    private static void HandleCreatePlayerTag(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        // Align with AccessPlayerTags (SeniorAdmin + HeadAdmin (game) + GameAdmin (game))
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
-    }
-
-    private static void HandleDeletePlayerTag(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AdminLevelsExcludingModerators);
-    }
-
-    private static void HandleViewPlayerTag(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
-    }
-
-    #endregion
 }

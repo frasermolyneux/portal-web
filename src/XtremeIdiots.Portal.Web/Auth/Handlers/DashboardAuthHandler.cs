@@ -5,7 +5,6 @@ namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
 /// Handles authorization requirements for dashboard access.
-/// The dashboard is read-only overview data, accessible to any admin role.
 /// </summary>
 public class DashboardAuthHandler : IAuthorizationHandler
 {
@@ -13,10 +12,11 @@ public class DashboardAuthHandler : IAuthorizationHandler
     {
         foreach (var requirement in context.PendingRequirements)
         {
-            if (requirement is AccessDashboard)
+            if (requirement is DashboardRead)
             {
                 BaseAuthorizationHelper.CheckClaimTypes(context, requirement,
                     BaseAuthorizationHelper.ClaimGroups.ServerAdminAccessLevels);
+                BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Dashboard.Read");
             }
         }
 

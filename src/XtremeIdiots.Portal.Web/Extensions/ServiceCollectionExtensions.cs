@@ -10,23 +10,16 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IXtremeIdiotsAuth, XtremeIdiotsAuth>();
 
-        services.AddSingleton<IAuthorizationHandler, AdminActionsAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, BanFileMonitorsAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, ChangeLogAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, CredentialsAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, DemosAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, GameServersAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, GlobalSettingsAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, DashboardAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, HomeAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, ProfileAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, MapsAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, MapRotationsAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, MapsAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, GameServersAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, ChatLogAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, AdminActionsAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, PlayersAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, PlayerTagsAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, ServerAdminAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, ServersAuthHandler>();
-        services.AddSingleton<IAuthorizationHandler, StatusAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, TagsAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, DashboardAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, DemosAuthHandler>();
+        services.AddSingleton<IAuthorizationHandler, GlobalSettingsAuthHandler>();
         services.AddSingleton<IAuthorizationHandler, UsersAuthHandler>();
     }
 }

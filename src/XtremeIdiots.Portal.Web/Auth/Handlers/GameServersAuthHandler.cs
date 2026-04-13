@@ -1,55 +1,83 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
-/// Authorization handler for game server operations
+/// Consolidated authorization handler for all GameServers.* policies including core,
+/// credentials, maps, ban file monitors, and admin operations.
 /// </summary>
 public class GameServersAuthHandler : IAuthorizationHandler
 {
-    /// <summary>
-    /// Handles authorization requirements for game server operations
-    /// </summary>
-    /// <param name="context">The authorization context containing user claims and requirements</param>
-    /// <returns>A completed task indicating the authorization check is complete</returns>
     public Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var pendingRequirements = context.PendingRequirements;
-
-        foreach (var requirement in pendingRequirements)
+        foreach (var requirement in context.PendingRequirements)
         {
             switch (requirement)
             {
-                case AccessGameServers:
-                    HandleAccessGameServers(context, requirement);
+                // Core
+                case GameServersRead:
+                    HandleRead(context, requirement);
                     break;
-                case CreateGameServer:
-                    HandleCreateGameServer(context, requirement);
+                case GameServersWrite:
+                    HandleWrite(context, requirement);
                     break;
-                case DeleteGameServer:
-                    HandleDeleteGameServer(context, requirement);
+                case GameServersDelete:
+                    HandleDelete(context, requirement);
                     break;
-                case EditGameServerFtp:
-                    HandleEditGameServerFtp(context, requirement);
+
+                // Credentials
+                case GameServersCredentialsFtpRead:
+                    HandleCredentialsFtpRead(context, requirement);
                     break;
-                case EditGameServer:
-                    HandleEditGameServer(context, requirement);
+                case GameServersCredentialsFtpWrite:
+                    HandleCredentialsFtpWrite(context, requirement);
                     break;
-                case EditGameServerRcon:
-                    HandleEditGameServerRcon(context, requirement);
+                case GameServersCredentialsRconRead:
+                    HandleCredentialsRconRead(context, requirement);
                     break;
-                case ViewFtpCredential:
-                    HandleViewFtpCredential(context, requirement);
+                case GameServersCredentialsRconWrite:
+                    HandleCredentialsRconWrite(context, requirement);
                     break;
-                case ViewGameServer:
-                    HandleViewGameServer(context, requirement);
+
+                // Maps
+                case GameServersMapsRead:
+                    HandleMapsRead(context, requirement);
                     break;
-                case ViewRconCredential:
-                    HandleViewRconCredential(context, requirement);
+                case GameServersMapsDeploy:
+                    HandleMapsDeploy(context, requirement);
                     break;
-                default:
+
+                // Ban File Monitors
+                case GameServersBanFileMonitorsRead:
+                    HandleBanFileMonitorsRead(context, requirement);
+                    break;
+                case GameServersBanFileMonitorsWrite:
+                    HandleBanFileMonitorsWrite(context, requirement);
+                    break;
+
+                // Admin
+                case GameServersAdminRead:
+                    HandleAdminRead(context, requirement);
+                    break;
+                case GameServersAdminRcon:
+                    HandleAdminRcon(context, requirement);
+                    break;
+                case GameServersAdminRconKick:
+                    HandleAdminRconKick(context, requirement);
+                    break;
+                case GameServersAdminRconBan:
+                    HandleAdminRconBan(context, requirement);
+                    break;
+                case GameServersAdminRconMap:
+                    HandleAdminRconMap(context, requirement);
+                    break;
+                case GameServersAdminRconSay:
+                    HandleAdminRconSay(context, requirement);
+                    break;
+                case GameServersAdminRconRestart:
+                    HandleAdminRconRestart(context, requirement);
                     break;
             }
         }
@@ -57,91 +85,69 @@ public class GameServersAuthHandler : IAuthorizationHandler
         return Task.CompletedTask;
     }
 
-    private static void HandleAccessGameServers(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    #region Core
+
+    private static void HandleRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.GameServerAccessLevels);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Read");
     }
 
-    private static void HandleCreateGameServer(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
-    }
-
-    private static void HandleDeleteGameServer(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    private static void HandleWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-    }
-
-    private static void HandleEditGameServerFtp(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
-    }
-
-    private static void HandleEditGameServer(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-
         if (context.Resource is GameType gameType)
-        {
             BaseAuthorizationHelper.CheckCombinedGameServerAccess(context, requirement, gameType);
-        }
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Write");
     }
 
-    private static void HandleEditGameServerRcon(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    private static void HandleDelete(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Delete");
     }
 
-    private static void HandleViewFtpCredential(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    #endregion
+
+    #region Credentials
+
+    private static void HandleCredentialsFtpRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
 
         if (context.Resource is Tuple<GameType, Guid> refTuple)
         {
-            var gameType = refTuple.Item1;
-            var gameServerId = refTuple.Item2;
-            // Head admins should be able to view all FTP credentials for their game type without needing
-            // individual per-server FtpCredentials claims. Previously they also needed a server scoped claim
-            // which caused missing credentials on the credentials page.
-            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
+            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, refTuple.Item1);
             if (!context.HasSucceeded)
-            {
-                BaseAuthorizationHelper.CheckFtpCredentialsAccess(context, requirement, gameServerId);
-            }
+                BaseAuthorizationHelper.CheckFtpCredentialsAccess(context, requirement, refTuple.Item2);
         }
         else if (context.Resource is (GameType gameType, Guid gameServerId))
         {
             BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
             if (!context.HasSucceeded)
-            {
                 BaseAuthorizationHelper.CheckFtpCredentialsAccess(context, requirement, gameServerId);
-            }
         }
+
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Ftp.Read");
     }
 
-    private static void HandleViewGameServer(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    private static void HandleCredentialsFtpWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        // See-all-do-own: any user with game server access claims can view all game servers
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.GameServerAccessLevels);
+        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Ftp.Write");
     }
 
-    private static void HandleViewRconCredential(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    private static void HandleCredentialsRconRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        // Support both GameType and (GameType, GameServerId) resources.
-        // SeniorAdmin short-circuit
         BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
 
-        if (context.Resource is Tuple<GameType, Guid> tupleResource)
+        if (context.Resource is Tuple<GameType, Guid> refTuple)
         {
-            var gameType = tupleResource.Item1;
-            var gameServerId = tupleResource.Item2;
-            // Allow head admin game-level access without needing per-server RCON credential claim
-            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
+            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, refTuple.Item1);
             if (!context.HasSucceeded)
             {
-                BaseAuthorizationHelper.CheckGameAdminAccess(context, requirement, gameType);
-                BaseAuthorizationHelper.CheckLiveRconAccess(context, requirement, gameType);
-                BaseAuthorizationHelper.CheckRconCredentialsAccess(context, requirement, gameServerId);
+                BaseAuthorizationHelper.CheckGameAdminAccess(context, requirement, refTuple.Item1);
+                BaseAuthorizationHelper.CheckRconCredentialsAccess(context, requirement, refTuple.Item2);
             }
         }
         else if (context.Resource is (GameType gameType, Guid gameServerId))
@@ -150,19 +156,102 @@ public class GameServersAuthHandler : IAuthorizationHandler
             if (!context.HasSucceeded)
             {
                 BaseAuthorizationHelper.CheckGameAdminAccess(context, requirement, gameType);
-                BaseAuthorizationHelper.CheckLiveRconAccess(context, requirement, gameType);
                 BaseAuthorizationHelper.CheckRconCredentialsAccess(context, requirement, gameServerId);
             }
         }
         else if (context.Resource is GameType singleGameType)
         {
-            // Original behaviour path when only a game type is supplied
             BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, singleGameType);
             if (!context.HasSucceeded)
-            {
                 BaseAuthorizationHelper.CheckGameAdminAccess(context, requirement, singleGameType);
-                BaseAuthorizationHelper.CheckLiveRconAccess(context, requirement, singleGameType);
-            }
         }
+
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Rcon.Read");
     }
+
+    private static void HandleCredentialsRconWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Rcon.Write");
+    }
+
+    #endregion
+
+    #region Maps
+
+    private static void HandleMapsRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Maps.Read");
+    }
+
+    private static void HandleMapsDeploy(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Maps.Deploy");
+    }
+
+    #endregion
+
+    #region Ban File Monitors
+
+    private static void HandleBanFileMonitorsRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.BanFileMonitorLevels);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.BanFileMonitors.Read");
+    }
+
+    private static void HandleBanFileMonitorsWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameTypeServerAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.BanFileMonitors.Write");
+    }
+
+    #endregion
+
+    #region Admin
+
+    private static void HandleAdminRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.ServerAdminAccessLevels);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Read");
+    }
+
+    private static void HandleAdminRcon(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrLiveRconAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon");
+    }
+
+    private static void HandleAdminRconKick(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Kick");
+    }
+
+    private static void HandleAdminRconBan(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Ban");
+    }
+
+    private static void HandleAdminRconMap(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Map");
+    }
+
+    private static void HandleAdminRconSay(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Say");
+    }
+
+    private static void HandleAdminRconRestart(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Restart");
+    }
+
+    #endregion
 }

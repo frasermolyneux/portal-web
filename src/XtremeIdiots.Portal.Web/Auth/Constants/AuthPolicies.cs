@@ -1,111 +1,86 @@
-﻿namespace XtremeIdiots.Portal.Web.Auth.Constants;
+namespace XtremeIdiots.Portal.Web.Auth.Constants;
 
 /// <summary>
 /// Contains authorization policy constants used throughout the XtremeIdiots Portal application.
-/// These policies are evaluated by authorization handlers to determine user access to specific resources and actions.
+/// Policy names follow the {Domain}.{Action} convention matching AdditionalPermission claim types.
 /// </summary>
 public static class AuthPolicies
 {
-    // Admin Actions policies
-    public const string AccessAdminActionsController = nameof(AccessAdminActionsController);
-    public const string ChangeAdminActionAdmin = nameof(ChangeAdminActionAdmin);
-    public const string ClaimAdminAction = nameof(ClaimAdminAction);
-    public const string CreateAdminAction = nameof(CreateAdminAction);
-    public const string CreateAdminActionTopic = nameof(CreateAdminActionTopic);
-    public const string DeleteAdminAction = nameof(DeleteAdminAction);
-    public const string EditAdminAction = nameof(EditAdminAction);
-    public const string LiftAdminAction = nameof(LiftAdminAction);
-
-    // Ban File Monitor policies
-    public const string AccessBanFileMonitors = nameof(AccessBanFileMonitors);
-    public const string CreateBanFileMonitor = nameof(CreateBanFileMonitor);
-    public const string ViewBanFileMonitor = nameof(ViewBanFileMonitor);
-    public const string EditBanFileMonitor = nameof(EditBanFileMonitor);
-    public const string DeleteBanFileMonitor = nameof(DeleteBanFileMonitor);
-
-    // Change Log policies
-    public const string AccessChangeLog = nameof(AccessChangeLog);
-
-    // Credentials policies
-    public const string AccessCredentials = nameof(AccessCredentials);
-
-    // Demo policies
-    public const string AccessDemos = nameof(AccessDemos);
-    public const string DeleteDemo = nameof(DeleteDemo);
-
-    // Global Settings policies
-    public const string AccessGlobalSettings = nameof(AccessGlobalSettings);
-
-    // Game Server policies
-    public const string AccessGameServers = nameof(AccessGameServers);
-    public const string CreateGameServer = nameof(CreateGameServer);
-    public const string DeleteGameServer = nameof(DeleteGameServer);
-    public const string EditGameServerFtp = nameof(EditGameServerFtp);
-    public const string EditGameServer = nameof(EditGameServer);
-    public const string EditGameServerRcon = nameof(EditGameServerRcon);
-    public const string ViewFtpCredential = nameof(ViewFtpCredential);
-    public const string ViewGameServer = nameof(ViewGameServer);
-    public const string ViewRconCredential = nameof(ViewRconCredential);
-
-    // Home policies
-    public const string AccessHome = nameof(AccessHome);
-
-    // Dashboard policies
-    public const string AccessDashboard = nameof(AccessDashboard);
-
-    // Profile policies
-    public const string AccessProfile = nameof(AccessProfile);
-
-    // Map and Map Management policies
-    public const string AccessMaps = nameof(AccessMaps);
-    public const string AccessMapManagerController = nameof(AccessMapManagerController);
-    public const string ManageMaps = nameof(ManageMaps);
-    public const string PushMapToRemote = nameof(PushMapToRemote);
-    public const string DeleteMapFromHost = nameof(DeleteMapFromHost);
-
     // Map Rotations
-    public const string AccessMapRotations = nameof(AccessMapRotations);
-    public const string ManageMapRotations = nameof(ManageMapRotations);
-    public const string CreateMapRotation = nameof(CreateMapRotation);
-    public const string EditMapRotation = nameof(EditMapRotation);
-    public const string DeleteMapRotation = nameof(DeleteMapRotation);
+    public const string MapRotations_Read = "MapRotations.Read";
+    public const string MapRotations_Write = "MapRotations.Write";
+    public const string MapRotations_Deploy = "MapRotations.Deploy";
 
-    // Migration policies
-    public const string AccessMigration = nameof(AccessMigration);
+    // Maps (catalogue)
+    public const string Maps_Read = "Maps.Read";
 
-    // Player Tag policies
-    public const string AccessPlayerTags = nameof(AccessPlayerTags);
-    public const string CreatePlayerTag = nameof(CreatePlayerTag);
-    public const string DeletePlayerTag = nameof(DeletePlayerTag);
-    public const string EditPlayerTag = nameof(EditPlayerTag);
+    // Game Servers — Core
+    public const string GameServers_Read = "GameServers.Read";
+    public const string GameServers_Write = "GameServers.Write";
+    public const string GameServers_Delete = "GameServers.Delete";
 
-    // Player policies
-    public const string AccessPlayers = nameof(AccessPlayers);
-    public const string DeletePlayer = nameof(DeletePlayer);
-    public const string ViewPlayers = nameof(ViewPlayers);
-    public const string CreateProtectedName = nameof(CreateProtectedName);
-    public const string DeleteProtectedName = nameof(DeleteProtectedName);
-    public const string ViewProtectedName = nameof(ViewProtectedName);
+    // Game Servers — Credentials
+    public const string GameServers_Credentials_Ftp_Read = "GameServers.Credentials.Ftp.Read";
+    public const string GameServers_Credentials_Ftp_Write = "GameServers.Credentials.Ftp.Write";
+    public const string GameServers_Credentials_Rcon_Read = "GameServers.Credentials.Rcon.Read";
+    public const string GameServers_Credentials_Rcon_Write = "GameServers.Credentials.Rcon.Write";
 
-    // Server Administration policies
-    public const string AccessLiveRcon = nameof(AccessLiveRcon);
-    public const string AccessServerAdmin = nameof(AccessServerAdmin);
-    public const string ViewGameChatLog = nameof(ViewGameChatLog);
-    public const string ViewGlobalChatLog = nameof(ViewGlobalChatLog);
-    public const string ViewLiveRcon = nameof(ViewLiveRcon);
-    public const string ViewServerChatLog = nameof(ViewServerChatLog);
-    public const string LockChatMessages = nameof(LockChatMessages);
+    // Game Servers — Maps
+    public const string GameServers_Maps_Read = "GameServers.Maps.Read";
+    public const string GameServers_Maps_Deploy = "GameServers.Maps.Deploy";
 
-    // Server policies
-    public const string AccessServers = nameof(AccessServers);
+    // Game Servers — Ban File Monitors
+    public const string GameServers_BanFileMonitors_Read = "GameServers.BanFileMonitors.Read";
+    public const string GameServers_BanFileMonitors_Write = "GameServers.BanFileMonitors.Write";
 
-    // Status policies
-    public const string AccessStatus = nameof(AccessStatus);
+    // Game Servers — Admin
+    public const string GameServers_Admin_Read = "GameServers.Admin.Read";
+    public const string GameServers_Admin_Rcon = "GameServers.Admin.Rcon";
+    public const string GameServers_Admin_Rcon_Kick = "GameServers.Admin.Rcon.Kick";
+    public const string GameServers_Admin_Rcon_Ban = "GameServers.Admin.Rcon.Ban";
+    public const string GameServers_Admin_Rcon_Map = "GameServers.Admin.Rcon.Map";
+    public const string GameServers_Admin_Rcon_Say = "GameServers.Admin.Rcon.Say";
+    public const string GameServers_Admin_Rcon_Restart = "GameServers.Admin.Rcon.Restart";
 
-    // User management policies
-    public const string AccessActivityLog = nameof(AccessActivityLog);
-    public const string AccessUsers = nameof(AccessUsers);
-    public const string CreateUserClaim = nameof(CreateUserClaim);
-    public const string DeleteUserClaim = nameof(DeleteUserClaim);
-    public const string PerformUserSearch = nameof(PerformUserSearch);
+    // Chat Log
+    public const string ChatLog_Read = "ChatLog.Read";
+    public const string ChatLog_ReadServer = "ChatLog.ReadServer";
+    public const string ChatLog_Lock = "ChatLog.Lock";
+
+    // Admin Actions
+    public const string AdminActions_Read = "AdminActions.Read";
+    public const string AdminActions_Create = "AdminActions.Create";
+    public const string AdminActions_Edit = "AdminActions.Edit";
+    public const string AdminActions_Delete = "AdminActions.Delete";
+    public const string AdminActions_Claim = "AdminActions.Claim";
+    public const string AdminActions_Lift = "AdminActions.Lift";
+    public const string AdminActions_Reassign = "AdminActions.Reassign";
+    public const string AdminActions_CreateTopic = "AdminActions.CreateTopic";
+
+    // Players
+    public const string Players_Read = "Players.Read";
+    public const string Players_Delete = "Players.Delete";
+    public const string Players_ProtectedNames_Write = "Players.ProtectedNames.Write";
+    public const string Players_Tags_Write = "Players.Tags.Write";
+
+    // Player Tags
+    public const string Tags_Read = "Tags.Read";
+    public const string Tags_Write = "Tags.Write";
+
+    // Dashboard
+    public const string Dashboard_Read = "Dashboard.Read";
+
+    // Demos
+    public const string Demos_Read = "Demos.Read";
+    public const string Demos_Write = "Demos.Write";
+    public const string Demos_Delete = "Demos.Delete";
+
+    // Global Settings (not assignable as additional permission)
+    public const string GlobalSettings_Admin = "GlobalSettings.Admin";
+
+    // Users (not assignable as additional permissions)
+    public const string Users_Read = "Users.Read";
+    public const string Users_ManageClaims = "Users.ManageClaims";
+    public const string Users_Search = "Users.Search";
+    public const string Users_ActivityLog = "Users.ActivityLog";
 }

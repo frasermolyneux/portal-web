@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
@@ -9,89 +9,82 @@ public static class PolicyExtensions
 {
     public static void AddXtremeIdiotsPolicies(this AuthorizationOptions options)
     {
-
-        options.AddPolicy(AuthPolicies.AccessAdminActionsController, policy => policy.Requirements.Add(new AccessAdminActions()));
-        options.AddPolicy(AuthPolicies.ChangeAdminActionAdmin, policy => policy.Requirements.Add(new ChangeAdminActionAdmin()));
-        options.AddPolicy(AuthPolicies.ClaimAdminAction, policy => policy.Requirements.Add(new ClaimAdminAction()));
-        options.AddPolicy(AuthPolicies.CreateAdminAction, policy => policy.Requirements.Add(new CreateAdminAction()));
-        options.AddPolicy(AuthPolicies.CreateAdminActionTopic, policy => policy.Requirements.Add(new CreateAdminActionTopic()));
-        options.AddPolicy(AuthPolicies.DeleteAdminAction, policy => policy.Requirements.Add(new DeleteAdminAction()));
-        options.AddPolicy(AuthPolicies.EditAdminAction, policy => policy.Requirements.Add(new EditAdminAction()));
-        options.AddPolicy(AuthPolicies.LiftAdminAction, policy => policy.Requirements.Add(new LiftAdminAction()));
-
-        options.AddPolicy(AuthPolicies.AccessBanFileMonitors, policy => policy.Requirements.Add(new AccessBanFileMonitors()));
-        options.AddPolicy(AuthPolicies.CreateBanFileMonitor, policy => policy.Requirements.Add(new CreateBanFileMonitor()));
-        options.AddPolicy(AuthPolicies.ViewBanFileMonitor, policy => policy.Requirements.Add(new ViewBanFileMonitor()));
-        options.AddPolicy(AuthPolicies.EditBanFileMonitor, policy => policy.Requirements.Add(new EditBanFileMonitor()));
-        options.AddPolicy(AuthPolicies.DeleteBanFileMonitor, policy => policy.Requirements.Add(new DeleteBanFileMonitor()));
-
-        options.AddPolicy(AuthPolicies.AccessChangeLog, policy => policy.Requirements.Add(new AccessChangeLog()));
-
-        options.AddPolicy(AuthPolicies.AccessCredentials, policy => policy.Requirements.Add(new AccessCredentials()));
-
-        options.AddPolicy(AuthPolicies.AccessDemos, policy => policy.Requirements.Add(new AccessDemos()));
-        options.AddPolicy(AuthPolicies.DeleteDemo, policy => policy.Requirements.Add(new DeleteDemo()));
-
-        options.AddPolicy(AuthPolicies.AccessGlobalSettings, policy => policy.Requirements.Add(new AccessGlobalSettings()));
-
-        options.AddPolicy(AuthPolicies.AccessGameServers, policy => policy.Requirements.Add(new AccessGameServers()));
-        options.AddPolicy(AuthPolicies.CreateGameServer, policy => policy.Requirements.Add(new CreateGameServer()));
-        options.AddPolicy(AuthPolicies.DeleteGameServer, policy => policy.Requirements.Add(new DeleteGameServer()));
-        options.AddPolicy(AuthPolicies.EditGameServer, policy => policy.Requirements.Add(new EditGameServer()));
-        options.AddPolicy(AuthPolicies.EditGameServerFtp, policy => policy.Requirements.Add(new EditGameServerFtp()));
-        options.AddPolicy(AuthPolicies.EditGameServerRcon, policy => policy.Requirements.Add(new EditGameServerRcon()));
-        options.AddPolicy(AuthPolicies.ViewFtpCredential, policy => policy.Requirements.Add(new ViewFtpCredential()));
-        options.AddPolicy(AuthPolicies.ViewGameServer, policy => policy.Requirements.Add(new ViewGameServer()));
-        options.AddPolicy(AuthPolicies.ViewRconCredential, policy => policy.Requirements.Add(new ViewRconCredential()));
-
-        options.AddPolicy(AuthPolicies.AccessHome, policy => policy.Requirements.Add(new AccessHome()));
-
-        options.AddPolicy(AuthPolicies.AccessDashboard, policy => policy.Requirements.Add(new AccessDashboard()));
-
-        options.AddPolicy(AuthPolicies.AccessProfile, policy => policy.Requirements.Add(new AccessProfile()));
-
-        options.AddPolicy(AuthPolicies.AccessMaps, policy => policy.Requirements.Add(new AccessMaps()));
-        options.AddPolicy(AuthPolicies.AccessMapManagerController, policy => policy.Requirements.Add(new AccessMapManagerController()));
-        options.AddPolicy(AuthPolicies.ManageMaps, policy => policy.Requirements.Add(new ManageMaps()));
-        options.AddPolicy(AuthPolicies.PushMapToRemote, policy => policy.Requirements.Add(new PushMapToRemote()));
-        options.AddPolicy(AuthPolicies.DeleteMapFromHost, policy => policy.Requirements.Add(new DeleteMapFromHost()));
-
         // Map Rotations
-        options.AddPolicy(AuthPolicies.AccessMapRotations, policy => policy.Requirements.Add(new AccessMapRotations()));
-        options.AddPolicy(AuthPolicies.ManageMapRotations, policy => policy.Requirements.Add(new ManageMapRotations()));
-        options.AddPolicy(AuthPolicies.CreateMapRotation, policy => policy.Requirements.Add(new CreateMapRotation()));
-        options.AddPolicy(AuthPolicies.EditMapRotation, policy => policy.Requirements.Add(new EditMapRotation()));
-        options.AddPolicy(AuthPolicies.DeleteMapRotation, policy => policy.Requirements.Add(new DeleteMapRotation()));
+        options.AddPolicy(AuthPolicies.MapRotations_Read, policy => policy.Requirements.Add(new MapRotationsRead()));
+        options.AddPolicy(AuthPolicies.MapRotations_Write, policy => policy.Requirements.Add(new MapRotationsWrite()));
+        options.AddPolicy(AuthPolicies.MapRotations_Deploy, policy => policy.Requirements.Add(new MapRotationsDeploy()));
 
-        options.AddPolicy(AuthPolicies.AccessPlayers, policy => policy.Requirements.Add(new AccessPlayers()));
-        options.AddPolicy(AuthPolicies.DeletePlayer, policy => policy.Requirements.Add(new DeletePlayer()));
-        options.AddPolicy(AuthPolicies.ViewPlayers, policy => policy.Requirements.Add(new ViewPlayers()));
-        options.AddPolicy(AuthPolicies.CreateProtectedName, policy => policy.Requirements.Add(new CreateProtectedName()));
-        options.AddPolicy(AuthPolicies.DeleteProtectedName, policy => policy.Requirements.Add(new DeleteProtectedName()));
-        options.AddPolicy(AuthPolicies.ViewProtectedName, policy => policy.Requirements.Add(new ViewProtectedName()));
+        // Maps
+        options.AddPolicy(AuthPolicies.Maps_Read, policy => policy.Requirements.Add(new MapsRead()));
 
-        options.AddPolicy(AuthPolicies.AccessPlayerTags, policy => policy.Requirements.Add(new AccessPlayerTags()));
-        options.AddPolicy(AuthPolicies.CreatePlayerTag, policy => policy.Requirements.Add(new CreatePlayerTag()));
-        options.AddPolicy(AuthPolicies.EditPlayerTag, policy => policy.Requirements.Add(new EditPlayerTag()));
-        options.AddPolicy(AuthPolicies.DeletePlayerTag, policy => policy.Requirements.Add(new DeletePlayerTag()));
+        // Game Servers — Core
+        options.AddPolicy(AuthPolicies.GameServers_Read, policy => policy.Requirements.Add(new GameServersRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Write, policy => policy.Requirements.Add(new GameServersWrite()));
+        options.AddPolicy(AuthPolicies.GameServers_Delete, policy => policy.Requirements.Add(new GameServersDelete()));
 
-        options.AddPolicy(AuthPolicies.AccessLiveRcon, policy => policy.Requirements.Add(new AccessLiveRcon()));
-        options.AddPolicy(AuthPolicies.AccessServerAdmin, policy => policy.Requirements.Add(new AccessServerAdmin()));
-        options.AddPolicy(AuthPolicies.ViewGameChatLog, policy => policy.Requirements.Add(new ViewGameChatLog()));
-        options.AddPolicy(AuthPolicies.ViewGlobalChatLog, policy => policy.Requirements.Add(new ViewGlobalChatLog()));
-        options.AddPolicy(AuthPolicies.ViewLiveRcon, policy => policy.Requirements.Add(new ViewLiveRcon()));
-        options.AddPolicy(AuthPolicies.ViewServerChatLog, policy => policy.Requirements.Add(new ViewServerChatLog()));
-        options.AddPolicy(AuthPolicies.ManageMaps, policy => policy.Requirements.Add(new ManageMaps()));
-        options.AddPolicy(AuthPolicies.LockChatMessages, policy => policy.Requirements.Add(new LockChatMessages()));
+        // Game Servers — Credentials
+        options.AddPolicy(AuthPolicies.GameServers_Credentials_Ftp_Read, policy => policy.Requirements.Add(new GameServersCredentialsFtpRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Credentials_Ftp_Write, policy => policy.Requirements.Add(new GameServersCredentialsFtpWrite()));
+        options.AddPolicy(AuthPolicies.GameServers_Credentials_Rcon_Read, policy => policy.Requirements.Add(new GameServersCredentialsRconRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Credentials_Rcon_Write, policy => policy.Requirements.Add(new GameServersCredentialsRconWrite()));
 
-        options.AddPolicy(AuthPolicies.AccessServers, policy => policy.Requirements.Add(new AccessServers()));
+        // Game Servers — Maps
+        options.AddPolicy(AuthPolicies.GameServers_Maps_Read, policy => policy.Requirements.Add(new GameServersMapsRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Maps_Deploy, policy => policy.Requirements.Add(new GameServersMapsDeploy()));
 
-        options.AddPolicy(AuthPolicies.AccessStatus, policy => policy.Requirements.Add(new AccessStatus()));
+        // Game Servers — Ban File Monitors
+        options.AddPolicy(AuthPolicies.GameServers_BanFileMonitors_Read, policy => policy.Requirements.Add(new GameServersBanFileMonitorsRead()));
+        options.AddPolicy(AuthPolicies.GameServers_BanFileMonitors_Write, policy => policy.Requirements.Add(new GameServersBanFileMonitorsWrite()));
 
-        options.AddPolicy(AuthPolicies.AccessUsers, policy => policy.Requirements.Add(new AccessUsers()));
-        options.AddPolicy(AuthPolicies.AccessActivityLog, policy => policy.Requirements.Add(new AccessActivityLog()));
-        options.AddPolicy(AuthPolicies.CreateUserClaim, policy => policy.Requirements.Add(new CreateUserClaim()));
-        options.AddPolicy(AuthPolicies.DeleteUserClaim, policy => policy.Requirements.Add(new DeleteUserClaim()));
-        options.AddPolicy(AuthPolicies.PerformUserSearch, policy => policy.Requirements.Add(new PerformUserSearch()));
+        // Game Servers — Admin
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Read, policy => policy.Requirements.Add(new GameServersAdminRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon, policy => policy.Requirements.Add(new GameServersAdminRcon()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Kick, policy => policy.Requirements.Add(new GameServersAdminRconKick()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Ban, policy => policy.Requirements.Add(new GameServersAdminRconBan()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Map, policy => policy.Requirements.Add(new GameServersAdminRconMap()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Say, policy => policy.Requirements.Add(new GameServersAdminRconSay()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Restart, policy => policy.Requirements.Add(new GameServersAdminRconRestart()));
+
+        // Chat Log
+        options.AddPolicy(AuthPolicies.ChatLog_Read, policy => policy.Requirements.Add(new ChatLogRead()));
+        options.AddPolicy(AuthPolicies.ChatLog_ReadServer, policy => policy.Requirements.Add(new ChatLogReadServer()));
+        options.AddPolicy(AuthPolicies.ChatLog_Lock, policy => policy.Requirements.Add(new ChatLogLock()));
+
+        // Admin Actions
+        options.AddPolicy(AuthPolicies.AdminActions_Read, policy => policy.Requirements.Add(new AdminActionsRead()));
+        options.AddPolicy(AuthPolicies.AdminActions_Create, policy => policy.Requirements.Add(new AdminActionsCreate()));
+        options.AddPolicy(AuthPolicies.AdminActions_Edit, policy => policy.Requirements.Add(new AdminActionsEdit()));
+        options.AddPolicy(AuthPolicies.AdminActions_Delete, policy => policy.Requirements.Add(new AdminActionsDelete()));
+        options.AddPolicy(AuthPolicies.AdminActions_Claim, policy => policy.Requirements.Add(new AdminActionsClaim()));
+        options.AddPolicy(AuthPolicies.AdminActions_Lift, policy => policy.Requirements.Add(new AdminActionsLift()));
+        options.AddPolicy(AuthPolicies.AdminActions_Reassign, policy => policy.Requirements.Add(new AdminActionsReassign()));
+        options.AddPolicy(AuthPolicies.AdminActions_CreateTopic, policy => policy.Requirements.Add(new AdminActionsCreateTopic()));
+
+        // Players
+        options.AddPolicy(AuthPolicies.Players_Read, policy => policy.Requirements.Add(new PlayersRead()));
+        options.AddPolicy(AuthPolicies.Players_Delete, policy => policy.Requirements.Add(new PlayersDelete()));
+        options.AddPolicy(AuthPolicies.Players_ProtectedNames_Write, policy => policy.Requirements.Add(new PlayersProtectedNamesWrite()));
+        options.AddPolicy(AuthPolicies.Players_Tags_Write, policy => policy.Requirements.Add(new PlayersTagsWrite()));
+
+        // Tags
+        options.AddPolicy(AuthPolicies.Tags_Read, policy => policy.Requirements.Add(new TagsRead()));
+        options.AddPolicy(AuthPolicies.Tags_Write, policy => policy.Requirements.Add(new TagsWrite()));
+
+        // Dashboard
+        options.AddPolicy(AuthPolicies.Dashboard_Read, policy => policy.Requirements.Add(new DashboardRead()));
+
+        // Demos
+        options.AddPolicy(AuthPolicies.Demos_Read, policy => policy.Requirements.Add(new DemosRead()));
+        options.AddPolicy(AuthPolicies.Demos_Write, policy => policy.Requirements.Add(new DemosWrite()));
+        options.AddPolicy(AuthPolicies.Demos_Delete, policy => policy.Requirements.Add(new DemosDelete()));
+
+        // Global Settings
+        options.AddPolicy(AuthPolicies.GlobalSettings_Admin, policy => policy.Requirements.Add(new GlobalSettingsAdmin()));
+
+        // Users
+        options.AddPolicy(AuthPolicies.Users_Read, policy => policy.Requirements.Add(new UsersRead()));
+        options.AddPolicy(AuthPolicies.Users_ManageClaims, policy => policy.Requirements.Add(new UsersManageClaims()));
+        options.AddPolicy(AuthPolicies.Users_Search, policy => policy.Requirements.Add(new UsersSearch()));
+        options.AddPolicy(AuthPolicies.Users_ActivityLog, policy => policy.Requirements.Add(new UsersActivityLog()));
     }
 }
