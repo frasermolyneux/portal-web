@@ -43,9 +43,7 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameServer];
-#pragma warning restore CS0618
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, AdditionalPermission.GameServers_Read];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -206,9 +204,7 @@ public class GameServersController(
             if (authResult is not null)
                 return authResult;
 
-#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
-#pragma warning restore CS0618
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);

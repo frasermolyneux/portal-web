@@ -1,12 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
-// Suppress obsolete warnings — this file intentionally references legacy UserProfileClaimType
-// constants (BanFileMonitor, GameServer, etc.) because these are still the claim types that
-// portal-sync creates from forum group membership. The claim types themselves are not changing,
-// only the additional permission types are being renamed.
-#pragma warning disable CS0618
-
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
 /// <summary>
@@ -35,7 +29,7 @@ public static class BaseAuthorizationHelper
         [
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
-            UserProfileClaimType.BanFileMonitor
+            AdditionalPermission.GameServers_BanFileMonitors_Read
         ];
 
         public readonly static string[] CredentialsAccessLevels =
@@ -43,15 +37,15 @@ public static class BaseAuthorizationHelper
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
-            UserProfileClaimType.RconCredentials,
-            UserProfileClaimType.FtpCredentials
+            AdditionalPermission.GameServers_Credentials_Rcon_Read,
+            AdditionalPermission.GameServers_Credentials_Ftp_Read
         ];
 
         public readonly static string[] GameServerAccessLevels =
         [
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
-            UserProfileClaimType.GameServer
+            AdditionalPermission.GameServers_Read
         ];
 
         public readonly static string[] AdminLevelsExcludingModerators =
@@ -67,7 +61,7 @@ public static class BaseAuthorizationHelper
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
             UserProfileClaimType.Moderator,
-            UserProfileClaimType.ServerAdmin
+            AdditionalPermission.GameServers_Admin_Read
         ];
 
         public readonly static string[] LiveRconAccessLevels =
@@ -75,7 +69,7 @@ public static class BaseAuthorizationHelper
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
-            UserProfileClaimType.LiveRcon
+            AdditionalPermission.GameServers_Admin_Rcon
         ];
 
         public readonly static string[] SeniorAndHeadAdminOnly =
@@ -89,7 +83,7 @@ public static class BaseAuthorizationHelper
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
-            UserProfileClaimType.BanFileMonitor
+            AdditionalPermission.GameServers_BanFileMonitors_Read
         ];
     }
 
@@ -282,7 +276,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameServerId">The game server ID to check permissions for</param>
     public static void CheckBanFileMonitorAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, Guid gameServerId)
     {
-        if (context.User.HasClaim(UserProfileClaimType.BanFileMonitor, gameServerId.ToString()))
+        if (context.User.HasClaim(AdditionalPermission.GameServers_BanFileMonitors_Read, gameServerId.ToString()))
             context.Succeed(requirement);
     }
 
@@ -311,7 +305,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckGameServerAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        if (context.User.HasClaim(UserProfileClaimType.GameServer, gameType.ToString()))
+        if (context.User.HasClaim(AdditionalPermission.GameServers_Read, gameType.ToString()))
             context.Succeed(requirement);
     }
 
@@ -323,7 +317,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameServerId">The game server ID to check permissions for</param>
     public static void CheckRconCredentialsAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, Guid gameServerId)
     {
-        if (context.User.HasClaim(UserProfileClaimType.RconCredentials, gameServerId.ToString()))
+        if (context.User.HasClaim(AdditionalPermission.GameServers_Credentials_Rcon_Read, gameServerId.ToString()))
             context.Succeed(requirement);
     }
 
@@ -335,7 +329,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameServerId">The game server ID to check permissions for</param>
     public static void CheckFtpCredentialsAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, Guid gameServerId)
     {
-        if (context.User.HasClaim(UserProfileClaimType.FtpCredentials, gameServerId.ToString()))
+        if (context.User.HasClaim(AdditionalPermission.GameServers_Credentials_Ftp_Read, gameServerId.ToString()))
             context.Succeed(requirement);
     }
 
@@ -359,7 +353,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckLiveRconAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        if (context.User.HasClaim(UserProfileClaimType.LiveRcon, gameType.ToString()))
+        if (context.User.HasClaim(AdditionalPermission.GameServers_Admin_Rcon, gameType.ToString()))
             context.Succeed(requirement);
     }
 

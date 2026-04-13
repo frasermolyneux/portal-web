@@ -51,9 +51,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.ServerAdmin];
-#pragma warning restore CS0618
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_Admin_Read];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(

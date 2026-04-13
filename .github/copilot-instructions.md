@@ -35,9 +35,7 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 - [Development Workflows](docs/development-workflows.md) — Branch strategy, CI/CD triggers, and PR flows.
 - [UI Standards Guide](docs/ui-standards-guide.md) — Button hierarchy, icons, forms, detail pages, filters, destructive operation gating, and legacy patterns to avoid.
 - [Datatable Implementation Guide](docs/DATATABLE-IMPLEMENTATION-GUIDE.md) — Server-backed data table patterns.
-- [Credentials Permissions Matrix](docs/credentials-permissions-matrix.md) — Roles, claims, and access mapping.
 - [Permissions Matrices](docs/permissions/) — Per-area authorization matrices (players, game servers, admin actions, etc.).
-- [Permissions Migration Guide](docs/permissions-migration.md) — Old-to-new policy name mapping for the authorization refactor.
 - [CSS Architecture Guide](docs/css-architecture-guide.md) — SCSS structure, tokens, components, and build process.
 - [Manual Steps](docs/manual-steps.md) — Post-deployment configuration.
 
@@ -100,7 +98,6 @@ The `policy-resource` attribute passes a resource (typically `GameType`) to hand
 - `Extensions/PolicyExtensions.cs` — Policy registration
 - `Helpers/PolicyTagHelper.cs` — Razor tag helper for conditional rendering
 - [Permissions Matrices](docs/permissions/) — Per-domain authorization matrices
-- [Migration Guide](docs/permissions-migration.md) — Old-to-new policy name mapping
 
 ## Conventions and Patterns
 

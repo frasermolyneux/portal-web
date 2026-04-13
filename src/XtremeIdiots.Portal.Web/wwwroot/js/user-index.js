@@ -5,7 +5,9 @@ $(document).ready(function () {
 
     // Whitelisted claim types to show as roles
     const ROLE_CLAIM_TYPES = new Set([
-        'SeniorAdmin', 'HeadAdmin', 'GameAdmin', 'Moderator', 'ServerAdmin', 'BanFileMonitor', 'RconCredentials', 'FtpCredentials'
+        'SeniorAdmin', 'HeadAdmin', 'GameAdmin', 'Moderator',
+        'GameServers.Admin.Read', 'GameServers.BanFileMonitors.Read',
+        'GameServers.Credentials.Rcon.Read', 'GameServers.Credentials.Ftp.Read'
     ]);
 
     function renderRoles(row) {

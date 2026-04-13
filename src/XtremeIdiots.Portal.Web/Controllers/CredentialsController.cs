@@ -38,9 +38,7 @@ public class CredentialsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.FtpCredentials, UserProfileClaimType.RconCredentials];
-#pragma warning restore CS0618
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_Credentials_Ftp_Read, AdditionalPermission.GameServers_Credentials_Rcon_Read];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             Logger.LogInformation("User {UserId} querying game servers for credentials with {GameTypeCount} game types and {GameServerIdCount} specific servers",

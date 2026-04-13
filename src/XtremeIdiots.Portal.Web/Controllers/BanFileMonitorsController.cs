@@ -37,9 +37,7 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
-#pragma warning restore CS0618
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
@@ -314,9 +312,7 @@ public class BanFileMonitorsController(
     {
         try
         {
-#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.BanFileMonitor];
-#pragma warning restore CS0618
+            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
