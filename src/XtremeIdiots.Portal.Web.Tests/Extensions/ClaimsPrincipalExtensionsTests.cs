@@ -167,6 +167,7 @@ public class ClaimsPrincipalExtensionsTests
     {
         // Arrange
         var serverId = Guid.NewGuid();
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
         var claims = new List<Claim>
         {
             new(UserProfileClaimType.BanFileMonitor, serverId.ToString())
@@ -174,6 +175,7 @@ public class ClaimsPrincipalExtensionsTests
         var identity = new ClaimsIdentity(claims);
         var principal = new ClaimsPrincipal(identity);
         var requiredClaims = new[] { UserProfileClaimType.BanFileMonitor };
+#pragma warning restore CS0618
 
         // Act
         var (gameTypes, itemIds) = principal.ClaimedGamesAndItems(requiredClaims);
@@ -284,6 +286,7 @@ public class ClaimsPrincipalExtensionsTests
     {
         // Arrange
         var serverId = Guid.NewGuid();
+#pragma warning disable CS0618 // UserProfileClaimType members pending migration to AdditionalPermission
         var claims = new List<Claim>
         {
             new(UserProfileClaimType.BanFileMonitor, serverId.ToString())
@@ -291,6 +294,7 @@ public class ClaimsPrincipalExtensionsTests
         var identity = new ClaimsIdentity(claims);
         var principal = new ClaimsPrincipal(identity);
         var requiredClaims = new[] { UserProfileClaimType.BanFileMonitor };
+#pragma warning restore CS0618
 
         // Act
         var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
