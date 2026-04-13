@@ -16,6 +16,11 @@ public class RelatedPlayerEnrichedViewModel
     public DateTime LastSeen { get; set; }
     public bool HasActiveBan { get; set; }
     public int AdminActionCount { get; set; }
+    public string LinkingIpAddress { get; set; } = string.Empty;
+    public DateTime LinkingIpLastUsedByPlayer { get; set; }
+    public DateTime LinkingIpLastUsedByRelated { get; set; }
+    public bool IsCurrentIp { get; set; }
+    public int SharedIpCount { get; set; }
 
     // Geo enrichment
     public int? RiskScore { get; set; }
@@ -34,7 +39,12 @@ public class RelatedPlayerEnrichedViewModel
             GameType = (int)dto.GameType,
             LastSeen = dto.LastSeen,
             HasActiveBan = dto.HasActiveBan,
-            AdminActionCount = dto.AdminActionCount
+            AdminActionCount = dto.AdminActionCount,
+            LinkingIpAddress = dto.LinkingIpAddress,
+            LinkingIpLastUsedByPlayer = dto.LinkingIpLastUsedByPlayer,
+            LinkingIpLastUsedByRelated = dto.LinkingIpLastUsedByRelated,
+            IsCurrentIp = dto.IsCurrentIp,
+            SharedIpCount = dto.SharedIpCount
         };
     }
 }

@@ -517,12 +517,19 @@
         <div class="ibox">
             <div class="ibox-title"><h5>Related Players <span class="badge bg-secondary ms-1">@(player.RelatedPlayerCount)</span></h5></div>
             <div class="ibox-content">
+                <p class="text-muted small mb-2">
+                    <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
+                    Players linked by shared IP address history. Sorted by ban status, then by number of shared IPs.
+                </p>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover w-100" id="relatedPlayersTable">
                         <thead>
                             <tr>
                                 <th>Player Name</th>
-                                <th>Connected By IP</th>
+                                <th>Linking IP</th>
+                                <th class="table-date-col">IP Last Used (Player)</th>
+                                <th class="table-date-col">IP Last Used (Related)</th>
+                                <th>Shared IPs</th>
                                 <th class="table-date-col">Last Seen</th>
                                 <th>Actions</th>
                                 <th>Status</th>
@@ -539,13 +546,27 @@
                                               data-player-id="@related.PlayerId"></span>
                                     </td>
                                     <td>
-                                        <span class="ip-address-container"
-                                              data-ip="@related.IpAddress"
-                                              data-risk="@related.RiskScore"
-                                              data-is-proxy="@((related.IsProxy ?? false).ToString().ToLower())"
-                                              data-is-vpn="@((related.IsVpn ?? false).ToString().ToLower())"
-                                              data-type="@related.ProxyType"
-                                              data-country-code="@related.CountryCode"></span>
+                                        <code>@related.LinkingIpAddress</code>
+                                        @if (related.IsCurrentIp)
+                                        {
+                                            <span class="badge bg-info text-dark ms-1">Current</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary ms-1">Historical</span>
+                                        }
+                                    </td>
+                                    <td><time user-time utc="@related.LinkingIpLastUsedByPlayer"></time></td>
+                                    <td><time user-time utc="@related.LinkingIpLastUsedByRelated"></time></td>
+                                    <td>
+                                        @if (related.SharedIpCount > 1)
+                                        {
+                                            <span class="badge bg-warning text-dark" data-bs-toggle="tooltip" title="@related.SharedIpCount distinct IPs shared between these players">@related.SharedIpCount</span>
+                                        }
+                                        else
+                                        {
+                                            <span>1</span>
+                                        }
                                     </td>
                                     <td><time user-time utc="@related.LastSeen"></time></td>
                                     <td>

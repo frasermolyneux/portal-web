@@ -82,30 +82,10 @@ public class PlayersController(
 
             if (playerData.RelatedPlayers is not null && playerData.RelatedPlayers.Count != 0)
             {
-                // All related players share the same IP (the current player's IP) — reuse existing intelligence
-                var sharedIntelligence = playerDetailsViewModel.Intelligence;
-
                 foreach (var rp in playerData.RelatedPlayers)
                 {
                     if (rp is null) continue;
-
-                    var vm = RelatedPlayerEnrichedViewModel.FromRelatedPlayerDto(rp);
-
-                    if (sharedIntelligence is not null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(sharedIntelligence.CountryCode))
-                            vm.CountryCode = sharedIntelligence.CountryCode;
-
-                        if (sharedIntelligence.ProxyCheck is not null)
-                        {
-                            vm.RiskScore = sharedIntelligence.ProxyCheck.RiskScore;
-                            vm.IsProxy = sharedIntelligence.ProxyCheck.IsProxy;
-                            vm.IsVpn = sharedIntelligence.ProxyCheck.IsVpn;
-                            vm.ProxyType = sharedIntelligence.ProxyCheck.ProxyType;
-                        }
-                    }
-
-                    playerDetailsViewModel.EnrichedRelatedPlayers.Add(vm);
+                    playerDetailsViewModel.EnrichedRelatedPlayers.Add(RelatedPlayerEnrichedViewModel.FromRelatedPlayerDto(rp));
                 }
             }
 
