@@ -380,9 +380,11 @@ public static class BaseAuthorizationHelper
         {
             GameType gt => gt,
             Tuple<GameType, Guid> t => t.Item1,
+            Tuple<GameType, string> t => t.Item1,
             Tuple<GameType, AdminActionType> t => t.Item1,
             Tuple<GameType, AdminActionType, string?> t => t.Item1,
             (GameType gt, Guid) => gt,
+            (GameType gt, string) => gt,
             (GameType gt, AdminActionType) => gt,
             (GameType gt, AdminActionType, string) => gt,
             _ => (GameType?)null

@@ -37,8 +37,70 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 - [Datatable Implementation Guide](docs/DATATABLE-IMPLEMENTATION-GUIDE.md) — Server-backed data table patterns.
 - [Credentials Permissions Matrix](docs/credentials-permissions-matrix.md) — Roles, claims, and access mapping.
 - [Permissions Matrices](docs/permissions/) — Per-area authorization matrices (players, game servers, admin actions, etc.).
+- [Permissions Migration Guide](docs/permissions-migration.md) — Old-to-new policy name mapping for the authorization refactor.
 - [CSS Architecture Guide](docs/css-architecture-guide.md) — SCSS structure, tokens, components, and build process.
 - [Manual Steps](docs/manual-steps.md) — Post-deployment configuration.
+
+## Authorization Model
+
+The portal uses a `{Domain}.{Action}` policy naming convention (e.g., `AdminActions.Create`, `GameServers.Credentials.Ftp.Read`). Policies are defined as constants in the `AuthPolicies` class (`Auth/Constants/AuthPolicies.cs`) and registered via `PolicyExtensions.AddXtremeIdiotsPolicies()`. Each policy maps to a marker requirement class and a corresponding authorization handler.
+
+### Role Hierarchy
+
+Role claims are synced from the forum by `portal-sync` and follow this hierarchy (highest to lowest):
+
+1. **SeniorAdmin** — global access to all domains
+2. **HeadAdmin** — game-type-scoped, inherits GameAdmin capabilities plus elevated actions (reassign, lift without ownership, credential access)
+3. **GameAdmin** — game-type-scoped, standard admin actions
+4. **Moderator** — game-type-scoped, limited to observations, warnings, kicks, and chat viewing
+
+### How Authorization Works
+
+Every authorization handler checks **both** role claims (from forum sync) **and** direct permission grants (additional permissions). This dual-path model means:
+
+- A user with a `HeadAdmin` claim for COD4 inherits permissions for that game type.
+- A user can also be granted specific `AdditionalPermission` claim types (e.g., `GameServers.Admin.Rcon`) for fine-grained access beyond their role.
+- Additional permissions use `{Domain}.{Action}` claim types with `PermissionScope` validation (Game, Server, or GameOrServer scoping).
+
+The `AdditionalPermission` class in the `portal-repository` abstractions package defines all 43 assignable permission constants, their metadata, display names, descriptions, domains, and scopes.
+
+### Policy Domains (9 total, 47 policies)
+
+| Domain | Policies | Examples |
+|--------|----------|---------|
+| Map Rotations | 3 | `MapRotations.Read`, `MapRotations.Write`, `MapRotations.Deploy` |
+| Maps | 1 | `Maps.Read` |
+| Game Servers | 17 | Core (Read/Write/Delete), Credentials (FTP/RCON Read/Write), Maps, Ban File Monitors, Admin/RCON |
+| Chat Log | 3 | `ChatLog.Read`, `ChatLog.ReadServer`, `ChatLog.Lock` |
+| Admin Actions | 8 | `AdminActions.Create`, `AdminActions.Edit`, `AdminActions.Claim`, `AdminActions.Lift` |
+| Players | 4 | `Players.Read`, `Players.Delete`, `Players.ProtectedNames.Write`, `Players.Tags.Write` |
+| Player Tags | 2 | `Tags.Read`, `Tags.Write` |
+| Dashboard | 1 | `Dashboard.Read` |
+| Demos | 3 | `Demos.Read`, `Demos.Write`, `Demos.Delete` |
+
+Plus 4 non-assignable system policies: `GlobalSettings.Admin`, `Users.Read`, `Users.ManageClaims`, `Users.Search`, `Users.ActivityLog`.
+
+### PolicyTagHelper
+
+The `PolicyTagHelper` (`Helpers/PolicyTagHelper.cs`) enables policy-based conditional rendering in Razor views:
+
+```html
+<div policy="@AuthPolicies.GameServers_Read">Only visible with GameServers.Read</div>
+<a policy="@AuthPolicies.AdminActions_Create" policy-resource="@gameType">Create Action</a>
+```
+
+The `policy-resource` attribute passes a resource (typically `GameType`) to handlers for scoped authorization checks. Elements are suppressed if authorization fails.
+
+### Key Files
+
+- `Auth/Constants/AuthPolicies.cs` — All 47 policy name constants
+- `Auth/Requirements/AuthRequirements.cs` — Marker requirement classes
+- `Auth/Handlers/` — Per-domain authorization handlers
+- `Auth/Handlers/BaseAuthorizationHelper.cs` — Shared claim group definitions
+- `Extensions/PolicyExtensions.cs` — Policy registration
+- `Helpers/PolicyTagHelper.cs` — Razor tag helper for conditional rendering
+- [Permissions Matrices](docs/permissions/) — Per-domain authorization matrices
+- [Migration Guide](docs/permissions-migration.md) — Old-to-new policy name mapping
 
 ## Conventions and Patterns
 
