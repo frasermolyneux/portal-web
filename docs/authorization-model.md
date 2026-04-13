@@ -65,6 +65,52 @@ The `PolicyTagHelper` enables policy-based conditional rendering in Razor views:
 
 The `policy-resource` attribute passes a resource (typically a `GameType`) to handlers for scoped authorization checks. Elements are suppressed entirely if authorization fails.
 
+## Potential Access Checks (PotentialAccessProbe)
+
+Resource-scoped policies require a concrete resource (e.g., `GameType`) to evaluate role-based access. But some scenarios need to answer **"can this user potentially perform this action for ANY resource?"** — for example, showing a Create button on an Index page before a specific game type is known.
+
+### The Problem
+
+Calling `AuthorizeAsync` without a resource leaves the resource as `null`. Handlers treat `null` as **fail-closed** — role-based branches that need a `GameType` do nothing, so only SeniorAdmin and direct permission holders pass. This is correct for security (missing resources should deny, not allow), but too restrictive for UI gating.
+
+### The Solution
+
+Pass `PotentialAccessProbe.Instance` as the resource. Handlers recognise this sentinel and check whether the user holds **any** game-scoped role that could satisfy the policy:
+
+```csharp
+// Controller — gate a GET Create action
+var canCreate = await authorizationService.AuthorizeAsync(
+    User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write);
+if (!canCreate.Succeeded) return Forbid();
+```
+
+```html
+<!-- View — conditionally render a Create button -->
+<a policy="@AuthPolicies.MapRotations_Write"
+   policy-resource="@PotentialAccessProbe.Instance">Create</a>
+```
+
+### How It Works
+
+Each composite method in `BaseAuthorizationHelper` has three branches:
+
+| Resource | Behaviour |
+|----------|-----------|
+| Concrete (`GameType`, tuple) | Checks role for that specific game type |
+| `PotentialAccessProbe` | Checks if user holds any game-scoped role |
+| `null` | Does nothing (fail-closed) |
+
+`CheckDirectPermissionGrant` already handles all three — it checks for a scoped permission when a resource is present, and for **any** permission claim when no resource is provided.
+
+### When to Use Each Pattern
+
+| Scenario | Resource to Pass | Example |
+|----------|-----------------|---------|
+| Action on a known resource | The resource (`GameType`, `(GameType, Guid)`, etc.) | Edit button in a Details view |
+| UI gate before resource exists | `PotentialAccessProbe.Instance` | Create button on Index page, GET Create action |
+| Non-resource-scoped policy | Nothing (omit `policy-resource`) | Tags.Write, Dashboard.Read |
+| Data filtering (what to show) | N/A — use `ClaimedGamesAndItems` | Index action fetching records |
+
 ## Key Implementation Files
 
 These files are the **source of truth** for all authorization behaviour:
@@ -73,6 +119,7 @@ These files are the **source of truth** for all authorization behaviour:
 |------|---------|
 | `Auth/Constants/AuthPolicies.cs` | All policy name constants |
 | `Auth/Requirements/AuthRequirements.cs` | Marker requirement classes (one per policy) |
+| `Auth/PotentialAccessProbe.cs` | Sentinel resource for "can user potentially do X?" checks |
 | `Auth/Handlers/BaseAuthorizationHelper.cs` | Shared claim group definitions and common check methods |
 | `Auth/Handlers/*AuthHandler.cs` | Per-domain authorization handlers with exact role→permission logic |
 | `Extensions/PolicyExtensions.cs` | Policy registration wiring |

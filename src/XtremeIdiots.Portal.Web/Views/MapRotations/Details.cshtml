@@ -125,7 +125,7 @@
                                 <i class="fa-regular fa-map empty-state-icon"></i>
                                 <p class="empty-state-message">No maps in this rotation</p>
                                 <div class="empty-state-action">
-                                    <a asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-primary btn-sm">
+                                    <a policy="@AuthPolicies.MapRotations_Write" policy-resource="@Model.Rotation.GameType" asp-action="Edit" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-primary btn-sm">
                                         <i class="fa-solid fa-fw fa-plus"></i> Add maps
                                     </a>
                                 </div>

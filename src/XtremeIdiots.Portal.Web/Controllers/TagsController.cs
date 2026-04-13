@@ -315,7 +315,8 @@ public class TagsController(
 
             if (!tagData!.UserDefined)
             {
-                if (!User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+                var canDeleteSystemTags = await authorizationService.AuthorizeAsync(User, AuthPolicies.GlobalSettings_Admin).ConfigureAwait(false);
+                if (!canDeleteSystemTags.Succeeded)
                 {
                     TrackUnauthorizedAccessAttempt(nameof(Delete), "SystemPlayerTag",
                         $"TagId:{id},TagName:{tagData.Name},RequiresSeniorAdmin:true");

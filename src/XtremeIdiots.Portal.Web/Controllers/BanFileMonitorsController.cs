@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
@@ -78,6 +79,10 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var canCreate = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_BanFileMonitors_Write).ConfigureAwait(false);
+            if (!canCreate.Succeeded)
+                return Forbid();
+
             await AddGameServersViewData(cancellationToken: cancellationToken).ConfigureAwait(false);
             return View(new CreateBanFileMonitorViewModel { FilePath = string.Empty });
         }, nameof(Create)).ConfigureAwait(false);

@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Auth;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
@@ -179,6 +180,13 @@ public static class BaseAuthorizationHelper
 
         if (context.Resource is GameType gameType)
             CheckGameAdminAccess(context, requirement, gameType);
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            if (context.User.Claims.Any(c =>
+                (c.Type == UserProfileClaimType.HeadAdmin || c.Type == UserProfileClaimType.GameAdmin) &&
+                Enum.TryParse<GameType>(c.Value, out _)))
+                context.Succeed(requirement);
+        }
     }
 
     /// <summary>
@@ -196,6 +204,13 @@ public static class BaseAuthorizationHelper
 
         if (context.Resource is GameType gameType)
             CheckHeadAdminAccess(context, requirement, gameType);
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            if (context.User.Claims.Any(c =>
+                c.Type == UserProfileClaimType.HeadAdmin &&
+                Enum.TryParse<GameType>(c.Value, out _)))
+                context.Succeed(requirement);
+        }
     }
 
     /// <summary>
@@ -221,6 +236,13 @@ public static class BaseAuthorizationHelper
         {
             CheckGameTypeAndServerAccess(context, requirement, gameType, gameServerId);
         }
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            if (context.User.Claims.Any(c =>
+                c.Type == UserProfileClaimType.HeadAdmin &&
+                Enum.TryParse<GameType>(c.Value, out _)))
+                context.Succeed(requirement);
+        }
     }
 
     /// <summary>
@@ -242,6 +264,13 @@ public static class BaseAuthorizationHelper
             CheckGameAdminAccess(context, requirement, gameType);
             CheckModeratorAccess(context, requirement, gameType);
         }
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            if (context.User.Claims.Any(c =>
+                (c.Type == UserProfileClaimType.HeadAdmin || c.Type == UserProfileClaimType.GameAdmin || c.Type == UserProfileClaimType.Moderator) &&
+                Enum.TryParse<GameType>(c.Value, out _)))
+                context.Succeed(requirement);
+        }
     }
 
     /// <summary>
@@ -261,6 +290,13 @@ public static class BaseAuthorizationHelper
         {
             CheckGameAdminAccess(context, requirement, gameType);
             CheckLiveRconAccess(context, requirement, gameType);
+        }
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            if (context.User.Claims.Any(c =>
+                (c.Type == UserProfileClaimType.HeadAdmin || c.Type == UserProfileClaimType.GameAdmin || c.Type == AdditionalPermission.GameServers_Admin_Rcon) &&
+                Enum.TryParse<GameType>(c.Value, out _)))
+                context.Succeed(requirement);
         }
     }
 

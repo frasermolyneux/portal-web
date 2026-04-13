@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.ViewModels;
@@ -107,6 +108,10 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var canCreate = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Write).ConfigureAwait(false);
+            if (!canCreate.Succeeded)
+                return Forbid();
+
             AddGameTypeViewData();
             return await Task.FromResult(View(new GameServerViewModel())).ConfigureAwait(false);
         }, nameof(Create)).ConfigureAwait(false);

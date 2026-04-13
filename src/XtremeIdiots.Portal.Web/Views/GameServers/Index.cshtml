@@ -124,8 +124,9 @@
                     </div>
                     <div class="ibox-footer">
                         <div class="btn-group btn-group-sm" role="group">
-                            <a class="btn btn-primary" asp-action="Create"><i class="fa-solid fa-fw fa-plus"></i>
-                                Create New</a>
+                            <a policy="@AuthPolicies.GameServers_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary" asp-action="Create">
+                                <i class="fa-solid fa-fw fa-plus"></i> Create New
+                            </a>
                             @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_Delete)).Succeeded)
                             {
                                 <a class="btn btn-secondary" asp-action="Reorder"><i class="fa-solid fa-fw fa-grip-vertical"></i>

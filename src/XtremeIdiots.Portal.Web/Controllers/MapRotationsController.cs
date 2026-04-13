@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
@@ -69,8 +70,12 @@ public class MapRotationsController(
     }
 
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
+        var canCreate = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
+        if (!canCreate.Succeeded)
+            return Forbid();
+
         return View(new CreateMapRotationViewModel
         {
             Title = string.Empty,
@@ -1109,8 +1114,12 @@ public class MapRotationsController(
     }
 
     [HttpGet]
-    public IActionResult Import()
+    public async Task<IActionResult> Import()
     {
+        var canImport = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
+        if (!canImport.Succeeded)
+            return Forbid();
+
         return View(new ImportMapRotationsViewModel());
     }
 

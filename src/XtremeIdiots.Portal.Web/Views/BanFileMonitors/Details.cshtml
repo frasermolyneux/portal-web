@@ -75,10 +75,13 @@
                     </div>
                     <div class="ibox-footer">
                         <div class="btn-group btn-group-sm" role="group">
-                            <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.BanFileMonitorId"
-                                data-testid="ban-file-monitor-details-edit">
-                                <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit
-                            </a>
+                            @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(Model.GameServer.GameType, Model.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
+                            {
+                                <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.BanFileMonitorId"
+                                    data-testid="ban-file-monitor-details-edit">
+                                    <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit
+                                </a>
+                            }
                             <a class="btn btn-outline-secondary" asp-action="Index" data-testid="ban-file-monitor-details-back">
                                 <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to List
                             </a>

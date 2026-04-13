@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
@@ -100,6 +101,14 @@ public class GameServersAuthHandler : IAuthorizationHandler
         BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
         if (context.Resource is GameType gameType)
             BaseAuthorizationHelper.CheckCombinedGameServerAccess(context, requirement, gameType);
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            // Mirror CheckCombinedGameServerAccess: HeadAdmin or GameServers.Read for any game type
+            if (context.User.Claims.Any(c =>
+                (c.Type == UserProfileClaimType.HeadAdmin || c.Type == AdditionalPermission.GameServers_Read) &&
+                Enum.TryParse<GameType>(c.Value, out _)))
+                context.Succeed(requirement);
+        }
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Write");
     }
 

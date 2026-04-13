@@ -62,6 +62,12 @@ Every authorization handler checks **both** role claims (from forum sync) **and*
 
 The `AdditionalPermission` class in the `portal-repository` abstractions package defines the assignable permission constants, their metadata, display names, descriptions, domains, and scopes.
 
+### Potential Access Checks
+
+When gating UI elements (e.g., Create buttons) or GET Create actions where no concrete resource exists yet, pass `PotentialAccessProbe.Instance` as the resource to `AuthorizeAsync` or as `policy-resource` in the tag helper. This lets handlers answer "can this user potentially do X for ANY game type?" while keeping `null` as fail-closed. See [Authorization Model — Potential Access Checks](docs/authorization-model.md#potential-access-checks-potentialaccessprobe) for full details.
+
+Do **not** use `ClaimedGamesAndItems` or direct claim checks as authorization gates — use `PotentialAccessProbe` instead to keep the handler as the single source of truth.
+
 ### Policy Domains
 
 Policies are organised into domains (Map Rotations, Maps, Game Servers, Chat Log, Admin Actions, Players, Player Tags, Dashboard, Demos) plus a handful of non-assignable system policies (GlobalSettings, Users). For the full list, see `AuthPolicies.cs`.
@@ -81,6 +87,7 @@ The `policy-resource` attribute passes a resource (typically `GameType`) to hand
 
 - `Auth/Constants/AuthPolicies.cs` — Policy name constants
 - `Auth/Requirements/AuthRequirements.cs` — Marker requirement classes
+- `Auth/PotentialAccessProbe.cs` — Sentinel resource for "can user potentially do X?" checks
 - `Auth/Handlers/` — Per-domain authorization handlers (source of truth for role→permission mappings)
 - `Auth/Handlers/BaseAuthorizationHelper.cs` — Shared claim group definitions
 - `Extensions/PolicyExtensions.cs` — Policy registration

@@ -181,7 +181,7 @@
                 </div>
                 <div class="ibox-footer">
                     <div class="btn-group btn-group-sm" role="group">
-                        <a class="btn btn-primary" asp-action="Create" aria-label="Create new ban file monitor">
+                        <a policy="@AuthPolicies.GameServers_BanFileMonitors_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary" asp-action="Create" aria-label="Create new ban file monitor">
                             <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create New
                         </a>
                     </div>
