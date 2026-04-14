@@ -557,13 +557,23 @@
 
             if (!mapName || mapName === 'Loading...' || mapName === 'Unknown') return;
 
+            var carousel = document.getElementById('sd-mapRotationCarousel');
+
             $('#sd-mapRotationCarousel .map-card').each(function() {
                 var btn = $(this).find('.load-map-btn');
                 if (btn.data('map-name') === mapName) {
                     $(this).addClass('border border-success border-2 rounded');
                     $(this).find('.map-card-title').append(' <span class="badge bg-success">Current</span>');
-                    // Scroll to current map
-                    this.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                    // Scroll within the carousel only (not the page), and only if the map control tab is active
+                    var mapControlTab = document.getElementById('mapcontrol');
+                    if (carousel && mapControlTab && mapControlTab.classList.contains('active')) {
+                        var cardRect = this.getBoundingClientRect();
+                        var carouselRect = carousel.getBoundingClientRect();
+                        var cardLeft = cardRect.left - carouselRect.left + carousel.scrollLeft;
+                        var cardWidth = this.offsetWidth;
+                        var carouselWidth = carousel.offsetWidth;
+                        carousel.scrollTo({ left: cardLeft - (carouselWidth / 2) + (cardWidth / 2), behavior: 'smooth' });
+                    }
                 }
             });
         }
