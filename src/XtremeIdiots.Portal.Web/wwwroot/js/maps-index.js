@@ -41,7 +41,7 @@ $(document).ready(function () {
         columns: [
             { data: 'gameType', name: 'gameType', orderable: true, render: function (data) { return gameTypeIcon(data); } },
             { data: 'mapName', name: 'mapName', orderable: true },
-            { data: 'mapFiles', name: 'mapFiles', orderable: false, render: renderMapFiles },
+            { data: 'mapFiles', name: 'mapFiles', orderable: false, render: function(data, type, row) { return renderMapFiles(data, row); } },
             { data: null, name: 'popularity', orderable: true, render: renderPopularity, className: 'popularity-column' },
             { data: null, orderable: false, render: renderImage }
         ]
@@ -81,16 +81,19 @@ $(document).ready(function () {
         }
     })();
 
-    function renderMapFiles(data) {
-        if (!data || !data.length) return '<span class="text-muted">No Map Files</span>';
-        let html = '<ul class="list-unstyled mb-0 map-files">';
-        for (const f of data) {
-            if (f && f.url && f.fileName) {
-                html += '<li><a href="' + f.url + '">' + f.fileName + '</a></li>';
+    function renderMapFiles(data, row) {
+        if (data && data.length) {
+            let html = '<ul class="list-unstyled mb-0 map-files">';
+            for (const f of data) {
+                if (f && f.url && f.fileName) {
+                    html += '<li><a href="' + f.url + '">' + f.fileName + '</a></li>';
+                }
             }
+            html += '</ul>';
+            return html;
         }
-        html += '</ul>';
-        return html;
+        if (row && row.builtIn) return '<span class="badge bg-info">Built-in</span>';
+        return '<span class="text-muted">No Map Files</span>';
     }
 
     function renderPopularity(data, type, row) {

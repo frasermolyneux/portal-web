@@ -82,7 +82,20 @@ public class MapsController(
                 model.Draw,
                 recordsTotal = mapsApiResponse.Result?.Pagination?.TotalCount,
                 recordsFiltered = mapsApiResponse.Result?.Pagination?.FilteredCount,
-                data = mapsApiResponse?.Result?.Data?.Items
+                data = mapsApiResponse?.Result?.Data?.Items?.Select(mapItem => new
+                {
+                    mapItem.MapId,
+                    mapItem.GameType,
+                    mapItem.MapName,
+                    mapItem.MapFiles,
+                    mapItem.MapImageUri,
+                    mapItem.TotalLikes,
+                    mapItem.TotalDislikes,
+                    mapItem.TotalVotes,
+                    mapItem.LikePercentage,
+                    mapItem.DislikePercentage,
+                    builtIn = BuiltInMaps.IsBuiltIn(mapItem.GameType, mapItem.MapName)
+                })
             });
         }, nameof(GetMapListAjax)).ConfigureAwait(false);
     }

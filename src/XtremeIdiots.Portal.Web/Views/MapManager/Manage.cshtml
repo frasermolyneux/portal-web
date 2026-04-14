@@ -156,6 +156,10 @@
                                                         }
                                                     </ul>
                                                 }
+                                                else if (BuiltInMaps.IsBuiltIn(Model.GameServer.GameType, map?.MapName ?? ""))
+                                                {
+                                                    <span class="badge bg-info">Built-in</span>
+                                                }
                                                 else
                                                 {
                                                     <span class="text-muted">No Map Files</span>
@@ -236,6 +240,10 @@
                                                             <li><a href="@file.Url">@file.FileName</a></li>
                                                         }
                                                     </ul>
+                                                }
+                                                else if (BuiltInMaps.IsBuiltIn(Model.GameServer.GameType, map?.MapName ?? ""))
+                                                {
+                                                    <span class="badge bg-info">Built-in</span>
                                                 }
                                                 else
                                                 {
@@ -424,6 +432,7 @@
                                                     case DeploymentState.Pending: <span class="badge bg-warning text-dark">Pending</span> break;
                                                     case DeploymentState.Syncing: <span class="badge bg-info">Syncing</span> break;
                                                     case DeploymentState.Synced: <span class="badge bg-success">Synced</span> break;
+                                                    case DeploymentState.PartiallyDeployed: <span class="badge bg-warning text-dark">Partially Deployed</span> break;
                                                     case DeploymentState.Failed: <span class="badge bg-danger">Failed</span> break;
                                                     default: <span class="badge bg-secondary">@assignment.DeploymentState</span> break;
                                                 }
