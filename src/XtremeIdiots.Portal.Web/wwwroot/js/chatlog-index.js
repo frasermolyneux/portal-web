@@ -47,10 +47,6 @@ $(document).ready(function () {
                     return safeUsername; // no icon if we can't determine game type
                 }
 
-                // If it's numeric (enum), use enum icon mapping; otherwise treat as string name.
-                if (typeof gameTypeVal === 'number') {
-                    return gameTypeIconEnum(gameTypeVal) + ' ' + usernameAnchor();
-                }
                 return gameTypeIcon(gameTypeVal) + ' ' + usernameAnchor();
             }
         },

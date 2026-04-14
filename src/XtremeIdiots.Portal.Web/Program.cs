@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Azure.Identity;
 using Azure.Monitor.Query;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -150,7 +152,9 @@ builder.Services.AddCors(options =>
 });
 
 // Add MVC with conditional Razor runtime compilation
-var mvcBuilder = builder.Services.AddControllersWithViews();
+var mvcBuilder = builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 #if DEBUG
 // Only add runtime compilation in Debug builds for development productivity

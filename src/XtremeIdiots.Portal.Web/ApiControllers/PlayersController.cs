@@ -74,7 +74,7 @@ public class PlayersController(
                 return new
                 {
                     player.PlayerId,
-                    player.GameType,
+                    gameType = player.GameType.ToString(),
                     player.Username,
                     player.Guid,
                     player.IpAddress,

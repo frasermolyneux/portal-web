@@ -85,7 +85,7 @@ public class MapsController(
                 data = mapsApiResponse?.Result?.Data?.Items?.Select(mapItem => new
                 {
                     mapItem.MapId,
-                    mapItem.GameType,
+                    gameType = mapItem.GameType.ToString(),
                     mapItem.MapName,
                     mapItem.MapFiles,
                     mapItem.MapImageUri,
