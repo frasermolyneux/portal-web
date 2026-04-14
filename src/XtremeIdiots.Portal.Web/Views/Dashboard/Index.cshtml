@@ -151,7 +151,11 @@
                                         <tr>
                                             <td>
                                                 <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
-                                                        <server-name title="@server.ServerTitle"></server-name>
+                                                    @if (Enum.TryParse<GameType>(server.GameType, out var healthGameType))
+                                                    {
+                                                        <game-type-icon game="@healthGameType"></game-type-icon>
+                                                    }
+                                                    <server-name title="@server.ServerTitle"></server-name>
                                                 </a>
                                             </td>
                                             <td><span class="badge @statusClass">@server.ActivityStatus</span></td>
@@ -275,7 +279,11 @@
                                         <tr>
                                             <td>
                                                 <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
-                                                        <server-name title="@server.Title"></server-name>
+                                                    @if (Enum.TryParse<GameType>(server.GameType, out var utilGameType))
+                                                    {
+                                                        <game-type-icon game="@utilGameType"></game-type-icon>
+                                                    }
+                                                    <server-name title="@server.Title"></server-name>
                                                 </a>
                                             </td>
                                             <td><small>@server.GameType</small></td>

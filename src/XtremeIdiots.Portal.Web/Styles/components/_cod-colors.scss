@@ -24,15 +24,8 @@
 .cod-color-8 { color: var(--cod-color-8); }
 .cod-color-9 { color: var(--cod-color-9); }
 
-// Ensure colored spans within anchors keep their colors, override link default
-a .cod-colored span[class^="cod-color-"],
-a .cod-colored span[class*=" cod-color-"],
-a span[class^="cod-color-"],
-a span[class*=" cod-color-"] {
-    color: unset;
-}
-
-// Links wrapping colored content should not impose their own color
+// Links wrapping colored content should not impose their own color;
+// the inner .cod-color-X spans already set the correct color via their own classes.
 a:has(> .cod-colored),
 a:has(> span[class^="cod-color-"]) {
     color: unset;
