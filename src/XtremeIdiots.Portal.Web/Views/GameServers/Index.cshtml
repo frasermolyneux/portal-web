@@ -86,15 +86,6 @@
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
-                                                                                            AuthPolicies.GameServers_Maps_Read)).Succeeded && item.GameType ==
-                                                                                            GameType.CallOfDuty4)
-                                                {
-                                                    <a class="btn btn-secondary" asp-controller="MapManager"
-                                                        asp-action="Manage" asp-route-id="@item.GameServerId"><i
-                                                            class="fa-solid fa-fw fa-pen-to-square"></i> <span class="d-none d-sm-inline">Map Manager</span></a>
-                                                }
-
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
                                                                                             AuthPolicies.GameServers_Write)).Succeeded)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-action="Edit"
