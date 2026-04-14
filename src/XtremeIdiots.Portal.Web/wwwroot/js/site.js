@@ -199,19 +199,9 @@ function downloadDemoLink(demoName, demoId) {
 }
 
 function deleteDemoLink(demoId, gameType = null) {
-    if (gameType === null) {
-        return '<div class="btn-group btn-group-sm" role="group">' +
-            '<a type="button" class="btn btn-outline-danger"  href="/Demos/Delete/' +
-            demoId +
-            '"><i class="fa-solid fa-fw fa-trash"></i> Delete Demo</a>' +
-            "</div>";
-    } else {
-        return '<div class="btn-group btn-group-sm" role="group">' +
-            '<a type="button" class="btn btn-outline-danger"  href="/Demos/Delete/' +
-            demoId +
-            '?filterGame=true"><i class="fa-solid fa-fw fa-trash"></i> Delete Demo</a>' +
-            "</div>";
-    }
+    var href = '/Demos/Delete/' + demoId + (gameType !== null ? '?filterGame=true' : '');
+    return '<a class="btn btn-outline-danger btn-sm" href="' + href +
+        '" title="Delete" aria-label="Delete"><i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i></a>';
 }
 
 function geoLocationIpLink(ipAddress) {
@@ -280,11 +270,9 @@ function formatIPAddress(ipAddress, riskScore, isProxy, isVpn, type = '', countr
 }
 
 function manageClaimsLink(userId) {
-    return '<div class="btn-group btn-group-sm" role="group">' +
-        '<a type="button" class="btn btn-outline-secondary"  href="/User/ManageProfile/' +
+    return '<a class="btn btn-outline-secondary btn-sm" href="/User/ManageProfile/' +
         userId +
-        '?filterGame=true"><i class="fa-solid fa-fw fa-key"></i> Manage Claims</a>' +
-        "</div>";
+        '?filterGame=true" title="Manage Claims" aria-label="Manage Claims"><i class="fa-solid fa-fw fa-key" aria-hidden="true"></i></a>';
 }
 
 function logOutUserLink(id, antiForgeryToken) {

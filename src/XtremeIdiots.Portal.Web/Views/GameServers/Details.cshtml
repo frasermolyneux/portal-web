@@ -158,27 +158,27 @@
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                                 {
-                                                    <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors"
-                                                        asp-action="Edit" asp-route-id="@item.BanFileMonitorId"><i
-                                                            class="fa-solid fa-fw fa-pen-to-square"></i> Edit</a>
+                                                    <a class="btn btn-outline-secondary btn-sm" asp-controller="BanFileMonitors"
+                                                        asp-action="Edit" asp-route-id="@item.BanFileMonitorId" title="Edit" aria-label="Edit"><i
+                                                            class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.GameServers_BanFileMonitors_Read)).Succeeded)
                                                 {
-                                                    <a class="btn btn-outline-secondary" asp-controller="BanFileMonitors"
-                                                        asp-action="Details" asp-route-id="@item.BanFileMonitorId"><i
-                                                            class="fa-solid fa-fw fa-eye"></i> Details</a>
+                                                    <a class="btn btn-outline-secondary btn-sm" asp-controller="BanFileMonitors"
+                                                        asp-action="Details" asp-route-id="@item.BanFileMonitorId" title="Details" aria-label="Details"><i
+                                                            class="fa-solid fa-fw fa-eye" aria-hidden="true"></i></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
                                                 {
-                                                    <a class="btn btn-outline-danger" asp-controller="BanFileMonitors"
-                                                        asp-action="Delete" asp-route-id="@item.BanFileMonitorId"><i
-                                                            class="fa-solid fa-fw fa-trash"></i> Delete</a>
+                                                    <a class="btn btn-outline-danger btn-sm" asp-controller="BanFileMonitors"
+                                                        asp-action="Delete" asp-route-id="@item.BanFileMonitorId" title="Delete" aria-label="Delete"><i
+                                                            class="fa-solid fa-fw fa-trash" aria-hidden="true"></i></a>
                                                 }
                                             </div>
                                         </td>

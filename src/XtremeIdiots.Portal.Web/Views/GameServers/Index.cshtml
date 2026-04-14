@@ -88,22 +88,22 @@
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
                                                                                             AuthPolicies.GameServers_Write)).Succeeded)
                                                 {
-                                                    <a class="btn btn-outline-secondary" asp-action="Edit"
-                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-pen-to-square"></i> <span class="d-none d-sm-inline">Edit</span></a>
+                                                    <a class="btn btn-outline-secondary btn-sm" asp-action="Edit"
+                                                        asp-route-id="@item.GameServerId" title="Edit" aria-label="Edit"><i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, item.GameType,
                                                                                             AuthPolicies.GameServers_Read)).Succeeded)
                                                 {
-                                                    <a class="btn btn-outline-secondary" asp-action="Details"
-                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-eye"></i> <span class="d-none d-sm-inline">Details</span></a>
+                                                    <a class="btn btn-outline-secondary btn-sm" asp-action="Details"
+                                                        asp-route-id="@item.GameServerId" title="Details" aria-label="Details"><i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i></a>
                                                 }
 
                                                 @if ((await AuthorizationService.AuthorizeAsync(User,
                                                                                             AuthPolicies.GameServers_Delete)).Succeeded)
                                                 {
-                                                    <a class="btn btn-outline-danger" asp-action="Delete"
-                                                        asp-route-id="@item.GameServerId"><i class="fa-solid fa-fw fa-trash"></i> <span class="d-none d-sm-inline">Delete</span></a>
+                                                    <a class="btn btn-outline-danger btn-sm" asp-action="Delete"
+                                                        asp-route-id="@item.GameServerId" title="Delete" aria-label="Delete"><i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i></a>
                                                 }
                                             </div>
                                         </td>
