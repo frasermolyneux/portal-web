@@ -22,8 +22,7 @@ $(document).ready(function () {
                 { targets: 3, responsivePriority: 5, orderable: false }, // Links
                 { targets: 4, responsivePriority: 4, orderable: false }, // Players
                 { targets: 5, responsivePriority: 7 }, // Map
-                { targets: 6, responsivePriority: 8 }, // Mod
-                { targets: 7, responsivePriority: 2, orderable: false }  // Actions
+                { targets: 6, responsivePriority: 8 }  // Mod
             ],
             language: {
                 emptyTable: 'No servers found'
