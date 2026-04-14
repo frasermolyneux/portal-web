@@ -64,7 +64,14 @@
 
             <div class="container-fluid">
                 <div class="ibox">
-                    <div class="ibox-title"><h5>Ban File Monitors</h5></div>
+                    <div class="ibox-title">
+                        <h5>Ban File Monitors</h5>
+                        <div class="ibox-tools">
+                            <a policy="@AuthPolicies.GameServers_BanFileMonitors_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary btn-sm" asp-action="Create" aria-label="Create new ban file monitor">
+                                <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create New
+                            </a>
+                        </div>
+                    </div>
                     <div class="ibox-content">
                     <div class="table-responsive">
                         <table id="banFileMonitorsTable" class="table table-striped table-hover w-100" aria-label="Ban file monitors list">
@@ -177,13 +184,6 @@
                                 }
                             </tbody>
                         </table>
-                    </div>
-                </div>
-                <div class="ibox-footer">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <a policy="@AuthPolicies.GameServers_BanFileMonitors_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary" asp-action="Create" aria-label="Create new ban file monitor">
-                            <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create New
-                        </a>
                     </div>
                 </div>
             </div>

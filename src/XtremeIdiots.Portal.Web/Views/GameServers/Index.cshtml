@@ -23,6 +23,20 @@
                     </div>
                 </div>
                 <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Game Servers</h5>
+                        <div class="ibox-tools">
+                            @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_Delete)).Succeeded)
+                            {
+                                <a class="btn btn-outline-secondary btn-sm me-1" asp-action="Reorder">
+                                    <i class="fa-solid fa-fw fa-grip-vertical" aria-hidden="true"></i> Reorder
+                                </a>
+                            }
+                            <a policy="@AuthPolicies.GameServers_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary btn-sm" asp-action="Create">
+                                <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create New
+                            </a>
+                        </div>
+                    </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
                             <table id="gameServersTable" class="table table-striped table-hover w-100">
@@ -111,18 +125,6 @@
                                 }
                             </tbody>
                         </table>
-                        </div>
-                    </div>
-                    <div class="ibox-footer">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a policy="@AuthPolicies.GameServers_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary" asp-action="Create">
-                                <i class="fa-solid fa-fw fa-plus"></i> Create New
-                            </a>
-                            @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_Delete)).Succeeded)
-                            {
-                                <a class="btn btn-secondary" asp-action="Reorder"><i class="fa-solid fa-fw fa-grip-vertical"></i>
-                                    Reorder Servers</a>
-                            }
                         </div>
                     </div>
                 </div>
