@@ -40,7 +40,10 @@
 
         fetch('/api/ftp/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
             .then(function (response) {
+                if (response.status === 403) throw new Error('You do not have permission to browse this server\'s files.');
                 if (!response.ok) throw new Error('Failed to browse directory (HTTP ' + response.status + ')');
+                var contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) throw new Error('Unexpected response from server.');
                 return response.json();
             })
             .then(function (data) {
