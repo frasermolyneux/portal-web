@@ -13,10 +13,11 @@ function handleAjaxError(xhr, textStatus, error) {
 
 function renderPlayerName(gameType, username, playerId) {
     var coloredName = CodColors.renderSafe(username);
+    var icon = typeof gameType === 'number' ? gameTypeIconEnum(gameType) : gameTypeIcon(gameType);
     if (playerId) {
-        return gameTypeIconEnum(gameType) + " <a href='/Players/Details/" + playerId + "'>" + coloredName + "</a>";
+        return icon + " <a href='/Players/Details/" + playerId + "'>" + coloredName + "</a>";
     }
-    return gameTypeIconEnum(gameType) + " " + coloredName;
+    return icon + " " + coloredName;
 }
 
 function chatLogUrl(chatMessageId) {
@@ -32,19 +33,33 @@ function gameTypeIcon(gameType) {
 }
 
 function gameTypeIconEnum(gameType) {
-    var gameTypeString = "Unknown";
-
-    switch (gameType) {
-        case 1:
-            gameTypeString = "CallOfDuty2";
-            break;
-        case 2:
-            gameTypeString = "CallOfDuty4";
-            break;
-        case 3:
-            gameTypeString = "CallOfDuty5";
-            break;
-    }
+    var map = {
+        0: "Unknown",
+        1: "CallOfDuty2",
+        2: "CallOfDuty4",
+        3: "CallOfDuty5",
+        4: "Insurgency",
+        5: "ArkSurvivalEvolved",
+        6: "Battlefield1",
+        7: "Battlefield3",
+        8: "Battlefield4",
+        9: "Battlefield5",
+        10: "BattlefieldBadCompany2",
+        11: "CrysisWars",
+        12: "Left4Dead2",
+        13: "Minecraft",
+        14: "PlayerUnknownsBattleground",
+        15: "RisingStormVietnam",
+        16: "Rust",
+        17: "WarThunder",
+        18: "WorldOfWarships",
+        19: "WorldWar3",
+        20: "UnrealTournament2004",
+        21: "Arma",
+        22: "Arma2",
+        23: "Arma3"
+    };
+    var gameTypeString = map[gameType] || "Unknown";
 
     return "<img src='/images/game-icons/" +
         gameTypeString +
