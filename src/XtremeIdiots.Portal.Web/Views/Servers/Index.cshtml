@@ -24,7 +24,6 @@
                                         <th scope="col">Players</th>
                                         <th scope="col">Map</th>
                                         <th scope="col">Mod</th>
-                                        <th scope="col">Info</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -35,8 +34,11 @@
                                             <game-type-icon game="@item.GameServer.GameType"></game-type-icon>
                                         </td>
                                         <td>
-                                            <server-name title="@item.GameServer.Title"
-                                                live-title="@item.LiveStatus?.Title"></server-name>
+                                            <a asp-controller="Servers" asp-action="Details"
+                                                asp-route-id="@item.GameServer.GameServerId">
+                                                <server-name title="@item.GameServer.Title"
+                                                    live-title="@item.LiveStatus?.Title"></server-name>
+                                            </a>
                                         </td>
                                         <td>
                                             <server-host host="@item.GameServer.Hostname"
@@ -76,13 +78,6 @@
                                         </td>
                                         <td>
                                             @item.LiveStatus?.Mod
-                                        </td>
-                                        <td>
-                                            <a class="btn btn-sm btn-primary" asp-controller="Servers"
-                                                asp-action="Details" asp-route-id="@item.GameServer.GameServerId" 
-                                                title="Server Info" aria-label="Server Info">
-                                                <i class="fa-solid fa-fw fa-circle-info"></i>
-                                            </a>
                                         </td>
                                     </tr>
                                 }
