@@ -92,7 +92,7 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title"><h5>Add Additional Portal Permission</h5></div>
-                    <div class="ibox-content">
+                    <div policy="@AuthPolicies.Users_ManageClaims" class="ibox-content">
                         <form asp-action="CreateUserClaim" id="createClaimForm">
                             <input id="id" name="id" type="hidden" value="@Model.Profile.UserProfileId" />
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -197,7 +197,7 @@
                                             <td>
                                                 @if (!claim.SystemGenerated)
                                                 {
-                                                    <form class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
+                                                    <form policy="@AuthPolicies.Users_ManageClaims" class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
                                                         method="post">
                                                         <input id="id" name="id" type="hidden"
                                                             value="@Model.Profile.UserProfileId" />

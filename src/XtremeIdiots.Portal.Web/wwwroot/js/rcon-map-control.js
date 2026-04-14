@@ -10,11 +10,13 @@ var RconMapControl = (function () {
     var _lastRefreshTime = new Date();
     var _selectors = {};
     var _onMapChanged = null;
+    var _canChangeMap = true;
 
     function init(options) {
         _serverId = options.serverId;
         _antiForgeryToken = options.antiForgeryToken;
         _onMapChanged = options.onMapChanged || null;
+        _canChangeMap = options.canChangeMap !== false;
         _selectors = {
             carousel: options.carouselSelector || '#mapRotationCarousel',
             container: options.containerSelector || '#mapRotationContainer',
@@ -48,12 +50,15 @@ var RconMapControl = (function () {
                         });
                         var cardBody = $('<div>', { class: 'map-card-body' });
                         var mapTitle = $('<div>', { class: 'map-card-title', title: map.mapTitle }).text(map.mapTitle);
-                        var loadBtn = $('<button>', {
-                            class: 'btn btn-sm btn-primary map-card-btn load-map-btn',
-                            'data-map-name': map.mapName
-                        }).html('<i class="fa-solid fa-play"></i> Load Map');
 
-                        cardBody.append(mapTitle).append(loadBtn);
+                        cardBody.append(mapTitle);
+                        if (_canChangeMap) {
+                            var loadBtn = $('<button>', {
+                                class: 'btn btn-sm btn-primary map-card-btn load-map-btn',
+                                'data-map-name': map.mapName
+                            }).html('<i class="fa-solid fa-play"></i> Load Map');
+                            cardBody.append(loadBtn);
+                        }
                         mapCard.append(mapImg).append(cardBody);
                         carousel.append(mapCard);
                     });

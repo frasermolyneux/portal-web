@@ -268,6 +268,10 @@ public class ProtectedNamesController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var canViewReport = await authorizationService.AuthorizeAsync(User, AuthPolicies.Players_ProtectedNames_Write).ConfigureAwait(false);
+            if (!canViewReport.Succeeded)
+                return Forbid();
+
             var reportResponse = await repositoryApiClient.Players.V1.GetProtectedNameUsageReport(id).ConfigureAwait(false);
 
             if (reportResponse.IsNotFound)

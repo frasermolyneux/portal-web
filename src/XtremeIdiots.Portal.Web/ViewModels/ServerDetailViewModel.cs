@@ -21,6 +21,11 @@ public class ServerDetailViewModel
     public bool CanViewStatus { get; set; }
     public bool CanEditServer { get; set; }
 
+    // Fine-grained RCON action flags — determines which buttons are rendered within the RCON tab
+    public bool CanSay { get; set; }
+    public bool CanChangeMap { get; set; }
+    public bool CanRestartServer { get; set; }
+
     // Overview tab data
     public AgentServerStatus? AgentStatus { get; set; }
     public List<GameServerStatDto> GameServerStats { get; set; } = [];

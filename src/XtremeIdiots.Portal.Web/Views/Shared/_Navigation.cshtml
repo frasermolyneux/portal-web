@@ -276,7 +276,7 @@
                 </a>
                 <div class="collapse @(IsAnyControllerSelected("User") ? "show" : "")" id="usersMenu">
                     <nav class="nav flex-column ms-3">
-                        <a class="nav-link text-white-50 @Html.IsSelected("User", "Index")" 
+                        <a policy="@AuthPolicies.Users_ManageClaims" class="nav-link text-white-50 @Html.IsSelected("User", "Index")" 
                            asp-controller="User" asp-action="Index">
                             <i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Manage Users
                         </a>

@@ -343,6 +343,17 @@ public class MapRotationsController(
 
             var rotation = apiResponse.Result.Data;
 
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                rotation.GameType,
+                AuthPolicies.MapRotations_Read,
+                nameof(Details),
+                "MapRotation",
+                $"MapRotationId:{id},GameType:{rotation.GameType}").ConfigureAwait(false);
+
+            if (authResult is not null)
+                return authResult;
+
             // Load map details for each map in the rotation
             var maps = new List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps.MapDto>();
             if (rotation.MapRotationMaps?.Count > 0)

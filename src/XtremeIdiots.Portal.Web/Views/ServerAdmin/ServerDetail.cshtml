@@ -177,7 +177,7 @@
                         <div class="ibox-title"><h5>Server Control</h5></div>
                         <div class="ibox-content">
                             <div class="d-grid gap-2">
-                                @if (Model.CanViewRcon)
+                                @if (Model.CanRestartServer)
                                 {
                                     <button id="sd-restartServer" class="btn btn-danger btn-sm" type="button">
                                         <i class="fa-solid fa-fw fa-arrows-rotate"></i> Restart Server
@@ -246,6 +246,8 @@
                         </div>
                     </div>
                     <div class="ibox-footer">
+                        @if (Model.CanSay)
+                        {
                         <form id="sd-sayForm" class="d-flex gap-2">
                             <input type="text" id="sd-sayMessage" class="form-control form-control-sm"
                                    placeholder="Type a message to send to server..." maxlength="255">
@@ -253,6 +255,7 @@
                                 <i class="fa fa-paper-plane"></i> Send
                             </button>
                         </form>
+                        }
                     </div>
                 </div>
             </div>
@@ -316,6 +319,8 @@
                             <div class="ibox-title"><h5>Map Actions</h5></div>
                             <div class="ibox-content">
                                 <div class="d-grid gap-2">
+                                    @if (Model.CanChangeMap)
+                                    {
                                     <button id="sd-restartMap" class="btn btn-primary" type="button">
                                         <i class="fa-solid fa-fw fa-arrows-rotate"></i> Restart Map
                                     </button>
@@ -325,6 +330,7 @@
                                     <button id="sd-nextMap" class="btn btn-primary" type="button">
                                         <i class="fa-solid fa-fw fa-forward"></i> Next Map
                                     </button>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -483,6 +489,7 @@
                 fastRestartMapSelector: '#sd-fastRestartMap',
                 nextMapSelector: '#sd-nextMap',
                 restartServerSelector: '#sd-restartServer',
+                canChangeMap: @Model.CanChangeMap.ToString().ToLower(),
                 onMapChanged: function () { RconServerStatus.load(); }
             });
 

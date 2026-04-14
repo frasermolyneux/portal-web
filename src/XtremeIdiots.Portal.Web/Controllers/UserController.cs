@@ -101,6 +101,7 @@ public class UserController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>The manage profile view with user data and available game servers</returns>
     [HttpGet]
+    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> ManageProfile(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -169,6 +170,7 @@ public class UserController(
     /// <returns>Redirects to Index with success/warning message</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> LogUserOut(string id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -212,6 +214,7 @@ public class UserController(
     /// <returns>Redirects to ManageProfile with success message</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> CreateUserClaim(Guid id, string claimType, string claimValue, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -332,6 +335,7 @@ public class UserController(
     /// <returns>Redirects to ManageProfile with success message</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> RemoveUserClaim(Guid id, Guid claimId, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>

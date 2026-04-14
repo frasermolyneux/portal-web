@@ -27,6 +27,7 @@ public class DemosController(
 {
 
     [HttpPost("GetDemoListAjax")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetDemoListAjax(GameType? id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>

@@ -44,6 +44,7 @@ public class DataController(
     /// <returns>DataTables-compatible JSON response with map data</returns>
     [HttpPost("Maps/GetMapListAjax")]
     [Authorize(Policy = AuthPolicies.Maps_Read)]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetMapListAjax(GameType? id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -104,6 +105,7 @@ public class DataController(
     /// <returns>DataTables-compatible JSON response with user profile data</returns>
     [HttpPost("Users/GetUsersAjax")]
     [Authorize(Policy = AuthPolicies.Users_Read)]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetUsersAjax(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>

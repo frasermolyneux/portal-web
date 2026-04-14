@@ -154,7 +154,12 @@ public class ServerAdminController(
             var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read);
             var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Write);
 
-            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth).ConfigureAwait(false);
+            // Check fine-grained RCON sub-action permissions in parallel
+            var sayAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Say);
+            var mapCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Map);
+            var restartSrvAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Restart);
+
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth).ConfigureAwait(false);
 
             var viewModel = new ServerDetailViewModel
             {
@@ -164,7 +169,10 @@ public class ServerAdminController(
                 CanViewChatLog = (await chatAuth.ConfigureAwait(false)).Succeeded,
                 CanViewMapRotation = (await mapRotAuth.ConfigureAwait(false)).Succeeded,
                 CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
-                CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded
+                CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded,
+                CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
+                CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
+                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded
             };
 
             // Fetch overview data (non-critical — page renders without it)
@@ -591,6 +599,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var sayAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Say,
+                nameof(SendSayCommand),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (sayAuthResult is not null)
+                return sayAuthResult;
+
             if (string.IsNullOrWhiteSpace(message))
             {
                 return Json(new { success = false, message = "Message cannot be empty" });
@@ -692,6 +712,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var mapAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Map,
+                nameof(LoadMap),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (mapAuthResult is not null)
+                return mapAuthResult;
+
             if (string.IsNullOrWhiteSpace(mapName))
             {
                 Logger.LogWarning("LoadMap called with empty map name for server {ServerId}", id);
@@ -735,6 +767,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var mapAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Map,
+                nameof(RestartMap),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (mapAuthResult is not null)
+                return mapAuthResult;
+
             var restartResult = await serversApiClient.Rcon.V1.RestartMap(id).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
@@ -762,6 +806,18 @@ public class ServerAdminController(
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(FastRestartMap), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
+
+            var mapAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Map,
+                nameof(FastRestartMap),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (mapAuthResult is not null)
+                return mapAuthResult;
 
             var restartResult = await serversApiClient.Rcon.V1.FastRestartMap(id).ConfigureAwait(false);
 
@@ -791,6 +847,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var mapAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Map,
+                nameof(NextMap),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (mapAuthResult is not null)
+                return mapAuthResult;
+
             var nextMapResult = await serversApiClient.Rcon.V1.NextMap(id).ConfigureAwait(false);
 
             if (!nextMapResult.IsSuccess)
@@ -818,6 +886,18 @@ public class ServerAdminController(
             var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(RestartServer), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
+
+            var restartAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Restart,
+                nameof(RestartServer),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (restartAuthResult is not null)
+                return restartAuthResult;
 
             var restartResult = await serversApiClient.Rcon.V1.Restart(id).ConfigureAwait(false);
 
@@ -1414,6 +1494,7 @@ public class ServerAdminController(
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthPolicies.ChatLog_ReadServer)]
     public async Task<IActionResult> ChatLogPermaLink(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -1426,7 +1507,23 @@ public class ServerAdminController(
                 return NotFound();
             }
 
-            return View(chatMessageApiResponse.Result.Data);
+            var chatMessage = chatMessageApiResponse.Result.Data;
+            if (chatMessage.GameServer is not null)
+            {
+                var authResult = await CheckAuthorizationAsync(
+                    authorizationService,
+                    chatMessage.GameServer.GameType,
+                    AuthPolicies.ChatLog_ReadServer,
+                    nameof(ChatLogPermaLink),
+                    "ChatMessage",
+                    $"MessageId:{id},GameType:{chatMessage.GameServer.GameType}",
+                    chatMessage).ConfigureAwait(false);
+
+                if (authResult is not null)
+                    return authResult;
+            }
+
+            return View(chatMessage);
         }, nameof(ChatLogPermaLink)).ConfigureAwait(false);
     }
 
