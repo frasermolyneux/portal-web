@@ -73,7 +73,7 @@
         @* ═══ OVERVIEW TAB ═══ *@
         <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div class="row">
-                @* Server Info Card *@
+                @* Server Info & Player Count Chart *@
                 <div class="col-lg-4 col-md-6 mb-3">
                     <div class="ibox">
                         <div class="ibox-title"><h5>Server Information</h5></div>
@@ -110,6 +110,16 @@
                             </dl>
                         </div>
                     </div>
+
+                    @if (Model.GameServerStats.Any())
+                    {
+                        <div class="ibox mt-3">
+                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
+                            <div class="ibox-content">
+                                <div id="si-playerCountChart" style="height: 300px; width: 100%;"></div>
+                            </div>
+                        </div>
+                    }
                 </div>
 
                 @* Connected Players *@
@@ -137,21 +147,6 @@
                     </div>
                 </div>
             </div>
-
-            @* Player Count Chart *@
-            @if (Model.GameServerStats.Any())
-            {
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <div class="ibox">
-                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
-                            <div class="ibox-content">
-                                <div id="si-playerCountChart" style="height: 300px; width: 100%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
         </div>
 
         @* ═══ MAPS TAB ═══ *@
