@@ -94,7 +94,7 @@
             </a>
 
             <div>
-                <a class="nav-link text-white @Html.IsSelected("Servers", "Index")" href="#serversMenu" 
+                <a class="nav-link text-white @(IsAnyControllerSelected("Servers", "Maps") ? "active" : "")" href="#serversMenu" 
                    data-bs-toggle="collapse" data-testid="nav-servers-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("Servers", "Maps") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Servers 
@@ -124,13 +124,13 @@
             </a>
 
             <div policy="@AuthPolicies.AdminActions_Read">
-                <a class="nav-link text-white @Html.IsSelected("AdminActions", "Global")" href="#adminActionsMenu" 
+                <a class="nav-link text-white @(IsAnyControllerSelected("AdminActions") ? "active" : "")" href="#adminActionsMenu" 
                    data-bs-toggle="collapse" 
-                   aria-expanded="@(Html.IsSelected("AdminActions", "Global") != "" ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("AdminActions") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Admin Actions 
                     <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(Html.IsSelected("AdminActions", "Global") != "" ? "show" : "")" id="adminActionsMenu">
+                <div class="collapse @(IsAnyControllerSelected("AdminActions") ? "show" : "")" id="adminActionsMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "MyActions")" 
                            asp-controller="AdminActions" asp-action="MyActions">
@@ -149,7 +149,7 @@
             </div>
 
             <div policy="@AuthPolicies.GameServers_Admin_Read">
-                <a class="nav-link text-white @Html.IsSelected("ServerAdmin", "Index")" href="#serverAdminMenu" 
+                <a class="nav-link text-white @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations") ? "active" : "")" href="#serverAdminMenu" 
                    data-bs-toggle="collapse" data-testid="nav-serveradmin-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> Server Admin 
@@ -202,13 +202,13 @@
             @if (shouldShowChatLogMenu)
             {
                 <div>
-                    <a class="nav-link text-white @Html.IsSelected("ServerAdmin", "ChatLogIndex")" href="#chatLogMenu" 
+                    <a class="nav-link text-white @(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" || Html.IsSelected("ServerAdmin", "GameChatLog") != "" ? "active" : "")" href="#chatLogMenu" 
                        data-bs-toggle="collapse" data-testid="nav-chatlog-toggle" 
-                       aria-expanded="@(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" ? "true" : "false")">
+                       aria-expanded="@(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" || Html.IsSelected("ServerAdmin", "GameChatLog") != "" ? "true" : "false")">
                         <i class="fa-solid fa-fw fa-commenting" aria-hidden="true"></i> Chat Log 
                         <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                     </a>
-                    <div class="collapse @(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" ? "show" : "")" id="chatLogMenu">
+                    <div class="collapse @(Html.IsSelected("ServerAdmin", "ChatLogIndex") != "" || Html.IsSelected("ServerAdmin", "GameChatLog") != "" ? "show" : "")" id="chatLogMenu">
                         <nav class="nav flex-column ms-3">
                             @if (canViewGlobalChatLog)
                             {
@@ -231,7 +231,7 @@
             }
 
             <div policy="@AuthPolicies.Players_Read">
-                <a class="nav-link text-white @Html.IsSelected("Players", "Index")" href="#playersMenu" 
+                <a class="nav-link text-white @(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "active" : "")" href="#playersMenu" 
                    data-bs-toggle="collapse" data-testid="nav-players-toggle" 
                    aria-expanded="@(IsAnyControllerSelected("Players", "ProtectedNames", "PlayerAnalytics") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Players 
@@ -314,13 +314,13 @@
             </a>
 
             <div policy="@AuthPolicies.Demos_Read">
-                <a class="nav-link text-white @Html.IsSelected("Demos", "Index")" href="#demosMenu" 
+                <a class="nav-link text-white @Html.IsSelected("Demos")" href="#demosMenu" 
                    data-bs-toggle="collapse" data-testid="nav-demos-toggle" 
-                   aria-expanded="@(Html.IsSelected("Demos", "Index") != "" ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("Demos") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-film" aria-hidden="true"></i> Demo Manager 
                     <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(Html.IsSelected("Demos", "Index") != "" ? "show" : "")" id="demosMenu">
+                <div class="collapse @(IsAnyControllerSelected("Demos") ? "show" : "")" id="demosMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Demos", "Index")" 
                            asp-controller="Demos" asp-action="Index" data-testid="nav-demos-index">
