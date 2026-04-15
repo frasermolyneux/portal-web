@@ -11,10 +11,10 @@ public enum ActivityLogCategory
     BanFileMonitors,
     Demos,
     Maps,
+    MapRotations,
     UserManagement,
     Tags,
     ProtectedNames,
     Chat,
-    Notifications,
-    System
+    GlobalSettings
 }

@@ -302,7 +302,7 @@ public class DemosController(
 
             ViewData["FilterGame"] = filterGame;
 
-            TrackSuccessTelemetry(nameof(Delete), nameof(Delete), new Dictionary<string, string>
+            TrackSuccessTelemetry("DemoDeleteViewed", nameof(Delete), new Dictionary<string, string>
         {
  { "DemoId", id.ToString() },
  { "GameType", demoApiResult.Result.Data.GameType.ToString() },
@@ -336,7 +336,7 @@ public class DemosController(
 
             this.AddAlertSuccess($"The demo {demoApiResult.Result.Data.Title} has been successfully deleted from {demoApiResult.Result.Data.GameType}");
 
-            TrackSuccessTelemetry(nameof(DeleteConfirmed), nameof(DeleteConfirmed), new Dictionary<string, string>
+            TrackSuccessTelemetry("DemoDeleted", nameof(DeleteConfirmed), new Dictionary<string, string>
         {
  { "DemoId", id.ToString() },
  { "DemoTitle", demoApiResult.Result.Data.Title },

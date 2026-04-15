@@ -59,7 +59,7 @@ public class CredentialsController(
                 repositoryApiClient, gameServersList.Select(s => s.GameServerId), Logger, cancellationToken).ConfigureAwait(false);
             ViewBag.ServerConfigs = serverConfigs;
 
-            TrackSuccessTelemetry(nameof(Index), nameof(CredentialsController), new Dictionary<string, string>
+            TrackSuccessTelemetry("CredentialsAccessed", nameof(CredentialsController), new Dictionary<string, string>
             {
                 { nameof(CredentialsController), nameof(CredentialsController) },
                 { "Resource", "GameServerCredentials" },

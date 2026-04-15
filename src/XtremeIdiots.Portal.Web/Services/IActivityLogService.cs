@@ -15,7 +15,6 @@ public interface IActivityLogService
         TimeSpan timeRange,
         IReadOnlyList<ActivityLogCategory> categories,
         IReadOnlyList<string> eventNames,
-        bool includeReads,
         string? searchTerm,
         int skip,
         int take,

@@ -25,16 +25,16 @@ public class AgentTelemetryService(
         summaryQuery.Append($" | where tostring(customDimensions.ServerId) == '{EscapeKql(serverIdStr)}'");
         summaryQuery.Append(" | summarize lastEvent=max(timestamp),");
         summaryQuery.Append(" totalEvents=countif(timestamp > ago(1h)),");
-        summaryQuery.Append(" playerConnects=countif(name == 'PlayerConnected' and timestamp > ago(1h)),");
-        summaryQuery.Append(" chatMessages=countif(name == 'ChatMessagePersisted' and timestamp > ago(1h)),");
-        summaryQuery.Append(" bansDetected=countif(name == 'BanImported'),");
-        summaryQuery.Append(" moderationTriggers=countif(name == 'ChatModerationTriggered')");
+        summaryQuery.Append(" playerConnects=countif(name == 'Audit:PlayerConnected' and timestamp > ago(1h)),");
+        summaryQuery.Append(" chatMessages=countif(name == 'Audit:ChatMessagePersisted' and timestamp > ago(1h)),");
+        summaryQuery.Append(" bansDetected=countif(name == 'Audit:BanImported'),");
+        summaryQuery.Append(" moderationTriggers=countif(name == 'Audit:ChatModerationTriggered')");
 
         var mapQuery = new StringBuilder();
         mapQuery.Append("customEvents");
         mapQuery.Append(" | where timestamp > ago(24h)");
         mapQuery.Append($" | where tostring(customDimensions.ServerId) == '{EscapeKql(serverIdStr)}'");
-        mapQuery.Append(" | where name == 'MapChange'");
+        mapQuery.Append(" | where name == 'Audit:MapChange'");
         mapQuery.Append(" | top 1 by timestamp desc");
         mapQuery.Append(" | project timestamp, mapName=tostring(customDimensions.MapName)");
 
@@ -104,7 +104,7 @@ public class AgentTelemetryService(
         query.Append(" | where isnotempty(serverId)");
         query.Append(" | summarize lastEvent=max(timestamp),");
         query.Append(" eventCount=countif(timestamp > ago(1h)),");
-        query.Append(" playerConnects=countif(name == 'PlayerConnected' and timestamp > ago(1h)),");
+        query.Append(" playerConnects=countif(name == 'Audit:PlayerConnected' and timestamp > ago(1h)),");
         query.Append(" lastMap=take_any(tostring(customDimensions.MapName))");
         query.Append(" by serverId");
         query.Append(" | order by lastEvent desc");

@@ -38,8 +38,8 @@ public abstract class BaseController(
 
         var builder = AuditEvent.UserAction("UnauthorizedUserAccessAttempt", AuditAction.Execute)
             .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
-            .WithProperty("Controller", controllerName)
-            .WithProperty("Action", action)
+            .WithSource(controllerName)
+            .WithProperty("ActionMethod", action)
             .WithProperty("Resource", resource);
 
         if (!string.IsNullOrEmpty(context))
@@ -125,8 +125,8 @@ public abstract class BaseController(
 
         var builder = AuditEvent.UserAction(eventName, AuditAction.Execute)
             .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
-            .WithProperty("Controller", controllerName)
-            .WithProperty("Action", action);
+            .WithSource(controllerName)
+            .WithProperty("ActionMethod", action);
 
         if (additionalProperties is not null)
         {

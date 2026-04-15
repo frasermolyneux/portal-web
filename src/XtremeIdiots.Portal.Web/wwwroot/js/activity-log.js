@@ -3,7 +3,6 @@ $(document).ready(function () {
     const timeRangeSel = document.getElementById('filterTimeRange');
     const categorySel = document.getElementById('filterCategory');
     const eventNameSel = document.getElementById('filterEventName');
-    const includeReadsCb = document.getElementById('filterIncludeReads');
 
     const categoryBadgeClasses = {
         'Authentication': 'text-bg-primary',
@@ -15,12 +14,12 @@ $(document).ready(function () {
         'BanFileMonitors': 'text-bg-secondary',
         'Demos': 'text-bg-secondary',
         'Maps': 'text-bg-info',
+        'MapRotations': 'text-bg-info',
         'UserManagement': 'text-bg-primary',
         'Tags': 'text-bg-secondary',
         'ProtectedNames': 'text-bg-warning',
         'Chat': 'text-bg-info',
-        'Notifications': 'text-bg-secondary',
-        'System': 'text-bg-dark'
+        'GlobalSettings': 'text-bg-dark'
     };
 
     function renderCategoryBadge(category) {
@@ -66,7 +65,7 @@ $(document).ready(function () {
 
     function renderSource(data, type, row) {
         var parts = [];
-        if (row.controller) parts.push(row.controller);
+        if (row.sourceComponent) parts.push(row.sourceComponent);
         if (row.action) parts.push(row.action);
         return parts.length > 0 ? '<small>' + escapeHtml(parts.join('/')) + '</small>' : '';
     }
@@ -95,17 +94,15 @@ $(document).ready(function () {
         autoWidth: false,
         order: [[0, 'desc']],
         stateSaveParams: function (settings, data) {
-            data._activityLogVersion = 2;
+            data._activityLogVersion = 3;
             if (timeRangeSel) data.timeRange = timeRangeSel.value;
             if (categorySel) data.categories = getSelectedValues(categorySel);
             if (eventNameSel) data.eventNames = getSelectedValues(eventNameSel);
-            if (includeReadsCb) data.includeReads = includeReadsCb.checked;
         },
         stateLoadParams: function (settings, data) {
-            if (data._activityLogVersion !== 2) return false;
+            if (data._activityLogVersion !== 3) return false;
             if (timeRangeSel && data.timeRange) timeRangeSel.value = data.timeRange;
             if (categorySel && data.categories) setSelectedValues(categorySel, data.categories);
-            if (includeReadsCb && typeof data.includeReads !== 'undefined') includeReadsCb.checked = data.includeReads;
         },
         columnDefs: [
             { targets: 0, responsivePriority: 1 },
@@ -137,8 +134,6 @@ $(document).ready(function () {
                 var evts = getSelectedValues(eventNameSel);
                 if (evts.length) qs.push('eventNames=' + encodeURIComponent(evts.join(',')));
 
-                if (includeReadsCb?.checked) qs.push('includeReads=true');
-
                 this.url = baseUrl + (qs.length ? ('?' + qs.join('&')) : '');
             }
         },
@@ -156,14 +151,14 @@ $(document).ready(function () {
                 render: function (data) { return '<code>' + escapeHtml(data) + '</code>'; }
             },
             {
-                data: 'username', name: 'username', orderable: true,
+                data: 'actorName', name: 'actorname', orderable: true,
                 render: function (data, type, row) {
                     if (!data) return '<span class="text-muted">—</span>';
                     return escapeHtml(data);
                 }
             },
             {
-                data: null, name: 'controller', orderable: true,
+                data: null, name: 'sourcecomponent', orderable: true,
                 render: renderSource
             },
             {
@@ -183,9 +178,8 @@ $(document).ready(function () {
         eventNamesController = new AbortController();
 
         var cats = getSelectedValues(categorySel);
-        var includeReads = includeReadsCb?.checked || false;
-        var url = '/User/GetActivityLogEvents?includeReads=' + includeReads;
-        if (cats.length) url += '&categories=' + encodeURIComponent(cats.join(','));
+        var url = '/User/GetActivityLogEvents';
+        if (cats.length) url += '?categories=' + encodeURIComponent(cats.join(','));
 
         fetch(url, { signal: eventNamesController.signal })
             .then(function (r) { return r.json(); })
@@ -231,15 +225,9 @@ $(document).ready(function () {
         table.page('first').draw(false);
     });
 
-    includeReadsCb?.addEventListener('change', function () {
-        loadEventNames([], false);
-        table.page('first').draw(false);
-    });
-
     document.getElementById('resetFilters')?.addEventListener('click', function () {
         timeRangeSel.value = '24h';
         setSelectedValues(categorySel, []);
-        includeReadsCb.checked = false;
         table.search('');
         loadEventNames([], false);
         table.page('first').draw(false);

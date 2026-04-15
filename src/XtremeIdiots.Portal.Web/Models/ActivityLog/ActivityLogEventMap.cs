@@ -1,110 +1,106 @@
 namespace XtremeIdiots.Portal.Web.Models.ActivityLog;
 
 /// <summary>
-/// Maps Application Insights custom event names to categories and classifies them as read or write operations
+/// Maps Application Insights custom event names (Audit: prefixed) to categories.
+/// All events are write/mutation operations — read audits have been removed.
 /// </summary>
 public static class ActivityLogEventMap
 {
-    public readonly static Dictionary<string, (ActivityLogCategory Category, bool IsWrite)> Events = new()
+    public readonly static Dictionary<string, ActivityLogCategory> Events = new()
     {
         // Authentication
-        ["UserLogin"] = (ActivityLogCategory.Authentication, true),
-        ["UserLoginFailed"] = (ActivityLogCategory.Authentication, true),
-        ["UserLoginLocked"] = (ActivityLogCategory.Authentication, true),
-        ["UserLogout"] = (ActivityLogCategory.Authentication, true),
+        ["Audit:UserLoggedIn"] = ActivityLogCategory.Authentication,
+        ["Audit:UserLogin"] = ActivityLogCategory.Authentication,
+        ["Audit:UserLogout"] = ActivityLogCategory.Authentication,
 
         // Authorization
-        ["UnauthorizedUserAccessAttempt"] = (ActivityLogCategory.Authorization, true),
-        ["UnauthorizedAccess"] = (ActivityLogCategory.Authorization, true),
+        ["Audit:UnauthorizedUserAccessAttempt"] = ActivityLogCategory.Authorization,
+        ["Audit:UnauthorizedAccess"] = ActivityLogCategory.Authorization,
 
         // Admin Actions
-        ["AdminActionCreated"] = (ActivityLogCategory.AdminActions, true),
-        ["AdminActionEdited"] = (ActivityLogCategory.AdminActions, true),
-        ["AdminActionDeleted"] = (ActivityLogCategory.AdminActions, true),
-        ["AdminActionClaimed"] = (ActivityLogCategory.AdminActions, true),
-        ["AdminActionLifted"] = (ActivityLogCategory.AdminActions, true),
-        ["AdminActionTopicCreated"] = (ActivityLogCategory.AdminActions, true),
-        ["AdminActionsDataLoaded"] = (ActivityLogCategory.AdminActions, false),
-        ["UnclaimedAdminActionsDataLoaded"] = (ActivityLogCategory.AdminActions, false),
-        ["MyAdminActionsDataLoaded"] = (ActivityLogCategory.AdminActions, false),
-        ["LatestAdminActionsViewed"] = (ActivityLogCategory.AdminActions, false),
+        ["Audit:AdminActionCreated"] = ActivityLogCategory.AdminActions,
+        ["Audit:AdminActionEdited"] = ActivityLogCategory.AdminActions,
+        ["Audit:AdminActionDeleted"] = ActivityLogCategory.AdminActions,
+        ["Audit:AdminActionClaimed"] = ActivityLogCategory.AdminActions,
+        ["Audit:AdminActionLifted"] = ActivityLogCategory.AdminActions,
+        ["Audit:AdminActionTopicCreated"] = ActivityLogCategory.AdminActions,
 
         // Player Management
-        ["PlayerKicked"] = (ActivityLogCategory.PlayerManagement, true),
-        ["RconPlayerBanned"] = (ActivityLogCategory.PlayerManagement, true),
-        ["RconPlayerKicked"] = (ActivityLogCategory.PlayerManagement, true),
-        ["RconPlayerTempBanned"] = (ActivityLogCategory.PlayerManagement, true),
-        ["PlayerDetailsViewed"] = (ActivityLogCategory.PlayerManagement, false),
-        ["PlayersListLoaded"] = (ActivityLogCategory.PlayerManagement, false),
-        ["PlayersDataLoaded"] = (ActivityLogCategory.PlayerManagement, false),
-        ["IPAddressDetailsViewed"] = (ActivityLogCategory.PlayerManagement, false),
+        ["Audit:RconPlayerKicked"] = ActivityLogCategory.PlayerManagement,
+        ["Audit:RconPlayerBanned"] = ActivityLogCategory.PlayerManagement,
+        ["Audit:RconPlayerTempBanned"] = ActivityLogCategory.PlayerManagement,
+        ["Audit:PlayerTagAdded"] = ActivityLogCategory.PlayerManagement,
+        ["Audit:PlayerTagRemoved"] = ActivityLogCategory.PlayerManagement,
 
         // Game Servers
-        ["GameServerCreated"] = (ActivityLogCategory.GameServers, true),
-        ["GameServerUpdated"] = (ActivityLogCategory.GameServers, true),
-        ["GameServerDeleted"] = (ActivityLogCategory.GameServers, true),
-        ["ServerRestarted"] = (ActivityLogCategory.GameServers, true),
-        ["MapRestarted"] = (ActivityLogCategory.GameServers, true),
-        ["MapFastRestarted"] = (ActivityLogCategory.GameServers, true),
-        ["NextMapTriggered"] = (ActivityLogCategory.GameServers, true),
-        ["SayCommandSent"] = (ActivityLogCategory.GameServers, true),
-        ["GameServersListAccessed"] = (ActivityLogCategory.GameServers, false),
-        ["GameServersBannersRetrieved"] = (ActivityLogCategory.GameServers, false),
-        ["GameTrackerBannerRetrieved"] = (ActivityLogCategory.GameServers, false),
-        ["GameTrackerBannerFallback"] = (ActivityLogCategory.GameServers, false),
+        ["Audit:GameServerCreated"] = ActivityLogCategory.GameServers,
+        ["Audit:GameServerUpdated"] = ActivityLogCategory.GameServers,
+        ["Audit:GameServerDeleted"] = ActivityLogCategory.GameServers,
+        ["Audit:GameServerConfigChanged"] = ActivityLogCategory.GameServers,
+        ["Audit:GameServerToggleChanged"] = ActivityLogCategory.GameServers,
+        ["Audit:GameServerOrderUpdated"] = ActivityLogCategory.GameServers,
+        ["Audit:ServerRestarted"] = ActivityLogCategory.GameServers,
+        ["Audit:MapRestarted"] = ActivityLogCategory.GameServers,
+        ["Audit:MapFastRestarted"] = ActivityLogCategory.GameServers,
+        ["Audit:NextMapTriggered"] = ActivityLogCategory.GameServers,
+        ["Audit:SayCommandSent"] = ActivityLogCategory.GameServers,
+        ["Audit:MapLoaded"] = ActivityLogCategory.GameServers,
 
         // Credentials
-        ["FtpCredential"] = (ActivityLogCategory.Credentials, false),
-        ["RconCredential"] = (ActivityLogCategory.Credentials, false),
-        ["CredentialsApiFailure"] = (ActivityLogCategory.Credentials, true),
+        ["Audit:CredentialsAccessed"] = ActivityLogCategory.Credentials,
+        ["Audit:CredentialsApiFailure"] = ActivityLogCategory.Credentials,
 
         // Ban File Monitors
-        ["BanFileMonitorCreated"] = (ActivityLogCategory.BanFileMonitors, true),
-        ["BanFileMonitorUpdated"] = (ActivityLogCategory.BanFileMonitors, true),
-        ["BanFileMonitorDeleted"] = (ActivityLogCategory.BanFileMonitors, true),
-        ["BanFileStatusRetrieved"] = (ActivityLogCategory.BanFileMonitors, false),
+        ["Audit:BanFileMonitorCreated"] = ActivityLogCategory.BanFileMonitors,
+        ["Audit:BanFileMonitorUpdated"] = ActivityLogCategory.BanFileMonitors,
+        ["Audit:BanFileMonitorDeleted"] = ActivityLogCategory.BanFileMonitors,
 
         // Demos
-        ["DemoListLoaded"] = (ActivityLogCategory.Demos, false),
+        ["Audit:RegenerateAuthKey"] = ActivityLogCategory.Demos,
+        ["Audit:ClientDemoUploaded"] = ActivityLogCategory.Demos,
+        ["Audit:DemoDeleteViewed"] = ActivityLogCategory.Demos,
+        ["Audit:DemoDeleted"] = ActivityLogCategory.Demos,
 
         // Maps
-        ["MapDeletedFromHost"] = (ActivityLogCategory.Maps, true),
-        ["MapPushedToRemote"] = (ActivityLogCategory.Maps, true),
-        ["MapsListRetrieved"] = (ActivityLogCategory.Maps, false),
-        ["MapLoaded"] = (ActivityLogCategory.Maps, false),
-        ["MapImageRetrieved"] = (ActivityLogCategory.Maps, false),
+        ["Audit:MapDeletedFromHost"] = ActivityLogCategory.Maps,
+        ["Audit:MapPushedToRemote"] = ActivityLogCategory.Maps,
+
+        // Map Rotations
+        ["Audit:MapRotationCreated"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationUpdated"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationDeleted"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentCreated"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentEdited"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentDeleted"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentSynced"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentActivated"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentDeactivated"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationAssignmentVerified"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationOperationCancelled"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationOrchestrationTerminated"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationImported"] = ActivityLogCategory.MapRotations,
+        ["Audit:MapRotationImportConfirmed"] = ActivityLogCategory.MapRotations,
 
         // User Management
-        ["UserClaimCreated"] = (ActivityLogCategory.UserManagement, true),
-        ["UserClaimRemoved"] = (ActivityLogCategory.UserManagement, true),
-        ["UserForceLoggedOut"] = (ActivityLogCategory.UserManagement, true),
-        ["UserNotificationPreferencesUpdated"] = (ActivityLogCategory.UserManagement, true),
-        ["UsersListRetrieved"] = (ActivityLogCategory.UserManagement, false),
-        ["UserSearchCompleted"] = (ActivityLogCategory.UserManagement, false),
+        ["Audit:UserClaimCreated"] = ActivityLogCategory.UserManagement,
+        ["Audit:UserClaimRemoved"] = ActivityLogCategory.UserManagement,
+        ["Audit:UserForceLoggedOut"] = ActivityLogCategory.UserManagement,
+        ["Audit:UserNotificationPreferencesUpdated"] = ActivityLogCategory.UserManagement,
 
         // Tags
-        ["TagCreated"] = (ActivityLogCategory.Tags, true),
-        ["TagUpdated"] = (ActivityLogCategory.Tags, true),
-        ["TagDeleted"] = (ActivityLogCategory.Tags, true),
+        ["Audit:TagCreated"] = ActivityLogCategory.Tags,
+        ["Audit:TagUpdated"] = ActivityLogCategory.Tags,
+        ["Audit:TagDeleted"] = ActivityLogCategory.Tags,
 
         // Protected Names
-        ["ProtectedNameCreated"] = (ActivityLogCategory.ProtectedNames, true),
-        ["ProtectedNameDeleted"] = (ActivityLogCategory.ProtectedNames, true),
-        ["ProtectedNamesViewed"] = (ActivityLogCategory.ProtectedNames, false),
-        ["ProtectedNameReportViewed"] = (ActivityLogCategory.ProtectedNames, false),
+        ["Audit:ProtectedNameCreated"] = ActivityLogCategory.ProtectedNames,
+        ["Audit:ProtectedNameDeleted"] = ActivityLogCategory.ProtectedNames,
 
         // Chat
-        ["ChatMessageLockToggled"] = (ActivityLogCategory.Chat, true),
-        ["ChatLogLoaded"] = (ActivityLogCategory.Chat, false),
+        ["Audit:ChatMessageLockToggled"] = ActivityLogCategory.Chat,
 
-        // Notifications
-        ["AllNotificationsMarkedAsRead"] = (ActivityLogCategory.Notifications, true),
-        ["NotificationMarkedAsRead"] = (ActivityLogCategory.Notifications, true),
-
-        // System
-        ["HealthCheckPassed"] = (ActivityLogCategory.System, false),
-        ["HealthCheckFailed"] = (ActivityLogCategory.System, true),
-        ["ChangeLogAccessed"] = (ActivityLogCategory.System, false),
+        // Global Settings
+        ["Audit:GlobalSettingsUpdated"] = ActivityLogCategory.GlobalSettings,
     };
 
     /// <summary>
@@ -113,19 +109,7 @@ public static class ActivityLogEventMap
     public static IReadOnlyList<string> GetEventsByCategory(ActivityLogCategory category)
     {
         return Events
-            .Where(e => e.Value.Category == category)
-            .Select(e => e.Key)
-            .OrderBy(e => e)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Gets all write (mutation) event names
-    /// </summary>
-    public static IReadOnlyList<string> GetWriteEvents()
-    {
-        return Events
-            .Where(e => e.Value.IsWrite)
+            .Where(e => e.Value == category)
             .Select(e => e.Key)
             .OrderBy(e => e)
             .ToList();
@@ -136,29 +120,16 @@ public static class ActivityLogEventMap
     /// </summary>
     public static ActivityLogCategory? GetCategory(string eventName)
     {
-        return Events.TryGetValue(eventName, out var mapping) ? mapping.Category : null;
+        return Events.TryGetValue(eventName, out var category) ? category : null;
     }
 
     /// <summary>
-    /// Gets events by category filtered by read/write scope
+    /// Gets all categories that have at least one event
     /// </summary>
-    public static IReadOnlyList<string> GetEventsByCategory(ActivityLogCategory category, bool includeReads)
+    public static IReadOnlyList<ActivityLogCategory> GetActiveCategories()
     {
         return Events
-            .Where(e => e.Value.Category == category && (includeReads || e.Value.IsWrite))
-            .Select(e => e.Key)
-            .OrderBy(e => e)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Gets all categories that have at least one event matching the scope filter
-    /// </summary>
-    public static IReadOnlyList<ActivityLogCategory> GetActiveCategories(bool includeReads)
-    {
-        return Events
-            .Where(e => includeReads || e.Value.IsWrite)
-            .Select(e => e.Value.Category)
+            .Select(e => e.Value)
             .Distinct()
             .OrderBy(c => c.ToString())
             .ToList();

@@ -123,8 +123,8 @@ public abstract class BaseApiController(
 
         var builder = AuditEvent.UserAction(eventName, AuditAction.Execute)
             .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
-            .WithProperty(nameof(Controller), controllerName)
-            .WithProperty(nameof(Action), action);
+            .WithSource(controllerName)
+            .WithProperty("ActionMethod", action);
 
         if (additionalProperties is not null)
         {
@@ -146,8 +146,8 @@ public abstract class BaseApiController(
 
         var builder = AuditEvent.UserAction("UnauthorizedAccess", AuditAction.Execute)
             .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
-            .WithProperty(nameof(Controller), controllerName)
-            .WithProperty(nameof(Action), action)
+            .WithSource(controllerName)
+            .WithProperty("ActionMethod", action)
             .WithProperty("ResourceType", resourceType);
 
         if (!string.IsNullOrEmpty(context))

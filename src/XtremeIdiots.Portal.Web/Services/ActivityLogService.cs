@@ -16,14 +16,14 @@ public class ActivityLogService(
 
     private readonly static HashSet<string> knownPropertyKeys =
     [
-        "LoggedInAdminId", "LoggedInUsername", "Controller", "Action"
+        "Audit.ActorId", "Audit.ActorName", "Audit.SourceComponent", "Audit.Action",
+        "Audit.Category"
     ];
 
     public async Task<ActivityLogQueryResult> QueryEventsAsync(
         TimeSpan timeRange,
         IReadOnlyList<ActivityLogCategory> categories,
         IReadOnlyList<string> eventNames,
-        bool includeReads,
         string? searchTerm,
         int skip,
         int take,
@@ -33,7 +33,7 @@ public class ActivityLogService(
     {
         var resourceId = GetAppInsightsResourceId();
 
-        var allowedEvents = GetAllowedEventNames(categories, eventNames, includeReads);
+        var allowedEvents = GetAllowedEventNames(categories, eventNames);
         if (allowedEvents.Count == 0)
         {
             return new ActivityLogQueryResult();
@@ -89,16 +89,15 @@ public class ActivityLogService(
         return resourceId;
     }
 
-    private static List<string> GetAllowedEventNames(IReadOnlyList<ActivityLogCategory> categories, IReadOnlyList<string> eventNames, bool includeReads)
+    private static List<string> GetAllowedEventNames(IReadOnlyList<ActivityLogCategory> categories, IReadOnlyList<string> eventNames)
     {
         if (eventNames.Count > 0)
         {
             return
             [
                 .. eventNames
-                    .Where(e => ActivityLogEventMap.Events.TryGetValue(e, out var mapping)
-                        && (includeReads || mapping.IsWrite)
-                        && (categories.Count == 0 || categories.Contains(mapping.Category)))
+                    .Where(e => ActivityLogEventMap.Events.ContainsKey(e)
+                        && (categories.Count == 0 || categories.Contains(ActivityLogEventMap.Events[e])))
             ];
         }
 
@@ -107,17 +106,12 @@ public class ActivityLogService(
             return
             [
                 .. categories
-                    .SelectMany(cat => ActivityLogEventMap.GetEventsByCategory(cat, includeReads))
+                    .SelectMany(ActivityLogEventMap.GetEventsByCategory)
                     .Distinct()
             ];
         }
 
-        return
-        [
-            .. ActivityLogEventMap.Events
-                .Where(e => includeReads || e.Value.IsWrite)
-                .Select(e => e.Key)
-        ];
+        return [.. ActivityLogEventMap.Events.Keys];
     }
 
     private static string BuildEventNameFilter(IReadOnlyList<string> eventNames)
@@ -132,7 +126,7 @@ public class ActivityLogService(
             return null;
 
         var escaped = EscapeKql(searchTerm);
-        return $"(name contains '{escaped}' or tostring(customDimensions.LoggedInUsername) contains '{escaped}' or tostring(customDimensions.Controller) contains '{escaped}' or tostring(customDimensions.Action) contains '{escaped}' or tostring(customDimensions) contains '{escaped}')";
+        return $"(name contains '{escaped}' or tostring(customDimensions.[\"Audit.ActorName\"]) contains '{escaped}' or tostring(customDimensions.[\"Audit.SourceComponent\"]) contains '{escaped}' or tostring(customDimensions.[\"Audit.Action\"]) contains '{escaped}' or tostring(customDimensions) contains '{escaped}')";
     }
 
     private static string BuildOrderBy(string sortColumn, string sortDirection)
@@ -142,8 +136,8 @@ public class ActivityLogService(
         return sortColumn.ToLowerInvariant() switch
         {
             "eventname" => $"name {dir}",
-            "username" => $"tostring(customDimensions.LoggedInUsername) {dir}",
-            "controller" => $"tostring(customDimensions.Controller) {dir}",
+            "actorname" => $"tostring(customDimensions.[\"Audit.ActorName\"]) {dir}",
+            "sourcecomponent" => $"tostring(customDimensions.[\"Audit.SourceComponent\"]) {dir}",
             _ => $"timestamp {dir}"
         };
     }
@@ -287,13 +281,13 @@ public class ActivityLogService(
             return;
 
         // Extract known fields to top-level properties
-        if (dimensions.TryGetValue("LoggedInAdminId", out var userId))
-            entry.UserId = userId;
-        if (dimensions.TryGetValue("LoggedInUsername", out var username))
-            entry.Username = username;
-        if (dimensions.TryGetValue("Controller", out var controller))
-            entry.Controller = controller;
-        if (dimensions.TryGetValue("Action", out var action))
+        if (dimensions.TryGetValue("Audit.ActorId", out var actorId))
+            entry.ActorId = actorId;
+        if (dimensions.TryGetValue("Audit.ActorName", out var actorName))
+            entry.ActorName = actorName;
+        if (dimensions.TryGetValue("Audit.SourceComponent", out var sourceComponent))
+            entry.SourceComponent = sourceComponent;
+        if (dimensions.TryGetValue("Audit.Action", out var action))
             entry.Action = action;
 
         // Remaining properties go into the Properties bag

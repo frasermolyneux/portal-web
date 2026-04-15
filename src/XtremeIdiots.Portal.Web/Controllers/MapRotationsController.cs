@@ -142,7 +142,7 @@ public class MapRotationsController(
                 return View(model);
             }
 
-            TrackSuccessTelemetry(nameof(Create), "MapRotationCreated", new Dictionary<string, string>
+            TrackSuccessTelemetry("MapRotationCreated", nameof(Create), new Dictionary<string, string>
             {
                 { nameof(model.GameType), model.GameType.ToString() },
                 { nameof(model.Title), model.Title }
@@ -321,7 +321,7 @@ public class MapRotationsController(
                 return View(model);
             }
 
-            TrackSuccessTelemetry(nameof(Edit), "MapRotationUpdated", new Dictionary<string, string>
+            TrackSuccessTelemetry("MapRotationUpdated", nameof(Edit), new Dictionary<string, string>
             {
                 { nameof(model.MapRotationId), model.MapRotationId.ToString() },
                 { nameof(model.Title), model.Title }
@@ -441,7 +441,7 @@ public class MapRotationsController(
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            TrackSuccessTelemetry(nameof(Delete), "MapRotationDeleted", new Dictionary<string, string>
+            TrackSuccessTelemetry("MapRotationDeleted", nameof(Delete), new Dictionary<string, string>
             {
                 { "MapRotationId", id.ToString() },
                 { "Title", rotation.Title }
@@ -557,7 +557,7 @@ public class MapRotationsController(
                 return View(model);
             }
 
-            TrackSuccessTelemetry(nameof(CreateAssignment), "MapRotationAssignmentCreated", new Dictionary<string, string>
+            TrackSuccessTelemetry("MapRotationAssignmentCreated", nameof(CreateAssignment), new Dictionary<string, string>
             {
                 { nameof(model.MapRotationId), model.MapRotationId.ToString() },
                 { nameof(model.GameServerId), model.GameServerId.ToString() }

@@ -41,7 +41,6 @@ public class ActivityLogController(
         [FromQuery] string? timeRange,
         [FromQuery] string? categories,
         [FromQuery] string? eventNames,
-        [FromQuery] bool includeReads = false,
         CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -81,7 +80,6 @@ public class ActivityLogController(
                 timeSpan,
                 parsedCategories,
                 parsedEventNames,
-                includeReads,
                 searchTerm,
                 model.Start,
                 model.Length,
@@ -103,15 +101,14 @@ public class ActivityLogController(
     /// Returns event names for given categories (used for cascading filter dropdown)
     /// </summary>
     [HttpGet("GetActivityLogEvents")]
-    public IActionResult GetActivityLogEvents([FromQuery] string? categories, [FromQuery] bool includeReads = false)
+    public IActionResult GetActivityLogEvents([FromQuery] string? categories)
     {
         var parsedCategories = ParseCategories(categories);
 
         if (parsedCategories.Count == 0)
         {
             var allEvents = ActivityLogEventMap.Events
-                .Where(e => includeReads || e.Value.IsWrite)
-                .Select(e => new { name = e.Key, category = e.Value.Category.ToString() })
+                .Select(e => new { name = e.Key, category = e.Value.ToString() })
                 .OrderBy(e => e.name)
                 .ToList();
 
@@ -119,7 +116,7 @@ public class ActivityLogController(
         }
 
         var events = parsedCategories
-            .SelectMany(cat => ActivityLogEventMap.GetEventsByCategory(cat, includeReads)
+            .SelectMany(cat => ActivityLogEventMap.GetEventsByCategory(cat)
                 .Select(e => new { name = e, category = cat.ToString() }))
             .OrderBy(e => e.name)
             .ToList();
