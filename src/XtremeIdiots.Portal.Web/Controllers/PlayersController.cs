@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -25,7 +26,8 @@ public class PlayersController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<PlayersController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -88,13 +90,6 @@ public class PlayersController(
                     playerDetailsViewModel.EnrichedRelatedPlayers.Add(RelatedPlayerEnrichedViewModel.FromRelatedPlayerDto(rp));
                 }
             }
-
-            TrackSuccessTelemetry("PlayerDetailsViewed", "ViewPlayerDetails", new Dictionary<string, string>
-            {
-                { "PlayerId", id.ToString() },
-                { "GameType", playerData.GameType.ToString() },
-                { "IpAddressCount", playerData.PlayerIpAddresses?.Count.ToString() ?? "0" }
-            });
 
             return View(playerDetailsViewModel);
         }, nameof(Details)).ConfigureAwait(false);

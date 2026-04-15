@@ -2,6 +2,8 @@
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using MX.Observability.ApplicationInsights.Auditing.Models;
 
 using XtremeIdiots.Portal.Web.Extensions;
 
@@ -14,11 +16,13 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 public abstract class BaseApiController(
     TelemetryClient telemetryClient,
     ILogger logger,
-    IConfiguration configuration) : ControllerBase
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : ControllerBase
 {
     readonly protected TelemetryClient TelemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
     readonly protected ILogger Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     readonly protected IConfiguration Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    readonly protected IAuditLogger AuditLogger = auditLogger ?? throw new ArgumentNullException(nameof(auditLogger));
 
     /// <summary>
     /// Validates the model state and returns a BadRequest result if invalid
@@ -113,51 +117,46 @@ public abstract class BaseApiController(
     /// <summary>
     /// Tracks successful operations to Application Insights
     /// </summary>
-    /// <param name="eventName">Name of the event</param>
-    /// <param name="action">Action being performed</param>
-    /// <param name="additionalProperties">Additional properties to track</param>
     protected void TrackSuccessTelemetry(string eventName, string action, Dictionary<string, string>? additionalProperties = null)
     {
-        var successTelemetry = new EventTelemetry(eventName).Enrich(User);
-
         var controllerName = GetType().Name.Replace(nameof(Controller), "");
-        successTelemetry.Properties.TryAdd(nameof(Controller), controllerName);
-        successTelemetry.Properties.TryAdd(nameof(Action), action);
+
+        var builder = AuditEvent.UserAction(eventName, AuditAction.Execute)
+            .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+            .WithProperty(nameof(Controller), controllerName)
+            .WithProperty(nameof(Action), action);
 
         if (additionalProperties is not null)
         {
             foreach (var kvp in additionalProperties)
             {
-                successTelemetry.Properties.TryAdd(kvp.Key, kvp.Value);
+                builder.WithProperty(kvp.Key, kvp.Value);
             }
         }
 
-        TelemetryClient.TrackEvent(successTelemetry);
+        AuditLogger.LogAudit(builder.Build());
     }
 
     /// <summary>
     /// Tracks unauthorized access attempts to Application Insights
     /// </summary>
-    /// <param name="action">Action that was attempted</param>
-    /// <param name="resourceType">Type of resource being accessed</param>
-    /// <param name="context">Additional context</param>
-    /// <param name="additionalData">Additional data about the attempt</param>
     protected void TrackUnauthorizedAccessAttempt(string action, string resourceType, string? context = null, object? additionalData = null)
     {
-        var unauthorizedTelemetry = new EventTelemetry("UnauthorizedAccess").Enrich(User);
-
         var controllerName = GetType().Name.Replace(nameof(Controller), "");
-        unauthorizedTelemetry.Properties.TryAdd(nameof(Controller), controllerName);
-        unauthorizedTelemetry.Properties.TryAdd(nameof(Action), action);
-        unauthorizedTelemetry.Properties.TryAdd("ResourceType", resourceType);
+
+        var builder = AuditEvent.UserAction("UnauthorizedAccess", AuditAction.Execute)
+            .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+            .WithProperty(nameof(Controller), controllerName)
+            .WithProperty(nameof(Action), action)
+            .WithProperty("ResourceType", resourceType);
 
         if (!string.IsNullOrEmpty(context))
-            unauthorizedTelemetry.Properties.TryAdd("Context", context);
+            builder.WithProperty("Context", context);
 
         if (additionalData is not null)
-            unauthorizedTelemetry.Properties.TryAdd("AdditionalData", additionalData.ToString());
+            builder.WithProperty("AdditionalData", additionalData.ToString() ?? string.Empty);
 
-        TelemetryClient.TrackEvent(unauthorizedTelemetry);
+        AuditLogger.LogAudit(builder.Build());
     }
 
     /// <summary>

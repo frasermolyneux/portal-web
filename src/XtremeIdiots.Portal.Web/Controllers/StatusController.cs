@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -31,11 +32,12 @@ public class StatusController(
     IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<StatusController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
-    /// Displays the ban file monitor status page showing synchronization status and file information
+    /// Displays the ban file monitor status pageshowing synchronization status and file information
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>View with ban file monitor status information or empty list if none found</returns>
@@ -83,12 +85,6 @@ public class StatusController(
                     });
                 }
             }
-
-            TrackSuccessTelemetry("BanFileStatusRetrieved", nameof(BanFileStatus), new Dictionary<string, string>
-            {
-                { "MonitorCount", models.Count.ToString() },
-                { "GameTypeCount", gameTypes.Length.ToString() }
-            });
 
             Logger.LogInformation("User {UserId} successfully retrieved {MonitorCount} ban file monitor statuses",
                 User.XtremeIdiotsId(), models.Count);
@@ -155,14 +151,6 @@ public class StatusController(
                     ActivityStatus = summary?.ActivityStatus ?? AgentActivityStatus.Offline
                 };
             }).ToList();
-
-            TrackSuccessTelemetry("AgentStatusRetrieved", nameof(AgentStatus), new Dictionary<string, string>
-            {
-                { "ServerCount", models.Count.ToString() },
-                { "ActiveCount", models.Count(m => m.ActivityStatus == AgentActivityStatus.Active).ToString() },
-                { "IdleCount", models.Count(m => m.ActivityStatus == AgentActivityStatus.Idle).ToString() },
-                { "OfflineCount", models.Count(m => m.ActivityStatus == AgentActivityStatus.Offline).ToString() }
-            });
 
             Logger.LogInformation("User {UserId} retrieved agent status for {ServerCount} servers",
                 User.XtremeIdiotsId(), models.Count);

@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -17,7 +18,8 @@ public class NotificationsApiController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<NotificationsApiController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     /// <summary>
     /// Gets the unread notification count for the current user
@@ -103,11 +105,6 @@ public class NotificationsApiController(
                 .MarkNotificationAsRead(id, cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackSuccessTelemetry("NotificationMarkedAsRead", nameof(MarkAsRead), new Dictionary<string, string>
-            {
-                { "NotificationId", id.ToString() }
-            });
-
             return Ok();
         }, nameof(MarkAsRead)).ConfigureAwait(false);
     }
@@ -131,8 +128,6 @@ public class NotificationsApiController(
             await repositoryApiClient.Notifications.V1
                 .MarkAllNotificationsAsRead(Guid.Parse(userProfileId), cancellationToken)
                 .ConfigureAwait(false);
-
-            TrackSuccessTelemetry("AllNotificationsMarkedAsRead", nameof(MarkAllAsRead));
 
             return Ok();
         }, nameof(MarkAllAsRead)).ConfigureAwait(false);

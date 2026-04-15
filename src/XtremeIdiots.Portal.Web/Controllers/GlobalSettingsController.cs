@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -18,7 +19,8 @@ public class GlobalSettingsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<GlobalSettingsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     private readonly static JsonSerializerOptions configJsonOptions = new()
     {
@@ -102,6 +104,7 @@ public class GlobalSettingsController(
             else
             {
                 this.AddAlertSuccess("Global settings saved successfully.");
+                TrackSuccessTelemetry("GlobalSettingsUpdated", nameof(Index));
             }
 
             return RedirectToAction(nameof(Index));

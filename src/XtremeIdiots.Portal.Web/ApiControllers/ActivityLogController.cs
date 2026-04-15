@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Models;
@@ -18,7 +19,8 @@ public class ActivityLogController(
     IActivityLogService activityLogService,
     TelemetryClient telemetryClient,
     ILogger<ActivityLogController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     private readonly static Dictionary<string, TimeSpan> timeRanges = new()
     {
@@ -86,14 +88,6 @@ public class ActivityLogController(
                 sortColumn,
                 sortDirection,
                 cancellationToken).ConfigureAwait(false);
-
-            TrackSuccessTelemetry("ActivityLogQueried", nameof(GetActivityLogAjax), new Dictionary<string, string>
-            {
-                { "TimeRange", timeRange ?? "24h" },
-                { "Categories", categories ?? "All" },
-                { "IncludeReads", includeReads.ToString() },
-                { "ResultCount", result.Entries.Count.ToString() }
-            });
 
             return Ok(new
             {

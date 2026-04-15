@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -24,7 +25,8 @@ public class AdminActionsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<AdminActionsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>

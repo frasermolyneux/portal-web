@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -25,7 +26,8 @@ public class ProfileController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ProfileController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     /// <summary>
     /// Displays the user profile management page
@@ -143,6 +145,7 @@ public class ProfileController(
                 .UpdateNotificationPreferences(userProfileId, editDtos, cancellationToken).ConfigureAwait(false);
 
             this.AddAlertSuccess("Notification preferences saved successfully.");
+            TrackSuccessTelemetry("UserNotificationPreferencesUpdated", nameof(Notifications));
             return RedirectToAction(nameof(Notifications));
         }, nameof(Notifications)).ConfigureAwait(false);
     }

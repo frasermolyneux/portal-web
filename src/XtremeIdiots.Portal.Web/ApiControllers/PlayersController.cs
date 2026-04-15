@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using MX.GeoLocation.Api.Client.V1;
 using Newtonsoft.Json;
@@ -24,7 +25,8 @@ public class PlayersController(
     IGeoLocationApiClient geoLocationClient,
     TelemetryClient telemetryClient,
     ILogger<PlayersController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -87,13 +89,6 @@ public class PlayersController(
                     intel.CountryCode
                 };
             }).ToList();
-
-            TrackSuccessTelemetry("PlayersDataLoaded", nameof(GetPlayersAjax), new Dictionary<string, string>
-            {
-                { "GameType", id?.ToString() ?? "All" },
-                { "Filter", filter.ToString() },
-                { "ResultCount", playerData.Count.ToString() }
-            });
 
             Logger.LogInformation("Successfully retrieved {Count} players for user {UserId} with filter {Filter}",
                 playerData.Count, User.XtremeIdiotsId(), filter);

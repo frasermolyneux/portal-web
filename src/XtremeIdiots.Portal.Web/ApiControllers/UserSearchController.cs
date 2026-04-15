@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -17,7 +18,8 @@ public class UserSearchController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<UserSearchController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -48,12 +50,6 @@ public class UserSearchController(
                 .Where(u => !string.IsNullOrWhiteSpace(u.DisplayName))
                 .Select(u => new { id = u.XtremeIdiotsForumId ?? u.UserProfileId.ToString(), text = u.DisplayName })
                 .ToArray();
-
-            TrackSuccessTelemetry("UserSearchCompleted", nameof(Users), new Dictionary<string, string>
-            {
-                { "SearchTerm", term ?? string.Empty },
-                { "ResultCount", data.Length.ToString() }
-            });
 
             return Ok(data);
         }, nameof(Users)).ConfigureAwait(false);

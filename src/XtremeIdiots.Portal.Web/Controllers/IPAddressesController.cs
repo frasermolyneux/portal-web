@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -22,7 +23,8 @@ public class IPAddressesController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<IPAddressesController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -56,13 +58,6 @@ public class IPAddressesController(
                 return authResult;
 
             var viewModel = await BuildIPAddressDetailsViewModelAsync(ipAddress, cancellationToken).ConfigureAwait(false);
-
-            TrackSuccessTelemetry("IPAddressDetailsViewed", nameof(Details), new Dictionary<string, string>
-            {
-                { "IpAddress", ipAddress },
-                { "PlayersCount", viewModel.TotalPlayersCount.ToString() },
-                { "HasIntelligence", (viewModel.Intelligence != null).ToString() }
-            });
 
             return View(viewModel);
         }, "ViewIPAddressDetails").ConfigureAwait(false);

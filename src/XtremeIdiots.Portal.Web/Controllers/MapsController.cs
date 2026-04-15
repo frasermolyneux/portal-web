@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -23,7 +24,8 @@ public class MapsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<MapsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -80,12 +82,6 @@ public class MapsController(
                     gameType, mapName, User.XtremeIdiotsId());
                 return Redirect("/images/noimage.jpg");
             }
-
-            TrackSuccessTelemetry("MapImageRetrieved", "MapImage", new Dictionary<string, string>
-            {
-                { "GameType", gameType.ToString() },
-                { "MapName", mapName }
-            });
 
             return Redirect(mapApiResponse.Result.Data.MapImageUri);
         }, nameof(MapImage)).ConfigureAwait(false);

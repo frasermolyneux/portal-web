@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -17,7 +18,8 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class ErrorsController(
     TelemetryClient telemetryClient,
     ILogger<ErrorsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     /// <summary>
     /// Displays an error page for the given HTTP status code with appropriate detail level
@@ -49,15 +51,6 @@ public class ErrorsController(
                     Logger.LogWarning("Detailed error information accessed by senior admin {UserId}: {ErrorMessage}",
                         User.XtremeIdiotsId(), context.Error.Message);
 
-                    TrackSuccessTelemetry(nameof(Display), nameof(ErrorsController), new Dictionary<string, string>
-                    {
-                        { nameof(ErrorsController), nameof(ErrorsController) },
-                        { "Resource", "ErrorDetails" },
-                        { "Context", "SeniorAdminAccess" },
-                        { "StatusCode", id.ToString() },
-                        { "HasExceptionContext", "true" }
-                    });
-
                     return Problem(
                         context.Error.StackTrace,
                         title: context.Error.Message);
@@ -66,29 +59,12 @@ public class ErrorsController(
                 {
                     Logger.LogInformation("No exception context available for status code {StatusCode}", id);
 
-                    TrackSuccessTelemetry(nameof(Display), nameof(ErrorsController), new Dictionary<string, string>
-                    {
-                        { nameof(ErrorsController), nameof(ErrorsController) },
-                        { "Resource", "ErrorPage" },
-                        { "Context", "SeniorAdminAccess" },
-                        { "StatusCode", id.ToString() },
-                        { "HasExceptionContext", "false" }
-                    });
-
                     return View(id);
                 }
             }
 
             Logger.LogInformation("Standard user {UserId} viewing generic error page for status code {StatusCode}",
                 User.XtremeIdiotsId(), id);
-
-            TrackSuccessTelemetry(nameof(Display), nameof(ErrorsController), new Dictionary<string, string>
-            {
-                { nameof(ErrorsController), nameof(ErrorsController) },
-                { "Resource", "ErrorPage" },
-                { "Context", "StandardUserAccess" },
-                { "StatusCode", id.ToString() }
-            });
 
             return View(id);
         }

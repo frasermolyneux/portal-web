@@ -21,6 +21,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -38,11 +39,12 @@ public class ServerAdminController(
     IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<ServerAdminController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
-    /// Displays the main server administration dashboard with available game servers
+    /// Displays the main server administration dashboardwith available game servers
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the request</param>
     /// <returns>View with list of administrable game servers</returns>
@@ -245,12 +247,6 @@ public class ServerAdminController(
                     Logger.LogWarning(ex, "Failed to load ban file monitors for server {ServerId}", id);
                 }
             }
-
-            TrackSuccessTelemetry("ServerDetailLoaded", nameof(ServerDetail), new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "ServerTitle", gs.Title }
-            });
 
             Logger.LogInformation("User {UserId} loaded server detail for {ServerId}", User.XtremeIdiotsId(), id);
 

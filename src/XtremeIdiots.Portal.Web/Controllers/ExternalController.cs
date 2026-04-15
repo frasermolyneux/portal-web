@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -20,7 +21,8 @@ public class ExternalController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ExternalController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -46,13 +48,6 @@ public class ExternalController(
 
             Logger.LogInformation("Successfully retrieved {Count} admin actions for external view",
                 adminActionDtos.Result.Data.Items?.Count() ?? 0);
-
-            TrackSuccessTelemetry("LatestAdminActionsViewed", nameof(LatestAdminActions), new Dictionary<string, string>
-            {
-                { "Controller", nameof(ExternalController).Replace("Controller", "") },
-                { "Resource", "AdminActionsView" },
-                { "Count", (adminActionDtos.Result.Data.Items?.Count() ?? 0).ToString() }
-            });
 
             return View(adminActionDtos.Result.Data.Items?.ToList() ?? []);
         }, nameof(LatestAdminActions)).ConfigureAwait(false);

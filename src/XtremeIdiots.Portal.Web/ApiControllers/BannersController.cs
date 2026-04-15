@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using MX.Api.Abstractions;
 
@@ -35,7 +36,8 @@ public class BannersController(
     IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
     ILogger<BannersController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     private const string GameServersListCacheKey = nameof(GameServersListCacheKey);
     private readonly string gameTrackerBannerBaseUrl = (configuration["GameTracker:BannerBaseUrl"] ?? "https://cache.gametracker.com/server_info/").TrimEnd('/') + "/";
@@ -88,14 +90,6 @@ public class BannersController(
                 if (!string.IsNullOrEmpty(banner))
                     htmlBanners.Add(banner);
             }
-
-            TrackSuccessTelemetry("GameServersBannersRetrieved", nameof(GetGameServers), new Dictionary<string, string>
-            {
-                { "Controller", nameof(BannersController).Replace("Controller", string.Empty) },
-                { "Resource", "GameServersBanners" },
-                { "Context", "BannerData" },
-                { "BannerCount", htmlBanners.Count.ToString() }
-            });
 
             return Ok(htmlBanners);
         }, "Retrieve game servers banners data").ConfigureAwait(false);
@@ -152,31 +146,11 @@ public class BannersController(
                 Logger.LogInformation("Successfully retrieved GameTracker banner for {IpAddress}:{QueryPort}/{ImageName}, redirecting to {BannerUrl}",
                     ipAddress, queryPort, imageName, bannerData.BannerUrl);
 
-                TrackSuccessTelemetry("GameTrackerBannerRetrieved", nameof(GetGameTrackerBanner), new Dictionary<string, string>
-                {
-                    { "Controller", nameof(BannersController).Replace("Controller", string.Empty) },
-                    { "Resource", "GameTrackerBanner" },
-                    { "IpAddress", ipAddress },
-                    { "QueryPort", queryPort },
-                    { "ImageName", imageName },
-                    { "BannerUrl", bannerData.BannerUrl ?? "null" }
-                });
-
                 return Redirect(bannerData.BannerUrl ?? $"{gameTrackerBannerBaseUrl}{ipAddress}:{queryPort}/{imageName}");
             }
 
             Logger.LogWarning("Failed to retrieve GameTracker banner data for {IpAddress}:{QueryPort}/{ImageName}, falling back to default GameTracker URL",
                 ipAddress, queryPort, imageName);
-
-            TrackSuccessTelemetry("GameTrackerBannerFallback", nameof(GetGameTrackerBanner), new Dictionary<string, string>
-            {
-                { "Controller", nameof(BannersController).Replace("Controller", string.Empty) },
-                { "Resource", "GameTrackerBanner" },
-                { "IpAddress", ipAddress },
-                { "QueryPort", queryPort },
-                { "ImageName", imageName },
-                { "Fallback", "true" }
-            });
 
             return Redirect($"{gameTrackerBannerBaseUrl}{ipAddress}:{queryPort}/{imageName}");
         }, nameof(GetGameTrackerBanner), $"ipAddress: {ipAddress}, queryPort: {queryPort}, imageName: {imageName}").ConfigureAwait(false);

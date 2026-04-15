@@ -3,6 +3,8 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using MX.Observability.ApplicationInsights.Auditing.Models;
 using Newtonsoft.Json;
 using System.Globalization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -23,7 +25,8 @@ public class DemosController(
         IRepositoryApiClient repositoryApiClient,
         TelemetryClient telemetryClient,
         ILogger<DemosController> logger,
-        IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+        IConfiguration configuration,
+        IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     [HttpPost("GetDemoListAjax")]
@@ -77,13 +80,6 @@ public class DemosController(
                     portalDemoEntries.Add(portalDemoDto);
                 }
             }
-
-            TrackSuccessTelemetry("DemoListLoaded", nameof(GetDemoListAjax), new Dictionary<string, string>
-            {
-                    { "GameType", id?.ToString() ?? "All" },
-                    { "ResultCount", portalDemoEntries.Count.ToString(CultureInfo.InvariantCulture) },
-                    { "TotalCount", demosApiResponse.Result?.Pagination?.TotalCount.ToString(CultureInfo.InvariantCulture) ?? "0"}
-            });
 
             return Ok(new
             {
@@ -194,13 +190,6 @@ public class DemosController(
                 demos.Count,
                 userIdFromProfile,
                 totalDemosRetrieved);
-
-            var clientListTelemetry = new EventTelemetry("ClientDemoListProvided");
-            clientListTelemetry.Properties.TryAdd("LoggedInAdminId", userIdFromProfile);
-            clientListTelemetry.Properties.TryAdd("DemoCount", demos.Count.ToString(CultureInfo.InvariantCulture));
-            clientListTelemetry.Properties.TryAdd("TotalRetrieved", totalDemosRetrieved.ToString(CultureInfo.InvariantCulture));
-            clientListTelemetry.Properties.TryAdd("FilteredOut", demosFilteredOut.ToString(CultureInfo.InvariantCulture));
-            TelemetryClient.TrackEvent(clientListTelemetry);
 
             return Ok(demos);
         }

@@ -2,6 +2,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -21,7 +22,8 @@ public class UsersController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<UsersController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -103,12 +105,6 @@ public class UsersController(
                 identity = identityLookup.GetValueOrDefault(p.UserProfileId.ToString())
             });
 
-            TrackSuccessTelemetry("UsersListRetrieved", nameof(GetUsersAjax), new Dictionary<string, string>
-            {
-                { "ResultCount", profileItems.Count.ToString() },
-                { "Filter", userProfileFilter?.ToString() ?? "None" }
-            });
-
             return Ok(new
             {
                 model.Draw,
@@ -177,13 +173,6 @@ public class UsersController(
                     e.SystemGenerated
                 };
             }).ToList();
-
-            TrackSuccessTelemetry("PermissionsReportRetrieved", nameof(GetPermissionsReportAjax), new Dictionary<string, string>
-            {
-                { "ResultCount", data.Count.ToString() },
-                { "GameTypeFilter", parsedGameType?.ToString() ?? "None" },
-                { "ClaimTypeFilter", parsedClaimType ?? "None" }
-            });
 
             return Ok(new
             {

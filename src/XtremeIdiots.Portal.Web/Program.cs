@@ -4,12 +4,11 @@ using Azure.Identity;
 using Azure.Monitor.Query;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Primitives;
+using MX.Observability.ApplicationInsights.Extensions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Client;
 using XtremeIdiots.Portal.Integrations.Forums;
@@ -63,14 +62,6 @@ if (!string.IsNullOrWhiteSpace(appConfigEndpoint))
     });
 }
 
-// Adaptive sampling settings
-var samplingSettings = new SamplingPercentageEstimatorSettings
-{
-    InitialSamplingPercentage = double.TryParse(builder.Configuration["ApplicationInsights:InitialSamplingPercentage"], out var initPct) ? initPct : 5,
-    MinSamplingPercentage = double.TryParse(builder.Configuration["ApplicationInsights:MinSamplingPercentage"], out var minPct) ? minPct : 5,
-    MaxSamplingPercentage = double.TryParse(builder.Configuration["ApplicationInsights:MaxSamplingPercentage"], out var maxPct) ? maxPct : 60
-};
-
 // Identity services (must run after Azure App Configuration is loaded)
 IdentityHostingStartup.ConfigureIdentityServices(builder.Services, builder.Configuration);
 
@@ -80,21 +71,11 @@ builder.Services.AddAzureAppConfiguration();
 builder.Services.AddSingleton<ITelemetryInitializer, TelemetryInitializer>();
 builder.Services.AddLogging();
 
-builder.Services.Configure<TelemetryConfiguration>(telemetryConfiguration =>
-{
-    var telemetryProcessorChainBuilder = telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder;
-    telemetryProcessorChainBuilder.Use(next => new DependencyFilterTelemetryProcessor(next, builder.Configuration));
-    telemetryProcessorChainBuilder.UseAdaptiveSampling(
-        settings: samplingSettings,
-        callback: null,
-        excludedTypes: "Exception;Event");
-    telemetryProcessorChainBuilder.Build();
-});
-
 builder.Services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
 {
     EnableAdaptiveSampling = false,
 });
+builder.Services.AddObservability();
 
 builder.Services.AddServiceProfiler();
 
@@ -180,17 +161,6 @@ var app = builder.Build();
 // Middleware pipeline
 app.UseForwardedHeaders();
 app.UseAzureAppConfiguration();
-
-// Update adaptive sampling settings when configuration refreshes
-ChangeToken.OnChange(
-    app.Configuration.GetReloadToken,
-    () =>
-    {
-        if (double.TryParse(app.Configuration["ApplicationInsights:MinSamplingPercentage"], out var min))
-            samplingSettings.MinSamplingPercentage = min;
-        if (double.TryParse(app.Configuration["ApplicationInsights:MaxSamplingPercentage"], out var max))
-            samplingSettings.MaxSamplingPercentage = max;
-    });
 
 if (app.Environment.IsDevelopment())
 {

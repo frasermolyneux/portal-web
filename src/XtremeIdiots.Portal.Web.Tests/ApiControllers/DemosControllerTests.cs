@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Moq;
+using MX.Observability.ApplicationInsights.Auditing;
 using System.Net;
 using MX.Api.Abstractions;
 using Newtonsoft.Json;
@@ -24,6 +25,7 @@ public class DemosControllerTests
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<DemosController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
+    private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
     private DemosController CreateSut(Dictionary<string, StringValues>? headers = null)
     {
@@ -43,7 +45,8 @@ public class DemosControllerTests
             mockRepositoryApiClient.Object,
             telemetryClient,
             mockLogger.Object,
-            mockConfiguration.Object);
+            mockConfiguration.Object,
+            auditLogger);
 
         var httpContext = new DefaultHttpContext();
         if (headers != null)

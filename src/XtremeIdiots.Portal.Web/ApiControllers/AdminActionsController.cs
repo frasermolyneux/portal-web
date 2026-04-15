@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using Newtonsoft.Json;
 
@@ -22,7 +23,8 @@ public class AdminActionsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<AdminActionsController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -86,13 +88,6 @@ public class AdminActionsController(
             }
 
             var items = apiResponse.Result.Data.Items.ToList();
-
-            TrackSuccessTelemetry("AdminActionsDataLoaded", nameof(GetAdminActionsAjax), new Dictionary<string, string>
-            {
-                { "GameType", gameType?.ToString() ?? "All" },
-                { "Filter", apiFilter?.ToString() ?? "None" },
-                { "ResultCount", items.Count.ToString() }
-            });
 
             Logger.LogInformation("Successfully retrieved {Count} admin actions for user {UserId}",
                 items.Count, User.XtremeIdiotsId());
@@ -201,12 +196,6 @@ public class AdminActionsController(
                 });
             }
 
-            TrackSuccessTelemetry("UnclaimedAdminActionsDataLoaded", nameof(GetUnclaimedAdminActionsAjax), new Dictionary<string, string>
-            {
-                { "GameType", gameType?.ToString() ?? "All" },
-                { "ResultCount", responseItems.Count.ToString() }
-            });
-
             Logger.LogInformation("Successfully retrieved {Count} unclaimed admin actions for user {UserId}",
                 responseItems.Count, User.XtremeIdiotsId());
 
@@ -278,13 +267,6 @@ public class AdminActionsController(
             }
 
             var items = apiResponse.Result.Data.Items.ToList();
-
-            TrackSuccessTelemetry("MyAdminActionsDataLoaded", nameof(GetMyAdminActionsAjax), new Dictionary<string, string>
-            {
-                { "GameType", gameType?.ToString() ?? "All" },
-                { "Filter", apiFilter?.ToString() ?? "None" },
-                { "ResultCount", items.Count.ToString() }
-            });
 
             Logger.LogInformation("Successfully retrieved {Count} admin actions for current user {UserId}",
                 items.Count, User.XtremeIdiotsId());

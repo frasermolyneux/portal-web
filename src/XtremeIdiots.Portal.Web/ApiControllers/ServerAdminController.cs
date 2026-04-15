@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -20,7 +21,8 @@ public class ServerAdminController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ServerAdminController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -137,15 +139,6 @@ public class ServerAdminController(
             return StatusCode(500, "Failed to retrieve chat log data");
         }
 
-        TrackSuccessTelemetry("ChatLogLoaded", "GetChatLog", new Dictionary<string, string>
-        {
-            { "GameType", gameType?.ToString() ?? "All" },
-            { "ServerId", serverId?.ToString() ?? "All" },
-            { "PlayerId", playerId?.ToString() ?? "All" },
-            { "LockedOnly", lockedOnly?.ToString() ?? "All" },
-            { "ResultCount", chatMessagesApiResponse.Result.Data.Items?.Count().ToString() ?? "0" }
-        });
-
         return Ok(new
         {
             model.Draw,
@@ -203,13 +196,6 @@ public class ServerAdminController(
                 Logger.LogError("Failed to retrieve server events for user {UserId}", User.XtremeIdiotsId());
                 return StatusCode(500, "Failed to retrieve server events data");
             }
-
-            TrackSuccessTelemetry("ServerEventsLoaded", nameof(GetServerEventsAjax), new Dictionary<string, string>
-            {
-                { "GameType", gameType ?? "All" },
-                { "GameServerId", gameServerId?.ToString() ?? "All" },
-                { "ResultCount", eventsApiResponse.Result.Data.Items?.Count().ToString() ?? "0" }
-            });
 
             return Ok(new
             {

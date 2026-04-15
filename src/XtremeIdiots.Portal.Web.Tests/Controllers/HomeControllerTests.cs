@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Controllers;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -14,13 +15,15 @@ public class HomeControllerTests
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<HomeController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
+    private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
     private HomeController CreateSut()
     {
         var controller = new HomeController(
             telemetryClient,
             mockLogger.Object,
-            mockConfiguration.Object);
+            mockConfiguration.Object,
+            auditLogger);
 
         var httpContext = new DefaultHttpContext
         {
@@ -47,7 +50,7 @@ public class HomeControllerTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new HomeController(null!, mockLogger.Object, mockConfiguration.Object));
+            new HomeController(null!, mockLogger.Object, mockConfiguration.Object, auditLogger));
     }
 
     [Fact]
@@ -55,7 +58,7 @@ public class HomeControllerTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new HomeController(telemetryClient, null!, mockConfiguration.Object));
+            new HomeController(telemetryClient, null!, mockConfiguration.Object, auditLogger));
     }
 
     [Fact]
@@ -63,7 +66,7 @@ public class HomeControllerTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new HomeController(telemetryClient, mockLogger.Object, null!));
+            new HomeController(telemetryClient, mockLogger.Object, null!, auditLogger));
     }
 
     [Fact]

@@ -1,6 +1,8 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using MX.Observability.ApplicationInsights.Auditing.Models;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
@@ -24,7 +26,8 @@ public class CredentialsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<CredentialsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -95,13 +98,13 @@ public class CredentialsController(
             else
             {
                 Logger.LogWarning("Failed game type credential query for user {UserId}", User.XtremeIdiotsId());
-                TelemetryClient.TrackEvent("CredentialsApiFailure", new Dictionary<string, string>
-                {
-                    { "Scope", "GameTypes" },
-                    { nameof(CredentialsController), nameof(CredentialsController) },
-                    { "Action", nameof(GetAuthorizedGameServersAsync) },
-                    { "UserId", User.XtremeIdiotsId() ?? "Unknown" }
-                });
+                AuditLogger.LogAudit(AuditEvent.UserAction("CredentialsApiFailure", AuditAction.Read)
+                    .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+                    .WithProperty("Scope", "GameTypes")
+                    .WithProperty("Controller", nameof(CredentialsController))
+                    .WithProperty("Action", nameof(GetAuthorizedGameServersAsync))
+                    .WithProperty("UserId", User.XtremeIdiotsId() ?? "Unknown")
+                    .Build());
             }
         }
 
@@ -124,13 +127,13 @@ public class CredentialsController(
             else
             {
                 Logger.LogWarning("Failed server id credential query for user {UserId}", User.XtremeIdiotsId());
-                TelemetryClient.TrackEvent("CredentialsApiFailure", new Dictionary<string, string>
-                {
-                    { "Scope", "ServerIds" },
-                    { nameof(CredentialsController), nameof(CredentialsController) },
-                    { "Action", nameof(GetAuthorizedGameServersAsync) },
-                    { "UserId", User.XtremeIdiotsId() ?? "Unknown" }
-                });
+                AuditLogger.LogAudit(AuditEvent.UserAction("CredentialsApiFailure", AuditAction.Read)
+                    .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+                    .WithProperty("Scope", "ServerIds")
+                    .WithProperty("Controller", nameof(CredentialsController))
+                    .WithProperty("Action", nameof(GetAuthorizedGameServersAsync))
+                    .WithProperty("UserId", User.XtremeIdiotsId() ?? "Unknown")
+                    .Build());
             }
         }
 

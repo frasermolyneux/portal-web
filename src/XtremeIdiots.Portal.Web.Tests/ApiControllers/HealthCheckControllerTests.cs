@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.InvisionCommunity.Api.Abstractions;
+using MX.Observability.ApplicationInsights.Auditing;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Web.ApiControllers;
 
@@ -17,6 +18,7 @@ public class HealthCheckControllerTests
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<HealthCheckController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
+    private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
     public HealthCheckControllerTests()
     {
@@ -30,7 +32,8 @@ public class HealthCheckControllerTests
             mockForumsClient.Object,
             telemetryClient,
             mockLogger.Object,
-            mockConfiguration.Object);
+            mockConfiguration.Object,
+            auditLogger);
 
         var httpContext = new DefaultHttpContext
         {
@@ -60,7 +63,8 @@ public class HealthCheckControllerTests
                 null!,
                 telemetryClient,
                 mockLogger.Object,
-                mockConfiguration.Object));
+                mockConfiguration.Object,
+                auditLogger));
     }
 
     [Fact]
@@ -72,7 +76,8 @@ public class HealthCheckControllerTests
                 mockForumsClient.Object,
                 null!,
                 mockLogger.Object,
-                mockConfiguration.Object));
+                mockConfiguration.Object,
+                auditLogger));
     }
 
     [Fact]
@@ -84,7 +89,8 @@ public class HealthCheckControllerTests
                 mockForumsClient.Object,
                 telemetryClient,
                 null!,
-                mockConfiguration.Object));
+                mockConfiguration.Object,
+                auditLogger));
     }
 
     [Fact]
@@ -96,7 +102,8 @@ public class HealthCheckControllerTests
                 mockForumsClient.Object,
                 telemetryClient,
                 mockLogger.Object,
-                null!));
+                null!,
+                auditLogger));
     }
 
     [Fact]
@@ -111,7 +118,8 @@ public class HealthCheckControllerTests
             mockForumsClient.Object,
             telemetryClient,
             mockLogger.Object,
-            config.Object);
+            config.Object,
+            auditLogger);
 
         // Assert
         Assert.NotNull(sut);

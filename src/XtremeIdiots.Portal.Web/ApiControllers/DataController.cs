@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using Newtonsoft.Json;
 
@@ -33,7 +34,8 @@ public class DataController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<DataController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -81,12 +83,6 @@ public class DataController(
                     User.XtremeIdiotsId(), id);
                 return StatusCode(500, "Failed to retrieve maps data");
             }
-
-            TrackSuccessTelemetry("MapsListRetrieved", nameof(GetMapListAjax), new Dictionary<string, string>
-            {
-                { "GameType", id?.ToString() ?? "All" },
-                { "ResultCount", mapsApiResponse.Result.Data.Items?.Count().ToString() ?? "0" }
-            });
 
             return Ok(new
             {

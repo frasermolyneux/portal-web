@@ -3,6 +3,8 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using MX.Observability.ApplicationInsights.Auditing.Models;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -43,7 +45,8 @@ public class DemosController(
     TelemetryClient telemetryClient,
     ILogger<DemosController> logger,
     IConfiguration configuration,
-    IHttpClientFactory httpClientFactory) : BaseController(telemetryClient, logger, configuration)
+    IHttpClientFactory httpClientFactory,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -59,8 +62,6 @@ public class DemosController(
             var userId = User.XtremeIdiotsId();
             Logger.LogInformation("User {UserId} accessing demo client configuration page", userId);
 
-            var hasAuthKey = false;
-
             if (!string.IsNullOrEmpty(userId))
             {
                 var userProfileApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(userId).ConfigureAwait(false);
@@ -68,19 +69,10 @@ public class DemosController(
                 if (!userProfileApiResponse.IsNotFound && userProfileApiResponse.Result?.Data is not null)
                 {
                     ViewData["ClientAuthKey"] = userProfileApiResponse.Result.Data.DemoAuthKey;
-                    hasAuthKey = true;
                 }
             }
 
             var demoManagerClientDto = await demosForumsClient.GetDemoManagerClient().ConfigureAwait(false);
-
-            TrackSuccessTelemetry(nameof(DemoClient), nameof(DemoClient), new Dictionary<string, string>
-            {
-                { nameof(DemosController), nameof(DemosController) },
-                { "Resource", nameof(DemoClient) },
-                { "Context", "DemoClientAccess" },
-                { "HasAuthKey", hasAuthKey.ToString() }
-            });
 
             return View(demoManagerClientDto);
         }, $"Display {nameof(DemoClient)} configuration page with authentication key").ConfigureAwait(false);
@@ -147,12 +139,6 @@ public class DemosController(
         {
             await Task.CompletedTask.ConfigureAwait(false);
 
-            TrackSuccessTelemetry(nameof(Index), nameof(Index), new Dictionary<string, string>
-            {
-                { nameof(DemosController), nameof(DemosController) },
-                { "Resource", nameof(Index) }
-            });
-
             return View();
         }, nameof(Index)).ConfigureAwait(false);
     }
@@ -170,13 +156,6 @@ public class DemosController(
             await Task.CompletedTask.ConfigureAwait(false);
 
             ViewData["GameType"] = id;
-
-            TrackSuccessTelemetry(nameof(GameIndex), nameof(GameIndex), new Dictionary<string, string>
-            {
-                { nameof(DemosController), nameof(DemosController) },
-                { "Resource", nameof(GameIndex) },
-                { "GameType", id?.ToString() ?? "null" }
-            });
 
             return View(nameof(Index));
         }, nameof(GameIndex)).ConfigureAwait(false);
@@ -239,13 +218,6 @@ public class DemosController(
                 }
             }
 
-            TrackSuccessTelemetry(nameof(GetDemoListAjax), nameof(GetDemoListAjax), new Dictionary<string, string>
-            {
-                { "GameType", id?.ToString() ?? "All" },
-                { "ResultCount", portalDemoEntries.Count.ToString() },
-                { "TotalCount", demosApiResponse.Result?.Pagination?.TotalCount.ToString() ?? "0" }
-            });
-
             return Json(new
             {
                 model.Draw,
@@ -306,14 +278,6 @@ public class DemosController(
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
             var downloadFileName = string.IsNullOrWhiteSpace(demo.FileName) ? $"{demo.DemoId}.dm_1" : demo.FileName;
-
-            TrackSuccessTelemetry(nameof(Download), nameof(Download), new Dictionary<string, string>
-            {
-                { "DemoId", id.ToString() },
-                { "DemoTitle", demo.Title },
-                { "GameType", demo.GameType.ToString() },
-                { "DownloadFileName", downloadFileName }
-            });
 
             return File(stream, contentType, downloadFileName);
         }, nameof(Download)).ConfigureAwait(false);
@@ -461,11 +425,6 @@ public class DemosController(
 
             Logger.LogInformation("ClientDemoList - Successfully provided {DemoCount} demos to client for user {UserId}", demos.Count, userIdFromProfile);
 
-            var clientListTelemetry = new EventTelemetry("ClientDemoListProvided");
-            clientListTelemetry.Properties.TryAdd("LoggedInAdminId", userIdFromProfile);
-            clientListTelemetry.Properties.TryAdd("DemoCount", demos.Count.ToString());
-            TelemetryClient.TrackEvent(clientListTelemetry);
-
             return Json(demos);
         }
         catch (Exception ex)
@@ -553,12 +512,12 @@ public class DemosController(
             Logger.LogInformation("User {UserId} successfully uploaded demo {FileName} for game type {GameType}",
             userIdFromProfile, file.FileName, gameType);
 
-            var clientUploadTelemetry = new EventTelemetry("ClientDemoUploaded");
-            clientUploadTelemetry.Properties.TryAdd("LoggedInAdminId", userIdFromProfile);
-            clientUploadTelemetry.Properties.TryAdd("FileName", file.FileName);
-            clientUploadTelemetry.Properties.TryAdd("GameType", gameType.ToString());
-            clientUploadTelemetry.Properties.TryAdd("FileSize", file.Length.ToString());
-            TelemetryClient.TrackEvent(clientUploadTelemetry);
+            var clientUploadTelemetry = AuditEvent.UserAction("ClientDemoUploaded", AuditAction.Create)
+                .WithProperty("LoggedInAdminId", userIdFromProfile)
+                .WithProperty("FileName", file.FileName)
+                .WithProperty("GameType", gameType.ToString())
+                .WithProperty("FileSize", file.Length.ToString());
+            AuditLogger.LogAudit(clientUploadTelemetry.Build());
 
             return Ok();
         }
@@ -626,11 +585,6 @@ public class DemosController(
             }
 
             Logger.LogInformation("User {UserId} successfully downloading demo {DemoId} via client", userIdFromProfile, id);
-
-            var clientDownloadTelemetry = new EventTelemetry("ClientDemoDownloaded")
-            .Enrich(demoApiResponse.Result.Data);
-            clientDownloadTelemetry.Properties.TryAdd("LoggedInAdminId", userIdFromProfile);
-            TelemetryClient.TrackEvent(clientDownloadTelemetry);
 
             return Redirect(demoApiResponse.Result.Data.FileUri);
         }

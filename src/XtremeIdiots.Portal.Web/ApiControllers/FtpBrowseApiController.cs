@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -15,7 +16,8 @@ public class FtpBrowseApiController(
     IServersApiClient serversApiClient,
     TelemetryClient telemetryClient,
     ILogger<FtpBrowseApiController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     [HttpGet("{gameServerId:guid}/browse")]
     public async Task<IActionResult> Browse(Guid gameServerId, [FromQuery] string? path = null)

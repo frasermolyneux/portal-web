@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using MX.Observability.ApplicationInsights.Auditing;
+
 namespace XtremeIdiots.Portal.Web.Controllers;
 
 /// <summary>
@@ -14,7 +16,8 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class BannersController(
     TelemetryClient telemetryClient,
     ILogger<BannersController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -25,16 +28,8 @@ public class BannersController(
     [HttpGet]
     public async Task<IActionResult> GameServersList(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            TrackSuccessTelemetry("GameServersListAccessed", nameof(GameServersList), new Dictionary<string, string>
-            {
-                { "Controller", nameof(BannersController) },
-                { "Resource", nameof(GameServersList) },
-                { "Context", "BannerManagement" }
-            });
-
-            return View();
-        }, "Display game servers list view for banner management").ConfigureAwait(false);
+        return await ExecuteWithErrorHandlingAsync(
+            async () => View(),
+            "Display game servers list view for banner management").ConfigureAwait(false);
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -20,7 +21,8 @@ public class IdentityController(
     IXtremeIdiotsAuth xtremeIdiotsAuth,
     TelemetryClient telemetryClient,
     ILogger<IdentityController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -55,6 +57,8 @@ public class IdentityController(
         {
             var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Identity", new { returnUrl });
             var properties = xtremeIdiotsAuth.ConfigureExternalAuthenticationProperties(redirectUrl);
+
+            TrackSuccessTelemetry("UserLoggedIn", nameof(LoginWithXtremeIdiots));
 
             return await Task.FromResult(new ChallengeResult("XtremeIdiots", properties)).ConfigureAwait(false);
         }, "LoginWithXtremeIdiots", "Anonymous");
@@ -94,23 +98,11 @@ public class IdentityController(
                     return RedirectToLocal(returnUrl);
 
                 case XtremeIdiotsAuthResult.Locked:
-                    TrackSuccessTelemetry("UserLoginLocked", "ExternalLoginCallback", new Dictionary<string, string>
-                    {
-                        { "Username", username ?? "Unknown" },
-                        { "LoginResult", "Locked" }
-                    });
-
                     return await IdentityError("Your account is currently locked").ConfigureAwait(false);
                 case XtremeIdiotsAuthResult.Failed:
                     return await IdentityError("There has been an issue logging you in with the XtremeIdiots provider").ConfigureAwait(false);
                 default:
                     Logger.LogWarning("User {Username} authentication failed with result: {Result}", username, result);
-
-                    TrackSuccessTelemetry("UserLoginFailed", "ExternalLoginCallback", new Dictionary<string, string>
-                    {
-                        { "Username", username ?? "Unknown" },
-                        { "LoginResult", result.ToString() }
-                    });
 
                     return await IdentityError("There has been an issue logging you in").ConfigureAwait(false);
             }
@@ -121,15 +113,7 @@ public class IdentityController(
     [HttpGet]
     public async Task<IActionResult> IdentityError(string message, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            TrackSuccessTelemetry("IdentityError", "IdentityError", new Dictionary<string, string>
-            {
-                { "ErrorMessage", message ?? "Unknown" }
-            });
-
-            return await Task.FromResult(View("IdentityError", message)).ConfigureAwait(false);
-        }, "IdentityError", "Anonymous");
+        return await ExecuteWithErrorHandlingAsync(async () => await Task.FromResult(View("IdentityError", message)).ConfigureAwait(false), "IdentityError", "Anonymous");
     }
 
     [Authorize]

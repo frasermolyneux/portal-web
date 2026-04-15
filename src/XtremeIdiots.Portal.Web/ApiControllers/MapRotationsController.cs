@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -16,7 +17,8 @@ public class MapRotationsApiController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<MapRotationsApiController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     [HttpPost("GetMapRotationsAjax/{id?}")]
     [ValidateAntiForgeryToken]
@@ -83,12 +85,6 @@ public class MapRotationsApiController(
             }
 
             var items = apiResponse.Result.Data.Items?.ToList() ?? [];
-
-            TrackSuccessTelemetry("MapRotationsListRetrieved", nameof(GetMapRotationsAjax), new Dictionary<string, string>
-            {
-                { "GameType", id?.ToString() ?? "All" },
-                { "ResultCount", items.Count.ToString() }
-            });
 
             return Ok(new
             {

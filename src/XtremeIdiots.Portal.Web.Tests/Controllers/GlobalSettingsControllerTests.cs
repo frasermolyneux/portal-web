@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MX.Observability.ApplicationInsights.Auditing;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -17,6 +18,7 @@ public class GlobalSettingsControllerTests
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<GlobalSettingsController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
+    private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
     private GlobalSettingsController CreateSut(ClaimsPrincipal? user = null)
     {
@@ -24,7 +26,8 @@ public class GlobalSettingsControllerTests
             mockRepositoryApiClient.Object,
             telemetryClient,
             mockLogger.Object,
-            mockConfiguration.Object);
+            mockConfiguration.Object,
+            auditLogger);
 
         var httpContext = new DefaultHttpContext
         {
@@ -50,7 +53,8 @@ public class GlobalSettingsControllerTests
                 mockRepositoryApiClient.Object,
                 null!,
                 mockLogger.Object,
-                mockConfiguration.Object));
+                mockConfiguration.Object,
+                auditLogger));
     }
 
     [Fact]
@@ -61,7 +65,8 @@ public class GlobalSettingsControllerTests
                 mockRepositoryApiClient.Object,
                 telemetryClient,
                 null!,
-                mockConfiguration.Object));
+                mockConfiguration.Object,
+                auditLogger));
     }
 
     [Fact]
@@ -72,6 +77,7 @@ public class GlobalSettingsControllerTests
                 mockRepositoryApiClient.Object,
                 telemetryClient,
                 mockLogger.Object,
-                null!));
+                null!,
+                auditLogger));
     }
 }

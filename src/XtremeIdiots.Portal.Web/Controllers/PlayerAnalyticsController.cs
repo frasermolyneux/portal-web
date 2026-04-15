@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -20,7 +21,8 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class PlayerAnalyticsController(
     TelemetryClient telemetryClient,
     ILogger<PlayerAnalyticsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>

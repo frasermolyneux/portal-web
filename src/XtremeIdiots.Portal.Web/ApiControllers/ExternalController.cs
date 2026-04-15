@@ -1,6 +1,7 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -22,7 +23,8 @@ public class ExternalController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ExternalController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     private readonly string portalBaseUrl = (configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/');
 
@@ -72,13 +74,6 @@ public class ExternalController(
             }
 
             Logger.LogInformation("Successfully processed {Count} admin actions for external API response", results.Count);
-
-            TrackSuccessTelemetry(nameof(GetLatestAdminActions), nameof(GetLatestAdminActions), new Dictionary<string, string>
-            {
-                { nameof(ExternalController), nameof(ExternalController) },
-                { "Resource", "AdminActionsAPI" },
-                { "Count", results.Count.ToString() }
-            });
 
             return Ok(results);
         }, nameof(GetLatestAdminActions)).ConfigureAwait(false);

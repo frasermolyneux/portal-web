@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -28,7 +29,8 @@ public class ProtectedNamesController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ProtectedNamesController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -64,11 +66,6 @@ public class ProtectedNamesController(
             {
                 ProtectedNames = [.. protectedNamesResponse.Result.Data.Items]
             };
-
-            TrackSuccessTelemetry("ProtectedNamesViewed", nameof(Index), new Dictionary<string, string>
-            {
-                { "ProtectedNamesCount", model.ProtectedNames.Count.ToString() }
-            });
 
             return View(model);
         }, nameof(Index)).ConfigureAwait(false);
@@ -290,11 +287,6 @@ public class ProtectedNamesController(
             {
                 Report = reportResponse.Result.Data
             };
-
-            TrackSuccessTelemetry("ProtectedNameReportViewed", nameof(Report), new Dictionary<string, string>
-            {
-                { "ProtectedNameId", id.ToString() }
-            });
 
             return View(model);
         }, nameof(Report), $"id: {id}").ConfigureAwait(false);

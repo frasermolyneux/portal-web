@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -13,7 +14,8 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class ChangeLogController(
     TelemetryClient telemetryClient,
     ILogger<ChangeLogController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     /// <summary>
     /// Displays the change log index page showing application updates and version history
@@ -23,16 +25,6 @@ public class ChangeLogController(
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() =>
-        {
-            TrackSuccessTelemetry("ChangeLogAccessed", nameof(Index), new Dictionary<string, string>
-            {
-                { "Controller", nameof(ChangeLogController) },
-                { "Resource", "ChangeLog" },
-                { "Context", "ApplicationUpdates" }
-            });
-
-            return Task.FromResult<IActionResult>(View());
-        }, nameof(Index)).ConfigureAwait(false);
+        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Index)).ConfigureAwait(false);
     }
 }

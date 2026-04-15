@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.GeoLocation.Api.Client.V1;
+using MX.Observability.ApplicationInsights.Auditing;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -22,6 +23,7 @@ public class PlayersControllerTests
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<PlayersController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
+    private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
     private PlayersController CreateSut(ClaimsPrincipal? user = null)
     {
@@ -31,7 +33,8 @@ public class PlayersControllerTests
             mockRepositoryApiClient.Object,
             telemetryClient,
             mockLogger.Object,
-            mockConfiguration.Object);
+            mockConfiguration.Object,
+            auditLogger);
 
         var httpContext = new DefaultHttpContext
         {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using MX.InvisionCommunity.Api.Abstractions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -26,8 +27,9 @@ public class HealthCheckController : BaseApiController
         IInvisionApiClient forumsClient,
         TelemetryClient telemetryClient,
         ILogger<HealthCheckController> logger,
-        IConfiguration configuration)
-        : base(telemetryClient, logger, configuration)
+        IConfiguration configuration,
+        IAuditLogger auditLogger)
+        : base(telemetryClient, logger, configuration, auditLogger)
     {
         ArgumentNullException.ThrowIfNull(forumsClient);
         this.forumsClient = forumsClient;
@@ -103,26 +105,10 @@ public class HealthCheckController : BaseApiController
             {
                 Logger.LogWarning("Health check failed - one or more components are unhealthy");
                 actionResult.StatusCode = 503;
-
-                TrackSuccessTelemetry("HealthCheckFailed", "Status", new Dictionary<string, string>
-                {
-                    { "Controller", "HealthCheck" },
-                    { "Resource", "SystemHealth" },
-                    { "IsHealthy", "false" },
-                    { "ComponentCount", result.Components.Count.ToString() }
-                });
             }
             else
             {
                 Logger.LogInformation("Health check completed successfully - all components are healthy");
-
-                TrackSuccessTelemetry("HealthCheckPassed", "Status", new Dictionary<string, string>
-                {
-                    { "Controller", "HealthCheck" },
-                    { "Resource", "SystemHealth" },
-                    { "IsHealthy", "true" },
-                    { "ComponentCount", result.Components.Count.ToString() }
-                });
             }
 
             return actionResult;

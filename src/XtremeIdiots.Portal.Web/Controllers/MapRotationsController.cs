@@ -13,6 +13,7 @@ using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -25,7 +26,8 @@ public class MapRotationsController(
     IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
     ILogger<MapRotationsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty5];
 
@@ -667,6 +669,8 @@ public class MapRotationsController(
 
             this.AddAlertSuccess("Server assignment updated successfully.");
 
+            TrackSuccessTelemetry("MapRotationAssignmentEdited", nameof(EditAssignment));
+
             return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
         }, nameof(EditAssignment)).ConfigureAwait(false);
     }
@@ -711,6 +715,7 @@ public class MapRotationsController(
                 else
                 {
                     this.AddAlertSuccess("Server assignment has been removed.");
+                    TrackSuccessTelemetry("MapRotationAssignmentDeleted", nameof(DeleteAssignment));
                 }
 
                 return RedirectToAction(nameof(Details), new { id = mapRotationId });
@@ -723,6 +728,7 @@ public class MapRotationsController(
             {
                 this.AddAlertSuccess("Unassign triggered. Maps are being removed from the server.");
                 TempData["PendingInstanceId"] = $"maprot-remove-{assignmentId}";
+                TrackSuccessTelemetry("MapRotationAssignmentDeleted", nameof(DeleteAssignment));
             }
             else
             {
@@ -826,6 +832,7 @@ public class MapRotationsController(
             {
                 this.AddAlertSuccess("Sync triggered successfully.");
                 TempData["PendingInstanceId"] = $"maprot-sync-{assignmentId}";
+                TrackSuccessTelemetry("MapRotationAssignmentSynced", nameof(SyncAssignment));
             }
             else
             {
@@ -869,6 +876,7 @@ public class MapRotationsController(
                 this.AddAlertSuccess("Activation triggered successfully.");
                 TempData["PendingInstanceId"] = $"maprot-activate-{assignmentId}";
                 TempData["ShowActivationRestartReminder"] = true;
+                TrackSuccessTelemetry("MapRotationAssignmentActivated", nameof(ActivateAssignment));
 
                 // Auto-promote rotation status to Active if still in Draft or Testing
                 if (rotation.Status is MapRotationStatus.Draft or MapRotationStatus.Testing)
@@ -948,6 +956,7 @@ public class MapRotationsController(
             {
                 this.AddAlertSuccess("Deactivation triggered successfully.");
                 TempData["PendingInstanceId"] = $"maprot-deactivate-{assignmentId}";
+                TrackSuccessTelemetry("MapRotationAssignmentDeactivated", nameof(DeactivateAssignment));
             }
             else
             {
@@ -990,6 +999,7 @@ public class MapRotationsController(
             {
                 this.AddAlertSuccess("Verification triggered successfully.");
                 TempData["PendingInstanceId"] = $"maprot-verify-{assignmentId}";
+                TrackSuccessTelemetry("MapRotationAssignmentVerified", nameof(VerifyAssignment));
             }
             else
             {
@@ -1098,6 +1108,7 @@ public class MapRotationsController(
                 }
 
                 this.AddAlertSuccess("Operation cancelled successfully.");
+                TrackSuccessTelemetry("MapRotationOperationCancelled", nameof(CancelOperation));
             }
             else
             {
@@ -1152,6 +1163,7 @@ public class MapRotationsController(
             if (terminateResult.Success)
             {
                 this.AddAlertSuccess($"Orchestration '{instanceId}' terminated. You can now re-trigger the operation.");
+                TrackSuccessTelemetry("MapRotationOrchestrationTerminated", nameof(TerminateOrchestration));
             }
             else
             {
@@ -1301,6 +1313,8 @@ public class MapRotationsController(
                 Rotations = parsed,
                 NewMapNames = newMapNames
             }), TimeSpan.FromMinutes(15));
+
+            TrackSuccessTelemetry("MapRotationImported", nameof(Import));
 
             return View("ImportPreview", new ImportMapRotationsPreviewViewModel
             {
@@ -1482,6 +1496,8 @@ public class MapRotationsController(
                     });
                 }
             }
+
+            TrackSuccessTelemetry("MapRotationImportConfirmed", nameof(ImportConfirm));
 
             return View("ImportResult", new ImportMapRotationsResultViewModel
             {

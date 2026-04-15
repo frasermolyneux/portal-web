@@ -2,6 +2,8 @@
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using MX.Observability.ApplicationInsights.Auditing.Models;
 using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -16,43 +18,41 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public abstract class BaseController(
  TelemetryClient telemetryClient,
  ILogger logger,
- IConfiguration configuration) : Controller
+ IConfiguration configuration,
+ IAuditLogger auditLogger) : Controller
 {
     readonly protected TelemetryClient TelemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
     readonly protected ILogger Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     readonly protected IConfiguration Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+    readonly protected IAuditLogger AuditLogger = auditLogger ?? throw new ArgumentNullException(nameof(auditLogger));
 
     /// <summary>
     /// Tracks unauthorized access attempts with telemetry and logging
     /// </summary>
-    /// <param name="action">The action that was attempted</param>
-    /// <param name="resource">The resource that access was denied to</param>
-    /// <param name="context">Optional additional context information</param>
-    /// <param name="additionalData">Optional additional data to include in telemetry</param>
     protected void TrackUnauthorizedAccessAttempt(string action, string resource, string? context = null, object? additionalData = null)
     {
         Logger.LogWarning("User {UserId} denied access to {Action} on {Resource}",
         User.XtremeIdiotsId(), action, resource);
 
-        var unauthorizedTelemetry = new EventTelemetry("UnauthorizedUserAccessAttempt")
-        .Enrich(User);
-
-        if (additionalData is not null)
-        {
-            unauthorizedTelemetry.Properties.TryAdd("AdditionalData", additionalData.ToString() ?? string.Empty);
-        }
-
         var controllerName = GetControllerNameWithoutSuffix();
-        unauthorizedTelemetry.Properties.TryAdd("Controller", controllerName);
-        unauthorizedTelemetry.Properties.TryAdd("Action", action);
-        unauthorizedTelemetry.Properties.TryAdd("Resource", resource);
+
+        var builder = AuditEvent.UserAction("UnauthorizedUserAccessAttempt", AuditAction.Execute)
+            .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+            .WithProperty("Controller", controllerName)
+            .WithProperty("Action", action)
+            .WithProperty("Resource", resource);
 
         if (!string.IsNullOrEmpty(context))
         {
-            unauthorizedTelemetry.Properties.TryAdd("Context", context);
+            builder.WithProperty("Context", context);
         }
 
-        TelemetryClient.TrackEvent(unauthorizedTelemetry);
+        if (additionalData is not null)
+        {
+            builder.WithProperty("AdditionalData", additionalData.ToString() ?? string.Empty);
+        }
+
+        AuditLogger.LogAudit(builder.Build());
     }
 
     /// <summary>
@@ -119,27 +119,24 @@ public abstract class BaseController(
     /// <summary>
     /// Tracks successful operations with telemetry
     /// </summary>
-    /// <param name="eventName">The name of the event to track</param>
-    /// <param name="action">The action that was successful</param>
-    /// <param name="additionalProperties">Optional additional properties to include</param>
     protected void TrackSuccessTelemetry(string eventName, string action, Dictionary<string, string>? additionalProperties = null)
     {
-        var successTelemetry = new EventTelemetry(eventName)
-        .Enrich(User);
-
         var controllerName = GetControllerNameWithoutSuffix();
-        successTelemetry.Properties.TryAdd("Controller", controllerName);
-        successTelemetry.Properties.TryAdd("Action", action);
+
+        var builder = AuditEvent.UserAction(eventName, AuditAction.Execute)
+            .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+            .WithProperty("Controller", controllerName)
+            .WithProperty("Action", action);
 
         if (additionalProperties is not null)
         {
             foreach (var (key, value) in additionalProperties)
             {
-                successTelemetry.Properties.TryAdd(key, value);
+                builder.WithProperty(key, value);
             }
         }
 
-        TelemetryClient.TrackEvent(successTelemetry);
+        AuditLogger.LogAudit(builder.Build());
     }
 
     /// <summary>

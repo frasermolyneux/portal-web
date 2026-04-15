@@ -1,7 +1,8 @@
 using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using MX.Observability.ApplicationInsights.Auditing.Models;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
@@ -29,7 +30,8 @@ public class PlayerTagsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<PlayerTagsController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
 
     /// <summary>
@@ -88,12 +90,6 @@ public class PlayerTagsController(
             Logger.LogInformation("Successfully loaded add player tag form for user {UserId} and player {PlayerId} with {TagCount} available tags",
                 User.XtremeIdiotsId(), id, model.AvailableTags.Count);
 
-            var eventTelemetry = new EventTelemetry("PlayerTagAddPageViewed")
-                .Enrich(User)
-                .Enrich(playerResponse.Result.Data);
-            eventTelemetry.Properties.TryAdd("AvailableTagCount", model.AvailableTags.Count.ToString());
-            TelemetryClient.TrackEvent(eventTelemetry);
-
             return View(model);
         }, nameof(Add), $"id: {id}").ConfigureAwait(false);
     }
@@ -119,14 +115,13 @@ public class PlayerTagsController(
                 Logger.LogWarning("User {UserId} denied access to add tag {TagId} to player {PlayerId}",
                     User.XtremeIdiotsId(), model.TagId, model.PlayerId);
 
-                var unauthorizedTelemetry = new EventTelemetry("UnauthorizedUserAccessAttempt")
-                    .Enrich(User);
-
-                unauthorizedTelemetry.Properties.TryAdd("Controller", nameof(PlayerTagsController));
-                unauthorizedTelemetry.Properties.TryAdd("Action", nameof(Add));
-                unauthorizedTelemetry.Properties.TryAdd("Resource", "PlayerTag");
-                unauthorizedTelemetry.Properties.TryAdd("Context", $"PlayerId:{model.PlayerId},TagId:{model.TagId}");
-                TelemetryClient.TrackEvent(unauthorizedTelemetry);
+                var unauthorizedTelemetry = AuditEvent.UserAction("UnauthorizedUserAccessAttempt", AuditAction.Execute)
+                    .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+                    .WithProperty("Controller", nameof(PlayerTagsController))
+                    .WithProperty("Action", nameof(Add))
+                    .WithProperty("Resource", "PlayerTag")
+                    .WithProperty("Context", $"PlayerId:{model.PlayerId},TagId:{model.TagId}");
+                AuditLogger.LogAudit(unauthorizedTelemetry.Build());
 
                 return Unauthorized();
             }
@@ -209,13 +204,13 @@ public class PlayerTagsController(
             var playerDataResponse = await repositoryApiClient.Players.V1.GetPlayer(model.PlayerId, PlayerEntityOptions.None).ConfigureAwait(false);
             var playerData = playerDataResponse.IsSuccess ? playerDataResponse.Result?.Data : null;
 
-            var eventTelemetry = new EventTelemetry("PlayerTagAdded")
-     .Enrich(User);
+            var eventTelemetry = AuditEvent.UserAction("PlayerTagAdded", AuditAction.Create)
+     .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username());
             if (playerData != null)
-                eventTelemetry.Enrich(playerData);
-            eventTelemetry.Properties.TryAdd("TagId", model.TagId.ToString());
-            eventTelemetry.Properties.TryAdd("TagName", tagResponse.Result.Data.Name);
-            TelemetryClient.TrackEvent(eventTelemetry);
+                eventTelemetry.WithProperty("PlayerId", playerData.PlayerId.ToString());
+            eventTelemetry.WithProperty("TagId", model.TagId.ToString())
+                .WithProperty("TagName", tagResponse.Result.Data.Name);
+            AuditLogger.LogAudit(eventTelemetry.Build());
 
             this.AddAlertSuccess($"The tag '{tagResponse.Result.Data.Name}' has been successfully added to the player");
 
@@ -237,13 +232,13 @@ public class PlayerTagsController(
                 Logger.LogWarning("User {UserId} denied access to remove player tag {PlayerTagId} from player {PlayerId}",
          User.XtremeIdiotsId(), playerTagId, id);
 
-                var unauthorizedTelemetry = new EventTelemetry("UnauthorizedUserAccessAttempt")
-         .Enrich(User);
-                unauthorizedTelemetry.Properties.TryAdd("Controller", nameof(PlayerTagsController));
-                unauthorizedTelemetry.Properties.TryAdd("Action", nameof(Remove));
-                unauthorizedTelemetry.Properties.TryAdd("Resource", "PlayerTag");
-                unauthorizedTelemetry.Properties.TryAdd("Context", $"PlayerId:{id},PlayerTagId:{playerTagId}");
-                TelemetryClient.TrackEvent(unauthorizedTelemetry);
+                var unauthorizedTelemetry = AuditEvent.UserAction("UnauthorizedUserAccessAttempt", AuditAction.Execute)
+         .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+                    .WithProperty("Controller", nameof(PlayerTagsController))
+                    .WithProperty("Action", nameof(Remove))
+                    .WithProperty("Resource", "PlayerTag")
+                    .WithProperty("Context", $"PlayerId:{id},PlayerTagId:{playerTagId}");
+                AuditLogger.LogAudit(unauthorizedTelemetry.Build());
 
                 return Unauthorized();
             }
@@ -303,13 +298,13 @@ public class PlayerTagsController(
                 Logger.LogWarning("User {UserId} denied access to remove player tag {PlayerTagId} from player {PlayerId}",
          User.XtremeIdiotsId(), playerTagId, id);
 
-                var unauthorizedTelemetry = new EventTelemetry("UnauthorizedUserAccessAttempt")
-         .Enrich(User);
-                unauthorizedTelemetry.Properties.TryAdd("Controller", nameof(PlayerTagsController));
-                unauthorizedTelemetry.Properties.TryAdd("Action", nameof(Remove));
-                unauthorizedTelemetry.Properties.TryAdd("Resource", "PlayerTag");
-                unauthorizedTelemetry.Properties.TryAdd("Context", $"PlayerId:{id},PlayerTagId:{playerTagId}");
-                TelemetryClient.TrackEvent(unauthorizedTelemetry);
+                var unauthorizedTelemetry = AuditEvent.UserAction("UnauthorizedUserAccessAttempt", AuditAction.Execute)
+         .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+                    .WithProperty("Controller", nameof(PlayerTagsController))
+                    .WithProperty("Action", nameof(Remove))
+                    .WithProperty("Resource", "PlayerTag")
+                    .WithProperty("Context", $"PlayerId:{id},PlayerTagId:{playerTagId}");
+                AuditLogger.LogAudit(unauthorizedTelemetry.Build());
 
                 return Unauthorized();
             }
@@ -356,12 +351,12 @@ public class PlayerTagsController(
             Logger.LogInformation("Successfully removed player tag '{TagName}' ({PlayerTagId}) from player {PlayerId} by user {UserId}",
      playerTag.Tag?.Name ?? "Unknown", playerTagId, id, User.XtremeIdiotsId());
 
-            var eventTelemetry = new EventTelemetry("PlayerTagRemoved")
-     .Enrich(User)
-     .Enrich(playerResponse.Result.Data);
-            eventTelemetry.Properties.TryAdd("PlayerTagId", playerTagId.ToString());
-            eventTelemetry.Properties.TryAdd("TagName", playerTag.Tag?.Name ?? "Unknown");
-            TelemetryClient.TrackEvent(eventTelemetry);
+            var eventTelemetry = AuditEvent.UserAction("PlayerTagRemoved", AuditAction.Delete)
+     .WithActor(User.XtremeIdiotsId() ?? "Unknown", User.Username())
+     .WithProperty("PlayerId", playerResponse.Result.Data.PlayerId.ToString())
+                .WithProperty("PlayerTagId", playerTagId.ToString())
+                .WithProperty("TagName", playerTag.Tag?.Name ?? "Unknown");
+            AuditLogger.LogAudit(eventTelemetry.Build());
 
             this.AddAlertSuccess($"The tag '{playerTag.Tag?.Name ?? "Unknown"}' has been successfully removed from the player");
 

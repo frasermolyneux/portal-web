@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MX.Observability.ApplicationInsights.Auditing;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Web.Controllers;
 
@@ -17,6 +18,7 @@ public class ErrorsControllerTests
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<ErrorsController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
+    private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
     private readonly Mock<IWebHostEnvironment> mockWebHostEnvironment = new();
 
     private ErrorsController CreateSut(ClaimsPrincipal? user = null)
@@ -24,7 +26,8 @@ public class ErrorsControllerTests
         var controller = new ErrorsController(
             telemetryClient,
             mockLogger.Object,
-            mockConfiguration.Object);
+            mockConfiguration.Object,
+            auditLogger);
 
         var httpContext = new DefaultHttpContext
         {
@@ -50,7 +53,7 @@ public class ErrorsControllerTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ErrorsController(null!, mockLogger.Object, mockConfiguration.Object));
+            new ErrorsController(null!, mockLogger.Object, mockConfiguration.Object, auditLogger));
     }
 
     [Fact]
@@ -58,7 +61,7 @@ public class ErrorsControllerTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ErrorsController(telemetryClient, null!, mockConfiguration.Object));
+            new ErrorsController(telemetryClient, null!, mockConfiguration.Object, auditLogger));
     }
 
     [Fact]
@@ -66,7 +69,7 @@ public class ErrorsControllerTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ErrorsController(telemetryClient, mockLogger.Object, null!));
+            new ErrorsController(telemetryClient, mockLogger.Object, null!, auditLogger));
     }
 
     [Theory]

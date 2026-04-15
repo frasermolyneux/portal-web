@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -19,7 +20,8 @@ public class ExternalNotificationsController(
     IExternalTokenService externalTokenService,
     TelemetryClient telemetryClient,
     ILogger<ExternalNotificationsController> logger,
-    IConfiguration configuration) : BaseApiController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     private readonly string portalBaseUrl = (configuration["XtremeIdiots:PortalBaseUrl"] ?? "https://portal.xtremeidiots.com").TrimEnd('/');
 
@@ -66,12 +68,6 @@ public class ExternalNotificationsController(
 
             // Return personalised notifications
             var response = await BuildPersonalisedFeedAsync(userProfile.UserProfileId, userProfile.DisplayName, take, cancellationToken).ConfigureAwait(false);
-
-            TrackSuccessTelemetry("ExternalNotificationsAuthenticated", nameof(GetNotifications), new Dictionary<string, string>
-            {
-                { "ForumMemberId", tokenResult.ForumMemberId },
-                { "UserProfileId", userProfile.UserProfileId.ToString() }
-            });
 
             return Ok(response);
         }, nameof(GetNotifications)).ConfigureAwait(false);
@@ -125,12 +121,6 @@ public class ExternalNotificationsController(
                 .MarkNotificationAsRead(id, cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackSuccessTelemetry("ExternalNotificationMarkedAsRead", nameof(MarkAsRead), new Dictionary<string, string>
-            {
-                { "NotificationId", id.ToString() },
-                { "ForumMemberId", tokenResult.ForumMemberId }
-            });
-
             return Ok();
         }, nameof(MarkAsRead)).ConfigureAwait(false);
     }
@@ -163,11 +153,6 @@ public class ExternalNotificationsController(
             await repositoryApiClient.Notifications.V1
                 .MarkAllNotificationsAsRead(userResult.Result.Data.UserProfileId, cancellationToken)
                 .ConfigureAwait(false);
-
-            TrackSuccessTelemetry("ExternalAllNotificationsMarkedAsRead", nameof(MarkAllAsRead), new Dictionary<string, string>
-            {
-                { "ForumMemberId", tokenResult.ForumMemberId }
-            });
 
             return Ok();
         }, nameof(MarkAllAsRead)).ConfigureAwait(false);
@@ -203,11 +188,6 @@ public class ExternalNotificationsController(
                 });
             }
         }
-
-        TrackSuccessTelemetry("ExternalNotificationsPublic", nameof(GetNotifications), new Dictionary<string, string>
-        {
-            { "Count", publicNotifications.Count.ToString() }
-        });
 
         return new
         {

@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -21,7 +22,8 @@ public class DashboardController(
     IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<DashboardController> logger,
-    IConfiguration configuration) : BaseController(telemetryClient, logger, configuration)
+    IConfiguration configuration,
+    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     /// <summary>
     /// Displays the admin dashboard with summary cards, server health, moderation trends, and admin leaderboard.
@@ -122,8 +124,6 @@ public class DashboardController(
                 Logger.LogWarning(ex, "Failed to retrieve agent telemetry for dashboard");
                 viewModel.AgentTelemetryUnavailable = true;
             }
-
-            TrackSuccessTelemetry("DashboardLoaded", nameof(Index));
 
             Logger.LogInformation("User {UserId} loaded admin dashboard", User.XtremeIdiotsId());
 
