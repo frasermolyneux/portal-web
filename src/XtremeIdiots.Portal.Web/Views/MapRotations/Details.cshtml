@@ -163,6 +163,10 @@
                         </div>
                     </div>
                     <div class="ibox-content">
+                        <div class="text-muted small mb-3">
+                            <i class="fa-solid fa-fw fa-circle-info"></i>
+                            <strong>Deployment</strong> syncs maps to a server's file system. <strong>Activation</strong> updates the server's config file to use this rotation. After activation, the server needs a restart for changes to take effect.
+                        </div>
                         @if (Model.Rotation.ServerAssignments == null || Model.Rotation.ServerAssignments.Count == 0)
                         {
                             <div class="empty-state">
@@ -251,11 +255,13 @@
                                                     </a>
                                                     @if (assignment.DeploymentState == DeploymentState.Pending || assignment.DeploymentState == DeploymentState.Failed)
                                                     {
+                                                        var isAacpInDetails = assignment.ConfigVariableName?.StartsWith("scr_aacp_maps_", StringComparison.OrdinalIgnoreCase) == true;
                                                         <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="SyncAssignment" method="post" class="d-inline">
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1">
+                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1"
+                                                                    title="@(isAacpInDetails ? "AACP: Maps are shared with the main rotation. Consider using Activate instead if maps are already deployed." : "Sync maps to server")">
                                                                 <i class="fa-solid fa-fw fa-sync"></i> Sync
                                                             </button>
                                                         </form>

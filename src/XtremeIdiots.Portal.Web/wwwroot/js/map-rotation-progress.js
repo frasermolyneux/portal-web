@@ -9,6 +9,8 @@ $(document).ready(function () {
     var activePolls = {};
     var polling = true;
     var staleThresholdMs = 15 * 60 * 1000;
+    var pollStartTime = Date.now();
+    var maxPollDurationMs = 10 * 60 * 1000;
 
     // Find in-progress rows with instance IDs
     $container.find('tr[data-instance-id]').each(function () {
@@ -229,6 +231,18 @@ $(document).ready(function () {
 
     function pollAll() {
         if (!polling) return;
+
+        // Check for polling timeout
+        if (Date.now() - pollStartTime > maxPollDurationMs) {
+            polling = false;
+            var $timeoutBanner = $('<div class="alert alert-warning mt-3">' +
+                '<i class="fa-solid fa-fw fa-clock"></i> ' +
+                '<strong>Polling timed out.</strong> The operation may still be running. ' +
+                '<a href="javascript:location.reload()" class="alert-link">Refresh to check status</a> or cancel the operation manually.' +
+                '</div>');
+            $container.append($timeoutBanner);
+            return;
+        }
 
         var pendingIds = [];
         for (var id in activePolls) {

@@ -7,6 +7,8 @@
     var hasPendingWithNoRow = !string.IsNullOrEmpty(pendingInstanceId)
         && !Model.Operations.Any(o => o.Status == AssignmentOperationStatus.InProgress
             && o.DurableFunctionInstanceId == pendingInstanceId);
+    var showRestartReminder = TempData["ShowActivationRestartReminder"] as bool? == true;
+    var isAacpAssignment = Model.Assignment.ConfigVariableName?.StartsWith("scr_aacp_maps_", StringComparison.OrdinalIgnoreCase) == true;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -25,6 +27,25 @@
                         <i class="fa-solid fa-fw fa-hard-drive"></i> Manage Server Maps
                     </a>
                 </div>
+
+                @if (showRestartReminder)
+                {
+                    <div class="alert alert-info mb-3">
+                        <i class="fa-solid fa-fw fa-circle-info"></i>
+                        <strong>Activation triggered.</strong> The server will need a restart for changes to take effect.
+                        <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@Model.Assignment.GameServerId" class="alert-link">
+                            Go to Server Admin <i class="fa-solid fa-fw fa-arrow-right"></i>
+                        </a>
+                    </div>
+                }
+
+                @if (isAacpAssignment)
+                {
+                    <div class="alert alert-info mb-3">
+                        <i class="fa-solid fa-fw fa-circle-info"></i>
+                        <strong>AACP Assignment:</strong> Maps for AACP assignments are shared with the main <code>sv_maprotation</code> assignment. If maps are already deployed via the main rotation, use <strong>Activate</strong> instead of Sync to update the config variable.
+                    </div>
+                }
 
                 <div class="ibox">
                     <div class="ibox-title">
