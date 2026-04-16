@@ -44,7 +44,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
-    <PackageReference Include="MX.Observability.ApplicationInsights" Version="1.0.2" />
+    <PackageReference Include="MX.Observability.ApplicationInsights" Version="1.0.3" />
     <PackageReference Include="MX.Api.Abstractions" Version="2.3.31" />
     <PackageReference Include="MX.Api.Client" Version="2.3.31" />
     <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="2.1.138" />
@@ -84,3 +84,4 @@
   </Target>
 
 </Project>
+
