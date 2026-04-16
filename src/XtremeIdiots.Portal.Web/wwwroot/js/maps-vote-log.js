@@ -81,7 +81,8 @@ $(document).ready(function () {
 
     function applyGameColumnVisibility() {
         var hasSpecificGame = document.getElementById('filterGameType')?.value !== '';
-        table.column(0).visible(!hasSpecificGame, false);
+        table.column(0).visible(!hasSpecificGame);
+        table.columns.adjust();
     }
 
     document.getElementById('filterGameType')?.addEventListener('change', function () {

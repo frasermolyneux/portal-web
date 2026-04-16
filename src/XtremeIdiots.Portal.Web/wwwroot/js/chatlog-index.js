@@ -342,6 +342,7 @@ $(document).ready(function () {
         } else {
             table.column(serverColumnIndex).visible(true);
         }
+        table.columns.adjust();
     }
 
     function initServerDropdownIfReady(reason) {
