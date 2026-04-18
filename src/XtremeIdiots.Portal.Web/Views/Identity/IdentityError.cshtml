@@ -29,29 +29,30 @@
     </environment>
 </head>
 
-<body class="gray-bg">
-    <div class="loginColumns animated fadeInDown">
-        <div class="row">
-            <div class="col-md-12 text-center">
-                <h2 class="font-bold">XtremeIdiots Portal Login</h2>
-                <div class="alert alert-danger mt-4" role="alert">
-                    @errorMessage
+<body>
+    <main class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>XtremeIdiots Portal Login</h5>
+                    </div>
+                    <div class="ibox-content text-center">
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                        <a class="btn btn-outline-secondary mt-2" asp-controller="Identity" asp-action="Login">
+                            <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to Login
+                        </a>
+                    </div>
+                    <div class="ibox-footer text-muted small d-flex justify-content-between">
+                        <span>Copyright &mdash; Fraser Molyneux</span>
+                        <span>&copy; @DateTime.UtcNow.Year</span>
+                    </div>
                 </div>
-                <a class="btn btn-outline-secondary mt-3" asp-controller="Identity" asp-action="Login">
-                    <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to Login
-                </a>
             </div>
         </div>
-        <hr />
-        <div class="row">
-            <div class="col-md-6">
-                Copyright - Fraser Molyneux
-            </div>
-            <div class="col-md-6 text-end">
-                <small>© @DateTime.UtcNow.Year</small>
-            </div>
-        </div>
-    </div>
+    </main>
 </body>
 
 </html>

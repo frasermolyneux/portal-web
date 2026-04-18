@@ -248,7 +248,7 @@
                                                         <i class="fa-solid fa-fw fa-eye"></i> Status
                                                     </a>
                                                     <a policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="EditAssignment" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-secondary btn-sm me-1">
-                                                        <i class="fa-solid fa-fw fa-edit"></i> Edit
+                                                        <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit
                                                     </a>
                                                     <a policy="@AuthPolicies.GameServers_Maps_Read" policy-resource="@Model.Rotation.GameType" asp-controller="MapManager" asp-action="Manage" asp-route-id="@assignment.GameServerId" class="btn btn-outline-secondary btn-sm me-1" title="Manage maps on this server">
                                                         <i class="fa-solid fa-fw fa-hard-drive"></i> Maps

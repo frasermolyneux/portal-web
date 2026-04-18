@@ -21,7 +21,7 @@
                         <i class="fa-solid fa-fw fa-arrow-left"></i> Back to @Model.Rotation.Title
                     </a>
                     <a policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId" class="btn btn-outline-primary btn-sm">
-                        <i class="fa-solid fa-fw fa-edit"></i> Edit Assignment
+                        <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit Assignment
                     </a>
                     <a policy="@AuthPolicies.GameServers_Maps_Read" policy-resource="@Model.Rotation.GameType" asp-controller="MapManager" asp-action="Manage" asp-route-id="@Model.Assignment.GameServerId" class="btn btn-outline-secondary btn-sm">
                         <i class="fa-solid fa-fw fa-hard-drive"></i> Manage Server Maps

@@ -15,9 +15,12 @@ using XtremeIdiots.Portal.Web.ViewModels;
 namespace XtremeIdiots.Portal.Web.Controllers;
 
 /// <summary>
-/// Controller for public server information pages
+/// Controller for public server information pages. All actions are intentionally
+/// anonymous — these endpoints surface public-safe data only (no IPs, GUIDs, risk
+/// data, or player profiles). Do not add per-action [Authorize] without revisiting
+/// the data-shape projections in each endpoint.
 /// </summary>
-[Authorize]
+[AllowAnonymous]
 public class ServersController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
@@ -228,28 +231,49 @@ public class ServersController(
     }
 
     /// <summary>
-    /// Displays the interactive map view showing recent player locations
+    /// Displays the interactive map view showing recent player locations across
+    /// public (server-list-enabled) servers only. Players from non-public servers
+    /// are filtered out, and only coordinates + game type are projected.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Map(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var response = await repositoryApiClient.RecentPlayers.V1.GetRecentPlayers(
+            var publicServersTask = repositoryApiClient.GameServers.V1.GetGameServers(
+                null, null, GameServerFilter.ServerListEnabled, 0, 200,
+                GameServerOrder.ServerListPosition, cancellationToken);
+            var recentPlayersTask = repositoryApiClient.RecentPlayers.V1.GetRecentPlayers(
                 null, null, DateTime.UtcNow.AddHours(-48), RecentPlayersFilter.GeoLocated,
-                0, 200, null, cancellationToken).ConfigureAwait(false);
+                0, 200, null, cancellationToken);
 
-            if (response.Result?.Data?.Items is null)
+            await Task.WhenAll(publicServersTask, recentPlayersTask).ConfigureAwait(false);
+
+            var publicServersResponse = await publicServersTask.ConfigureAwait(false);
+            var recentPlayersResponse = await recentPlayersTask.ConfigureAwait(false);
+
+            if (recentPlayersResponse.Result?.Data?.Items is null)
             {
-                Logger.LogWarning("Failed to retrieve recent players for map view for user {UserId}. API Success: {IsSuccess}",
-                    User.XtremeIdiotsId(), response.IsSuccess);
-                return View(Array.Empty<object>());
+                Logger.LogWarning("Failed to retrieve recent players for map view. API Success: {IsSuccess}",
+                    recentPlayersResponse.IsSuccess);
+                return View(Array.Empty<PublicPlayerMapPointViewModel>());
             }
 
-            Logger.LogInformation("User {UserId} successfully retrieved {PlayerCount} recent players for map view",
-                User.XtremeIdiotsId(), response.Result.Data.Items.Count());
+            var publicServerIds = publicServersResponse.IsSuccess && publicServersResponse.Result?.Data?.Items is not null
+                ? publicServersResponse.Result.Data.Items.Select(s => s.GameServerId).ToHashSet()
+                : [];
 
-            return View(response.Result.Data.Items.ToList());
+            var safePoints = recentPlayersResponse.Result.Data.Items
+                .Where(p => p.Lat.HasValue && p.Long.HasValue
+                            && p.GameServerId.HasValue
+                            && publicServerIds.Contains(p.GameServerId.Value))
+                .Select(p => new PublicPlayerMapPointViewModel(p.Lat!.Value, p.Long!.Value, p.GameType.ToString()))
+                .ToList();
+
+            Logger.LogInformation("Public map view returning {PointCount} player points across {ServerCount} public servers",
+                safePoints.Count, publicServerIds.Count);
+
+            return View(safePoints);
         }, nameof(Map)).ConfigureAwait(false);
     }
 

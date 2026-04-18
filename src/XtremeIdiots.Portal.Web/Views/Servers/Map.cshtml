@@ -1,6 +1,6 @@
-﻿@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RecentPlayers
+﻿@using XtremeIdiots.Portal.Web.ViewModels
 @inject IConfiguration Configuration
-@model List<RecentPlayerDto>
+@model List<PublicPlayerMapPointViewModel>
 
 @{
     ViewData["Title"] = "Player Map";
@@ -13,7 +13,7 @@
 
             <div class="ibox">
                 <div class="ibox-title">
-                    Players Online in the last 24 Hours (@Model.Count) across all tracked game servers
+                    <h5>Players Online in the last 48 Hours (@Model.Count) across public game servers</h5>
                 </div>
 
                 <div class="ibox-content">
@@ -42,7 +42,7 @@
                             @foreach (var player in Model)
                 {
                     <text>
-                        ['Player', @player.Lat, @player.Long, '@player.GameType.ToString()'],
+                        ['Player', @player.Lat, @player.Lng, '@player.GameType'],
                     </text>
                             }
                         ];
