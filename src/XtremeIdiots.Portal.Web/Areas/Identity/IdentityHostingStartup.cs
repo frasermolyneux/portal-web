@@ -85,24 +85,20 @@ public static class IdentityHostingStartup
 
     private static void ConfigureAuthentication(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddAuthentication(options =>
-        {
-            options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = OAuthSchemeName;
-        })
-        .AddCookie(options =>
-        {
-            options.AccessDeniedPath = "/Errors/Display/401";
-            options.Cookie.Name = CookieName;
-            options.Cookie.HttpOnly = true;
-            options.Cookie.IsEssential = true;
-            options.ExpireTimeSpan = TimeSpan.FromDays(CookieExpirationDays);
-            options.LoginPath = "/Identity/Login";
-            options.ReturnUrlParameter = CookieAuthenticationDefaults.ReturnUrlParameter;
-            options.SlidingExpiration = true;
-        })
+        // Do not override Identity's default schemes — AddIdentity already sets:
+        //   DefaultAuthenticateScheme = Identity.Application
+        //   DefaultSignInScheme       = Identity.External
+        //   DefaultChallengeScheme    = Identity.Application (login page redirect)
+        // The controller explicitly challenges "XtremeIdiots" when needed.
+        services.AddAuthentication()
         .AddOAuth(OAuthSchemeName, options =>
         {
+            // Sign into the external cookie so SignInManager.GetExternalLoginInfoAsync() works
+            options.SignInScheme = IdentityConstants.ExternalScheme;
+
+            // Must be essential so cookie consent policy doesn't block the correlation cookie
+            options.CorrelationCookie.IsEssential = true;
+
             options.ClientId = GetConfigurationValue(configuration, AuthClientIdKey) ?? throw new InvalidOperationException("OAuth client ID is required");
             options.ClientSecret = GetConfigurationValue(configuration, AuthClientSecretKey) ?? throw new InvalidOperationException("OAuth client secret is required");
 
@@ -148,6 +144,22 @@ public static class IdentityHostingStartup
                 }
             };
         });
+
+        // Configure Identity's application cookie (replaces the removed AddCookie call)
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.AccessDeniedPath = "/Errors/Display/401";
+            options.Cookie.Name = CookieName;
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+            options.ExpireTimeSpan = TimeSpan.FromDays(CookieExpirationDays);
+            options.LoginPath = "/Identity/Login";
+            options.ReturnUrlParameter = CookieAuthenticationDefaults.ReturnUrlParameter;
+            options.SlidingExpiration = true;
+        });
+
+        // Ensure the external cookie used during OAuth callback is not blocked by consent policy
+        services.ConfigureExternalCookie(options => options.Cookie.IsEssential = true);
     }
 
     private static void ConfigureDataProtection(IServiceCollection services)
