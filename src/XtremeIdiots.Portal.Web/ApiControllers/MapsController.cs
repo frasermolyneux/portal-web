@@ -12,9 +12,13 @@ using XtremeIdiots.Portal.Web.Models;
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
 /// <summary>
-/// API controller for maps data operations
+/// API controller for maps data operations. The public map list endpoint
+/// (<c>GetMapListAjax</c>) is anonymous and projects only public-safe map
+/// metadata. Admin-only endpoints (e.g. <c>GetMapVotesAjax</c>, which exposes
+/// player usernames and IDs) carry their own explicit [Authorize] — each
+/// action opts in to its own auth posture rather than inheriting from the
+/// class.
 /// </summary>
-[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 [Route("Maps")]
 public class MapsController(
     IRepositoryApiClient repositoryApiClient,
@@ -31,6 +35,7 @@ public class MapsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>JSON data formatted for DataTables consumption</returns>
     [HttpPost("GetMapListAjax/{id?}")]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetMapListAjax(GameType? id, CancellationToken cancellationToken = default)
     {
@@ -97,11 +102,13 @@ public class MapsController(
     }
 
     /// <summary>
-    /// Provides paginated map vote data for DataTables Ajax requests
+    /// Provides paginated map vote data for DataTables Ajax requests (admin-only;
+    /// the payload exposes player usernames and IDs).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>JSON data formatted for DataTables consumption</returns>
     [HttpPost("GetMapVotesAjax")]
+    [Authorize(Policy = AuthPolicies.MapRotations_Read)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetMapVotesAjax(CancellationToken cancellationToken = default)
     {

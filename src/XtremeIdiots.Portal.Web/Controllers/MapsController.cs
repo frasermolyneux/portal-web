@@ -10,7 +10,11 @@ using XtremeIdiots.Portal.Web.Extensions;
 namespace XtremeIdiots.Portal.Web.Controllers;
 
 /// <summary>
-/// Provides map browsing, search, and image retrieval functionality
+/// Provides map browsing, search, and image retrieval. The public map browsing
+/// endpoints (<c>Index</c>, <c>GameIndex</c>, <c>MapImage</c>) are anonymous —
+/// they expose only public map metadata and imagery. Admin-only actions
+/// (e.g. <c>VoteLog</c>) carry their own explicit [Authorize] — each action
+/// opts in to its own auth posture rather than inheriting from the class.
 /// </summary>
 /// <remarks>
 /// Initializes a new instance of the MapsController
@@ -19,7 +23,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry data</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.MapRotations_Read)]
 public class MapsController(
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
@@ -34,6 +37,7 @@ public class MapsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Maps index view</returns>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Index)).ConfigureAwait(false);
@@ -46,6 +50,7 @@ public class MapsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Maps index view with game type filter applied</returns>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GameIndex(GameType? id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(() =>
@@ -63,6 +68,7 @@ public class MapsController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Redirect to map image URI or default no-image placeholder</returns>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> MapImage(GameType gameType, string mapName, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -88,11 +94,12 @@ public class MapsController(
     }
 
     /// <summary>
-    /// Displays the map vote log/audit page
+    /// Displays the map vote log/audit page (admin-only)
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Vote log view</returns>
     [HttpGet]
+    [Authorize(Policy = AuthPolicies.MapRotations_Read)]
     public async Task<IActionResult> VoteLog(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(VoteLog)).ConfigureAwait(false);

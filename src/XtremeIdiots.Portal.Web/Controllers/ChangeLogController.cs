@@ -8,9 +8,12 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 namespace XtremeIdiots.Portal.Web.Controllers;
 
 /// <summary>
-/// Controller for accessing and managing application change logs
+/// Public change log page. Surfaces portal development activity (commits, PRs,
+/// build status) sourced directly from GitHub's public REST API via
+/// client-side fetches — no portal backend data is returned from this
+/// controller.
 /// </summary>
-[Authorize]
+[AllowAnonymous]
 public class ChangeLogController(
     TelemetryClient telemetryClient,
     ILogger<ChangeLogController> logger,
