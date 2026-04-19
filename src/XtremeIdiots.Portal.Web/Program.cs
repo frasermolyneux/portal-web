@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using MX.Observability.ApplicationInsights.Extensions;
+using MX.Observability.ApplicationInsights.AspNetCore;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Client;
 using XtremeIdiots.Portal.Integrations.Forums;
