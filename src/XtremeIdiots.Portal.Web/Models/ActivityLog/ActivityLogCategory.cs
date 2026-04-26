@@ -16,5 +16,6 @@ public enum ActivityLogCategory
     Tags,
     ProtectedNames,
     Chat,
-    GlobalSettings
+    GlobalSettings,
+    BanFileSync
 }

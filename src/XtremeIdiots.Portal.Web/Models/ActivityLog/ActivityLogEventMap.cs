@@ -101,6 +101,11 @@ public static class ActivityLogEventMap
 
         // Global Settings
         ["Audit:GlobalSettingsUpdated"] = ActivityLogCategory.GlobalSettings,
+
+        // Ban File Sync (agent push to game servers + inbound manual ban detection)
+        ["Audit:BanFilePushed"] = ActivityLogCategory.BanFileSync,
+        ["Audit:BanImported"] = ActivityLogCategory.BanFileSync,
+        ["Audit:BanPlayerCreated"] = ActivityLogCategory.BanFileSync,
     };
 
     /// <summary>
