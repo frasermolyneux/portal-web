@@ -1,42 +1,41 @@
-﻿@using System.Text.Json
-@using XtremeIdiots.Portal.Web.Extensions
+@using System.Text.Json
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus
 @model BanFileMonitorDto
 
 @{
     ViewData["Title"] = "Ban File Monitor Details";
     var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+    var liveStatus = ViewBag.LiveStatus as GameServerLiveStatusDto;
 }
 
 @functions {
     static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
     {
-        if (configs != null &&
-            configs.TryGetValue(id, out var nc) &&
-            nc.TryGetValue(ns, out var r) &&
-            r.TryGetProperty(prop, out var v) &&
-            v.ValueKind == JsonValueKind.String)
-            return v.GetString() ?? "";
-        return "";
+        if (configs is not null
+            && configs.TryGetValue(id, out var nc)
+            && nc.TryGetValue(ns, out var r)
+            && r.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.String)
+            return v.GetString() ?? string.Empty;
+        return string.Empty;
     }
 
     static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
     {
-        if (configs != null &&
-            configs.TryGetValue(id, out var nc) &&
-            nc.TryGetValue(ns, out var r) &&
-            r.TryGetProperty(prop, out var v) &&
-            v.ValueKind == JsonValueKind.Number)
+        if (configs is not null
+            && configs.TryGetValue(id, out var nc)
+            && nc.TryGetValue(ns, out var r)
+            && r.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.Number)
             return v.GetInt32();
         return def;
     }
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
-
     <div class="row">
         <div class="col-12">
-
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
@@ -47,50 +46,142 @@
                             <div class="detail-field col-sm-6">
                                 <dt class="detail-label">Game Server</dt>
                                 <dd class="detail-value" data-testid="ban-file-monitor-details-gameserver">
-                                    <server-name title="@Model.GameServer.Title"
-                                        live-title="@Model.GameServer.Title"></server-name>
+                                    @if (Model.GameServer?.GameType is not null)
+                                    {
+                                        <game-type-icon game="@Model.GameServer.GameType"></game-type-icon>
+                                    }
+                                    <server-name title="@Model.GameServer?.Title" live-title="@Model.GameServer?.Title"></server-name>
                                 </dd>
                             </div>
                             <div class="detail-field col-sm-6">
-                                <dt class="detail-label">@Html.DisplayNameFor(model => model.FilePath)</dt>
+                                <dt class="detail-label">Watching</dt>
                                 <dd class="detail-value" data-testid="ban-file-monitor-details-filepath">
-                                    <ftp-path host="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "hostname")" port="@GetCfgInt(serverConfigs, Model.GameServerId, "ftp", "port", 21)"
-                                        path="@Model.FilePath" user="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "username")"
-                                        password="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "password")"></ftp-path>
+                                    @if (!string.IsNullOrWhiteSpace(Model.RemoteFilePath))
+                                    {
+                                        <ftp-path host="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "hostname")"
+                                                  port="@GetCfgInt(serverConfigs, Model.GameServerId, "ftp", "port", 21)"
+                                                  path="@Model.RemoteFilePath"
+                                                  user="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "username")"
+                                                  password="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "password")"></ftp-path>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">awaiting first check</span>
+                                    }
                                 </dd>
                             </div>
                             <div class="detail-field col-sm-6">
-                                <dt class="detail-label">@Html.DisplayNameFor(model => model.RemoteFileSize)</dt>
+                                <dt class="detail-label">Resolved for mod</dt>
+                                <dd class="detail-value">
+                                    @if (string.IsNullOrWhiteSpace(Model.ResolvedForMod))
+                                    {
+                                        <span class="text-muted">n/a</span>
+                                    }
+                                    else
+                                    {
+                                        <code>@Model.ResolvedForMod</code>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(liveStatus?.Mod))
+                                    {
+                                        <span class="text-muted">— server is running <code>@liveStatus.Mod</code></span>
+                                    }
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">Remote file size</dt>
                                 <dd class="detail-value" data-testid="ban-file-monitor-details-filesize">
-                                    @Html.DisplayFor(model => model.RemoteFileSize)
+                                    @(Model.RemoteFileSize?.ToString("N0") ?? "—") bytes
                                 </dd>
                             </div>
                             <div class="detail-field col-sm-6">
-                                <dt class="detail-label">@Html.DisplayNameFor(model => model.LastSync)</dt>
-                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastsync">
-                                    @Html.DisplayFor(model => model.LastSync)
+                                <dt class="detail-label">Last check</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastcheck">
+                                    @(Model.LastCheckUtc?.ToString("u") ?? "never")
+                                    @if (!string.IsNullOrWhiteSpace(Model.LastCheckResult))
+                                    {
+                                        <br /><small>Result: @Model.LastCheckResult</small>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Model.LastCheckErrorMessage))
+                                    {
+                                        <br /><small class="text-danger">@Model.LastCheckErrorMessage</small>
+                                    }
+                                    @if (Model.ConsecutiveFailureCount > 0)
+                                    {
+                                        <br /><small class="text-danger">@Model.ConsecutiveFailureCount consecutive failure(s)</small>
+                                    }
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">Last import</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastimport">
+                                    @(Model.LastImportUtc?.ToString("u") ?? "never")
+                                    @if (Model.LastImportBanCount.HasValue && Model.LastImportBanCount.Value > 0)
+                                    {
+                                        <br /><small>@Model.LastImportBanCount ban(s) imported</small>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Model.LastImportSampleNames))
+                                    {
+                                        <br /><small class="text-muted">Sample: @Model.LastImportSampleNames</small>
+                                    }
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">Last push</dt>
+                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastpush">
+                                    @(Model.LastPushUtc?.ToString("u") ?? "never")
+                                    @if (Model.LastPushedSize.HasValue)
+                                    {
+                                        <br /><small>@Model.LastPushedSize.Value.ToString("N0") bytes</small>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Model.LastPushedETag))
+                                    {
+                                        <br /><small class="text-muted">ETag: @Model.LastPushedETag</small>
+                                    }
+                                </dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">Last central blob seen</dt>
+                                <dd class="detail-value">
+                                    @(Model.LastCentralBlobUtc?.ToString("u") ?? "never")
+                                    @if (!string.IsNullOrWhiteSpace(Model.LastCentralBlobETag))
+                                    {
+                                        <br /><small class="text-muted">ETag: @Model.LastCentralBlobETag</small>
+                                    }
+                                </dd>
+                            </div>
+                            <div class="detail-field col-12">
+                                <dt class="detail-label">Per-tag counts</dt>
+                                <dd class="detail-value">
+                                    @if (Model.RemoteTotalLineCount.HasValue)
+                                    {
+                                        <span><strong>Total:</strong> @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
+                                        <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount ?? 0)</span>
+                                        <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ?? 0)</span>
+                                        <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong> @(Model.RemoteExternalCount ?? 0)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">not yet counted</span>
+                                    }
                                 </dd>
                             </div>
                         </dl>
                     </div>
                     <div class="ibox-footer">
                         <div class="btn-group btn-group-sm" role="group">
-                            @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(Model.GameServer.GameType, Model.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
+                            @if (Model.GameServer is not null)
                             {
-                                <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.BanFileMonitorId"
-                                    data-testid="ban-file-monitor-details-edit">
-                                    <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit
+                                <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit" asp-route-id="@Model.GameServerId">
+                                    <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Edit Game Server
                                 </a>
                             }
                             <a class="btn btn-outline-secondary" asp-action="Index" data-testid="ban-file-monitor-details-back">
-                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to List
+                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to dashboard
                             </a>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
-
 </div>

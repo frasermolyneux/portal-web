@@ -79,6 +79,12 @@
                                     @Html.DisplayNameFor(model => model.BanFileSyncEnabled)
                                 </label>
                             </div>
+                            <div class="mb-3">
+                                <label asp-for="BanFileRootPath" class="form-label"></label>
+                                <input asp-for="BanFileRootPath" class="form-control" type="text" maxlength="255" placeholder="/" />
+                                <span asp-validation-for="BanFileRootPath" class="text-danger"></span>
+                                <small class="form-text text-muted">FTP root path beneath which the ban file lives. Defaults to <code>/</code>.</small>
+                            </div>
                             <div class="form-check mb-3">
                                 <label class="form-check-label">
                                     <input class="form-check-input" asp-for="ServerListEnabled" />

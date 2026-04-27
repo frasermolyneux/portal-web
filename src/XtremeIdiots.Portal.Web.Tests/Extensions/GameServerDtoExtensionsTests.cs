@@ -8,7 +8,7 @@ public class GameServerDtoExtensionsTests
 {
     private static GameServerDto CreateGameServerDto(bool agentEnabled = false,
         bool ftpEnabled = false, bool rconEnabled = false, bool banFileSyncEnabled = false, bool serverListEnabled = false,
-        int serverListPosition = 0)
+        int serverListPosition = 0, string banFileRootPath = "/")
     {
         // GameServerDto uses internal setters, so we serialize/deserialize to set values
         var json = System.Text.Json.JsonSerializer.Serialize(new
@@ -22,6 +22,7 @@ public class GameServerDtoExtensionsTests
             FtpEnabled = ftpEnabled,
             RconEnabled = rconEnabled,
             BanFileSyncEnabled = banFileSyncEnabled,
+            BanFileRootPath = banFileRootPath,
             ServerListEnabled = serverListEnabled,
             ServerListPosition = serverListPosition
         });
@@ -50,6 +51,7 @@ public class GameServerDtoExtensionsTests
         Assert.Equal(dto.FtpEnabled, viewModel.FtpEnabled);
         Assert.Equal(dto.RconEnabled, viewModel.RconEnabled);
         Assert.Equal(dto.BanFileSyncEnabled, viewModel.BanFileSyncEnabled);
+        Assert.Equal(dto.BanFileRootPath, viewModel.BanFileRootPath);
         Assert.Equal(dto.ServerListEnabled, viewModel.ServerListEnabled);
         Assert.Equal(dto.ServerListPosition, viewModel.ServerListPosition);
     }

@@ -399,25 +399,34 @@
                                 {
                                     <div class="table-responsive">
                                         <table class="table table-sm w-100">
-                                            <thead><tr><th>File Path</th><th>Last Sync</th><th>Size</th></tr></thead>
+                                            <thead><tr><th>Watching</th><th>Last Check</th><th>Last Push</th></tr></thead>
                                             <tbody>
                                                 @foreach (var bfm in Model.BanFileMonitors)
                                                 {
                                                     <tr>
-                                                        <td><small>@bfm.FilePath</small></td>
+                                                        <td><small>@(bfm.RemoteFilePath ?? "(awaiting first check)")</small></td>
                                                         <td>
-                                                            @if (bfm.LastSync.HasValue)
+                                                            @if (bfm.LastCheckUtc.HasValue)
                                                             {
-                                                                var syncElapsed = DateTime.UtcNow - bfm.LastSync.Value;
-                                                                var syncClass = syncElapsed.TotalHours < 1 ? "text-success" : syncElapsed.TotalHours < 24 ? "text-warning" : "text-danger";
-                                                                <small class="@syncClass">@bfm.LastSync.Value.ToString("dd MMM HH:mm")</small>
+                                                                var checkElapsed = DateTime.UtcNow - bfm.LastCheckUtc.Value;
+                                                                var checkClass = checkElapsed.TotalMinutes < 15 ? "text-success" : checkElapsed.TotalHours < 1 ? "text-warning" : "text-danger";
+                                                                <small class="@checkClass">@bfm.LastCheckUtc.Value.ToString("dd MMM HH:mm")</small>
                                                             }
                                                             else
                                                             {
                                                                 <small class="text-muted">Never</small>
                                                             }
                                                         </td>
-                                                        <td><small>@(bfm.RemoteFileSize ?? 0) bytes</small></td>
+                                                        <td>
+                                                            @if (bfm.LastPushUtc.HasValue)
+                                                            {
+                                                                <small>@bfm.LastPushUtc.Value.ToString("dd MMM HH:mm")</small>
+                                                            }
+                                                            else
+                                                            {
+                                                                <small class="text-muted">Never</small>
+                                                            }
+                                                        </td>
                                                     </tr>
                                                 }
                                             </tbody>

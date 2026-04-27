@@ -7,6 +7,18 @@
     </div>
     <div class="ibox-content">
         <div class="mb-3">
+            <label asp-for="GameServer.BanFileRootPath" class="form-label"></label>
+            <input asp-for="GameServer.BanFileRootPath" class="form-control" type="text" maxlength="255" placeholder="/" />
+            <span asp-validation-for="GameServer.BanFileRootPath" class="text-danger"></span>
+            <small class="form-text text-muted">
+                FTP root path beneath which the ban file lives. The agent resolves the full path
+                from this root plus per-game-type rules and the currently-running mod
+                (e.g. <code>{root}/mods/&lt;mod&gt;/ban.txt</code> for CoD4/5,
+                <code>{root}/ban.txt</code> for CoD2). Defaults to <code>/</code>.
+            </small>
+        </div>
+
+        <div class="mb-3">
             <label asp-for="BanFileSyncConfigCheckIntervalSeconds" class="form-label"></label>
             <input asp-for="BanFileSyncConfigCheckIntervalSeconds" class="form-control" type="number" min="10" max="86400" />
             <span asp-validation-for="BanFileSyncConfigCheckIntervalSeconds" class="text-danger"></span>
@@ -14,3 +26,4 @@
         </div>
     </div>
 </div>
+

@@ -152,6 +152,7 @@ public class GameServersController(
             createGameServerDto.FtpEnabled = model.FtpEnabled;
             createGameServerDto.RconEnabled = model.RconEnabled;
             createGameServerDto.BanFileSyncEnabled = model.BanFileSyncEnabled;
+            createGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.BanFileRootPath) ? "/" : model.BanFileRootPath;
             createGameServerDto.ServerListEnabled = model.ServerListEnabled;
 
             var createResult = await repositoryApiClient.GameServers.V1.CreateGameServer(createGameServerDto, cancellationToken).ConfigureAwait(false);
@@ -421,6 +422,7 @@ public class GameServersController(
             editGameServerDto.FtpEnabled = model.GameServer.FtpEnabled;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
             editGameServerDto.BanFileSyncEnabled = model.GameServer.BanFileSyncEnabled;
+            editGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.GameServer.BanFileRootPath) ? "/" : model.GameServer.BanFileRootPath;
             editGameServerDto.ServerListEnabled = model.GameServer.ServerListEnabled;
 
             var updateResult = await repositoryApiClient.GameServers.V1.UpdateGameServer(editGameServerDto, cancellationToken).ConfigureAwait(false);

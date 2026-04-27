@@ -18,6 +18,7 @@ public static class GameServerDtoExtensions
             FtpEnabled = gameServerDto.FtpEnabled,
             RconEnabled = gameServerDto.RconEnabled,
             BanFileSyncEnabled = gameServerDto.BanFileSyncEnabled,
+            BanFileRootPath = string.IsNullOrWhiteSpace(gameServerDto.BanFileRootPath) ? "/" : gameServerDto.BanFileRootPath,
             ServerListEnabled = gameServerDto.ServerListEnabled,
             ServerListPosition = gameServerDto.ServerListPosition
         };

@@ -1,14 +1,13 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.CentralBanFileStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
-using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
@@ -18,7 +17,12 @@ using XtremeIdiots.Portal.Web.ViewModels;
 namespace XtremeIdiots.Portal.Web.Controllers;
 
 /// <summary>
-/// Controller for managing ban file monitors across game servers
+/// Read-only dashboard for ban file monitor status. The monitor row itself is owned
+/// and upserted by the server agent — admins can no longer create, edit, or delete
+/// monitors. To enable / disable monitoring for a server, toggle
+/// <c>GameServer.BanFileSyncEnabled</c> on the GameServers/Edit page; the FTP path
+/// is resolved automatically from per-game-type rules + <c>GameServer.BanFileRootPath</c>
+/// + the live mod observed by the agent.
 /// </summary>
 [Authorize(Policy = AuthPolicies.GameServers_BanFileMonitors_Read)]
 public class BanFileMonitorsController(
@@ -29,12 +33,12 @@ public class BanFileMonitorsController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-
     /// <summary>
-    /// Displays a list of ban file monitors the current user has access to
+    /// Dashboard showing per-server status (last check / push / import, mod match,
+    /// per-tag counts) plus per-game-type rollups (active permanent + temp bans,
+    /// central blob freshness, line counts) so admins can see at a glance whether
+    /// each server is protected and in sync with the central ban file.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>View containing the list of ban file monitors</returns>
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
@@ -43,118 +47,75 @@ public class BanFileMonitorsController(
             string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
-            var banFileMonitorsApiResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(gameTypes, banFileMonitorIds, null, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+            // Fetch monitor rows + live status + central status + active-ban counts in parallel.
+            // Each is independent and the dashboard composes them.
+            var monitorsTask = repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(
+                gameTypes, banFileMonitorIds, null, 0, 200, BanFileMonitorOrder.ServerListPosition, cancellationToken);
+            var liveStatusTask = repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
+            var centralStatusTask = repositoryApiClient.CentralBanFileStatus.V1.GetCentralBanFileStatuses(cancellationToken);
+            var activeBanCountsTask = repositoryApiClient.AdminActions.V1.GetActiveBanCounts(null, cancellationToken);
 
-            if (!banFileMonitorsApiResponse.IsSuccess || banFileMonitorsApiResponse.Result?.Data?.Items is null)
+            await Task.WhenAll(monitorsTask, liveStatusTask, centralStatusTask, activeBanCountsTask).ConfigureAwait(false);
+
+            var monitorsResponse = await monitorsTask.ConfigureAwait(false);
+            if (!monitorsResponse.IsSuccess || monitorsResponse.Result?.Data?.Items is null)
             {
                 Logger.LogError("Failed to retrieve ban file monitors for user {UserId}", User.XtremeIdiotsId());
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            var items = banFileMonitorsApiResponse.Result.Data.Items;
-            var serverIds = items.Where(i => i.GameServer != null).Select(i => i.GameServerId).Distinct();
-
-            var serverConfigsTask = GameServerConfigHelper.FetchConfigsForServersAsync(
-                repositoryApiClient, serverIds, Logger, cancellationToken);
-            var liveStatusTask = repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
-
-            await Task.WhenAll(serverConfigsTask, liveStatusTask).ConfigureAwait(false);
-
-            ViewBag.ServerConfigs = await serverConfigsTask.ConfigureAwait(false);
+            var monitors = monitorsResponse.Result.Data.Items.ToList();
 
             var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
-            ViewBag.LiveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+            var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
                 ? liveStatusResponse.Result.Data.Items.DistinctBy(ls => ls.ServerId).ToDictionary(ls => ls.ServerId)
                 : [];
 
-            return View(items);
+            var centralStatusResponse = await centralStatusTask.ConfigureAwait(false);
+            var centralStatusByGameType = centralStatusResponse.IsSuccess && centralStatusResponse.Result?.Data?.Items is not null
+                ? centralStatusResponse.Result.Data.Items.ToDictionary(s => s.GameType)
+                : [];
+
+            var activeBanCountsResponse = await activeBanCountsTask.ConfigureAwait(false);
+            var activeBanCountsByGameType = activeBanCountsResponse.IsSuccess && activeBanCountsResponse.Result?.Data?.Items is not null
+                ? activeBanCountsResponse.Result.Data.Items.ToDictionary(c => c.GameType)
+                : [];
+
+            // Build per-game-type roll-up cards for game types the user can see.
+            var visibleGameTypes = monitors
+                .Where(m => m.GameServer is not null)
+                .Select(m => m.GameServer.GameType)
+                .Distinct()
+                .OrderBy(gt => gt)
+                .ToList();
+
+            var gameTypeCards = visibleGameTypes.Select(gt => new BanFileMonitorGameTypeCard
+            {
+                GameType = gt,
+                ActiveBanCounts = activeBanCountsByGameType.GetValueOrDefault(gt),
+                CentralStatus = centralStatusByGameType.GetValueOrDefault(gt)
+            }).ToList();
+
+            var serverIds = monitors.Where(m => m.GameServer is not null).Select(m => m.GameServerId).Distinct();
+            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
+                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
+
+            var viewModel = new BanFileMonitorsDashboardViewModel
+            {
+                Monitors = monitors,
+                LiveStatusLookup = liveStatusLookup,
+                ServerConfigs = serverConfigs,
+                GameTypeCards = gameTypeCards
+            };
+
+            return View(viewModel);
         }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Displays the create ban file monitor form
+    /// Read-only details page for a single ban file monitor — surfaces every status
+    /// field for diagnostic deep-dives.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>View containing the create form</returns>
-    [HttpGet]
-    public async Task<IActionResult> Create(CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var canCreate = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_BanFileMonitors_Write).ConfigureAwait(false);
-            if (!canCreate.Succeeded)
-                return Forbid();
-
-            await AddGameServersViewData(cancellationToken: cancellationToken).ConfigureAwait(false);
-            return View(new CreateBanFileMonitorViewModel { FilePath = string.Empty });
-        }, nameof(Create)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Creates a new ban file monitor based on the submitted form data
-    /// </summary>
-    /// <param name="model">The create ban file monitor view model containing form data</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>Redirects to index on success, returns view with validation errors on failure</returns>
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CreateBanFileMonitorViewModel model, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken).ConfigureAwait(false);
-
-            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
-            {
-                Logger.LogWarning("Game server {GameServerId} not found when creating ban file monitor", model.GameServerId);
-                return NotFound();
-            }
-
-            var gameServerData = gameServerApiResponse.Result.Data;
-
-            var modelValidationResult = await CheckModelStateAsync(model, async m =>
-            {
-                await AddGameServersViewData(model.GameServerId, cancellationToken).ConfigureAwait(false);
-                m.GameServer = gameServerData;
-            }).ConfigureAwait(false);
-            if (modelValidationResult is not null)
-                return modelValidationResult;
-
-            var authorizationResource = new Tuple<GameType, Guid>(gameServerData.GameType, gameServerData.GameServerId);
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                authorizationResource,
-                AuthPolicies.GameServers_BanFileMonitors_Write,
-                nameof(Create),
-                "BanFileMonitor",
-                $"GameType:{gameServerData.GameType},GameServerId:{gameServerData.GameServerId}",
-                gameServerData).ConfigureAwait(false);
-
-            if (authResult is not null)
-                return authResult;
-
-            var createBanFileMonitorDto = new CreateBanFileMonitorDto(model.GameServerId, model.FilePath, gameServerData.GameType);
-            await repositoryApiClient.BanFileMonitors.V1.CreateBanFileMonitor(createBanFileMonitorDto, cancellationToken).ConfigureAwait(false);
-
-            TrackSuccessTelemetry("BanFileMonitorCreated", nameof(Create), new Dictionary<string, string>
-            {
-                { nameof(model.GameServerId), model.GameServerId.ToString() },
-                { nameof(model.FilePath), model.FilePath },
-                { nameof(GameType), gameServerData.GameType.ToString() }
-            });
-
-            this.AddAlertSuccess($"The ban file monitor has been created for {gameServerData.Title}");
-
-            return RedirectToAction(nameof(Index));
-        }, nameof(Create)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Displays the details of a specific ban file monitor
-    /// </summary>
-    /// <param name="id">The unique identifier of the ban file monitor</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>View containing the ban file monitor details</returns>
     [HttpGet]
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken = default)
     {
@@ -170,185 +131,16 @@ public class BanFileMonitorsController(
                 repositoryApiClient, [banFileMonitorData!.GameServerId], Logger, cancellationToken).ConfigureAwait(false);
             ViewBag.ServerConfigs = serverConfigs;
 
+            // Pull the live status so the Details page can also call out a mod mismatch.
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
+            ViewBag.LiveStatus = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
+                ? liveStatusResponse.Result.Data.Items.FirstOrDefault(ls => ls.ServerId == banFileMonitorData.GameServerId)
+                : null;
+
             return View(banFileMonitorData);
         }, nameof(Details)).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Displays the edit form for a specific ban file monitor
-    /// </summary>
-    /// <param name="id">The unique identifier of the ban file monitor</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>View containing the edit form</returns>
-    [HttpGet]
-    public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(Edit), cancellationToken).ConfigureAwait(false);
-
-            if (actionResult is not null)
-                return actionResult;
-
-            await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken).ConfigureAwait(false);
-
-            var viewModel = new EditBanFileMonitorViewModel
-            {
-                BanFileMonitorId = banFileMonitorData.BanFileMonitorId,
-                FilePath = banFileMonitorData.FilePath,
-                RemoteFileSize = banFileMonitorData.RemoteFileSize,
-                LastSync = banFileMonitorData.LastSync,
-                GameServerId = banFileMonitorData.GameServerId,
-                GameServer = banFileMonitorData.GameServer
-            };
-
-            return View(viewModel);
-        }, nameof(Edit)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Updates an existing ban file monitor based on the submitted form data
-    /// </summary>
-    /// <param name="model">The edit ban file monitor view model containing form data</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>Redirects to index on success, returns view with validation errors on failure</returns>
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(EditBanFileMonitorViewModel model, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                model.BanFileMonitorId, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(Edit), cancellationToken).ConfigureAwait(false);
-
-            if (actionResult is not null)
-                return actionResult;
-
-            var modelValidationResult = await CheckModelStateAsync(model, async m =>
-            {
-                await AddGameServersViewData(model.GameServerId, cancellationToken).ConfigureAwait(false);
-                model.GameServer = banFileMonitorData!.GameServer;
-            }).ConfigureAwait(false);
-            if (modelValidationResult is not null)
-                return modelValidationResult;
-
-            var editBanFileMonitorDto = new EditBanFileMonitorDto(banFileMonitorData!.BanFileMonitorId, model.FilePath);
-            await repositoryApiClient.BanFileMonitors.V1.UpdateBanFileMonitor(editBanFileMonitorDto, cancellationToken).ConfigureAwait(false);
-
-            TrackSuccessTelemetry("BanFileMonitorUpdated", nameof(Edit), new Dictionary<string, string>
-            {
-                { nameof(model.BanFileMonitorId), model.BanFileMonitorId.ToString() },
-                { nameof(model.FilePath), model.FilePath },
-                { nameof(GameType), banFileMonitorData.GameServer.GameType.ToString() }
-            });
-
-            this.AddAlertSuccess($"The ban file monitor has been updated for {banFileMonitorData.GameServer.Title}");
-
-            return RedirectToAction(nameof(Index));
-        }, nameof(Edit)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Displays the delete confirmation form for a specific ban file monitor
-    /// </summary>
-    /// <param name="id">The unique identifier of the ban file monitor</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>View containing the delete confirmation form</returns>
-    [HttpGet]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(Delete), cancellationToken).ConfigureAwait(false);
-
-            if (actionResult is not null)
-                return actionResult;
-
-            await AddGameServersViewData(banFileMonitorData!.GameServerId, cancellationToken).ConfigureAwait(false);
-
-            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
-                repositoryApiClient, [banFileMonitorData.GameServerId], Logger, cancellationToken).ConfigureAwait(false);
-            ViewBag.ServerConfigs = serverConfigs;
-
-            return View(banFileMonitorData);
-        }, nameof(Delete)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Permanently deletes the specified ban file monitor
-    /// </summary>
-    /// <param name="id">The unique identifier of the ban file monitor to delete</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>Redirects to index on success</returns>
-    [HttpPost]
-    [ActionName("Delete")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, banFileMonitorData) = await GetAuthorizedBanFileMonitorAsync(
-                id, AuthPolicies.GameServers_BanFileMonitors_Write, nameof(DeleteConfirmed), cancellationToken).ConfigureAwait(false);
-
-            if (actionResult is not null)
-                return actionResult;
-
-            await repositoryApiClient.BanFileMonitors.V1.DeleteBanFileMonitor(id, cancellationToken).ConfigureAwait(false);
-
-            TrackSuccessTelemetry("BanFileMonitorDeleted", nameof(DeleteConfirmed), new Dictionary<string, string>
-            {
-                { nameof(id), id.ToString() },
-                { nameof(GameType), banFileMonitorData!.GameServer.GameType.ToString() },
-                { "GameServerId", banFileMonitorData.GameServer.GameServerId.ToString() }
-            });
-
-            this.AddAlertSuccess($"The ban file monitor has been deleted for {banFileMonitorData.GameServer.Title}");
-
-            return RedirectToAction(nameof(Index));
-        }, nameof(DeleteConfirmed)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Populates ViewData with game servers available to the current user for dropdown selection
-    /// </summary>
-    /// <param name="selected">Optional game server ID to mark as selected</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    private async Task AddGameServersViewData(Guid? selected = null, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
-            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
-
-            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
-
-            if (gameServersApiResponse.Result?.Data?.Items is not null)
-            {
-                ViewData["GameServers"] = new SelectList(gameServersApiResponse.Result.Data.Items, nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title), selected);
-            }
-            else
-            {
-                Logger.LogWarning("Failed to load game servers for user {UserId}", User.XtremeIdiotsId());
-                ViewData["GameServers"] = new SelectList(Array.Empty<GameServerDto>(), nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title));
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading game servers view data for user {UserId}", User.XtremeIdiotsId());
-            ViewData["GameServers"] = new SelectList(Array.Empty<GameServerDto>(), nameof(GameServerDto.GameServerId), nameof(GameServerDto.Title));
-        }
-    }
-
-    /// <summary>
-    /// Retrieves and validates authorization for a specific ban file monitor
-    /// </summary>
-    /// <param name="id">The unique identifier of the ban file monitor</param>
-    /// <param name="policy">The authorization policy to check</param>
-    /// <param name="action">The name of the action being performed</param>
-    /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>A tuple containing either an action result (if unauthorized/not found) or the ban file monitor data</returns>
     private async Task<(IActionResult? ActionResult, BanFileMonitorDto? BanFileMonitor)> GetAuthorizedBanFileMonitorAsync(
         Guid id,
         string policy,
@@ -376,6 +168,8 @@ public class BanFileMonitorsController(
             $"GameType:{gameServerData.GameType},GameServerId:{gameServerData.GameServerId}",
             banFileMonitorData).ConfigureAwait(false);
 
-        return authResult is not null ? ((IActionResult? ActionResult, BanFileMonitorDto? BanFileMonitor))(authResult, null) : ((IActionResult? ActionResult, BanFileMonitorDto? BanFileMonitor))(null, banFileMonitorData);
+        return authResult is not null
+            ? (authResult, null)
+            : (null, banFileMonitorData);
     }
 }

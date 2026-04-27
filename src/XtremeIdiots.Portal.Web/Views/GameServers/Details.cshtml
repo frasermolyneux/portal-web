@@ -84,6 +84,10 @@
                                 <dd class="detail-value">@Html.DisplayFor(model => model.BanFileSyncEnabled)</dd>
                             </div>
                             <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.BanFileRootPath)</dt>
+                                <dd class="detail-value"><code>@Model.BanFileRootPath</code></dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.ServerListEnabled)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.ServerListEnabled)</dd>
                             </div>
@@ -121,12 +125,9 @@
                             <table id="gameServerMonitorsTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
-                                        <th scope="col">
-                                            File Path
-                                        </th>
-                                        <th scope="col" class="table-date-col">
-                                            Last Sync
-                                        </th>
+                                        <th scope="col">Watching</th>
+                                        <th scope="col" class="table-date-col">Last Check</th>
+                                        <th scope="col" class="table-date-col">Last Push</th>
                                         <th scope="col" class="table-action-col"></th>
                                     </tr>
                                 </thead>
@@ -135,34 +136,53 @@
                                     {
                                         <tr>
                                             <td>
-                                            @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-                                                                                    Guid>(Model.GameType, Model.GameServerId),
-                                                                                    AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
+                                            @if (!string.IsNullOrWhiteSpace(item.RemoteFilePath))
                                             {
-                                                <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
-                                                    path="@item.FilePath" user="@ViewBag.FtpUsername"
-                                                    password="@ViewBag.FtpPassword"></ftp-path>
+                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
+                                                                                        Guid>(Model.GameType, Model.GameServerId),
+                                                                                        AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
+                                                {
+                                                    <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
+                                                        path="@item.RemoteFilePath" user="@ViewBag.FtpUsername"
+                                                        password="@ViewBag.FtpPassword"></ftp-path>
+                                                }
+                                                else
+                                                {
+                                                    <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
+                                                        path="@item.RemoteFilePath" show-credentials="false"></ftp-path>
+                                                }
                                             }
                                             else
                                             {
-                                                <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
-                                                    path="@item.FilePath" show-credentials="false"></ftp-path>
+                                                <span class="text-muted">awaiting first check</span>
                                             }
                                         </td>
                                         <td>
-                                            @Html.DisplayFor(modelItem => item.LastSync)
+                                            @if (item.LastCheckUtc.HasValue)
+                                            {
+                                                <span title="@item.LastCheckUtc.Value.ToString("u")">@item.LastCheckUtc.Value.ToString("dd MMM HH:mm")</span>
+                                                @if (!string.Equals(item.LastCheckResult, "Success", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <br /><small class="text-danger">@item.LastCheckResult</small>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">never</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.LastPushUtc.HasValue)
+                                            {
+                                                <span title="@item.LastPushUtc.Value.ToString("u")">@item.LastPushUtc.Value.ToString("dd MMM HH:mm")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">never</span>
+                                            }
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-                                                                                            Guid>(Model.GameType, Model.GameServerId),
-                                                                                            AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
-                                                {
-                                                    <a class="btn btn-outline-secondary btn-sm" asp-controller="BanFileMonitors"
-                                                        asp-action="Edit" asp-route-id="@item.BanFileMonitorId" title="Edit" aria-label="Edit"><i
-                                                            class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i></a>
-                                                }
-
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                             Guid>(Model.GameType, Model.GameServerId),
                                                                                             AuthPolicies.GameServers_BanFileMonitors_Read)).Succeeded)
@@ -170,15 +190,6 @@
                                                     <a class="btn btn-outline-secondary btn-sm" asp-controller="BanFileMonitors"
                                                         asp-action="Details" asp-route-id="@item.BanFileMonitorId" title="Details" aria-label="Details"><i
                                                             class="fa-solid fa-fw fa-eye" aria-hidden="true"></i></a>
-                                                }
-
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-                                                                                            Guid>(Model.GameType, Model.GameServerId),
-                                                                                            AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
-                                                {
-                                                    <a class="btn btn-outline-danger btn-sm" asp-controller="BanFileMonitors"
-                                                        asp-action="Delete" asp-route-id="@item.BanFileMonitorId" title="Delete" aria-label="Delete"><i
-                                                            class="fa-solid fa-fw fa-trash" aria-hidden="true"></i></a>
                                                 }
                                             </div>
                                         </td>

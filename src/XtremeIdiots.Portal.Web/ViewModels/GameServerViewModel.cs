@@ -66,6 +66,16 @@ public class GameServerViewModel
     public bool BanFileSyncEnabled { get; set; }
 
     /// <summary>
+    /// Gets or sets the FTP root path beneath which the ban file lives. The agent
+    /// resolves the full path from this root plus per-game-type rules and the
+    /// currently-running mod (e.g. <c>{root}/mods/&lt;mod&gt;/ban.txt</c> for CoD4/5,
+    /// <c>{root}/ban.txt</c> for CoD2). Defaults to <c>"/"</c>.
+    /// </summary>
+    [DisplayName("Ban File Root Path")]
+    [MaxLength(255)]
+    public string BanFileRootPath { get; set; } = "/";
+
+    /// <summary>
     /// Gets or sets whether this server appears in server lists
     /// </summary>
     [DisplayName("Server List")]

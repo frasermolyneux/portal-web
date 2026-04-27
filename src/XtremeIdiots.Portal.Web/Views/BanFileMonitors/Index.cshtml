@@ -1,199 +1,332 @@
 @using System.Text.Json
-@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus
-@model IEnumerable<BanFileMonitorDto>
+@using XtremeIdiots.Portal.Web.ViewModels
+@model BanFileMonitorsDashboardViewModel
 
 @{
-    ViewData["Title"] = "Ban File Monitor Index";
-    ViewData["Description"] = "Manage ban file monitors for game servers";
-    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
-    var liveStatusLookup = ViewBag.LiveStatusLookup as Dictionary<Guid, GameServerLiveStatusDto>;
+    ViewData["Title"] = "Ban File Monitors";
+    ViewData["Description"] = "Per-server ban file status, central blob freshness, and active ban totals";
 }
 
 @functions {
-    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    static string GetCfg(IReadOnlyDictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
     {
-        if (configs != null &&
-            configs.TryGetValue(id, out var nc) &&
-            nc.TryGetValue(ns, out var r) &&
-            r.TryGetProperty(prop, out var v) &&
-            v.ValueKind == JsonValueKind.String)
-            return v.GetString() ?? "";
-        return "";
+        if (configs is not null
+            && configs.TryGetValue(id, out var nc)
+            && nc.TryGetValue(ns, out var r)
+            && r.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.String)
+            return v.GetString() ?? string.Empty;
+        return string.Empty;
     }
 
-    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
+    static int GetCfgInt(IReadOnlyDictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
     {
-        if (configs != null &&
-            configs.TryGetValue(id, out var nc) &&
-            nc.TryGetValue(ns, out var r) &&
-            r.TryGetProperty(prop, out var v) &&
-            v.ValueKind == JsonValueKind.Number)
+        if (configs is not null
+            && configs.TryGetValue(id, out var nc)
+            && nc.TryGetValue(ns, out var r)
+            && r.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.Number)
             return v.GetInt32();
         return def;
     }
 
-    /// <summary>
-    /// Extracts the mod folder name from a ban file path (e.g. "/mods/xi_sniper/ban.txt" → "xi_sniper")
-    /// </summary>
-    static string? ExtractModFromPath(string? filePath)
+    static string Relative(DateTime? utc)
     {
-        if (string.IsNullOrWhiteSpace(filePath))
-            return null;
+        if (!utc.HasValue) return "never";
+        var delta = DateTime.UtcNow - utc.Value;
+        if (delta.TotalSeconds < 60) return $"{(int)delta.TotalSeconds}s ago";
+        if (delta.TotalMinutes < 60) return $"{(int)delta.TotalMinutes}m ago";
+        if (delta.TotalHours < 24) return $"{(int)delta.TotalHours}h ago";
+        return $"{(int)delta.TotalDays}d ago";
+    }
 
-        var normalised = filePath.Replace('\\', '/');
-        var segments = normalised.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        for (int i = 0; i < segments.Length - 1; i++)
+    /// <summary>
+    /// Composite "is the server protected?" check. Requires:
+    ///   - sync enabled,
+    ///   - last successful check within 15 min,
+    ///   - mod match (when applicable),
+    ///   - DB BanSync count is within 5% of the active permanent+temp ban total.
+    /// </summary>
+    static (string Css, string Label, string Tooltip) ProtectedBadge(
+        XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors.BanFileMonitorDto m,
+        GameServerLiveStatusDto? live,
+        BanFileMonitorGameTypeCard? card)
+    {
+        if (m.GameServer is null || !m.GameServer.BanFileSyncEnabled)
+            return ("bg-secondary", "Disabled", "Ban file sync is disabled for this server.");
+
+        if (m.LastCheckUtc is null)
+            return ("bg-secondary", "Pending", "The agent has not reported a check yet.");
+
+        if (!string.Equals(m.LastCheckResult, "Success", StringComparison.OrdinalIgnoreCase))
+            return ("bg-danger", "Failed", $"Last check: {m.LastCheckResult ?? "Unknown"} — {m.LastCheckErrorMessage}".Trim('—', ' '));
+
+        if ((DateTime.UtcNow - m.LastCheckUtc.Value).TotalMinutes > 15)
+            return ("bg-danger", "Stale", "No successful check in the last 15 minutes.");
+
+        // Mod-match: only meaningful when the resolver picked a mod and the live mod is known.
+        if (!string.IsNullOrWhiteSpace(m.ResolvedForMod)
+            && !string.IsNullOrWhiteSpace(live?.Mod)
+            && !m.ResolvedForMod.Equals(live.Mod, StringComparison.OrdinalIgnoreCase)
+            && !m.ResolvedForMod.Equals("main", StringComparison.OrdinalIgnoreCase))
         {
-            if (segments[i].Equals("mods", StringComparison.OrdinalIgnoreCase))
-                return segments[i + 1];
+            return ("bg-warning text-dark", "Mod mismatch", $"Watching '{m.ResolvedForMod}' but server is running '{live.Mod}'.");
         }
-        return null;
+
+        // DB ↔ remote sync drift.
+        if (card?.ActiveBanCounts is not null && m.RemoteBanSyncCount.HasValue)
+        {
+            var expected = card.ActiveBanCounts.ActivePermanentBanCount + card.ActiveBanCounts.ActiveTempBanCount;
+            if (expected > 0)
+            {
+                var drift = Math.Abs(expected - m.RemoteBanSyncCount.Value) / (double)expected;
+                if (drift > 0.05)
+                    return ("bg-warning text-dark", "Drifted", $"Server has {m.RemoteBanSyncCount.Value} portal bans, DB has {expected} active.");
+            }
+        }
+
+        return ("bg-success", "Protected", "Server is in sync with portal bans.");
     }
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
+
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i> 
-        This section allows you to manage what ban files are monitored on all the servers, ideally there should be one entry per server. 
-        If the mod changes then the file path should be updated to reflect that.
+        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
+        Ban file monitors are now <strong>read-only status snapshots</strong> written by the server agent.
+        To enable / disable monitoring for a server, toggle <strong>Ban File Sync</strong> on
+        <a asp-controller="GameServers" asp-action="Index">the game server's edit page</a>.
+        The FTP path is resolved automatically from the server's <strong>Ban File Root Path</strong>
+        plus per-game-type rules and the currently-running mod.
     </div>
+
+    @if (Model.GameTypeCards.Count > 0)
+    {
+        <div class="row mb-3">
+            @foreach (var card in Model.GameTypeCards)
+            {
+                var totalActive = (card.ActiveBanCounts?.ActivePermanentBanCount ?? 0)
+                                  + (card.ActiveBanCounts?.ActiveTempBanCount ?? 0);
+                var central = card.CentralStatus;
+                var centralAgeOk = central?.BlobLastRegeneratedUtc.HasValue == true
+                                   && (DateTime.UtcNow - central.BlobLastRegeneratedUtc.Value).TotalMinutes <= 30;
+                var dbCentralDrift = central?.BanSyncLineCount.HasValue == true
+                                     && totalActive > 0
+                                     && Math.Abs(totalActive - central.BanSyncLineCount.Value) > Math.Max(2, totalActive * 0.02);
+
+                <div class="col-12 col-md-6 col-xl-4 mb-3">
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5>
+                                <game-type-icon game="@card.GameType"></game-type-icon>
+                                @card.GameType
+                            </h5>
+                        </div>
+                        <div class="ibox-content">
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-7">Active permanent bans</dt>
+                                <dd class="col-sm-5 text-end">@(card.ActiveBanCounts?.ActivePermanentBanCount.ToString("N0") ?? "—")</dd>
+
+                                <dt class="col-sm-7">Active temp bans</dt>
+                                <dd class="col-sm-5 text-end">
+                                    @(card.ActiveBanCounts?.ActiveTempBanCount.ToString("N0") ?? "—")
+                                    @if (card.ActiveBanCounts?.ExpiringTempBansNext24h > 0)
+                                    {
+                                        <span class="text-muted">(@card.ActiveBanCounts.ExpiringTempBansNext24h expiring 24h)</span>
+                                    }
+                                </dd>
+
+                                <dt class="col-sm-7">Central blob</dt>
+                                <dd class="col-sm-5 text-end">
+                                    @if (central is null)
+                                    {
+                                        <span class="text-muted">never regenerated</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="@(centralAgeOk ? "text-success" : "text-danger")"
+                                              title="@(central.BlobLastRegeneratedUtc?.ToString("u") ?? "never")">
+                                            @Relative(central.BlobLastRegeneratedUtc)
+                                        </span>
+                                    }
+                                </dd>
+
+                                <dt class="col-sm-7">Blob lines (portal / external)</dt>
+                                <dd class="col-sm-5 text-end">
+                                    @if (central is null)
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@(central.BanSyncLineCount?.ToString("N0") ?? "—") / @(central.ExternalLineCount?.ToString("N0") ?? "—")</span>
+                                    }
+                                </dd>
+
+                                <dt class="col-sm-7">DB ↔ central</dt>
+                                <dd class="col-sm-5 text-end">
+                                    @if (dbCentralDrift)
+                                    {
+                                        <span class="text-warning"
+                                              title="DB has @totalActive active bans; central blob has @central?.BanSyncLineCount portal lines.">
+                                            <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Drifted
+                                        </span>
+                                    }
+                                    else if (central?.BanSyncLineCount.HasValue == true)
+                                    {
+                                        <span class="text-success"><i class="fa-solid fa-fw fa-circle-check"></i> In sync</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </dd>
+
+                                @if (!string.IsNullOrEmpty(central?.LastRegenerationError))
+                                {
+                                    <dt class="col-12 mt-2 text-danger">Last regeneration error</dt>
+                                    <dd class="col-12 small text-danger">@central.LastRegenerationError</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 
     <div class="row">
         <div class="col-12">
-
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5>Ban File Monitors</h5>
-                        <div class="ibox-tools">
-                            <a policy="@AuthPolicies.GameServers_BanFileMonitors_Write" policy-resource="@PotentialAccessProbe.Instance" class="btn btn-primary btn-sm" asp-action="Create" aria-label="Create new ban file monitor">
-                                <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create New
-                            </a>
-                        </div>
+                        <h5>Per-server status</h5>
                     </div>
                     <div class="ibox-content">
-                    <div class="table-responsive">
-                        <table id="banFileMonitorsTable" class="table table-striped table-hover w-100" aria-label="Ban file monitors list">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Game Server</th>
-                                    <th scope="col">File Path</th>
-                                    <th scope="col">Mod Check</th>
-                                    <th scope="col" class="table-date-col">Last Sync</th>
-                                    <th scope="col" class="table-action-col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model)
+                        <div class="table-responsive">
+                            <table id="banFileMonitorsTable" class="table table-striped table-hover w-100" aria-label="Ban file monitor status">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Server</th>
+                                        <th scope="col">Watching</th>
+                                        <th scope="col">Mod match</th>
+                                        <th scope="col" class="table-date-col">Last check</th>
+                                        <th scope="col" class="table-date-col">Last import</th>
+                                        <th scope="col" class="table-date-col">Last push</th>
+                                        <th scope="col">Bans on file</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col" class="table-action-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var item in Model.Monitors)
                                 {
+                                    GameServerLiveStatusDto? live = null;
+                                    Model.LiveStatusLookup.TryGetValue(item.GameServerId, out live);
+                                    var card = Model.GameTypeCards.FirstOrDefault(c => item.GameServer is not null && c.GameType == item.GameServer.GameType);
+                                    var (badgeCss, badgeLabel, badgeTip) = ProtectedBadge(item, live, card);
+                                    var ftpHost = GetCfg(Model.ServerConfigs, item.GameServerId, "ftp", "hostname");
+                                    var ftpPort = GetCfgInt(Model.ServerConfigs, item.GameServerId, "ftp", "port", 21);
+
                                     <tr>
                                         <td>
-                                            @if (item.GameServer?.GameType != null)
+                                            @if (item.GameServer?.GameType is not null)
                                             {
                                                 <game-type-icon game="@item.GameServer.GameType"></game-type-icon>
                                             }
-                                            <server-name title="@item.GameServer?.Title" live-title="@item.GameServer?.Title"></server-name>
+                                            <server-name title="@item.GameServer?.Title" live-title="@live?.Title"></server-name>
                                         </td>
                                         <td>
-                                            @if (item.GameServer?.GameType != null && item.GameServer?.GameServerId != null)
+                                            @if (!string.IsNullOrWhiteSpace(item.RemoteFilePath))
                                             {
-                                                var ftpHost = GetCfg(serverConfigs, item.GameServerId, "ftp", "hostname");
-                                                var ftpPort = GetCfgInt(serverConfigs, item.GameServerId, "ftp", "port", 21);
-                                                var ftpUser = GetCfg(serverConfigs, item.GameServerId, "ftp", "username");
-                                                var ftpPass = GetCfg(serverConfigs, item.GameServerId, "ftp", "password");
-
-                                                @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
-                                                {
-                                                    <ftp-path host="@ftpHost" port="@ftpPort" path="@item.FilePath" user="@ftpUser" password="@ftpPass"></ftp-path>
-                                                }
-                                                else
-                                                {
-                                                    <ftp-path host="@ftpHost" port="@ftpPort" path="@item.FilePath" show-credentials="false"></ftp-path>
-                                                }
+                                                <ftp-path host="@ftpHost" port="@ftpPort" path="@item.RemoteFilePath" show-credentials="false"></ftp-path>
                                             }
                                             else
                                             {
-                                                <span class="text-muted">No file path configured</span>
+                                                <span class="text-muted">awaiting first check</span>
                                             }
                                         </td>
                                         <td>
-                                            @{
-                                                var pathMod = ExtractModFromPath(item.FilePath);
-                                                GameServerLiveStatusDto? liveStatus = null;
-                                                liveStatusLookup?.TryGetValue(item.GameServerId, out liveStatus);
-                                                var liveMod = liveStatus?.Mod;
-                                            }
-
-                                            @if (string.IsNullOrWhiteSpace(liveMod))
+                                            @if (string.IsNullOrWhiteSpace(live?.Mod))
                                             {
-                                                <span class="badge bg-secondary" title="Server is offline or mod information unavailable">
-                                                    Server offline
-                                                </span>
+                                                <span class="badge bg-secondary" title="Server is offline or mod information unavailable">offline</span>
                                             }
-                                            else if (string.IsNullOrWhiteSpace(pathMod))
+                                            else if (string.IsNullOrWhiteSpace(item.ResolvedForMod))
                                             {
-                                                <span class="badge bg-warning" title="Cannot determine mod from file path">
-                                                    No mod in path
-                                                </span>
+                                                <span class="badge bg-info" title="Game type does not depend on the active mod">n/a</span>
                                             }
-                                            else if (pathMod.Equals(liveMod, StringComparison.OrdinalIgnoreCase))
+                                            else if (item.ResolvedForMod.Equals(live.Mod, StringComparison.OrdinalIgnoreCase)
+                                                     || item.ResolvedForMod.Equals("main", StringComparison.OrdinalIgnoreCase))
                                             {
-                                                <span class="badge bg-success" title="File path mod '@pathMod' matches live server mod '@liveMod'">
-                                                    OK
+                                                <span class="badge bg-success" title="Watching @item.ResolvedForMod, server running @live.Mod">@item.ResolvedForMod</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark" title="Watching @item.ResolvedForMod, server running @live.Mod">@item.ResolvedForMod ≠ @live.Mod</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span title="@(item.LastCheckUtc?.ToString("u") ?? "never")">@Relative(item.LastCheckUtc)</span>
+                                            @if (!string.Equals(item.LastCheckResult, "Success", StringComparison.OrdinalIgnoreCase) && item.LastCheckUtc.HasValue)
+                                            {
+                                                <br /><small class="text-danger">@item.LastCheckResult</small>
+                                            }
+                                            @if (item.ConsecutiveFailureCount > 0)
+                                            {
+                                                <br /><small class="text-danger">@item.ConsecutiveFailureCount fail(s)</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span title="@(item.LastImportUtc?.ToString("u") ?? "never")">@Relative(item.LastImportUtc)</span>
+                                            @if (item.LastImportBanCount > 0)
+                                            {
+                                                <br /><small class="text-muted">@item.LastImportBanCount ban(s)</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span title="@(item.LastPushUtc?.ToString("u") ?? "never")">@Relative(item.LastPushUtc)</span>
+                                        </td>
+                                        <td>
+                                            @if (item.RemoteTotalLineCount.HasValue)
+                                            {
+                                                var tip = $"Untagged (manual): {item.RemoteUntaggedCount ?? 0:N0} • Portal: {item.RemoteBanSyncCount ?? 0:N0} • External: {item.RemoteExternalCount ?? 0:N0}";
+                                                <span title="@tip">
+                                                    @item.RemoteTotalLineCount.Value.ToString("N0")
+                                                    <small class="text-muted">(@(item.RemoteUntaggedCount ?? 0)/@(item.RemoteBanSyncCount ?? 0)/@(item.RemoteExternalCount ?? 0))</small>
                                                 </span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-danger" title="File path mod '@pathMod' does not match live server mod '@liveMod'">
-                                                    Mismatch: @liveMod
-                                                </span>
+                                                <span class="text-muted">—</span>
                                             }
                                         </td>
                                         <td>
-                                            @Html.DisplayFor(modelItem => item.LastSync)
+                                            <span class="badge @badgeCss" title="@badgeTip">@badgeLabel</span>
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                @if (item.GameServer?.GameType != null && item.GameServer?.GameServerId != null)
+                                                <a class="btn btn-outline-secondary btn-sm" asp-action="Details" asp-route-id="@item.BanFileMonitorId" title="Details" aria-label="Details">
+                                                    <i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i>
+                                                </a>
+                                                @if (item.GameServer is not null)
                                                 {
-                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
-                                                    {
-                                                        <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@item.BanFileMonitorId" title="Edit" aria-label="Edit">
-                                                            <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i>
-                                                        </a>
-                                                    }
-
-                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Read)).Succeeded)
-                                                    {
-                                                        <a class="btn btn-outline-secondary btn-sm" asp-action="Details" asp-route-id="@item.BanFileMonitorId" title="Details" aria-label="Details">
-                                                            <i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i>
-                                                        </a>
-                                                    }
-
-                                                    @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType, Guid>(item.GameServer.GameType, item.GameServer.GameServerId), AuthPolicies.GameServers_BanFileMonitors_Write)).Succeeded)
-                                                    {
-                                                        <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@item.BanFileMonitorId" title="Delete" aria-label="Delete">
-                                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                                                        </a>
-                                                    }
+                                                    <a class="btn btn-outline-secondary btn-sm" asp-controller="GameServers" asp-action="Edit" asp-route-id="@item.GameServerId" title="Edit game server" aria-label="Edit game server">
+                                                        <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i>
+                                                    </a>
                                                 }
                                             </div>
                                         </td>
                                     </tr>
                                 }
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-            </div>
-
         </div>
     </div>
+
 </div>
-
-@section Scripts {
-    <script src="~/js/ban-file-monitors-index.js" asp-append-version="true"></script>
-}
-
