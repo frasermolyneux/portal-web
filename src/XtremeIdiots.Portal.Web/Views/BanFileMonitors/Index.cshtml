@@ -54,7 +54,17 @@
         GameServerLiveStatusDto? live,
         BanFileMonitorGameTypeCard? card)
     {
-        if (m.GameServer is null || !m.GameServer.BanFileSyncEnabled)
+        if (m.GameServer is null)
+            return ("bg-secondary", "Unknown", "Game server data unavailable.");
+
+        // Ban file sync is a sub-feature of the agent. If sync is on but the agent is off,
+        // the watcher cannot run — surface this as a config error rather than the misleading
+        // "Stale" badge it would otherwise produce.
+        if (m.GameServer.BanFileSyncEnabled && !m.GameServer.AgentEnabled)
+            return ("bg-warning text-dark", "Misconfigured",
+                "Ban file sync requires the agent to be enabled. Toggle Agent Enabled on the game server's edit page, or disable Ban File Sync.");
+
+        if (!m.GameServer.BanFileSyncEnabled)
             return ("bg-secondary", "Disabled", "Ban file sync is disabled for this server.");
 
         if (m.LastCheckUtc is null)
@@ -96,10 +106,11 @@
     <div class="alert alert-primary" role="alert">
         <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
         Ban file monitors are now <strong>read-only status snapshots</strong> written by the server agent.
-        To enable / disable monitoring for a server, toggle <strong>Ban File Sync</strong> on
+        To enable / disable monitoring for a server, toggle <strong>Agent Enabled</strong> + <strong>Ban File Sync</strong> on
         <a asp-controller="GameServers" asp-action="Index">the game server's edit page</a>.
-        The FTP path is resolved automatically from the server's <strong>Ban File Root Path</strong>
-        plus per-game-type rules and the currently-running mod.
+        Ban file sync is a sub-feature of the agent and requires Agent Enabled. The FTP path is resolved
+        automatically from the server's <strong>Ban File Root Path</strong> plus per-game-type rules and
+        the currently-running mod.
     </div>
 
     @if (Model.GameTypeCards.Count > 0)
