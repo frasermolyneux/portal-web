@@ -43,6 +43,20 @@
     }
 
     /// <summary>
+    /// Normalises a mod name for comparison: trims whitespace, strips a leading "mods/"
+    /// prefix (CoD4/5 parsers report the mod with the prefix; the resolver records it
+    /// without). Lowercased so callers can use ordinal-insensitive equality.
+    /// </summary>
+    static string NormaliseMod(string? mod)
+    {
+        if (string.IsNullOrWhiteSpace(mod)) return string.Empty;
+        var trimmed = mod.Trim();
+        if (trimmed.StartsWith("mods/", StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed[5..];
+        return trimmed.ToLowerInvariant();
+    }
+
+    /// <summary>
     /// Composite "is the server protected?" check. Requires:
     ///   - sync enabled,
     ///   - last successful check within 15 min,
@@ -77,12 +91,16 @@
             return ("bg-danger", "Stale", "No successful check in the last 15 minutes.");
 
         // Mod-match: only meaningful when the resolver picked a mod and the live mod is known.
-        if (!string.IsNullOrWhiteSpace(m.ResolvedForMod)
-            && !string.IsNullOrWhiteSpace(live?.Mod)
-            && !m.ResolvedForMod.Equals(live.Mod, StringComparison.OrdinalIgnoreCase)
-            && !m.ResolvedForMod.Equals("main", StringComparison.OrdinalIgnoreCase))
+        // Both sides normalised — the parser reports "mods/<name>" for CoD4/5 while the
+        // resolver records just "<name>", so a raw equality check would always fail.
+        var resolvedMod = NormaliseMod(m.ResolvedForMod);
+        var liveMod = NormaliseMod(live?.Mod);
+        if (resolvedMod.Length > 0
+            && liveMod.Length > 0
+            && resolvedMod != liveMod
+            && resolvedMod != "main")
         {
-            return ("bg-warning text-dark", "Mod mismatch", $"Watching '{m.ResolvedForMod}' but server is running '{live.Mod}'.");
+            return ("bg-warning text-dark", "Mod mismatch", $"Watching '{resolvedMod}' but server is running '{liveMod}'.");
         }
 
         // DB ↔ remote sync drift.
@@ -139,8 +157,11 @@
                 var totalActive = (card.ActiveBanCounts?.ActivePermanentBanCount ?? 0)
                                   + (card.ActiveBanCounts?.ActiveTempBanCount ?? 0);
                 var central = card.CentralStatus;
-                var centralAgeOk = central?.BlobLastRegeneratedUtc.HasValue == true
-                                   && (DateTime.UtcNow - central.BlobLastRegeneratedUtc.Value).TotalMinutes <= 30;
+                // portal-sync skip-if-unchanged means BlobLastRegeneratedUtc only advances when
+                // a ban is actually added/removed. Use LastUpdatedUtc for freshness — it is
+                // written on every cycle including skips, so it tells us "is portal-sync alive?".
+                var portalSyncAlive = central?.LastUpdatedUtc != default
+                                      && (DateTime.UtcNow - (central?.LastUpdatedUtc ?? DateTime.MinValue)).TotalMinutes <= 30;
                 var dbCentralDrift = central?.BanSyncLineCount.HasValue == true
                                      && totalActive > 0
                                      && Math.Abs(totalActive - central.BanSyncLineCount.Value) > Math.Max(2, totalActive * 0.02);
@@ -167,16 +188,30 @@
                                     }
                                 </dd>
 
-                                <dt class="col-sm-7">Central blob</dt>
+                                <dt class="col-sm-7">portal-sync last cycle</dt>
                                 <dd class="col-sm-5 text-end">
                                     @if (central is null)
                                     {
-                                        <span class="text-muted">never regenerated</span>
+                                        <span class="text-muted">never</span>
                                     }
                                     else
                                     {
-                                        <span class="@(centralAgeOk ? "text-success" : "text-danger")"
-                                              title="@(central.BlobLastRegeneratedUtc?.ToString("u") ?? "never")">
+                                        <span class="@(portalSyncAlive ? "text-success" : "text-danger")"
+                                              title="@central.LastUpdatedUtc.ToString("u")">
+                                            @Relative(central.LastUpdatedUtc)
+                                        </span>
+                                    }
+                                </dd>
+
+                                <dt class="col-sm-7">Last regenerated</dt>
+                                <dd class="col-sm-5 text-end">
+                                    @if (central?.BlobLastRegeneratedUtc is null)
+                                    {
+                                        <span class="text-muted">never</span>
+                                    }
+                                    else
+                                    {
+                                        <span title="@central.BlobLastRegeneratedUtc.Value.ToString("u")">
                                             @Relative(central.BlobLastRegeneratedUtc)
                                         </span>
                                     }
@@ -278,6 +313,10 @@
                                             }
                                         </td>
                                         <td>
+                                            @{
+                                                var resolvedMod = NormaliseMod(item.ResolvedForMod);
+                                                var liveModNorm = NormaliseMod(live?.Mod);
+                                            }
                                             @if (string.IsNullOrWhiteSpace(live?.Mod))
                                             {
                                                 <span class="badge bg-secondary" title="Server is offline or mod information unavailable">offline</span>
@@ -286,14 +325,13 @@
                                             {
                                                 <span class="badge bg-info" title="Game type does not depend on the active mod">n/a</span>
                                             }
-                                            else if (item.ResolvedForMod.Equals(live.Mod, StringComparison.OrdinalIgnoreCase)
-                                                     || item.ResolvedForMod.Equals("main", StringComparison.OrdinalIgnoreCase))
+                                            else if (resolvedMod == liveModNorm || resolvedMod == "main")
                                             {
                                                 <span class="badge bg-success" title="Watching @item.ResolvedForMod, server running @live.Mod">@item.ResolvedForMod</span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-warning text-dark" title="Watching @item.ResolvedForMod, server running @live.Mod">@item.ResolvedForMod ≠ @live.Mod</span>
+                                                <span class="badge bg-warning text-dark" title="Watching @item.ResolvedForMod, server running @live.Mod">@resolvedMod ≠ @liveModNorm</span>
                                             }
                                         </td>
                                         <td>
