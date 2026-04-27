@@ -103,14 +103,32 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
-        Ban file monitors are now <strong>read-only status snapshots</strong> written by the server agent.
-        To enable / disable monitoring for a server, toggle <strong>Agent Enabled</strong> + <strong>Ban File Sync</strong> on
-        <a asp-controller="GameServers" asp-action="Index">the game server's edit page</a>.
-        Ban file sync is a sub-feature of the agent and requires Agent Enabled. The FTP path is resolved
-        automatically from the server's <strong>Ban File Root Path</strong> plus per-game-type rules and
-        the currently-running mod.
+    <div class="alert alert-primary d-flex align-items-start" role="alert">
+        <i class="fa-solid fa-fw fa-circle-info me-2 mt-1" aria-hidden="true"></i>
+        <div class="flex-grow-1">
+            Ban file monitors are <strong>read-only status snapshots</strong> written by the server agent.
+            To enable / disable monitoring for a server, toggle <strong>Agent Enabled</strong> + <strong>Ban File Sync</strong>
+            on <a asp-controller="GameServers" asp-action="Index">the game server's edit page</a>.
+            Ban file sync is a sub-feature of the agent and requires Agent Enabled. The FTP path is resolved
+            automatically from the server's <strong>Ban File Root Path</strong> plus per-game-type rules and
+            the currently-running mod.
+
+            @if (Model.ShowingAll)
+            {
+                <div class="mt-2">
+                    <i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i> Showing <strong>all monitors</strong>, including disabled and misconfigured.
+                    <a asp-action="Index">Show active only</a>
+                </div>
+            }
+            else if (Model.HiddenInactiveCount > 0)
+            {
+                <div class="mt-2">
+                    <i class="fa-solid fa-fw fa-eye-slash" aria-hidden="true"></i>
+                    @Model.HiddenInactiveCount monitor(s) hidden because Ban File Sync or Agent is disabled.
+                    <a asp-action="Index" asp-route-showAll="true">Show all</a>
+                </div>
+            }
+        </div>
     </div>
 
     @if (Model.GameTypeCards.Count > 0)

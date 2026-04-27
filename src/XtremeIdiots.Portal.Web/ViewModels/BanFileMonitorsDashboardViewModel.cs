@@ -24,6 +24,12 @@ public sealed class BanFileMonitorsDashboardViewModel
     public required IReadOnlyDictionary<Guid, Dictionary<string, System.Text.Json.JsonElement>> ServerConfigs { get; init; }
 
     public required IReadOnlyList<BanFileMonitorGameTypeCard> GameTypeCards { get; init; }
+
+    /// <summary>True when the dashboard is showing every monitor, false when filtered to active.</summary>
+    public required bool ShowingAll { get; init; }
+
+    /// <summary>Count of monitors hidden by the active-only filter (zero when ShowingAll is true).</summary>
+    public required int HiddenInactiveCount { get; init; }
 }
 
 /// <summary>

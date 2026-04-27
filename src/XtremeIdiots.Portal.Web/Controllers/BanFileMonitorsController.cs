@@ -40,7 +40,9 @@ public class BanFileMonitorsController(
     /// each server is protected and in sync with the central ban file.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Index(
+        [FromQuery] bool showAll = false,
+        CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -64,7 +66,23 @@ public class BanFileMonitorsController(
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            var monitors = monitorsResponse.Result.Data.Items.ToList();
+            var allMonitors = monitorsResponse.Result.Data.Items.ToList();
+
+            // Active monitors are the ones the agent will actually run a check loop for.
+            // Anything else (sync disabled or agent disabled) clutters the dashboard with
+            // stale data and is hidden by default; admins can opt in via ?showAll=true to
+            // diagnose misconfigurations.
+            static bool IsActive(XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors.BanFileMonitorDto m)
+            {
+                return m.GameServer is not null
+                    && m.GameServer.BanFileSyncEnabled
+                    && m.GameServer.AgentEnabled;
+            }
+
+            var hiddenCount = showAll ? 0 : allMonitors.Count(m => !IsActive(m));
+            var monitors = showAll
+                ? (IReadOnlyList<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors.BanFileMonitorDto>)allMonitors
+                : allMonitors.Where(IsActive).ToList();
 
             var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
             var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
@@ -81,7 +99,9 @@ public class BanFileMonitorsController(
                 ? activeBanCountsResponse.Result.Data.Items.ToDictionary(c => c.GameType)
                 : [];
 
-            // Build per-game-type roll-up cards for game types the user can see.
+            // Per-game-type cards reflect the full ban-counts view (DB has the same active
+            // bans regardless of which servers happen to be enabled), but the visible
+            // game-type set follows the currently-displayed monitors.
             var visibleGameTypes = monitors
                 .Where(m => m.GameServer is not null)
                 .Select(m => m.GameServer.GameType)
@@ -105,7 +125,9 @@ public class BanFileMonitorsController(
                 Monitors = monitors,
                 LiveStatusLookup = liveStatusLookup,
                 ServerConfigs = serverConfigs,
-                GameTypeCards = gameTypeCards
+                GameTypeCards = gameTypeCards,
+                ShowingAll = showAll,
+                HiddenInactiveCount = hiddenCount
             };
 
             return View(viewModel);
