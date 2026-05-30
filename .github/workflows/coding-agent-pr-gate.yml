@@ -2,7 +2,7 @@ name: Coding-Agent PR Gate
 
 on:
   pull_request:
-    types: [opened, edited, reopened, ready_for_review, synchronize, labeled, unlabeled]
+    types: [opened, edited, reopened, ready_for_review, labeled, unlabeled]
 
 permissions: {}
 
@@ -13,12 +13,18 @@ concurrency:
 jobs:
   checklist-gate:
     name: PR body checklist gate
-    if: github.event.pull_request.draft == false && contains(github.event.pull_request.labels.*.name, 'coding-agent')
+    if: >-
+      github.event.pull_request.draft == false &&
+      (
+        contains(github.event.pull_request.labels.*.name, 'coding-agent') ||
+        github.event.pull_request.user.login == 'Copilot' ||
+        github.actor == 'copilot-swe-agent[bot]'
+      )
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
     steps:
-      - name: Verify every checkbox in PR body is ticked
+      - name: Verify every Agent attestation checkbox is ticked
         uses: actions/github-script@v7
         with:
           script: |
@@ -30,23 +36,35 @@ jobs:
               .replace(/<!--[\s\S]*?-->/g, '')
               .replace(/```[\s\S]*?```/g, '');
 
-            const lines = stripped.split(/\r?\n/);
+            // The gate only scans the `## Agent attestation` section. Other sections
+            // (Type of change, Required reading consulted) intentionally allow partial
+            // ticking — only the attestation checkboxes are gating.
+            const sectionMatch = stripped.match(/^##\s+Agent attestation\s*$([\s\S]*?)(?=^##\s|\z)/m);
+            if (!sectionMatch) {
+              core.setFailed(
+                `PR body is missing the '## Agent attestation' section. ` +
+                `Coding-agent PRs must include the attestation block from PULL_REQUEST_TEMPLATE.md.`
+              );
+              return;
+            }
+
+            const lines = sectionMatch[1].split(/\r?\n/);
             const unchecked = [];
             for (let i = 0; i < lines.length; i++) {
               const m = lines[i].match(/^\s*[-*]\s+\[\s\]\s+(.*)$/);
               if (m) {
-                unchecked.push(`L${i + 1}: ${m[1]}`);
+                unchecked.push(m[1]);
               }
             }
 
             if (unchecked.length > 0) {
               core.setFailed(
-                `PR body has ${unchecked.length} unticked checkbox(es). ` +
-                `The 'coding-agent' label requires every checkbox to be ticked before merge.\n\n` +
+                `Agent attestation has ${unchecked.length} unticked checkbox(es). ` +
+                `Coding-agent PRs require every attestation box to be ticked before merge.\n\n` +
                 unchecked.map(u => `  - ${u}`).join('\n') +
-                `\n\nTick each box in the PR description, or remove the 'coding-agent' label if this PR was not produced by the agent.`
+                `\n\nTick each box in the '## Agent attestation' section. If this PR was not produced by an agent, remove the 'coding-agent' label (the gate also fires automatically for the Copilot bot author).`
               );
               return;
             }
 
-            core.info('All checkboxes in the PR body are ticked. Gate passes.');
+            core.info('All Agent attestation checkboxes are ticked. Gate passes.');
