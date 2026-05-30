@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Reflection;
 using XtremeIdiots.Portal.Web.ApiControllers;
 
 namespace XtremeIdiots.Portal.Web.Tests.ApiControllers;
@@ -16,7 +17,7 @@ public class BannersControllerTests
     [Fact]
     public void GetGameServers_HasAllowAnonymousAttribute_OnlyAnonymousActionInController()
     {
-        var methods = typeof(BannersController).GetMethods();
+        var methods = typeof(BannersController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         var allowAnonymousMethods = methods
             .Where(method => method.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Length > 0)
             .ToList();
