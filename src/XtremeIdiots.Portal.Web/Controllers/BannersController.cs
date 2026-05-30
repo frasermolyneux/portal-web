@@ -29,7 +29,7 @@ public class BannersController(
     public async Task<IActionResult> GameServersList(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(
-            async () => View(),
+            () => Task.FromResult<IActionResult>(View()),
             "Display game servers list view for banner management").ConfigureAwait(false);
     }
 }
