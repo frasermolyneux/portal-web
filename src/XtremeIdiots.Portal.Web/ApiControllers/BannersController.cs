@@ -48,6 +48,7 @@ public class BannersController(
     /// <param name="cancellationToken">Cancellation token for the request</param>
     /// <returns>List of HTML banner content</returns>
     [HttpGet("GetGameServers")]
+    [AllowAnonymous]
     [EnableCors("CorsPolicy")]
     public async Task<IActionResult> GetGameServers(CancellationToken cancellationToken = default)
     {
