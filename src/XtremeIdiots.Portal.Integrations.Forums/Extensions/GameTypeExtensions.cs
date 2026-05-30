@@ -18,7 +18,7 @@ public static class GameTypeExtensions
         return gameType switch
         {
             GameType.CallOfDuty2 => 58,
-            GameType.CallOfDuty4 => 59,
+            GameType.CallOfDuty4 or GameType.CallOfDuty4x => 59,
             GameType.CallOfDuty5 => 60,
             GameType.Insurgency => 264,
             GameType.Minecraft => 265,
@@ -54,7 +54,7 @@ public static class GameTypeExtensions
         return gameType switch
         {
             GameType.CallOfDuty2 => 58,
-            GameType.CallOfDuty4 => 59,
+            GameType.CallOfDuty4 or GameType.CallOfDuty4x => 59,
             GameType.CallOfDuty5 => 60,
             GameType.Insurgency => 264,
             GameType.Minecraft => 265,
@@ -90,7 +90,7 @@ public static class GameTypeExtensions
         return gameType switch
         {
             GameType.CallOfDuty2 => 58,
-            GameType.CallOfDuty4 => 59,
+            GameType.CallOfDuty4 or GameType.CallOfDuty4x => 59,
             GameType.CallOfDuty5 => 60,
             GameType.Insurgency => 264,
             GameType.Minecraft => 265,
@@ -126,7 +126,7 @@ public static class GameTypeExtensions
         return gameType switch
         {
             GameType.CallOfDuty2 => 68,
-            GameType.CallOfDuty4 => 69,
+            GameType.CallOfDuty4 or GameType.CallOfDuty4x => 69,
             GameType.CallOfDuty5 => 70,
             GameType.Insurgency => 169,
             GameType.Minecraft => 144,
@@ -162,7 +162,7 @@ public static class GameTypeExtensions
         return gameType switch
         {
             GameType.CallOfDuty2 => 68,
-            GameType.CallOfDuty4 => 69,
+            GameType.CallOfDuty4 or GameType.CallOfDuty4x => 69,
             GameType.CallOfDuty5 => 70,
             GameType.Insurgency => 169,
             GameType.Minecraft => 144,

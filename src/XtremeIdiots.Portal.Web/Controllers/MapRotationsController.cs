@@ -29,7 +29,7 @@ public class MapRotationsController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-    private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty5];
+    private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty4x, GameType.CallOfDuty5];
 
     private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
     {
@@ -50,7 +50,7 @@ public class MapRotationsController(
     public async Task<IActionResult> Index(GameType? gameType, CancellationToken cancellationToken = default)
     {
         if (gameType.HasValue && !supportedGameTypes.Contains(gameType.Value))
-            return BadRequest("Only Call of Duty 4 and Call of Duty 5 are supported.");
+            return BadRequest("Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.");
 
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -91,7 +91,7 @@ public class MapRotationsController(
     {
         if (!supportedGameTypes.Contains(model.GameType))
         {
-            ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4 and Call of Duty 5 are supported.");
+            ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.");
             await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
             return View(model);
         }
@@ -1192,7 +1192,7 @@ public class MapRotationsController(
         {
             if (!supportedGameTypes.Contains(model.GameType))
             {
-                ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4 and Call of Duty 5 are supported.");
+                ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.");
                 return View(model);
             }
 

@@ -67,20 +67,6 @@ public static class TelemetryExtensions
         return exceptionTelemetry;
     }
 
-    public static ExceptionTelemetry Enrich(this ExceptionTelemetry exceptionTelemetry, CreateBanFileMonitorDto createBanFileMonitorDto)
-    {
-        exceptionTelemetry.Properties.TryAdd("GameServerId", createBanFileMonitorDto.GameServerId.ToString());
-
-        return exceptionTelemetry;
-    }
-
-    public static ExceptionTelemetry Enrich(this ExceptionTelemetry exceptionTelemetry, EditBanFileMonitorDto editBanFileMonitorDto)
-    {
-        exceptionTelemetry.Properties.TryAdd("BanFileMonitorId", editBanFileMonitorDto.BanFileMonitorId.ToString());
-
-        return exceptionTelemetry;
-    }
-
     public static ExceptionTelemetry Enrich(this ExceptionTelemetry exceptionTelemetry, DemoDto demoDto)
     {
         exceptionTelemetry.Properties.TryAdd("DemoId", demoDto.DemoId.ToString());

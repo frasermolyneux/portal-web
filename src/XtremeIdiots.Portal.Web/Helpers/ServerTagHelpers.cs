@@ -65,6 +65,7 @@ public class ServerLinkTagHelper(IConfiguration configuration) : TagHelper
                 {
                     "CallOfDuty2" => "CoD2",
                     "CallOfDuty4" => "CoD4",
+                    "CallOfDuty4x" => "CoD4",
                     "CallOfDuty5" => "CoDWW",
                     _ => null
                 };

@@ -240,7 +240,7 @@
                             <i class="fa-solid fa-fw fa-list" aria-hidden="true"></i> Global Player Index
                         </a>
 
-                        @foreach (var game in new[] { GameType.CallOfDuty2, GameType.CallOfDuty4, GameType.CallOfDuty5, GameType.Insurgency })
+                        @foreach (var game in new[] { GameType.CallOfDuty2, GameType.CallOfDuty4, GameType.CallOfDuty4x, GameType.CallOfDuty5, GameType.Insurgency })
                         {
                             @if ((await AuthorizationService.AuthorizeAsync(User, game, AuthPolicies.Players_Read)).Succeeded)
                             {

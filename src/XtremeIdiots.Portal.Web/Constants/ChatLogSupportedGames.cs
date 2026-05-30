@@ -24,6 +24,7 @@ public static class ChatLogSupportedGames
     [
         GameType.CallOfDuty2,
         GameType.CallOfDuty4,
+        GameType.CallOfDuty4x,
         GameType.CallOfDuty5
     ];
 

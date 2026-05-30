@@ -24,6 +24,18 @@ public class GuidLinkTagHelper : TagHelper
             output.Attributes.SetAttribute("style", "margin:5px");
             output.Content.SetContent(GuidValue);
         }
+        else if (Game?.Equals("CallOfDuty4x", StringComparison.OrdinalIgnoreCase) == true
+                 && GuidValue.Length == 17
+                 && GuidValue.StartsWith("7656119", StringComparison.Ordinal)
+                 && GuidValue.All(char.IsDigit))
+        {
+            var link = $"https://steamcommunity.com/profiles/{GuidValue}";
+            output.TagName = "a";
+            output.Attributes.SetAttribute("href", link);
+            output.Attributes.SetAttribute("target", "_blank");
+            output.Attributes.SetAttribute("style", "margin:5px");
+            output.Content.SetContent(GuidValue);
+        }
         else
         {
             output.TagName = "span";
