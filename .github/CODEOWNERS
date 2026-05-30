@@ -1,0 +1,7 @@
+# CODEOWNERS — see https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Personal-project repository: @frasermolyneux owns everything by default.
+# Add path-specific overrides above the catch-all if a particular area needs
+# stricter review (e.g. workload-identity JSON, branch-protection-touched files).
+
+*           @frasermolyneux

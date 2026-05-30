@@ -1,0 +1,48 @@
+name: Coding-Agent PR Gate
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, ready_for_review, synchronize, labeled, unlabeled]
+
+permissions: {}
+
+jobs:
+  checklist-gate:
+    name: PR body checklist gate
+    if: github.event.pull_request.draft == false && contains(github.event.pull_request.labels.*.name, 'coding-agent')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Verify every checkbox in PR body is ticked
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+
+            // Strip HTML comments — guidance comments may contain unticked example boxes.
+            // Then strip fenced code blocks — pasted command output must not trip the gate.
+            const stripped = body
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/```[\s\S]*?```/g, '');
+
+            const lines = stripped.split(/\r?\n/);
+            const unchecked = [];
+            for (let i = 0; i < lines.length; i++) {
+              const m = lines[i].match(/^\s*[-*]\s+\[\s\]\s+(.*)$/);
+              if (m) {
+                unchecked.push(`L${i + 1}: ${m[1]}`);
+              }
+            }
+
+            if (unchecked.length > 0) {
+              core.setFailed(
+                `PR body has ${unchecked.length} unticked checkbox(es). ` +
+                `The 'coding-agent' label requires every checkbox to be ticked before merge.\n\n` +
+                unchecked.map(u => `  - ${u}`).join('\n') +
+                `\n\nTick each box in the PR description, or remove the 'coding-agent' label if this PR was not produced by the agent.`
+              );
+              return;
+            }
+
+            core.info('All checkboxes in the PR body are ticked. Gate passes.');
