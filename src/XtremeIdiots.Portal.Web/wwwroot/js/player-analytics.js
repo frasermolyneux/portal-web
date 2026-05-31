@@ -79,8 +79,7 @@
             || Object.keys(first).find(k => looksLikeDate(first[k]))
             || 'created';
         const labels = items.map(it => toLabel(it[labelKey] ?? ''));
-        const gc = first.gameCounts || {};
-        const keys = Object.keys(gc);
+        const keys = Array.from(new Set(items.flatMap(it => Object.keys((it && it.gameCounts) || {}))));
         const colors = palette();
         const datasets = keys.map((key, i) => ({
             label: key,
