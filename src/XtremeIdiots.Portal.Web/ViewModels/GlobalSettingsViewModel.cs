@@ -10,6 +10,7 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 public class GlobalSettingsViewModel
 {
     public const int DisabledSeverityThreshold = -1;
+    public const string DefaultAgentName = "^4[^1>XI< BOT^4]^7";
 
     // Agent defaults
     [DisplayName("Poll Interval (ms)")]
@@ -27,6 +28,10 @@ public class GlobalSettingsViewModel
     [DisplayName("Offset Save Interval (s)")]
     [Range(1, int.MaxValue, ErrorMessage = "Offset save interval must be at least 1 second.")]
     public int AgentOffsetSaveIntervalSeconds { get; set; } = 30;
+
+    [DisplayName("Agent Name")]
+    [MaxLength(120, ErrorMessage = "Agent name must be 120 characters or fewer.")]
+    public string AgentName { get; set; } = DefaultAgentName;
 
     // Ban file sync defaults
     [DisplayName("Check Interval (s)")]

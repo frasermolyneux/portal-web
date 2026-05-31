@@ -43,6 +43,10 @@ public class GameServerEditViewModel : IValidatableObject
     [DisplayName("RCON Sync Enabled")]
     public bool AgentConfigRconSyncEnabled { get; set; } = true;
 
+    [DisplayName("Agent Name Override")]
+    [MaxLength(120, ErrorMessage = "Agent name override must be 120 characters or fewer.")]
+    public string? AgentConfigName { get; set; }
+
     // Ban File Sync configuration (parsed from "banfiles" config namespace)
 
     [DisplayName("Check Interval (seconds)")]
@@ -110,6 +114,7 @@ public class GameServerEditViewModel : IValidatableObject
     public int GlobalModerationMinMessageLength { get; set; } = 5;
     public int GlobalEventsStaleThresholdSeconds { get; set; } = 120;
     public int GlobalEventsPlayerCacheExpirationSeconds { get; set; } = 900;
+    public string GlobalAgentName { get; set; } = GlobalSettingsViewModel.DefaultAgentName;
 
     // Auth flags for tab visibility
 

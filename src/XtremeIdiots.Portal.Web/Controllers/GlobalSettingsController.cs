@@ -70,6 +70,8 @@ public class GlobalSettingsController(
             if (modelStateResult is not null)
                 return modelStateResult;
 
+            model.AgentName = NormalizeAgentName(model.AgentName);
+
             var errors = new List<string>();
 
             await UpsertConfigSafeAsync("agent", JsonSerializer.Serialize(new
@@ -77,7 +79,8 @@ public class GlobalSettingsController(
                 pollIntervalMs = model.AgentPollIntervalMs,
                 statusPublishIntervalSeconds = model.AgentStatusPublishIntervalSeconds,
                 rconSyncIntervalSeconds = model.AgentRconSyncIntervalSeconds,
-                offsetSaveIntervalSeconds = model.AgentOffsetSaveIntervalSeconds
+                offsetSaveIntervalSeconds = model.AgentOffsetSaveIntervalSeconds,
+                agentName = model.AgentName
             }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
 
             await UpsertConfigSafeAsync("banfiles", JsonSerializer.Serialize(new
@@ -131,6 +134,7 @@ public class GlobalSettingsController(
                     model.AgentStatusPublishIntervalSeconds = GetIntProperty(root, "statusPublishIntervalSeconds", model.AgentStatusPublishIntervalSeconds);
                     model.AgentRconSyncIntervalSeconds = GetIntProperty(root, "rconSyncIntervalSeconds", model.AgentRconSyncIntervalSeconds);
                     model.AgentOffsetSaveIntervalSeconds = GetIntProperty(root, "offsetSaveIntervalSeconds", model.AgentOffsetSaveIntervalSeconds);
+                    model.AgentName = NormalizeAgentName(GetStringProperty(root, "agentName"));
                     break;
                 case "banfiles":
                     model.BanFileSyncCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", model.BanFileSyncCheckIntervalSeconds);
@@ -165,6 +169,20 @@ public class GlobalSettingsController(
                prop.TryGetInt32(out var value)
             ? value
             : defaultValue;
+    }
+
+    private static string? GetStringProperty(JsonElement root, string propertyName)
+    {
+        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String
+            ? prop.GetString()
+            : null;
+    }
+
+    private static string NormalizeAgentName(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? GlobalSettingsViewModel.DefaultAgentName
+            : value;
     }
 
     private static int? GetNullableIntProperty(JsonElement root, string propertyName)

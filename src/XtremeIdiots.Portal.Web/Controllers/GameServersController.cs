@@ -606,6 +606,7 @@ public class GameServersController(
                 case "agent":
                     editModel.AgentConfigLogFilePath = GetStringProperty(root, "logFilePath");
                     editModel.AgentConfigRconSyncEnabled = GetBoolProperty(root, "rconSyncEnabled", true);
+                    editModel.AgentConfigName = GetStringProperty(root, "agentName");
                     break;
                 case "banfiles":
                     editModel.BanFileSyncConfigCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", 60);
@@ -705,6 +706,13 @@ public class GameServersController(
         return messages;
     }
 
+    private static string NormalizeAgentName(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? GlobalSettingsViewModel.DefaultAgentName
+            : value;
+    }
+
     private void PopulateGlobalDefaults(GameServerEditViewModel editModel, ConfigurationDto config)
     {
         try
@@ -717,6 +725,9 @@ public class GameServersController(
 
             switch (config.Namespace)
             {
+                case "agent":
+                    editModel.GlobalAgentName = NormalizeAgentName(GetStringProperty(root, "agentName"));
+                    break;
                 case "moderation":
                     var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
                     editModel.GlobalModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationHateSeverityThreshold);
@@ -831,7 +842,10 @@ public class GameServersController(
             await UpsertConfigSafeAsync(gameServerId, "agent", JsonSerializer.Serialize(new
             {
                 logFilePath = model.AgentConfigLogFilePath,
-                rconSyncEnabled = model.AgentConfigRconSyncEnabled
+                rconSyncEnabled = model.AgentConfigRconSyncEnabled,
+                agentName = string.IsNullOrWhiteSpace(model.AgentConfigName)
+                    ? null
+                    : model.AgentConfigName
             }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 

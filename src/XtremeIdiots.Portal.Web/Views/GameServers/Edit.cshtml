@@ -19,118 +19,111 @@
                     <ul class="nav nav-tabs" id="serverConfigTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="general-tab-btn" data-bs-toggle="tab"
-                                data-bs-target="#general-tab" type="button" role="tab"
-                                aria-controls="general-tab" aria-selected="true">General</button>
+                                    data-bs-target="#general-tab" type="button" role="tab" aria-controls="general-tab"
+                                    aria-selected="true">General</button>
                         </li>
                         @if (Model.CanEditFtp)
                         {
                             <li class="nav-item @(Model.GameServer.FtpEnabled ? "" : "d-none")" role="presentation"
                                 id="ftp-tab-item">
-                                <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#ftp-tab" type="button" role="tab"
-                                    aria-controls="ftp-tab" aria-selected="false">FTP</button>
+                                <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab" data-bs-target="#ftp-tab"
+                                        type="button" role="tab" aria-controls="ftp-tab" aria-selected="false">FTP</button>
                             </li>
                         }
                         @if (Model.CanEditRcon)
                         {
                             <li class="nav-item @(Model.GameServer.RconEnabled ? "" : "d-none")" role="presentation"
                                 id="rcon-tab-item">
-                                <button class="nav-link" id="rcon-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#rcon-tab" type="button" role="tab"
-                                    aria-controls="rcon-tab" aria-selected="false">RCON</button>
+                                <button class="nav-link" id="rcon-tab-btn" data-bs-toggle="tab" data-bs-target="#rcon-tab"
+                                        type="button" role="tab" aria-controls="rcon-tab" aria-selected="false">RCON</button>
                             </li>
                         }
                         <li class="nav-item @(Model.GameServer.AgentEnabled ? "" : "d-none")" role="presentation"
                             id="agent-tab-item">
-                            <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab"
-                                data-bs-target="#agent-tab" type="button" role="tab"
-                                aria-controls="agent-tab" aria-selected="false">Agent</button>
+                            <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab" data-bs-target="#agent-tab"
+                                    type="button" role="tab" aria-controls="agent-tab" aria-selected="false">Agent</button>
                         </li>
                         @if (Model.GameServer.AgentEnabled)
                         {
                             <li class="nav-item" role="presentation" id="broadcasts-tab-item">
                                 <button class="nav-link" id="broadcasts-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#broadcasts-tab" type="button" role="tab"
-                                    aria-controls="broadcasts-tab" aria-selected="false">Broadcasts</button>
+                                        data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
+                                        aria-selected="false">Broadcasts</button>
                             </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#moderation-tab" type="button" role="tab"
-                                    aria-controls="moderation-tab" aria-selected="false">Moderation</button>
+                                        data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
+                                        aria-selected="false">Moderation</button>
                             </li>
                             <li class="nav-item" role="presentation" id="events-tab-item">
                                 <button class="nav-link" id="events-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#events-tab" type="button" role="tab"
-                                    aria-controls="events-tab" aria-selected="false">Event Processing</button>
+                                        data-bs-target="#events-tab" type="button" role="tab" aria-controls="events-tab"
+                                        aria-selected="false">Event Processing</button>
                             </li>
                         }
                         <li class="nav-item @(Model.GameServer.BanFileSyncEnabled ? "" : "d-none")" role="presentation"
                             id="banfilesync-tab-item">
                             <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
-                                data-bs-target="#banfilesync-tab" type="button" role="tab"
-                                aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
+                                    data-bs-target="#banfilesync-tab" type="button" role="tab"
+                                    aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
                         </li>
                         <li class="nav-item @(Model.GameServer.ServerListEnabled ? "" : "d-none")" role="presentation"
                             id="serverlist-tab-item">
                             <button class="nav-link" id="serverlist-tab-btn" data-bs-toggle="tab"
-                                data-bs-target="#serverlist-tab" type="button" role="tab"
-                                aria-controls="serverlist-tab" aria-selected="false">Server List</button>
+                                    data-bs-target="#serverlist-tab" type="button" role="tab" aria-controls="serverlist-tab"
+                                    aria-selected="false">Server List</button>
                         </li>
                     </ul>
 
                     <div class="tab-content" id="serverConfigTabContent">
 
                         <div class="tab-pane fade show active" id="general-tab" role="tabpanel"
-                            aria-labelledby="general-tab-btn">
+                             aria-labelledby="general-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_GeneralConfiguration", Model)
                         </div>
 
                         @if (Model.CanEditFtp)
                         {
-                            <div class="tab-pane fade" id="ftp-tab" role="tabpanel"
-                                aria-labelledby="ftp-tab-btn">
+                            <div class="tab-pane fade" id="ftp-tab" role="tabpanel" aria-labelledby="ftp-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_FtpConfiguration", Model)
                             </div>
                         }
 
                         @if (Model.CanEditRcon)
                         {
-                            <div class="tab-pane fade" id="rcon-tab" role="tabpanel"
-                                aria-labelledby="rcon-tab-btn">
+                            <div class="tab-pane fade" id="rcon-tab" role="tabpanel" aria-labelledby="rcon-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_RconConfiguration", Model)
                             </div>
                         }
 
-                        <div class="tab-pane fade" id="agent-tab" role="tabpanel"
-                            aria-labelledby="agent-tab-btn">
+                        <div class="tab-pane fade" id="agent-tab" role="tabpanel" aria-labelledby="agent-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_AgentConfiguration", Model)
                         </div>
 
                         @if (Model.GameServer.AgentEnabled)
                         {
                             <div class="tab-pane fade" id="broadcasts-tab" role="tabpanel"
-                                aria-labelledby="broadcasts-tab-btn">
+                                 aria-labelledby="broadcasts-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_BroadcastsConfiguration", Model)
                             </div>
 
                             <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
-                                aria-labelledby="moderation-tab-btn">
+                                 aria-labelledby="moderation-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_ModerationConfiguration", Model)
                             </div>
 
-                            <div class="tab-pane fade" id="events-tab" role="tabpanel"
-                                aria-labelledby="events-tab-btn">
+                            <div class="tab-pane fade" id="events-tab" role="tabpanel" aria-labelledby="events-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_EventsConfiguration", Model)
                             </div>
                         }
 
                         <div class="tab-pane fade" id="banfilesync-tab" role="tabpanel"
-                            aria-labelledby="banfilesync-tab-btn">
+                             aria-labelledby="banfilesync-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_BanFileSyncConfiguration", Model)
                         </div>
 
                         <div class="tab-pane fade" id="serverlist-tab" role="tabpanel"
-                            aria-labelledby="serverlist-tab-btn">
+                             aria-labelledby="serverlist-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_ServerListConfiguration", Model)
                         </div>
 
@@ -171,270 +164,295 @@
     <script>
         // Password show/hide toggle
         function togglePasswordVisibility(inputId, button) {
-            var input = document.getElementById(inputId);
-            if (!input) return;
-            var icon = button.querySelector('i');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
+        var input = document.getElementById(inputId);
+        if (!input) return;
+        var icon = button.querySelector('i');
+        if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
         }
 
         // Toggle tab visibility when feature checkboxes change
         document.querySelectorAll('.feature-toggle[data-toggle-tab]').forEach(function (checkbox) {
-            checkbox.addEventListener('change', function () {
-                var tabBtnId = this.getAttribute('data-toggle-tab');
-                var tabBtn = document.getElementById(tabBtnId);
-                var tabItem = tabBtn?.closest('.nav-item');
-                if (tabItem) {
-                    if (!this.checked && tabBtn.classList.contains('active')) {
-                        var generalTab = document.getElementById('general-tab-btn');
-                        var bsTab = new bootstrap.Tab(generalTab);
-                        bsTab.show();
-                    }
-                    tabItem.classList.toggle('d-none', !this.checked);
-                }
-            });
+        checkbox.addEventListener('change', function () {
+        var tabBtnId = this.getAttribute('data-toggle-tab');
+        var tabBtn = document.getElementById(tabBtnId);
+        var tabItem = tabBtn?.closest('.nav-item');
+        if (tabItem) {
+        if (!this.checked && tabBtn.classList.contains('active')) {
+        var generalTab = document.getElementById('general-tab-btn');
+        var bsTab = new bootstrap.Tab(generalTab);
+        bsTab.show();
+        }
+        tabItem.classList.toggle('d-none', !this.checked);
+        }
+        });
         });
 
         // Rotate chevron icon on legacy settings collapse
         var legacyToggle = document.querySelector('[data-bs-target="#legacyTogglesBody"]');
         if (legacyToggle) {
-            legacyToggle.addEventListener('click', function () {
-                var icon = this.querySelector('.collapse-icon');
-                if (icon) {
-                    icon.classList.toggle('fa-chevron-right');
-                    icon.classList.toggle('fa-chevron-down');
-                }
-            });
+        legacyToggle.addEventListener('click', function () {
+        var icon = this.querySelector('.collapse-icon');
+        if (icon) {
+        icon.classList.toggle('fa-chevron-right');
+        icon.classList.toggle('fa-chevron-down');
+        }
+        });
         }
 
         // Toggle dependency enforcement
         // AgentEnabled requires FtpEnabled AND RconEnabled
         // BanFileSyncEnabled requires FtpEnabled AND AgentEnabled
         function enforceToggleDependencies() {
-            var ftp = document.getElementById('GameServer_FtpEnabled');
-            var rcon = document.getElementById('GameServer_RconEnabled');
-            var agent = document.getElementById('GameServer_AgentEnabled');
-            var banSync = document.getElementById('GameServer_BanFileSyncEnabled');
+        var ftp = document.getElementById('GameServer_FtpEnabled');
+        var rcon = document.getElementById('GameServer_RconEnabled');
+        var agent = document.getElementById('GameServer_AgentEnabled');
+        var banSync = document.getElementById('GameServer_BanFileSyncEnabled');
 
-            if (!ftp || !rcon || !agent || !banSync) return;
+        if (!ftp || !rcon || !agent || !banSync) return;
 
-            // If Agent is checked but prerequisites aren't met, uncheck it
-            if (agent.checked && (!ftp.checked || !rcon.checked)) {
-                agent.checked = false;
-                agent.dispatchEvent(new Event('change'));
-            }
+        // If Agent is checked but prerequisites aren't met, uncheck it
+        if (agent.checked && (!ftp.checked || !rcon.checked)) {
+        agent.checked = false;
+        agent.dispatchEvent(new Event('change'));
+        }
 
-            // If BanFileSync is checked but prerequisites aren't met, uncheck it
-            if (banSync.checked && (!ftp.checked || !agent.checked)) {
-                banSync.checked = false;
-                banSync.dispatchEvent(new Event('change'));
-            }
+        // If BanFileSync is checked but prerequisites aren't met, uncheck it
+        if (banSync.checked && (!ftp.checked || !agent.checked)) {
+        banSync.checked = false;
+        banSync.dispatchEvent(new Event('change'));
+        }
 
-            // Visual state for Agent
-            var agentSwitch = agent.closest('.form-check');
-            if (agentSwitch) {
-                agentSwitch.classList.toggle('opacity-50', !ftp.checked || !rcon.checked);
-            }
+        // Visual state for Agent
+        var agentSwitch = agent.closest('.form-check');
+        if (agentSwitch) {
+        agentSwitch.classList.toggle('opacity-50', !ftp.checked || !rcon.checked);
+        }
 
-            // Visual state for BanFileSync
-            var banSyncSwitch = banSync.closest('.form-check');
-            if (banSyncSwitch) {
-                banSyncSwitch.classList.toggle('opacity-50', !ftp.checked || !agent.checked);
-            }
+        // Visual state for BanFileSync
+        var banSyncSwitch = banSync.closest('.form-check');
+        if (banSyncSwitch) {
+        banSyncSwitch.classList.toggle('opacity-50', !ftp.checked || !agent.checked);
+        }
         }
 
         enforceToggleDependencies();
 
         ['GameServer_FtpEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('change', enforceToggleDependencies);
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', enforceToggleDependencies);
         });
 
         function isCodGameType() {
-            var gameType = document.getElementById('GameServer_GameType')?.value || '';
-            return gameType.startsWith('CallOfDuty');
+        var gameType = document.getElementById('GameServer_GameType')?.value || '';
+        return gameType.startsWith('CallOfDuty');
         }
 
         function stripCodColorCodes(text) {
-            return text.replace(/\^[0-9]/g, '');
+        return text.replace(/\^[0-9]/g, '');
+        }
+
+        function getEffectiveAgentNamePrefix() {
+        var input = document.getElementById('AgentConfigName');
+        if (!input) return '';
+
+        var overrideValue = (input.value || '').trim();
+        if (overrideValue.length > 0) return overrideValue;
+
+        return input.getAttribute('data-global-agent-name') || '';
         }
 
         function updateBroadcastRowPreview(row) {
-            var input = row.querySelector('[data-field="message"]');
-            var preview = row.querySelector('[data-field="preview"]');
-            var count = row.querySelector('[data-field="char-count"]');
-            if (!input || !preview || !count) return;
+        var input = row.querySelector('[data-field="message"]');
+        var preview = row.querySelector('[data-field="preview"]');
+        var count = row.querySelector('[data-field="char-count"]');
+        if (!input || !preview || !count) return;
 
-            var value = input.value || '';
-            count.textContent = value.length.toString();
-            preview.textContent = '';
+        var value = input.value || '';
+        count.textContent = value.length.toString();
+        preview.textContent = '';
 
-            if (!value.length) {
-                preview.textContent = '(preview)';
-                return;
-            }
+        var prefix = getEffectiveAgentNamePrefix();
+        var previewText = value;
+        if (prefix.length > 0) {
+        previewText = value.length > 0 ? (prefix + ' ' + value) : prefix;
+        }
 
-            if (!isCodGameType()) {
-                preview.textContent = stripCodColorCodes(value);
-                return;
-            }
+        if (!previewText.length) {
+        preview.textContent = '(preview)';
+        return;
+        }
 
-            var colors = {
-                '1': '#ff4d4f',
-                '2': '#52c41a',
-                '3': '#ffd666',
-                '4': '#40a9ff',
-                '5': '#69c0ff',
-                '6': '#fa8c16',
-                '7': '#f0f0f0',
-                '8': '#000000',
-                '9': '#ff85c0',
-                '0': '#ffffff'
-            };
+        if (!isCodGameType()) {
+        preview.textContent = stripCodColorCodes(previewText);
+        return;
+        }
 
-            var currentColor = colors['0'];
-            var lastIndex = 0;
-            var regex = /\^([0-9])/g;
-            var match;
+        var colors = {
+        '1': '#ff4d4f',
+        '2': '#52c41a',
+        '3': '#ffd666',
+        '4': '#40a9ff',
+        '5': '#69c0ff',
+        '6': '#fa8c16',
+        '7': '#f0f0f0',
+        '8': '#000000',
+        '9': '#ff85c0',
+        '0': '#ffffff'
+        };
 
-            while ((match = regex.exec(value)) !== null) {
-                var segment = value.substring(lastIndex, match.index);
-                if (segment.length) {
-                    var span = document.createElement('span');
-                    span.style.color = currentColor;
-                    span.textContent = segment;
-                    preview.appendChild(span);
-                }
+        var currentColor = colors['0'];
+        var lastIndex = 0;
+        var regex = /\^([0-9])/g;
+        var match;
 
-                currentColor = colors[match[1]] || currentColor;
-                lastIndex = regex.lastIndex;
-            }
+        while ((match = regex.exec(previewText)) !== null) {
+        var segment = previewText.substring(lastIndex, match.index);
+        if (segment.length) {
+        var span = document.createElement('span');
+        span.style.color = currentColor;
+        span.textContent = segment;
+        preview.appendChild(span);
+        }
 
-            var tail = value.substring(lastIndex);
-            if (tail.length) {
-                var tailSpan = document.createElement('span');
-                tailSpan.style.color = currentColor;
-                tailSpan.textContent = tail;
-                preview.appendChild(tailSpan);
-            }
+        currentColor = colors[match[1]] || currentColor;
+        lastIndex = regex.lastIndex;
+        }
+
+        var tail = previewText.substring(lastIndex);
+        if (tail.length) {
+        var tailSpan = document.createElement('span');
+        tailSpan.style.color = currentColor;
+        tailSpan.textContent = tail;
+        preview.appendChild(tailSpan);
+        }
         }
 
         function updateBroadcastsEmptyState(container) {
-            var emptyState = document.getElementById('broadcast-messages-empty');
-            if (!emptyState) return;
-            emptyState.classList.toggle('d-none', container.querySelectorAll('[data-broadcast-row]').length > 0);
+        var emptyState = document.getElementById('broadcast-messages-empty');
+        if (!emptyState) return;
+        emptyState.classList.toggle('d-none', container.querySelectorAll('[data-broadcast-row]').length > 0);
         }
 
         function reindexBroadcastRows(container) {
-            container.querySelectorAll('[data-broadcast-row]').forEach(function (row, index) {
-                row.dataset.index = index.toString();
+        container.querySelectorAll('[data-broadcast-row]').forEach(function (row, index) {
+        row.dataset.index = index.toString();
 
-                var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
-                var enabled = row.querySelector('[data-field="enabled"]');
-                var enabledLabel = row.querySelector('[data-field="enabled-label"]');
-                var message = row.querySelector('[data-field="message"]');
-                var validation = row.querySelector('[data-field="validation"]');
+        var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
+        var enabled = row.querySelector('[data-field="enabled"]');
+        var enabledLabel = row.querySelector('[data-field="enabled-label"]');
+        var message = row.querySelector('[data-field="message"]');
+        var validation = row.querySelector('[data-field="validation"]');
 
-                if (enabledHidden) enabledHidden.name = 'BroadcastMessages[' + index + '].Enabled';
-                if (enabled) {
-                    enabled.name = 'BroadcastMessages[' + index + '].Enabled';
-                    enabled.id = 'BroadcastMessages_' + index + '__Enabled';
-                }
-                if (enabledLabel) enabledLabel.htmlFor = 'BroadcastMessages_' + index + '__Enabled';
-                if (message) {
-                    message.name = 'BroadcastMessages[' + index + '].Message';
-                    message.id = 'BroadcastMessages_' + index + '__Message';
-                }
-                if (validation) validation.setAttribute('data-valmsg-for', 'BroadcastMessages[' + index + '].Message');
-            });
+        if (enabledHidden) enabledHidden.name = 'BroadcastMessages[' + index + '].Enabled';
+        if (enabled) {
+        enabled.name = 'BroadcastMessages[' + index + '].Enabled';
+        enabled.id = 'BroadcastMessages_' + index + '__Enabled';
+        }
+        if (enabledLabel) enabledLabel.htmlFor = 'BroadcastMessages_' + index + '__Enabled';
+        if (message) {
+        message.name = 'BroadcastMessages[' + index + '].Message';
+        message.id = 'BroadcastMessages_' + index + '__Message';
+        }
+        if (validation) validation.setAttribute('data-valmsg-for', 'BroadcastMessages[' + index + '].Message');
+        });
         }
 
         function wireBroadcastMessageRow(row) {
-            var removeButton = row.querySelector('[data-action="remove"]');
-            var moveUpButton = row.querySelector('[data-action="move-up"]');
-            var moveDownButton = row.querySelector('[data-action="move-down"]');
-            var messageInput = row.querySelector('[data-field="message"]');
+        var removeButton = row.querySelector('[data-action="remove"]');
+        var moveUpButton = row.querySelector('[data-action="move-up"]');
+        var moveDownButton = row.querySelector('[data-action="move-down"]');
+        var messageInput = row.querySelector('[data-field="message"]');
 
-            if (removeButton) {
-                removeButton.addEventListener('click', function () {
-                    var container = document.getElementById('broadcast-messages-container');
-                    row.remove();
-                    if (!container) return;
-                    reindexBroadcastRows(container);
-                    updateBroadcastsEmptyState(container);
-                });
-            }
+        if (removeButton) {
+        removeButton.addEventListener('click', function () {
+        var container = document.getElementById('broadcast-messages-container');
+        row.remove();
+        if (!container) return;
+        reindexBroadcastRows(container);
+        updateBroadcastsEmptyState(container);
+        });
+        }
 
-            if (moveUpButton) {
-                moveUpButton.addEventListener('click', function () {
-                    var container = document.getElementById('broadcast-messages-container');
-                    var previous = row.previousElementSibling;
-                    if (!container || !previous) return;
-                    container.insertBefore(row, previous);
-                    reindexBroadcastRows(container);
-                });
-            }
+        if (moveUpButton) {
+        moveUpButton.addEventListener('click', function () {
+        var container = document.getElementById('broadcast-messages-container');
+        var previous = row.previousElementSibling;
+        if (!container || !previous) return;
+        container.insertBefore(row, previous);
+        reindexBroadcastRows(container);
+        });
+        }
 
-            if (moveDownButton) {
-                moveDownButton.addEventListener('click', function () {
-                    var container = document.getElementById('broadcast-messages-container');
-                    var next = row.nextElementSibling;
-                    if (!container || !next) return;
-                    container.insertBefore(next, row);
-                    reindexBroadcastRows(container);
-                });
-            }
+        if (moveDownButton) {
+        moveDownButton.addEventListener('click', function () {
+        var container = document.getElementById('broadcast-messages-container');
+        var next = row.nextElementSibling;
+        if (!container || !next) return;
+        container.insertBefore(next, row);
+        reindexBroadcastRows(container);
+        });
+        }
 
-            if (messageInput) {
-                messageInput.addEventListener('input', function () {
-                    updateBroadcastRowPreview(row);
-                });
-            }
+        if (messageInput) {
+        messageInput.addEventListener('input', function () {
+        updateBroadcastRowPreview(row);
+        });
+        }
 
-            updateBroadcastRowPreview(row);
+        updateBroadcastRowPreview(row);
         }
 
         function createBroadcastMessageRow(template) {
-            var row = template.content.firstElementChild.cloneNode(true);
-            wireBroadcastMessageRow(row);
-            return row;
+        var row = template.content.firstElementChild.cloneNode(true);
+        wireBroadcastMessageRow(row);
+        return row;
         }
 
         (function initializeBroadcastMessages() {
-            var container = document.getElementById('broadcast-messages-container');
-            if (!container) return;
+        var container = document.getElementById('broadcast-messages-container');
+        if (!container) return;
 
-            var template = document.getElementById('broadcast-message-template');
-            if (!template) return;
+        var template = document.getElementById('broadcast-message-template');
+        if (!template) return;
 
-            container.querySelectorAll('[data-broadcast-row]').forEach(function (row) {
-                wireBroadcastMessageRow(row);
-            });
+        container.querySelectorAll('[data-broadcast-row]').forEach(function (row) {
+        wireBroadcastMessageRow(row);
+        });
 
-            var addButton = document.getElementById('add-broadcast-message');
-            if (addButton) {
-                addButton.addEventListener('click', function () {
-                    var newRow = createBroadcastMessageRow(template);
-                    container.appendChild(newRow);
-                    reindexBroadcastRows(container);
-                    updateBroadcastsEmptyState(container);
-                });
-            }
+        var addButton = document.getElementById('add-broadcast-message');
+        if (addButton) {
+        addButton.addEventListener('click', function () {
+        var newRow = createBroadcastMessageRow(template);
+        container.appendChild(newRow);
+        reindexBroadcastRows(container);
+        updateBroadcastsEmptyState(container);
+        });
+        }
 
-            reindexBroadcastRows(container);
-            updateBroadcastsEmptyState(container);
+        reindexBroadcastRows(container);
+        updateBroadcastsEmptyState(container);
 
-            var form = document.querySelector('form[action*="Edit"]');
-            if (form) {
-                form.addEventListener('submit', function () {
-                    reindexBroadcastRows(container);
-                });
-            }
+        var agentNameInput = document.getElementById('AgentConfigName');
+        if (agentNameInput) {
+        agentNameInput.addEventListener('input', function () {
+        container.querySelectorAll('[data-broadcast-row]').forEach(function (row) {
+        updateBroadcastRowPreview(row);
+        });
+        });
+        }
+
+        var form = document.querySelector('form[action*="Edit"]');
+        if (form) {
+        form.addEventListener('submit', function () {
+        reindexBroadcastRows(container);
+        });
+        }
         })();
     </script>
 }
