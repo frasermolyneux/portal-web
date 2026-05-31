@@ -1,7 +1,7 @@
 // Protected Names tables - Initialize DataTables with responsive
 $(document).ready(function () {
     const protectedNamesTable = $('#protectedNamesTable');
-    
+
     if (protectedNamesTable.length && protectedNamesTable.find('tbody tr').length > 0) {
         const table = protectedNamesTable.DataTable({
             responsive: {

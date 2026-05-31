@@ -5,8 +5,8 @@
 @*
     Shared Protected Names Table Partial
     Displays a list of protected names with DataTables responsive support
-    
-    Usage: Pass IEnumerable<ProtectedNameDto> as model
+
+Usage: Pass IEnumerable<ProtectedNameDto> as model
     Must include protected-names-table.js script in parent view
 *@
 
@@ -40,13 +40,15 @@
                     <td>@protectedName.CreatedByUserProfile?.DisplayName</td>
                     <td>
                         <div class="btn-group btn-group-sm" role="group">
-                            <a policy="@AuthPolicies.Players_ProtectedNames_Write" asp-controller="ProtectedNames" asp-action="Report"
-                                asp-route-id="@protectedName.ProtectedNameId" class="btn btn-outline-secondary btn-sm" title="Usage Report" aria-label="Usage Report">
+                            <a policy="@AuthPolicies.Players_ProtectedNames_Write" asp-controller="ProtectedNames"
+                               asp-action="Report" asp-route-id="@protectedName.ProtectedNameId"
+                               class="btn btn-outline-secondary btn-sm" title="Usage Report" aria-label="Usage Report">
                                 <i class="fa-solid fa-fw fa-flag" aria-hidden="true"></i>
                             </a>
-                            <a policy="@AuthPolicies.Players_ProtectedNames_Write" asp-controller="ProtectedNames" asp-action="Delete"
-                                asp-route-id="@protectedName.ProtectedNameId" class="btn btn-outline-danger btn-sm" aria-label="Delete"
-                                data-confirm="Are you sure you want to delete this protected name?" title="Delete">
+                            <a policy="@AuthPolicies.Players_ProtectedNames_Write" asp-controller="ProtectedNames"
+                               asp-action="Delete" asp-route-id="@protectedName.ProtectedNameId"
+                               class="btn btn-outline-danger btn-sm" aria-label="Delete"
+                               data-confirm="Are you sure you want to delete this protected name?" title="Delete">
                                 <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
                             </a>
                         </div>
