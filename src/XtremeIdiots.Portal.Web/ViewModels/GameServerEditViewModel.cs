@@ -57,9 +57,21 @@ public class GameServerEditViewModel
     [DisplayName("Protected Name Enforcement")]
     public bool ModerationProtectedNameEnforcementEnabled { get; set; } = true;
 
-    [DisplayName("Severity Threshold")]
-    [Range(0, 6, ErrorMessage = "Severity threshold must be between 0 and 6.")]
-    public int? ModerationSeverityThreshold { get; set; }
+    [DisplayName("Hate Threshold")]
+    [Range(-1, 6, ErrorMessage = "Hate threshold must be Use global default, Disabled, or between 0 and 6.")]
+    public int? ModerationHateSeverityThreshold { get; set; }
+
+    [DisplayName("Violence Threshold")]
+    [Range(-1, 6, ErrorMessage = "Violence threshold must be Use global default, Disabled, or between 0 and 6.")]
+    public int? ModerationViolenceSeverityThreshold { get; set; }
+
+    [DisplayName("Sexual Threshold")]
+    [Range(-1, 6, ErrorMessage = "Sexual threshold must be Use global default, Disabled, or between 0 and 6.")]
+    public int? ModerationSexualSeverityThreshold { get; set; }
+
+    [DisplayName("Self-Harm Threshold")]
+    [Range(-1, 6, ErrorMessage = "Self-Harm threshold must be Use global default, Disabled, or between 0 and 6.")]
+    public int? ModerationSelfHarmSeverityThreshold { get; set; }
 
     [DisplayName("Minimum Message Length")]
     [Range(1, int.MaxValue, ErrorMessage = "Minimum message length must be at least 1.")]
@@ -77,7 +89,10 @@ public class GameServerEditViewModel
 
     // Global defaults (for placeholder display in override fields)
 
-    public int GlobalModerationSeverityThreshold { get; set; } = 4;
+    public int GlobalModerationHateSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;
+    public int GlobalModerationViolenceSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;
+    public int GlobalModerationSexualSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;
+    public int GlobalModerationSelfHarmSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;
     public int GlobalModerationMinMessageLength { get; set; } = 5;
     public int GlobalEventsStaleThresholdSeconds { get; set; } = 120;
     public int GlobalEventsPlayerCacheExpirationSeconds { get; set; } = 900;

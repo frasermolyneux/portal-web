@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -8,6 +9,8 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// </summary>
 public class GlobalSettingsViewModel
 {
+    public const int DisabledSeverityThreshold = -1;
+
     // Agent defaults
     [DisplayName("Poll Interval (ms)")]
     [Range(100, int.MaxValue, ErrorMessage = "Poll interval must be at least 100ms.")]
@@ -31,9 +34,21 @@ public class GlobalSettingsViewModel
     public int BanFileSyncCheckIntervalSeconds { get; set; } = 60;
 
     // Moderation defaults
-    [DisplayName("Severity Threshold")]
-    [Range(0, 6, ErrorMessage = "Severity threshold must be between 0 and 6.")]
-    public int ModerationSeverityThreshold { get; set; } = 4;
+    [DisplayName("Hate Threshold")]
+    [Range(-1, 6, ErrorMessage = "Hate threshold must be Disabled or between 0 and 6.")]
+    public int ModerationHateSeverityThreshold { get; set; } = DisabledSeverityThreshold;
+
+    [DisplayName("Violence Threshold")]
+    [Range(-1, 6, ErrorMessage = "Violence threshold must be Disabled or between 0 and 6.")]
+    public int ModerationViolenceSeverityThreshold { get; set; } = DisabledSeverityThreshold;
+
+    [DisplayName("Sexual Threshold")]
+    [Range(-1, 6, ErrorMessage = "Sexual threshold must be Disabled or between 0 and 6.")]
+    public int ModerationSexualSeverityThreshold { get; set; } = DisabledSeverityThreshold;
+
+    [DisplayName("Self-Harm Threshold")]
+    [Range(-1, 6, ErrorMessage = "Self-Harm threshold must be Disabled or between 0 and 6.")]
+    public int ModerationSelfHarmSeverityThreshold { get; set; } = DisabledSeverityThreshold;
 
     [DisplayName("Minimum Message Length")]
     [Range(1, int.MaxValue, ErrorMessage = "Minimum message length must be at least 1.")]
@@ -47,4 +62,23 @@ public class GlobalSettingsViewModel
     [DisplayName("Player Cache Expiration (s)")]
     [Range(1, int.MaxValue, ErrorMessage = "Player cache expiration must be at least 1 second.")]
     public int EventsPlayerCacheExpirationSeconds { get; set; } = 900;
+
+    public static IReadOnlyList<SelectListItem> BuildSeverityOptions(bool includeUseGlobalOption)
+    {
+        var options = new List<SelectListItem>();
+
+        if (includeUseGlobalOption)
+        {
+            options.Add(new SelectListItem("Use global default", ""));
+        }
+
+        options.Add(new SelectListItem("Disabled", DisabledSeverityThreshold.ToString()));
+
+        for (var i = 0; i <= 6; i++)
+        {
+            options.Add(new SelectListItem(i.ToString(), i.ToString()));
+        }
+
+        return options;
+    }
 }

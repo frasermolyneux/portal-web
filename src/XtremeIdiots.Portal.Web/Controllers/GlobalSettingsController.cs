@@ -87,7 +87,10 @@ public class GlobalSettingsController(
 
             await UpsertConfigSafeAsync("moderation", JsonSerializer.Serialize(new
             {
-                contentSafetySeverityThreshold = model.ModerationSeverityThreshold,
+                contentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
+                contentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
+                contentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
+                contentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
                 minMessageLength = model.ModerationMinMessageLength
             }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
 
@@ -133,7 +136,11 @@ public class GlobalSettingsController(
                     model.BanFileSyncCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", model.BanFileSyncCheckIntervalSeconds);
                     break;
                 case "moderation":
-                    model.ModerationSeverityThreshold = GetIntProperty(root, "contentSafetySeverityThreshold", model.ModerationSeverityThreshold);
+                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
+                    model.ModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? model.ModerationHateSeverityThreshold);
+                    model.ModerationViolenceSeverityThreshold = GetIntProperty(root, "contentSafetyViolenceSeverityThreshold", legacyThreshold ?? model.ModerationViolenceSeverityThreshold);
+                    model.ModerationSexualSeverityThreshold = GetIntProperty(root, "contentSafetySexualSeverityThreshold", legacyThreshold ?? model.ModerationSexualSeverityThreshold);
+                    model.ModerationSelfHarmSeverityThreshold = GetIntProperty(root, "contentSafetySelfHarmSeverityThreshold", legacyThreshold ?? model.ModerationSelfHarmSeverityThreshold);
                     model.ModerationMinMessageLength = GetIntProperty(root, "minMessageLength", model.ModerationMinMessageLength);
                     break;
                 case "events":
@@ -158,6 +165,15 @@ public class GlobalSettingsController(
                prop.TryGetInt32(out var value)
             ? value
             : defaultValue;
+    }
+
+    private static int? GetNullableIntProperty(JsonElement root, string propertyName)
+    {
+        return root.TryGetProperty(propertyName, out var prop) &&
+               prop.ValueKind == JsonValueKind.Number &&
+               prop.TryGetInt32(out var value)
+            ? value
+            : null;
     }
 
     private async Task UpsertConfigSafeAsync(

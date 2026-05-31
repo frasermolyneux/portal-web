@@ -615,7 +615,11 @@ public class GameServersController(
                     break;
                 case "moderation":
                     editModel.ModerationProtectedNameEnforcementEnabled = GetBoolProperty(root, "protectedNameEnforcementEnabled", true);
-                    editModel.ModerationSeverityThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
+                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
+                    editModel.ModerationHateSeverityThreshold = GetNullableIntProperty(root, "contentSafetyHateSeverityThreshold") ?? legacyThreshold;
+                    editModel.ModerationViolenceSeverityThreshold = GetNullableIntProperty(root, "contentSafetyViolenceSeverityThreshold") ?? legacyThreshold;
+                    editModel.ModerationSexualSeverityThreshold = GetNullableIntProperty(root, "contentSafetySexualSeverityThreshold") ?? legacyThreshold;
+                    editModel.ModerationSelfHarmSeverityThreshold = GetNullableIntProperty(root, "contentSafetySelfHarmSeverityThreshold") ?? legacyThreshold;
                     editModel.ModerationMinMessageLength = GetNullableIntProperty(root, "minMessageLength");
                     break;
                 case "events":
@@ -687,7 +691,11 @@ public class GameServersController(
             switch (config.Namespace)
             {
                 case "moderation":
-                    editModel.GlobalModerationSeverityThreshold = GetIntProperty(root, "contentSafetySeverityThreshold", editModel.GlobalModerationSeverityThreshold);
+                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
+                    editModel.GlobalModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationHateSeverityThreshold);
+                    editModel.GlobalModerationViolenceSeverityThreshold = GetIntProperty(root, "contentSafetyViolenceSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationViolenceSeverityThreshold);
+                    editModel.GlobalModerationSexualSeverityThreshold = GetIntProperty(root, "contentSafetySexualSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationSexualSeverityThreshold);
+                    editModel.GlobalModerationSelfHarmSeverityThreshold = GetIntProperty(root, "contentSafetySelfHarmSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationSelfHarmSeverityThreshold);
                     editModel.GlobalModerationMinMessageLength = GetIntProperty(root, "minMessageLength", editModel.GlobalModerationMinMessageLength);
                     break;
                 case "events":
@@ -821,7 +829,10 @@ public class GameServersController(
         // Save Moderation config (only when Agent is enabled)
         if (model.GameServer.AgentEnabled)
         {
-            var hasOverrides = model.ModerationSeverityThreshold.HasValue
+            var hasOverrides = model.ModerationHateSeverityThreshold.HasValue
+                || model.ModerationViolenceSeverityThreshold.HasValue
+                || model.ModerationSexualSeverityThreshold.HasValue
+                || model.ModerationSelfHarmSeverityThreshold.HasValue
                 || model.ModerationMinMessageLength.HasValue
                 || !model.ModerationProtectedNameEnforcementEnabled;
 
@@ -832,8 +843,14 @@ public class GameServersController(
                     ["protectedNameEnforcementEnabled"] = model.ModerationProtectedNameEnforcementEnabled
                 };
 
-                if (model.ModerationSeverityThreshold.HasValue)
-                    moderationConfig["contentSafetySeverityThreshold"] = model.ModerationSeverityThreshold.Value;
+                if (model.ModerationHateSeverityThreshold.HasValue)
+                    moderationConfig["contentSafetyHateSeverityThreshold"] = model.ModerationHateSeverityThreshold.Value;
+                if (model.ModerationViolenceSeverityThreshold.HasValue)
+                    moderationConfig["contentSafetyViolenceSeverityThreshold"] = model.ModerationViolenceSeverityThreshold.Value;
+                if (model.ModerationSexualSeverityThreshold.HasValue)
+                    moderationConfig["contentSafetySexualSeverityThreshold"] = model.ModerationSexualSeverityThreshold.Value;
+                if (model.ModerationSelfHarmSeverityThreshold.HasValue)
+                    moderationConfig["contentSafetySelfHarmSeverityThreshold"] = model.ModerationSelfHarmSeverityThreshold.Value;
                 if (model.ModerationMinMessageLength.HasValue)
                     moderationConfig["minMessageLength"] = model.ModerationMinMessageLength.Value;
 

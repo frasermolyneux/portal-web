@@ -84,12 +84,40 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="ModerationSeverityThreshold" class="form-label"></label>
-                                    <input asp-for="ModerationSeverityThreshold" class="form-control" type="number" min="0" max="6" />
-                                    <span asp-validation-for="ModerationSeverityThreshold" class="text-danger"></span>
-                                    <small class="form-text text-muted">Minimum toxicity severity (0–6) that triggers moderation.</small>
+                                    <label asp-for="ModerationHateSeverityThreshold" class="form-label"></label>
+                                    <select asp-for="ModerationHateSeverityThreshold" class="form-select" asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                    <span asp-validation-for="ModerationHateSeverityThreshold" class="text-danger"></span>
+                                    <small class="form-text text-muted">Minimum hate severity (0–6) that triggers moderation, or Disabled.</small>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ModerationViolenceSeverityThreshold" class="form-label"></label>
+                                    <select asp-for="ModerationViolenceSeverityThreshold" class="form-select" asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                    <span asp-validation-for="ModerationViolenceSeverityThreshold" class="text-danger"></span>
+                                    <small class="form-text text-muted">Minimum violence severity (0–6) that triggers moderation, or Disabled.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ModerationSexualSeverityThreshold" class="form-label"></label>
+                                    <select asp-for="ModerationSexualSeverityThreshold" class="form-select" asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                    <span asp-validation-for="ModerationSexualSeverityThreshold" class="text-danger"></span>
+                                    <small class="form-text text-muted">Minimum sexual severity (0–6) that triggers moderation, or Disabled.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ModerationSelfHarmSeverityThreshold" class="form-label"></label>
+                                    <select asp-for="ModerationSelfHarmSeverityThreshold" class="form-select" asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                    <span asp-validation-for="ModerationSelfHarmSeverityThreshold" class="text-danger"></span>
+                                    <small class="form-text text-muted">Minimum self-harm severity (0–6) that triggers moderation, or Disabled.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label asp-for="ModerationMinMessageLength" class="form-label"></label>
