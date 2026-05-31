@@ -19,7 +19,7 @@
             <label asp-for="BroadcastsIntervalSeconds" class="form-label"></label>
             <input asp-for="BroadcastsIntervalSeconds" class="form-control" type="number" min="1" max="86400" />
             <span asp-validation-for="BroadcastsIntervalSeconds" class="text-danger"></span>
-            <small class="form-text text-muted">Interval between broadcasts in seconds. Defaults to 500 when unset.</small>
+            <small class="form-text text-muted">Interval between broadcasts in seconds. Default: @GameServerEditViewModel.DefaultBroadcastIntervalSeconds seconds.</small>
         </div>
     </div>
 </div>
@@ -65,8 +65,8 @@
                             </button>
                         </div>
                     </div>
-                    <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message" maxlength="120" />
-                    <small class="form-text text-muted"><span data-field="char-count">0</span>/120 characters</small>
+                    <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message" maxlength="@GameServerEditViewModel.MaxBroadcastMessageLength" />
+                    <small class="form-text text-muted"><span data-field="char-count">0</span>/@GameServerEditViewModel.MaxBroadcastMessageLength characters</small>
                     <div class="small text-muted mt-1" data-field="preview">(preview)</div>
                     <span class="text-danger" data-field="validation" asp-validation-for="BroadcastMessages[i].Message"></span>
                 </div>
@@ -95,8 +95,8 @@
                 </button>
             </div>
         </div>
-        <input class="form-control" data-field="message" maxlength="120" />
-        <small class="form-text text-muted"><span data-field="char-count">0</span>/120 characters</small>
+        <input class="form-control" data-field="message" maxlength="@GameServerEditViewModel.MaxBroadcastMessageLength" />
+        <small class="form-text text-muted"><span data-field="char-count">0</span>/@GameServerEditViewModel.MaxBroadcastMessageLength characters</small>
         <div class="small text-muted mt-1" data-field="preview">(preview)</div>
         <span class="text-danger" data-field="validation"></span>
     </div>

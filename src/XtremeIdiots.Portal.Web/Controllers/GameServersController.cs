@@ -628,7 +628,7 @@ public class GameServersController(
                     break;
                 case "broadcasts":
                     editModel.BroadcastsEnabled = GetBoolProperty(root, "enabled", false);
-                    editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? 500;
+                    editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
                     editModel.BroadcastMessages = GetBroadcastMessages(root);
                     break;
                 default:
@@ -923,9 +923,9 @@ public class GameServersController(
         // Save Broadcasts config (only when Agent is enabled)
         if (model.GameServer.AgentEnabled)
         {
-            var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(500);
+            var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);
             if (broadcastsIntervalSeconds <= 0)
-                broadcastsIntervalSeconds = 500;
+                broadcastsIntervalSeconds = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
 
             var broadcastsConfig = new
             {

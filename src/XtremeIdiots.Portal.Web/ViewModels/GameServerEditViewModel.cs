@@ -8,6 +8,9 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// </summary>
 public class GameServerEditViewModel : IValidatableObject
 {
+    public const int DefaultBroadcastIntervalSeconds = 500;
+    public const int MaxBroadcastMessageLength = 120;
+
     /// <summary>
     /// Core game server data
     /// </summary>
@@ -94,7 +97,7 @@ public class GameServerEditViewModel : IValidatableObject
 
     [DisplayName("Interval (seconds)")]
     [Range(1, 86400, ErrorMessage = "Broadcast interval must be between 1 and 86400 seconds.")]
-    public int? BroadcastsIntervalSeconds { get; set; } = 500;
+    public int? BroadcastsIntervalSeconds { get; set; } = DefaultBroadcastIntervalSeconds;
 
     public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
 
@@ -117,8 +120,8 @@ public class GameServerEditViewModel : IValidatableObject
     {
         for (var i = 0; i < BroadcastMessages.Count; i++)
         {
-            if (BroadcastMessages[i].Message?.Length > 120)
-                yield return new ValidationResult("Broadcast message cannot exceed 120 characters.", [$"BroadcastMessages[{i}].Message"]);
+            if (BroadcastMessages[i].Message?.Length > MaxBroadcastMessageLength)
+                yield return new ValidationResult($"Broadcast message cannot exceed {MaxBroadcastMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
         }
     }
 }
