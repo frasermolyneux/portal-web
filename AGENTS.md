@@ -99,7 +99,7 @@ You MUST use `.github/PULL_REQUEST_TEMPLATE.md` as your PR body — do **not** w
 5. Tick **every** box in `## Agent attestation`.
 6. Delete `## Consumer impact` only if no published contract (Abstractions / Client NuGet / Service Bus DTO / Terraform output) changed.
 
-The **`Coding-Agent PR Gate / PR body checklist gate`** workflow will **fail the PR** if the `## Agent attestation` section is missing or any box in it is unticked. This gate is required for merge — there is no override.
+Complete the `## Agent attestation` section before requesting review; reviewers use it as a readiness checklist.
 
 ---
 
