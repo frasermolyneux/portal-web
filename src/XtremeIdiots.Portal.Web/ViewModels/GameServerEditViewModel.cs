@@ -6,7 +6,7 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// <summary>
 /// Composite view model for the game server edit page with tabbed configuration
 /// </summary>
-public class GameServerEditViewModel
+public class GameServerEditViewModel : IValidatableObject
 {
     /// <summary>
     /// Core game server data
@@ -87,6 +87,17 @@ public class GameServerEditViewModel
     [Range(1, int.MaxValue, ErrorMessage = "Player cache expiration must be at least 1 second.")]
     public int? EventsPlayerCacheExpirationSeconds { get; set; }
 
+    // Broadcasts configuration (parsed from "broadcasts" config namespace)
+
+    [DisplayName("Enabled")]
+    public bool BroadcastsEnabled { get; set; }
+
+    [DisplayName("Interval (seconds)")]
+    [Range(1, 86400, ErrorMessage = "Broadcast interval must be between 1 and 86400 seconds.")]
+    public int? BroadcastsIntervalSeconds { get; set; } = 500;
+
+    public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
+
     // Global defaults (for placeholder display in override fields)
 
     public int GlobalModerationHateSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;
@@ -101,4 +112,22 @@ public class GameServerEditViewModel
 
     public bool CanEditFtp { get; set; }
     public bool CanEditRcon { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        for (var i = 0; i < BroadcastMessages.Count; i++)
+        {
+            if (BroadcastMessages[i].Message?.Length > 120)
+                yield return new ValidationResult("Broadcast message cannot exceed 120 characters.", [$"BroadcastMessages[{i}].Message"]);
+        }
+    }
+}
+
+public class BroadcastMessageViewModel
+{
+    [DisplayName("Message")]
+    public string Message { get; set; } = string.Empty;
+
+    [DisplayName("Enabled")]
+    public bool Enabled { get; set; } = true;
 }

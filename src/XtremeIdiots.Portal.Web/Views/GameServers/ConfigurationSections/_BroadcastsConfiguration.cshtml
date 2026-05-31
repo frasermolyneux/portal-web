@@ -1,0 +1,103 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model GameServerEditViewModel
+@{
+    var broadcastMessages = Model.BroadcastMessages ?? [];
+}
+
+<div class="ibox">
+    <div class="ibox-title">
+        Broadcast Messages
+    </div>
+    <div class="ibox-content">
+        <div class="form-check mb-3">
+            <input class="form-check-input" asp-for="BroadcastsEnabled" />
+            <label class="form-check-label" asp-for="BroadcastsEnabled"></label>
+            <small class="form-text text-muted d-block">Enable periodic server broadcast messages for this server.</small>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="BroadcastsIntervalSeconds" class="form-label"></label>
+            <input asp-for="BroadcastsIntervalSeconds" class="form-control" type="number" min="1" max="86400" />
+            <span asp-validation-for="BroadcastsIntervalSeconds" class="text-danger"></span>
+            <small class="form-text text-muted">Interval between broadcasts in seconds. Defaults to 500 when unset.</small>
+        </div>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title d-flex justify-content-between align-items-center">
+        <span>Messages</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-broadcast-message">
+            <i class="fa-solid fa-fw fa-plus"></i>Add message
+        </button>
+    </div>
+    <div class="ibox-content">
+        <p id="broadcast-messages-empty" class="text-muted @(broadcastMessages.Count > 0 ? "d-none" : string.Empty)">
+            No broadcast messages configured.
+        </p>
+
+        <div id="broadcast-messages-container">
+            @for (var i = 0; i < broadcastMessages.Count; i++)
+            {
+                <div class="border rounded p-3 mb-3" data-broadcast-row>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="form-check form-switch mb-0">
+                            <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled" value="false" />
+                            @if (broadcastMessages[i].Enabled)
+                            {
+                                <input class="form-check-input" data-field="enabled" type="checkbox" name="BroadcastMessages[@i].Enabled" value="true" id="BroadcastMessages_@(i)__Enabled" checked="checked" />
+                            }
+                            else
+                            {
+                                <input class="form-check-input" data-field="enabled" type="checkbox" name="BroadcastMessages[@i].Enabled" value="true" id="BroadcastMessages_@(i)__Enabled" />
+                            }
+                            <label class="form-check-label" data-field="enabled-label" for="BroadcastMessages_@(i)__Enabled">Enabled</label>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">
+                            <button type="button" class="btn btn-outline-secondary" data-action="move-up">
+                                <i class="fa-solid fa-fw fa-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-action="move-down">
+                                <i class="fa-solid fa-fw fa-arrow-down"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" data-action="remove">
+                                <i class="fa-solid fa-fw fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message" maxlength="120" />
+                    <small class="form-text text-muted"><span data-field="char-count">0</span>/120 characters</small>
+                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                    <span class="text-danger" data-field="validation" asp-validation-for="BroadcastMessages[i].Message"></span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<template id="broadcast-message-template">
+    <div class="border rounded p-3 mb-3" data-broadcast-row>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="form-check form-switch mb-0">
+                <input type="hidden" data-field="enabled-hidden" value="false" />
+                <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                <label class="form-check-label" data-field="enabled-label">Enabled</label>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">
+                <button type="button" class="btn btn-outline-secondary" data-action="move-up">
+                    <i class="fa-solid fa-fw fa-arrow-up"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-action="move-down">
+                    <i class="fa-solid fa-fw fa-arrow-down"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger" data-action="remove">
+                    <i class="fa-solid fa-fw fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <input class="form-control" data-field="message" maxlength="120" />
+        <small class="form-text text-muted"><span data-field="char-count">0</span>/120 characters</small>
+        <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+        <span class="text-danger" data-field="validation"></span>
+    </div>
+</template>
