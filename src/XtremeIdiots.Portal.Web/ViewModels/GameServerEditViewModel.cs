@@ -118,6 +118,9 @@ public class GameServerEditViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (BroadcastMessages is null)
+            yield break;
+
         for (var i = 0; i < BroadcastMessages.Count; i++)
         {
             if (BroadcastMessages[i].Message?.Length > MaxBroadcastMessageLength)

@@ -49,6 +49,17 @@ public class GameServerEditViewModelTests
         Assert.True(isValid);
     }
 
+    [Fact]
+    public void Validate_WhenBroadcastMessagesIsNull_IsValid()
+    {
+        var model = CreateValidModel();
+        model.BroadcastMessages = null!;
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+
+        Assert.True(isValid);
+    }
+
     private static GameServerEditViewModel CreateValidModel()
     {
         return new GameServerEditViewModel

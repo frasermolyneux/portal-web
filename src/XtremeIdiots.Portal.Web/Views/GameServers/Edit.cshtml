@@ -429,7 +429,7 @@
             reindexBroadcastRows(container);
             updateBroadcastsEmptyState(container);
 
-            var form = document.querySelector('form[asp-action="Edit"], form[action*="Edit"]');
+            var form = document.querySelector('form[action*="Edit"]');
             if (form) {
                 form.addEventListener('submit', function () {
                     reindexBroadcastRows(container);
