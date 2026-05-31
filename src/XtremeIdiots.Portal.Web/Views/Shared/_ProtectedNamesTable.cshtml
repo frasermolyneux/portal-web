@@ -16,6 +16,7 @@
             <tr>
                 <th>Name</th>
                 <th>Owner</th>
+                <th>Owner Game</th>
                 <th>Created</th>
                 <th>Created By</th>
                 <th>Actions</th>
@@ -30,6 +31,10 @@
                         <a asp-controller="Players" asp-action="Details" asp-route-id="@protectedName.PlayerId">
                             View Player Profile
                         </a>
+                    </td>
+                    <td>
+                        <game-type-icon game="@protectedName.OwnerGameType"></game-type-icon>
+                        <span>@protectedName.OwnerGameType</span>
                     </td>
                     <td><time user-time utc="@protectedName.CreatedOn"></time></td>
                     <td>@protectedName.CreatedByUserProfile?.DisplayName</td>

@@ -54,17 +54,37 @@ public class ProtectedNamesController(
             if (authResult is not null)
                 return authResult;
 
-            var protectedNamesResponse = await repositoryApiClient.Players.V1.GetProtectedNames(0, 1000).ConfigureAwait(false);
+            const int protectedNamesPageSize = 500;
+            var protectedNames = new List<ProtectedNameDto>();
+            var skipEntries = 0;
 
-            if (!protectedNamesResponse.IsSuccess || protectedNamesResponse.Result?.Data?.Items is null)
+            while (true)
             {
-                Logger.LogWarning("Failed to retrieve protected names for user {UserId}", User.XtremeIdiotsId());
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                var protectedNamesResponse = await repositoryApiClient.Players.V1
+                    .GetProtectedNames(skipEntries, protectedNamesPageSize)
+                    .ConfigureAwait(false);
+
+                if (!protectedNamesResponse.IsSuccess || protectedNamesResponse.Result?.Data?.Items is null)
+                {
+                    Logger.LogWarning("Failed to retrieve protected names for user {UserId}", User.XtremeIdiotsId());
+                    return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                }
+
+                var page = protectedNamesResponse.Result.Data.Items.ToList();
+                if (page.Count == 0)
+                    break;
+
+                protectedNames.AddRange(page);
+
+                if (page.Count < protectedNamesPageSize)
+                    break;
+
+                skipEntries += protectedNamesPageSize;
             }
 
             var model = new ProtectedNamesViewModel
             {
-                ProtectedNames = [.. protectedNamesResponse.Result.Data.Items]
+                ProtectedNames = protectedNames
             };
 
             return View(model);
