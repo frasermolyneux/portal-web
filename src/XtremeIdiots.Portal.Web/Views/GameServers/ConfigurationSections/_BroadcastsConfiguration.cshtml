@@ -6,7 +6,7 @@
 
 <div class="ibox">
     <div class="ibox-title">
-        Broadcast Messages
+        <h5>Broadcast Messages</h5>
     </div>
     <div class="ibox-content">
         <div class="form-check mb-3">
@@ -26,7 +26,7 @@
 
 <div class="ibox">
     <div class="ibox-title d-flex justify-content-between align-items-center">
-        <span>Messages</span>
+        <h5 class="mb-0">Messages</h5>
         <button type="button" class="btn btn-outline-secondary btn-sm" id="add-broadcast-message">
             <i class="fa-solid fa-fw fa-plus"></i>Add message
         </button>
@@ -42,7 +42,6 @@
                 <div class="border rounded p-3 mb-3" data-broadcast-row>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="form-check form-switch mb-0">
-                            <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled" value="false" />
                             @if (broadcastMessages[i].Enabled)
                             {
                                 <input class="form-check-input" data-field="enabled" type="checkbox" name="BroadcastMessages[@i].Enabled" value="true" id="BroadcastMessages_@(i)__Enabled" checked="checked" />
@@ -51,17 +50,18 @@
                             {
                                 <input class="form-check-input" data-field="enabled" type="checkbox" name="BroadcastMessages[@i].Enabled" value="true" id="BroadcastMessages_@(i)__Enabled" />
                             }
+                            <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled" value="false" />
                             <label class="form-check-label" data-field="enabled-label" for="BroadcastMessages_@(i)__Enabled">Enabled</label>
                         </div>
                         <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">
-                            <button type="button" class="btn btn-outline-secondary" data-action="move-up">
-                                <i class="fa-solid fa-fw fa-arrow-up"></i>
+                            <button type="button" class="btn btn-outline-secondary" data-action="move-up" aria-label="Move message up">
+                                <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="btn btn-outline-secondary" data-action="move-down">
-                                <i class="fa-solid fa-fw fa-arrow-down"></i>
+                            <button type="button" class="btn btn-outline-secondary" data-action="move-down" aria-label="Move message down">
+                                <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="btn btn-outline-danger" data-action="remove">
-                                <i class="fa-solid fa-fw fa-trash"></i>
+                            <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                                <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -79,19 +79,19 @@
     <div class="border rounded p-3 mb-3" data-broadcast-row>
         <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="form-check form-switch mb-0">
-                <input type="hidden" data-field="enabled-hidden" value="false" />
                 <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                <input type="hidden" data-field="enabled-hidden" value="false" />
                 <label class="form-check-label" data-field="enabled-label">Enabled</label>
             </div>
             <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">
-                <button type="button" class="btn btn-outline-secondary" data-action="move-up">
-                    <i class="fa-solid fa-fw fa-arrow-up"></i>
+                <button type="button" class="btn btn-outline-secondary" data-action="move-up" aria-label="Move message up">
+                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="btn btn-outline-secondary" data-action="move-down">
-                    <i class="fa-solid fa-fw fa-arrow-down"></i>
+                <button type="button" class="btn btn-outline-secondary" data-action="move-down" aria-label="Move message down">
+                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="btn btn-outline-danger" data-action="remove">
-                    <i class="fa-solid fa-fw fa-trash"></i>
+                <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
