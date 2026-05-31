@@ -27,7 +27,7 @@
             <h5>All Protected Names</h5>
         </div>
         <div class="ibox-content">
-            <partial name="_ProtectedNamesTable" model="@(Model?.ProtectedNames ?? Array.Empty<ProtectedNameDto>())" />
+            <partial name="_ProtectedNamesTable" model="@(Model?.ProtectedNames ?? new List<ProtectedNameDto>())" />
         </div>
     </div>
 </div>
