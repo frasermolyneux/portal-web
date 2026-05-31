@@ -48,6 +48,11 @@
                         </li>
                         @if (Model.GameServer.AgentEnabled)
                         {
+                            <li class="nav-item" role="presentation" id="broadcasts-tab-item">
+                                <button class="nav-link" id="broadcasts-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#broadcasts-tab" type="button" role="tab"
+                                    aria-controls="broadcasts-tab" aria-selected="false">Broadcasts</button>
+                            </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#moderation-tab" type="button" role="tab"
@@ -103,6 +108,11 @@
 
                         @if (Model.GameServer.AgentEnabled)
                         {
+                            <div class="tab-pane fade" id="broadcasts-tab" role="tabpanel"
+                                aria-labelledby="broadcasts-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_BroadcastsConfiguration", Model)
+                            </div>
+
                             <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
                                 aria-labelledby="moderation-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_ModerationConfiguration", Model)
@@ -244,5 +254,187 @@
             var el = document.getElementById(id);
             if (el) el.addEventListener('change', enforceToggleDependencies);
         });
+
+        function isCodGameType() {
+            var gameType = document.getElementById('GameServer_GameType')?.value || '';
+            return gameType.startsWith('CallOfDuty');
+        }
+
+        function stripCodColorCodes(text) {
+            return text.replace(/\^[0-9]/g, '');
+        }
+
+        function updateBroadcastRowPreview(row) {
+            var input = row.querySelector('[data-field="message"]');
+            var preview = row.querySelector('[data-field="preview"]');
+            var count = row.querySelector('[data-field="char-count"]');
+            if (!input || !preview || !count) return;
+
+            var value = input.value || '';
+            count.textContent = value.length.toString();
+            preview.textContent = '';
+
+            if (!value.length) {
+                preview.textContent = '(preview)';
+                return;
+            }
+
+            if (!isCodGameType()) {
+                preview.textContent = stripCodColorCodes(value);
+                return;
+            }
+
+            var colors = {
+                '1': '#ff4d4f',
+                '2': '#52c41a',
+                '3': '#ffd666',
+                '4': '#40a9ff',
+                '5': '#69c0ff',
+                '6': '#fa8c16',
+                '7': '#f0f0f0',
+                '8': '#000000',
+                '9': '#ff85c0',
+                '0': '#ffffff'
+            };
+
+            var currentColor = colors['0'];
+            var lastIndex = 0;
+            var regex = /\^([0-9])/g;
+            var match;
+
+            while ((match = regex.exec(value)) !== null) {
+                var segment = value.substring(lastIndex, match.index);
+                if (segment.length) {
+                    var span = document.createElement('span');
+                    span.style.color = currentColor;
+                    span.textContent = segment;
+                    preview.appendChild(span);
+                }
+
+                currentColor = colors[match[1]] || currentColor;
+                lastIndex = regex.lastIndex;
+            }
+
+            var tail = value.substring(lastIndex);
+            if (tail.length) {
+                var tailSpan = document.createElement('span');
+                tailSpan.style.color = currentColor;
+                tailSpan.textContent = tail;
+                preview.appendChild(tailSpan);
+            }
+        }
+
+        function updateBroadcastsEmptyState(container) {
+            var emptyState = document.getElementById('broadcast-messages-empty');
+            if (!emptyState) return;
+            emptyState.classList.toggle('d-none', container.querySelectorAll('[data-broadcast-row]').length > 0);
+        }
+
+        function reindexBroadcastRows(container) {
+            container.querySelectorAll('[data-broadcast-row]').forEach(function (row, index) {
+                row.dataset.index = index.toString();
+
+                var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
+                var enabled = row.querySelector('[data-field="enabled"]');
+                var enabledLabel = row.querySelector('[data-field="enabled-label"]');
+                var message = row.querySelector('[data-field="message"]');
+                var validation = row.querySelector('[data-field="validation"]');
+
+                if (enabledHidden) enabledHidden.name = 'BroadcastMessages[' + index + '].Enabled';
+                if (enabled) {
+                    enabled.name = 'BroadcastMessages[' + index + '].Enabled';
+                    enabled.id = 'BroadcastMessages_' + index + '__Enabled';
+                }
+                if (enabledLabel) enabledLabel.htmlFor = 'BroadcastMessages_' + index + '__Enabled';
+                if (message) {
+                    message.name = 'BroadcastMessages[' + index + '].Message';
+                    message.id = 'BroadcastMessages_' + index + '__Message';
+                }
+                if (validation) validation.setAttribute('data-valmsg-for', 'BroadcastMessages[' + index + '].Message');
+            });
+        }
+
+        function wireBroadcastMessageRow(row) {
+            var removeButton = row.querySelector('[data-action="remove"]');
+            var moveUpButton = row.querySelector('[data-action="move-up"]');
+            var moveDownButton = row.querySelector('[data-action="move-down"]');
+            var messageInput = row.querySelector('[data-field="message"]');
+
+            if (removeButton) {
+                removeButton.addEventListener('click', function () {
+                    var container = document.getElementById('broadcast-messages-container');
+                    row.remove();
+                    if (!container) return;
+                    reindexBroadcastRows(container);
+                    updateBroadcastsEmptyState(container);
+                });
+            }
+
+            if (moveUpButton) {
+                moveUpButton.addEventListener('click', function () {
+                    var container = document.getElementById('broadcast-messages-container');
+                    var previous = row.previousElementSibling;
+                    if (!container || !previous) return;
+                    container.insertBefore(row, previous);
+                    reindexBroadcastRows(container);
+                });
+            }
+
+            if (moveDownButton) {
+                moveDownButton.addEventListener('click', function () {
+                    var container = document.getElementById('broadcast-messages-container');
+                    var next = row.nextElementSibling;
+                    if (!container || !next) return;
+                    container.insertBefore(next, row);
+                    reindexBroadcastRows(container);
+                });
+            }
+
+            if (messageInput) {
+                messageInput.addEventListener('input', function () {
+                    updateBroadcastRowPreview(row);
+                });
+            }
+
+            updateBroadcastRowPreview(row);
+        }
+
+        function createBroadcastMessageRow(template) {
+            var row = template.content.firstElementChild.cloneNode(true);
+            wireBroadcastMessageRow(row);
+            return row;
+        }
+
+        (function initializeBroadcastMessages() {
+            var container = document.getElementById('broadcast-messages-container');
+            if (!container) return;
+
+            var template = document.getElementById('broadcast-message-template');
+            if (!template) return;
+
+            container.querySelectorAll('[data-broadcast-row]').forEach(function (row) {
+                wireBroadcastMessageRow(row);
+            });
+
+            var addButton = document.getElementById('add-broadcast-message');
+            if (addButton) {
+                addButton.addEventListener('click', function () {
+                    var newRow = createBroadcastMessageRow(template);
+                    container.appendChild(newRow);
+                    reindexBroadcastRows(container);
+                    updateBroadcastsEmptyState(container);
+                });
+            }
+
+            reindexBroadcastRows(container);
+            updateBroadcastsEmptyState(container);
+
+            var form = document.querySelector('form[action*="Edit"]');
+            if (form) {
+                form.addEventListener('submit', function () {
+                    reindexBroadcastRows(container);
+                });
+            }
+        })();
     </script>
 }

@@ -626,6 +626,11 @@ public class GameServersController(
                     editModel.EventsStaleThresholdSeconds = GetNullableIntProperty(root, "staleThresholdSeconds");
                     editModel.EventsPlayerCacheExpirationSeconds = GetNullableIntProperty(root, "playerCacheExpirationSeconds");
                     break;
+                case "broadcasts":
+                    editModel.BroadcastsEnabled = GetBoolProperty(root, "enabled", false);
+                    editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+                    editModel.BroadcastMessages = GetBroadcastMessages(root);
+                    break;
                 default:
                     Logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
                     break;
@@ -676,6 +681,28 @@ public class GameServersController(
         return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number
             ? prop.GetInt32()
             : null;
+    }
+
+    private static List<BroadcastMessageViewModel> GetBroadcastMessages(JsonElement root)
+    {
+        var messages = new List<BroadcastMessageViewModel>();
+
+        if (!root.TryGetProperty("messages", out var messagesElement) || messagesElement.ValueKind != JsonValueKind.Array)
+            return messages;
+
+        foreach (var item in messagesElement.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                continue;
+
+            messages.Add(new BroadcastMessageViewModel
+            {
+                Message = GetStringProperty(item, "message") ?? string.Empty,
+                Enabled = GetBoolProperty(item, "enabled", true)
+            });
+        }
+
+        return messages;
     }
 
     private void PopulateGlobalDefaults(GameServerEditViewModel editModel, ConfigurationDto config)
@@ -891,6 +918,28 @@ public class GameServersController(
                 await UpsertConfigSafeAsync(gameServerId, "events",
                     "{}", serverTitle, errors, cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        // Save Broadcasts config (only when Agent is enabled)
+        if (model.GameServer.AgentEnabled)
+        {
+            var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);
+            if (broadcastsIntervalSeconds <= 0)
+                broadcastsIntervalSeconds = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+
+            var broadcastsConfig = new
+            {
+                enabled = model.BroadcastsEnabled,
+                intervalSeconds = broadcastsIntervalSeconds,
+                messages = (model.BroadcastMessages ?? []).Select(m => new
+                {
+                    message = m.Message,
+                    enabled = m.Enabled
+                })
+            };
+
+            await UpsertConfigSafeAsync(gameServerId, "broadcasts",
+                JsonSerializer.Serialize(broadcastsConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
     }
 
