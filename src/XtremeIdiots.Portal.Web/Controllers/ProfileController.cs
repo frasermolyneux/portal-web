@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -37,7 +38,48 @@ public class ProfileController(
     [HttpGet]
     public async Task<IActionResult> Manage(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Manage)).ConfigureAwait(false);
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var model = await BuildProfileManageViewModel(cancellationToken).ConfigureAwait(false);
+            return View(model);
+        }, nameof(Manage)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates a new active connected-player activation code for the current profile.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ActivateConnectedPlayerCode(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var userProfile = await GetCurrentUserProfile(cancellationToken).ConfigureAwait(false);
+            if (userProfile is null)
+            {
+                this.AddAlertDanger("Unable to resolve your profile. Please sign in again and retry.");
+                return RedirectToAction(nameof(Manage));
+            }
+
+            var activationResponse = await repositoryApiClient.ConnectedPlayers.V1
+                .ActivateConnectedPlayerActivationCode(new ActivateConnectedPlayerActivationCodeDto
+                {
+                    UserProfileId = userProfile.UserProfileId
+                }, cancellationToken)
+                .ConfigureAwait(false);
+
+            var activationCode = activationResponse.Result?.Data?.Code;
+            if (activationResponse.IsSuccess && !string.IsNullOrWhiteSpace(activationCode))
+            {
+                this.AddAlertSuccess($"Activation code generated: {activationCode}");
+            }
+            else
+            {
+                this.AddAlertDanger("Failed to generate activation code. Please try again.");
+            }
+
+            return RedirectToAction(nameof(Manage));
+        }, nameof(ActivateConnectedPlayerCode)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -201,6 +243,67 @@ public class ProfileController(
 
             return View(model);
         }, nameof(AllNotifications)).ConfigureAwait(false);
+    }
+
+    private async Task<ProfileManageViewModel> BuildProfileManageViewModel(CancellationToken cancellationToken)
+    {
+        var userProfile = await GetCurrentUserProfile(cancellationToken).ConfigureAwait(false);
+        if (userProfile is null)
+            return new ProfileManageViewModel(null, null, [], 0, false);
+
+        const int linkedPlayersPageSize = 100;
+
+        var activeCodeResult = await repositoryApiClient.ConnectedPlayers.V1
+            .GetActiveConnectedPlayerActivationCode(userProfile.UserProfileId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var linkedPlayersResult = await repositoryApiClient.ConnectedPlayers.V1
+            .GetConnectedPlayersByUserProfile(userProfile.UserProfileId, 0, linkedPlayersPageSize, cancellationToken)
+            .ConfigureAwait(false);
+
+        var linkedPlayers = (linkedPlayersResult.Result?.Data?.Items ?? [])
+            .Select(x => new ProfileLinkedPlayerViewModel(
+                x.GameType.ToString(),
+                x.Username,
+                x.LinkMethod.ToString(),
+                x.LinkedAtUtc,
+                x.UnlinkedAtUtc,
+                x.IsActive))
+            .ToList();
+
+        var activeCodeData = activeCodeResult.IsNotFound ? null : activeCodeResult.Result?.Data;
+        var activeCode = activeCodeData is null
+            ? null
+            : new ProfileActivationCodeViewModel(
+                activeCodeData.Code,
+                activeCodeData.ExpiresAtUtc,
+                activeCodeData.IsActive);
+
+        var totalLinkedPlayers = linkedPlayersResult.Result?.Pagination?.TotalCount ?? linkedPlayers.Count;
+        var isLinkedPlayersCapped = totalLinkedPlayers > linkedPlayers.Count;
+
+        return new ProfileManageViewModel(
+            userProfile.UserProfileId,
+            activeCode,
+            linkedPlayers,
+            totalLinkedPlayers,
+            isLinkedPlayersCapped);
+    }
+
+    private async Task<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles.UserProfileDto?> GetCurrentUserProfile(CancellationToken cancellationToken)
+    {
+        var xtremeIdiotsId = User.XtremeIdiotsId();
+        if (string.IsNullOrEmpty(xtremeIdiotsId))
+            return null;
+
+        var userProfileResponse = await repositoryApiClient.UserProfiles.V1
+            .GetUserProfileByXtremeIdiotsId(xtremeIdiotsId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null)
+            return null;
+
+        return userProfileResponse.Result.Data;
     }
 
 }
