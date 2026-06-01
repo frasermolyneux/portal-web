@@ -23,6 +23,10 @@
                             <i class="fa-solid fa-fw fa-xmark" aria-hidden="true"></i>
                         </a>
                     }
+                    else if (playerTag.Tag?.UserDefined == false)
+                    {
+                        <span class="badge bg-light text-muted border ms-2">System managed</span>
+                    }
                 </div>
             }
         </div>
