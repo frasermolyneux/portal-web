@@ -24,7 +24,7 @@ public class ConnectedPlayersController(
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        return await ExecuteWithErrorHandlingAsync(() =>
         {
             var model = new ConnectedPlayersAdminViewModel
             {
@@ -37,7 +37,7 @@ public class ConnectedPlayersController(
                 IsSeniorAdmin = IsSeniorAdminUser()
             };
 
-            return View(model);
+            return Task.FromResult<IActionResult>(View(model));
         }, nameof(Index)).ConfigureAwait(false);
     }
 
