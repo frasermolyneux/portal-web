@@ -214,7 +214,7 @@ public class ProfileControllerTests
 
         Assert.Equal(userProfileId, model.UserProfileId);
         Assert.NotNull(model.ActiveActivationCode);
-        Assert.Equal("QW12ER", model.ActiveActivationCode!.Code);
+        Assert.Equal("QW12ER", model.ActiveActivationCode.Code);
         Assert.Equal(2, model.LinkedPlayers.Count);
         Assert.Equal(150, model.TotalLinkedPlayers);
         Assert.True(model.IsLinkedPlayersCapped);
