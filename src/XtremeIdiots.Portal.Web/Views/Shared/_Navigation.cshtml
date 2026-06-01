@@ -128,13 +128,13 @@
             </a>
 
             <div policy="@AuthPolicies.AdminActions_Read">
-                <a class="nav-link text-white @(IsAnyControllerSelected("AdminActions") ? "active" : "")"
+                <a class="nav-link text-white @(IsAnyControllerSelected("AdminActions", "ConnectedPlayers") ? "active" : "")"
                    href="#adminActionsMenu" data-bs-toggle="collapse"
-                   aria-expanded="@(IsAnyControllerSelected("AdminActions") ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("AdminActions", "ConnectedPlayers") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Admin Actions
                     <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(IsAnyControllerSelected("AdminActions") ? "show" : "")" id="adminActionsMenu">
+                <div class="collapse @(IsAnyControllerSelected("AdminActions", "ConnectedPlayers") ? "show" : "")" id="adminActionsMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "MyActions")"
                            asp-controller="AdminActions" asp-action="MyActions">
@@ -147,6 +147,10 @@
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "Unclaimed")"
                            asp-controller="AdminActions" asp-action="Unclaimed">
                             <i class="fa-solid fa-fw fa-circle-exclamation" aria-hidden="true"></i> Unclaimed Bans
+                        </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("ConnectedPlayers", "Index")"
+                           asp-controller="ConnectedPlayers" asp-action="Index">
+                            <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i> Connected Players
                         </a>
                     </nav>
                 </div>
