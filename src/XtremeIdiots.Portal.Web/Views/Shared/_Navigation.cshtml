@@ -134,7 +134,8 @@
                     <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Admin Actions
                     <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(IsAnyControllerSelected("AdminActions", "ConnectedPlayers") ? "show" : "")" id="adminActionsMenu">
+                <div class="collapse @(IsAnyControllerSelected("AdminActions", "ConnectedPlayers") ? "show" : "")"
+                     id="adminActionsMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("AdminActions", "MyActions")"
                            asp-controller="AdminActions" asp-action="MyActions">
