@@ -21,68 +21,19 @@ public class ConnectedPlayersController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-    private const int DefaultPageSize = 500;
-
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var response = await repositoryApiClient.ConnectedPlayers.V1
-                .GetConnectedPlayers(null, null, null, null, 0, DefaultPageSize, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!response.IsSuccess || response.Result?.Data?.Items is null)
-            {
-                Logger.LogWarning("Failed to retrieve connected players index for user {UserId}", User.XtremeIdiotsId());
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
-            }
-
-            var allConnectedPlayers = response.Result.Data.Items.ToList();
-            var totalCount = response.Result.Pagination?.TotalCount ?? allConnectedPlayers.Count;
-            var skip = allConnectedPlayers.Count;
-
-            while (skip < totalCount)
-            {
-                var pagedResponse = await repositoryApiClient.ConnectedPlayers.V1
-                    .GetConnectedPlayers(null, null, null, null, skip, DefaultPageSize, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (!pagedResponse.IsSuccess || pagedResponse.Result?.Data?.Items is null)
-                {
-                    Logger.LogWarning("Failed loading connected players page at {LoadedCount}/{TotalCount}", skip, totalCount);
-                    return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
-                }
-
-                var pageItems = pagedResponse.Result.Data.Items.ToList();
-                if (pageItems.Count == 0)
-                {
-                    break;
-                }
-
-                allConnectedPlayers.AddRange(pageItems);
-                skip += pageItems.Count;
-            }
-
             var model = new ConnectedPlayersAdminViewModel
             {
-                ConnectedPlayers = [.. allConnectedPlayers.Select(x => new ConnectedPlayerAdminItemViewModel
-                {
-                    ConnectedPlayerProfileId = x.ConnectedPlayerProfileId,
-                    PlayerId = x.PlayerId,
-                    UserProfileId = x.UserProfileId,
-                    GameType = x.GameType,
-                    Username = x.Username,
-                    LinkMethod = x.LinkMethod.ToString(),
-                    LinkedAtUtc = x.LinkedAtUtc,
-                    UnlinkedAtUtc = x.UnlinkedAtUtc,
-                    IsActive = x.IsActive
-                })],
+                ConnectedPlayers = [],
                 FilterGameType = null,
                 FilterIsActive = null,
                 CurrentPage = 1,
-                PageSize = DefaultPageSize,
-                TotalCount = totalCount,
+                PageSize = 0,
+                TotalCount = 0,
                 IsSeniorAdmin = IsSeniorAdminUser()
             };
 

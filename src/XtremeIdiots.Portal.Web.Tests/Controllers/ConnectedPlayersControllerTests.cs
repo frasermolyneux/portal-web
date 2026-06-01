@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
-using Newtonsoft.Json;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
@@ -54,18 +53,6 @@ public class ConnectedPlayersControllerTests
     public async Task Index_WhenApiSucceeds_ReturnsViewModel()
     {
         // Arrange
-        var collection = new CollectionModel<ConnectedPlayerDto>([
-            CreateConnectedPlayerDto(true)
-        ]);
-        var apiResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(collection)
-        {
-            Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 500)
-        };
-
-        mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 500, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, apiResponse));
-
         var sut = CreateSut(new ClaimsPrincipal(new ClaimsIdentity([
             new Claim(UserProfileClaimType.SeniorAdmin, "true")
         ], "TestAuth")));
@@ -77,19 +64,15 @@ public class ConnectedPlayersControllerTests
         var viewResult = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<ConnectedPlayersAdminViewModel>(viewResult.Model);
 
-        Assert.Single(model.ConnectedPlayers);
+        Assert.Empty(model.ConnectedPlayers);
         Assert.True(model.IsSeniorAdmin);
-        Assert.Equal(1, model.TotalCount);
+        Assert.Equal(0, model.TotalCount);
     }
 
     [Fact]
-    public async Task Index_WhenApiFails_RedirectsToErrorPage()
+    public async Task Index_WhenUserIsNotSeniorAdmin_ReturnsViewModelWithNoSeniorAdminFlag()
     {
         // Arrange
-        mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 500, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.InternalServerError));
-
         var sut = CreateSut(new ClaimsPrincipal(new ClaimsIdentity([
             new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty4.ToString())
         ], "TestAuth")));
@@ -98,88 +81,12 @@ public class ConnectedPlayersControllerTests
         var result = await sut.Index();
 
         // Assert
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(ErrorsController.Display), redirect.ActionName);
-        Assert.Equal("Errors", redirect.ControllerName);
-    }
-
-    [Fact]
-    public async Task Index_WhenMultiplePages_AggregatesAllRows()
-    {
-        // Arrange
-        var firstPageCollection = new CollectionModel<ConnectedPlayerDto>([
-            CreateConnectedPlayerDto(true)
-        ]);
-        var firstPageResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(firstPageCollection)
-        {
-            Pagination = new ApiPagination(totalCount: 2, filteredCount: 2, skip: 0, top: 500)
-        };
-
-        var secondPageCollection = new CollectionModel<ConnectedPlayerDto>([
-            CreateConnectedPlayerDto(false)
-        ]);
-        var secondPageResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(secondPageCollection)
-        {
-            Pagination = new ApiPagination(totalCount: 2, filteredCount: 2, skip: 1, top: 500)
-        };
-
-        mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 500, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, firstPageResponse));
-
-        mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 1, 500, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, secondPageResponse));
-
-        var sut = CreateSut(new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim(UserProfileClaimType.SeniorAdmin, "true")
-        ], "TestAuth")));
-
-        // Act
-        var result = await sut.Index();
-
-        // Assert
         var viewResult = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<ConnectedPlayersAdminViewModel>(viewResult.Model);
 
-        Assert.Equal(2, model.ConnectedPlayers.Count);
-        Assert.Equal(2, model.TotalCount);
-
-        mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 500, It.IsAny<CancellationToken>()), Times.Once);
-        mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 1, 500, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Index_WhenSecondPageFails_RedirectsToErrorPage()
-    {
-        // Arrange
-        var firstPageCollection = new CollectionModel<ConnectedPlayerDto>([
-            CreateConnectedPlayerDto(true)
-        ]);
-        var firstPageResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(firstPageCollection)
-        {
-            Pagination = new ApiPagination(totalCount: 2, filteredCount: 2, skip: 0, top: 500)
-        };
-
-        mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 500, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, firstPageResponse));
-
-        mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 1, 500, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.InternalServerError));
-
-        var sut = CreateSut(new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim(UserProfileClaimType.SeniorAdmin, "true")
-        ], "TestAuth")));
-
-        // Act
-        var result = await sut.Index();
-
-        // Assert
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(ErrorsController.Display), redirect.ActionName);
-        Assert.Equal("Errors", redirect.ControllerName);
+        Assert.Empty(model.ConnectedPlayers);
+        Assert.False(model.IsSeniorAdmin);
+        Assert.Equal(0, model.TotalCount);
     }
 
     [Fact]
@@ -327,25 +234,4 @@ public class ConnectedPlayersControllerTests
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private static ConnectedPlayerDto CreateConnectedPlayerDto(bool isActive)
-    {
-        var now = DateTime.UtcNow;
-
-        var json = JsonConvert.SerializeObject(new
-        {
-            ConnectedPlayerProfileId = Guid.NewGuid(),
-            PlayerId = Guid.NewGuid(),
-            UserProfileId = Guid.NewGuid(),
-            GameType = GameType.CallOfDuty4,
-            Username = "TestPlayer",
-            LinkMethod = ConnectedPlayerLinkMethod.ActivationCode,
-            LinkedAtUtc = now,
-            LinkedByUserProfileId = Guid.NewGuid(),
-            UnlinkedAtUtc = isActive ? (DateTime?)null : now.AddMinutes(1),
-            UnlinkedByUserProfileId = isActive ? (Guid?)null : Guid.NewGuid(),
-            IsActive = isActive
-        });
-
-        return JsonConvert.DeserializeObject<ConnectedPlayerDto>(json)!;
-    }
 }

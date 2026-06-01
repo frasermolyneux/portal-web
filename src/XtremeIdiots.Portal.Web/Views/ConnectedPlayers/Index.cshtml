@@ -34,13 +34,11 @@
                         </div>
                         <div class="filter-group">
                             <label class="form-label" for="resetFilters">Reset</label>
-                            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset
-                                Filters</button>
-                            </div>
+                            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
                         </div>
 
                         <div class="table-responsive">
-                            <table id="dataTable" class="table table-striped table-hover w-100">
+                            <table id="dataTable" class="table table-striped table-hover w-100" data-can-unlink="@Model.IsSeniorAdmin.ToString().ToLowerInvariant()">
                                 <thead>
                                     <tr>
                                         <th scope="col">Game</th>
@@ -54,53 +52,6 @@
                                         <th scope="col" class="table-action-col">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    @foreach (var item in Model.ConnectedPlayers)
-                                    {
-                                        <tr>
-                                            <td>@item.GameType</td>
-                                            <td>@item.Username</td>
-                                            <td><code>@item.PlayerId</code></td>
-                                            <td>
-                                                <a asp-controller="User" asp-action="ManageProfile"
-                                                   asp-route-id="@item.UserProfileId">@item.UserProfileId</a>
-                                            </td>
-                                            <td>@item.LinkMethod</td>
-                                            <td>
-                                                @if (item.IsActive)
-                                                {
-                                                    <span class="badge bg-success">Active</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">Inactive</span>
-                                                }
-                                            </td>
-                                            <td><time user-time utc="@item.LinkedAtUtc"></time></td>
-                                            <td>
-                                                @if (item.UnlinkedAtUtc.HasValue)
-                                                {
-                                                    <time user-time utc="@item.UnlinkedAtUtc.Value"></time>
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (Model.IsSeniorAdmin && item.IsActive)
-                                                {
-                                                    <form asp-action="ForceUnlink" method="post" class="d-inline">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="connectedPlayerProfileId"
-                                                               value="@item.ConnectedPlayerProfileId" />
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                                data-confirm="Are you sure you want to unlink this connected player?">
-                                                            <i class="fa-solid fa-fw fa-link-slash" aria-hidden="true"></i>
-                                                            Unlink
-                                                        </button>
-                                                    </form>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -142,5 +93,6 @@
     </div>
 
     @section Scripts {
+        <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
         <script src="~/js/connected-players-index.js" asp-append-version="true"></script>
     }
