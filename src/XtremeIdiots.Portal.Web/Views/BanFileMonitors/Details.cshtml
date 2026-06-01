@@ -10,7 +10,8 @@
     var liveStatus = ViewBag.LiveStatus as GameServerLiveStatusDto;
     var fileTransportEnabled = Model.GameServer.GetFileTransportEnabled(Model.GameServer.FtpEnabled);
     var fileTransportType = Model.GameServer.GetFileTransportType(fileTransportEnabled, Model.GameServer.FtpEnabled);
-    var fileTransportNamespace = XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNamespace(fileTransportType);
+    var fileTransportNamespace =
+XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNamespace(fileTransportType);
 }
 
 @functions {
@@ -25,7 +26,8 @@
         return string.Empty;
     }
 
-    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
+    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int
+def = 0)
     {
         if (configs is not null
             && configs.TryGetValue(id, out var nc)
@@ -54,7 +56,8 @@
                                     {
                                         <game-type-icon game="@Model.GameServer.GameType"></game-type-icon>
                                     }
-                                    <server-name title="@Model.GameServer?.Title" live-title="@Model.GameServer?.Title"></server-name>
+                                    <server-name title="@Model.GameServer?.Title"
+                                                 live-title="@Model.GameServer?.Title"></server-name>
                                 </dd>
                             </div>
                             <div class="detail-field col-sm-6">
@@ -62,12 +65,13 @@
                                 <dd class="detail-value" data-testid="ban-file-monitor-details-filepath">
                                     @if (!string.IsNullOrWhiteSpace(Model.RemoteFilePath))
                                     {
-                                        <file-transport-path host="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "hostname")"
-                                                  port="@GetCfgInt(serverConfigs, Model.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? 22 : 21)"
-                                                  path="@Model.RemoteFilePath"
-                                                  user="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "username")"
-                                                  password="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "password")"
-                                                  scheme="@(fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "sftp" : "ftp")"></file-transport-path>
+                                        <file-transport-path
+                                        host="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "hostname")"
+                                        port="@GetCfgInt(serverConfigs, Model.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? 22 : 21)"
+                                        path="@Model.RemoteFilePath"
+                                        user="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "username")"
+                                        password="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "password")"
+                                        scheme="@(fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "sftp" : "ftp")"></file-transport-path>
                                     }
                                     else
                                     {
@@ -112,7 +116,8 @@
                                     }
                                     @if (Model.ConsecutiveFailureCount > 0)
                                     {
-                                        <br /><small class="text-danger">@Model.ConsecutiveFailureCount consecutive failure(s)</small>
+                                        <br /><small class="text-danger">@Model.ConsecutiveFailureCount consecutive
+                                        failure(s)</small>
                                     }
                                 </dd>
                             </div>
@@ -159,34 +164,40 @@
                                 <dd class="detail-value">
                                     @if (Model.RemoteTotalLineCount.HasValue)
                                     {
-                                        <span><strong>Total:</strong> @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
-                                        <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount ?? 0)</span>
-                                        <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ?? 0)</span>
-                                        <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong> @(Model.RemoteExternalCount ?? 0)</span>
-                                    }
+                                        <span><strong>Total:</strong>
+                                            @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
+                                            <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount
+                                                                                        ?? 0)</span>
+                                                <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ??
+                                                                                            0)</span>
+                                                    <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong>
+                                                        @(Model.RemoteExternalCount ?? 0)</span>
+                                                    }
                                     else
-                                    {
-                                        <span class="text-muted">not yet counted</span>
-                                    }
-                                </dd>
+                                                    {
+                                                        <span class="text-muted">not yet counted</span>
+                                                    }
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                    <div class="ibox-footer">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            @if (Model.GameServer is not null)
+                                            {
+                                                <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit"
+                                                   asp-route-id="@Model.GameServerId">
+                                                    <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Edit Game Server
+                                                </a>
+                                            }
+                                            <a class="btn btn-outline-secondary" asp-action="Index"
+                                               data-testid="ban-file-monitor-details-back">
+                                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to dashboard
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </dl>
-                    </div>
-                    <div class="ibox-footer">
-                        <div class="btn-group btn-group-sm" role="group">
-                            @if (Model.GameServer is not null)
-                            {
-                                <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit" asp-route-id="@Model.GameServerId">
-                                    <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Edit Game Server
-                                </a>
-                            }
-                            <a class="btn btn-outline-secondary" asp-action="Index" data-testid="ban-file-monitor-details-back">
-                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to dashboard
-                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>

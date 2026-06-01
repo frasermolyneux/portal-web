@@ -24,10 +24,11 @@
                         </li>
                         @if (Model.CanEditFileTransport)
                         {
-                            <li class="nav-item @(Model.GameServer.FileTransportEnabled ? "" : "d-none")" role="presentation"
-                                id="ftp-tab-item">
+                            <li class="nav-item @(Model.GameServer.FileTransportEnabled ? "" : "d-none")"
+                                role="presentation" id="ftp-tab-item">
                                 <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab" data-bs-target="#ftp-tab"
-                                        type="button" role="tab" aria-controls="ftp-tab" aria-selected="false">@Model.FileTransportLabel</button>
+                                        type="button" role="tab" aria-controls="ftp-tab"
+                                        aria-selected="false">@Model.FileTransportLabel</button>
                             </li>
                         }
                         @if (Model.CanEditRcon)

@@ -1,7 +1,8 @@
 @model XtremeIdiots.Portal.Web.ViewModels.CreateMapRotationAssignmentViewModel
 
 @{
-    ViewData["Title"] = "Assign Server to Map Rotation" + (ViewData["RotationTitle"] != null ? " - " + ViewData["RotationTitle"] : "");
+    ViewData["Title"] = "Assign Server to Map Rotation" + (ViewData["RotationTitle"] != null ? " - " +
+ViewData["RotationTitle"] : "");
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -24,106 +25,120 @@
                                     @foreach (var server in Model.AvailableServers)
                                     {
                                         var fileTransportEnabled = server.GetFileTransportEnabled(server.FtpEnabled);
-                                        <option value="@server.GameServerId" data-file-transport-enabled="@fileTransportEnabled.ToString().ToLowerInvariant()">@server.Title</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="@Model.ConfigFilePath" class="form-label"></label>
-                                <div class="input-group">
-                                    <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
-                                           placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
-                                    @if (Model.CanBrowseFileTransport)
-                                    {
-                                        <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
-                                                style="display: none;" title="Browse server files via file transport">
-                                            <i class="fa-solid fa-fw fa-folder-open"></i>Browse
-                                        </button>
-                                    }
+                                        <option value="@server.GameServerId"
+                                                data-file-transport-enabled="@fileTransportEnabled.ToString().ToLowerInvariant()">
+                                            @server.Title</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
                                 </div>
-                                <small class="form-text text-muted">Path to the config file on the game server. Use Browse to select via file transport.</small>
-                                <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="@Model.ConfigVariableName" class="form-label"></label>
-                                <input asp-for="@Model.ConfigVariableName" class="form-control" id="ConfigVariableNameInput"
-                                       list="configVariableSuggestions"
-                                       placeholder="e.g. sv_maprotation" />
-                                <datalist id="configVariableSuggestions">
-                                    <option value="sv_maprotation" label="Standard map rotation"></option>
-                                    <option value="scr_aacp_maps_1" label="AACP map list (semicolon-separated)"></option>
-                                    <option value="sv_maprotation_low" label="Load-based: low player count"></option>
-                                    <option value="sv_maprotation_medium" label="Load-based: medium player count"></option>
-                                    <option value="sv_maprotation_high" label="Load-based: high player count"></option>
-                                </datalist>
-                                <small class="form-text text-muted">The config variable to write the rotation string to. Type a custom name or select a suggestion.</small>
-                                <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
-                            </div>
-                            <div class="alert alert-info small mb-3">
-                                <i class="fa-solid fa-fw fa-circle-info"></i>
-                                <strong>AACP Servers:</strong> If the server uses the Advanced Admin Control Panel (OpenWarfare AACP), create two assignments for the same rotation:
-                                one targeting <code>sv_maprotation</code> in your map rotation config, and another targeting <code>scr_aacp_maps_1</code> in advancedacp.cfg.
-                                Both will be formatted correctly (standard vs semicolon-separated). Activate both assignments to keep the AACP map picker in sync.
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
-                                    <input asp-for="@Model.PlayerCountMin" type="number" class="form-control" min="0" placeholder="Optional — min players for this rotation" />
-                                    <small class="form-text text-muted">For player-count-based rotation: minimum players for this tier.</small>
+                                <div class="mb-3">
+                                    <label asp-for="@Model.ConfigFilePath" class="form-label"></label>
+                                    <div class="input-group">
+                                        <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
+                                               placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
+                                        @if (Model.CanBrowseFileTransport)
+                                        {
+                                            <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
+                                                    style="display: none;" title="Browse server files via file transport">
+                                                <i class="fa-solid fa-fw fa-folder-open"></i>Browse
+                                            </button>
+                                        }
+                                    </div>
+                                    <small class="form-text text-muted">Path to the config file on the game server. Use
+                                        Browse to select via file transport.</small>
+                                        <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label asp-for="@Model.ConfigVariableName" class="form-label"></label>
+                                        <input asp-for="@Model.ConfigVariableName" class="form-control"
+                                               id="ConfigVariableNameInput" list="configVariableSuggestions"
+                                               placeholder="e.g. sv_maprotation" />
+                                        <datalist id="configVariableSuggestions">
+                                            <option value="sv_maprotation" label="Standard map rotation"></option>
+                                            <option value="scr_aacp_maps_1" label="AACP map list (semicolon-separated)">
+                                            </option>
+                                            <option value="sv_maprotation_low" label="Load-based: low player count"></option>
+                                            <option value="sv_maprotation_medium" label="Load-based: medium player count">
+                                            </option>
+                                            <option value="sv_maprotation_high" label="Load-based: high player count"></option>
+                                        </datalist>
+                                        <small class="form-text text-muted">The config variable to write the rotation string to.
+                                            Type a custom name or select a suggestion.</small>
+                                            <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
+                                        </div>
+                                        <div class="alert alert-info small mb-3">
+                                            <i class="fa-solid fa-fw fa-circle-info"></i>
+                                            <strong>AACP Servers:</strong> If the server uses the Advanced Admin Control Panel
+                                            (OpenWarfare AACP), create two assignments for the same rotation:
+                                            one targeting <code>sv_maprotation</code> in your map rotation config, and another
+                                            targeting <code>scr_aacp_maps_1</code> in advancedacp.cfg.
+                                            Both will be formatted correctly (standard vs semicolon-separated). Activate both
+                                            assignments to keep the AACP map picker in sync.
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
+                                                <input asp-for="@Model.PlayerCountMin" type="number" class="form-control" min="0"
+                                                       placeholder="Optional — min players for this rotation" />
+                                                <small class="form-text text-muted">For player-count-based rotation: minimum players
+                                                    for this tier.</small>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label asp-for="@Model.PlayerCountMax" class="form-label"></label>
+                                                    <input asp-for="@Model.PlayerCountMax" type="number" class="form-control" min="0"
+                                                           placeholder="Optional — max players for this rotation" />
+                                                    <small class="form-text text-muted">For player-count-based rotation: maximum players
+                                                        for this tier.</small>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i> Assign Server
+                                                    </button>
+                                                    <a asp-action="Details" asp-route-id="@Model.MapRotationId"
+                                                       class="btn btn-outline-secondary">Cancel</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label asp-for="@Model.PlayerCountMax" class="form-label"></label>
-                                    <input asp-for="@Model.PlayerCountMax" type="number" class="form-control" min="0" placeholder="Optional — max players for this rotation" />
-                                    <small class="form-text text-muted">For player-count-based rotation: maximum players for this tier.</small>
-                                </div>
                             </div>
-                            <div class="mb-3">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i> Assign Server
-                                </button>
-                                <a asp-action="Details" asp-route-id="@Model.MapRotationId" class="btn btn-outline-secondary">Cancel</a>
-                            </div>
-                        </div>
+                        </form>
                     </div>
-                </div>
-            </div>
-        </div>
-    </form>
-</div>
 
-@if (Model.CanBrowseFileTransport)
-{
-    @await Html.PartialAsync("_FtpBrowserModal")
-}
-
-@section Scripts {
-    @if (Model.CanBrowseFileTransport)
-    {
-        <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
-    }
-    <script>
-        $(document).ready(function () {
-            var serverSelect = document.getElementById('GameServerIdSelect');
-            var browseBtn = document.getElementById('ConfigFilePathBrowseBtn');
-
-            if (browseBtn) {
-                function updateBrowseButton() {
-                    var selectedOption = serverSelect.options[serverSelect.selectedIndex];
-                    var fileTransportEnabled = selectedOption && selectedOption.dataset.fileTransportEnabled === 'true';
-                    browseBtn.style.display = fileTransportEnabled ? '' : 'none';
-                }
-
-                serverSelect.addEventListener('change', updateBrowseButton);
-                updateBrowseButton();
-
-                browseBtn.addEventListener('click', function () {
-                    var gameServerId = serverSelect.value;
-                    if (gameServerId) {
-                        openFileTransportBrowser(gameServerId, 'ConfigFilePathInput', '.cfg');
+                    @if (Model.CanBrowseFileTransport)
+                    {
+                        @await Html.PartialAsync("_FtpBrowserModal")
                     }
-                });
-            }
-        });
-    </script>
-}
+
+                    @section Scripts {
+                        @if (Model.CanBrowseFileTransport)
+                        {
+                            <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
+                        }
+                        <script>
+                            $(document).ready(function () {
+                            var serverSelect = document.getElementById('GameServerIdSelect');
+                            var browseBtn = document.getElementById('ConfigFilePathBrowseBtn');
+
+                            if (browseBtn) {
+                            function updateBrowseButton() {
+                            var selectedOption = serverSelect.options[serverSelect.selectedIndex];
+                            var fileTransportEnabled = selectedOption && selectedOption.dataset.fileTransportEnabled === 'true';
+                            browseBtn.style.display = fileTransportEnabled ? '' : 'none';
+                            }
+
+                            serverSelect.addEventListener('change', updateBrowseButton);
+                            updateBrowseButton();
+
+                            browseBtn.addEventListener('click', function () {
+                            var gameServerId = serverSelect.value;
+                            if (gameServerId) {
+                            openFileTransportBrowser(gameServerId, 'ConfigFilePathInput', '.cfg');
+                            }
+                            });
+                            }
+                            });
+                        </script>
+                    }

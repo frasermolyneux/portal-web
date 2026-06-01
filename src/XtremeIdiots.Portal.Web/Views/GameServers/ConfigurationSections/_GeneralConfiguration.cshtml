@@ -9,7 +9,7 @@
         <div class="mb-3">
             <label asp-for="GameServer.GameType" class="form-label"></label>
             <select asp-for="GameServer.GameType" class="form-select" asp-items="ViewBag.GameType"
-                disabled="disabled"></select>
+                    disabled="disabled"></select>
             <input type="hidden" asp-for="GameServer.GameType" />
             <span asp-validation-for="GameServer.GameType" class="text-danger"></span>
         </div>
@@ -39,9 +39,10 @@
         <div class="d-flex flex-wrap gap-4">
             <div class="form-check form-switch">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.FileTransportEnabled"
-                    data-toggle-tab="ftp-tab-btn" />
+                       data-toggle-tab="ftp-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.FileTransportEnabled">
-                    <i class="fa-solid fa-fw fa-folder-open text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.FileTransportEnabled)
+                    <i class="fa-solid fa-fw fa-folder-open text-muted me-1"></i>@Html.DisplayNameFor(m =>
+                                        m.GameServer.FileTransportEnabled)
                 </label>
             </div>
             <div class="mb-3">
@@ -54,30 +55,34 @@
             </div>
             <div class="form-check form-switch">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.RconEnabled"
-                    data-toggle-tab="rcon-tab-btn" />
+                       data-toggle-tab="rcon-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.RconEnabled">
-                    <i class="fa-solid fa-fw fa-terminal text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.RconEnabled)
+                    <i class="fa-solid fa-fw fa-terminal text-muted me-1"></i>@Html.DisplayNameFor(m =>
+                                        m.GameServer.RconEnabled)
                 </label>
             </div>
             <div class="form-check form-switch">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.AgentEnabled"
-                    data-toggle-tab="agent-tab-btn" />
+                       data-toggle-tab="agent-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.AgentEnabled">
-                    <i class="fa-solid fa-fw fa-robot text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.AgentEnabled)
+                    <i class="fa-solid fa-fw fa-robot text-muted me-1"></i>@Html.DisplayNameFor(m =>
+                                        m.GameServer.AgentEnabled)
                 </label>
             </div>
             <div class="form-check form-switch">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.BanFileSyncEnabled"
-                    data-toggle-tab="banfilesync-tab-btn" />
+                       data-toggle-tab="banfilesync-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.BanFileSyncEnabled">
-                    <i class="fa-solid fa-fw fa-ban text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.BanFileSyncEnabled)
+                    <i class="fa-solid fa-fw fa-ban text-muted me-1"></i>@Html.DisplayNameFor(m =>
+                                        m.GameServer.BanFileSyncEnabled)
                 </label>
             </div>
             <div class="form-check form-switch">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.ServerListEnabled"
-                    data-toggle-tab="serverlist-tab-btn" />
+                       data-toggle-tab="serverlist-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.ServerListEnabled">
-                    <i class="fa-solid fa-fw fa-list text-muted me-1"></i>@Html.DisplayNameFor(m => m.GameServer.ServerListEnabled)
+                    <i class="fa-solid fa-fw fa-list text-muted me-1"></i>@Html.DisplayNameFor(m =>
+                                        m.GameServer.ServerListEnabled)
                 </label>
             </div>
         </div>
