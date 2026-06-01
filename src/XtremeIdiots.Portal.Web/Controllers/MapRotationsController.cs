@@ -14,6 +14,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
 using MX.Observability.ApplicationInsights.Auditing;
+using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -484,13 +485,13 @@ public class MapRotationsController(
 
             ViewData["RotationTitle"] = rotation.Title;
 
-            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+            var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
 
             return View(new CreateMapRotationAssignmentViewModel
             {
                 MapRotationId = mapRotationId,
                 AvailableServers = servers,
-                CanBrowseFtp = canBrowseFtp.Succeeded
+                CanBrowseFileTransport = canBrowseFileTransport.Succeeded
             });
         }, nameof(CreateAssignment)).ConfigureAwait(false);
     }
@@ -528,8 +529,8 @@ public class MapRotationsController(
                     : [];
                 m.AvailableServers = serverList;
 
-                var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
-                m.CanBrowseFtp = canBrowseFtp.Succeeded;
+                var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
+                m.CanBrowseFileTransport = canBrowseFileTransport.Succeeded;
             }
 
             var modelValidationResult = await CheckModelStateAsync(model, RepopulateServers).ConfigureAwait(false);
@@ -601,7 +602,10 @@ public class MapRotationsController(
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
             var server = serverResponse.IsSuccess ? serverResponse.Result?.Data : null;
 
-            var canBrowseFtp = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+            var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
+
+            var fileTransportEnabled = server?.GetFileTransportEnabled(server.FtpEnabled) ?? false;
+            var fileTransportType = server?.GetFileTransportType(fileTransportEnabled, server.FtpEnabled) ?? FileTransportType.Unknown;
 
             ViewData["RotationTitle"] = rotation.Title;
 
@@ -615,8 +619,8 @@ public class MapRotationsController(
                 ConfigVariableName = assignment.ConfigVariableName,
                 PlayerCountMin = assignment.PlayerCountMin,
                 PlayerCountMax = assignment.PlayerCountMax,
-                CanBrowseFtp = canBrowseFtp.Succeeded,
-                FtpEnabled = server?.FtpEnabled ?? false
+                CanBrowseFileTransport = canBrowseFileTransport.Succeeded,
+                FileTransportType = fileTransportType
             });
         }, nameof(EditAssignment)).ConfigureAwait(false);
     }

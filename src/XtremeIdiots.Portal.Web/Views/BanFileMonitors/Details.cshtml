@@ -1,12 +1,16 @@
 @using System.Text.Json
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus
+@using XtremeIdiots.Portal.Web.Extensions
 @model BanFileMonitorDto
 
 @{
     ViewData["Title"] = "Ban File Monitor Details";
     var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
     var liveStatus = ViewBag.LiveStatus as GameServerLiveStatusDto;
+    var fileTransportEnabled = Model.GameServer.GetFileTransportEnabled(Model.GameServer.FtpEnabled);
+    var fileTransportType = Model.GameServer.GetFileTransportType(fileTransportEnabled, Model.GameServer.FtpEnabled);
+    var fileTransportNamespace = XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNamespace(fileTransportType);
 }
 
 @functions {
@@ -58,11 +62,12 @@
                                 <dd class="detail-value" data-testid="ban-file-monitor-details-filepath">
                                     @if (!string.IsNullOrWhiteSpace(Model.RemoteFilePath))
                                     {
-                                        <ftp-path host="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "hostname")"
-                                                  port="@GetCfgInt(serverConfigs, Model.GameServerId, "ftp", "port", 21)"
+                                        <file-transport-path host="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "hostname")"
+                                                  port="@GetCfgInt(serverConfigs, Model.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? 22 : 21)"
                                                   path="@Model.RemoteFilePath"
-                                                  user="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "username")"
-                                                  password="@GetCfg(serverConfigs, Model.GameServerId, "ftp", "password")"></ftp-path>
+                                                  user="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "username")"
+                                                  password="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "password")"
+                                                  scheme="@(fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "sftp" : "ftp")"></file-transport-path>
                                     }
                                     else
                                     {

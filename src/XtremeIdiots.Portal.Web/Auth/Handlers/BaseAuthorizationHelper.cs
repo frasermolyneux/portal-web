@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth;
+using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
@@ -38,6 +39,7 @@ public static class BaseAuthorizationHelper
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
+            AuthPolicies.GameServers_Credentials_FileTransport_Read,
             AdditionalPermission.GameServers_Credentials_Rcon_Read,
             AdditionalPermission.GameServers_Credentials_Ftp_Read
         ];
@@ -367,6 +369,22 @@ public static class BaseAuthorizationHelper
     {
         if (context.User.HasClaim(AdditionalPermission.GameServers_Credentials_Ftp_Read, gameServerId.ToString()))
             context.Succeed(requirement);
+    }
+
+    /// <summary>
+    /// Checks if the user has file transport credentials access for a specific game server.
+    /// Accepts both the new transport-neutral claim and the legacy FTP claim during migration.
+    /// </summary>
+    /// <param name="context">The authorization context</param>
+    /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
+    /// <param name="gameServerId">The game server ID to check permissions for</param>
+    public static void CheckFileTransportCredentialsAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, Guid gameServerId)
+    {
+        if (context.User.HasClaim(AuthPolicies.GameServers_Credentials_FileTransport_Read, gameServerId.ToString()) ||
+            context.User.HasClaim(AdditionalPermission.GameServers_Credentials_Ftp_Read, gameServerId.ToString()))
+        {
+            context.Succeed(requirement);
+        }
     }
 
     /// <summary>

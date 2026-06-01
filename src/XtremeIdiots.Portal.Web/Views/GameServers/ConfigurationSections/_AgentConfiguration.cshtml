@@ -10,7 +10,7 @@
             <label asp-for="AgentConfigLogFilePath" class="form-label"></label>
             <div class="input-group">
                 <input asp-for="AgentConfigLogFilePath" class="form-control" id="AgentConfigLogFilePath" />
-                @if (Model.GameServer.FtpEnabled && Model.CanEditFtp)
+                @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
                 {
                     <button class="btn btn-outline-secondary" type="button"
                             onclick="openFtpBrowser('@Model.GameServer.GameServerId', 'AgentConfigLogFilePath', '.log')">

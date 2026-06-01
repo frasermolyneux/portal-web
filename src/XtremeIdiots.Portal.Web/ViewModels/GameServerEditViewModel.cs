@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -16,19 +18,19 @@ public class GameServerEditViewModel : IValidatableObject
     /// </summary>
     public GameServerViewModel GameServer { get; set; } = new();
 
-    // FTP configuration (parsed from "ftp" config namespace)
+    // File transport configuration (parsed from "ftp" or "sftp" config namespace)
 
-    [DisplayName("FTP Hostname")]
-    public string? FtpConfigHostname { get; set; }
+    [DisplayName("File Transport Hostname")]
+    public string? FileTransportConfigHostname { get; set; }
 
-    [DisplayName("FTP Port")]
-    public int FtpConfigPort { get; set; } = 21;
+    [DisplayName("File Transport Port")]
+    public int FileTransportConfigPort { get; set; } = 21;
 
-    [DisplayName("FTP Username")]
-    public string? FtpConfigUsername { get; set; }
+    [DisplayName("File Transport Username")]
+    public string? FileTransportConfigUsername { get; set; }
 
-    [DisplayName("FTP Password")]
-    public string? FtpConfigPassword { get; set; }
+    [DisplayName("File Transport Password")]
+    public string? FileTransportConfigPassword { get; set; }
 
     // RCON configuration (parsed from "rcon" config namespace)
 
@@ -118,8 +120,39 @@ public class GameServerEditViewModel : IValidatableObject
 
     // Auth flags for tab visibility
 
-    public bool CanEditFtp { get; set; }
+    public bool CanEditFileTransport { get; set; }
     public bool CanEditRcon { get; set; }
+
+    public string FileTransportLabel => GetFileTransportLabel(GameServer.FileTransportType);
+    public string FileTransportScheme => GetFileTransportScheme(GameServer.FileTransportType);
+    public string FileTransportNamespace => GetFileTransportNamespace(GameServer.FileTransportType);
+
+    // Legacy aliases kept for transition while Razor and JS migrate.
+    public bool CanEditFtp { get => CanEditFileTransport; set => CanEditFileTransport = value; }
+    public string? FtpConfigHostname { get => FileTransportConfigHostname; set => FileTransportConfigHostname = value; }
+    public int FtpConfigPort { get => FileTransportConfigPort; set => FileTransportConfigPort = value; }
+    public string? FtpConfigUsername { get => FileTransportConfigUsername; set => FileTransportConfigUsername = value; }
+    public string? FtpConfigPassword { get => FileTransportConfigPassword; set => FileTransportConfigPassword = value; }
+
+    public static string GetFileTransportNamespace(FileTransportType fileTransportType)
+    {
+        return fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
+    }
+
+    public static string GetFileTransportScheme(FileTransportType fileTransportType)
+    {
+        return fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
+    }
+
+    public static string GetFileTransportLabel(FileTransportType fileTransportType)
+    {
+        return fileTransportType == FileTransportType.Sftp ? "SFTP" : "FTP";
+    }
+
+    public static int GetDefaultPort(FileTransportType fileTransportType)
+    {
+        return fileTransportType == FileTransportType.Sftp ? 22 : 21;
+    }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

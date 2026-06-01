@@ -23,6 +23,8 @@ public static class PolicyExtensions
         options.AddPolicy(AuthPolicies.GameServers_Delete, policy => policy.Requirements.Add(new GameServersDelete()));
 
         // Game Servers — Credentials
+        options.AddPolicy(AuthPolicies.GameServers_Credentials_FileTransport_Read, policy => policy.Requirements.Add(new GameServersCredentialsFileTransportRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Credentials_FileTransport_Write, policy => policy.Requirements.Add(new GameServersCredentialsFileTransportWrite()));
         options.AddPolicy(AuthPolicies.GameServers_Credentials_Ftp_Read, policy => policy.Requirements.Add(new GameServersCredentialsFtpRead()));
         options.AddPolicy(AuthPolicies.GameServers_Credentials_Ftp_Write, policy => policy.Requirements.Add(new GameServersCredentialsFtpWrite()));
         options.AddPolicy(AuthPolicies.GameServers_Credentials_Rcon_Read, policy => policy.Requirements.Add(new GameServersCredentialsRconRead()));

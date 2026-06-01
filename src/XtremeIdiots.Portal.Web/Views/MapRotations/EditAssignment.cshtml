@@ -28,11 +28,11 @@
                                 <div class="input-group">
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                            placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
-                                    @if (Model.CanBrowseFtp && Model.FtpEnabled)
+                                    @if (Model.CanBrowseFileTransport && Model.FileTransportType != XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown)
                                     {
                                         <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
-                                                title="Browse server files via FTP"
-                                                onclick="openFtpBrowser('@Model.GameServerId', 'ConfigFilePathInput', '.cfg')">
+                                                title="Browse server files via file transport"
+                                                onclick="openFileTransportBrowser('@Model.GameServerId', 'ConfigFilePathInput', '.cfg')">
                                             <i class="fa-solid fa-folder-open me-1"></i>Browse
                                         </button>
                                     }
@@ -77,13 +77,13 @@
     </form>
 </div>
 
-@if (Model.CanBrowseFtp && Model.FtpEnabled)
+@if (Model.CanBrowseFileTransport && Model.FileTransportType != XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown)
 {
     @await Html.PartialAsync("_FtpBrowserModal")
 }
 
 @section Scripts {
-    @if (Model.CanBrowseFtp && Model.FtpEnabled)
+    @if (Model.CanBrowseFileTransport && Model.FileTransportType != XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown)
     {
         <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
     }

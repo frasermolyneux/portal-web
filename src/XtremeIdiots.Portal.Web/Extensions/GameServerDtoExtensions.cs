@@ -7,6 +7,9 @@ public static class GameServerDtoExtensions
 {
     public static GameServerViewModel ToViewModel(this GameServerDto gameServerDto)
     {
+        var fileTransportEnabled = gameServerDto.GetFileTransportEnabled(gameServerDto.FtpEnabled);
+        var transportType = gameServerDto.GetFileTransportType(fileTransportEnabled, gameServerDto.FtpEnabled);
+
         var viewModel = new GameServerViewModel
         {
             GameServerId = gameServerDto.GameServerId,
@@ -15,6 +18,8 @@ public static class GameServerDtoExtensions
             Hostname = gameServerDto.Hostname,
             QueryPort = gameServerDto.QueryPort,
             AgentEnabled = gameServerDto.AgentEnabled,
+            FileTransportEnabled = fileTransportEnabled,
+            FileTransportType = transportType,
             FtpEnabled = gameServerDto.FtpEnabled,
             RconEnabled = gameServerDto.RconEnabled,
             BanFileSyncEnabled = gameServerDto.BanFileSyncEnabled,

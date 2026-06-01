@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
 [Authorize]
+[Route("api/file-browse")]
 [Route("api/ftp")]
 public class FtpBrowseApiController(
     IAuthorizationService authorizationService,
@@ -29,11 +30,11 @@ public class FtpBrowseApiController(
                 return Forbid();
 
             var gameServer = gameServerResponse.Result.Data;
-            var authResult = await authorizationService.AuthorizeAsync(User, gameServer.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+            var authResult = await authorizationService.AuthorizeAsync(User, gameServer.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             if (!authResult.Succeeded)
                 return Forbid();
 
-            var result = await serversApiClient.FtpBrowse.V1.BrowseDirectory(gameServerId, path).ConfigureAwait(false);
+            var result = await serversApiClient.FileBrowse.V1.BrowseDirectory(gameServerId, path).ConfigureAwait(false);
 
             if (!result.IsSuccess || result.Result?.Data == null)
                 return StatusCode((int)result.StatusCode);

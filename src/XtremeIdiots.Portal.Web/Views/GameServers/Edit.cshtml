@@ -22,12 +22,12 @@
                                     data-bs-target="#general-tab" type="button" role="tab" aria-controls="general-tab"
                                     aria-selected="true">General</button>
                         </li>
-                        @if (Model.CanEditFtp)
+                        @if (Model.CanEditFileTransport)
                         {
-                            <li class="nav-item @(Model.GameServer.FtpEnabled ? "" : "d-none")" role="presentation"
+                            <li class="nav-item @(Model.GameServer.FileTransportEnabled ? "" : "d-none")" role="presentation"
                                 id="ftp-tab-item">
                                 <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab" data-bs-target="#ftp-tab"
-                                        type="button" role="tab" aria-controls="ftp-tab" aria-selected="false">FTP</button>
+                                        type="button" role="tab" aria-controls="ftp-tab" aria-selected="false">@Model.FileTransportLabel</button>
                             </li>
                         }
                         @if (Model.CanEditRcon)
@@ -82,7 +82,7 @@
                             @await Html.PartialAsync("ConfigurationSections/_GeneralConfiguration", Model)
                         </div>
 
-                        @if (Model.CanEditFtp)
+                        @if (Model.CanEditFileTransport)
                         {
                             <div class="tab-pane fade" id="ftp-tab" role="tabpanel" aria-labelledby="ftp-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_FtpConfiguration", Model)
@@ -206,10 +206,10 @@
         }
 
         // Toggle dependency enforcement
-        // AgentEnabled requires FtpEnabled AND RconEnabled
-        // BanFileSyncEnabled requires FtpEnabled AND AgentEnabled
+        // AgentEnabled requires FileTransportEnabled AND RconEnabled
+        // BanFileSyncEnabled requires FileTransportEnabled AND AgentEnabled
         function enforceToggleDependencies() {
-        var ftp = document.getElementById('GameServer_FtpEnabled');
+        var ftp = document.getElementById('GameServer_FileTransportEnabled');
         var rcon = document.getElementById('GameServer_RconEnabled');
         var agent = document.getElementById('GameServer_AgentEnabled');
         var banSync = document.getElementById('GameServer_BanFileSyncEnabled');
@@ -243,7 +243,7 @@
 
         enforceToggleDependencies();
 
-        ['GameServer_FtpEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {
+        ['GameServer_FileTransportEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', enforceToggleDependencies);
         });

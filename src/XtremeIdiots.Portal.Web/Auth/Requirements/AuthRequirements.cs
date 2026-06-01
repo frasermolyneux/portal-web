@@ -16,6 +16,8 @@ public class GameServersWrite : IAuthorizationRequirement { }
 public class GameServersDelete : IAuthorizationRequirement { }
 
 // Game Servers — Credentials
+public class GameServersCredentialsFileTransportRead : IAuthorizationRequirement { }
+public class GameServersCredentialsFileTransportWrite : IAuthorizationRequirement { }
 public class GameServersCredentialsFtpRead : IAuthorizationRequirement { }
 public class GameServersCredentialsFtpWrite : IAuthorizationRequirement { }
 public class GameServersCredentialsRconRead : IAuthorizationRequirement { }

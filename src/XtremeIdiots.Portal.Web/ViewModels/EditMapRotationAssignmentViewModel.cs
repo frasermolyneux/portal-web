@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -25,7 +27,6 @@ public class EditMapRotationAssignmentViewModel
     [DisplayName("Max Players")]
     public int? PlayerCountMax { get; set; }
 
-    public bool CanBrowseFtp { get; set; }
-
-    public bool FtpEnabled { get; set; }
+    public bool CanBrowseFileTransport { get; set; }
+    public FileTransportType FileTransportType { get; set; } = FileTransportType.Unknown;
 }

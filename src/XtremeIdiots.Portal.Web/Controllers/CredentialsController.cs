@@ -41,7 +41,15 @@ public class CredentialsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_Credentials_Ftp_Read, AdditionalPermission.GameServers_Credentials_Rcon_Read];
+            string[] requiredClaims =
+            [
+                UserProfileClaimType.SeniorAdmin,
+                UserProfileClaimType.HeadAdmin,
+                UserProfileClaimType.GameAdmin,
+                AuthPolicies.GameServers_Credentials_FileTransport_Read,
+                AdditionalPermission.GameServers_Credentials_Ftp_Read,
+                AdditionalPermission.GameServers_Credentials_Rcon_Read
+            ];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);
 
             Logger.LogInformation("User {UserId} querying game servers for credentials with {GameTypeCount} game types and {GameServerIdCount} specific servers",
@@ -149,11 +157,11 @@ public class CredentialsController(
         foreach (var gameServerDto in gameServersList)
         {
             var ftpResource = new Tuple<GameType, Guid>(gameServerDto.GameType, gameServerDto.GameServerId);
-            var canViewFtpCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.GameServers_Credentials_Ftp_Read).ConfigureAwait(false);
+            var canViewFileTransportCredential = await authorizationService.AuthorizeAsync(User, ftpResource, AuthPolicies.GameServers_Credentials_FileTransport_Read).ConfigureAwait(false);
 
-            if (!canViewFtpCredential.Succeeded)
+            if (!canViewFileTransportCredential.Succeeded)
             {
-                TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.GameServers_Credentials_Ftp_Read), "FtpCredential",
+                TrackUnauthorizedAccessAttempt(nameof(AuthPolicies.GameServers_Credentials_FileTransport_Read), "FileTransportCredential",
                     $"GameType:{gameServerDto.GameType},GameServerId:{gameServerDto.GameServerId}", gameServerDto);
             }
 

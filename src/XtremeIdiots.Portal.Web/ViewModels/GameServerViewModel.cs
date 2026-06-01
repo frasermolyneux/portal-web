@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -46,6 +47,18 @@ public class GameServerViewModel
     /// </summary>
     [DisplayName("Agent Enabled")]
     public bool AgentEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether file transport integration is enabled for this server
+    /// </summary>
+    [DisplayName("File Transport")]
+    public bool FileTransportEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the file transport type used by this server
+    /// </summary>
+    [DisplayName("File Transport Type")]
+    public FileTransportType FileTransportType { get; set; } = FileTransportType.Ftp;
 
     /// <summary>
     /// Gets or sets whether FTP integration is enabled for this server

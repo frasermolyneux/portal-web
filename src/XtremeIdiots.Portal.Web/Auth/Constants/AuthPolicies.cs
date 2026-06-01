@@ -23,6 +23,8 @@ public static class AuthPolicies
     public const string GameServers_Delete = "GameServers.Delete";
 
     // Game Servers — Credentials
+    public const string GameServers_Credentials_FileTransport_Read = "GameServers.Credentials.FileTransport.Read";
+    public const string GameServers_Credentials_FileTransport_Write = "GameServers.Credentials.FileTransport.Write";
     public const string GameServers_Credentials_Ftp_Read = "GameServers.Credentials.Ftp.Read";
     public const string GameServers_Credentials_Ftp_Write = "GameServers.Credentials.Ftp.Write";
     public const string GameServers_Credentials_Rcon_Read = "GameServers.Credentials.Rcon.Read";

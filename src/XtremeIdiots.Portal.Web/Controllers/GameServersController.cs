@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using MX.Observability.ApplicationInsights.Auditing;
+using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -149,7 +150,8 @@ public class GameServersController(
             createGameServerDto.QueryPort = model.QueryPort;
 
             createGameServerDto.AgentEnabled = model.AgentEnabled;
-            createGameServerDto.FtpEnabled = model.FtpEnabled;
+            createGameServerDto.SetFileTransportProperties(model.FileTransportEnabled, model.FileTransportType);
+            createGameServerDto.FtpEnabled = model.FileTransportEnabled && model.FileTransportType == FileTransportType.Ftp;
             createGameServerDto.RconEnabled = model.RconEnabled;
             createGameServerDto.BanFileSyncEnabled = model.BanFileSyncEnabled;
             createGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.BanFileRootPath) ? "/" : model.BanFileRootPath;
@@ -217,6 +219,9 @@ public class GameServersController(
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
 
+            var fileTransportEnabled = gameServerData.GetFileTransportEnabled(gameServerData.FtpEnabled);
+            var fileTransportType = gameServerData.GetFileTransportType(fileTransportEnabled, gameServerData.FtpEnabled);
+
             // Fetch configuration namespaces so the view reads from config API instead of legacy DTO properties
             try
             {
@@ -236,10 +241,16 @@ public class GameServersController(
                         switch (config.Namespace)
                         {
                             case "ftp":
+                            case "sftp":
+                                var expectedNamespace = fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
+                                if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
+                                    break;
+
                                 ViewBag.FtpHostname = GetStringProperty(root, "hostname");
-                                ViewBag.FtpPort = GetIntProperty(root, "port", 21);
+                                ViewBag.FtpPort = GetIntProperty(root, "port", fileTransportType == FileTransportType.Sftp ? 22 : 21);
                                 ViewBag.FtpUsername = GetStringProperty(root, "username");
                                 ViewBag.FtpPassword = GetStringProperty(root, "password");
+                                ViewBag.FileTransportType = fileTransportType;
                                 break;
                             case "rcon":
                                 ViewBag.RconPassword = GetStringProperty(root, "password");
@@ -295,14 +306,14 @@ public class GameServersController(
             if (authResult != null)
                 return authResult;
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+            var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
 
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
 
             var editModel = new GameServerEditViewModel
             {
                 GameServer = gameServerData.ToViewModel(),
-                CanEditFtp = canEditGameServerFtp.Succeeded,
+                CanEditFileTransport = canEditFileTransport.Succeeded,
                 CanEditRcon = canEditGameServerRcon.Succeeded
             };
 
@@ -317,7 +328,7 @@ public class GameServersController(
                     foreach (var config in configsResult.Result.Data.Items)
                     {
                         // Skip credential namespaces if user lacks permission
-                        if (config.Namespace == "ftp" && !editModel.CanEditFtp)
+                        if ((config.Namespace == "ftp" || config.Namespace == "sftp") && !editModel.CanEditFileTransport)
                             continue;
                         if (config.Namespace == "rcon" && !editModel.CanEditRcon)
                             continue;
@@ -405,11 +416,11 @@ public class GameServersController(
                 QueryPort = model.GameServer.QueryPort
             };
 
-            var canEditGameServerFtp = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+            var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
 
             // Preserve existing passwords when the user leaves password fields blank
-            var passwordsPreserved = await PreserveExistingPasswordsAsync(model, gameServerData.GameServerId, canEditGameServerFtp.Succeeded, canEditGameServerRcon.Succeeded, cancellationToken).ConfigureAwait(false);
+            var passwordsPreserved = await PreserveExistingPasswordsAsync(model, gameServerData.GameServerId, canEditFileTransport.Succeeded, canEditGameServerRcon.Succeeded, cancellationToken).ConfigureAwait(false);
             if (!passwordsPreserved)
             {
                 ModelState.AddModelError(string.Empty, "Failed to verify existing passwords. Please try again.");
@@ -419,7 +430,8 @@ public class GameServersController(
             }
 
             editGameServerDto.AgentEnabled = model.GameServer.AgentEnabled;
-            editGameServerDto.FtpEnabled = model.GameServer.FtpEnabled;
+            editGameServerDto.SetFileTransportProperties(model.GameServer.FileTransportEnabled, model.GameServer.FileTransportType);
+            editGameServerDto.FtpEnabled = model.GameServer.FileTransportEnabled && model.GameServer.FileTransportType == FileTransportType.Ftp;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
             editGameServerDto.BanFileSyncEnabled = model.GameServer.BanFileSyncEnabled;
             editGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.GameServer.BanFileRootPath) ? "/" : model.GameServer.BanFileRootPath;
@@ -440,12 +452,13 @@ public class GameServersController(
 
             // Save configuration namespaces
             var configErrors = new List<string>();
-            await SaveConfigNamespacesAsync(model, gameServerData.GameServerId, canEditGameServerFtp.Succeeded, canEditGameServerRcon.Succeeded, configErrors, cancellationToken).ConfigureAwait(false);
+            await SaveConfigNamespacesAsync(model, gameServerData.GameServerId, canEditFileTransport.Succeeded, canEditGameServerRcon.Succeeded, configErrors, cancellationToken).ConfigureAwait(false);
 
             // Track toggle changes for audit trail
             var serverTitle = model.GameServer.Title ?? "";
+            var existingFileTransportEnabled = gameServerData.GetFileTransportEnabled(gameServerData.FtpEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.AgentEnabled), gameServerData.AgentEnabled, model.GameServer.AgentEnabled);
-            TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.FtpEnabled), gameServerData.FtpEnabled, model.GameServer.FtpEnabled);
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, "FileTransportEnabled", existingFileTransportEnabled, model.GameServer.FileTransportEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.RconEnabled), gameServerData.RconEnabled, model.GameServer.RconEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.BanFileSyncEnabled), gameServerData.BanFileSyncEnabled, model.GameServer.BanFileSyncEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.ServerListEnabled), gameServerData.ServerListEnabled, model.GameServer.ServerListEnabled);
@@ -595,10 +608,15 @@ public class GameServersController(
             switch (config.Namespace)
             {
                 case "ftp":
-                    editModel.FtpConfigHostname = GetStringProperty(root, "hostname");
-                    editModel.FtpConfigPort = GetIntProperty(root, "port", 21);
-                    editModel.FtpConfigUsername = GetStringProperty(root, "username");
-                    editModel.FtpConfigPassword = GetStringProperty(root, "password");
+                case "sftp":
+                    var expectedNamespace = GameServerEditViewModel.GetFileTransportNamespace(editModel.GameServer.FileTransportType);
+                    if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
+                        break;
+
+                    editModel.FileTransportConfigHostname = GetStringProperty(root, "hostname");
+                    editModel.FileTransportConfigPort = GetIntProperty(root, "port", GameServerEditViewModel.GetDefaultPort(editModel.GameServer.FileTransportType));
+                    editModel.FileTransportConfigUsername = GetStringProperty(root, "username");
+                    editModel.FileTransportConfigPassword = GetStringProperty(root, "password");
                     break;
                 case "rcon":
                     editModel.RconConfigPassword = GetStringProperty(root, "password");
@@ -752,23 +770,24 @@ public class GameServersController(
 
     private async Task RepopulateAuthFlags(GameServerEditViewModel model, GameType gameType)
     {
-        var canEditFtp = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_Ftp_Write).ConfigureAwait(false);
+        var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
         var canEditRcon = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
-        model.CanEditFtp = canEditFtp.Succeeded;
+        model.CanEditFileTransport = canEditFileTransport.Succeeded;
         model.CanEditRcon = canEditRcon.Succeeded;
     }
 
     private async Task<bool> PreserveExistingPasswordsAsync(
         GameServerEditViewModel model,
         Guid gameServerId,
-        bool canEditFtp,
+        bool canEditFileTransport,
         bool canEditRcon,
         CancellationToken cancellationToken)
     {
-        var needsFtpPassword = canEditFtp && string.IsNullOrEmpty(model.FtpConfigPassword);
+        var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
+        var needsFileTransportPassword = canEditFileTransport && string.IsNullOrEmpty(model.FileTransportConfigPassword);
         var needsRconPassword = canEditRcon && string.IsNullOrEmpty(model.RconConfigPassword);
 
-        if (!needsFtpPassword && !needsRconPassword)
+        if (!needsFileTransportPassword && !needsRconPassword)
             return true;
 
         try
@@ -784,10 +803,10 @@ public class GameServersController(
                 if (string.IsNullOrWhiteSpace(config.Configuration))
                     continue;
 
-                if (needsFtpPassword && config.Namespace == "ftp")
+                if (needsFileTransportPassword && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
                 {
                     using var doc = JsonDocument.Parse(config.Configuration);
-                    model.FtpConfigPassword = GetStringProperty(doc.RootElement, "password");
+                    model.FileTransportConfigPassword = GetStringProperty(doc.RootElement, "password");
                 }
                 else if (needsRconPassword && config.Namespace == "rcon")
                 {
@@ -808,22 +827,23 @@ public class GameServersController(
     private async Task SaveConfigNamespacesAsync(
         GameServerEditViewModel model,
         Guid gameServerId,
-        bool canEditFtp,
+        bool canEditFileTransport,
         bool canEditRcon,
         List<string> errors,
         CancellationToken cancellationToken)
     {
         var serverTitle = model.GameServer.Title ?? "";
+        var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
 
-        // Save FTP config
-        if (canEditFtp)
+        // Save file transport config
+        if (canEditFileTransport)
         {
-            await UpsertConfigSafeAsync(gameServerId, "ftp", JsonSerializer.Serialize(new
+            await UpsertConfigSafeAsync(gameServerId, activeTransportNamespace, JsonSerializer.Serialize(new
             {
-                hostname = model.FtpConfigHostname,
-                port = model.FtpConfigPort,
-                username = model.FtpConfigUsername,
-                password = model.FtpConfigPassword
+                hostname = model.FileTransportConfigHostname,
+                port = model.FileTransportConfigPort,
+                username = model.FileTransportConfigUsername,
+                password = model.FileTransportConfigPassword
             }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 

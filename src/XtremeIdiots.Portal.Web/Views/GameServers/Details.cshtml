@@ -8,6 +8,9 @@
 
 @{
     ViewData["Title"] = "Game Server Details";
+    var fileTransportEnabled = Model.GetFileTransportEnabled(Model.FtpEnabled);
+    var fileTransportType = Model.GetFileTransportType(fileTransportEnabled, Model.FtpEnabled);
+    var fileTransportLabel = fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "SFTP" : "FTP";
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -38,22 +41,22 @@
                             </div>
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
-                                                        Guid>(Model.GameType, Model.GameServerId), AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
+                                                        Guid>(Model.GameType, Model.GameServerId), AuthPolicies.GameServers_Credentials_FileTransport_Read)).Succeeded)
                             {
                                 <div class="detail-field col-sm-6">
-                                    <dt class="detail-label">FTP Hostname</dt>
+                                    <dt class="detail-label">@fileTransportLabel Hostname</dt>
                                     <dd class="detail-value">@ViewBag.FtpHostname</dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
-                                    <dt class="detail-label">FTP Port</dt>
+                                    <dt class="detail-label">@fileTransportLabel Port</dt>
                                     <dd class="detail-value">@ViewBag.FtpPort</dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
-                                    <dt class="detail-label">FTP Username</dt>
+                                    <dt class="detail-label">@fileTransportLabel Username</dt>
                                     <dd class="detail-value">@ViewBag.FtpUsername</dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
-                                    <dt class="detail-label">FTP Password</dt>
+                                    <dt class="detail-label">@fileTransportLabel Password</dt>
                                     <dd class="detail-value">@ViewBag.FtpPassword</dd>
                                 </div>
                             }
@@ -72,8 +75,12 @@
                                 <dd class="detail-value">@Html.DisplayFor(model => model.AgentEnabled)</dd>
                             </div>
                             <div class="detail-field col-sm-6">
-                                <dt class="detail-label">@Html.DisplayNameFor(model => model.FtpEnabled)</dt>
-                                <dd class="detail-value">@Html.DisplayFor(model => model.FtpEnabled)</dd>
+                                <dt class="detail-label">File Transport Enabled</dt>
+                                <dd class="detail-value">@fileTransportEnabled</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
+                                <dt class="detail-label">File Transport Type</dt>
+                                <dd class="detail-value">@fileTransportLabel</dd>
                             </div>
                             <div class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.RconEnabled)</dt>
@@ -140,7 +147,7 @@
                                             {
                                                 @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                                                         Guid>(Model.GameType, Model.GameServerId),
-                                                                                        AuthPolicies.GameServers_Credentials_Ftp_Read)).Succeeded)
+                                                                                        AuthPolicies.GameServers_Credentials_FileTransport_Read)).Succeeded)
                                                 {
                                                     <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
                                                         path="@item.RemoteFilePath" user="@ViewBag.FtpUsername"

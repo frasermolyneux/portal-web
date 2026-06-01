@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace XtremeIdiots.Portal.Web.Helpers;
 
+[HtmlTargetElement("file-transport-path")]
 [HtmlTargetElement("ftp-path")]
 public class FtpPathTagHelper : TagHelper
 {
@@ -10,6 +11,7 @@ public class FtpPathTagHelper : TagHelper
     [HtmlAttributeName("path")] public string? Path { get; set; }
     [HtmlAttributeName("user")] public string? User { get; set; }
     [HtmlAttributeName("password")] public string? Password { get; set; }
+    [HtmlAttributeName("scheme")] public string? Scheme { get; set; }
     [HtmlAttributeName("show-credentials")] public bool ShowCredentials { get; set; } = true;
 
     public override void Process(TagHelperContext context, TagHelperOutput output)
@@ -20,7 +22,8 @@ public class FtpPathTagHelper : TagHelper
             return;
         }
 
-        var basePath = $"ftp://{Host}:{Port}{Path}";
+        var scheme = string.IsNullOrWhiteSpace(Scheme) ? "ftp" : Scheme.Trim().ToLowerInvariant();
+        var basePath = $"{scheme}://{Host}:{Port}{Path}";
         if (!ShowCredentials || string.IsNullOrWhiteSpace(User) || string.IsNullOrWhiteSpace(Password))
         {
             output.TagName = "span";
@@ -30,7 +33,7 @@ public class FtpPathTagHelper : TagHelper
 
         output.TagName = "a";
         output.Attributes.SetAttribute("target", "_blank");
-        output.Attributes.SetAttribute("href", $"ftp://{User}:{Password}@{Host}:{Port}{Path}");
+        output.Attributes.SetAttribute("href", $"{scheme}://{User}:{Password}@{Host}:{Port}{Path}");
         output.Content.SetContent(basePath);
     }
 }

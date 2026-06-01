@@ -1,5 +1,5 @@
-// FTP Browser Component
-// Usage: openFtpBrowser(gameServerId, targetInputId, fileFilter?)
+// File Transport Browser Component
+// Usage: openFileTransportBrowser(gameServerId, targetInputId, fileFilter?)
 //   gameServerId: GUID of the game server
 //   targetInputId: ID of the input element to populate with selected path
 //   fileFilter: optional file extension filter (e.g. '.log')
@@ -11,7 +11,7 @@
     var _selectedPath = null;
     var _modal = null;
 
-    window.openFtpBrowser = function (gameServerId, targetInputId, fileFilter) {
+    function openBrowser(gameServerId, targetInputId, fileFilter) {
         _gameServerId = gameServerId;
         _targetInputId = targetInputId;
         _fileFilter = fileFilter || null;
@@ -24,7 +24,10 @@
         updateSelectButton();
         _modal.show();
         navigateTo('/');
-    };
+    }
+
+    window.openFileTransportBrowser = openBrowser;
+    window.openFtpBrowser = openBrowser;
 
     function navigateTo(path) {
         var loading = document.getElementById('ftpLoading');
@@ -38,7 +41,7 @@
         _selectedPath = null;
         updateSelectButton();
 
-        fetch('/api/ftp/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
+        fetch('/api/file-browse/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
             .then(function (response) {
                 if (response.status === 403) throw new Error('You do not have permission to browse this server\'s files.');
                 if (!response.ok) throw new Error('Failed to browse directory (HTTP ' + response.status + ')');
@@ -55,7 +58,7 @@
             .catch(function (err) {
                 loading.style.display = 'none';
                 error.style.display = '';
-                error.textContent = err.message || 'Failed to connect to FTP server.';
+                error.textContent = err.message || 'Failed to connect to the file transport server.';
             });
     }
 

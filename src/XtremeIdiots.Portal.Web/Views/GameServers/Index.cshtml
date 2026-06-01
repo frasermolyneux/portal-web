@@ -51,9 +51,7 @@
                                         <th scope="col">
                                             @Html.DisplayNameFor(model => model.Hostname)
                                         </th>
-                                    <th scope="col">
-                                        @Html.DisplayNameFor(model => model.FtpEnabled)
-                                    </th>
+                                    <th scope="col">File Transport</th>
                                     <th scope="col">
                                         @Html.DisplayNameFor(model => model.RconEnabled)
                                     </th>
@@ -83,7 +81,7 @@
                                             <server-host host="@item.Hostname" port="@item.QueryPort"></server-host>
                                         </td>
                                         <td>
-                                            @Html.DisplayFor(modelItem => item.FtpEnabled)
+                                            @item.GetFileTransportEnabled(item.FtpEnabled)
                                         </td>
                                         <td>
                                             @Html.DisplayFor(modelItem => item.RconEnabled)

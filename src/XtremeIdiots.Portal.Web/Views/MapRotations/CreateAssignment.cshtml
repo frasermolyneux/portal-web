@@ -23,7 +23,8 @@
                                     <option value="">-- Select Server --</option>
                                     @foreach (var server in Model.AvailableServers)
                                     {
-                                        <option value="@server.GameServerId" data-ftp-enabled="@server.FtpEnabled.ToString().ToLowerInvariant()">@server.Title</option>
+                                        var fileTransportEnabled = server.GetFileTransportEnabled(server.FtpEnabled);
+                                        <option value="@server.GameServerId" data-file-transport-enabled="@fileTransportEnabled.ToString().ToLowerInvariant()">@server.Title</option>
                                     }
                                 </select>
                                 <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
@@ -33,15 +34,15 @@
                                 <div class="input-group">
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                            placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
-                                    @if (Model.CanBrowseFtp)
+                                    @if (Model.CanBrowseFileTransport)
                                     {
                                         <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
-                                                style="display: none;" title="Browse server files via FTP">
+                                                style="display: none;" title="Browse server files via file transport">
                                             <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                                         </button>
                                     }
                                 </div>
-                                <small class="form-text text-muted">Path to the config file on the game server. Use the Browse button to select via FTP.</small>
+                                <small class="form-text text-muted">Path to the config file on the game server. Use Browse to select via file transport.</small>
                                 <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
@@ -91,13 +92,13 @@
     </form>
 </div>
 
-@if (Model.CanBrowseFtp)
+@if (Model.CanBrowseFileTransport)
 {
     @await Html.PartialAsync("_FtpBrowserModal")
 }
 
 @section Scripts {
-    @if (Model.CanBrowseFtp)
+    @if (Model.CanBrowseFileTransport)
     {
         <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
     }
@@ -109,8 +110,8 @@
             if (browseBtn) {
                 function updateBrowseButton() {
                     var selectedOption = serverSelect.options[serverSelect.selectedIndex];
-                    var ftpEnabled = selectedOption && selectedOption.dataset.ftpEnabled === 'true';
-                    browseBtn.style.display = ftpEnabled ? '' : 'none';
+                    var fileTransportEnabled = selectedOption && selectedOption.dataset.fileTransportEnabled === 'true';
+                    browseBtn.style.display = fileTransportEnabled ? '' : 'none';
                 }
 
                 serverSelect.addEventListener('change', updateBrowseButton);
@@ -119,7 +120,7 @@
                 browseBtn.addEventListener('click', function () {
                     var gameServerId = serverSelect.value;
                     if (gameServerId) {
-                        openFtpBrowser(gameServerId, 'ConfigFilePathInput', '.cfg');
+                        openFileTransportBrowser(gameServerId, 'ConfigFilePathInput', '.cfg');
                     }
                 });
             }
