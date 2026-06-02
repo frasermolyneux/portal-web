@@ -704,10 +704,10 @@ public class GameServersController(
             {
                 JsonValueKind.True => true,
                 JsonValueKind.False => false,
+                JsonValueKind.String when bool.TryParse(prop.GetString(), out var parsedBool) => parsedBool,
                 JsonValueKind.Undefined => defaultValue,
                 JsonValueKind.Object => defaultValue,
                 JsonValueKind.Array => defaultValue,
-                JsonValueKind.String => defaultValue,
                 JsonValueKind.Number => defaultValue,
                 JsonValueKind.Null => defaultValue,
                 _ => defaultValue

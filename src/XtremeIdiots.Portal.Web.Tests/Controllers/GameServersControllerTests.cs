@@ -141,6 +141,82 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public void PopulateConfigFromNamespace_BroadcastsNamespace_ParsesStringBooleans()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateConfigFromNamespace");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "broadcasts",
+            Configuration = """
+            {
+              "enabled": "true",
+              "intervalSeconds": 600,
+              "messages": [
+                { "message": "^1Message A", "enabled": "true" },
+                { "message": "^2Message B", "enabled": "false" }
+              ]
+            }
+            """
+        }));
+
+        // Act
+        method.Invoke(sut, [model, config]);
+
+        // Assert
+        Assert.True(model.BroadcastsEnabled);
+        Assert.Equal(600, model.BroadcastsIntervalSeconds);
+        Assert.Equal(2, model.BroadcastMessages.Count);
+        Assert.True(model.BroadcastMessages[0].Enabled);
+        Assert.False(model.BroadcastMessages[1].Enabled);
+    }
+
+    [Fact]
+    public void PopulateConfigFromNamespace_ParsesStringBooleans_ForOtherConfigNamespaces()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateConfigFromNamespace");
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = FileTransportType.Ftp
+            }
+        };
+
+        var agentConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "agent",
+            Configuration = """
+            {
+              "rconSyncEnabled": "false"
+            }
+            """
+        }));
+
+        var moderationConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "moderation",
+            Configuration = """
+            {
+              "protectedNameEnforcementEnabled": "false"
+            }
+            """
+        }));
+
+        // Act
+        method.Invoke(sut, [model, agentConfig]);
+        method.Invoke(sut, [model, moderationConfig]);
+
+        // Assert
+        Assert.False(model.AgentConfigRconSyncEnabled);
+        Assert.False(model.ModerationProtectedNameEnforcementEnabled);
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsBroadcastsContract()
     {
         // Arrange

@@ -109,6 +109,13 @@ The `policy-resource` attribute passes a resource (typically `GameType`) to hand
 - PRs trigger dev Terraform plans automatically; prod plans require the `run-prd-plan` label.
 - Copilot and Dependabot PRs skip Terraform plans unless explicitly labeled.
 
+## Config JSON Boolean Standard
+
+- For Game Server configuration namespaces stored as JSON (`agent`, `moderation`, `events`, `broadcasts`, etc.), always serialize boolean fields as JSON booleans (`true`/`false`), never strings (`"true"`/`"false"`).
+- When reading existing configuration JSON in controllers, support legacy string booleans defensively, then preserve canonical output by re-saving as JSON booleans.
+- For Razor boolean form fields that intentionally post both hidden and checkbox values for the same property name, render the hidden `false` input before the checkbox input to ensure checked values bind correctly.
+- Add or update controller tests whenever introducing or changing bool-backed config fields to verify both canonical bool handling and legacy-string compatibility on read.
+
 ## UI Conventions (Razor Views)
 
 **Always read [docs/ui-standards-guide.md](docs/ui-standards-guide.md) before creating or modifying views.** Key rules:
