@@ -94,35 +94,35 @@ if (!canCreate.Succeeded) return Forbid();
 
 Each composite method in `BaseAuthorizationHelper` has three branches:
 
-| Resource | Behaviour |
-|----------|-----------|
-| Concrete (`GameType`, tuple) | Checks role for that specific game type |
-| `PotentialAccessProbe` | Checks if user holds any game-scoped role |
-| `null` | Does nothing (fail-closed) |
+| Resource                     | Behaviour                                 |
+| ---------------------------- | ----------------------------------------- |
+| Concrete (`GameType`, tuple) | Checks role for that specific game type   |
+| `PotentialAccessProbe`       | Checks if user holds any game-scoped role |
+| `null`                       | Does nothing (fail-closed)                |
 
 `CheckDirectPermissionGrant` already handles all three — it checks for a scoped permission when a resource is present, and for **any** permission claim when no resource is provided.
 
 ### When to Use Each Pattern
 
-| Scenario | Resource to Pass | Example |
-|----------|-----------------|---------|
-| Action on a known resource | The resource (`GameType`, `(GameType, Guid)`, etc.) | Edit button in a Details view |
-| UI gate before resource exists | `PotentialAccessProbe.Instance` | Create button on Index page, GET Create action |
-| Non-resource-scoped policy | Nothing (omit `policy-resource`) | Tags.Write, Dashboard.Read |
-| Data filtering (what to show) | N/A — use `ClaimedGamesAndItems` | Index action fetching records |
+| Scenario                       | Resource to Pass                                    | Example                                        |
+| ------------------------------ | --------------------------------------------------- | ---------------------------------------------- |
+| Action on a known resource     | The resource (`GameType`, `(GameType, Guid)`, etc.) | Edit button in a Details view                  |
+| UI gate before resource exists | `PotentialAccessProbe.Instance`                     | Create button on Index page, GET Create action |
+| Non-resource-scoped policy     | Nothing (omit `policy-resource`)                    | Tags.Write, Dashboard.Read                     |
+| Data filtering (what to show)  | N/A — use `ClaimedGamesAndItems`                    | Index action fetching records                  |
 
 ## Key Implementation Files
 
 These files are the **source of truth** for all authorization behaviour:
 
-| File | Purpose |
-|------|---------|
-| `Auth/Constants/AuthPolicies.cs` | All policy name constants |
-| `Auth/Requirements/AuthRequirements.cs` | Marker requirement classes (one per policy) |
-| `Auth/PotentialAccessProbe.cs` | Sentinel resource for "can user potentially do X?" checks |
-| `Auth/Handlers/BaseAuthorizationHelper.cs` | Shared claim group definitions and common check methods |
-| `Auth/Handlers/*AuthHandler.cs` | Per-domain authorization handlers with exact role→permission logic |
-| `Extensions/PolicyExtensions.cs` | Policy registration wiring |
-| `Helpers/PolicyTagHelper.cs` | Razor tag helper for conditional rendering |
+| File                                       | Purpose                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| `Auth/Constants/AuthPolicies.cs`           | All policy name constants                                          |
+| `Auth/Requirements/AuthRequirements.cs`    | Marker requirement classes (one per policy)                        |
+| `Auth/PotentialAccessProbe.cs`             | Sentinel resource for "can user potentially do X?" checks          |
+| `Auth/Handlers/BaseAuthorizationHelper.cs` | Shared claim group definitions and common check methods            |
+| `Auth/Handlers/*AuthHandler.cs`            | Per-domain authorization handlers with exact role→permission logic |
+| `Extensions/PolicyExtensions.cs`           | Policy registration wiring                                         |
+| `Helpers/PolicyTagHelper.cs`               | Razor tag helper for conditional rendering                         |
 
 All paths are relative to `src/XtremeIdiots.Portal.Web/`.
