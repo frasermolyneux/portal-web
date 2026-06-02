@@ -18,7 +18,7 @@ $(document).ready(function () {
                 { targets: 0, responsivePriority: 3 }, // Game Type
                 { targets: 1, responsivePriority: 1 }, // Title - always visible
                 { targets: 2, responsivePriority: 4 }, // Hostname
-                { targets: 3, responsivePriority: 7 }, // FtpEnabled
+                { targets: 3, responsivePriority: 7 }, // FileTransportEnabled
                 { targets: 4, responsivePriority: 8 }, // RconEnabled
                 { targets: 5, responsivePriority: 9 }, // AgentEnabled
                 { targets: 6, responsivePriority: 10 }, // BanFileSyncEnabled

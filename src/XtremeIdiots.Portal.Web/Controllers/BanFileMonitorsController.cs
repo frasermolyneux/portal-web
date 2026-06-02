@@ -20,7 +20,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// Read-only dashboard for ban file monitor status. The monitor row itself is owned
 /// and upserted by the server agent — admins can no longer create, edit, or delete
 /// monitors. To enable / disable monitoring for a server, toggle
-/// <c>GameServer.BanFileSyncEnabled</c> on the GameServers/Edit page; the FTP path
+/// <c>GameServer.BanFileSyncEnabled</c> on the GameServers/Edit page; the file transport path
 /// is resolved automatically from per-game-type rules + <c>GameServer.BanFileRootPath</c>
 /// + the live mod observed by the agent.
 /// </summary>

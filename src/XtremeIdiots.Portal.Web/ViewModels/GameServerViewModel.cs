@@ -61,7 +61,7 @@ public class GameServerViewModel
     public RepoFileTransportType FileTransportType { get; set; } = RepoFileTransportType.Ftp;
 
     /// <summary>
-    /// Gets or sets whether FTP integration is enabled for this server
+    /// Gets or sets whether the legacy transport flag is enabled for this server
     /// </summary>
     [DisplayName("FTP")]
     public bool FtpEnabled { get; set; }
@@ -79,7 +79,7 @@ public class GameServerViewModel
     public bool BanFileSyncEnabled { get; set; }
 
     /// <summary>
-    /// Gets or sets the FTP root path beneath which the ban file lives. The agent
+    /// Gets or sets the file transport root path beneath which the ban file lives. The agent
     /// resolves the full path from this root plus per-game-type rules and the
     /// currently-running mod (e.g. <c>{root}/mods/&lt;mod&gt;/ban.txt</c> for CoD4/5,
     /// <c>{root}/ban.txt</c> for CoD2). Defaults to <c>"/"</c>.

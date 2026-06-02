@@ -17,7 +17,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// Manages the display and authorization of game server credentials for authenticated users
 /// </summary>
 /// <remarks>
-/// This controller handles FTP and RCON credentials for game servers based on user authorization levels.
+/// This controller handles file transport and RCON credentials for game servers based on user authorization levels.
 /// Users can view credentials only for servers they have explicit permission to access.
 /// </remarks>
 [Authorize(Policy = AuthPolicies.GameServers_Read)]

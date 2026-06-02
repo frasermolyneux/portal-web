@@ -18,7 +18,7 @@ public sealed class BanFileMonitorsDashboardViewModel
     public required IReadOnlyDictionary<Guid, GameServerLiveStatusDto> LiveStatusLookup { get; init; }
 
     /// <summary>
-    /// Per-server config namespace lookup (used for FTP host display in the table).
+    /// Per-server config namespace lookup (used for file transport host display in the table).
     /// Same shape as other admin views in this project.
     /// </summary>
     public required IReadOnlyDictionary<Guid, Dictionary<string, System.Text.Json.JsonElement>> ServerConfigs { get; init; }
