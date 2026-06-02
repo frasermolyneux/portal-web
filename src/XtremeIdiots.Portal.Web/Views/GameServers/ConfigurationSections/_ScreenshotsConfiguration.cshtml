@@ -2,44 +2,53 @@
 @model GameServerEditViewModel
 
 <div class="ibox">
-    <div class="ibox-title"><h5>Screenshot Monitoring</h5></div>
+    <div class="ibox-title">
+        <h5>Screenshot Monitoring</h5>
+    </div>
     <div class="ibox-content">
         <div class="form-check mb-3">
             <input class="form-check-input" asp-for="ScreenshotConfigEnabled" />
             <label class="form-check-label" asp-for="ScreenshotConfigEnabled"></label>
-            <small class="form-text text-muted d-block">Enable agent-side screenshot discovery and upload for this server.</small>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="ScreenshotConfigDirectoryPath" class="form-label"></label>
-            <div class="input-group">
-                <input asp-for="ScreenshotConfigDirectoryPath" class="form-control" id="ScreenshotConfigDirectoryPath" />
-                @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
-                {
-                    <button class="btn btn-outline-secondary" type="button"
-                            onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'ScreenshotConfigDirectoryPath', { selectionMode: 'directory', initialPath: document.getElementById('ScreenshotConfigDirectoryPath')?.value || '/' })">
-                        <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
-                    </button>
-                }
+            <small class="form-text text-muted d-block">Enable agent-side screenshot discovery and upload for this
+                server.</small>
             </div>
-            <span asp-validation-for="ScreenshotConfigDirectoryPath" class="text-danger"></span>
-            <small class="form-text text-muted">Remote directory the agent scans for new screenshots when monitoring is enabled.</small>
-        </div>
 
-        <div class="mb-3">
-            <label asp-for="ScreenshotConfigFilePattern" class="form-label"></label>
-            <input asp-for="ScreenshotConfigFilePattern" class="form-control" placeholder="@GameServerEditViewModel.DefaultScreenshotFilePattern" />
-            <span asp-validation-for="ScreenshotConfigFilePattern" class="text-danger"></span>
-            <small class="form-text text-muted">Optional glob pattern. Leave empty to use @GameServerEditViewModel.DefaultScreenshotFilePattern.</small>
-        </div>
+            <div class="mb-3">
+                <label asp-for="ScreenshotConfigDirectoryPath" class="form-label"></label>
+                <div class="input-group">
+                    <input asp-for="ScreenshotConfigDirectoryPath" class="form-control"
+                           id="ScreenshotConfigDirectoryPath" />
+                    @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
+                    {
+                        <button class="btn btn-outline-secondary" type="button"
+                                onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'ScreenshotConfigDirectoryPath', { selectionMode: 'directory', initialPath: document.getElementById('ScreenshotConfigDirectoryPath')?.value || '/' })">
+                            <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
+                        </button>
+                    }
+                </div>
+                <span asp-validation-for="ScreenshotConfigDirectoryPath" class="text-danger"></span>
+                <small class="form-text text-muted">Remote directory the agent scans for new screenshots when monitoring is
+                    enabled.</small>
+                </div>
 
-        <div class="mb-3">
-            <label asp-for="ScreenshotConfigPollIntervalSeconds" class="form-label"></label>
-            <input asp-for="ScreenshotConfigPollIntervalSeconds" class="form-control" type="number"
-                   min="@GameServerEditViewModel.MinScreenshotPollIntervalSeconds"
-                   max="@GameServerEditViewModel.MaxScreenshotPollIntervalSeconds" />
-            <span asp-validation-for="ScreenshotConfigPollIntervalSeconds" class="text-danger"></span>
-            <small class="form-text text-muted">How often the agent checks for new screenshots. Allowed range: @GameServerEditViewModel.MinScreenshotPollIntervalSeconds to @GameServerEditViewModel.MaxScreenshotPollIntervalSeconds seconds.</small>
-        </div>
-    </div>
-</div>
+                <div class="mb-3">
+                    <label asp-for="ScreenshotConfigFilePattern" class="form-label"></label>
+                    <input asp-for="ScreenshotConfigFilePattern" class="form-control"
+                           placeholder="@GameServerEditViewModel.DefaultScreenshotFilePattern" />
+                    <span asp-validation-for="ScreenshotConfigFilePattern" class="text-danger"></span>
+                    <small class="form-text text-muted">Optional glob pattern. Leave empty to use
+                        @GameServerEditViewModel.DefaultScreenshotFilePattern.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ScreenshotConfigPollIntervalSeconds" class="form-label"></label>
+                        <input asp-for="ScreenshotConfigPollIntervalSeconds" class="form-control" type="number"
+                               min="@GameServerEditViewModel.MinScreenshotPollIntervalSeconds"
+                               max="@GameServerEditViewModel.MaxScreenshotPollIntervalSeconds" />
+                        <span asp-validation-for="ScreenshotConfigPollIntervalSeconds" class="text-danger"></span>
+                        <small class="form-text text-muted">How often the agent checks for new screenshots. Allowed range:
+                            @GameServerEditViewModel.MinScreenshotPollIntervalSeconds to
+                            @GameServerEditViewModel.MaxScreenshotPollIntervalSeconds seconds.</small>
+                        </div>
+                    </div>
+                </div>

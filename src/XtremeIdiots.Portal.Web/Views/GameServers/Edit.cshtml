@@ -62,8 +62,8 @@
                             </li>
                             <li class="nav-item" role="presentation" id="funny-messages-tab-item">
                                 <button class="nav-link" id="funny-messages-tab-btn" data-bs-toggle="tab"
-                                        data-bs-target="#funny-messages-tab" type="button" role="tab" aria-controls="funny-messages-tab"
-                                        aria-selected="false">Funny Messages</button>
+                                        data-bs-target="#funny-messages-tab" type="button" role="tab"
+                                        aria-controls="funny-messages-tab" aria-selected="false">Funny Messages</button>
                             </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
@@ -118,7 +118,8 @@
 
                         @if (Model.CanConfigureScreenshots)
                         {
-                            <div class="tab-pane fade" id="screenshots-config-tab" role="tabpanel" aria-labelledby="screenshots-config-tab-btn">
+                            <div class="tab-pane fade" id="screenshots-config-tab" role="tabpanel"
+                                 aria-labelledby="screenshots-config-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_ScreenshotsConfiguration", Model)
                             </div>
                         }
