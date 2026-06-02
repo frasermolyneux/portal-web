@@ -1,43 +1,114 @@
 // File Transport Browser Component
-// Usage: openFileTransportBrowser(gameServerId, targetInputId, fileFilter?)
+// Usage: openFileTransportBrowser(gameServerId, targetInputId, fileFilterOrOptions?)
 //   gameServerId: GUID of the game server
 //   targetInputId: ID of the input element to populate with selected path
-//   fileFilter: optional file extension filter (e.g. '.log')
+//   fileFilterOrOptions: optional file extension filter (e.g. '.log') or options object
+//     selectionMode: 'file' (default) or 'directory'
+//     initialPath: directory to open first
 
 (function () {
     var _gameServerId = null;
     var _targetInputId = null;
     var _fileFilter = null;
+    var _selectionMode = 'file';
+    var _currentPath = '/';
     var _selectedPath = null;
     var _modal = null;
 
-    function openBrowser(gameServerId, targetInputId, fileFilter) {
+    function openBrowser(gameServerId, targetInputId, fileFilterOrOptions) {
+        var options = normalizeOptions(fileFilterOrOptions);
+
         _gameServerId = gameServerId;
         _targetInputId = targetInputId;
-        _fileFilter = fileFilter || null;
+        _fileFilter = options.fileFilter;
+        _selectionMode = options.selectionMode;
+        _currentPath = options.initialPath;
         _selectedPath = null;
 
         if (!_modal) {
             _modal = new bootstrap.Modal(document.getElementById('fileBrowseModal'));
         }
 
+        updateModalLabels();
         updateSelectButton();
         _modal.show();
-        navigateTo('/');
+        navigateTo(_currentPath);
     }
 
     window.openFileTransportBrowser = openBrowser;
+
+    function normalizeOptions(fileFilterOrOptions) {
+        var defaultOptions = {
+            fileFilter: null,
+            selectionMode: 'file',
+            initialPath: '/'
+        };
+
+        if (!fileFilterOrOptions) {
+            return defaultOptions;
+        }
+
+        if (typeof fileFilterOrOptions === 'string') {
+            defaultOptions.fileFilter = fileFilterOrOptions;
+            return defaultOptions;
+        }
+
+        if (typeof fileFilterOrOptions === 'object') {
+            defaultOptions.fileFilter = fileFilterOrOptions.fileFilter || null;
+            defaultOptions.selectionMode = fileFilterOrOptions.selectionMode === 'directory' ? 'directory' : 'file';
+            defaultOptions.initialPath = normalizeClientPath(fileFilterOrOptions.initialPath);
+        }
+
+        return defaultOptions;
+    }
+
+    function normalizeClientPath(path) {
+        if (!path || typeof path !== 'string') {
+            return '/';
+        }
+
+        var normalized = path.replace(/\\/g, '/').trim();
+        if (!normalized) {
+            return '/';
+        }
+
+        if (!normalized.startsWith('/')) {
+            normalized = '/' + normalized;
+        }
+
+        if (normalized.length > 1 && normalized.endsWith('/')) {
+            normalized = normalized.slice(0, -1);
+        }
+
+        return normalized;
+    }
+
+    function updateModalLabels() {
+        var title = document.getElementById('fileBrowseModalLabel');
+        var selectBtn = document.getElementById('fileBrowseSelectBtn');
+
+        if (title) {
+            title.innerHTML = _selectionMode === 'directory'
+                ? '<i class="fa-solid fa-fw fa-folder-tree me-2"></i>Browse Server Folders'
+                : '<i class="fa-solid fa-fw fa-folder-open me-2"></i>Browse Server Files';
+        }
+
+        if (selectBtn) {
+            selectBtn.innerHTML = _selectionMode === 'directory'
+                ? '<i class="fa-solid fa-fw fa-check"></i>Select Folder'
+                : '<i class="fa-solid fa-fw fa-check"></i>Select';
+        }
+    }
 
     function navigateTo(path) {
         var loading = document.getElementById('fileBrowseLoading');
         var error = document.getElementById('fileBrowseError');
         var container = document.getElementById('fileBrowseListingContainer');
-        var emptyMsg = document.getElementById('fileBrowseEmptyMessage');
 
         loading.style.display = '';
         error.style.display = 'none';
         container.style.display = 'none';
-        _selectedPath = null;
+        _selectedPath = _selectionMode === 'directory' ? normalizeClientPath(path) : null;
         updateSelectButton();
 
         fetch('/api/file-browse/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
@@ -51,6 +122,11 @@
             .then(function (data) {
                 loading.style.display = 'none';
                 container.style.display = '';
+                _currentPath = data.currentPath;
+                if (_selectionMode === 'directory') {
+                    _selectedPath = data.currentPath;
+                    updateSelectButton();
+                }
                 renderBreadcrumb(data.currentPath);
                 renderListing(data);
             })
@@ -166,6 +242,11 @@
         var btn = document.getElementById('fileBrowseSelectBtn');
         var pathDisplay = document.getElementById('fileBrowseSelectedPath');
         btn.disabled = !_selectedPath;
+        if (_selectionMode === 'directory' && _selectedPath) {
+            pathDisplay.textContent = 'Selected folder: ' + _selectedPath;
+            return;
+        }
+
         pathDisplay.textContent = _selectedPath ? _selectedPath : '';
     }
 

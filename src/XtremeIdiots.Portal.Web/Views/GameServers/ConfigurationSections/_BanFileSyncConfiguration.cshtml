@@ -3,7 +3,7 @@
 
 <div class="ibox">
     <div class="ibox-title">
-        Ban File Sync Configuration
+        <h5>Ban File Sync Configuration</h5>
     </div>
     <div class="ibox-content">
         <div class="alert alert-info small mb-3" role="alert">
@@ -14,14 +14,24 @@
 
         <div class="mb-3">
             <label asp-for="GameServer.BanFileRootPath" class="form-label"></label>
-            <input asp-for="GameServer.BanFileRootPath" class="form-control" type="text" maxlength="255"
-                   placeholder="/" />
+            <div class="input-group">
+                <input asp-for="GameServer.BanFileRootPath" class="form-control" type="text" maxlength="255"
+                       placeholder="/" />
+                @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
+                {
+                    <button class="btn btn-outline-secondary" type="button"
+                            onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'GameServer_BanFileRootPath', { selectionMode: 'directory', initialPath: document.getElementById('GameServer_BanFileRootPath').value || '/' })">
+                        <i class="fa-solid fa-fw fa-folder-open"></i>Browse
+                    </button>
+                }
+            </div>
             <span asp-validation-for="GameServer.BanFileRootPath" class="text-danger"></span>
             <small class="form-text text-muted">
                 File transport root path beneath which the ban file lives. The agent resolves the full path
                 from this root plus per-game-type rules and the currently-running mod
                 (e.g. <code>{root}/mods/&lt;mod&gt;/ban.txt</code> for CoD4/5,
-                <code>{root}/ban.txt</code> for CoD2). Defaults to <code>/</code>.
+                <code>{root}/ban.txt</code> for CoD2). Defaults to <code>/</code>. Use Browse to pick the
+                remote folder via file transport.
             </small>
         </div>
 
