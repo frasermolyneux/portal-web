@@ -221,7 +221,7 @@ public class GameServersControllerTests
             BanFileRootPath = existingServer.BanFileRootPath,
             ServerListEnabled = existingServer.ServerListEnabled,
             ServerListPosition = existingServer.ServerListPosition
-        }))!;
+        }));
 
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
@@ -273,7 +273,7 @@ public class GameServersControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
-        Assert.True(capturedUpdate!.FtpEnabled);
+        Assert.True(capturedUpdate.FtpEnabled);
 
         var optionalTransportType = capturedUpdate.GetType().GetProperty("FileTransportType", BindingFlags.Public | BindingFlags.Instance);
         if (optionalTransportType is not null)
