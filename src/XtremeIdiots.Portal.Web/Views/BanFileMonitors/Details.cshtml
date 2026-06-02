@@ -80,156 +80,166 @@ def = 0)
                                     @if (!string.IsNullOrWhiteSpace(Model.LegacyRemoteFilePath))
                                     {
                                         <br />
-                                        <small class="text-muted">Legacy lane: <code>@Model.LegacyRemoteFilePath</code></small>
-                                    }
-                                </dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
-                                <dt class="detail-label">Resolved for mod</dt>
-                                <dd class="detail-value">
-                                    @if (string.IsNullOrWhiteSpace(Model.ResolvedForMod))
-                                    {
-                                        <span class="text-muted">n/a</span>
-                                    }
-                                    else
-                                    {
-                                        <code>@Model.ResolvedForMod</code>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(liveStatus?.Mod))
-                                    {
-                                        <span class="text-muted">— server is running <code>@liveStatus.Mod</code></span>
-                                    }
-                                </dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
-                                <dt class="detail-label">Remote file size</dt>
-                                <dd class="detail-value" data-testid="ban-file-monitor-details-filesize">
-                                    @(Model.RemoteFileSize?.ToString("N0") ?? "—") bytes
-                                </dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
-                                <dt class="detail-label">Last check</dt>
-                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastcheck">
-                                    @(Model.LastCheckUtc?.ToString("u") ?? "never")
-                                    @if (!string.IsNullOrWhiteSpace(Model.LastCheckResult))
-                                    {
-                                        <br /><small>Result: @Model.LastCheckResult</small>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(Model.LastCheckErrorMessage))
-                                    {
-                                        <br /><small class="text-danger">@Model.LastCheckErrorMessage</small>
-                                    }
-                                    @if (Model.ConsecutiveFailureCount > 0)
-                                    {
-                                        <br /><small class="text-danger">@Model.ConsecutiveFailureCount consecutive
-                                        failure(s)</small>
-                                    }
-                                    @if (Model.LegacyLastCheckUtc.HasValue)
-                                    {
-                                        <br /><small class="text-muted">Legacy: @Model.LegacyLastCheckUtc.Value.ToString("u")</small>
-                                    }
-                                </dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
-                                <dt class="detail-label">Last import</dt>
-                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastimport">
-                                    @(Model.LastImportUtc?.ToString("u") ?? "never")
-                                    @if (Model.LastImportBanCount.HasValue && Model.LastImportBanCount.Value > 0)
-                                    {
-                                        <br /><small>@Model.LastImportBanCount ban(s) imported</small>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(Model.LastImportSampleNames))
-                                    {
-                                        <br /><small class="text-muted">Sample: @Model.LastImportSampleNames</small>
-                                    }
-                                </dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
-                                <dt class="detail-label">Last push</dt>
-                                <dd class="detail-value" data-testid="ban-file-monitor-details-lastpush">
-                                    @(Model.LastPushUtc?.ToString("u") ?? "never")
-                                    @if (Model.LastPushedSize.HasValue)
-                                    {
-                                        <br /><small>@Model.LastPushedSize.Value.ToString("N0") bytes</small>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(Model.LastPushedETag))
-                                    {
-                                        <br /><small class="text-muted">ETag: @Model.LastPushedETag</small>
-                                    }
-                                    @if (Model.LegacyLastPushUtc.HasValue)
-                                    {
-                                        <br /><small class="text-muted">Legacy: @Model.LegacyLastPushUtc.Value.ToString("u")</small>
-                                        @if (Model.LegacyLastPushedSize.HasValue)
-                                        {
-                                            <br /><small class="text-muted">Legacy size: @Model.LegacyLastPushedSize.Value.ToString("N0") bytes</small>
+                                        <small class="text-muted">Legacy lane:
+                                            <code>@Model.LegacyRemoteFilePath</code></small>
                                         }
-                                    }
-                                </dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
-                                <dt class="detail-label">Last central blob seen</dt>
-                                <dd class="detail-value">
-                                    @(Model.LastCentralBlobUtc?.ToString("u") ?? "never")
-                                    @if (!string.IsNullOrWhiteSpace(Model.LastCentralBlobETag))
-                                    {
-                                        <br /><small class="text-muted">ETag: @Model.LastCentralBlobETag</small>
-                                    }
-                                    @if (Model.LegacyLastCentralBlobUtc.HasValue)
-                                    {
-                                        <br /><small class="text-muted">Legacy: @Model.LegacyLastCentralBlobUtc.Value.ToString("u")</small>
-                                        @if (!string.IsNullOrWhiteSpace(Model.LegacyLastCentralBlobETag))
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">Resolved for mod</dt>
+                                    <dd class="detail-value">
+                                        @if (string.IsNullOrWhiteSpace(Model.ResolvedForMod))
                                         {
-                                            <br /><small class="text-muted">Legacy ETag: @Model.LegacyLastCentralBlobETag</small>
+                                            <span class="text-muted">n/a</span>
                                         }
-                                    }
-                                </dd>
-                            </div>
-                            <div class="detail-field col-12">
-                                <dt class="detail-label">Per-tag counts</dt>
-                                <dd class="detail-value">
-                                    @if (Model.RemoteTotalLineCount.HasValue)
-                                    {
-                                        <span><strong>Total:</strong>
-                                            @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
-                                            <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount
-                                                                                                                                                                                        ?? 0)</span>
-                                                <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ??
-                                                                                                                                                                                                    0)</span>
-                                                    <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong>
-                                                        @(Model.RemoteExternalCount ?? 0)</span>
-                                                    }
-                                                    @if (Model.LegacyRemoteTotalLineCount.HasValue)
-                                                    {
-                                                        <br /><span class="text-muted"><strong>Legacy Total:</strong> @Model.LegacyRemoteTotalLineCount.Value.ToString("N0")</span>
-                                                        <span class="ms-3 text-muted"><strong>Legacy Untagged:</strong> @(Model.LegacyRemoteUntaggedCount ?? 0)</span>
-                                                        <span class="ms-3 text-muted"><strong>Legacy Portal:</strong> @(Model.LegacyRemoteBanSyncCount ?? 0)</span>
-                                                        <span class="ms-3 text-muted"><strong>Legacy External:</strong> @(Model.LegacyRemoteExternalCount ?? 0)</span>
-                                                    }
-                                    else
-                                                    {
-                                                        <span class="text-muted">not yet counted</span>
-                                                    }
-                                                </dd>
-                                            </div>
-                                        </dl>
-                                    </div>
-                                    <div class="ibox-footer">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            @if (Model.GameServer is not null)
+                                        else
+                                        {
+                                            <code>@Model.ResolvedForMod</code>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(liveStatus?.Mod))
+                                        {
+                                            <span class="text-muted">— server is running <code>@liveStatus.Mod</code></span>
+                                        }
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">Remote file size</dt>
+                                    <dd class="detail-value" data-testid="ban-file-monitor-details-filesize">
+                                        @(Model.RemoteFileSize?.ToString("N0") ?? "—") bytes
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">Last check</dt>
+                                    <dd class="detail-value" data-testid="ban-file-monitor-details-lastcheck">
+                                        @(Model.LastCheckUtc?.ToString("u") ?? "never")
+                                        @if (!string.IsNullOrWhiteSpace(Model.LastCheckResult))
+                                        {
+                                            <br /><small>Result: @Model.LastCheckResult</small>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(Model.LastCheckErrorMessage))
+                                        {
+                                            <br /><small class="text-danger">@Model.LastCheckErrorMessage</small>
+                                        }
+                                        @if (Model.ConsecutiveFailureCount > 0)
+                                        {
+                                            <br /><small class="text-danger">@Model.ConsecutiveFailureCount consecutive
+                                            failure(s)</small>
+                                        }
+                                        @if (Model.LegacyLastCheckUtc.HasValue)
+                                        {
+                                            <br /><small class="text-muted">Legacy:
+                                            @Model.LegacyLastCheckUtc.Value.ToString("u")</small>
+                                        }
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">Last import</dt>
+                                    <dd class="detail-value" data-testid="ban-file-monitor-details-lastimport">
+                                        @(Model.LastImportUtc?.ToString("u") ?? "never")
+                                        @if (Model.LastImportBanCount.HasValue && Model.LastImportBanCount.Value > 0)
+                                        {
+                                            <br /><small>@Model.LastImportBanCount ban(s) imported</small>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(Model.LastImportSampleNames))
+                                        {
+                                            <br /><small class="text-muted">Sample: @Model.LastImportSampleNames</small>
+                                        }
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">Last push</dt>
+                                    <dd class="detail-value" data-testid="ban-file-monitor-details-lastpush">
+                                        @(Model.LastPushUtc?.ToString("u") ?? "never")
+                                        @if (Model.LastPushedSize.HasValue)
+                                        {
+                                            <br /><small>@Model.LastPushedSize.Value.ToString("N0") bytes</small>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(Model.LastPushedETag))
+                                        {
+                                            <br /><small class="text-muted">ETag: @Model.LastPushedETag</small>
+                                        }
+                                        @if (Model.LegacyLastPushUtc.HasValue)
+                                        {
+                                            <br /><small class="text-muted">Legacy:
+                                            @Model.LegacyLastPushUtc.Value.ToString("u")</small>
+                                            @if (Model.LegacyLastPushedSize.HasValue)
                                             {
-                                                <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit"
-                                                   asp-route-id="@Model.GameServerId">
-                                                    <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Edit Game Server
-                                                </a>
+                                                <br /><small class="text-muted">Legacy size:
+                                                @Model.LegacyLastPushedSize.Value.ToString("N0") bytes</small>
                                             }
-                                            <a class="btn btn-outline-secondary" asp-action="Index"
-                                               data-testid="ban-file-monitor-details-back">
-                                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to dashboard
-                                            </a>
+                                        }
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-sm-6">
+                                    <dt class="detail-label">Last central blob seen</dt>
+                                    <dd class="detail-value">
+                                        @(Model.LastCentralBlobUtc?.ToString("u") ?? "never")
+                                        @if (!string.IsNullOrWhiteSpace(Model.LastCentralBlobETag))
+                                        {
+                                            <br /><small class="text-muted">ETag: @Model.LastCentralBlobETag</small>
+                                        }
+                                        @if (Model.LegacyLastCentralBlobUtc.HasValue)
+                                        {
+                                            <br /><small class="text-muted">Legacy:
+                                            @Model.LegacyLastCentralBlobUtc.Value.ToString("u")</small>
+                                            @if (!string.IsNullOrWhiteSpace(Model.LegacyLastCentralBlobETag))
+                                            {
+                                                <br /><small class="text-muted">Legacy ETag:
+                                                @Model.LegacyLastCentralBlobETag</small>
+                                            }
+                                        }
+                                    </dd>
+                                </div>
+                                <div class="detail-field col-12">
+                                    <dt class="detail-label">Per-tag counts</dt>
+                                    <dd class="detail-value">
+                                        @if (Model.RemoteTotalLineCount.HasValue)
+                                        {
+                                            <span><strong>Total:</strong>
+                                                @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
+                                                <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount
+                                                                                                                                                                                                                                            ?? 0)</span>
+                                                    <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ??
+                                                                                                                                                                                                                                                            0)</span>
+                                                        <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong>
+                                                            @(Model.RemoteExternalCount ?? 0)</span>
+                                                        }
+                                                        @if (Model.LegacyRemoteTotalLineCount.HasValue)
+                                                        {
+                                                            <br /><span class="text-muted"><strong>Legacy Total:</strong>
+                                                            @Model.LegacyRemoteTotalLineCount.Value.ToString("N0")</span>
+                                                            <span class="ms-3 text-muted"><strong>Legacy Untagged:</strong>
+                                                                @(Model.LegacyRemoteUntaggedCount ?? 0)</span>
+                                                                <span class="ms-3 text-muted"><strong>Legacy Portal:</strong>
+                                                                    @(Model.LegacyRemoteBanSyncCount ?? 0)</span>
+                                                                    <span class="ms-3 text-muted"><strong>Legacy External:</strong>
+                                                                        @(Model.LegacyRemoteExternalCount ?? 0)</span>
+                                                                    }
+                                    else
+                                                                    {
+                                                                        <span class="text-muted">not yet counted</span>
+                                                                    }
+                                                                </dd>
+                                                            </div>
+                                                        </dl>
+                                                    </div>
+                                                    <div class="ibox-footer">
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            @if (Model.GameServer is not null)
+                                                            {
+                                                                <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Edit"
+                                                                   asp-route-id="@Model.GameServerId">
+                                                                    <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Edit Game Server
+                                                                </a>
+                                                            }
+                                                            <a class="btn btn-outline-secondary" asp-action="Index"
+                                                               data-testid="ban-file-monitor-details-back">
+                                                                <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to dashboard
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
