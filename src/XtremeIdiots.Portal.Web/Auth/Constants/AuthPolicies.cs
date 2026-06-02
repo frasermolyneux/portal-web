@@ -44,6 +44,9 @@ public static class AuthPolicies
     public const string GameServers_Admin_Rcon_Map = "GameServers.Admin.Rcon.Map";
     public const string GameServers_Admin_Rcon_Say = "GameServers.Admin.Rcon.Say";
     public const string GameServers_Admin_Rcon_Restart = "GameServers.Admin.Rcon.Restart";
+    public const string GameServers_Admin_Rcon_Screenshot = "GameServers.Admin.Rcon.Screenshot";
+    public const string GameServers_Admin_Screenshots_Read = "GameServers.Admin.Screenshots.Read";
+    public const string GameServers_Admin_Screenshots_Delete = "GameServers.Admin.Screenshots.Delete";
 
     // Chat Log
     public const string ChatLog_Read = "ChatLog.Read";

@@ -37,6 +37,9 @@ public class GameServersAdminRconBan : IAuthorizationRequirement { }
 public class GameServersAdminRconMap : IAuthorizationRequirement { }
 public class GameServersAdminRconSay : IAuthorizationRequirement { }
 public class GameServersAdminRconRestart : IAuthorizationRequirement { }
+public class GameServersAdminRconScreenshot : IAuthorizationRequirement { }
+public class GameServersAdminScreenshotsRead : IAuthorizationRequirement { }
+public class GameServersAdminScreenshotsDelete : IAuthorizationRequirement { }
 
 // Chat Log
 public class ChatLogRead : IAuthorizationRequirement { }

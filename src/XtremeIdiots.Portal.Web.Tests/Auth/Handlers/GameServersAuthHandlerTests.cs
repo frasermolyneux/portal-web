@@ -37,6 +37,45 @@ public class GameServersAuthHandlerTests
         Assert.True(context.HasSucceeded);
     }
 
+    [Fact]
+    public async Task HandleAsync_ScreenshotsRead_SucceedsForMatchingGameScopedClaim()
+    {
+        var requirement = new GameServersAdminScreenshotsRead();
+        var user = CreateUser(new Claim(AuthPolicies.GameServers_Admin_Screenshots_Read, GameType.CallOfDuty4.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4);
+
+        var sut = new GameServersAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ScreenshotsRead_DoesNotSucceedForDifferentGameScopedClaim()
+    {
+        var requirement = new GameServersAdminScreenshotsRead();
+        var user = CreateUser(new Claim(AuthPolicies.GameServers_Admin_Screenshots_Read, GameType.Insurgency.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4);
+
+        var sut = new GameServersAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task HandleAsync_RconScreenshot_SucceedsForMatchingGameScopedClaim()
+    {
+        var requirement = new GameServersAdminRconScreenshot();
+        var user = CreateUser(new Claim(AuthPolicies.GameServers_Admin_Rcon_Screenshot, GameType.CallOfDuty4.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4);
+
+        var sut = new GameServersAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
     private static ClaimsPrincipal CreateUser(params Claim[] claims)
     {
         var identity = new ClaimsIdentity(claims, authenticationType: "TestAuthType");

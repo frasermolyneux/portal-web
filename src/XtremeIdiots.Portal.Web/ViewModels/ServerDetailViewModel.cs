@@ -20,11 +20,14 @@ public class ServerDetailViewModel
     public bool CanViewMapRotation { get; set; }
     public bool CanViewStatus { get; set; }
     public bool CanEditServer { get; set; }
+    public bool CanViewScreenshots { get; set; }
 
     // Fine-grained RCON action flags — determines which buttons are rendered within the RCON tab
     public bool CanSay { get; set; }
     public bool CanChangeMap { get; set; }
     public bool CanRestartServer { get; set; }
+    public bool CanTakeScreenshot { get; set; }
+    public bool CanDeleteScreenshots { get; set; }
 
     // Overview tab data
     public AgentServerStatus? AgentStatus { get; set; }

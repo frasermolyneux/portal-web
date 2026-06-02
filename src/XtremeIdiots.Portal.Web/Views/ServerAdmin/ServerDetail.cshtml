@@ -74,6 +74,15 @@
                 </button>
             </li>
         }
+        @if (Model.CanViewScreenshots)
+        {
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="screenshots-tab" data-bs-toggle="tab" data-bs-target="#screenshots"
+                        type="button" role="tab" aria-controls="screenshots" aria-selected="false">
+                    <i class="fa-solid fa-fw fa-camera"></i> Screenshots
+                </button>
+            </li>
+        }
     </ul>
 
     <div class="tab-content pt-3" id="serverDetailTabContent">
@@ -458,8 +467,51 @@
             </div>
         }
 
+        @if (Model.CanViewScreenshots)
+        {
+            <div class="tab-pane fade" id="screenshots" role="tabpanel" aria-labelledby="screenshots-tab">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Server Screenshots</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="table-responsive">
+                            <table id="sd-screenshotsTable" class="table table-striped table-hover w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Captured</th>
+                                        <th scope="col">Player</th>
+                                        <th scope="col" class="text-end">Size</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
     </div>
 </div>
+
+@if (Model.CanViewScreenshots)
+{
+    <div class="modal fade" id="sd-screenshotPreviewModal" tabindex="-1" aria-labelledby="sd-screenshotPreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sd-screenshotPreviewModalLabel">Screenshot Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="sd-screenshotPreviewImage" src="" alt="Server screenshot" class="img-fluid" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @section Scripts {
 
@@ -475,6 +527,7 @@
     <script src="~/js/rcon-players.js"></script>
     <script src="~/js/rcon-chat-log.js"></script>
     <script src="~/js/rcon-map-control.js"></script>
+    <script src="~/js/server-screenshots.js"></script>
 
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
 
@@ -486,7 +539,7 @@
         var serverId = '@Model.GameServer.GameServerId';
         var currentMap = '@(liveStatus?.Map ?? "")';
         var refreshEnabled = true;
-        var modulesStarted = { players: false, chatlog: false, mapcontrol: false };
+        var modulesStarted = { players: false, chatlog: false, mapcontrol: false, screenshots: false };
 
         // Initialize modules (players start immediately since they're on the overview tab)
         @if (Model.CanViewRcon)
@@ -500,7 +553,12 @@
                 playerCountSelector: '#sd-playerCount',
                 onUpdated: highlightCurrentMap
             });
-            RconPlayers.init({ serverId: serverId, antiForgeryToken: antiForgeryToken, tableSelector: '#sd-playersTable' });
+            RconPlayers.init({
+                serverId: serverId,
+                antiForgeryToken: antiForgeryToken,
+                tableSelector: '#sd-playersTable',
+                canTakeScreenshot: @Model.CanTakeScreenshot.ToString().ToLower()
+            });
             RconMapControl.init({
                 serverId: serverId,
                 antiForgeryToken: antiForgeryToken,
@@ -520,6 +578,19 @@
             RconPlayers.start(10000);
             RconServerStatus.start(10000);
             modulesStarted.players = true;
+            </text>
+        }
+        @if (Model.CanViewScreenshots)
+        {
+            <text>
+            ServerScreenshots.init({
+                serverId: serverId,
+                antiForgeryToken: antiForgeryToken,
+                tableSelector: '#sd-screenshotsTable',
+                previewImageSelector: '#sd-screenshotPreviewImage',
+                previewModalSelector: '#sd-screenshotPreviewModal',
+                canDelete: @Model.CanDeleteScreenshots.ToString().ToLower()
+            });
             </text>
         }
         @if (Model.CanViewChatLog)
@@ -562,6 +633,10 @@
                 setTimeout(function() {
                     highlightCurrentMap();
                 }, 1500);
+            }
+            if (target === '#screenshots' && !modulesStarted.screenshots) {
+                ServerScreenshots.start();
+                modulesStarted.screenshots = true;
             }
         });
 
@@ -607,6 +682,7 @@
             if (typeof RconPlayers !== 'undefined') RconPlayers.dispose();
             if (typeof RconChatLog !== 'undefined') RconChatLog.dispose();
             if (typeof RconMapControl !== 'undefined') RconMapControl.dispose();
+            if (typeof ServerScreenshots !== 'undefined') ServerScreenshots.dispose();
         });
 
         // Google Charts: Player Count

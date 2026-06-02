@@ -44,6 +44,9 @@ public static class PolicyExtensions
         options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Map, policy => policy.Requirements.Add(new GameServersAdminRconMap()));
         options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Say, policy => policy.Requirements.Add(new GameServersAdminRconSay()));
         options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Restart, policy => policy.Requirements.Add(new GameServersAdminRconRestart()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Rcon_Screenshot, policy => policy.Requirements.Add(new GameServersAdminRconScreenshot()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Screenshots_Read, policy => policy.Requirements.Add(new GameServersAdminScreenshotsRead()));
+        options.AddPolicy(AuthPolicies.GameServers_Admin_Screenshots_Delete, policy => policy.Requirements.Add(new GameServersAdminScreenshotsDelete()));
 
         // Chat Log
         options.AddPolicy(AuthPolicies.ChatLog_Read, policy => policy.Requirements.Add(new ChatLogRead()));

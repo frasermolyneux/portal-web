@@ -80,6 +80,15 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 case GameServersAdminRconRestart:
                     HandleAdminRconRestart(context, requirement);
                     break;
+                case GameServersAdminRconScreenshot:
+                    HandleAdminRconScreenshot(context, requirement);
+                    break;
+                case GameServersAdminScreenshotsRead:
+                    HandleAdminScreenshotsRead(context, requirement);
+                    break;
+                case GameServersAdminScreenshotsDelete:
+                    HandleAdminScreenshotsDelete(context, requirement);
+                    break;
                 default:
                     break;
             }
@@ -262,6 +271,24 @@ public class GameServersAuthHandler : IAuthorizationHandler
     {
         BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Restart");
+    }
+
+    private static void HandleAdminRconScreenshot(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Screenshot");
+    }
+
+    private static void HandleAdminScreenshotsRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Screenshots.Read");
+    }
+
+    private static void HandleAdminScreenshotsDelete(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Screenshots.Delete");
     }
 
     #endregion

@@ -14,6 +14,7 @@ var RconPlayers = (function () {
     var _tableSelector = null;
     var _refreshBadgeId = null;
     var _playerCountSelector = null;
+    var _canTakeScreenshot = false;
 
     function init(options) {
         _serverId = options.serverId;
@@ -21,6 +22,7 @@ var RconPlayers = (function () {
         _tableSelector = options.tableSelector || '#dataTable';
         _refreshBadgeId = options.refreshBadgeId || 'playersTableRefresh';
         _playerCountSelector = options.playerCountSelector || '#playerCount';
+        _canTakeScreenshot = options.canTakeScreenshot === true;
     }
 
     function initTable() {
@@ -90,7 +92,12 @@ var RconPlayers = (function () {
                     render: function (data, type, row) {
                         if (row.num == null) return '';
                         var s = row.num, g = row.guid || '', n = escapeHtml(row.name || 'Unknown');
+                        var screenshotButton = _canTakeScreenshot
+                            ? '<button class="btn btn-sm btn-outline-primary screenshot-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-camera"></i> Screenshot</button> '
+                            : '';
+
                         return '<div class="btn-group btn-group-sm" role="group">' +
+                            screenshotButton +
                             '<button class="btn btn-sm btn-warning kick-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-user-xmark"></i> Kick</button> ' +
                             '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-clock"></i> TempBan</button> ' +
                             '<button class="btn btn-sm btn-danger ban-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-ban"></i> Ban</button>' +
@@ -101,6 +108,7 @@ var RconPlayers = (function () {
         });
 
         // Delegate action button clicks
+        $(_tableSelector).on('click', '.screenshot-player', function () { _handleScreenshotAction($(this)); });
         $(_tableSelector).on('click', '.kick-player', function () { _handlePlayerAction('KickRconPlayer', $(this), 'kick'); });
         $(_tableSelector).on('click', '.tempban-player', function () { _handlePlayerAction('TempBanRconPlayer', $(this), 'temporarily ban'); });
         $(_tableSelector).on('click', '.ban-player', function () { _handlePlayerAction('BanRconPlayer', $(this), 'permanently ban'); });
@@ -138,6 +146,37 @@ var RconPlayers = (function () {
         });
     }
 
+    function _handleScreenshotAction($btn) {
+        var playerGuid = $btn.data('guid') || '';
+        var playerName = $btn.data('name') || 'this player';
+
+        if (!playerGuid) {
+            RconUtils.showToast('error', 'Unable to request screenshot for this player');
+            return;
+        }
+
+        $.ajax({
+            type: 'POST',
+            url: '/ServerAdmin/TakeRconScreenshot/' + _serverId,
+            data: {
+                playerIdentifier: playerGuid,
+                playerName: playerName,
+                __RequestVerificationToken: _antiForgeryToken
+            },
+            success: function (result) {
+                if (result.success) {
+                    RconUtils.showToast('success', result.message || 'Screenshot requested');
+                    $(document).trigger('screenshots:refresh');
+                } else {
+                    RconUtils.showToast('error', result.message || 'Screenshot request failed');
+                }
+            },
+            error: function (xhr) {
+                RconUtils.showToast('error', 'Error: ' + (xhr.responseText || 'Unknown error'));
+            }
+        });
+    }
+
     function reload() {
         if (_table) _table.ajax.reload(null, false);
     }
@@ -164,6 +203,7 @@ var RconPlayers = (function () {
     function dispose() {
         stop();
         if (_tableSelector) {
+            $(_tableSelector).off('click', '.screenshot-player');
             $(_tableSelector).off('click', '.kick-player');
             $(_tableSelector).off('click', '.tempban-player');
             $(_tableSelector).off('click', '.ban-player');
