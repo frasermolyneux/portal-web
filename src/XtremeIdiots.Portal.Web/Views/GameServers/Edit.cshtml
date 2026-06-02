@@ -225,6 +225,7 @@
 
         var fileTransferTab = document.getElementById('filetransfer-tab');
         var portInput = document.getElementById('FtpConfigPort');
+        var sftpHostKeyGroup = document.getElementById('sftp-host-key-fingerprint-group');
         var defaultPortValue = document.getElementById('file-transport-default-port');
         var transportLabelNodes = document.querySelectorAll('.js-file-transport-label');
 
@@ -245,6 +246,10 @@
         if (title) {
         title.textContent = 'File Transfer Configuration';
         }
+        }
+
+        if (sftpHostKeyGroup) {
+        sftpHostKeyGroup.classList.toggle('d-none', currentMeta.label !== 'SFTP');
         }
 
         if (portInput) {

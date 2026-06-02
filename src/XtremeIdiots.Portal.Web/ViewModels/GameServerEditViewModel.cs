@@ -32,6 +32,9 @@ public class GameServerEditViewModel : IValidatableObject
     [DisplayName("File Transport Password")]
     public string? FileTransportConfigPassword { get; set; }
 
+    [DisplayName("SFTP Host Key Fingerprint")]
+    public string? FileTransportConfigHostKeyFingerprint { get; set; }
+
     // RCON configuration (parsed from "rcon" config namespace)
 
     [DisplayName("RCON Password")]
@@ -133,6 +136,7 @@ public class GameServerEditViewModel : IValidatableObject
     public int FtpConfigPort { get => FileTransportConfigPort; set => FileTransportConfigPort = value; }
     public string? FtpConfigUsername { get => FileTransportConfigUsername; set => FileTransportConfigUsername = value; }
     public string? FtpConfigPassword { get => FileTransportConfigPassword; set => FileTransportConfigPassword = value; }
+    public string? FtpConfigHostKeyFingerprint { get => FileTransportConfigHostKeyFingerprint; set => FileTransportConfigHostKeyFingerprint = value; }
 
     public static string GetFileTransportNamespace(RepoFileTransportType fileTransportType)
     {

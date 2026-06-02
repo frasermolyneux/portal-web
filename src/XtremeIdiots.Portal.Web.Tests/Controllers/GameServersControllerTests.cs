@@ -227,6 +227,19 @@ public class GameServersControllerTests
             .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
 
+        var existingSftpConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "sftp",
+            Configuration = "{\"hostname\":\"sftp.example.com\",\"port\":22,\"username\":\"test-user\",\"password\":\"test-pass\"}",
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([existingSftpConfig]))));
+
         EditGameServerDto? capturedUpdate = null;
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
@@ -326,7 +339,8 @@ public class GameServersControllerTests
             FileTransportConfigHostname = "sftp.example.com",
             FileTransportConfigPort = 22,
             FileTransportConfigUsername = "test-user",
-            FileTransportConfigPassword = "test-pass"
+            FileTransportConfigPassword = "test-pass",
+            FileTransportConfigHostKeyFingerprint = "40:44:78:e0:7a:e0:c2:e7:fe:37:14:9e:4f:09:e0:07"
         };
 
         var sut = CreateSut();

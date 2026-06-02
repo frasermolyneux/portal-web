@@ -52,5 +52,12 @@
                         <small class="form-text text-muted">Password for <span
                             class="js-file-transport-label">@Model.FileTransportLabel</span> authentication.</small>
                         </div>
+
+                    <div class="mb-3 @(Model.GameServer.FileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? "" : "d-none")" id="sftp-host-key-fingerprint-group">
+                        <label asp-for="FtpConfigHostKeyFingerprint" class="form-label"></label>
+                        <input asp-for="FtpConfigHostKeyFingerprint" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="FtpConfigHostKeyFingerprint" class="text-danger"></span>
+                        <small class="form-text text-muted">Hex fingerprint of the SFTP server host key (for example <code>40:44:78:e0:7a:e0:c2:e7:fe:37:14:9e:4f:09:e0:07</code>).</small>
+                    </div>
                     </div>
                 </div>

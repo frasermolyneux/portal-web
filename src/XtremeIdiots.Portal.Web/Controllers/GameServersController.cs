@@ -442,6 +442,17 @@ public class GameServersController(
                 ? model.GameServer.FileTransportType
                 : existingFileTransportType;
 
+            if (canEditFileTransport.Succeeded
+                && selectedFileTransportEnabled
+                && selectedFileTransportType == FileTransportType.Sftp
+                && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint))
+            {
+                ModelState.AddModelError(nameof(model.FtpConfigHostKeyFingerprint), "SFTP host key fingerprint is required when SFTP is enabled.");
+                AddGameTypeViewData(model.GameServer.GameType);
+                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                return View(model);
+            }
+
             editGameServerDto.SetFileTransportProperties(selectedFileTransportEnabled, selectedFileTransportType);
             editGameServerDto.FtpEnabled = selectedFileTransportEnabled && selectedFileTransportType == FileTransportType.Ftp;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
@@ -628,6 +639,7 @@ public class GameServersController(
                     editModel.FileTransportConfigPort = GetIntProperty(root, "port", GameServerEditViewModel.GetDefaultPort(editModel.GameServer.FileTransportType));
                     editModel.FileTransportConfigUsername = GetStringProperty(root, "username");
                     editModel.FileTransportConfigPassword = GetStringProperty(root, "password");
+                    editModel.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
                     break;
                 case "rcon":
                     editModel.RconConfigPassword = GetStringProperty(root, "password");
@@ -796,9 +808,12 @@ public class GameServersController(
     {
         var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
         var needsFileTransportPassword = canEditFileTransport && string.IsNullOrEmpty(model.FileTransportConfigPassword);
+        var needsFileTransportHostKeyFingerprint = canEditFileTransport
+            && string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint);
         var needsRconPassword = canEditRcon && string.IsNullOrEmpty(model.RconConfigPassword);
 
-        if (!needsFileTransportPassword && !needsRconPassword)
+        if (!needsFileTransportPassword && !needsFileTransportHostKeyFingerprint && !needsRconPassword)
             return true;
 
         try
@@ -814,10 +829,21 @@ public class GameServersController(
                 if (string.IsNullOrWhiteSpace(config.Configuration))
                     continue;
 
-                if (needsFileTransportPassword && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
+                if ((needsFileTransportPassword || needsFileTransportHostKeyFingerprint) && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
                 {
                     using var doc = JsonDocument.Parse(config.Configuration);
-                    model.FileTransportConfigPassword = GetStringProperty(doc.RootElement, "password");
+                    var root = doc.RootElement;
+
+                    if (needsFileTransportPassword)
+                    {
+                        model.FileTransportConfigPassword = GetStringProperty(root, "password");
+                    }
+
+                    if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase)
+                        && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint))
+                    {
+                        model.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
+                    }
                 }
                 else if (needsRconPassword && config.Namespace == "rcon")
                 {
@@ -849,13 +875,20 @@ public class GameServersController(
         // Save file transport config
         if (canEditFileTransport)
         {
-            await UpsertConfigSafeAsync(gameServerId, activeTransportNamespace, JsonSerializer.Serialize(new
+            var fileTransportConfig = new Dictionary<string, object?>
             {
-                hostname = model.FileTransportConfigHostname,
-                port = model.FileTransportConfigPort,
-                username = model.FileTransportConfigUsername,
-                password = model.FileTransportConfigPassword
-            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+                ["hostname"] = model.FileTransportConfigHostname,
+                ["port"] = model.FileTransportConfigPort,
+                ["username"] = model.FileTransportConfigUsername,
+                ["password"] = model.FileTransportConfigPassword
+            };
+
+            if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase))
+            {
+                fileTransportConfig["hostKeyFingerprint"] = model.FileTransportConfigHostKeyFingerprint;
+            }
+
+            await UpsertConfigSafeAsync(gameServerId, activeTransportNamespace, JsonSerializer.Serialize(fileTransportConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 
         // Save RCON config
