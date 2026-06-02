@@ -430,8 +430,20 @@ public class GameServersController(
             }
 
             editGameServerDto.AgentEnabled = model.GameServer.AgentEnabled;
-            editGameServerDto.SetFileTransportProperties(model.GameServer.FileTransportEnabled, model.GameServer.FileTransportType);
-            editGameServerDto.FtpEnabled = model.GameServer.FileTransportEnabled && model.GameServer.FileTransportType == FileTransportType.Ftp;
+
+            var existingFileTransportEnabled = gameServerData.GetFileTransportEnabled(gameServerData.FtpEnabled);
+            var existingFileTransportType = gameServerData.GetFileTransportType(existingFileTransportEnabled, gameServerData.FtpEnabled);
+
+            var selectedFileTransportEnabled = canEditFileTransport.Succeeded
+                ? model.GameServer.FileTransportEnabled
+                : existingFileTransportEnabled;
+
+            var selectedFileTransportType = canEditFileTransport.Succeeded
+                ? model.GameServer.FileTransportType
+                : existingFileTransportType;
+
+            editGameServerDto.SetFileTransportProperties(selectedFileTransportEnabled, selectedFileTransportType);
+            editGameServerDto.FtpEnabled = selectedFileTransportEnabled && selectedFileTransportType == FileTransportType.Ftp;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
             editGameServerDto.BanFileSyncEnabled = model.GameServer.BanFileSyncEnabled;
             editGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.GameServer.BanFileRootPath) ? "/" : model.GameServer.BanFileRootPath;
@@ -456,9 +468,8 @@ public class GameServersController(
 
             // Track toggle changes for audit trail
             var serverTitle = model.GameServer.Title ?? "";
-            var existingFileTransportEnabled = gameServerData.GetFileTransportEnabled(gameServerData.FtpEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.AgentEnabled), gameServerData.AgentEnabled, model.GameServer.AgentEnabled);
-            TrackToggleChange(gameServerData.GameServerId, serverTitle, "FileTransportEnabled", existingFileTransportEnabled, model.GameServer.FileTransportEnabled);
+            TrackToggleChange(gameServerData.GameServerId, serverTitle, "FileTransportEnabled", existingFileTransportEnabled, selectedFileTransportEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.RconEnabled), gameServerData.RconEnabled, model.GameServer.RconEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.BanFileSyncEnabled), gameServerData.BanFileSyncEnabled, model.GameServer.BanFileSyncEnabled);
             TrackToggleChange(gameServerData.GameServerId, serverTitle, nameof(GameServerDto.ServerListEnabled), gameServerData.ServerListEnabled, model.GameServer.ServerListEnabled);

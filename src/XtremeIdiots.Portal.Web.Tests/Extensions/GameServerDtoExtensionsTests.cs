@@ -8,24 +8,32 @@ public class GameServerDtoExtensionsTests
 {
     private static GameServerDto CreateGameServerDto(bool agentEnabled = false,
         bool ftpEnabled = false, bool rconEnabled = false, bool banFileSyncEnabled = false, bool serverListEnabled = false,
-        int serverListPosition = 0, string banFileRootPath = "/")
+        int serverListPosition = 0, string banFileRootPath = "/", bool? fileTransportEnabled = null, string? fileTransportType = null)
     {
         // GameServerDto uses internal setters, so we serialize/deserialize to set values
-        var json = System.Text.Json.JsonSerializer.Serialize(new
+        var payload = new Dictionary<string, object?>
         {
-            GameServerId = Guid.NewGuid(),
-            Title = "Test Server",
-            GameType = GameType.CallOfDuty4,
-            Hostname = "127.0.0.1",
-            QueryPort = 28960,
-            AgentEnabled = agentEnabled,
-            FtpEnabled = ftpEnabled,
-            RconEnabled = rconEnabled,
-            BanFileSyncEnabled = banFileSyncEnabled,
-            BanFileRootPath = banFileRootPath,
-            ServerListEnabled = serverListEnabled,
-            ServerListPosition = serverListPosition
-        });
+            ["GameServerId"] = Guid.NewGuid(),
+            ["Title"] = "Test Server",
+            ["GameType"] = GameType.CallOfDuty4,
+            ["Hostname"] = "127.0.0.1",
+            ["QueryPort"] = 28960,
+            ["AgentEnabled"] = agentEnabled,
+            ["FtpEnabled"] = ftpEnabled,
+            ["RconEnabled"] = rconEnabled,
+            ["BanFileSyncEnabled"] = banFileSyncEnabled,
+            ["BanFileRootPath"] = banFileRootPath,
+            ["ServerListEnabled"] = serverListEnabled,
+            ["ServerListPosition"] = serverListPosition
+        };
+
+        if (fileTransportEnabled.HasValue)
+            payload["FileTransportEnabled"] = fileTransportEnabled.Value;
+
+        if (!string.IsNullOrWhiteSpace(fileTransportType))
+            payload["FileTransportType"] = fileTransportType;
+
+        var json = System.Text.Json.JsonSerializer.Serialize(payload);
 
         return Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(json)!;
     }
@@ -69,5 +77,31 @@ public class GameServerDtoExtensionsTests
 
         // Assert
         Assert.Equal(agentEnabled, viewModel.AgentEnabled);
+    }
+
+    [Fact]
+    public void ToViewModel_WhenLegacyFtpEnabledWithoutFileTransportType_InfersFtp()
+    {
+        // Arrange
+        var dto = CreateGameServerDto(ftpEnabled: true);
+
+        // Act
+        var viewModel = dto.ToViewModel();
+
+        // Assert
+        Assert.Equal(XtremeIdiots.Portal.Web.Models.FileTransportType.Ftp, viewModel.FileTransportType);
+    }
+
+    [Fact]
+    public void ToViewModel_WhenFileTransportDisabledAndFtpDisabledWithoutFileTransportType_InfersUnknown()
+    {
+        // Arrange
+        var dto = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false);
+
+        // Act
+        var viewModel = dto.ToViewModel();
+
+        // Assert
+        Assert.Equal(XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown, viewModel.FileTransportType);
     }
 }

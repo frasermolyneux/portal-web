@@ -20,7 +20,20 @@ public static class FileTransportCompatibilityExtensions
             return value.Value;
         }
 
-        return fileTransportEnabled || fallbackFtpEnabled ? FileTransportType.Ftp : FileTransportType.Unknown;
+        // Backward compatibility inference when FileTransportType is missing:
+        // - Legacy records only had FtpEnabled
+        // - Newer records can have FileTransportEnabled=true with FtpEnabled=false, which implies SFTP
+        if (!fileTransportEnabled && !fallbackFtpEnabled)
+        {
+            return FileTransportType.Unknown;
+        }
+
+        if (fallbackFtpEnabled)
+        {
+            return FileTransportType.Ftp;
+        }
+
+        return FileTransportType.Sftp;
     }
 
     public static void SetFileTransportProperties(this object target, bool fileTransportEnabled, FileTransportType fileTransportType)

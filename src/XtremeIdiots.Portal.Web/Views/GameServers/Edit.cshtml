@@ -25,10 +25,10 @@
                         @if (Model.CanEditFileTransport)
                         {
                             <li class="nav-item @(Model.GameServer.FileTransportEnabled ? "" : "d-none")"
-                                role="presentation" id="ftp-tab-item">
-                                <button class="nav-link" id="ftp-tab-btn" data-bs-toggle="tab" data-bs-target="#ftp-tab"
-                                        type="button" role="tab" aria-controls="ftp-tab"
-                                        aria-selected="false">@Model.FileTransportLabel</button>
+                                role="presentation" id="filetransfer-tab-item">
+                                <button class="nav-link" id="filetransfer-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#filetransfer-tab" type="button" role="tab"
+                                        aria-controls="filetransfer-tab" aria-selected="false">File Transfer</button>
                             </li>
                         }
                         @if (Model.CanEditRcon)
@@ -85,7 +85,8 @@
 
                         @if (Model.CanEditFileTransport)
                         {
-                            <div class="tab-pane fade" id="ftp-tab" role="tabpanel" aria-labelledby="ftp-tab-btn">
+                            <div class="tab-pane fade" id="filetransfer-tab" role="tabpanel"
+                                 aria-labelledby="filetransfer-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_FtpConfiguration", Model)
                             </div>
                         }
@@ -209,6 +210,59 @@
         // Toggle dependency enforcement
         // AgentEnabled requires FileTransportEnabled AND RconEnabled
         // BanFileSyncEnabled requires FileTransportEnabled AND AgentEnabled
+        function getFileTransportMeta(value) {
+        var normalized = (value || '').toLowerCase();
+        if (normalized === 'sftp' || normalized === '2') {
+        return { label: 'SFTP', defaultPort: 22 };
+        }
+
+        return { label: 'FTP', defaultPort: 21 };
+        }
+
+        function updateFileTransportUi() {
+        var typeSelect = document.getElementById('GameServer_FileTransportType');
+        if (!typeSelect) return;
+
+        var fileTransferTab = document.getElementById('filetransfer-tab');
+        var portInput = document.getElementById('FtpConfigPort');
+        var defaultPortValue = document.getElementById('file-transport-default-port');
+        var transportLabelNodes = document.querySelectorAll('.js-file-transport-label');
+
+        var previousValue = typeSelect.getAttribute('data-prev-value') || typeSelect.value;
+        var previousMeta = getFileTransportMeta(previousValue);
+        var currentMeta = getFileTransportMeta(typeSelect.value);
+
+        transportLabelNodes.forEach(function (node) {
+        node.textContent = currentMeta.label;
+        });
+
+        if (defaultPortValue) {
+        defaultPortValue.textContent = currentMeta.defaultPort;
+        }
+
+        if (fileTransferTab) {
+        var title = fileTransferTab.querySelector('.ibox-title');
+        if (title) {
+        title.textContent = 'File Transfer Configuration';
+        }
+        }
+
+        if (portInput) {
+        var rawPort = (portInput.value || '').trim();
+        var parsedPort = Number.parseInt(rawPort, 10);
+        var shouldUpdateToDefault =
+        rawPort.length === 0 ||
+        Number.isNaN(parsedPort) ||
+        parsedPort === previousMeta.defaultPort;
+
+        if (shouldUpdateToDefault) {
+        portInput.value = currentMeta.defaultPort;
+        }
+        }
+
+        typeSelect.setAttribute('data-prev-value', typeSelect.value);
+        }
+
         function enforceToggleDependencies() {
         var ftp = document.getElementById('GameServer_FileTransportEnabled');
         var rcon = document.getElementById('GameServer_RconEnabled');
@@ -217,14 +271,18 @@
 
         if (!ftp || !rcon || !agent || !banSync) return;
 
+        var isFileTransportEnabled = ftp.type === 'checkbox'
+        ? ftp.checked
+        : (ftp.value || '').toLowerCase() === 'true';
+
         // If Agent is checked but prerequisites aren't met, uncheck it
-        if (agent.checked && (!ftp.checked || !rcon.checked)) {
+        if (agent.checked && (!isFileTransportEnabled || !rcon.checked)) {
         agent.checked = false;
         agent.dispatchEvent(new Event('change'));
         }
 
         // If BanFileSync is checked but prerequisites aren't met, uncheck it
-        if (banSync.checked && (!ftp.checked || !agent.checked)) {
+        if (banSync.checked && (!isFileTransportEnabled || !agent.checked)) {
         banSync.checked = false;
         banSync.dispatchEvent(new Event('change'));
         }
@@ -232,17 +290,23 @@
         // Visual state for Agent
         var agentSwitch = agent.closest('.form-check');
         if (agentSwitch) {
-        agentSwitch.classList.toggle('opacity-50', !ftp.checked || !rcon.checked);
+        agentSwitch.classList.toggle('opacity-50', !isFileTransportEnabled || !rcon.checked);
         }
 
         // Visual state for BanFileSync
         var banSyncSwitch = banSync.closest('.form-check');
         if (banSyncSwitch) {
-        banSyncSwitch.classList.toggle('opacity-50', !ftp.checked || !agent.checked);
+        banSyncSwitch.classList.toggle('opacity-50', !isFileTransportEnabled || !agent.checked);
         }
         }
 
         enforceToggleDependencies();
+        updateFileTransportUi();
+
+        var fileTransportTypeSelect = document.getElementById('GameServer_FileTransportType');
+        if (fileTransportTypeSelect) {
+        fileTransportTypeSelect.addEventListener('change', updateFileTransportUi);
+        }
 
         ['GameServer_FileTransportEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {
         var el = document.getElementById(id);

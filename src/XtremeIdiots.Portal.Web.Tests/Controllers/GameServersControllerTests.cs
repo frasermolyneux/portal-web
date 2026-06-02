@@ -3,18 +3,23 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.Observability.ApplicationInsights.Auditing;
 using MX.Api.Abstractions;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using Newtonsoft.Json;
 using System.Net;
 using System.Reflection;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
+using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -43,6 +48,7 @@ public class GameServersControllerTests
             User = user ?? new ClaimsPrincipal(new ClaimsIdentity("TestAuth"))
         };
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
         return controller;
     }
@@ -194,5 +200,109 @@ public class GameServersControllerTests
         var method = typeof(GameServersController).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
         return method;
+    }
+
+    [Fact]
+    public async Task Edit_WhenUserCannotEditFileTransport_PreservesExistingFileTransportValues()
+    {
+        // Arrange
+        var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
+        var updateResultDto = JsonConvert.DeserializeObject<GameServerDto>(JsonConvert.SerializeObject(new
+        {
+            GameServerId = existingServer.GameServerId,
+            Title = existingServer.Title,
+            GameType = existingServer.GameType,
+            Hostname = existingServer.Hostname,
+            QueryPort = existingServer.QueryPort,
+            AgentEnabled = existingServer.AgentEnabled,
+            FtpEnabled = existingServer.FtpEnabled,
+            RconEnabled = existingServer.RconEnabled,
+            BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
+            BanFileRootPath = existingServer.BanFileRootPath,
+            ServerListEnabled = existingServer.ServerListEnabled,
+            ServerListPosition = existingServer.ServerListPosition
+        }))!;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        EditGameServerDto? capturedUpdate = null;
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .Callback<EditGameServerDto, CancellationToken>((dto, _) => capturedUpdate = dto)
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(updateResultDto)));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = existingServer.AgentEnabled,
+                FileTransportEnabled = true,
+                FileTransportType = FileTransportType.Sftp,
+                RconEnabled = existingServer.RconEnabled,
+                BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
+                BanFileRootPath = existingServer.BanFileRootPath,
+                ServerListEnabled = existingServer.ServerListEnabled
+            }
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.NotNull(capturedUpdate);
+        Assert.True(capturedUpdate!.FtpEnabled);
+
+        var optionalTransportType = capturedUpdate.GetType().GetProperty("FileTransportType", BindingFlags.Public | BindingFlags.Instance);
+        if (optionalTransportType is not null)
+        {
+            var value = optionalTransportType.GetValue(capturedUpdate);
+            Assert.Equal("Ftp", value?.ToString());
+        }
+    }
+
+    private static GameServerDto CreateGameServerDto(bool ftpEnabled, bool fileTransportEnabled, string fileTransportType)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            GameServerId = Guid.NewGuid(),
+            Title = "Test Server",
+            GameType = GameType.CallOfDuty4,
+            Hostname = "127.0.0.1",
+            QueryPort = 28960,
+            AgentEnabled = false,
+            FileTransportEnabled = fileTransportEnabled,
+            FileTransportType = fileTransportType,
+            FtpEnabled = ftpEnabled,
+            RconEnabled = false,
+            BanFileSyncEnabled = false,
+            BanFileRootPath = "/",
+            ServerListEnabled = false,
+            ServerListPosition = 1
+        });
+
+        return JsonConvert.DeserializeObject<GameServerDto>(json)!;
     }
 }
