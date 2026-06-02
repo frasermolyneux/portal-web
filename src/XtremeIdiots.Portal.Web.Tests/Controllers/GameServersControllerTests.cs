@@ -21,7 +21,6 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
-using WebFileTransportType = XtremeIdiots.Portal.Web.Models.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
@@ -257,7 +256,7 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = existingServer.AgentEnabled,
                 FileTransportEnabled = true,
-                FileTransportType = WebFileTransportType.Sftp,
+                FileTransportType = FileTransportType.Sftp,
                 RconEnabled = existingServer.RconEnabled,
                 BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
                 BanFileRootPath = existingServer.BanFileRootPath,
@@ -318,7 +317,7 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = false,
                 FileTransportEnabled = true,
-                FileTransportType = WebFileTransportType.Sftp,
+                FileTransportType = FileTransportType.Sftp,
                 RconEnabled = false,
                 BanFileSyncEnabled = false,
                 BanFileRootPath = "/",

@@ -16,7 +16,6 @@ using XtremeIdiots.Portal.Web.Services;
 using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
-using WebFileTransportType = XtremeIdiots.Portal.Web.Models.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
@@ -606,7 +605,7 @@ public class MapRotationsController(
             var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
 
             var fileTransportEnabled = server?.GetFileTransportEnabled(server.FtpEnabled) ?? false;
-            var fileTransportType = server?.GetFileTransportType(fileTransportEnabled, server.FtpEnabled) ?? WebFileTransportType.Unknown;
+            var fileTransportType = server?.GetFileTransportType(fileTransportEnabled, server.FtpEnabled) ?? FileTransportType.Unknown;
 
             ViewData["RotationTitle"] = rotation.Title;
 

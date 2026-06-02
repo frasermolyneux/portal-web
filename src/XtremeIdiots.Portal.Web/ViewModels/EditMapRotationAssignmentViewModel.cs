@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
-using XtremeIdiots.Portal.Web.Models;
+using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -28,5 +28,5 @@ public class EditMapRotationAssignmentViewModel
     public int? PlayerCountMax { get; set; }
 
     public bool CanBrowseFileTransport { get; set; }
-    public FileTransportType FileTransportType { get; set; } = FileTransportType.Unknown;
+    public RepoFileTransportType FileTransportType { get; set; } = RepoFileTransportType.Unknown;
 }

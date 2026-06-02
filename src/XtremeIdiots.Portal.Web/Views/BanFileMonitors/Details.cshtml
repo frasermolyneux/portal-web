@@ -67,11 +67,11 @@ def = 0)
                                     {
                                         <file-transport-path
                                         host="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "hostname")"
-                                        port="@GetCfgInt(serverConfigs, Model.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? 22 : 21)"
+                                        port="@GetCfgInt(serverConfigs, Model.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? 22 : 21)"
                                         path="@Model.RemoteFilePath"
                                         user="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "username")"
                                         password="@GetCfg(serverConfigs, Model.GameServerId, fileTransportNamespace, "password")"
-                                        scheme="@(fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "sftp" : "ftp")"></file-transport-path>
+                                        scheme="@(fileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? "sftp" : "ftp")"></file-transport-path>
                                     }
                                     else
                                     {
@@ -167,9 +167,9 @@ def = 0)
                                         <span><strong>Total:</strong>
                                             @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
                                             <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount
-                                                                                        ?? 0)</span>
+                                                                                                                                        ?? 0)</span>
                                                 <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ??
-                                                                                            0)</span>
+                                                                                                                                                0)</span>
                                                     <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong>
                                                         @(Model.RemoteExternalCount ?? 0)</span>
                                                     }

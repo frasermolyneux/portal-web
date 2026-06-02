@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
-using XtremeIdiots.Portal.Web.Models;
+using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -58,7 +58,7 @@ public class GameServerViewModel
     /// Gets or sets the file transport type used by this server
     /// </summary>
     [DisplayName("File Transport Type")]
-    public FileTransportType FileTransportType { get; set; } = FileTransportType.Ftp;
+    public RepoFileTransportType FileTransportType { get; set; } = RepoFileTransportType.Ftp;
 
     /// <summary>
     /// Gets or sets whether FTP integration is enabled for this server

@@ -89,7 +89,7 @@ public class GameServerDtoExtensionsTests
         var viewModel = dto.ToViewModel();
 
         // Assert
-        Assert.Equal(XtremeIdiots.Portal.Web.Models.FileTransportType.Ftp, viewModel.FileTransportType);
+        Assert.Equal(FileTransportType.Ftp, viewModel.FileTransportType);
     }
 
     [Fact]
@@ -102,6 +102,6 @@ public class GameServerDtoExtensionsTests
         var viewModel = dto.ToViewModel();
 
         // Assert
-        Assert.Equal(XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown, viewModel.FileTransportType);
+        Assert.Equal(FileTransportType.Unknown, viewModel.FileTransportType);
     }
 }

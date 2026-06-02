@@ -1,5 +1,5 @@
 using XtremeIdiots.Portal.Web.Extensions;
-using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
 namespace XtremeIdiots.Portal.Web.Tests.Extensions;
 

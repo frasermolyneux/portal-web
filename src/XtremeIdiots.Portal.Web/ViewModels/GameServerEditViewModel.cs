@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
-using XtremeIdiots.Portal.Web.Models;
+using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -134,24 +134,24 @@ public class GameServerEditViewModel : IValidatableObject
     public string? FtpConfigUsername { get => FileTransportConfigUsername; set => FileTransportConfigUsername = value; }
     public string? FtpConfigPassword { get => FileTransportConfigPassword; set => FileTransportConfigPassword = value; }
 
-    public static string GetFileTransportNamespace(FileTransportType fileTransportType)
+    public static string GetFileTransportNamespace(RepoFileTransportType fileTransportType)
     {
-        return fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
+        return fileTransportType == RepoFileTransportType.Sftp ? "sftp" : "ftp";
     }
 
-    public static string GetFileTransportScheme(FileTransportType fileTransportType)
+    public static string GetFileTransportScheme(RepoFileTransportType fileTransportType)
     {
-        return fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
+        return fileTransportType == RepoFileTransportType.Sftp ? "sftp" : "ftp";
     }
 
-    public static string GetFileTransportLabel(FileTransportType fileTransportType)
+    public static string GetFileTransportLabel(RepoFileTransportType fileTransportType)
     {
-        return fileTransportType == FileTransportType.Sftp ? "SFTP" : "FTP";
+        return fileTransportType == RepoFileTransportType.Sftp ? "SFTP" : "FTP";
     }
 
-    public static int GetDefaultPort(FileTransportType fileTransportType)
+    public static int GetDefaultPort(RepoFileTransportType fileTransportType)
     {
-        return fileTransportType == FileTransportType.Sftp ? 22 : 21;
+        return fileTransportType == RepoFileTransportType.Sftp ? 22 : 21;
     }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

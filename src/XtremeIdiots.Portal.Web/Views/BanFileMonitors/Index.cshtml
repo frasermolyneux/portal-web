@@ -292,10 +292,10 @@
                                     var card = Model.GameTypeCards.FirstOrDefault(c => item.GameServer is not null && c.GameType == item.GameServer.GameType);
                                     var (badgeCss, badgeLabel, badgeTip) = ProtectedBadge(item, live, card);
                                     var fileTransportEnabled = item.GameServer?.GetFileTransportEnabled(item.GameServer.FtpEnabled) ?? false;
-                                    var fileTransportType = item.GameServer?.GetFileTransportType(fileTransportEnabled, item.GameServer.FtpEnabled) ?? XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown;
+                                    var fileTransportType = item.GameServer?.GetFileTransportType(fileTransportEnabled, item.GameServer.FtpEnabled) ?? XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Unknown;
                                     var fileTransportNamespace = XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNamespace(fileTransportType);
                                     var ftpHost = GetCfg(Model.ServerConfigs, item.GameServerId, fileTransportNamespace, "hostname");
-                                    var ftpPort = GetCfgInt(Model.ServerConfigs, item.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? 22 : 21);
+                                    var ftpPort = GetCfgInt(Model.ServerConfigs, item.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? 22 : 21);
 
                                     <tr>
                                         <td>
@@ -308,7 +308,7 @@
                                         <td>
                                             @if (!string.IsNullOrWhiteSpace(item.RemoteFilePath))
                                             {
-                                                <file-transport-path host="@ftpHost" port="@ftpPort" path="@item.RemoteFilePath" scheme="@(fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "sftp" : "ftp")" show-credentials="false"></file-transport-path>
+                                                <file-transport-path host="@ftpHost" port="@ftpPort" path="@item.RemoteFilePath" scheme="@(fileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? "sftp" : "ftp")" show-credentials="false"></file-transport-path>
                                             }
                                             else
                                             {

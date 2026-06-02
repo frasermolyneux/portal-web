@@ -10,7 +10,7 @@
     ViewData["Title"] = "Game Server Details";
     var fileTransportEnabled = Model.GetFileTransportEnabled(Model.FtpEnabled);
     var fileTransportType = Model.GetFileTransportType(fileTransportEnabled, Model.FtpEnabled);
-    var fileTransportLabel = fileTransportType == XtremeIdiots.Portal.Web.Models.FileTransportType.Sftp ? "SFTP" : "FTP";
+    var fileTransportLabel = fileTransportType == FileTransportType.Sftp ? "SFTP" : "FTP";
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">

@@ -1,4 +1,5 @@
 @model XtremeIdiots.Portal.Web.ViewModels.EditMapRotationAssignmentViewModel
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 
 @{
     ViewData["Title"] = "Edit Server Assignment" + (ViewData["RotationTitle"] != null ? " — " + ViewData["RotationTitle"] :
@@ -30,7 +31,7 @@
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                            placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
                                     @if (Model.CanBrowseFileTransport && Model.FileTransportType !=
-                                    XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown)
+                                    FileTransportType.Unknown)
                                     {
                                         <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
                                                 title="Browse server files via file transport"
@@ -84,15 +85,13 @@
         </form>
     </div>
 
-    @if (Model.CanBrowseFileTransport && Model.FileTransportType !=
-    XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown)
+    @if (Model.CanBrowseFileTransport && Model.FileTransportType != FileTransportType.Unknown)
     {
         @await Html.PartialAsync("_FtpBrowserModal")
     }
 
     @section Scripts {
-        @if (Model.CanBrowseFileTransport && Model.FileTransportType !=
-    XtremeIdiots.Portal.Web.Models.FileTransportType.Unknown)
+        @if (Model.CanBrowseFileTransport && Model.FileTransportType != FileTransportType.Unknown)
         {
             <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
         }
