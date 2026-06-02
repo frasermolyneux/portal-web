@@ -66,6 +66,8 @@ public class GlobalSettingsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            NormalizeFunnyMessageEnabledValuesFromForm(model);
+
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;
@@ -266,6 +268,24 @@ public class GlobalSettingsController(
         {
             Logger.LogWarning(ex, "Error upserting global configuration namespace '{Namespace}'", ns);
             errors.Add(ns);
+        }
+    }
+
+    private void NormalizeFunnyMessageEnabledValuesFromForm(GlobalSettingsViewModel model)
+    {
+        if (model.FunnyMessages is null || model.FunnyMessages.Count == 0)
+            return;
+
+        for (var i = 0; i < model.FunnyMessages.Count; i++)
+        {
+            if (!Request.Form.TryGetValue($"FunnyMessages[{i}].Enabled", out var values))
+            {
+                model.FunnyMessages[i].Enabled = false;
+                continue;
+            }
+
+            model.FunnyMessages[i].Enabled = values.Any(value =>
+                bool.TryParse(value, out var parsed) && parsed);
         }
     }
 }
