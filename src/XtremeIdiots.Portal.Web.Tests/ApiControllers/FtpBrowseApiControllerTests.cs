@@ -93,7 +93,7 @@ public class FtpBrowseApiControllerTests
     }
 
     [Fact]
-    public async Task Browse_WhenDownstreamFails_ReturnsStatusCode()
+    public async Task Browse_WhenDownstreamFails_ReturnsStatusCodeWithErrorResponse()
     {
         // Arrange
         var gameServerId = Guid.NewGuid();
@@ -110,7 +110,7 @@ public class FtpBrowseApiControllerTests
 
         fileBrowseApi
             .Setup(x => x.BrowseDirectory(gameServerId, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<FtpDirectoryListingDto>(HttpStatusCode.BadRequest));
+            .ReturnsAsync(new ApiResult<FtpDirectoryListingDto>(HttpStatusCode.BadRequest, new ApiResponse<FtpDirectoryListingDto>(new ApiError("TEST_ERROR", "Test error message"))));
 
         var sut = CreateSut();
 
@@ -118,8 +118,9 @@ public class FtpBrowseApiControllerTests
         var result = await sut.Browse(gameServerId);
 
         // Assert
-        var statusCode = Assert.IsType<StatusCodeResult>(result);
-        Assert.Equal((int)HttpStatusCode.BadRequest, statusCode.StatusCode);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal((int)HttpStatusCode.BadRequest, objectResult.StatusCode);
+        Assert.NotNull(objectResult.Value);
     }
 
     private static GameServerDto CreateGameServer(Guid gameServerId, GameType gameType, string title)
