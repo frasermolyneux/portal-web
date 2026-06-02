@@ -565,6 +565,15 @@
         if (form) {
         form.addEventListener('submit', function () {
         reindexMessageRows(container, options.fieldNamePrefix);
+
+        // Post a single value for each boolean field to avoid list binding ambiguity.
+        container.querySelectorAll('[data-message-row]').forEach(function (row) {
+        var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
+        var enabled = row.querySelector('[data-field="enabled"]');
+
+        if (!enabledHidden || !enabled) return;
+        enabledHidden.disabled = enabled.checked;
+        });
         });
         }
 
