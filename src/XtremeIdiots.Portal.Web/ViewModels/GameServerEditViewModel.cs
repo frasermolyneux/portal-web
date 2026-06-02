@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;

@@ -15,7 +15,7 @@ public static class FileTransportCompatibilityExtensions
     public static FileTransportType GetFileTransportType(this object source, bool fileTransportEnabled, bool fallbackFtpEnabled)
     {
         var value = source.GetOptionalEnumProperty("FileTransportType");
-        if (value.HasValue)
+        if (value.HasValue && value.Value != FileTransportType.Unknown)
         {
             return value.Value;
         }

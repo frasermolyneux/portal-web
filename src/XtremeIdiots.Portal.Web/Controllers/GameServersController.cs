@@ -13,6 +13,7 @@ using XtremeIdiots.Portal.Web.Extensions;
 using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
+using WebFileTransportType = XtremeIdiots.Portal.Web.Models.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
@@ -151,7 +152,7 @@ public class GameServersController(
 
             createGameServerDto.AgentEnabled = model.AgentEnabled;
             createGameServerDto.SetFileTransportProperties(model.FileTransportEnabled, model.FileTransportType);
-            createGameServerDto.FtpEnabled = model.FileTransportEnabled && model.FileTransportType == FileTransportType.Ftp;
+            createGameServerDto.FtpEnabled = model.FileTransportEnabled && model.FileTransportType == WebFileTransportType.Ftp;
             createGameServerDto.RconEnabled = model.RconEnabled;
             createGameServerDto.BanFileSyncEnabled = model.BanFileSyncEnabled;
             createGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.BanFileRootPath) ? "/" : model.BanFileRootPath;
@@ -242,12 +243,12 @@ public class GameServersController(
                         {
                             case "ftp":
                             case "sftp":
-                                var expectedNamespace = fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
+                                var expectedNamespace = fileTransportType == WebFileTransportType.Sftp ? "sftp" : "ftp";
                                 if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
                                     break;
 
                                 ViewBag.FtpHostname = GetStringProperty(root, "hostname");
-                                ViewBag.FtpPort = GetIntProperty(root, "port", fileTransportType == FileTransportType.Sftp ? 22 : 21);
+                                ViewBag.FtpPort = GetIntProperty(root, "port", fileTransportType == WebFileTransportType.Sftp ? 22 : 21);
                                 ViewBag.FtpUsername = GetStringProperty(root, "username");
                                 ViewBag.FtpPassword = GetStringProperty(root, "password");
                                 ViewBag.FileTransportType = fileTransportType;
@@ -443,7 +444,7 @@ public class GameServersController(
                 : existingFileTransportType;
 
             editGameServerDto.SetFileTransportProperties(selectedFileTransportEnabled, selectedFileTransportType);
-            editGameServerDto.FtpEnabled = selectedFileTransportEnabled && selectedFileTransportType == FileTransportType.Ftp;
+            editGameServerDto.FtpEnabled = selectedFileTransportEnabled && selectedFileTransportType == WebFileTransportType.Ftp;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
             editGameServerDto.BanFileSyncEnabled = model.GameServer.BanFileSyncEnabled;
             editGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.GameServer.BanFileRootPath) ? "/" : model.GameServer.BanFileRootPath;

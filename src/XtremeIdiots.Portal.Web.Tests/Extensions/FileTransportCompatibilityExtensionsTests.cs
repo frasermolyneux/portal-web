@@ -18,6 +18,12 @@ public class FileTransportCompatibilityExtensionsTests
         public ExternalFileTransportType? FileTransportType { get; set; }
     }
 
+    private sealed class CompatibilityTarget
+    {
+        public bool? FileTransportEnabled { get; set; }
+        public ExternalFileTransportType? FileTransportType { get; set; }
+    }
+
     [Fact]
     public void GetFileTransportType_WhenTypeMissingAndLegacyFtpEnabled_InfersFtp()
     {
@@ -72,5 +78,30 @@ public class FileTransportCompatibilityExtensionsTests
         var result = source.GetFileTransportType(fileTransportEnabled: true, fallbackFtpEnabled: true);
 
         Assert.Equal(FileTransportType.Sftp, result);
+    }
+
+    [Fact]
+    public void GetFileTransportType_WhenTypeIsUnknownAndLegacyFtpEnabled_InfersFtp()
+    {
+        var source = new CompatibilitySource
+        {
+            FileTransportEnabled = null,
+            FileTransportType = ExternalFileTransportType.Unknown
+        };
+
+        var result = source.GetFileTransportType(fileTransportEnabled: false, fallbackFtpEnabled: true);
+
+        Assert.Equal(FileTransportType.Ftp, result);
+    }
+
+    [Fact]
+    public void SetFileTransportProperties_WhenTargetSupportsOptionalFields_SetsBothFields()
+    {
+        var target = new CompatibilityTarget();
+
+        target.SetFileTransportProperties(fileTransportEnabled: true, fileTransportType: FileTransportType.Sftp);
+
+        Assert.True(target.FileTransportEnabled);
+        Assert.Equal(ExternalFileTransportType.Sftp, target.FileTransportType);
     }
 }

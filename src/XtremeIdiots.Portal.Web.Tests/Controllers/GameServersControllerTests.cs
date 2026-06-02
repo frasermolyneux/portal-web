@@ -21,6 +21,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
+using WebFileTransportType = XtremeIdiots.Portal.Web.Models.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
@@ -256,7 +257,7 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = existingServer.AgentEnabled,
                 FileTransportEnabled = true,
-                FileTransportType = FileTransportType.Sftp,
+                FileTransportType = WebFileTransportType.Sftp,
                 RconEnabled = existingServer.RconEnabled,
                 BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
                 BanFileRootPath = existingServer.BanFileRootPath,
@@ -274,13 +275,73 @@ public class GameServersControllerTests
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.FtpEnabled);
+        Assert.True(capturedUpdate.FileTransportEnabled);
+        Assert.Equal(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Ftp, capturedUpdate.FileTransportType);
+    }
 
-        var optionalTransportType = capturedUpdate.GetType().GetProperty("FileTransportType", BindingFlags.Public | BindingFlags.Instance);
-        if (optionalTransportType is not null)
+    [Fact]
+    public async Task Edit_WhenUserSelectsSftp_PersistsTransportEnabledAndType()
+    {
+        // Arrange
+        var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        EditGameServerDto? capturedUpdate = null;
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .Callback<EditGameServerDto, CancellationToken>((dto, _) => capturedUpdate = dto)
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var model = new GameServerEditViewModel
         {
-            var value = optionalTransportType.GetValue(capturedUpdate);
-            Assert.Equal("Ftp", value?.ToString());
-        }
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = false,
+                FileTransportEnabled = true,
+                FileTransportType = WebFileTransportType.Sftp,
+                RconEnabled = false,
+                BanFileSyncEnabled = false,
+                BanFileRootPath = "/",
+                ServerListEnabled = false
+            },
+            FileTransportConfigHostname = "sftp.example.com",
+            FileTransportConfigPort = 22,
+            FileTransportConfigUsername = "test-user",
+            FileTransportConfigPassword = "test-pass"
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.NotNull(capturedUpdate);
+        Assert.True(capturedUpdate.FileTransportEnabled);
+        Assert.Equal(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp, capturedUpdate.FileTransportType);
+        Assert.False(capturedUpdate.FtpEnabled);
     }
 
     private static GameServerDto CreateGameServerDto(bool ftpEnabled, bool fileTransportEnabled, string fileTransportType)
