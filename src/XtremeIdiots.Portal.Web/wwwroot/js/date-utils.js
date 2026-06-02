@@ -26,7 +26,28 @@ var portalDate = (function () {
      */
     function parseUtc(isoString) {
         if (!isoString) return null;
-        var d = new Date(isoString);
+
+        var value = String(isoString).trim();
+        if (!value) return null;
+
+        var isoWithTimezone = value;
+        var hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+
+        // Treat API timestamps without timezone information as UTC.
+        if (!hasTimezone) {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                isoWithTimezone = value + 'T00:00:00Z';
+            } else {
+                isoWithTimezone = value + 'Z';
+            }
+        }
+
+        var d = new Date(isoWithTimezone);
+        if (isNaN(d.getTime()) && hasTimezone) {
+            // Fallback only for already-timezoned values.
+            d = new Date(value);
+        }
+
         return isNaN(d.getTime()) ? null : d;
     }
 

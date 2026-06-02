@@ -69,7 +69,10 @@ $(document).ready(function () {
     }
 
     function formatElapsed(startIso) {
-        var start = new Date(startIso);
+        var start = (window.portalDate && typeof window.portalDate.parseUtc === 'function')
+            ? window.portalDate.parseUtc(startIso)
+            : new Date(startIso);
+        if (!start || isNaN(start.getTime())) return '0m 0s';
         var now = new Date();
         var diffMs = now - start;
         if (diffMs < 0) diffMs = 0;
@@ -91,7 +94,10 @@ $(document).ready(function () {
     function updateStaleIndicator(ctx, data) {
         if (!data || !data.lastUpdatedAt) return;
 
-        var lastUpdated = new Date(data.lastUpdatedAt);
+        var lastUpdated = (window.portalDate && typeof window.portalDate.parseUtc === 'function')
+            ? window.portalDate.parseUtc(data.lastUpdatedAt)
+            : new Date(data.lastUpdatedAt);
+        if (!lastUpdated || isNaN(lastUpdated.getTime())) return;
         var now = new Date();
         var staleSinceUpdate = (now - lastUpdated) > staleThresholdMs;
 

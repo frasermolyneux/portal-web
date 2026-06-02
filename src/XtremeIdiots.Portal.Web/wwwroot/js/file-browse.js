@@ -297,7 +297,9 @@
 
     function formatDate(dateStr) {
         if (!dateStr) return '';
-        var d = new Date(dateStr);
+        var d = (window.portalDate && typeof window.portalDate.parseUtc === 'function')
+            ? window.portalDate.parseUtc(dateStr)
+            : new Date(dateStr);
         if (isNaN(d.getTime())) return '';
         return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }

@@ -29,7 +29,10 @@ $(document).ready(function () {
 
     function renderTimestamp(data) {
         if (!data) return '';
-        var d = new Date(data);
+        var d = (window.portalDate && typeof window.portalDate.parseUtc === 'function')
+            ? window.portalDate.parseUtc(data)
+            : new Date(data);
+        if (!d || isNaN(d.getTime())) return '';
         var now = new Date();
         var diff = Math.floor((now - d) / 1000);
         var label;

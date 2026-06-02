@@ -41,12 +41,40 @@
 
     function ago(dateStr) {
         if (!dateStr) return '';
-        var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+        var parsed = parseUtcDate(dateStr);
+        if (!parsed) return '';
+        var diff = (Date.now() - parsed.getTime()) / 1000;
         if (diff < 60) return 'just now';
         if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
         if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
         if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-        return new Date(dateStr).toLocaleDateString();
+        return parsed.toLocaleDateString();
+    }
+
+    function parseUtcDate(dateStr) {
+        if (!dateStr) return null;
+
+        if (window.portalDate && typeof window.portalDate.parseUtc === 'function') {
+            return window.portalDate.parseUtc(dateStr);
+        }
+
+        var value = String(dateStr).trim();
+        if (!value) return null;
+
+        var normalized = value;
+        var hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+        if (!hasTimezone) {
+            normalized = /^\d{4}-\d{2}-\d{2}$/.test(value)
+                ? value + 'T00:00:00Z'
+                : value + 'Z';
+        }
+
+        var parsed = new Date(normalized);
+        if (isNaN(parsed.getTime()) && hasTimezone) {
+            parsed = new Date(value);
+        }
+
+        return isNaN(parsed.getTime()) ? null : parsed;
     }
 
     function getActionIcon(actionType) {
