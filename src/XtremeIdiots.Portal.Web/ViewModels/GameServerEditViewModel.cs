@@ -13,6 +13,10 @@ public class GameServerEditViewModel : IValidatableObject
     public const int DefaultBroadcastIntervalSeconds = 500;
     public const int MaxBroadcastMessageLength = 120;
     public const int MaxFunnyMessageLength = 120;
+    public const string DefaultScreenshotFilePattern = "*.jpg";
+    public const int DefaultScreenshotPollIntervalSeconds = 60;
+    public const int MinScreenshotPollIntervalSeconds = 10;
+    public const int MaxScreenshotPollIntervalSeconds = 300;
 
     /// <summary>
     /// Core game server data
@@ -52,6 +56,22 @@ public class GameServerEditViewModel : IValidatableObject
     [DisplayName("Agent Name Override")]
     [MaxLength(120, ErrorMessage = "Agent name override must be 120 characters or fewer.")]
     public string? AgentConfigName { get; set; }
+
+    // Screenshot configuration (parsed from "screenshots" config namespace)
+
+    [DisplayName("Enable Screenshot Monitoring")]
+    public bool ScreenshotConfigEnabled { get; set; }
+
+    [DisplayName("Screenshot Directory Path")]
+    public string? ScreenshotConfigDirectoryPath { get; set; }
+
+    [DisplayName("Screenshot File Pattern")]
+    public string? ScreenshotConfigFilePattern { get; set; } = DefaultScreenshotFilePattern;
+
+    [DisplayName("Poll Interval (seconds)")]
+    [Range(MinScreenshotPollIntervalSeconds, MaxScreenshotPollIntervalSeconds,
+        ErrorMessage = "Screenshot poll interval must be between 10 and 300 seconds.")]
+    public int ScreenshotConfigPollIntervalSeconds { get; set; } = DefaultScreenshotPollIntervalSeconds;
 
     // Ban File Sync configuration (parsed from "banfiles" config namespace)
 
@@ -134,6 +154,7 @@ public class GameServerEditViewModel : IValidatableObject
 
     public bool CanEditFileTransport { get; set; }
     public bool CanEditRcon { get; set; }
+    public bool CanConfigureScreenshots { get; set; }
 
     public string FileTransportLabel => GetFileTransportLabel(GameServer.FileTransportType);
     public string FileTransportScheme => GetFileTransportScheme(GameServer.FileTransportType);
@@ -185,6 +206,16 @@ public class GameServerEditViewModel : IValidatableObject
                 if (FunnyMessages[i].Message?.Length > MaxFunnyMessageLength)
                     yield return new ValidationResult($"Funny message cannot exceed {MaxFunnyMessageLength} characters.", [$"FunnyMessages[{i}].Message"]);
             }
+        }
+
+        if (GameServer.AgentEnabled && ScreenshotConfigEnabled && string.IsNullOrWhiteSpace(ScreenshotConfigDirectoryPath))
+        {
+            yield return new ValidationResult("Screenshot directory path is required when screenshot monitoring is enabled.", [nameof(ScreenshotConfigDirectoryPath)]);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ScreenshotConfigFilePattern) && ScreenshotConfigFilePattern.Trim().Length > 120)
+        {
+            yield return new ValidationResult("Screenshot file pattern must be 120 characters or fewer.", [nameof(ScreenshotConfigFilePattern)]);
         }
     }
 }

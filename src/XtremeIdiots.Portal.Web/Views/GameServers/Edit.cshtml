@@ -44,6 +44,15 @@
                             <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab" data-bs-target="#agent-tab"
                                     type="button" role="tab" aria-controls="agent-tab" aria-selected="false">Agent</button>
                         </li>
+                        @if (Model.CanConfigureScreenshots)
+                        {
+                            <li class="nav-item @(Model.GameServer.AgentEnabled ? "" : "d-none")" role="presentation"
+                                id="screenshots-config-tab-item">
+                                <button class="nav-link" id="screenshots-config-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#screenshots-config-tab" type="button" role="tab"
+                                        aria-controls="screenshots-config-tab" aria-selected="false">Screenshots</button>
+                            </li>
+                        }
                         @if (Model.GameServer.AgentEnabled)
                         {
                             <li class="nav-item" role="presentation" id="broadcasts-tab-item">
@@ -106,6 +115,13 @@
                         <div class="tab-pane fade" id="agent-tab" role="tabpanel" aria-labelledby="agent-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_AgentConfiguration", Model)
                         </div>
+
+                        @if (Model.CanConfigureScreenshots)
+                        {
+                            <div class="tab-pane fade" id="screenshots-config-tab" role="tabpanel" aria-labelledby="screenshots-config-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_ScreenshotsConfiguration", Model)
+                            </div>
+                        }
 
                         @if (Model.GameServer.AgentEnabled)
                         {
@@ -313,6 +329,23 @@
         if (banSyncSwitch) {
         banSyncSwitch.classList.toggle('opacity-50', !isFileTransportEnabled || !agent.checked);
         }
+
+        var agentControlledTabIds = ['agent-tab-item', 'broadcasts-tab-item', 'funny-messages-tab-item', 'moderation-tab-item', 'events-tab-item', 'screenshots-config-tab-item'];
+        agentControlledTabIds.forEach(function (tabId) {
+        var tabItem = document.getElementById(tabId);
+        if (!tabItem) return;
+
+        var activeTabButton = tabItem.querySelector('.nav-link');
+        if (!agent.checked && activeTabButton && activeTabButton.classList.contains('active')) {
+        var generalTab = document.getElementById('general-tab-btn');
+        if (generalTab) {
+        var bsTab = new bootstrap.Tab(generalTab);
+        bsTab.show();
+        }
+        }
+
+        tabItem.classList.toggle('d-none', !agent.checked);
+        });
         }
 
         enforceToggleDependencies();

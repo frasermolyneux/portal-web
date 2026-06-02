@@ -1207,7 +1207,17 @@ public class ServerAdminController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetScreenshots(Guid id, int skipEntries = 0, int takeEntries = 1000, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetScreenshots(
+        Guid id,
+        int skipEntries = 0,
+        int takeEntries = 1000,
+        string? playerIdentifier = null,
+        string? playerName = null,
+        DateTime? capturedFromUtc = null,
+        DateTime? capturedToUtc = null,
+        string? source = null,
+        bool includeDeleted = false,
+        CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -1230,12 +1240,36 @@ public class ServerAdminController(
             if (authResult is not null)
                 return authResult;
 
+            if (includeDeleted)
+            {
+                var includeDeletedAuthResult = await CheckAuthorizationAsync(
+                    authorizationService,
+                    gameServer.GameType,
+                    AuthPolicies.GameServers_Admin_Screenshots_Delete,
+                    nameof(GetScreenshots),
+                    "GameServer",
+                    $"ServerId:{id},GameType:{gameServer.GameType},IncludeDeleted:true",
+                    gameServer).ConfigureAwait(false);
+
+                if (includeDeletedAuthResult is not null)
+                    return includeDeletedAuthResult;
+            }
+
             var screenshotsResponse = await repositoryApiClient.Screenshots.V1.GetScreenshots(
                 id,
                 Math.Max(skipEntries, 0),
                 Math.Clamp(takeEntries, 1, 2000),
                 ScreenshotOrder.CapturedUtcDesc,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken,
+                new GetScreenshotsQuery
+                {
+                    PlayerIdentifier = playerIdentifier,
+                    PlayerName = playerName,
+                    CapturedFromUtc = capturedFromUtc,
+                    CapturedToUtc = capturedToUtc,
+                    Source = source,
+                    IncludeDeleted = includeDeleted
+                }).ConfigureAwait(false);
 
             if (!screenshotsResponse.IsSuccess || screenshotsResponse.Result?.Data?.Items is null)
             {
@@ -1248,9 +1282,12 @@ public class ServerAdminController(
                 capturedUtc = s.CapturedUtc,
                 playerIdentifier = s.PlayerIdentifier,
                 playerName = s.PlayerName,
+                source = s.Source,
                 sourceFileName = s.SourceFileName,
                 sizeBytes = s.SizeBytes,
-                contentType = s.ContentType
+                contentType = s.ContentType,
+                deleted = s.Deleted,
+                deletedUtc = s.DeletedUtc
             });
 
             return Json(new { data });

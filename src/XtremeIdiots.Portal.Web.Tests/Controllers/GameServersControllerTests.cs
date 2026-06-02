@@ -248,6 +248,33 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public void PopulateConfigFromNamespace_ScreenshotsNamespace_MapsAllFields()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateConfigFromNamespace");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "screenshots",
+            Configuration = """
+            {
+                            "enabled": true,
+                            "directoryPath": "/screenshots",
+                            "filePattern": "*.png",
+                            "pollIntervalSeconds": 45
+            }
+            """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.True(model.ScreenshotConfigEnabled);
+        Assert.Equal("/screenshots", model.ScreenshotConfigDirectoryPath);
+        Assert.Equal("*.png", model.ScreenshotConfigFilePattern);
+        Assert.Equal(45, model.ScreenshotConfigPollIntervalSeconds);
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsBroadcastsContract()
     {
         // Arrange
@@ -292,7 +319,7 @@ public class GameServersControllerTests
         };
 
         // Act
-        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, new List<string>(), CancellationToken.None])!;
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
         await task;
 
         // Assert
@@ -315,6 +342,53 @@ public class GameServersControllerTests
         Assert.True(funnyRoot.GetProperty("messages")[0].GetProperty("enabled").GetBoolean());
         Assert.Equal("{name} is unlucky", funnyRoot.GetProperty("messages")[1].GetProperty("message").GetString());
         Assert.False(funnyRoot.GetProperty("messages")[1].GetProperty("enabled").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SaveConfigNamespacesAsync_CanConfigureScreenshots_UpsertsScreenshotsContract()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true
+            },
+            ScreenshotConfigEnabled = true,
+            ScreenshotConfigDirectoryPath = "/screenshots",
+            ScreenshotConfigFilePattern = "*.png",
+            ScreenshotConfigPollIntervalSeconds = 45
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, true, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.True(upsertPayloads.TryGetValue("screenshots", out var screenshotsJson));
+        using var doc = System.Text.Json.JsonDocument.Parse(screenshotsJson);
+        var root = doc.RootElement;
+        Assert.True(root.GetProperty("enabled").GetBoolean());
+        Assert.Equal("/screenshots", root.GetProperty("directoryPath").GetString());
+        Assert.Equal("*.png", root.GetProperty("filePattern").GetString());
+        Assert.Equal(45, root.GetProperty("pollIntervalSeconds").GetInt32());
     }
 
     private static MethodInfo GetPrivateInstanceMethod(string name)
@@ -380,6 +454,10 @@ public class GameServersControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
             .ReturnsAsync(AuthorizationResult.Failed());
 
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
         var model = new GameServerEditViewModel
         {
             GameServer = new GameServerViewModel
@@ -438,6 +516,10 @@ public class GameServersControllerTests
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
             .ReturnsAsync(AuthorizationResult.Failed());
 
         var model = new GameServerEditViewModel

@@ -89,6 +89,9 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 case GameServersAdminScreenshotsDelete:
                     HandleAdminScreenshotsDelete(context, requirement);
                     break;
+                case GameServersAdminScreenshotsConfigure:
+                    HandleAdminScreenshotsConfigure(context, requirement);
+                    break;
                 default:
                     break;
             }
@@ -289,6 +292,12 @@ public class GameServersAuthHandler : IAuthorizationHandler
     {
         BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Screenshots.Delete");
+    }
+
+    private static void HandleAdminScreenshotsConfigure(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Screenshots.Configure");
     }
 
     #endregion

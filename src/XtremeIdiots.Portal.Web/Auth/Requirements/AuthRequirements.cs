@@ -40,6 +40,7 @@ public class GameServersAdminRconRestart : IAuthorizationRequirement { }
 public class GameServersAdminRconScreenshot : IAuthorizationRequirement { }
 public class GameServersAdminScreenshotsRead : IAuthorizationRequirement { }
 public class GameServersAdminScreenshotsDelete : IAuthorizationRequirement { }
+public class GameServersAdminScreenshotsConfigure : IAuthorizationRequirement { }
 
 // Chat Log
 public class ChatLogRead : IAuthorizationRequirement { }

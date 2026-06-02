@@ -11,6 +11,7 @@ var ServerScreenshots = (function () {
     var _previewImageSelector = null;
     var _previewModalSelector = null;
     var _canDelete = false;
+    var _canIncludeDeleted = false;
     var _table = null;
 
     function init(options) {
@@ -20,8 +21,23 @@ var ServerScreenshots = (function () {
         _previewImageSelector = options.previewImageSelector || '#sd-screenshotPreviewImage';
         _previewModalSelector = options.previewModalSelector || '#sd-screenshotPreviewModal';
         _canDelete = options.canDelete === true;
+        _canIncludeDeleted = options.canIncludeDeleted === true;
 
         $(document).off('screenshots:refresh.serverScreenshots').on('screenshots:refresh.serverScreenshots', function () {
+            refresh();
+        });
+
+        $('#sd-applyScreenshotFilters').off('click.serverScreenshots').on('click.serverScreenshots', function () {
+            refresh();
+        });
+
+        $('#sd-resetScreenshotFilters').off('click.serverScreenshots').on('click.serverScreenshots', function () {
+            $('#sd-screenshotFilterPlayerName').val('');
+            $('#sd-screenshotFilterPlayerIdentifier').val('');
+            $('#sd-screenshotFilterSource').val('');
+            $('#sd-screenshotFilterCapturedFrom').val('');
+            $('#sd-screenshotFilterCapturedTo').val('');
+            $('#sd-screenshotFilterIncludeDeleted').prop('checked', false);
             refresh();
         });
     }
@@ -41,7 +57,10 @@ var ServerScreenshots = (function () {
             responsive: true,
             order: [[0, 'desc']],
             ajax: {
-                url: '/ServerAdmin/GetScreenshots/' + _serverId + '?skipEntries=0&takeEntries=1000',
+                url: '/ServerAdmin/GetScreenshots/' + _serverId,
+                data: function () {
+                    return buildFilterQuery();
+                },
                 dataSrc: 'data',
                 error: RconUtils.handleAjaxError
             },
@@ -62,7 +81,24 @@ var ServerScreenshots = (function () {
                     name: 'playerName',
                     render: function (data, type, row) {
                         var name = data || row.playerIdentifier || 'Unknown';
+                        if (row.deleted) {
+                            return '<span class="text-decoration-line-through text-muted">' + escapeHtml(name) + '</span>';
+                        }
                         return escapeHtml(name);
+                    }
+                },
+                {
+                    data: 'source',
+                    name: 'source',
+                    render: function (data) {
+                        return escapeHtml(data || '-');
+                    }
+                },
+                {
+                    data: 'sourceFileName',
+                    name: 'sourceFileName',
+                    render: function (data) {
+                        return escapeHtml(data || '-');
                     }
                 },
                 {
@@ -79,9 +115,13 @@ var ServerScreenshots = (function () {
                     sortable: false,
                     className: 'text-nowrap',
                     render: function (data, type, row) {
-                        var viewButton = '<button type="button" class="btn btn-sm btn-outline-primary view-screenshot" data-id="' + row.screenshotId + '"><i class="fa-solid fa-eye"></i> View</button>';
+                        if (row.deleted) {
+                            return '<span class="text-muted">Deleted</span>';
+                        }
+
+                        var viewButton = '<button type="button" class="btn btn-sm btn-outline-secondary view-screenshot" data-id="' + row.screenshotId + '"><i class="fa-solid fa-fw fa-eye" aria-hidden="true"></i> View</button>';
                         var deleteButton = _canDelete
-                            ? ' <button type="button" class="btn btn-sm btn-outline-danger delete-screenshot" data-id="' + row.screenshotId + '"><i class="fa-solid fa-trash"></i> Delete</button>'
+                            ? ' <button type="button" class="btn btn-sm btn-outline-danger delete-screenshot" data-id="' + row.screenshotId + '" data-confirm="Are you sure you want to delete this screenshot? This action cannot be undone."><i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Delete</button>'
                             : '';
 
                         return '<div class="btn-group btn-group-sm" role="group">' + viewButton + deleteButton + '</div>';
@@ -124,10 +164,6 @@ var ServerScreenshots = (function () {
             return;
         }
 
-        if (!confirm('Delete this screenshot? This action cannot be undone.')) {
-            return;
-        }
-
         $.ajax({
             type: 'POST',
             url: '/ServerAdmin/DeleteScreenshot/' + _serverId,
@@ -155,6 +191,46 @@ var ServerScreenshots = (function () {
         }
     }
 
+    function buildFilterQuery() {
+        var query = {
+            skipEntries: 0,
+            takeEntries: 1000
+        };
+
+        var playerName = ($('#sd-screenshotFilterPlayerName').val() || '').toString().trim();
+        var playerIdentifier = ($('#sd-screenshotFilterPlayerIdentifier').val() || '').toString().trim();
+        var source = ($('#sd-screenshotFilterSource').val() || '').toString().trim();
+        var capturedFrom = ($('#sd-screenshotFilterCapturedFrom').val() || '').toString().trim();
+        var capturedTo = ($('#sd-screenshotFilterCapturedTo').val() || '').toString().trim();
+        var includeDeleted = _canIncludeDeleted && $('#sd-screenshotFilterIncludeDeleted').is(':checked');
+
+        if (playerName) {
+            query.playerName = playerName;
+        }
+
+        if (playerIdentifier) {
+            query.playerIdentifier = playerIdentifier;
+        }
+
+        if (source) {
+            query.source = source;
+        }
+
+        if (capturedFrom) {
+            query.capturedFromUtc = new Date(capturedFrom).toISOString();
+        }
+
+        if (capturedTo) {
+            query.capturedToUtc = new Date(capturedTo).toISOString();
+        }
+
+        if (includeDeleted) {
+            query.includeDeleted = true;
+        }
+
+        return query;
+    }
+
     function start() {
         initTable();
         refresh();
@@ -165,6 +241,9 @@ var ServerScreenshots = (function () {
             $(_tableSelector).off('click', '.view-screenshot');
             $(_tableSelector).off('click', '.delete-screenshot');
         }
+
+        $('#sd-applyScreenshotFilters').off('click.serverScreenshots');
+        $('#sd-resetScreenshotFilters').off('click.serverScreenshots');
 
         $(document).off('screenshots:refresh.serverScreenshots');
 

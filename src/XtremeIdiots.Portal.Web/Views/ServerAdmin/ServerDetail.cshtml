@@ -475,12 +475,54 @@
                         <h5>Server Screenshots</h5>
                     </div>
                     <div class="ibox-content">
+                        <div class="list-filters mb-3">
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-screenshotFilterPlayerName">Player Name</label>
+                                <input id="sd-screenshotFilterPlayerName" class="form-control" type="text" />
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-screenshotFilterPlayerIdentifier">Player Identifier</label>
+                                <input id="sd-screenshotFilterPlayerIdentifier" class="form-control" type="text" />
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-screenshotFilterSource">Source</label>
+                                <input id="sd-screenshotFilterSource" class="form-control" type="text" />
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-screenshotFilterCapturedFrom">Captured From</label>
+                                <input id="sd-screenshotFilterCapturedFrom" class="form-control" type="datetime-local" />
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-screenshotFilterCapturedTo">Captured To</label>
+                                <input id="sd-screenshotFilterCapturedTo" class="form-control" type="datetime-local" />
+                            </div>
+                            @if (Model.CanDeleteScreenshots)
+                            {
+                                <div class="filter-group">
+                                    <label class="form-label" for="sd-screenshotFilterIncludeDeleted">Deleted</label>
+                                    <div class="form-check mt-2">
+                                        <input id="sd-screenshotFilterIncludeDeleted" class="form-check-input" type="checkbox" />
+                                        <label class="form-check-label" for="sd-screenshotFilterIncludeDeleted">Include deleted</label>
+                                    </div>
+                                </div>
+                            }
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-applyScreenshotFilters">Apply</label>
+                                <button type="button" id="sd-applyScreenshotFilters" class="btn btn-primary btn-sm">Apply Filters</button>
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label" for="sd-resetScreenshotFilters">Reset</label>
+                                <button type="button" id="sd-resetScreenshotFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table id="sd-screenshotsTable" class="table table-striped table-hover w-100">
                                 <thead>
                                     <tr>
                                         <th scope="col">Captured</th>
                                         <th scope="col">Player</th>
+                                        <th scope="col">Source</th>
+                                        <th scope="col">File</th>
                                         <th scope="col" class="text-end">Size</th>
                                         <th scope="col">Actions</th>
                                     </tr>
@@ -589,7 +631,8 @@
                 tableSelector: '#sd-screenshotsTable',
                 previewImageSelector: '#sd-screenshotPreviewImage',
                 previewModalSelector: '#sd-screenshotPreviewModal',
-                canDelete: @Model.CanDeleteScreenshots.ToString().ToLower()
+                canDelete: @Model.CanDeleteScreenshots.ToString().ToLower(),
+                canIncludeDeleted: @Model.CanDeleteScreenshots.ToString().ToLower()
             });
             </text>
         }

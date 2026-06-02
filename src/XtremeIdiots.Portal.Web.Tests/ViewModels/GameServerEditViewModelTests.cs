@@ -115,6 +115,29 @@ public class GameServerEditViewModelTests
         Assert.False(isValid);
     }
 
+    [Fact]
+    public void Validate_WhenScreenshotMonitoringEnabledWithoutDirectory_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.GameServer.AgentEnabled = true;
+        model.ScreenshotConfigEnabled = true;
+        model.ScreenshotConfigDirectoryPath = string.Empty;
+
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
+
+        Assert.False(isValid);
+        Assert.Contains(validationResults, r => r.MemberNames.Contains(nameof(GameServerEditViewModel.ScreenshotConfigDirectoryPath)));
+    }
+
+    [Fact]
+    public void ScreenshotConfigPollIntervalSeconds_DefaultsTo60()
+    {
+        var model = new GameServerEditViewModel();
+
+        Assert.Equal(60, model.ScreenshotConfigPollIntervalSeconds);
+    }
+
     private static GameServerEditViewModel CreateValidModel()
     {
         return new GameServerEditViewModel

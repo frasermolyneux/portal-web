@@ -309,11 +309,14 @@ public class GameServersController(
 
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
 
+            var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
+
             var editModel = new GameServerEditViewModel
             {
                 GameServer = gameServerData.ToViewModel(),
                 CanEditFileTransport = canEditFileTransport.Succeeded,
-                CanEditRcon = canEditGameServerRcon.Succeeded
+                CanEditRcon = canEditGameServerRcon.Succeeded,
+                CanConfigureScreenshots = canConfigureScreenshots.Succeeded
             };
 
             // Fetch configuration namespaces
@@ -389,13 +392,6 @@ public class GameServersController(
 
             var gameServerData = gameServerApiResponse.Result.Data;
 
-            var modelValidationResult = CheckModelState(model, m => AddGameTypeViewData(m.GameServer.GameType));
-            if (modelValidationResult is not null)
-            {
-                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
-                return modelValidationResult;
-            }
-
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 gameServerData.GameType,
@@ -417,6 +413,27 @@ public class GameServersController(
 
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
+            var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
+
+            if (!canConfigureScreenshots.Succeeded)
+            {
+                model.ScreenshotConfigEnabled = false;
+                model.ScreenshotConfigDirectoryPath = null;
+                model.ScreenshotConfigFilePattern = GameServerEditViewModel.DefaultScreenshotFilePattern;
+                model.ScreenshotConfigPollIntervalSeconds = GameServerEditViewModel.DefaultScreenshotPollIntervalSeconds;
+
+                ModelState.Remove(nameof(GameServerEditViewModel.ScreenshotConfigEnabled));
+                ModelState.Remove(nameof(GameServerEditViewModel.ScreenshotConfigDirectoryPath));
+                ModelState.Remove(nameof(GameServerEditViewModel.ScreenshotConfigFilePattern));
+                ModelState.Remove(nameof(GameServerEditViewModel.ScreenshotConfigPollIntervalSeconds));
+            }
+
+            var modelValidationResult = CheckModelState(model, m => AddGameTypeViewData(m.GameServer.GameType));
+            if (modelValidationResult is not null)
+            {
+                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                return modelValidationResult;
+            }
 
             // Preserve existing passwords when the user leaves password fields blank
             var passwordsPreserved = await PreserveExistingPasswordsAsync(model, gameServerData.GameServerId, canEditFileTransport.Succeeded, canEditGameServerRcon.Succeeded, cancellationToken).ConfigureAwait(false);
@@ -473,7 +490,7 @@ public class GameServersController(
 
             // Save configuration namespaces
             var configErrors = new List<string>();
-            await SaveConfigNamespacesAsync(model, gameServerData.GameServerId, canEditFileTransport.Succeeded, canEditGameServerRcon.Succeeded, configErrors, cancellationToken).ConfigureAwait(false);
+            await SaveConfigNamespacesAsync(model, gameServerData.GameServerId, canEditFileTransport.Succeeded, canEditGameServerRcon.Succeeded, canConfigureScreenshots.Succeeded, configErrors, cancellationToken).ConfigureAwait(false);
 
             // Track toggle changes for audit trail
             var serverTitle = model.GameServer.Title ?? "";
@@ -647,6 +664,12 @@ public class GameServersController(
                     editModel.AgentConfigRconSyncEnabled = GetBoolProperty(root, "rconSyncEnabled", true);
                     editModel.AgentConfigName = GetStringProperty(root, "agentName");
                     break;
+                case "screenshots":
+                    editModel.ScreenshotConfigEnabled = GetBoolProperty(root, "enabled", false);
+                    editModel.ScreenshotConfigDirectoryPath = GetStringProperty(root, "directoryPath");
+                    editModel.ScreenshotConfigFilePattern = GetStringProperty(root, "filePattern") ?? GameServerEditViewModel.DefaultScreenshotFilePattern;
+                    editModel.ScreenshotConfigPollIntervalSeconds = GetIntProperty(root, "pollIntervalSeconds", GameServerEditViewModel.DefaultScreenshotPollIntervalSeconds);
+                    break;
                 case "banfiles":
                     editModel.BanFileSyncConfigCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", 60);
                     break;
@@ -799,8 +822,10 @@ public class GameServersController(
     {
         var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
         var canEditRcon = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
+        var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
         model.CanEditFileTransport = canEditFileTransport.Succeeded;
         model.CanEditRcon = canEditRcon.Succeeded;
+        model.CanConfigureScreenshots = canConfigureScreenshots.Succeeded;
     }
 
     private async Task<bool> PreserveExistingPasswordsAsync(
@@ -870,6 +895,7 @@ public class GameServersController(
         Guid gameServerId,
         bool canEditFileTransport,
         bool canEditRcon,
+        bool canConfigureScreenshots,
         List<string> errors,
         CancellationToken cancellationToken)
     {
@@ -914,6 +940,19 @@ public class GameServersController(
                 agentName = string.IsNullOrWhiteSpace(model.AgentConfigName)
                     ? null
                     : model.AgentConfigName
+            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (model.GameServer.AgentEnabled && canConfigureScreenshots)
+        {
+            await UpsertConfigSafeAsync(gameServerId, "screenshots", JsonSerializer.Serialize(new
+            {
+                enabled = model.ScreenshotConfigEnabled,
+                directoryPath = model.ScreenshotConfigEnabled ? model.ScreenshotConfigDirectoryPath : null,
+                filePattern = string.IsNullOrWhiteSpace(model.ScreenshotConfigFilePattern)
+                    ? GameServerEditViewModel.DefaultScreenshotFilePattern
+                    : model.ScreenshotConfigFilePattern.Trim(),
+                pollIntervalSeconds = model.ScreenshotConfigPollIntervalSeconds
             }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
 
