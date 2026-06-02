@@ -87,12 +87,12 @@
 
     @if (Model.CanBrowseFileTransport && Model.FileTransportType != FileTransportType.Unknown)
     {
-        @await Html.PartialAsync("_FtpBrowserModal")
+        @await Html.PartialAsync("_FileBrowserModal")
     }
 
     @section Scripts {
         @if (Model.CanBrowseFileTransport && Model.FileTransportType != FileTransportType.Unknown)
         {
-            <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
+            <script src="~/js/file-browse.js" asp-append-version="true"></script>
         }
     }

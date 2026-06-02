@@ -13,7 +13,7 @@
                 @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
                 {
                     <button class="btn btn-outline-secondary" type="button"
-                            onclick="openFtpBrowser('@Model.GameServer.GameServerId', 'AgentConfigLogFilePath', '.log')">
+                            onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'AgentConfigLogFilePath', '.log')">
                         <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                     </button>
                 }

@@ -18,7 +18,7 @@
         _selectedPath = null;
 
         if (!_modal) {
-            _modal = new bootstrap.Modal(document.getElementById('ftpBrowserModal'));
+            _modal = new bootstrap.Modal(document.getElementById('fileBrowseModal'));
         }
 
         updateSelectButton();
@@ -27,13 +27,12 @@
     }
 
     window.openFileTransportBrowser = openBrowser;
-    window.openFtpBrowser = openBrowser;
 
     function navigateTo(path) {
-        var loading = document.getElementById('ftpLoading');
-        var error = document.getElementById('ftpError');
-        var container = document.getElementById('ftpListingContainer');
-        var emptyMsg = document.getElementById('ftpEmptyMessage');
+        var loading = document.getElementById('fileBrowseLoading');
+        var error = document.getElementById('fileBrowseError');
+        var container = document.getElementById('fileBrowseListingContainer');
+        var emptyMsg = document.getElementById('fileBrowseEmptyMessage');
 
         loading.style.display = '';
         error.style.display = 'none';
@@ -63,7 +62,7 @@
     }
 
     function renderBreadcrumb(currentPath) {
-        var breadcrumb = document.getElementById('ftpBreadcrumb');
+        var breadcrumb = document.getElementById('fileBrowseBreadcrumb');
         breadcrumb.innerHTML = '';
 
         var segments = currentPath.split('/').filter(function (s) { return s.length > 0; });
@@ -105,8 +104,8 @@
     }
 
     function renderListing(data) {
-        var tbody = document.getElementById('ftpListingBody');
-        var emptyMsg = document.getElementById('ftpEmptyMessage');
+        var tbody = document.getElementById('fileBrowseListingBody');
+        var emptyMsg = document.getElementById('fileBrowseEmptyMessage');
         tbody.innerHTML = '';
 
         // Parent directory link
@@ -164,15 +163,15 @@
     }
 
     function updateSelectButton() {
-        var btn = document.getElementById('ftpSelectBtn');
-        var pathDisplay = document.getElementById('ftpSelectedPath');
+        var btn = document.getElementById('fileBrowseSelectBtn');
+        var pathDisplay = document.getElementById('fileBrowseSelectedPath');
         btn.disabled = !_selectedPath;
         pathDisplay.textContent = _selectedPath ? _selectedPath : '';
     }
 
     // Select button click
     document.addEventListener('DOMContentLoaded', function () {
-        var selectBtn = document.getElementById('ftpSelectBtn');
+        var selectBtn = document.getElementById('fileBrowseSelectBtn');
         if (selectBtn) {
             selectBtn.addEventListener('click', function () {
                 if (_selectedPath && _targetInputId) {

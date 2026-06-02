@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 namespace XtremeIdiots.Portal.Web.Helpers;
 
 [HtmlTargetElement("file-transport-path")]
-[HtmlTargetElement("ftp-path")]
-public class FtpPathTagHelper : TagHelper
+public class FileTransportPathTagHelper : TagHelper
 {
     [HtmlAttributeName("host")] public string? Host { get; set; }
     [HtmlAttributeName("port")] public int Port { get; set; }

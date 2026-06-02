@@ -149,14 +149,16 @@
                                                                                         Guid>(Model.GameType, Model.GameServerId),
                                                                                         AuthPolicies.GameServers_Credentials_FileTransport_Read)).Succeeded)
                                                 {
-                                                    <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
+                                                    <file-transport-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
+                                                        scheme="@(fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp")"
                                                         path="@item.RemoteFilePath" user="@ViewBag.FtpUsername"
-                                                        password="@ViewBag.FtpPassword"></ftp-path>
+                                                        password="@ViewBag.FtpPassword"></file-transport-path>
                                                 }
                                                 else
                                                 {
-                                                    <ftp-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
-                                                        path="@item.RemoteFilePath" show-credentials="false"></ftp-path>
+                                                    <file-transport-path host="@ViewBag.FtpHostname" port="@(ViewBag.FtpPort ?? 0)"
+                                                        scheme="@(fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp")"
+                                                        path="@item.RemoteFilePath" show-credentials="false"></file-transport-path>
                                                 }
                                             }
                                             else

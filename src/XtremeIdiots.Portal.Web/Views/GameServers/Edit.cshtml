@@ -154,7 +154,7 @@
 
 </div>
 
-@await Html.PartialAsync("_FtpBrowserModal")
+@await Html.PartialAsync("_FileBrowserModal")
 
 @* ReSharper disable once Razor.SectionNotResolved *@
 
@@ -162,7 +162,7 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-    <script src="~/js/ftp-browser.js" asp-append-version="true"></script>
+    <script src="~/js/file-browse.js" asp-append-version="true"></script>
     <script>
         // Password show/hide toggle
         function togglePasswordVisibility(inputId, button) {

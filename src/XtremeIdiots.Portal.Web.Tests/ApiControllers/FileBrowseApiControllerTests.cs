@@ -22,7 +22,7 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.Tests.ApiControllers;
 
-public class FtpBrowseApiControllerTests
+public class FileBrowseApiControllerTests
 {
     private readonly Mock<IAuthorizationService> authorizationService = new();
     private readonly Mock<IRepositoryApiClient> repositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
@@ -30,19 +30,19 @@ public class FtpBrowseApiControllerTests
     private readonly Mock<IVersionedFileBrowseApi> versionedFileBrowseApi = new();
     private readonly Mock<IFileBrowseApi> fileBrowseApi = new();
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
-    private readonly Mock<ILogger<FtpBrowseApiController>> logger = new();
+    private readonly Mock<ILogger<FileBrowseApiController>> logger = new();
     private readonly Mock<IConfiguration> configuration = new();
     private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
-    public FtpBrowseApiControllerTests()
+    public FileBrowseApiControllerTests()
     {
         versionedFileBrowseApi.SetupGet(x => x.V1).Returns(fileBrowseApi.Object);
         serversApiClient.SetupGet(x => x.FileBrowse).Returns(versionedFileBrowseApi.Object);
     }
 
-    private FtpBrowseApiController CreateSut(ClaimsPrincipal? user = null)
+    private FileBrowseApiController CreateSut(ClaimsPrincipal? user = null)
     {
-        return new FtpBrowseApiController(
+        return new FileBrowseApiController(
             authorizationService.Object,
             repositoryApiClient.Object,
             serversApiClient.Object,

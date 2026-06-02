@@ -10,13 +10,12 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 
 [Authorize]
 [Route("api/file-browse")]
-[Route("api/ftp")]
-public class FtpBrowseApiController(
+public class FileBrowseApiController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     IServersApiClient serversApiClient,
     TelemetryClient telemetryClient,
-    ILogger<FtpBrowseApiController> logger,
+    ILogger<FileBrowseApiController> logger,
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
