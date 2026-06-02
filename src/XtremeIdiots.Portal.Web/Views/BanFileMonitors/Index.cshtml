@@ -291,8 +291,8 @@
                                     Model.LiveStatusLookup.TryGetValue(item.GameServerId, out live);
                                     var card = Model.GameTypeCards.FirstOrDefault(c => item.GameServer is not null && c.GameType == item.GameServer.GameType);
                                     var (badgeCss, badgeLabel, badgeTip) = ProtectedBadge(item, live, card);
-                                    var fileTransportEnabled = item.GameServer?.GetFileTransportEnabled(item.GameServer.FtpEnabled) ?? false;
-                                    var fileTransportType = item.GameServer?.GetFileTransportType(fileTransportEnabled, item.GameServer.FtpEnabled) ?? XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Unknown;
+                                    var fileTransportEnabled = item.GameServer?.FileTransportEnabled ?? false;
+                                    var fileTransportType = item.GameServer?.FileTransportType ?? XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Unknown;
                                     var fileTransportNamespace = XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNamespace(fileTransportType);
                                     var ftpHost = GetCfg(Model.ServerConfigs, item.GameServerId, fileTransportNamespace, "hostname");
                                     var ftpPort = GetCfgInt(Model.ServerConfigs, item.GameServerId, fileTransportNamespace, "port", fileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? 22 : 21);

@@ -286,7 +286,6 @@ public class GameServersControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
-        Assert.True(capturedUpdate.FtpEnabled);
         Assert.True(capturedUpdate.FileTransportEnabled);
         Assert.Equal(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Ftp, capturedUpdate.FileTransportType);
     }
@@ -354,7 +353,7 @@ public class GameServersControllerTests
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.FileTransportEnabled);
         Assert.Equal(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp, capturedUpdate.FileTransportType);
-        Assert.False(capturedUpdate.FtpEnabled);
+        Assert.Null(capturedUpdate.FtpEnabled);
     }
 
     private static GameServerDto CreateGameServerDto(bool ftpEnabled, bool fileTransportEnabled, string fileTransportType)

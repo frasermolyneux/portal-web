@@ -8,8 +8,8 @@
 
 @{
     ViewData["Title"] = "Game Server Details";
-    var fileTransportEnabled = Model.GetFileTransportEnabled(Model.FtpEnabled);
-    var fileTransportType = Model.GetFileTransportType(fileTransportEnabled, Model.FtpEnabled);
+    var fileTransportEnabled = Model.FileTransportEnabled;
+    var fileTransportType = Model.FileTransportType;
     var fileTransportLabel = fileTransportType == FileTransportType.Sftp ? "SFTP" : "FTP";
 }
 

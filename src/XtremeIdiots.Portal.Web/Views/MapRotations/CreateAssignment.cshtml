@@ -24,7 +24,7 @@ ViewData["RotationTitle"] : "");
                                     <option value="">-- Select Server --</option>
                                     @foreach (var server in Model.AvailableServers)
                                     {
-                                        var fileTransportEnabled = server.GetFileTransportEnabled(server.FtpEnabled);
+                                        var fileTransportEnabled = server.FileTransportEnabled;
                                         <option value="@server.GameServerId"
                                                 data-file-transport-enabled="@fileTransportEnabled.ToString().ToLowerInvariant()">
                                             @server.Title</option>

@@ -4,7 +4,7 @@ This document explains **how** the portal's authorization model works. For the e
 
 ## Policy Naming Convention
 
-All policies follow a `{Domain}.{Action}` naming pattern (e.g., `AdminActions.Create`, `GameServers.Credentials.Ftp.Read`). Policy name constants are defined in `AuthPolicies.cs` and registered via `PolicyExtensions.AddXtremeIdiotsPolicies()`. Each policy maps to a marker requirement class and a corresponding authorization handler.
+All policies follow a `{Domain}.{Action}` naming pattern (e.g., `AdminActions.Create`, `GameServers.Credentials.FileTransport.Read`). Policy name constants are defined in `AuthPolicies.cs` and registered via `PolicyExtensions.AddXtremeIdiotsPolicies()`. Each policy maps to a marker requirement class and a corresponding authorization handler.
 
 ## Role Hierarchy
 
@@ -36,7 +36,7 @@ Most policies are scoped to a `GameType`. A HeadAdmin for COD4 can only exercise
 
 ### Server Scoped
 
-Some additional permissions are scoped to a specific game server (identified by GUID). For example, a user can be granted `GameServers.Credentials.Ftp.Read` for a single server without access to FTP credentials for other servers in the same game type. Server-scoped checks typically appear as `(GameType, Guid)` resource tuples.
+Some additional permissions are scoped to a specific game server (identified by GUID). For example, a user can be granted `GameServers.Credentials.FileTransport.Read` for a single server without access to file transport credentials for other servers in the same game type. Server-scoped checks typically appear as `(GameType, Guid)` resource tuples.
 
 ### Ownership-Based
 

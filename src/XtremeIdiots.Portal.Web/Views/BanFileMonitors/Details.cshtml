@@ -8,8 +8,8 @@
     ViewData["Title"] = "Ban File Monitor Details";
     var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
     var liveStatus = ViewBag.LiveStatus as GameServerLiveStatusDto;
-    var fileTransportEnabled = Model.GameServer.GetFileTransportEnabled(Model.GameServer.FtpEnabled);
-    var fileTransportType = Model.GameServer.GetFileTransportType(fileTransportEnabled, Model.GameServer.FtpEnabled);
+    var fileTransportEnabled = Model.GameServer.FileTransportEnabled;
+    var fileTransportType = Model.GameServer.FileTransportType;
     var fileTransportNamespace =
 XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNamespace(fileTransportType);
 }
@@ -167,9 +167,9 @@ def = 0)
                                         <span><strong>Total:</strong>
                                             @Model.RemoteTotalLineCount.Value.ToString("N0")</span>
                                             <span class="ms-3"><strong>Untagged (manual):</strong> @(Model.RemoteUntaggedCount
-                                                                                                                                        ?? 0)</span>
+                                                                                                                                                                                        ?? 0)</span>
                                                 <span class="ms-3"><strong>Portal (BANSYNC):</strong> @(Model.RemoteBanSyncCount ??
-                                                                                                                                                0)</span>
+                                                                                                                                                                                                    0)</span>
                                                     <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong>
                                                         @(Model.RemoteExternalCount ?? 0)</span>
                                                     }

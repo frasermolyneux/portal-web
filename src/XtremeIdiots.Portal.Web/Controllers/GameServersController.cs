@@ -151,7 +151,6 @@ public class GameServersController(
 
             createGameServerDto.AgentEnabled = model.AgentEnabled;
             createGameServerDto.SetFileTransportProperties(model.FileTransportEnabled, model.FileTransportType);
-            createGameServerDto.FtpEnabled = model.FileTransportEnabled && model.FileTransportType == FileTransportType.Ftp;
             createGameServerDto.RconEnabled = model.RconEnabled;
             createGameServerDto.BanFileSyncEnabled = model.BanFileSyncEnabled;
             createGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.BanFileRootPath) ? "/" : model.BanFileRootPath;
@@ -219,8 +218,8 @@ public class GameServersController(
 
             gameServerData.ClearNoPermissionBanFileMonitors(gameTypes, banFileMonitorIds);
 
-            var fileTransportEnabled = gameServerData.GetFileTransportEnabled(gameServerData.FtpEnabled);
-            var fileTransportType = gameServerData.GetFileTransportType(fileTransportEnabled, gameServerData.FtpEnabled);
+            var fileTransportEnabled = gameServerData.FileTransportEnabled;
+            var fileTransportType = gameServerData.FileTransportType;
 
             // Fetch configuration namespaces so the view reads from config API instead of legacy DTO properties
             try
@@ -431,8 +430,8 @@ public class GameServersController(
 
             editGameServerDto.AgentEnabled = model.GameServer.AgentEnabled;
 
-            var existingFileTransportEnabled = gameServerData.GetFileTransportEnabled(gameServerData.FtpEnabled);
-            var existingFileTransportType = gameServerData.GetFileTransportType(existingFileTransportEnabled, gameServerData.FtpEnabled);
+            var existingFileTransportEnabled = gameServerData.FileTransportEnabled;
+            var existingFileTransportType = gameServerData.FileTransportType;
 
             var selectedFileTransportEnabled = canEditFileTransport.Succeeded
                 ? model.GameServer.FileTransportEnabled
@@ -454,7 +453,6 @@ public class GameServersController(
             }
 
             editGameServerDto.SetFileTransportProperties(selectedFileTransportEnabled, selectedFileTransportType);
-            editGameServerDto.FtpEnabled = selectedFileTransportEnabled && selectedFileTransportType == FileTransportType.Ftp;
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
             editGameServerDto.BanFileSyncEnabled = model.GameServer.BanFileSyncEnabled;
             editGameServerDto.BanFileRootPath = string.IsNullOrWhiteSpace(model.GameServer.BanFileRootPath) ? "/" : model.GameServer.BanFileRootPath;

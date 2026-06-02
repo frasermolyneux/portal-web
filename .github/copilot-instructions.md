@@ -47,7 +47,7 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 
 ## Authorization Model
 
-The portal uses a `{Domain}.{Action}` policy naming convention (e.g., `AdminActions.Create`, `GameServers.Credentials.Ftp.Read`). Policies are defined as constants in the `AuthPolicies` class (`Auth/Constants/AuthPolicies.cs`) and registered via `PolicyExtensions.AddXtremeIdiotsPolicies()`. Each policy maps to a marker requirement class and a corresponding authorization handler.
+The portal uses a `{Domain}.{Action}` policy naming convention (e.g., `AdminActions.Create`, `GameServers.Credentials.FileTransport.Read`). Policies are defined as constants in the `AuthPolicies` class (`Auth/Constants/AuthPolicies.cs`) and registered via `PolicyExtensions.AddXtremeIdiotsPolicies()`. Each policy maps to a marker requirement class and a corresponding authorization handler.
 
 ### Role Hierarchy
 

@@ -7,7 +7,7 @@ $(document).ready(function () {
     const ROLE_CLAIM_TYPES = new Set([
         'SeniorAdmin', 'HeadAdmin', 'GameAdmin', 'Moderator',
         'GameServers.Admin.Read', 'GameServers.BanFileMonitors.Read',
-        'GameServers.Credentials.Rcon.Read', 'GameServers.Credentials.Ftp.Read'
+        'GameServers.Credentials.Rcon.Read', 'GameServers.Credentials.FileTransport.Read'
     ]);
 
     function renderRoles(row) {

@@ -47,7 +47,6 @@ public class CredentialsController(
                 UserProfileClaimType.HeadAdmin,
                 UserProfileClaimType.GameAdmin,
                 AuthPolicies.GameServers_Credentials_FileTransport_Read,
-                AdditionalPermission.GameServers_Credentials_Ftp_Read,
                 AdditionalPermission.GameServers_Credentials_Rcon_Read
             ];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItems(requiredClaims);

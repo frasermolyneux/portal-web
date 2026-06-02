@@ -35,12 +35,6 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 case GameServersCredentialsFileTransportWrite:
                     HandleCredentialsFileTransportWrite(context, requirement);
                     break;
-                case GameServersCredentialsFtpRead:
-                    HandleCredentialsFtpRead(context, requirement);
-                    break;
-                case GameServersCredentialsFtpWrite:
-                    HandleCredentialsFtpWrite(context, requirement);
-                    break;
                 case GameServersCredentialsRconRead:
                     HandleCredentialsRconRead(context, requirement);
                     break;
@@ -146,41 +140,11 @@ public class GameServersAuthHandler : IAuthorizationHandler
         }
 
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.FileTransport.Read");
-        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Ftp.Read");
     }
 
     private static void HandleCredentialsFileTransportWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
         BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
-        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.FileTransport.Write");
-        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Ftp.Write");
-    }
-
-    private static void HandleCredentialsFtpRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
-
-        if (context.Resource is Tuple<GameType, Guid> refTuple)
-        {
-            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, refTuple.Item1);
-            if (!context.HasSucceeded)
-                BaseAuthorizationHelper.CheckFileTransportCredentialsAccess(context, requirement, refTuple.Item2);
-        }
-        else if (context.Resource is (GameType gameType, Guid gameServerId))
-        {
-            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
-            if (!context.HasSucceeded)
-                BaseAuthorizationHelper.CheckFileTransportCredentialsAccess(context, requirement, gameServerId);
-        }
-
-        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Ftp.Read");
-        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.FileTransport.Read");
-    }
-
-    private static void HandleCredentialsFtpWrite(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
-    {
-        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
-        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.Ftp.Write");
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Credentials.FileTransport.Write");
     }
 

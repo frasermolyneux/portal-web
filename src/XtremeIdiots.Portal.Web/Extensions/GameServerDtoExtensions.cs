@@ -7,8 +7,8 @@ public static class GameServerDtoExtensions
 {
     public static GameServerViewModel ToViewModel(this GameServerDto gameServerDto)
     {
-        var fileTransportEnabled = gameServerDto.GetFileTransportEnabled(gameServerDto.FtpEnabled);
-        var transportType = gameServerDto.GetFileTransportType(fileTransportEnabled, gameServerDto.FtpEnabled);
+        var fileTransportEnabled = gameServerDto.FileTransportEnabled;
+        var transportType = gameServerDto.FileTransportType;
 
         var viewModel = new GameServerViewModel
         {
@@ -20,7 +20,7 @@ public static class GameServerDtoExtensions
             AgentEnabled = gameServerDto.AgentEnabled,
             FileTransportEnabled = fileTransportEnabled,
             FileTransportType = transportType,
-            FtpEnabled = gameServerDto.FtpEnabled,
+            FtpEnabled = fileTransportEnabled && transportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Ftp,
             RconEnabled = gameServerDto.RconEnabled,
             BanFileSyncEnabled = gameServerDto.BanFileSyncEnabled,
             BanFileRootPath = string.IsNullOrWhiteSpace(gameServerDto.BanFileRootPath) ? "/" : gameServerDto.BanFileRootPath,

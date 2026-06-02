@@ -44,7 +44,7 @@ public class GameServerDtoExtensionsTests
         // Arrange
         var dto = CreateGameServerDto(agentEnabled: true,
             ftpEnabled: true, rconEnabled: true, banFileSyncEnabled: true, serverListEnabled: true,
-            serverListPosition: 5);
+            serverListPosition: 5, fileTransportEnabled: true, fileTransportType: "Ftp");
 
         // Act
         var viewModel = dto.ToViewModel();
@@ -80,7 +80,7 @@ public class GameServerDtoExtensionsTests
     }
 
     [Fact]
-    public void ToViewModel_WhenLegacyFtpEnabledWithoutFileTransportType_InfersFtp()
+    public void ToViewModel_WhenTransportTypeIsMissing_UsesUnknown()
     {
         // Arrange
         var dto = CreateGameServerDto(ftpEnabled: true);
@@ -89,7 +89,7 @@ public class GameServerDtoExtensionsTests
         var viewModel = dto.ToViewModel();
 
         // Assert
-        Assert.Equal(FileTransportType.Ftp, viewModel.FileTransportType);
+        Assert.Equal(FileTransportType.Unknown, viewModel.FileTransportType);
     }
 
     [Fact]

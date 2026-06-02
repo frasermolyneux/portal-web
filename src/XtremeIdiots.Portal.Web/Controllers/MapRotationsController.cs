@@ -604,8 +604,8 @@ public class MapRotationsController(
 
             var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
 
-            var fileTransportEnabled = server?.GetFileTransportEnabled(server.FtpEnabled) ?? false;
-            var fileTransportType = server?.GetFileTransportType(fileTransportEnabled, server.FtpEnabled) ?? FileTransportType.Unknown;
+            var fileTransportEnabled = server?.FileTransportEnabled ?? false;
+            var fileTransportType = server?.FileTransportType ?? FileTransportType.Unknown;
 
             ViewData["RotationTitle"] = rotation.Title;
 
