@@ -174,6 +174,37 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public void PopulateConfigFromNamespace_FunnyMessagesNamespace_MapsAllFields()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateConfigFromNamespace");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "funnyMessages",
+            Configuration = """
+            {
+              "messages": [
+                { "message": "^1FU^7 {name}", "enabled": true },
+                { "message": "{name} got owned", "enabled": false }
+              ]
+            }
+            """
+        }));
+
+        // Act
+        method.Invoke(sut, [model, config]);
+
+        // Assert
+        Assert.Equal(2, model.FunnyMessages.Count);
+        Assert.Equal("^1FU^7 {name}", model.FunnyMessages[0].Message);
+        Assert.True(model.FunnyMessages[0].Enabled);
+        Assert.Equal("{name} got owned", model.FunnyMessages[1].Message);
+        Assert.False(model.FunnyMessages[1].Enabled);
+    }
+
+    [Fact]
     public void PopulateConfigFromNamespace_ParsesStringBooleans_ForOtherConfigNamespaces()
     {
         // Arrange
@@ -252,6 +283,11 @@ public class GameServersControllerTests
             [
                 new BroadcastMessageViewModel { Message = "^1Welcome", Enabled = true },
                 new BroadcastMessageViewModel { Message = "^2Rules", Enabled = false }
+            ],
+            FunnyMessages =
+            [
+                new BroadcastMessageViewModel { Message = "^5FU {name}", Enabled = true },
+                new BroadcastMessageViewModel { Message = "{name} is unlucky", Enabled = false }
             ]
         };
 
@@ -269,6 +305,16 @@ public class GameServersControllerTests
         Assert.Equal(2, root.GetProperty("messages").GetArrayLength());
         Assert.False(root.GetProperty("messages")[1].GetProperty("enabled").GetBoolean());
         Assert.Equal("^2Rules", root.GetProperty("messages")[1].GetProperty("message").GetString());
+
+        Assert.True(upsertPayloads.TryGetValue("funnyMessages", out var funnyMessagesJson));
+        using var funnyDoc = System.Text.Json.JsonDocument.Parse(funnyMessagesJson);
+        var funnyRoot = funnyDoc.RootElement;
+
+        Assert.Equal(2, funnyRoot.GetProperty("messages").GetArrayLength());
+        Assert.Equal("^5FU {name}", funnyRoot.GetProperty("messages")[0].GetProperty("message").GetString());
+        Assert.True(funnyRoot.GetProperty("messages")[0].GetProperty("enabled").GetBoolean());
+        Assert.Equal("{name} is unlucky", funnyRoot.GetProperty("messages")[1].GetProperty("message").GetString());
+        Assert.False(funnyRoot.GetProperty("messages")[1].GetProperty("enabled").GetBoolean());
     }
 
     private static MethodInfo GetPrivateInstanceMethod(string name)

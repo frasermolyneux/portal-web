@@ -12,6 +12,7 @@ public class GameServerEditViewModel : IValidatableObject
 {
     public const int DefaultBroadcastIntervalSeconds = 500;
     public const int MaxBroadcastMessageLength = 120;
+    public const int MaxFunnyMessageLength = 120;
 
     /// <summary>
     /// Core game server data
@@ -110,6 +111,14 @@ public class GameServerEditViewModel : IValidatableObject
 
     public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
 
+    // Funny messages configuration (parsed from "funnyMessages" config namespace)
+
+    public List<BroadcastMessageViewModel> FunnyMessages { get; set; } = [];
+
+    // Global funny message defaults used for server-level inheritance awareness
+
+    public List<BroadcastMessageViewModel> GlobalFunnyMessages { get; set; } = [];
+
     // Global defaults (for placeholder display in override fields)
 
     public int GlobalModerationHateSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;
@@ -160,13 +169,22 @@ public class GameServerEditViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (BroadcastMessages is null)
-            yield break;
-
-        for (var i = 0; i < BroadcastMessages.Count; i++)
+        if (BroadcastMessages is not null)
         {
-            if (BroadcastMessages[i].Message?.Length > MaxBroadcastMessageLength)
-                yield return new ValidationResult($"Broadcast message cannot exceed {MaxBroadcastMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
+            for (var i = 0; i < BroadcastMessages.Count; i++)
+            {
+                if (BroadcastMessages[i].Message?.Length > MaxBroadcastMessageLength)
+                    yield return new ValidationResult($"Broadcast message cannot exceed {MaxBroadcastMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
+            }
+        }
+
+        if (FunnyMessages is not null)
+        {
+            for (var i = 0; i < FunnyMessages.Count; i++)
+            {
+                if (FunnyMessages[i].Message?.Length > MaxFunnyMessageLength)
+                    yield return new ValidationResult($"Funny message cannot exceed {MaxFunnyMessageLength} characters.", [$"FunnyMessages[{i}].Message"]);
+            }
         }
     }
 }

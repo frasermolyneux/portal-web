@@ -1,0 +1,98 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model GameServerEditViewModel
+@{
+    var funnyMessages = Model.FunnyMessages ?? [];
+    var globalFunnyMessages = Model.GlobalFunnyMessages ?? [];
+}
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5>Funny Messages (!fu)</h5>
+    </div>
+    <div class="ibox-content">
+        <p class="mb-2">
+            Configure server-specific !fu messages. Leave this list empty to inherit global funny messages.
+        </p>
+        <p class="text-muted mb-0">
+            Global defaults currently configured: <strong>@globalFunnyMessages.Count</strong> message(s).
+        </p>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">!fu Funny Messages</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-funny-message">
+            <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
+        </button>
+    </div>
+    <div class="ibox-content">
+        <p id="funny-messages-empty" class="text-muted @(funnyMessages.Count > 0 ? "d-none" : string.Empty)">
+            No server-specific funny messages configured. Global messages will be used.
+        </p>
+
+        <div id="funny-messages-container">
+            @for (var i = 0; i < funnyMessages.Count; i++)
+            {
+                <div class="border rounded p-3 mb-3" data-message-row="funny">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="form-check form-switch mb-0">
+                            <input type="hidden" data-field="enabled-hidden" name="FunnyMessages[@i].Enabled" value="false" />
+                            @if (funnyMessages[i].Enabled)
+                            {
+                                <input class="form-check-input" data-field="enabled" type="checkbox" name="FunnyMessages[@i].Enabled" value="true" id="FunnyMessages_@(i)__Enabled" checked="checked" />
+                            }
+                            else
+                            {
+                                <input class="form-check-input" data-field="enabled" type="checkbox" name="FunnyMessages[@i].Enabled" value="true" id="FunnyMessages_@(i)__Enabled" />
+                            }
+                            <label class="form-check-label" data-field="enabled-label" for="FunnyMessages_@(i)__Enabled">Enabled</label>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Funny message ordering">
+                            <button type="button" class="btn btn-outline-secondary" data-action="move-up" aria-label="Move message up">
+                                <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-action="move-down" aria-label="Move message down">
+                                <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                                <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input class="form-control" data-field="message" asp-for="FunnyMessages[i].Message" maxlength="@GameServerEditViewModel.MaxFunnyMessageLength" />
+                    <small class="form-text text-muted"><span data-field="char-count">0</span>/@GameServerEditViewModel.MaxFunnyMessageLength characters</small>
+                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                    <span class="text-danger" data-field="validation" asp-validation-for="FunnyMessages[i].Message"></span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<template id="funny-message-template">
+    <div class="border rounded p-3 mb-3" data-message-row="funny">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="form-check form-switch mb-0">
+                <input type="hidden" data-field="enabled-hidden" value="false" />
+                <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                <label class="form-check-label" data-field="enabled-label">Enabled</label>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Funny message ordering">
+                <button type="button" class="btn btn-outline-secondary" data-action="move-up" aria-label="Move message up">
+                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-action="move-down" aria-label="Move message down">
+                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <input class="form-control" data-field="message" maxlength="@GameServerEditViewModel.MaxFunnyMessageLength" />
+        <small class="form-text text-muted"><span data-field="char-count">0</span>/@GameServerEditViewModel.MaxFunnyMessageLength characters</small>
+        <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+        <span class="text-danger" data-field="validation"></span>
+    </div>
+</template>

@@ -60,6 +60,61 @@ public class GameServerEditViewModelTests
         Assert.True(isValid);
     }
 
+    [Fact]
+    public void Validate_WhenFunnyMessageExceeds120Characters_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.FunnyMessages =
+        [
+            new BroadcastMessageViewModel
+            {
+                Message = new string('a', 121),
+                Enabled = true
+            }
+        ];
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+
+        Assert.False(isValid);
+    }
+
+    [Fact]
+    public void Validate_WhenFunnyMessageIs120Characters_IsValid()
+    {
+        var model = CreateValidModel();
+        model.FunnyMessages =
+        [
+            new BroadcastMessageViewModel
+            {
+                Message = new string('a', 120),
+                Enabled = true
+            }
+        ];
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+
+        Assert.True(isValid);
+    }
+
+    [Fact]
+    public void Validate_WhenBroadcastMessagesIsNull_StillValidatesFunnyMessages()
+    {
+        var model = CreateValidModel();
+        model.BroadcastMessages = null!;
+        model.FunnyMessages =
+        [
+            new BroadcastMessageViewModel
+            {
+                Message = new string('a', 121),
+                Enabled = true
+            }
+        ];
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+
+        Assert.False(isValid);
+    }
+
     private static GameServerEditViewModel CreateValidModel()
     {
         return new GameServerEditViewModel

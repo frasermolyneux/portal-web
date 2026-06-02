@@ -51,6 +51,11 @@
                                         data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
                                         aria-selected="false">Broadcasts</button>
                             </li>
+                            <li class="nav-item" role="presentation" id="funny-messages-tab-item">
+                                <button class="nav-link" id="funny-messages-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#funny-messages-tab" type="button" role="tab" aria-controls="funny-messages-tab"
+                                        aria-selected="false">Funny Messages</button>
+                            </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
                                         data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
@@ -107,6 +112,11 @@
                             <div class="tab-pane fade" id="broadcasts-tab" role="tabpanel"
                                  aria-labelledby="broadcasts-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_BroadcastsConfiguration", Model)
+                            </div>
+
+                            <div class="tab-pane fade" id="funny-messages-tab" role="tabpanel"
+                                 aria-labelledby="funny-messages-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_FunnyMessagesConfiguration", Model)
                             </div>
 
                             <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
@@ -337,7 +347,7 @@
         return input.getAttribute('data-global-agent-name') || '';
         }
 
-        function updateBroadcastRowPreview(row) {
+        function updateMessageRowPreview(row) {
         var input = row.querySelector('[data-field="message"]');
         var preview = row.querySelector('[data-field="preview"]');
         var count = row.querySelector('[data-field="char-count"]');
@@ -403,14 +413,14 @@
         }
         }
 
-        function updateBroadcastsEmptyState(container) {
-        var emptyState = document.getElementById('broadcast-messages-empty');
+        function updateMessageEmptyState(container, emptyStateId) {
+        var emptyState = document.getElementById(emptyStateId);
         if (!emptyState) return;
-        emptyState.classList.toggle('d-none', container.querySelectorAll('[data-broadcast-row]').length > 0);
+        emptyState.classList.toggle('d-none', container.querySelectorAll('[data-message-row]').length > 0);
         }
 
-        function reindexBroadcastRows(container) {
-        container.querySelectorAll('[data-broadcast-row]').forEach(function (row, index) {
+        function reindexMessageRows(container, fieldNamePrefix) {
+        container.querySelectorAll('[data-message-row]').forEach(function (row, index) {
         row.dataset.index = index.toString();
 
         var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
@@ -419,21 +429,21 @@
         var message = row.querySelector('[data-field="message"]');
         var validation = row.querySelector('[data-field="validation"]');
 
-        if (enabledHidden) enabledHidden.name = 'BroadcastMessages[' + index + '].Enabled';
+        if (enabledHidden) enabledHidden.name = fieldNamePrefix + '[' + index + '].Enabled';
         if (enabled) {
-        enabled.name = 'BroadcastMessages[' + index + '].Enabled';
-        enabled.id = 'BroadcastMessages_' + index + '__Enabled';
+        enabled.name = fieldNamePrefix + '[' + index + '].Enabled';
+        enabled.id = fieldNamePrefix + '_' + index + '__Enabled';
         }
-        if (enabledLabel) enabledLabel.htmlFor = 'BroadcastMessages_' + index + '__Enabled';
+        if (enabledLabel) enabledLabel.htmlFor = fieldNamePrefix + '_' + index + '__Enabled';
         if (message) {
-        message.name = 'BroadcastMessages[' + index + '].Message';
-        message.id = 'BroadcastMessages_' + index + '__Message';
+        message.name = fieldNamePrefix + '[' + index + '].Message';
+        message.id = fieldNamePrefix + '_' + index + '__Message';
         }
-        if (validation) validation.setAttribute('data-valmsg-for', 'BroadcastMessages[' + index + '].Message');
+        if (validation) validation.setAttribute('data-valmsg-for', fieldNamePrefix + '[' + index + '].Message');
         });
         }
 
-        function wireBroadcastMessageRow(row) {
+        function wireMessageRow(row, options) {
         var removeButton = row.querySelector('[data-action="remove"]');
         var moveUpButton = row.querySelector('[data-action="move-up"]');
         var moveDownButton = row.querySelector('[data-action="move-down"]');
@@ -441,78 +451,78 @@
 
         if (removeButton) {
         removeButton.addEventListener('click', function () {
-        var container = document.getElementById('broadcast-messages-container');
+        var container = document.getElementById(options.containerId);
         row.remove();
         if (!container) return;
-        reindexBroadcastRows(container);
-        updateBroadcastsEmptyState(container);
+        reindexMessageRows(container, options.fieldNamePrefix);
+        updateMessageEmptyState(container, options.emptyStateId);
         });
         }
 
         if (moveUpButton) {
         moveUpButton.addEventListener('click', function () {
-        var container = document.getElementById('broadcast-messages-container');
+        var container = document.getElementById(options.containerId);
         var previous = row.previousElementSibling;
         if (!container || !previous) return;
         container.insertBefore(row, previous);
-        reindexBroadcastRows(container);
+        reindexMessageRows(container, options.fieldNamePrefix);
         });
         }
 
         if (moveDownButton) {
         moveDownButton.addEventListener('click', function () {
-        var container = document.getElementById('broadcast-messages-container');
+        var container = document.getElementById(options.containerId);
         var next = row.nextElementSibling;
         if (!container || !next) return;
         container.insertBefore(next, row);
-        reindexBroadcastRows(container);
+        reindexMessageRows(container, options.fieldNamePrefix);
         });
         }
 
         if (messageInput) {
         messageInput.addEventListener('input', function () {
-        updateBroadcastRowPreview(row);
+        updateMessageRowPreview(row);
         });
         }
 
-        updateBroadcastRowPreview(row);
+        updateMessageRowPreview(row);
         }
 
-        function createBroadcastMessageRow(template) {
+        function createMessageRow(template, options) {
         var row = template.content.firstElementChild.cloneNode(true);
-        wireBroadcastMessageRow(row);
+        wireMessageRow(row, options);
         return row;
         }
 
-        (function initializeBroadcastMessages() {
-        var container = document.getElementById('broadcast-messages-container');
+        function initializeMessageEditor(options) {
+        var container = document.getElementById(options.containerId);
         if (!container) return;
 
-        var template = document.getElementById('broadcast-message-template');
+        var template = document.getElementById(options.templateId);
         if (!template) return;
 
-        container.querySelectorAll('[data-broadcast-row]').forEach(function (row) {
-        wireBroadcastMessageRow(row);
+        container.querySelectorAll('[data-message-row]').forEach(function (row) {
+        wireMessageRow(row, options);
         });
 
-        var addButton = document.getElementById('add-broadcast-message');
+        var addButton = document.getElementById(options.addButtonId);
         if (addButton) {
         addButton.addEventListener('click', function () {
-        var newRow = createBroadcastMessageRow(template);
+        var newRow = createMessageRow(template, options);
         container.appendChild(newRow);
-        reindexBroadcastRows(container);
-        updateBroadcastsEmptyState(container);
+        reindexMessageRows(container, options.fieldNamePrefix);
+        updateMessageEmptyState(container, options.emptyStateId);
         });
         }
 
-        reindexBroadcastRows(container);
-        updateBroadcastsEmptyState(container);
+        reindexMessageRows(container, options.fieldNamePrefix);
+        updateMessageEmptyState(container, options.emptyStateId);
 
         var agentNameInput = document.getElementById('AgentConfigName');
         if (agentNameInput) {
         agentNameInput.addEventListener('input', function () {
-        container.querySelectorAll('[data-broadcast-row]').forEach(function (row) {
-        updateBroadcastRowPreview(row);
+        container.querySelectorAll('[data-message-row]').forEach(function (row) {
+        updateMessageRowPreview(row);
         });
         });
         }
@@ -520,9 +530,26 @@
         var form = document.querySelector('form[action*="Edit"]');
         if (form) {
         form.addEventListener('submit', function () {
-        reindexBroadcastRows(container);
+        reindexMessageRows(container, options.fieldNamePrefix);
         });
         }
-        })();
+
+        }
+
+        initializeMessageEditor({
+        containerId: 'broadcast-messages-container',
+        templateId: 'broadcast-message-template',
+        addButtonId: 'add-broadcast-message',
+        emptyStateId: 'broadcast-messages-empty',
+        fieldNamePrefix: 'BroadcastMessages'
+        });
+
+        initializeMessageEditor({
+        containerId: 'funny-messages-container',
+        templateId: 'funny-message-template',
+        addButtonId: 'add-funny-message',
+        emptyStateId: 'funny-messages-empty',
+        fieldNamePrefix: 'FunnyMessages'
+        });
     </script>
 }

@@ -7,10 +7,11 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// <summary>
 /// View model for the global settings admin page, representing fleet-wide configuration defaults
 /// </summary>
-public class GlobalSettingsViewModel
+public class GlobalSettingsViewModel : IValidatableObject
 {
     public const int DisabledSeverityThreshold = -1;
     public const string DefaultAgentName = "^4[^1>XI< BOT^4]^7";
+    public const int MaxFunnyMessageLength = 120;
 
     // Agent defaults
     [DisplayName("Poll Interval (ms)")]
@@ -67,6 +68,22 @@ public class GlobalSettingsViewModel
     [DisplayName("Player Cache Expiration (s)")]
     [Range(1, int.MaxValue, ErrorMessage = "Player cache expiration must be at least 1 second.")]
     public int EventsPlayerCacheExpirationSeconds { get; set; } = 900;
+
+    // Global funny messages defaults
+
+    public List<BroadcastMessageViewModel> FunnyMessages { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FunnyMessages is null)
+            yield break;
+
+        for (var i = 0; i < FunnyMessages.Count; i++)
+        {
+            if (FunnyMessages[i].Message?.Length > MaxFunnyMessageLength)
+                yield return new ValidationResult($"Funny message cannot exceed {MaxFunnyMessageLength} characters.", [$"FunnyMessages[{i}].Message"]);
+        }
+    }
 
     public static IReadOnlyList<SelectListItem> BuildSeverityOptions(bool includeUseGlobalOption)
     {

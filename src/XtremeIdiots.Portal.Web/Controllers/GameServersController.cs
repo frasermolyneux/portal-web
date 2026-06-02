@@ -671,6 +671,9 @@ public class GameServersController(
                     editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
                     editModel.BroadcastMessages = GetBroadcastMessages(root);
                     break;
+                case "funnyMessages":
+                    editModel.FunnyMessages = GetBroadcastMessages(root);
+                    break;
                 default:
                     Logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
                     break;
@@ -778,6 +781,9 @@ public class GameServersController(
                 case "events":
                     editModel.GlobalEventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", editModel.GlobalEventsStaleThresholdSeconds);
                     editModel.GlobalEventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", editModel.GlobalEventsPlayerCacheExpirationSeconds);
+                    break;
+                case "funnyMessages":
+                    editModel.GlobalFunnyMessages = GetBroadcastMessages(root);
                     break;
                 default:
                     break;
@@ -1016,6 +1022,18 @@ public class GameServersController(
 
             await UpsertConfigSafeAsync(gameServerId, "broadcasts",
                 JsonSerializer.Serialize(broadcastsConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
+
+            var funnyMessagesConfig = new
+            {
+                messages = (model.FunnyMessages ?? []).Select(m => new
+                {
+                    message = m.Message,
+                    enabled = m.Enabled
+                })
+            };
+
+            await UpsertConfigSafeAsync(gameServerId, "funnyMessages",
+                JsonSerializer.Serialize(funnyMessagesConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -39,7 +39,7 @@
         <div id="broadcast-messages-container">
             @for (var i = 0; i < broadcastMessages.Count; i++)
             {
-                <div class="border rounded p-3 mb-3" data-broadcast-row>
+                <div class="border rounded p-3 mb-3" data-message-row="broadcast">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="form-check form-switch mb-0">
                             <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled" value="false" />
@@ -76,7 +76,7 @@
 </div>
 
 <template id="broadcast-message-template">
-    <div class="border rounded p-3 mb-3" data-broadcast-row>
+    <div class="border rounded p-3 mb-3" data-message-row="broadcast">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="form-check form-switch mb-0">
                 <input type="hidden" data-field="enabled-hidden" value="false" />

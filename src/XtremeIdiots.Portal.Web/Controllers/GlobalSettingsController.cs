@@ -103,6 +103,15 @@ public class GlobalSettingsController(
                 playerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds
             }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
 
+            await UpsertConfigSafeAsync("funnyMessages", JsonSerializer.Serialize(new
+            {
+                messages = (model.FunnyMessages ?? []).Select(m => new
+                {
+                    message = m.Message,
+                    enabled = m.Enabled
+                })
+            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+
             if (errors.Count > 0)
             {
                 this.AddAlertDanger($"Failed to save configuration for: {string.Join(", ", errors)}");
@@ -151,6 +160,9 @@ public class GlobalSettingsController(
                     model.EventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", model.EventsStaleThresholdSeconds);
                     model.EventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", model.EventsPlayerCacheExpirationSeconds);
                     break;
+                case "funnyMessages":
+                    model.FunnyMessages = GetMessageTemplates(root);
+                    break;
                 default:
                     Logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);
                     break;
@@ -192,6 +204,45 @@ public class GlobalSettingsController(
                prop.TryGetInt32(out var value)
             ? value
             : null;
+    }
+
+    private static bool GetBoolProperty(JsonElement root, string propertyName, bool defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.True)
+                return true;
+
+            if (prop.ValueKind == JsonValueKind.False)
+                return false;
+
+            if (prop.ValueKind == JsonValueKind.String && bool.TryParse(prop.GetString(), out var parsedBool))
+                return parsedBool;
+        }
+
+        return defaultValue;
+    }
+
+    private static List<BroadcastMessageViewModel> GetMessageTemplates(JsonElement root)
+    {
+        var messages = new List<BroadcastMessageViewModel>();
+
+        if (!root.TryGetProperty("messages", out var messagesElement) || messagesElement.ValueKind != JsonValueKind.Array)
+            return messages;
+
+        foreach (var item in messagesElement.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                continue;
+
+            messages.Add(new BroadcastMessageViewModel
+            {
+                Message = GetStringProperty(item, "message") ?? string.Empty,
+                Enabled = GetBoolProperty(item, "enabled", true)
+            });
+        }
+
+        return messages;
     }
 
     private async Task UpsertConfigSafeAsync(

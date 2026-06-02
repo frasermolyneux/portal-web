@@ -1,0 +1,47 @@
+using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Web.ViewModels;
+
+namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
+
+public class GlobalSettingsViewModelTests
+{
+    [Fact]
+    public void Validate_WhenFunnyMessageExceeds120Characters_ReturnsValidationError()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            FunnyMessages =
+            [
+                new BroadcastMessageViewModel
+                {
+                    Message = new string('a', 121),
+                    Enabled = true
+                }
+            ]
+        };
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+
+        Assert.False(isValid);
+    }
+
+    [Fact]
+    public void Validate_WhenFunnyMessageIs120Characters_IsValid()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            FunnyMessages =
+            [
+                new BroadcastMessageViewModel
+                {
+                    Message = new string('a', 120),
+                    Enabled = true
+                }
+            ]
+        };
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+
+        Assert.True(isValid);
+    }
+}
