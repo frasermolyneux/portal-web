@@ -115,6 +115,35 @@
             }
         }
 
+        if (card?.GameType == GameType.CallOfDuty4x)
+        {
+            if (!string.Equals(m.LegacyLastCheckResult, "Success", StringComparison.OrdinalIgnoreCase))
+            {
+                return ("bg-danger", "Legacy failed", $"Legacy lane check: {m.LegacyLastCheckResult ?? "Unknown"} — {m.LegacyLastCheckErrorMessage}".Trim('—', ' '));
+            }
+
+            if (m.LegacyLastCheckUtc is null)
+            {
+                return ("bg-warning text-dark", "Legacy pending", "Legacy lane has not reported a check yet.");
+            }
+
+            if ((DateTime.UtcNow - m.LegacyLastCheckUtc.Value).TotalMinutes > 15)
+            {
+                return ("bg-warning text-dark", "Legacy stale", "No successful legacy-lane check in the last 15 minutes.");
+            }
+
+            if (m.LegacyRemoteBanSyncCount.HasValue && card.ActiveBanCounts is not null)
+            {
+                var expected = card.ActiveBanCounts.ActivePermanentBanCount + card.ActiveBanCounts.ActiveTempBanCount;
+                if (expected > 0)
+                {
+                    var drift = Math.Abs(expected - m.LegacyRemoteBanSyncCount.Value) / (double)expected;
+                    if (drift > 0.05)
+                        return ("bg-warning text-dark", "Legacy drifted", $"Legacy lane has {m.LegacyRemoteBanSyncCount.Value} portal bans, DB has {expected} active.");
+                }
+            }
+        }
+
         return ("bg-success", "Protected", "Server is in sync with portal bans.");
     }
 }
@@ -162,6 +191,10 @@
                 // written on every cycle including skips, so it tells us "is portal-sync alive?".
                 var portalSyncAlive = central?.LastUpdatedUtc != default
                                       && (DateTime.UtcNow - (central?.LastUpdatedUtc ?? DateTime.MinValue)).TotalMinutes <= 30;
+                var legacySyncAlive = card.GameType != GameType.CallOfDuty4x
+                                      || (central?.LegacyBlobLastRegeneratedUtc.HasValue == true
+                                          && string.IsNullOrWhiteSpace(central.LegacyLastRegenerationError)
+                                          && (DateTime.UtcNow - central.LegacyBlobLastRegeneratedUtc.Value).TotalMinutes <= 30);
                 var dbCentralDrift = central?.BanSyncLineCount.HasValue == true
                                      && totalActive > 0
                                      && Math.Abs(totalActive - central.BanSyncLineCount.Value) > Math.Max(2, totalActive * 0.02);
@@ -203,6 +236,24 @@
                                     }
                                 </dd>
 
+                                @if (card.GameType == GameType.CallOfDuty4x)
+                                {
+                                    <dt class="col-sm-7">legacy lane last regenerated</dt>
+                                    <dd class="col-sm-5 text-end">
+                                        @if (central?.LegacyBlobLastRegeneratedUtc is null)
+                                        {
+                                            <span class="text-muted">never</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="@(legacySyncAlive ? "text-success" : "text-danger")"
+                                                  title="@central.LegacyBlobLastRegeneratedUtc.Value.ToString("u")">
+                                                @Relative(central.LegacyBlobLastRegeneratedUtc)
+                                            </span>
+                                        }
+                                    </dd>
+                                }
+
                                 <dt class="col-sm-7">Last regenerated</dt>
                                 <dd class="col-sm-5 text-end">
                                     @if (central?.BlobLastRegeneratedUtc is null)
@@ -226,6 +277,11 @@
                                     else
                                     {
                                         <span>@(central.BanSyncLineCount?.ToString("N0") ?? "—") / @(central.ExternalLineCount?.ToString("N0") ?? "—")</span>
+                                        @if (card.GameType == GameType.CallOfDuty4x)
+                                        {
+                                            <br />
+                                            <span class="text-muted">Legacy: @(central.LegacyBanSyncLineCount?.ToString("N0") ?? "—") / @(central.LegacyExternalLineCount?.ToString("N0") ?? "—")</span>
+                                        }
                                     }
                                 </dd>
 
@@ -252,6 +308,11 @@
                                 {
                                     <dt class="col-12 mt-2 text-danger">Last regeneration error</dt>
                                     <dd class="col-12 small text-danger">@central.LastRegenerationError</dd>
+                                }
+                                @if (card.GameType == GameType.CallOfDuty4x && !string.IsNullOrEmpty(central?.LegacyLastRegenerationError))
+                                {
+                                    <dt class="col-12 mt-2 text-danger">Legacy lane error</dt>
+                                    <dd class="col-12 small text-danger">@central.LegacyLastRegenerationError</dd>
                                 }
                             </dl>
                         </div>
