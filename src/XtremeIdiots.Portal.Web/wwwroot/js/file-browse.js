@@ -11,6 +11,7 @@
     var _targetInputId = null;
     var _fileFilter = null;
     var _selectionMode = 'file';
+    var _apiBasePath = '/api/file-browse';
     var _currentPath = '/';
     var _selectedPath = null;
     var _modal = null;
@@ -27,6 +28,14 @@
 
         if (!_modal) {
             _modal = new bootstrap.Modal(document.getElementById('fileBrowseModal'));
+        }
+
+        var modalElement = document.getElementById('fileBrowseModal');
+        if (modalElement) {
+            var apiBasePath = modalElement.getAttribute('data-api-base-path');
+            if (apiBasePath) {
+                _apiBasePath = apiBasePath;
+            }
         }
 
         updateModalLabels();
@@ -100,25 +109,19 @@
         }
     }
 
-    function navigateTo(path) {
+    function navigateTo(path, allowRootFallback) {
         var loading = document.getElementById('fileBrowseLoading');
         var error = document.getElementById('fileBrowseError');
         var container = document.getElementById('fileBrowseListingContainer');
+        var normalizedPath = normalizeClientPath(path);
 
         loading.style.display = '';
         error.style.display = 'none';
         container.style.display = 'none';
-        _selectedPath = _selectionMode === 'directory' ? normalizeClientPath(path) : null;
+        _selectedPath = _selectionMode === 'directory' ? normalizedPath : null;
         updateSelectButton();
 
-        fetch('/api/file-browse/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
-            .then(function (response) {
-                if (response.status === 403) throw new Error('You do not have permission to browse this server\'s files.');
-                if (!response.ok) throw new Error('Failed to browse directory (HTTP ' + response.status + ')');
-                var contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) throw new Error('Unexpected response from server.');
-                return response.json();
-            })
+        loadDirectory(normalizedPath, allowRootFallback !== false)
             .then(function (data) {
                 loading.style.display = 'none';
                 container.style.display = '';
@@ -134,6 +137,21 @@
                 loading.style.display = 'none';
                 error.style.display = '';
                 error.textContent = err.message || 'Failed to connect to the file transport server.';
+            });
+    }
+
+    function loadDirectory(path, allowRootFallback) {
+        return fetch(_apiBasePath + '/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
+            .then(function (response) {
+                if (response.status === 404 && allowRootFallback && path !== '/') {
+                    return loadDirectory('/', false);
+                }
+
+                if (response.status === 403) throw new Error('You do not have permission to browse this server\'s files.');
+                if (!response.ok) throw new Error('Failed to browse directory (HTTP ' + response.status + ')');
+                var contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) throw new Error('Unexpected response from server.');
+                return response.json();
             });
     }
 
