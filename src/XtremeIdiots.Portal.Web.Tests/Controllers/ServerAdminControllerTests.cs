@@ -212,10 +212,10 @@ public class ServerAdminControllerTests
     private static void AssertJsonDataIsEmpty(IActionResult result)
     {
         var json = Assert.IsType<JsonResult>(result);
-        var payload = JObject.Parse(JsonConvert.SerializeObject(json.Value)!);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(json.Value));
         var dataToken = payload["data"];
         Assert.NotNull(dataToken);
-        Assert.Equal(JTokenType.Array, dataToken!.Type);
+        Assert.Equal(JTokenType.Array, dataToken.Type);
         Assert.False(dataToken.HasValues);
     }
 
