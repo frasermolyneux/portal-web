@@ -48,6 +48,11 @@ public class ServerAdminController(
     private const int PendingScreenshotInitialLifetimeSeconds = 15;
     private const int PendingScreenshotConfirmedLifetimeMinutes = 2;
 
+    private static bool SupportsScreenshots(GameType gameType)
+    {
+        return gameType == GameType.CallOfDuty4x;
+    }
+
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -172,6 +177,8 @@ public class ServerAdminController(
 
             await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, screenshotsReadAuth, screenshotsDeleteAuth, sayAuth, mapCmdAuth, restartSrvAuth, screenshotCmdAuth).ConfigureAwait(false);
 
+            var isScreenshotSupportedGameType = SupportsScreenshots(gs.GameType);
+
             var viewModel = new ServerDetailViewModel
             {
                 GameServer = gs,
@@ -181,11 +188,11 @@ public class ServerAdminController(
                 CanViewMapRotation = (await mapRotAuth.ConfigureAwait(false)).Succeeded,
                 CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
                 CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded,
-                CanViewScreenshots = (await screenshotsReadAuth.ConfigureAwait(false)).Succeeded,
+                CanViewScreenshots = isScreenshotSupportedGameType && (await screenshotsReadAuth.ConfigureAwait(false)).Succeeded,
                 CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
                 CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
                 CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded,
-                CanTakeScreenshot = (await screenshotCmdAuth.ConfigureAwait(false)).Succeeded,
+                CanTakeScreenshot = isScreenshotSupportedGameType && (await screenshotCmdAuth.ConfigureAwait(false)).Succeeded,
                 CanDeleteScreenshots = (await screenshotsDeleteAuth.ConfigureAwait(false)).Succeeded
             };
 
@@ -1185,6 +1192,11 @@ public class ServerAdminController(
             if (screenshotAuthResult is not null)
                 return Json(new { success = false, message = "You don't have permission to request screenshots" });
 
+            if (!SupportsScreenshots(gameServerData.GameType))
+            {
+                return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
+            }
+
             if (string.IsNullOrWhiteSpace(playerIdentifier))
             {
                 return Json(new { success = false, message = "Player identifier is required" });
@@ -1325,6 +1337,11 @@ public class ServerAdminController(
             if (authResult is not null)
                 return authResult;
 
+            if (!SupportsScreenshots(gameServer.GameType))
+            {
+                return BadRequest(new { message = "Screenshots are only supported for CallOfDuty4x servers" });
+            }
+
             if (includeDeleted)
             {
                 var includeDeletedAuthResult = await CheckAuthorizationAsync(
@@ -1429,6 +1446,11 @@ public class ServerAdminController(
             if (authResult is not null)
                 return authResult;
 
+            if (!SupportsScreenshots(gameType))
+            {
+                return BadRequest();
+            }
+
             var contentResponse = await repositoryApiClient.Screenshots.V1.GetScreenshotContent(screenshotId, cancellationToken).ConfigureAwait(false);
             if (!contentResponse.IsSuccess || contentResponse.Result?.Data is null)
             {
@@ -1475,6 +1497,9 @@ public class ServerAdminController(
 
             if (authResult is not null)
                 return Json(new { success = false, message = "You don't have permission to delete screenshots" });
+
+            if (!SupportsScreenshots(gameType))
+                return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
 
             var deleteResponse = await repositoryApiClient.Screenshots.V1.DeleteScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
             if (!deleteResponse.IsSuccess)
