@@ -366,8 +366,8 @@ public class ServerAdminControllerTests
         Assert.NotNull(confirmedPendingRequest.RequestedAtUtc);
         Assert.NotNull(confirmedPendingRequest.ExpiresAtUtc);
 
-        var initialLifetime = initialPendingRequest.ExpiresAtUtc!.Value - initialPendingRequest.RequestedAtUtc!.Value;
-        var confirmedLifetime = confirmedPendingRequest.ExpiresAtUtc!.Value - confirmedPendingRequest.RequestedAtUtc!.Value;
+        var initialLifetime = initialPendingRequest.ExpiresAtUtc.Value - initialPendingRequest.RequestedAtUtc.Value;
+        var confirmedLifetime = confirmedPendingRequest.ExpiresAtUtc.Value - confirmedPendingRequest.RequestedAtUtc.Value;
         Assert.True(confirmedLifetime > initialLifetime);
 
         mockServersApiClient.Verify(
