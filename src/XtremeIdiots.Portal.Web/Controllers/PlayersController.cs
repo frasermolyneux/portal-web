@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -35,9 +36,13 @@ public class PlayersController(
     /// </summary>
     /// <returns>The players index view</returns>
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult(View() as IActionResult), nameof(Index)).ConfigureAwait(false);
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var model = await BuildPlayersIndexViewModelAsync(null, cancellationToken).ConfigureAwait(false);
+            return View(model);
+        }, nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -46,12 +51,12 @@ public class PlayersController(
     /// <param name="id">The game type to filter by</param>
     /// <returns>The players index view with game type filter applied</returns>
     [HttpGet]
-    public async Task<IActionResult> GameIndex(GameType? id)
+    public async Task<IActionResult> GameIndex(GameType? id, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() =>
+        return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            ViewData["GameType"] = id;
-            return Task.FromResult(View(nameof(Index)) as IActionResult);
+            var model = await BuildPlayersIndexViewModelAsync(id, cancellationToken).ConfigureAwait(false);
+            return View(nameof(Index), model);
         }, nameof(GameIndex)).ConfigureAwait(false);
     }
 
@@ -179,5 +184,74 @@ public class PlayersController(
 
         var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         viewModel.EnrichedIpAddresses.AddRange(results);
+    }
+
+    private async Task<PlayersIndexViewModel> BuildPlayersIndexViewModelAsync(GameType? selectedGameType, CancellationToken cancellationToken)
+    {
+        var tags = await GetAllTagsAsync(cancellationToken).ConfigureAwait(false);
+
+        return new PlayersIndexViewModel
+        {
+            SelectedGameType = selectedGameType,
+            Tags = tags
+        };
+    }
+
+    private async Task<List<TagDto>> GetAllTagsAsync(CancellationToken cancellationToken)
+    {
+        const int pageSize = 100;
+        var tags = new List<TagDto>();
+        var skip = 0;
+
+        while (true)
+        {
+            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(skip, pageSize, cancellationToken).ConfigureAwait(false);
+
+            if (!tagsResponse.IsSuccess || tagsResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to retrieve tags for players index for user {UserId}", User.XtremeIdiotsId());
+                return [];
+            }
+
+            var page = tagsResponse.Result.Data.Items.Where(t => t != null).ToList();
+            if (page.Count == 0)
+            {
+                break;
+            }
+
+            tags.AddRange(page);
+
+            var pagination = tagsResponse.Result.Pagination;
+            if (pagination is not null)
+            {
+                var totalAvailable = Math.Max(pagination.TotalCount, pagination.FilteredCount);
+                var nextSkip = pagination.Skip + pagination.Top;
+                if (nextSkip <= skip)
+                {
+                    break;
+                }
+
+                if (nextSkip >= totalAvailable)
+                {
+                    break;
+                }
+
+                skip = nextSkip;
+                continue;
+            }
+
+            if (page.Count < pageSize)
+            {
+                break;
+            }
+
+            skip += page.Count;
+        }
+
+        return [.. tags
+            .Where(t => t.TagId != Guid.Empty)
+            .GroupBy(t => t.TagId)
+            .Select(g => g.First())
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)];
     }
 }

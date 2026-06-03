@@ -1,12 +1,13 @@
 ﻿@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Extensions.V1
+@model XtremeIdiots.Portal.Web.ViewModels.PlayersIndexViewModel
 @{
     ViewData["Title"] = "Players Index";
     var dataUrl = "/Players/GetPlayersAjax";
-    if (ViewData["GameType"] is GameType gameType)
+    if (Model.SelectedGameType is GameType gameType)
     {
         ViewData["Title"] = gameType.DisplayName() + " Players Index";
-        dataUrl = "/Players/GetPlayersAjax/" + ViewData["GameType"];
+        dataUrl = "/Players/GetPlayersAjax/" + Model.SelectedGameType;
     }
 }
 
@@ -20,8 +21,7 @@
                         <option value="">All Games</option>
                         @foreach (var gt in Enum.GetValues<GameType>())
                         {
-                            var isSelected = ViewData["GameType"] != null && ViewData["GameType"]!.ToString() ==
-                            gt.ToString();
+                            var isSelected = Model.SelectedGameType == gt;
                             <option value="@gt" selected="@(isSelected ? "selected" : null)">@gt</option>
                         }
                     </select>
@@ -34,9 +34,18 @@
                     </select>
                 </div>
                 <div class="filter-group">
+                    <label for="filterPlayerTag" class="form-label">Player Tag</label>
+                    <select id="filterPlayerTag" class="form-select">
+                        <option value="">All Tags</option>
+                        @foreach (var tag in Model.Tags)
+                        {
+                            <option value="@tag.TagId">@tag.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-group">
                     <label class="form-label" for="resetFilters">Reset</label>
-                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Clear
-                        Filters</button>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
                 </div>
             </div>
             <div class="ibox players-table-wrapper">
@@ -49,6 +58,7 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>
+                                    <th scope="col">Tags</th>
                                     <th scope="col">Player IP</th>
                                     <th scope="col">Guid</th>
                                     <th scope="col">First Seen</th>

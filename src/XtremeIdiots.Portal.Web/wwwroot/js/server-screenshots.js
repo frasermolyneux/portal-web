@@ -233,7 +233,6 @@ var ServerScreenshots = (function () {
 
     function start() {
         initTable();
-        refresh();
     }
 
     function dispose() {

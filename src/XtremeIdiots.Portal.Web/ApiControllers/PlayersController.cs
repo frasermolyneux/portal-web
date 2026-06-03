@@ -34,11 +34,12 @@ public class PlayersController(
     /// </summary>
     /// <param name="id">Optional game type filter</param>
     /// <param name="playersFilter">Filter type (UsernameAndGuid or IpAddress)</param>
+    /// <param name="selectedTagId">Optional tag filter by tag ID</param>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>JSON data for DataTable display</returns>
     [HttpPost("GetPlayersAjax/{id?}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> GetPlayersAjax(GameType? id, [FromQuery] PlayersFilter? playersFilter, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetPlayersAjax(GameType? id, [FromQuery] PlayersFilter? playersFilter, [FromQuery] Guid? selectedTagId, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -56,9 +57,17 @@ public class PlayersController(
             }
 
             var order = GetPlayersOrderFromDataTable(model);
+            var effectiveFilter = selectedTagId.HasValue ? PlayersFilter.Tag : filter;
+            var filterString = selectedTagId.HasValue ? selectedTagId.Value.ToString() : model.Search?.Value;
 
             var playerCollectionApiResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                id, filter, model.Search?.Value, model.Start, model.Length, order, PlayerEntityOptions.None).ConfigureAwait(false);
+                id,
+                effectiveFilter,
+                filterString,
+                model.Start,
+                model.Length,
+                order,
+                PlayerEntityOptions.Tags).ConfigureAwait(false);
 
             if (!playerCollectionApiResponse.IsSuccess || playerCollectionApiResponse.Result?.Data?.Items is null)
             {
@@ -80,6 +89,11 @@ public class PlayersController(
                     player.Username,
                     player.Guid,
                     player.IpAddress,
+                    tags = (player.Tags ?? []).Select(t => new
+                    {
+                        t.TagId,
+                        name = t.Tag?.Name
+                    }),
                     player.FirstSeen,
                     player.LastSeen,
                     intel.ProxyCheckRiskScore,
