@@ -2,6 +2,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 
 using Newtonsoft.Json;
@@ -18,6 +19,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
@@ -1221,7 +1223,36 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+            var potentialReadAccess = await authorizationService
+                .AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_Screenshots_Read)
+                .ConfigureAwait(false);
+            if (!potentialReadAccess.Succeeded)
+            {
+                return Unauthorized();
+            }
+
+            if (includeDeleted)
+            {
+                var potentialDeleteAccess = await authorizationService
+                    .AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_Screenshots_Delete)
+                    .ConfigureAwait(false);
+                if (!potentialDeleteAccess.Succeeded)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            ApiResult<GameServerDto> gameServerResponse;
+            try
+            {
+                gameServerResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                Logger.LogWarning(ex, "Timed out retrieving game server {ServerId} for {ActionName}", id, nameof(GetScreenshots));
+                return Json(new { data = Array.Empty<object>() });
+            }
+
             if (gameServerResponse.IsNotFound || gameServerResponse.Result?.Data is null)
             {
                 return NotFound();
@@ -1255,21 +1286,30 @@ public class ServerAdminController(
                     return includeDeletedAuthResult;
             }
 
-            var screenshotsResponse = await repositoryApiClient.Screenshots.V1.GetScreenshots(
-                id,
-                Math.Max(skipEntries, 0),
-                Math.Clamp(takeEntries, 1, 2000),
-                ScreenshotOrder.CapturedUtcDesc,
-                cancellationToken,
-                new GetScreenshotsQuery
-                {
-                    PlayerIdentifier = playerIdentifier,
-                    PlayerName = playerName,
-                    CapturedFromUtc = capturedFromUtc,
-                    CapturedToUtc = capturedToUtc,
-                    Source = source,
-                    IncludeDeleted = includeDeleted
-                }).ConfigureAwait(false);
+            ApiResult<CollectionModel<ScreenshotDto>> screenshotsResponse;
+            try
+            {
+                screenshotsResponse = await repositoryApiClient.Screenshots.V1.GetScreenshots(
+                    id,
+                    Math.Max(skipEntries, 0),
+                    Math.Clamp(takeEntries, 1, 2000),
+                    ScreenshotOrder.CapturedUtcDesc,
+                    cancellationToken,
+                    new GetScreenshotsQuery
+                    {
+                        PlayerIdentifier = playerIdentifier,
+                        PlayerName = playerName,
+                        CapturedFromUtc = capturedFromUtc,
+                        CapturedToUtc = capturedToUtc,
+                        Source = source,
+                        IncludeDeleted = includeDeleted
+                    }).ConfigureAwait(false);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                Logger.LogWarning(ex, "Timed out retrieving screenshots for game server {ServerId} in {ActionName}", id, nameof(GetScreenshots));
+                return Json(new { data = Array.Empty<object>() });
+            }
 
             if (!screenshotsResponse.IsSuccess || screenshotsResponse.Result?.Data?.Items is null)
             {

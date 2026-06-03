@@ -13,6 +13,7 @@ using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
@@ -136,6 +137,86 @@ public class ServerAdminControllerTests
         var result = await sut.GetScreenshots(serverId, includeDeleted: true, cancellationToken: CancellationToken.None);
 
         Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
+    public async Task GetScreenshots_WhenGetGameServerTimesOut_ReturnsEmptyData()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("Simulated timeout"));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetScreenshots(serverId, cancellationToken: CancellationToken.None);
+
+        AssertJsonDataIsEmpty(result);
+    }
+
+    [Fact]
+    public async Task GetScreenshots_WhenGetScreenshotsTimesOut_ReturnsEmptyData()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.Screenshots.V1.GetScreenshots(
+                serverId,
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                ScreenshotOrder.CapturedUtcDesc,
+                It.IsAny<CancellationToken>(),
+                It.IsAny<GetScreenshotsQuery>()))
+            .ThrowsAsync(new TaskCanceledException("Simulated timeout"));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetScreenshots(serverId, cancellationToken: CancellationToken.None);
+
+        AssertJsonDataIsEmpty(result);
+    }
+
+    [Fact]
+    public async Task GetScreenshots_WhenRequestIsCanceled_ThrowsTaskCanceledException()
+    {
+        var serverId = Guid.NewGuid();
+        using var cancellationSource = new CancellationTokenSource();
+        await cancellationSource.CancelAsync();
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("User canceled request"));
+
+        var sut = CreateSut();
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token));
+    }
+
+    private static void AssertJsonDataIsEmpty(IActionResult result)
+    {
+        var json = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(json.Value)!);
+        var dataToken = payload["data"];
+        Assert.NotNull(dataToken);
+        Assert.Equal(JTokenType.Array, dataToken!.Type);
+        Assert.False(dataToken.HasValues);
     }
 
     private static GameServerDto CreateGameServerDto(Guid gameServerId)
