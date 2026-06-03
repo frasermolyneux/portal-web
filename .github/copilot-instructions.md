@@ -19,6 +19,17 @@ ASP.NET Core 9 web application (`src/XtremeIdiots.Portal.Web/`) providing the Xt
 - Release builds treat warnings as errors and precompile Razor views.
 - Integration tests are filtered out by default; add new tests to `src/XtremeIdiots.Portal.Web.Tests/`.
 
+## Copilot Local Validation Gate (Required)
+
+Before declaring a Copilot-authored change complete, run these commands locally as a strict gate aligned with CI expectations and to fail fast on style/analyzer regressions (for example IDE0370 unnecessary suppressions):
+
+```bash
+dotnet test src --filter "FullyQualifiedName!~IntegrationTests" /p:ContinuousIntegrationBuild=true /p:TreatWarningsAsErrors=true
+dotnet format src/XtremeIdiots.Portal.Web.sln --verify-no-changes --severity warn
+```
+
+If either command fails, fix the reported diagnostics before opening/updating a PR.
+
 ## Front-End Assets (SCSS)
 
 - SCSS source lives under `src/XtremeIdiots.Portal.Web/Styles/`; see [docs/css-architecture-guide.md](docs/css-architecture-guide.md).
