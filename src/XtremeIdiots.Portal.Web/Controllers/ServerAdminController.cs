@@ -45,6 +45,9 @@ public class ServerAdminController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
+    private const int PendingScreenshotInitialLifetimeSeconds = 15;
+    private const int PendingScreenshotConfirmedLifetimeMinutes = 2;
+
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -1187,9 +1190,35 @@ public class ServerAdminController(
                 return Json(new { success = false, message = "Player identifier is required" });
             }
 
+            var normalizedPlayerIdentifier = playerIdentifier.Trim();
+            var normalizedPlayerName = string.IsNullOrWhiteSpace(playerName) ? null : playerName.Trim();
+            var pendingRequestedAtUtc = DateTime.UtcNow;
+
+            var pendingRequestResponse = await repositoryApiClient.Screenshots.V1.CreatePendingScreenshotRequest(
+                new CreatePendingScreenshotRequestDto
+                {
+                    GameServerId = id,
+                    PlayerIdentifier = normalizedPlayerIdentifier,
+                    PlayerName = normalizedPlayerName,
+                    RequestedAtUtc = pendingRequestedAtUtc,
+                    ExpiresAtUtc = pendingRequestedAtUtc.AddSeconds(PendingScreenshotInitialLifetimeSeconds),
+                    CreatedBy = User.Username()
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            if (!pendingRequestResponse.IsSuccess)
+            {
+                Logger.LogWarning(
+                    "Failed to create pending screenshot request for server {ServerId} and player {PlayerIdentifier}",
+                    id,
+                    normalizedPlayerIdentifier);
+
+                return Json(new { success = false, message = "Failed to prepare screenshot request. Please try again." });
+            }
+
             var result = await serversApiClient.Rcon.V1.TakeScreenshot(id, new TakeScreenshotRequestDto
             {
-                PlayerIdentifier = playerIdentifier.Trim()
+                PlayerIdentifier = normalizedPlayerIdentifier
             }, cancellationToken).ConfigureAwait(false);
 
             if (!result.IsSuccess)
@@ -1197,14 +1226,35 @@ public class ServerAdminController(
                 return Json(new { success = false, message = "Failed to request screenshot from game server" });
             }
 
+            var confirmedRequestedAtUtc = DateTime.UtcNow;
+            var pendingRefreshResponse = await repositoryApiClient.Screenshots.V1.CreatePendingScreenshotRequest(
+                new CreatePendingScreenshotRequestDto
+                {
+                    GameServerId = id,
+                    PlayerIdentifier = normalizedPlayerIdentifier,
+                    PlayerName = normalizedPlayerName,
+                    RequestedAtUtc = confirmedRequestedAtUtc,
+                    ExpiresAtUtc = confirmedRequestedAtUtc.AddMinutes(PendingScreenshotConfirmedLifetimeMinutes),
+                    CreatedBy = User.Username()
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            if (!pendingRefreshResponse.IsSuccess)
+            {
+                Logger.LogWarning(
+                    "Failed to extend pending screenshot request lifetime for server {ServerId} and player {PlayerIdentifier}",
+                    id,
+                    normalizedPlayerIdentifier);
+            }
+
             TrackSuccessTelemetry("RconScreenshotRequested", nameof(TakeRconScreenshot), new Dictionary<string, string>
             {
                 { "ServerId", id.ToString() },
                 { "GameType", gameServerData.GameType.ToString() },
-                { "PlayerIdentifier", playerIdentifier.Trim() }
+                { "PlayerIdentifier", normalizedPlayerIdentifier }
             });
 
-            return Json(new { success = true, message = $"Screenshot requested for {(string.IsNullOrWhiteSpace(playerName) ? "player" : playerName)}. It may take a short time to appear." });
+            return Json(new { success = true, message = $"Screenshot requested for {(string.IsNullOrWhiteSpace(normalizedPlayerName) ? "player" : normalizedPlayerName)}. It may take a short time to appear." });
         }, nameof(TakeRconScreenshot)).ConfigureAwait(false);
     }
 
@@ -1330,6 +1380,9 @@ public class ServerAdminController(
                 capturedUtc = s.CapturedUtc,
                 playerIdentifier = s.PlayerIdentifier,
                 playerName = s.PlayerName,
+                linkSource = s.LinkSource,
+                linkConfidence = s.LinkConfidence,
+                linkDiagnostics = s.LinkDiagnostics,
                 source = s.Source,
                 sourceFileName = s.SourceFileName,
                 sizeBytes = s.SizeBytes,

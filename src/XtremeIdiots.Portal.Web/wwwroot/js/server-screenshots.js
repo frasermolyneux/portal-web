@@ -223,11 +223,22 @@ var ServerScreenshots = (function () {
                     data: 'playerName',
                     name: 'playerName',
                     render: function (data, type, row) {
-                        var name = data || row.playerIdentifier || 'Unknown';
+                        var hasLinkedPlayer = !!(data || row.playerIdentifier);
+                        var name = data || row.playerIdentifier || 'Unlinked';
                         if (row.deleted) {
                             return '<span class="text-decoration-line-through text-muted">' + escapeHtml(name) + '</span>';
                         }
+                        if (!hasLinkedPlayer) {
+                            return '<span class="text-muted">Unlinked</span>';
+                        }
                         return escapeHtml(name);
+                    }
+                },
+                {
+                    data: null,
+                    name: 'linkStatus',
+                    render: function (data, type, row) {
+                        return renderLinkStatus(row);
                     }
                 },
                 {
@@ -422,6 +433,33 @@ var ServerScreenshots = (function () {
         }
 
         return (kb / 1024).toFixed(1) + ' MB';
+    }
+
+    function renderLinkStatus(row) {
+        var source = (row.linkSource || '').toString().toLowerCase();
+        var confidence = (row.linkConfidence || '').toString().toLowerCase();
+        var diagnostics = row.linkDiagnostics ? ' (' + escapeHtml(row.linkDiagnostics) + ')' : '';
+
+        if (source === 'request_match') {
+            return '<span class="badge bg-success">Request matched</span>';
+        }
+
+        if (source === 'filename_match') {
+            return '<span class="badge bg-info text-dark">Filename matched</span>';
+        }
+
+        if (source === 'manual') {
+            return '<span class="badge bg-primary">Manual link</span>';
+        }
+
+        if (source === 'unlinked' || !source) {
+            var label = confidence === 'low'
+                ? 'Unlinked (low confidence)'
+                : 'Unlinked';
+            return '<span class="badge bg-secondary">' + label + '</span>' + (diagnostics ? '<span class="text-muted ms-1">' + diagnostics + '</span>' : '');
+        }
+
+        return '<span class="badge bg-secondary">' + escapeHtml(source) + '</span>';
     }
 
     return {

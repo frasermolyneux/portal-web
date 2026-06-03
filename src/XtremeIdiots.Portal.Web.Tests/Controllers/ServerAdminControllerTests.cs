@@ -15,6 +15,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XtremeIdiots.Portal.Integrations.Forums;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
@@ -278,6 +279,103 @@ public class ServerAdminControllerTests
         var result = await sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token);
 
         AssertJsonDataIsEmpty(result);
+    }
+
+    [Fact]
+    public async Task TakeRconScreenshot_WhenPendingRequestFails_ReturnsFailureAndDoesNotInvokeRcon()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Screenshot))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.Screenshots.V1.CreatePendingScreenshotRequest(It.IsAny<CreatePendingScreenshotRequestDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PendingScreenshotRequestDto>(HttpStatusCode.BadRequest));
+
+        var sut = CreateSut();
+
+        var result = await sut.TakeRconScreenshot(serverId, "player-guid-001", "Alpha", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(
+            x => x.Rcon.V1.TakeScreenshot(It.IsAny<Guid>(), It.IsAny<TakeScreenshotRequestDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task TakeRconScreenshot_WhenPendingRequestSucceeds_CreatesPendingAndInvokesRconScreenshot()
+    {
+        var serverId = Guid.NewGuid();
+        var pendingRequests = new List<CreatePendingScreenshotRequestDto>();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Screenshot))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.Screenshots.V1.CreatePendingScreenshotRequest(It.IsAny<CreatePendingScreenshotRequestDto>(), It.IsAny<CancellationToken>()))
+            .Callback<CreatePendingScreenshotRequestDto, CancellationToken>((request, _) => pendingRequests.Add(request))
+            .ReturnsAsync(new ApiResult<PendingScreenshotRequestDto>(HttpStatusCode.OK, new ApiResponse<PendingScreenshotRequestDto>(new PendingScreenshotRequestDto())));
+
+        mockServersApiClient
+            .Setup(x => x.Rcon.V1.TakeScreenshot(serverId, It.IsAny<TakeScreenshotRequestDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        var sut = CreateSut();
+
+        var result = await sut.TakeRconScreenshot(serverId, "  player-guid-002  ", "  Bravo  ", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        Assert.Equal(2, pendingRequests.Count);
+
+        var initialPendingRequest = pendingRequests[0];
+        Assert.Equal(serverId, initialPendingRequest.GameServerId);
+        Assert.Equal("player-guid-002", initialPendingRequest.PlayerIdentifier);
+        Assert.Equal("Bravo", initialPendingRequest.PlayerName);
+        Assert.NotNull(initialPendingRequest.RequestedAtUtc);
+        Assert.NotNull(initialPendingRequest.ExpiresAtUtc);
+
+        var confirmedPendingRequest = pendingRequests[1];
+        Assert.Equal(serverId, confirmedPendingRequest.GameServerId);
+        Assert.Equal("player-guid-002", confirmedPendingRequest.PlayerIdentifier);
+        Assert.Equal("Bravo", confirmedPendingRequest.PlayerName);
+        Assert.NotNull(confirmedPendingRequest.RequestedAtUtc);
+        Assert.NotNull(confirmedPendingRequest.ExpiresAtUtc);
+
+        var initialLifetime = initialPendingRequest.ExpiresAtUtc!.Value - initialPendingRequest.RequestedAtUtc!.Value;
+        var confirmedLifetime = confirmedPendingRequest.ExpiresAtUtc!.Value - confirmedPendingRequest.RequestedAtUtc!.Value;
+        Assert.True(confirmedLifetime > initialLifetime);
+
+        mockServersApiClient.Verify(
+            x => x.Rcon.V1.TakeScreenshot(
+                serverId,
+                It.Is<TakeScreenshotRequestDto>(request => request.PlayerIdentifier == "player-guid-002"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private static void AssertJsonDataIsEmpty(IActionResult result)
