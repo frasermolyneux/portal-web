@@ -106,7 +106,7 @@ public class ServerAdminControllerTests
         var json = Assert.IsType<JsonResult>(result);
         Assert.NotNull(json.Value);
         Assert.NotNull(capturedQuery);
-        Assert.Equal("123", capturedQuery!.PlayerIdentifier);
+        Assert.Equal("123", capturedQuery.PlayerIdentifier);
         Assert.Equal("alpha", capturedQuery.PlayerName);
         Assert.Equal(capturedFromUtc, capturedQuery.CapturedFromUtc);
         Assert.Equal(capturedToUtc, capturedQuery.CapturedToUtc);
