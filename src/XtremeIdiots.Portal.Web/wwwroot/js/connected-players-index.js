@@ -13,8 +13,25 @@ $(document).ready(function () {
     }
 
     function renderUserProfileLink(userProfileId) {
-        const encoded = htmlEncode(userProfileId);
-        return '<a href="/User/ManageProfile/' + encoded + '">' + encoded + '</a>';
+        const routeValue = encodeURIComponent(userProfileId ?? '');
+        return '<a href="/User/ManageProfile/' + routeValue + '">Link</a>';
+    }
+
+    function renderGameIcon(gameType) {
+        return gameTypeIcon(htmlEncode(gameType));
+    }
+
+    function renderUsernameLink(username, playerId) {
+        const routeValue = encodeURIComponent(playerId ?? '');
+        const coloredName = typeof CodColors !== 'undefined' && CodColors && typeof CodColors.renderSafe === 'function'
+            ? CodColors.renderSafe(username)
+            : htmlEncode(username);
+
+        if (!playerId) {
+            return coloredName;
+        }
+
+        return '<a href="/Players/Details/' + routeValue + '">' + coloredName + '</a>';
     }
 
     function renderStatusBadge(isActive) {
@@ -59,12 +76,12 @@ $(document).ready(function () {
         autoWidth: false,
         stateSave: true,
         stateSaveParams: function (settings, data) {
-            data._connectedPlayersStructureVersion = 1;
+            data._connectedPlayersStructureVersion = 2;
             data.filterGameType = gameSel?.value || '';
             data.filterStatus = statusSel?.value || '';
         },
         stateLoadParams: function (settings, data) {
-            if (data._connectedPlayersStructureVersion !== 1) {
+            if (data._connectedPlayersStructureVersion !== 2) {
                 return false;
             }
 
@@ -77,7 +94,7 @@ $(document).ready(function () {
             }
         },
         pageLength: 25,
-        order: [[6, 'desc']],
+        order: [[5, 'desc']],
         ajax: {
             url: '/ConnectedPlayers/GetConnectedPlayersAjax',
             dataSrc: 'data',
@@ -105,18 +122,16 @@ $(document).ready(function () {
         columnDefs: [
             { targets: 0, responsivePriority: 3 },
             { targets: 1, responsivePriority: 1 },
-            { targets: 2, responsivePriority: 5 },
-            { targets: 3, responsivePriority: 4 },
-            { targets: 4, responsivePriority: 8 },
-            { targets: 5, responsivePriority: 2 },
-            { targets: 6, responsivePriority: 6 },
-            { targets: 7, responsivePriority: 9 },
-            { targets: 8, responsivePriority: 7, orderable: false, searchable: false }
+            { targets: 2, responsivePriority: 4 },
+            { targets: 3, responsivePriority: 8 },
+            { targets: 4, responsivePriority: 2 },
+            { targets: 5, responsivePriority: 6 },
+            { targets: 6, responsivePriority: 9 },
+            { targets: 7, responsivePriority: 7, orderable: false, searchable: false }
         ],
         columns: [
-            { data: 'gameType', name: 'gameType', orderable: true },
-            { data: 'username', name: 'username', orderable: true, render: function (data) { return htmlEncode(data); } },
-            { data: 'playerId', name: 'playerId', orderable: false, render: function (data) { return '<code>' + htmlEncode(data) + '</code>'; } },
+            { data: 'gameType', name: 'gameType', orderable: true, render: function (data) { return renderGameIcon(data); } },
+            { data: 'username', name: 'username', orderable: true, render: function (data, type, row) { return renderUsernameLink(data, row.playerId); } },
             { data: 'userProfileId', name: 'userProfileId', orderable: false, render: function (data) { return renderUserProfileLink(data); } },
             { data: 'linkMethod', name: 'linkMethod', orderable: true, render: function (data) { return htmlEncode(data); } },
             { data: 'isActive', name: 'isActive', orderable: true, render: function (data, type, row) { return renderStatusBadge(row.isActive); } },
@@ -210,7 +225,7 @@ $(document).ready(function () {
 
         if (changed) {
             table.column(0).search('', true, false);
-            table.column(5).search('', true, false);
+            table.column(4).search('', true, false);
             table.page('first');
             table.draw(false);
         }
