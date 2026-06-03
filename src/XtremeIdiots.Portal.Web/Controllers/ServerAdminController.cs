@@ -1247,6 +1247,10 @@ public class ServerAdminController(
             {
                 gameServerResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
             }
+            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return Json(new { data = Array.Empty<object>() });
+            }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
                 Logger.LogWarning(ex, "Timed out retrieving game server {ServerId} for {ActionName}", id, nameof(GetScreenshots));
@@ -1304,6 +1308,10 @@ public class ServerAdminController(
                         Source = source,
                         IncludeDeleted = includeDeleted
                     }).ConfigureAwait(false);
+            }
+            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return Json(new { data = Array.Empty<object>() });
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {

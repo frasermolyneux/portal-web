@@ -140,6 +140,43 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
+    public async Task GetScreenshots_IncludeDeletedScopedAuthorizationFails_ReturnsUnauthorized()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object>(),
+                AuthPolicies.GameServers_Admin_Screenshots_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object>(resource => resource is XtremeIdiots.Portal.Web.Auth.PotentialAccessProbe),
+                AuthPolicies.GameServers_Admin_Screenshots_Delete))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object>(resource => resource is GameType),
+                AuthPolicies.GameServers_Admin_Screenshots_Delete))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        var result = await sut.GetScreenshots(serverId, includeDeleted: true, cancellationToken: CancellationToken.None);
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
     public async Task GetScreenshots_WhenGetGameServerTimesOut_ReturnsEmptyData()
     {
         var serverId = Guid.NewGuid();
@@ -190,7 +227,7 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
-    public async Task GetScreenshots_WhenRequestIsCanceled_ThrowsTaskCanceledException()
+    public async Task GetScreenshots_WhenRequestIsCanceled_ReturnsEmptyData()
     {
         var serverId = Guid.NewGuid();
         using var cancellationSource = new CancellationTokenSource();
@@ -206,7 +243,41 @@ public class ServerAdminControllerTests
 
         var sut = CreateSut();
 
-        await Assert.ThrowsAsync<TaskCanceledException>(() => sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token));
+        var result = await sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token);
+
+        AssertJsonDataIsEmpty(result);
+    }
+
+    [Fact]
+    public async Task GetScreenshots_WhenScreenshotsRequestIsCanceled_ReturnsEmptyData()
+    {
+        var serverId = Guid.NewGuid();
+        using var cancellationSource = new CancellationTokenSource();
+        await cancellationSource.CancelAsync();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.Screenshots.V1.GetScreenshots(
+                serverId,
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                ScreenshotOrder.CapturedUtcDesc,
+                It.IsAny<CancellationToken>(),
+                It.IsAny<GetScreenshotsQuery>()))
+            .ThrowsAsync(new TaskCanceledException("User canceled request"));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token);
+
+        AssertJsonDataIsEmpty(result);
     }
 
     private static void AssertJsonDataIsEmpty(IActionResult result)
