@@ -156,6 +156,7 @@ public class ServerAdminController(
     public async Task<IActionResult> GetServerEventsAjax(
         [FromQuery] string? gameType,
         [FromQuery] Guid? gameServerId,
+        [FromQuery] string? eventType,
         CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -188,7 +189,7 @@ public class ServerAdminController(
             }
 
             var eventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEvents(
-                parsedGameType, gameServerId, null,
+                parsedGameType, gameServerId, string.IsNullOrWhiteSpace(eventType) ? null : eventType.Trim(),
                 model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             if (!eventsApiResponse.IsSuccess || eventsApiResponse.Result?.Data is null)

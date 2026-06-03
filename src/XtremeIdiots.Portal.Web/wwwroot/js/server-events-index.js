@@ -2,6 +2,7 @@ $(document).ready(function () {
     var tableEl = $('#dataTable');
     var gameTypeSel = document.getElementById('filterGameType');
     var serverSel = document.getElementById('filterGameServer');
+    var eventTypeInput = document.getElementById('filterEventType');
     var allServers = [];
 
     function escapeHtml(str) {
@@ -42,11 +43,13 @@ $(document).ready(function () {
             data._serverEventsVersion = 1;
             if (gameTypeSel) data.gameType = gameTypeSel.value || '';
             if (serverSel) data.serverId = serverSel.value || '';
+            if (eventTypeInput) data.eventType = eventTypeInput.value || '';
         },
         stateLoadParams: function (settings, data) {
             if (data._serverEventsVersion !== 1) return false;
             if (gameTypeSel && data.gameType) gameTypeSel.value = data.gameType;
             if (serverSel && typeof data.serverId !== 'undefined') serverSel._pendingValue = data.serverId;
+            if (eventTypeInput && typeof data.eventType !== 'undefined') eventTypeInput.value = data.eventType;
         },
         columnDefs: [
             { targets: 0, responsivePriority: 1 },
@@ -72,6 +75,9 @@ $(document).ready(function () {
 
                 var srv = serverSel?.value;
                 if (srv) qs.push('gameServerId=' + encodeURIComponent(srv));
+
+                var eventType = eventTypeInput?.value?.trim();
+                if (eventType) qs.push('eventType=' + encodeURIComponent(eventType));
 
                 this.url = baseUrl + (qs.length ? ('?' + qs.join('&')) : '');
             }
@@ -154,9 +160,14 @@ $(document).ready(function () {
         table.page('first').draw(false);
     });
 
+    eventTypeInput?.addEventListener('input', function () {
+        table.page('first').draw(false);
+    });
+
     document.getElementById('resetFilters')?.addEventListener('click', function () {
         if (gameTypeSel) gameTypeSel.value = '';
         if (serverSel) serverSel.value = '';
+        if (eventTypeInput) eventTypeInput.value = '';
         rebuildServerOptions();
         table.search('');
         table.page('first').draw(false);
