@@ -65,7 +65,7 @@ var RconPlayers = (function () {
                     data: 'name', name: 'name',
                     render: function (data, type, row) {
                         if (row.playerId) {
-                            return '<a href="/Players/Details/' + row.playerId + '">' + CodColors.renderSafe(row.name) + '</a>';
+                            return '<a href="/Players/Details/' + row.playerId + '" target="_blank" rel="noopener noreferrer">' + CodColors.renderSafe(row.name) + '</a>';
                         }
                         return CodColors.renderSafe(row.name);
                     }

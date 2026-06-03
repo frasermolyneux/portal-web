@@ -325,7 +325,7 @@ public class ServerAdminController(
             {
                 // Search for player by GUID using GetPlayers with filter
                 var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                    gameType, null, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
+                    gameType, PlayersFilter.UsernameAndGuid, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
 
                 if (playerResponse.IsSuccess && playerResponse.Result?.Data?.Items?.Any() == true)
                 {
@@ -1509,7 +1509,7 @@ public class ServerAdminController(
         {
             // Try to find existing player profile by searching with GUID
             var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                gameType, null, playerGuidStr, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
+                gameType, PlayersFilter.UsernameAndGuid, playerGuidStr, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
 
             if (!playerResponse.IsSuccess || playerResponse.Result?.Data?.Items?.Any() != true)
             {
