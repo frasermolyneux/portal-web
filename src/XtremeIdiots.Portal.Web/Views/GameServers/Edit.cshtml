@@ -222,18 +222,6 @@
         });
         });
 
-        // Rotate chevron icon on legacy settings collapse
-        var legacyToggle = document.querySelector('[data-bs-target="#legacyTogglesBody"]');
-        if (legacyToggle) {
-        legacyToggle.addEventListener('click', function () {
-        var icon = this.querySelector('.collapse-icon');
-        if (icon) {
-        icon.classList.toggle('fa-chevron-right');
-        icon.classList.toggle('fa-chevron-down');
-        }
-        });
-        }
-
         // Toggle dependency enforcement
         // AgentEnabled requires FileTransportEnabled AND RconEnabled
         // BanFileSyncEnabled requires FileTransportEnabled AND AgentEnabled
