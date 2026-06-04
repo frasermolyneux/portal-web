@@ -66,8 +66,6 @@ public class GlobalSettingsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            NormalizeFunnyMessageEnabledValuesFromForm(model);
-
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;
@@ -105,14 +103,12 @@ public class GlobalSettingsController(
                 playerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds
             }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
 
-            await UpsertConfigSafeAsync("funnyMessages", JsonSerializer.Serialize(new
-            {
-                messages = (model.FunnyMessages ?? []).Select(m => new
-                {
-                    message = m.Message,
-                    enabled = m.Enabled
-                })
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
+            await UpsertConfigSafeAsync(
+                "chatCommands",
+                ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands),
+                errors,
+                cancellationToken).ConfigureAwait(false);
+
 
             if (errors.Count > 0)
             {
@@ -162,8 +158,8 @@ public class GlobalSettingsController(
                     model.EventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", model.EventsStaleThresholdSeconds);
                     model.EventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", model.EventsPlayerCacheExpirationSeconds);
                     break;
-                case "funnyMessages":
-                    model.FunnyMessages = GetMessageTemplates(root);
+                case "chatCommands":
+                    ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, root);
                     break;
                 default:
                     Logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);
@@ -208,45 +204,6 @@ public class GlobalSettingsController(
             : null;
     }
 
-    private static bool GetBoolProperty(JsonElement root, string propertyName, bool defaultValue)
-    {
-        if (root.TryGetProperty(propertyName, out var prop))
-        {
-            if (prop.ValueKind == JsonValueKind.True)
-                return true;
-
-            if (prop.ValueKind == JsonValueKind.False)
-                return false;
-
-            if (prop.ValueKind == JsonValueKind.String && bool.TryParse(prop.GetString(), out var parsedBool))
-                return parsedBool;
-        }
-
-        return defaultValue;
-    }
-
-    private static List<BroadcastMessageViewModel> GetMessageTemplates(JsonElement root)
-    {
-        var messages = new List<BroadcastMessageViewModel>();
-
-        if (!root.TryGetProperty("messages", out var messagesElement) || messagesElement.ValueKind != JsonValueKind.Array)
-            return messages;
-
-        foreach (var item in messagesElement.EnumerateArray())
-        {
-            if (item.ValueKind != JsonValueKind.Object)
-                continue;
-
-            messages.Add(new BroadcastMessageViewModel
-            {
-                Message = GetStringProperty(item, "message") ?? string.Empty,
-                Enabled = GetBoolProperty(item, "enabled", true)
-            });
-        }
-
-        return messages;
-    }
-
     private async Task UpsertConfigSafeAsync(
         string ns,
         string configJson,
@@ -271,21 +228,4 @@ public class GlobalSettingsController(
         }
     }
 
-    private void NormalizeFunnyMessageEnabledValuesFromForm(GlobalSettingsViewModel model)
-    {
-        if (model.FunnyMessages is null || model.FunnyMessages.Count == 0)
-            return;
-
-        for (var i = 0; i < model.FunnyMessages.Count; i++)
-        {
-            if (!Request.Form.TryGetValue($"FunnyMessages[{i}].Enabled", out var values))
-            {
-                model.FunnyMessages[i].Enabled = false;
-                continue;
-            }
-
-            model.FunnyMessages[i].Enabled = values.Any(value =>
-                bool.TryParse(value, out var parsed) && parsed);
-        }
-    }
 }

@@ -150,6 +150,10 @@ public class GameServerEditViewModel : IValidatableObject
     public int GlobalEventsPlayerCacheExpirationSeconds { get; set; } = 900;
     public string GlobalAgentName { get; set; } = GlobalSettingsViewModel.DefaultAgentName;
 
+    public ChatCommandServerSettingsViewModel ChatCommands { get; set; } = new();
+
+    public ChatCommandGlobalSettingsViewModel GlobalChatCommands { get; set; } = new();
+
     // Auth flags for tab visibility
 
     public bool CanEditFileTransport { get; set; }
@@ -216,6 +220,11 @@ public class GameServerEditViewModel : IValidatableObject
         if (!string.IsNullOrWhiteSpace(ScreenshotConfigFilePattern) && ScreenshotConfigFilePattern.Trim().Length > 120)
         {
             yield return new ValidationResult("Screenshot file pattern must be 120 characters or fewer.", [nameof(ScreenshotConfigFilePattern)]);
+        }
+
+        foreach (var validationResult in ChatCommands.Validate(validationContext))
+        {
+            yield return validationResult;
         }
     }
 }

@@ -73,6 +73,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public List<BroadcastMessageViewModel> FunnyMessages { get; set; } = [];
 
+    public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (FunnyMessages is null)
@@ -82,6 +84,11 @@ public class GlobalSettingsViewModel : IValidatableObject
         {
             if (FunnyMessages[i].Message?.Length > MaxFunnyMessageLength)
                 yield return new ValidationResult($"Funny message cannot exceed {MaxFunnyMessageLength} characters.", [$"FunnyMessages[{i}].Message"]);
+        }
+
+        foreach (var validationResult in ChatCommands.Validate(validationContext))
+        {
+            yield return validationResult;
         }
     }
 

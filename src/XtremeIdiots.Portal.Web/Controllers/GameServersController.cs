@@ -689,13 +689,13 @@ public class GameServersController(
                     editModel.EventsStaleThresholdSeconds = GetNullableIntProperty(root, "staleThresholdSeconds");
                     editModel.EventsPlayerCacheExpirationSeconds = GetNullableIntProperty(root, "playerCacheExpirationSeconds");
                     break;
+                case "chatCommands":
+                    ChatCommandSettingsJsonMapper.PopulateServer(editModel.ChatCommands, root);
+                    break;
                 case "broadcasts":
                     editModel.BroadcastsEnabled = GetBoolProperty(root, "enabled", false);
                     editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
                     editModel.BroadcastMessages = GetBroadcastMessages(root);
-                    break;
-                case "funnyMessages":
-                    editModel.FunnyMessages = GetBroadcastMessages(root);
                     break;
                 default:
                     Logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
@@ -805,8 +805,8 @@ public class GameServersController(
                     editModel.GlobalEventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", editModel.GlobalEventsStaleThresholdSeconds);
                     editModel.GlobalEventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", editModel.GlobalEventsPlayerCacheExpirationSeconds);
                     break;
-                case "funnyMessages":
-                    editModel.GlobalFunnyMessages = GetBroadcastMessages(root);
+                case "chatCommands":
+                    ChatCommandSettingsJsonMapper.PopulateGlobal(editModel.GlobalChatCommands, root);
                     break;
                 default:
                     break;
@@ -1041,6 +1041,17 @@ public class GameServersController(
             }
         }
 
+        if (model.GameServer.AgentEnabled)
+        {
+            await UpsertConfigSafeAsync(
+                gameServerId,
+                "chatCommands",
+                ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands),
+                serverTitle,
+                errors,
+                cancellationToken).ConfigureAwait(false);
+        }
+
         // Save Broadcasts config (only when Agent is enabled)
         if (model.GameServer.AgentEnabled)
         {
@@ -1062,17 +1073,6 @@ public class GameServersController(
             await UpsertConfigSafeAsync(gameServerId, "broadcasts",
                 JsonSerializer.Serialize(broadcastsConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
 
-            var funnyMessagesConfig = new
-            {
-                messages = (model.FunnyMessages ?? []).Select(m => new
-                {
-                    message = m.Message,
-                    enabled = m.Enabled
-                })
-            };
-
-            await UpsertConfigSafeAsync(gameServerId, "funnyMessages",
-                JsonSerializer.Serialize(funnyMessagesConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
     }
 

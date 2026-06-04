@@ -60,10 +60,10 @@
                                         data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
                                         aria-selected="false">Broadcasts</button>
                             </li>
-                            <li class="nav-item" role="presentation" id="funny-messages-tab-item">
-                                <button class="nav-link" id="funny-messages-tab-btn" data-bs-toggle="tab"
-                                        data-bs-target="#funny-messages-tab" type="button" role="tab"
-                                        aria-controls="funny-messages-tab" aria-selected="false">Funny Messages</button>
+                            <li class="nav-item" role="presentation" id="chat-commands-tab-item">
+                                <button class="nav-link" id="chat-commands-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#chat-commands-tab" type="button" role="tab"
+                                        aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
                             </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
@@ -131,9 +131,9 @@
                                 @await Html.PartialAsync("ConfigurationSections/_BroadcastsConfiguration", Model)
                             </div>
 
-                            <div class="tab-pane fade" id="funny-messages-tab" role="tabpanel"
-                                 aria-labelledby="funny-messages-tab-btn">
-                                @await Html.PartialAsync("ConfigurationSections/_FunnyMessagesConfiguration", Model)
+                            <div class="tab-pane fade" id="chat-commands-tab" role="tabpanel"
+                                 aria-labelledby="chat-commands-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_ChatCommandsConfiguration", Model)
                             </div>
 
                             <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
@@ -331,7 +331,7 @@
         banSyncSwitch.classList.toggle('opacity-50', !isFileTransportEnabled || !agent.checked);
         }
 
-        var agentControlledTabIds = ['agent-tab-item', 'broadcasts-tab-item', 'funny-messages-tab-item', 'moderation-tab-item', 'events-tab-item', 'screenshots-config-tab-item'];
+        var agentControlledTabIds = ['agent-tab-item', 'broadcasts-tab-item', 'chat-commands-tab-item', 'moderation-tab-item', 'events-tab-item', 'screenshots-config-tab-item'];
         agentControlledTabIds.forEach(function (tabId) {
         var tabItem = document.getElementById(tabId);
         if (!tabItem) return;
@@ -587,12 +587,34 @@
         fieldNamePrefix: 'BroadcastMessages'
         });
 
+        document.querySelectorAll('[data-chat-command-messages-container]').forEach(function (container) {
         initializeMessageEditor({
-        containerId: 'funny-messages-container',
-        templateId: 'funny-message-template',
-        addButtonId: 'add-funny-message',
-        emptyStateId: 'funny-messages-empty',
-        fieldNamePrefix: 'FunnyMessages'
+        containerId: container.id,
+        templateId: container.dataset.templateId,
+        addButtonId: container.dataset.addButtonId,
+        emptyStateId: container.dataset.emptyStateId,
+        fieldNamePrefix: container.dataset.fieldNamePrefix
+        });
+        });
+
+        document.querySelectorAll('[data-chat-command-card]').forEach(function (card) {
+        function updateOverrideVisibility() {
+        card.querySelectorAll('[data-global-toggle]').forEach(function (toggle) {
+        var targetId = toggle.getAttribute('data-global-target');
+        if (!targetId) return;
+
+        var target = document.getElementById(targetId);
+        if (!target) return;
+
+        target.classList.toggle('d-none', toggle.checked);
+        });
+        }
+
+        card.querySelectorAll('[data-global-toggle]').forEach(function (toggle) {
+        toggle.addEventListener('change', updateOverrideVisibility);
+        });
+
+        updateOverrideVisibility();
         });
     </script>
 }

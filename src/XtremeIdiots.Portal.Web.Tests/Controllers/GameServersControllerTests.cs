@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using MX.Observability.ApplicationInsights.Auditing;
 using MX.Api.Abstractions;
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using System.Net;
 using System.Reflection;
 using System.Security.Claims;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -115,7 +115,7 @@ public class GameServersControllerTests
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = "broadcasts",
-            Configuration = """
+            Configuration = /*lang=json,strict*/ """
             {
               "enabled": true,
               "intervalSeconds": 700,
@@ -150,7 +150,7 @@ public class GameServersControllerTests
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = "broadcasts",
-            Configuration = """
+            Configuration = /*lang=json,strict*/ """
             {
               "enabled": "true",
               "intervalSeconds": 600,
@@ -174,34 +174,161 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public void PopulateConfigFromNamespace_FunnyMessagesNamespace_MapsAllFields()
+    public void PopulateConfigFromNamespace_ChatCommandsNamespace_MapsServerOverrides()
     {
-        // Arrange
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("PopulateConfigFromNamespace");
         var model = new GameServerEditViewModel();
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
-            Namespace = "funnyMessages",
-            Configuration = """
-            {
-              "messages": [
-                { "message": "^1FU^7 {name}", "enabled": true },
-                { "message": "{name} got owned", "enabled": false }
-              ]
-            }
-            """
+            Namespace = "chatCommands",
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "commands": {
+                                "fu": {
+                                    "enabled": false,
+                                    "freshnessSeconds": 4,
+                                    "requiredTags": ["tag-fu"],
+                                    "requiredClaims": ["claim-fu"],
+                                    "settings": {
+                                        "messages": [
+                                            { "message": "server-fu-{name}", "enabled": true }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                        """
         }));
 
-        // Act
         method.Invoke(sut, [model, config]);
 
-        // Assert
-        Assert.Equal(2, model.FunnyMessages.Count);
-        Assert.Equal("^1FU^7 {name}", model.FunnyMessages[0].Message);
-        Assert.True(model.FunnyMessages[0].Enabled);
-        Assert.Equal("{name} got owned", model.FunnyMessages[1].Message);
-        Assert.False(model.FunnyMessages[1].Enabled);
+        var fu = model.ChatCommands.Commands.Single(x => x.Name == "fu");
+        Assert.False(fu.UseGlobalEnabled);
+        Assert.False(fu.UseGlobalFreshness);
+        Assert.False(fu.UseGlobalRequiredTags);
+        Assert.False(fu.UseGlobalRequiredClaims);
+        Assert.False(fu.UseGlobalMessages);
+        Assert.False(fu.Enabled);
+        Assert.Equal(4, fu.FreshnessSeconds);
+        Assert.Equal("tag-fu", fu.RequiredTags);
+        Assert.Equal("claim-fu", fu.RequiredClaims);
+        Assert.Single(fu.Messages);
+        Assert.Equal("server-fu-{name}", fu.Messages[0].Message);
+    }
+
+    [Fact]
+    public void PopulateGlobalDefaults_ChatCommandsNamespace_MapsGlobalCommandDefaults()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateGlobalDefaults");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "chatCommands",
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "defaults": {
+                                "enabled": true,
+                                "freshnessSeconds": { "default": 8, "readOnly": 6, "mutating": 4 },
+                                "requiredTags": ["tag-a"],
+                                "requiredClaims": ["claim-a"]
+                            },
+                            "commands": {
+                                "fu": {
+                                    "enabled": true,
+                                    "settings": {
+                                        "messages": [
+                                            { "message": "global-fu-{name}", "enabled": true }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.Equal(8, model.GlobalChatCommands.DefaultFreshnessSeconds);
+        Assert.Equal(6, model.GlobalChatCommands.ReadOnlyFreshnessSeconds);
+        Assert.Equal(4, model.GlobalChatCommands.MutatingFreshnessSeconds);
+        var fu = model.GlobalChatCommands.Commands.Single(x => x.Name == "fu");
+        Assert.True(fu.Enabled);
+        Assert.Single(fu.Messages);
+        Assert.Equal("global-fu-{name}", fu.Messages[0].Message);
+    }
+
+    [Fact]
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsChatCommandsContract()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>();
+
+        mockRepositoryApiClient
+                .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                        It.IsAny<Guid>(),
+                        It.IsAny<string>(),
+                        It.IsAny<UpsertConfigurationDto>(),
+                        It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+                {
+                    upsertPayloads[ns] = dto.Configuration;
+                    var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                    return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+                });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true
+            },
+            ChatCommands = new ChatCommandServerSettingsViewModel
+            {
+                Commands =
+                        [
+                                new ChatCommandServerEntryViewModel
+                                        {
+                                                Name = "fu",
+                                                Prefix = "!fu",
+                                                Usage = "!fu <player name>",
+                                                UseGlobalEnabled = false,
+                                                Enabled = false,
+                                                UseGlobalFreshness = false,
+                                                FreshnessSeconds = 4,
+                                                UseGlobalRequiredTags = false,
+                                                RequiredTags = "tag-fu",
+                                                UseGlobalRequiredClaims = false,
+                                                RequiredClaims = "claim-fu",
+                                                UseGlobalMessages = false,
+                                                Messages =
+                                                [
+                                                        new BroadcastMessageViewModel { Message = "server-fu-{name}", Enabled = true }
+                                                ]
+                                        }
+                        ]
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
+        using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        var fu = doc.RootElement.GetProperty("commands").GetProperty("fu");
+
+        Assert.False(fu.GetProperty("enabled").GetBoolean());
+        Assert.Equal(4, fu.GetProperty("freshnessSeconds").GetInt32());
+        Assert.Equal("tag-fu", fu.GetProperty("requiredTags")[0].GetString());
+        Assert.Equal("claim-fu", fu.GetProperty("requiredClaims")[0].GetString());
+        Assert.Equal("server-fu-{name}", fu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
     }
 
     [Fact]
@@ -221,7 +348,7 @@ public class GameServersControllerTests
         var agentConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = "agent",
-            Configuration = """
+            Configuration = /*lang=json,strict*/ """
             {
               "rconSyncEnabled": "false"
             }
@@ -231,7 +358,7 @@ public class GameServersControllerTests
         var moderationConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = "moderation",
-            Configuration = """
+            Configuration = /*lang=json,strict*/ """
             {
               "protectedNameEnforcementEnabled": "false"
             }
@@ -256,7 +383,7 @@ public class GameServersControllerTests
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = "screenshots",
-            Configuration = """
+            Configuration = /*lang=json,strict*/ """
             {
                             "enabled": true,
                             "directoryPath": "/screenshots",
@@ -310,11 +437,6 @@ public class GameServersControllerTests
             [
                 new BroadcastMessageViewModel { Message = "^1Welcome", Enabled = true },
                 new BroadcastMessageViewModel { Message = "^2Rules", Enabled = false }
-            ],
-            FunnyMessages =
-            [
-                new BroadcastMessageViewModel { Message = "^5FU {name}", Enabled = true },
-                new BroadcastMessageViewModel { Message = "{name} is unlucky", Enabled = false }
             ]
         };
 
@@ -333,15 +455,7 @@ public class GameServersControllerTests
         Assert.False(root.GetProperty("messages")[1].GetProperty("enabled").GetBoolean());
         Assert.Equal("^2Rules", root.GetProperty("messages")[1].GetProperty("message").GetString());
 
-        Assert.True(upsertPayloads.TryGetValue("funnyMessages", out var funnyMessagesJson));
-        using var funnyDoc = System.Text.Json.JsonDocument.Parse(funnyMessagesJson);
-        var funnyRoot = funnyDoc.RootElement;
-
-        Assert.Equal(2, funnyRoot.GetProperty("messages").GetArrayLength());
-        Assert.Equal("^5FU {name}", funnyRoot.GetProperty("messages")[0].GetProperty("message").GetString());
-        Assert.True(funnyRoot.GetProperty("messages")[0].GetProperty("enabled").GetBoolean());
-        Assert.Equal("{name} is unlucky", funnyRoot.GetProperty("messages")[1].GetProperty("message").GetString());
-        Assert.False(funnyRoot.GetProperty("messages")[1].GetProperty("enabled").GetBoolean());
+        Assert.False(upsertPayloads.ContainsKey("funnyMessages"));
     }
 
     [Fact]
@@ -426,7 +540,7 @@ public class GameServersControllerTests
         var existingSftpConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = "sftp",
-            Configuration = "{\"hostname\":\"sftp.example.com\",\"port\":22,\"username\":\"test-user\",\"password\":\"test-pass\"}",
+            Configuration = /*lang=json,strict*/ "{\"hostname\":\"sftp.example.com\",\"port\":22,\"username\":\"test-user\",\"password\":\"test-pass\"}",
             LastModifiedUtc = DateTime.UtcNow
         }))!;
 
@@ -487,7 +601,7 @@ public class GameServersControllerTests
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.FileTransportEnabled);
-        Assert.Equal(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Ftp, capturedUpdate.FileTransportType);
+        Assert.Equal(FileTransportType.Ftp, capturedUpdate.FileTransportType);
     }
 
     [Fact]
@@ -556,7 +670,7 @@ public class GameServersControllerTests
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.FileTransportEnabled);
-        Assert.Equal(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp, capturedUpdate.FileTransportType);
+        Assert.Equal(FileTransportType.Sftp, capturedUpdate.FileTransportType);
         Assert.Null(capturedUpdate.FtpEnabled);
     }
 
