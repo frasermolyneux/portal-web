@@ -188,9 +188,9 @@ public class AgentTelemetryService(
             return null;
 
         var value = row[index];
-        if (value is DateTimeOffset dto)
-            return dto.UtcDateTime;
-        return value is DateTime dt ? dt : (DateTime?)(DateTime.TryParse(value?.ToString(), out var parsed) ? parsed : null);
+        return value is DateTimeOffset dto
+            ? dto.UtcDateTime
+            : value is DateTime dt ? dt : (DateTime?)(DateTime.TryParse(value?.ToString(), out var parsed) ? parsed : null);
     }
 
     private static int GetIntValue(LogsTableRow row, IReadOnlyList<LogsTableColumn> columns, string columnName)
@@ -200,9 +200,7 @@ public class AgentTelemetryService(
             return 0;
 
         var value = row[index];
-        if (value is int i)
-            return i;
-        return value is long l ? (int)l : int.TryParse(value?.ToString(), out var parsed) ? parsed : 0;
+        return value is int i ? i : value is long l ? (int)l : int.TryParse(value?.ToString(), out var parsed) ? parsed : 0;
     }
 
     private static string? GetStringValue(LogsTableRow row, IReadOnlyList<LogsTableColumn> columns, string columnName)

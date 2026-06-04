@@ -60,11 +60,11 @@ public class TimeAgoTagHelper : TagHelper
             return future ? $"in {Math.Round(hours)} hours" : $"{Math.Round(hours)} hours ago";
         if (hours < 42)
             return future ? "in a day" : "a day ago";
-        if (days < 30)
-            return future ? $"in {Math.Round(days)} days" : $"{Math.Round(days)} days ago";
-        if (days < 45)
-            return future ? "in a month" : "a month ago";
-        return days < 365
+        return days < 30
+            ? future ? $"in {Math.Round(days)} days" : $"{Math.Round(days)} days ago"
+            : days < 45
+            ? future ? "in a month" : "a month ago"
+            : days < 365
             ? future ? $"in {Math.Round(days / 30)} months" : $"{Math.Round(days / 30)} months ago"
             : days < 545
             ? future ? "in a year" : "a year ago"

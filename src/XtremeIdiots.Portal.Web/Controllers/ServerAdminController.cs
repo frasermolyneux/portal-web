@@ -1942,7 +1942,7 @@ public class ServerAdminController(
     private bool IsJsonRequest()
     {
         var xrw = Request.Headers.XRequestedWith.ToString();
-        return !string.IsNullOrEmpty(xrw) && xrw.Equals("XMLHttpRequest", StringComparison.OrdinalIgnoreCase) || Request.Headers.Accept.Any(h => !string.IsNullOrEmpty(h) && h.Contains("application/json", StringComparison.OrdinalIgnoreCase));
+        return (!string.IsNullOrEmpty(xrw) && xrw.Equals("XMLHttpRequest", StringComparison.OrdinalIgnoreCase)) || Request.Headers.Accept.Any(h => !string.IsNullOrEmpty(h) && h.Contains("application/json", StringComparison.OrdinalIgnoreCase));
     }
 
     private IActionResult JsonOrStatus(IActionResult nonJsonResult, object jsonPayload)
