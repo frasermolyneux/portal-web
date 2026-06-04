@@ -29,7 +29,7 @@
                                    name="ChatCommands.DefaultsEnabled" value="true" />
                         }
                         <label class="form-check-label" for="ChatCommands_DefaultsEnabled">@Html.DisplayNameFor(m =>
-                                                                                                                m.ChatCommands.DefaultsEnabled)</label>
+                                                                                                                                            m.ChatCommands.DefaultsEnabled)</label>
                         </div>
                         <span asp-validation-for="ChatCommands.DefaultsEnabled" class="text-danger"></span>
                     </div>
@@ -116,7 +116,7 @@
                                                 <label asp-for="ChatCommands.Commands[i].Enabled" class="form-label"></label>
                                                 <select asp-for="ChatCommands.Commands[i].Enabled" class="form-select">
                                                     <option value="">Use default (@(Model.ChatCommands.DefaultsEnabled ? "Enabled" :
-                                                                                                                                                                                  "Disabled"))</option>
+                                                                                                                                                                                                                                          "Disabled"))</option>
                             <option value="true">Enabled</option>
                             <option value="false">Disabled</option>
                         </select>
