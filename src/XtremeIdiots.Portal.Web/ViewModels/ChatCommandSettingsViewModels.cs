@@ -458,52 +458,40 @@ internal static class ChatCommandSettingsJsonMapper
 
     private static bool GetBoolProperty(JsonElement root, string propertyName, bool defaultValue)
     {
-        if (!root.TryGetProperty(propertyName, out var property))
-        {
-            return defaultValue;
-        }
-
-        if (property.ValueKind == JsonValueKind.True)
-        {
-            return true;
-        }
-
-        if (property.ValueKind == JsonValueKind.False)
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out var parsed))
-        {
-            return parsed;
-        }
-
-        return defaultValue;
+        return !root.TryGetProperty(propertyName, out var property)
+            ? defaultValue
+            : property.ValueKind switch
+            {
+                JsonValueKind.Undefined => defaultValue,
+                JsonValueKind.Object => defaultValue,
+                JsonValueKind.Array => defaultValue,
+                JsonValueKind.String when bool.TryParse(property.GetString(), out var parsed) => parsed,
+                JsonValueKind.String => defaultValue,
+                JsonValueKind.Number => defaultValue,
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Null => defaultValue,
+                _ => defaultValue
+            };
     }
 
     private static bool? GetNullableBoolProperty(JsonElement root, string propertyName)
     {
-        if (!root.TryGetProperty(propertyName, out var property))
-        {
-            return null;
-        }
-
-        if (property.ValueKind == JsonValueKind.True)
-        {
-            return true;
-        }
-
-        if (property.ValueKind == JsonValueKind.False)
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out var parsed))
-        {
-            return parsed;
-        }
-
-        return null;
+        return !root.TryGetProperty(propertyName, out var property)
+            ? null
+            : property.ValueKind switch
+            {
+                JsonValueKind.Undefined => null,
+                JsonValueKind.Object => null,
+                JsonValueKind.Array => null,
+                JsonValueKind.String when bool.TryParse(property.GetString(), out var parsed) => parsed,
+                JsonValueKind.String => null,
+                JsonValueKind.Number => null,
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Null => null,
+                _ => null
+            };
     }
 
     private static string? GetStringProperty(JsonElement root, string propertyName)
