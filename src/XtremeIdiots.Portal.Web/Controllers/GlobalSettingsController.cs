@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using MX.Observability.ApplicationInsights.Auditing;
@@ -104,7 +105,7 @@ public class GlobalSettingsController(
             }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
 
             await UpsertConfigSafeAsync(
-                "chatCommands",
+                ChatCommandSettingsConstants.Namespace,
                 ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands),
                 errors,
                 cancellationToken).ConfigureAwait(false);
@@ -158,7 +159,7 @@ public class GlobalSettingsController(
                     model.EventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", model.EventsStaleThresholdSeconds);
                     model.EventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", model.EventsPlayerCacheExpirationSeconds);
                     break;
-                case "chatCommands":
+                case ChatCommandSettingsConstants.Namespace:
                     ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, root);
                     break;
                 default:

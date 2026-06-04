@@ -2,15 +2,17 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
+using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
+
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
 #pragma warning disable IDE0305
 
 public static class ChatCommandSettingsViewModelConstants
 {
-    public const int DefaultFreshnessSeconds = 5;
-    public const int ReadOnlyFreshnessSeconds = 5;
-    public const int MutatingFreshnessSeconds = 3;
+    public const int DefaultFreshnessSeconds = ChatCommandSettingsConstants.HardcodedDefaultFreshnessSeconds;
+    public const int ReadOnlyFreshnessSeconds = ChatCommandSettingsConstants.HardcodedReadOnlyFreshnessSeconds;
+    public const int MutatingFreshnessSeconds = ChatCommandSettingsConstants.HardcodedMutatingFreshnessSeconds;
     public const int MaxCommandMessageLength = 120;
 }
 
@@ -38,11 +40,16 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
     public string DefaultRequiredClaims { get; set; } = string.Empty;
 
     public List<ChatCommandGlobalEntryViewModel> Commands { get; set; } =
-    [
-        new() { Name = "commands", Prefix = "!commands", Usage = "!commands", Description = "Lists available chat commands.", IsMutating = false },
-        new() { Name = "register", Prefix = "!register", Usage = "!register CODE", Description = "Links your in-game identity to a portal profile.", IsMutating = true },
-        new() { Name = "fu", Prefix = "!fu", Usage = "!fu <player name>", Description = "Sends a playful server-wide message.", IsMutating = false }
-    ];
+        ChatCommandDescriptorCatalog.All
+            .Select(static descriptor => new ChatCommandGlobalEntryViewModel
+            {
+                Name = descriptor.Name,
+                Prefix = descriptor.Prefix,
+                Usage = descriptor.Usage,
+                Description = descriptor.Description,
+                IsMutating = descriptor.IsMutating
+            })
+            .ToList();
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -56,11 +63,16 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
 public class ChatCommandServerSettingsViewModel : IValidatableObject
 {
     public List<ChatCommandServerEntryViewModel> Commands { get; set; } =
-    [
-        new() { Name = "commands", Prefix = "!commands", Usage = "!commands", Description = "Lists available chat commands.", IsMutating = false },
-        new() { Name = "register", Prefix = "!register", Usage = "!register CODE", Description = "Links your in-game identity to a portal profile.", IsMutating = true },
-        new() { Name = "fu", Prefix = "!fu", Usage = "!fu <player name>", Description = "Sends a playful server-wide message.", IsMutating = false }
-    ];
+        ChatCommandDescriptorCatalog.All
+            .Select(static descriptor => new ChatCommandServerEntryViewModel
+            {
+                Name = descriptor.Name,
+                Prefix = descriptor.Prefix,
+                Usage = descriptor.Usage,
+                Description = descriptor.Description,
+                IsMutating = descriptor.IsMutating
+            })
+            .ToList();
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -221,7 +233,7 @@ internal static class ChatCommandSettingsJsonMapper
         defaults["requiredTags"] = SplitCsv(model.DefaultRequiredTags);
         defaults["requiredClaims"] = SplitCsv(model.DefaultRequiredClaims);
 
-        payload["schemaVersion"] = 1;
+        payload["schemaVersion"] = ChatCommandSettingsConstants.SupportedSchemaVersion;
         payload["defaults"] = defaults;
         payload["commands"] = commands;
 
@@ -241,7 +253,7 @@ internal static class ChatCommandSettingsJsonMapper
         }
 
         Dictionary<string, object?> payload = [];
-        payload["schemaVersion"] = 1;
+        payload["schemaVersion"] = ChatCommandSettingsConstants.SupportedSchemaVersion;
         payload["commands"] = commands;
 
         return JsonSerializer.Serialize(payload);

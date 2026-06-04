@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -689,7 +690,7 @@ public class GameServersController(
                     editModel.EventsStaleThresholdSeconds = GetNullableIntProperty(root, "staleThresholdSeconds");
                     editModel.EventsPlayerCacheExpirationSeconds = GetNullableIntProperty(root, "playerCacheExpirationSeconds");
                     break;
-                case "chatCommands":
+                case ChatCommandSettingsConstants.Namespace:
                     ChatCommandSettingsJsonMapper.PopulateServer(editModel.ChatCommands, root);
                     break;
                 case "broadcasts":
@@ -805,7 +806,7 @@ public class GameServersController(
                     editModel.GlobalEventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", editModel.GlobalEventsStaleThresholdSeconds);
                     editModel.GlobalEventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", editModel.GlobalEventsPlayerCacheExpirationSeconds);
                     break;
-                case "chatCommands":
+                case ChatCommandSettingsConstants.Namespace:
                     ChatCommandSettingsJsonMapper.PopulateGlobal(editModel.GlobalChatCommands, root);
                     break;
                 default:
@@ -1045,7 +1046,7 @@ public class GameServersController(
         {
             await UpsertConfigSafeAsync(
                 gameServerId,
-                "chatCommands",
+                ChatCommandSettingsConstants.Namespace,
                 ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands),
                 serverTitle,
                 errors,
