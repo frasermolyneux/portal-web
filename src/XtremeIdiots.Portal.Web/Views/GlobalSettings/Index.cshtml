@@ -320,6 +320,13 @@
                                                                 var moveUpButton = row.querySelector('[data-action="move-up"]');
                                                                 var moveDownButton = row.querySelector('[data-action="move-down"]');
                                                                 var messageInput = row.querySelector('[data-field="message"]');
+                                                                var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
+                                                                var enabled = row.querySelector('[data-field="enabled"]');
+
+                                                                function syncEnabledState() {
+                                                                    if (!enabledHidden || !enabled) return;
+                                                                    enabledHidden.disabled = enabled.checked;
+                                                                }
 
                                                                 if (removeButton) {
                                                                     removeButton.addEventListener('click', function () {
@@ -353,7 +360,12 @@
                                                                     });
                                                                 }
 
+                                                                if (enabled) {
+                                                                    enabled.addEventListener('change', syncEnabledState);
+                                                                }
+
                                                                 updateGlobalChatCommandRowPreview(row, agentNameProvider());
+                                                                syncEnabledState();
                                                             }
 
                                                             (function initializeGlobalChatCommandMessages() {
