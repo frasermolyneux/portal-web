@@ -284,11 +284,23 @@ $(document).ready(function () {
         box.style.zIndex = '1050';
         box.style.maxHeight = '240px';
         box.style.overflowY = 'auto';
+        box.style.overflowX = 'hidden';
         box.style.display = 'none';
+        box.style.position = 'absolute';
+        box.style.left = '0px';
+        box.style.top = '0px';
 
-        input.insertAdjacentElement('afterend', box);
+        document.body.appendChild(box);
 
         let timer = null;
+        let requestCounter = 0;
+
+        function positionSuggestions() {
+            const rect = input.getBoundingClientRect();
+            box.style.width = rect.width + 'px';
+            box.style.left = (window.scrollX + rect.left) + 'px';
+            box.style.top = (window.scrollY + rect.bottom) + 'px';
+        }
 
         function clearSuggestions() {
             box.innerHTML = '';
@@ -303,7 +315,7 @@ $(document).ready(function () {
                 empty.className = 'list-group-item text-muted py-1 px-2';
                 empty.textContent = cfg.mapEmptyMessage();
                 box.appendChild(empty);
-                box.style.width = input.offsetWidth + 'px';
+                positionSuggestions();
                 box.style.display = 'block';
                 return;
             }
@@ -325,7 +337,7 @@ $(document).ready(function () {
                 box.appendChild(button);
             });
 
-            box.style.width = input.offsetWidth + 'px';
+            positionSuggestions();
             box.style.display = 'block';
         }
 
@@ -335,6 +347,7 @@ $(document).ready(function () {
                 return;
             }
 
+            const currentRequest = ++requestCounter;
             const params = new URLSearchParams(cfg.queryParams(term));
             params.set('term', term);
 
@@ -351,6 +364,10 @@ $(document).ready(function () {
                 }
 
                 const data = await response.json();
+                if (currentRequest !== requestCounter) {
+                    return;
+                }
+
                 setSuggestions(data);
             } catch {
                 clearSuggestions();
@@ -363,6 +380,28 @@ $(document).ready(function () {
             const term = (input.value || '').trim();
             timer = setTimeout(function () { doSearch(term); }, cfg.delay);
         });
+
+        input.addEventListener('focus', function () {
+            if (box.style.display !== 'none') {
+                positionSuggestions();
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            if (box.style.display !== 'none') {
+                positionSuggestions();
+            }
+        });
+
+        window.addEventListener('scroll', function () {
+            if (box.style.display !== 'none') {
+                positionSuggestions();
+            }
+        }, true);
+
+        box.addEventListener('wheel', function (event) {
+            event.stopPropagation();
+        }, { passive: true });
 
         document.addEventListener('click', function (event) {
             const withinInput = input.contains(event.target);
@@ -377,6 +416,7 @@ $(document).ready(function () {
                 input.value = '';
                 hidden.value = '';
                 clearSuggestions();
+                requestCounter++;
             }
         };
     }

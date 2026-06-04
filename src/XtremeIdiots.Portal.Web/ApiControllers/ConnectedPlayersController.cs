@@ -68,7 +68,9 @@ public class ConnectedPlayersController(
                     break;
                 }
 
-                usernameMatches.AddRange(items.Where(x => x.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
+                usernameMatches.AddRange(items.Where(x =>
+                    x.GameType == gameType &&
+                    x.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
                 skip += items.Count;
             }
 
