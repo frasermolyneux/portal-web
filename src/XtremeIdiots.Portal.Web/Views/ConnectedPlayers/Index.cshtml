@@ -77,7 +77,8 @@
                                             <label class="form-label" for="manualLinkGameType">Game</label>
                                             <select class="form-select" id="manualLinkGameType">
                                                 <option value="">Select game</option>
-                                                @foreach (var game in Enum.GetValues<GameType>().Where(x => x != GameType.Unknown))
+                                                @foreach (var game in Enum.GetValues<GameType>().Where(x => x !=
+                                        GameType.Unknown))
                                                 {
                                                     <option value="@game">@game</option>
                                                 }
@@ -85,12 +86,14 @@
                                         </div>
                                         <div class="filter-group">
                                             <label class="form-label" for="manualLinkUserSearch">Website Profile</label>
-                                            <input class="form-control" id="manualLinkUserSearch" autocomplete="off" placeholder="Search website profile..." />
+                                            <input class="form-control" id="manualLinkUserSearch" autocomplete="off"
+                                                   placeholder="Search website profile..." />
                                             <input type="hidden" id="manualLinkUserProfileId" name="UserProfileId" />
                                         </div>
                                         <div class="filter-group">
                                             <label class="form-label" for="manualLinkPlayerSearch">Player</label>
-                                            <input class="form-control" id="manualLinkPlayerSearch" autocomplete="off" placeholder="Search player username..." />
+                                            <input class="form-control" id="manualLinkPlayerSearch" autocomplete="off"
+                                                   placeholder="Search player username..." />
                                             <input type="hidden" id="manualLinkPlayerId" name="PlayerId" />
                                         </div>
                                     </div>
