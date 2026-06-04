@@ -5,12 +5,15 @@ using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
@@ -21,6 +24,7 @@ using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Models.ServerFeed;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -44,6 +48,18 @@ public class ServerAdminController(
 {
     private const int PendingScreenshotInitialLifetimeSeconds = 15;
     private const int PendingScreenshotConfirmedLifetimeMinutes = 2;
+    private readonly static string[] sensitiveEventDataKeyFragments =
+    [
+        "password",
+        "secret",
+        "token",
+        "apikey",
+        "api_key",
+        "authorization",
+        "cookie",
+        "connectionstring",
+        "connection_string"
+    ];
 
     private static bool SupportsScreenshots(GameType gameType)
     {
@@ -164,6 +180,7 @@ public class ServerAdminController(
             var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Write);
             var screenshotsReadAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Screenshots_Read);
             var screenshotsDeleteAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Screenshots_Delete);
+            var feedEventsAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Read);
 
             // Check fine-grained RCON sub-action permissions in parallel
             var sayAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Say);
@@ -171,7 +188,7 @@ public class ServerAdminController(
             var restartSrvAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Restart);
             var screenshotCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Screenshot);
 
-            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, screenshotsReadAuth, screenshotsDeleteAuth, sayAuth, mapCmdAuth, restartSrvAuth, screenshotCmdAuth).ConfigureAwait(false);
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, screenshotsReadAuth, screenshotsDeleteAuth, sayAuth, mapCmdAuth, restartSrvAuth, screenshotCmdAuth, feedEventsAuth).ConfigureAwait(false);
 
             var isScreenshotSupportedGameType = SupportsScreenshots(gs.GameType);
 
@@ -184,6 +201,7 @@ public class ServerAdminController(
                 CanViewMapRotation = (await mapRotAuth.ConfigureAwait(false)).Succeeded,
                 CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
                 CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded,
+                CanViewFeedEvents = (await feedEventsAuth.ConfigureAwait(false)).Succeeded,
                 CanViewScreenshots = isScreenshotSupportedGameType && (await screenshotsReadAuth.ConfigureAwait(false)).Succeeded,
                 CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
                 CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
@@ -1644,6 +1662,306 @@ public class ServerAdminController(
                 serverTime = DateTime.UtcNow.ToString("o")
             });
         }, nameof(GetServerLiveChatLog)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetServerFeed(
+        Guid id,
+        DateTime? lastSeenTimestampUtc = null,
+        string? lastSeenSourceType = null,
+        string? lastSeenItemId = null,
+        Guid? lastChatMessageId = null,
+        Guid? lastEventId = null,
+        bool includeChat = true,
+        bool includeEvents = true,
+        int minutes = 30,
+        int maxItems = 100,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+
+            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Game server {ServerId} not found when retrieving server feed", id);
+                return NotFound();
+            }
+
+            var gameServerData = gameServerApiResponse.Result.Data;
+
+            var chatAuthResult = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.ChatLog_ReadServer).ConfigureAwait(false);
+            if (!chatAuthResult.Succeeded)
+            {
+                TrackUnauthorizedAccessAttempt(nameof(GetServerFeed), "ServerFeed", $"ServerId:{id},GameType:{gameServerData.GameType}", gameServerData);
+                return Unauthorized();
+            }
+
+            var eventAuthResult = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Read).ConfigureAwait(false);
+            var eventsAllowed = eventAuthResult.Succeeded;
+
+            includeEvents = includeEvents && eventsAllowed;
+
+            minutes = Math.Clamp(minutes, 5, 120);
+            maxItems = Math.Clamp(maxItems, 20, 200);
+
+            var sinceTime = DateTime.UtcNow.AddMinutes(-minutes);
+
+            var chatItemsTask = includeChat
+                ? GetServerFeedChatItemsAsync(id, sinceTime, cancellationToken)
+                : Task.FromResult<IReadOnlyList<ServerFeedItemDto>>([]);
+
+            var eventItemsTask = includeEvents
+                ? GetServerFeedEventItemsAsync(id, sinceTime, cancellationToken)
+                : Task.FromResult<IReadOnlyList<ServerFeedItemDto>>([]);
+
+            await Task.WhenAll(chatItemsTask, eventItemsTask).ConfigureAwait(false);
+
+            var combinedItems = (await chatItemsTask.ConfigureAwait(false))
+                .Concat(await eventItemsTask.ConfigureAwait(false))
+                .OrderByDescending(x => x.TimestampUtc)
+                .ThenBy(x => x.SourceType, StringComparer.Ordinal)
+                .ThenBy(x => x.ItemId, StringComparer.Ordinal)
+                .ToList();
+
+            if (lastSeenTimestampUtc.HasValue && !string.IsNullOrWhiteSpace(lastSeenSourceType) && !string.IsNullOrWhiteSpace(lastSeenItemId))
+            {
+                combinedItems =
+                [
+                    .. combinedItems.Where(x => IsNewerThanCursor(x, lastSeenTimestampUtc.Value, lastSeenSourceType!, lastSeenItemId!))
+                ];
+            }
+
+            if (lastChatMessageId.HasValue)
+            {
+                var chatCursorItemId = BuildItemId("chat", lastChatMessageId.Value);
+                combinedItems = [.. combinedItems.Where(x => !string.Equals(x.ItemId, chatCursorItemId, StringComparison.Ordinal))];
+            }
+
+            if (lastEventId.HasValue)
+            {
+                var eventCursorItemId = BuildItemId("event", lastEventId.Value);
+                combinedItems = [.. combinedItems.Where(x => !string.Equals(x.ItemId, eventCursorItemId, StringComparison.Ordinal))];
+            }
+
+            var overrunDetected = combinedItems.Count > maxItems;
+            if (overrunDetected)
+            {
+                combinedItems = [.. combinedItems.Take(maxItems)];
+            }
+
+            var latestItem = combinedItems.FirstOrDefault();
+            var latestChatItem = combinedItems.FirstOrDefault(x => x.SourceType == "chat");
+            var latestEventItem = combinedItems.FirstOrDefault(x => x.SourceType == "event");
+
+            return Json(new ServerFeedResponseDto
+            {
+                Items = combinedItems,
+                Cursor = new ServerFeedCursorDto
+                {
+                    LastSeenTimestampUtc = latestItem?.TimestampUtc,
+                    LastSeenSourceType = latestItem?.SourceType,
+                    LastSeenItemId = latestItem?.ItemId,
+                    LastChatMessageId = ParseItemGuid(latestChatItem?.ItemId),
+                    LastEventId = ParseItemGuid(latestEventItem?.ItemId)
+                },
+                SourceAuthorization = new ServerFeedSourceAuthorizationDto
+                {
+                    ChatAllowed = true,
+                    EventsAllowed = eventsAllowed
+                },
+                Diagnostics = new ServerFeedDiagnosticsDto
+                {
+                    ChatCount = combinedItems.Count(x => x.SourceType == "chat"),
+                    EventCount = combinedItems.Count(x => x.SourceType == "event"),
+                    OverrunDetected = overrunDetected
+                },
+                ServerTimeUtc = DateTime.UtcNow.ToString("o")
+            });
+        }, nameof(GetServerFeed)).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<ServerFeedItemDto>> GetServerFeedChatItemsAsync(Guid serverId, DateTime sinceTime, CancellationToken cancellationToken)
+    {
+        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
+            null,
+            serverId,
+            null,
+            null,
+            0,
+            200,
+            ChatMessageOrder.TimestampDesc,
+            null,
+            cancellationToken).ConfigureAwait(false);
+
+        if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data?.Items is null)
+        {
+            Logger.LogWarning("Failed to retrieve chat messages for server feed {ServerId}", serverId);
+            return [];
+        }
+
+        return
+        [
+            .. chatMessagesApiResponse.Result.Data.Items
+                .Where(x => x.Timestamp >= sinceTime)
+                .Select(ToChatFeedItem)
+        ];
+    }
+
+    private async Task<IReadOnlyList<ServerFeedItemDto>> GetServerFeedEventItemsAsync(Guid serverId, DateTime sinceTime, CancellationToken cancellationToken)
+    {
+        var gameServerEventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEvents(
+            null,
+            serverId,
+            null,
+            0,
+            200,
+            GameServerEventOrder.TimestampDesc,
+            cancellationToken).ConfigureAwait(false);
+
+        if (!gameServerEventsApiResponse.IsSuccess || gameServerEventsApiResponse.Result?.Data?.Items is null)
+        {
+            Logger.LogWarning("Failed to retrieve game server events for server feed {ServerId}", serverId);
+            return [];
+        }
+
+        return
+        [
+            .. gameServerEventsApiResponse.Result.Data.Items
+                .Where(x => x.Timestamp >= sinceTime)
+                .Select(ToEventFeedItem)
+        ];
+    }
+
+    private static ServerFeedItemDto ToChatFeedItem(ChatMessageDto item)
+    {
+        return new ServerFeedItemDto
+        {
+            ItemId = BuildItemId("chat", item.ChatMessageId),
+            SourceType = "chat",
+            TimestampUtc = DateTime.SpecifyKind(item.Timestamp, DateTimeKind.Utc),
+            DisplayText = item.Message,
+            Username = item.Username,
+            PlayerId = item.PlayerId == Guid.Empty ? null : item.PlayerId,
+            EventType = null,
+            RawEventData = null,
+            Locked = item.Locked
+        };
+    }
+
+    private static ServerFeedItemDto ToEventFeedItem(GameServerEventDto item)
+    {
+        return new ServerFeedItemDto
+        {
+            ItemId = BuildItemId("event", item.GameServerEventId),
+            SourceType = "event",
+            TimestampUtc = DateTime.SpecifyKind(item.Timestamp, DateTimeKind.Utc),
+            DisplayText = item.EventType,
+            Username = item.GameServer?.Title,
+            PlayerId = null,
+            EventType = item.EventType,
+            RawEventData = SanitizeEventData(item.EventData),
+            Locked = false
+        };
+    }
+
+    private static string? SanitizeEventData(string? rawEventData)
+    {
+        if (string.IsNullOrWhiteSpace(rawEventData))
+            return rawEventData;
+
+        try
+        {
+            var token = JToken.Parse(rawEventData);
+            RedactSensitiveValues(token);
+            var sanitizedJson = token.ToString(Formatting.None);
+            return sanitizedJson.Length > 4000
+                ? sanitizedJson[..4000]
+                : sanitizedJson;
+        }
+        catch
+        {
+            var sanitizedText = RedactSensitiveText(rawEventData);
+            return sanitizedText.Length > 4000
+                ? sanitizedText[..4000]
+                : sanitizedText;
+        }
+    }
+
+    private static void RedactSensitiveValues(JToken token)
+    {
+        if (token is JObject obj)
+        {
+            foreach (var property in obj.Properties())
+            {
+                if (IsSensitiveKey(property.Name))
+                {
+                    property.Value = "***";
+                }
+                else
+                {
+                    RedactSensitiveValues(property.Value);
+                }
+            }
+
+            return;
+        }
+
+        if (token is JArray array)
+        {
+            foreach (var child in array)
+            {
+                RedactSensitiveValues(child);
+            }
+        }
+    }
+
+    private static bool IsSensitiveKey(string key)
+    {
+        return sensitiveEventDataKeyFragments.Any(x => key.Contains(x, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string RedactSensitiveText(string rawText)
+    {
+        var result = rawText;
+
+        foreach (var fragment in sensitiveEventDataKeyFragments)
+        {
+            var pattern = $@"(?i)({Regex.Escape(fragment)}\s*[:=]\s*)([^;\r\n\s]+)";
+            result = Regex.Replace(result, pattern, "$1***");
+
+            var quotedJsonPattern = $"(?i)(\\\"[^\\\"]*{Regex.Escape(fragment)}[^\\\"]*\\\"\\s*:\\s*\\\")([^\\\"]*)(\\\")";
+            result = Regex.Replace(result, quotedJsonPattern, "$1***$3");
+        }
+
+        return result;
+    }
+
+    private static string BuildItemId(string sourceType, Guid id)
+    {
+        return $"{sourceType}:{id:N}";
+    }
+
+    private static Guid? ParseItemGuid(string? itemId)
+    {
+        if (string.IsNullOrWhiteSpace(itemId))
+            return null;
+
+        var separatorIndex = itemId.IndexOf(':', StringComparison.Ordinal);
+        var guidSegment = separatorIndex >= 0 ? itemId[(separatorIndex + 1)..] : itemId;
+
+        return Guid.TryParse(guidSegment, out var parsedGuid) ? parsedGuid : null;
+    }
+
+    private static bool IsNewerThanCursor(ServerFeedItemDto item, DateTime cursorTimestamp, string cursorSourceType, string cursorItemId)
+    {
+        if (item.TimestampUtc != cursorTimestamp)
+            return item.TimestampUtc > cursorTimestamp;
+
+        var sourceComparison = string.CompareOrdinal(item.SourceType, cursorSourceType);
+        return sourceComparison != 0
+            ? sourceComparison < 0
+            : string.CompareOrdinal(item.ItemId, cursorItemId) < 0;
     }
 
     [HttpGet]

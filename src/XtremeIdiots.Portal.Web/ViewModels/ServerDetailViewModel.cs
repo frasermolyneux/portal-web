@@ -21,6 +21,7 @@ public class ServerDetailViewModel
     public bool CanViewStatus { get; set; }
     public bool CanEditServer { get; set; }
     public bool CanViewScreenshots { get; set; }
+    public bool CanViewFeedEvents { get; set; }
 
     // Fine-grained RCON action flags — determines which buttons are rendered within the RCON tab
     public bool CanSay { get; set; }

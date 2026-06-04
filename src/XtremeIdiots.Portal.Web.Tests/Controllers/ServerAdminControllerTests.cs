@@ -18,6 +18,7 @@ using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -433,6 +434,212 @@ public class ServerAdminControllerTests
 
         Assert.True(model.CanViewScreenshots);
         Assert.True(model.CanTakeScreenshot);
+        Assert.True(model.CanViewFeedEvents);
+    }
+
+    [Fact]
+    public async Task GetServerFeed_WhenServerDoesNotExist_ReturnsNotFound()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.NotFound));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetServerFeed(serverId, cancellationToken: CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task GetServerFeed_WhenChatAuthorizationFails_ReturnsUnauthorized()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.ChatLog_ReadServer))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        var result = await sut.GetServerFeed(serverId, cancellationToken: CancellationToken.None);
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
+    public async Task GetServerFeed_WhenEventsAuthorizationFails_ReturnsChatOnlyAndEventsDenied()
+    {
+        var serverId = Guid.NewGuid();
+        var timestamp = DateTime.UtcNow;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.ChatLog_ReadServer))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Read))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockRepositoryApiClient
+            .Setup(x => x.ChatMessages.V1.GetChatMessages(
+                null,
+                serverId,
+                null,
+                null,
+                0,
+                200,
+                ChatMessageOrder.TimestampDesc,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ChatMessageDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ChatMessageDto>>(new CollectionModel<ChatMessageDto>(
+                [
+                    CreateChatMessageDto(Guid.NewGuid(), serverId, timestamp)
+                ]))));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetServerFeed(serverId, cancellationToken: CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+
+        Assert.False(payload["SourceAuthorization"]?["EventsAllowed"]?.Value<bool>());
+
+        var items = payload["Items"] as JArray;
+        Assert.NotNull(items);
+        Assert.Single(items!);
+        Assert.Equal("chat", items![0]?["SourceType"]?.Value<string>());
+
+        mockRepositoryApiClient.Verify(
+            x => x.GameServersEvents.V1.GetGameServerEvents(
+                It.IsAny<GameType?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<GameServerEventOrder?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetServerFeed_WhenCursorIsProvided_ReturnsOnlyNewerItems()
+    {
+        var serverId = Guid.NewGuid();
+        var olderTimestamp = DateTime.UtcNow.AddMinutes(-2);
+        var newerTimestamp = DateTime.UtcNow.AddMinutes(-1);
+        var olderId = Guid.NewGuid();
+        var newerId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.ChatLog_ReadServer))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.ChatMessages.V1.GetChatMessages(
+                null,
+                serverId,
+                null,
+                null,
+                0,
+                200,
+                ChatMessageOrder.TimestampDesc,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ChatMessageDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ChatMessageDto>>(new CollectionModel<ChatMessageDto>(
+                [
+                    CreateChatMessageDto(newerId, serverId, newerTimestamp),
+                    CreateChatMessageDto(olderId, serverId, olderTimestamp)
+                ]))));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetServerFeed(
+            serverId,
+            lastSeenTimestampUtc: olderTimestamp,
+            lastSeenSourceType: "chat",
+            lastSeenItemId: BuildFeedItemId("chat", olderId),
+            includeEvents: false,
+            cancellationToken: CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        var items = payload["Items"] as JArray;
+
+        Assert.NotNull(items);
+        Assert.Single(items!);
+        Assert.Equal(BuildFeedItemId("chat", newerId), items![0]?["ItemId"]?.Value<string>());
+    }
+
+    [Fact]
+    public async Task GetServerFeed_WhenEventPayloadIsPlainText_RedactsSensitiveFields()
+    {
+        var serverId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var timestamp = DateTime.UtcNow;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.ChatLog_ReadServer))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServersEvents.V1.GetGameServerEvents(
+                null,
+                serverId,
+                null,
+                0,
+                200,
+                GameServerEventOrder.TimestampDesc,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerEventDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerEventDto>>(new CollectionModel<GameServerEventDto>(
+                [
+                    CreateGameServerEventDto(eventId, serverId, timestamp, "token=abc123; message=ok")
+                ]))));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetServerFeed(serverId, includeChat: false, includeEvents: true, cancellationToken: CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        var rawEventData = payload["Items"]?[0]?["RawEventData"]?.Value<string>();
+
+        Assert.NotNull(rawEventData);
+        Assert.DoesNotContain("abc123", rawEventData!, StringComparison.Ordinal);
+        Assert.Contains("token=***", rawEventData!, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AssertJsonDataIsEmpty(IActionResult result)
@@ -465,5 +672,74 @@ public class ServerAdminControllerTests
         });
 
         return JsonConvert.DeserializeObject<GameServerDto>(json)!;
+    }
+
+    private static ChatMessageDto CreateChatMessageDto(Guid chatMessageId, Guid gameServerId, DateTime timestampUtc)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            ChatMessageId = chatMessageId,
+            GameServerId = gameServerId,
+            PlayerId = Guid.NewGuid(),
+            Username = "TestPlayer",
+            ChatType = "All",
+            Message = "Test message",
+            Timestamp = timestampUtc,
+            Locked = false,
+            Player = new { PlayerId = Guid.NewGuid(), Username = "TestPlayer", GameType = GameType.CallOfDuty4x },
+            GameServer = new
+            {
+                GameServerId = gameServerId,
+                Title = "Test Server",
+                GameType = GameType.CallOfDuty4x,
+                Hostname = "127.0.0.1",
+                QueryPort = 28960,
+                AgentEnabled = true,
+                FileTransportEnabled = true,
+                FileTransportType = "Ftp",
+                RconEnabled = true,
+                BanFileSyncEnabled = false,
+                BanFileRootPath = "/",
+                ServerListEnabled = false,
+                ServerListPosition = 1
+            }
+        });
+
+        return JsonConvert.DeserializeObject<ChatMessageDto>(json)!;
+    }
+
+    private static GameServerEventDto CreateGameServerEventDto(Guid eventId, Guid gameServerId, DateTime timestampUtc, string? eventData)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            GameServerEventId = eventId,
+            GameServerId = gameServerId,
+            Timestamp = timestampUtc,
+            EventType = "TestEvent",
+            EventData = eventData,
+            GameServer = new
+            {
+                GameServerId = gameServerId,
+                Title = "Test Server",
+                GameType = GameType.CallOfDuty4x,
+                Hostname = "127.0.0.1",
+                QueryPort = 28960,
+                AgentEnabled = true,
+                FileTransportEnabled = true,
+                FileTransportType = "Ftp",
+                RconEnabled = true,
+                BanFileSyncEnabled = false,
+                BanFileRootPath = "/",
+                ServerListEnabled = false,
+                ServerListPosition = 1
+            }
+        });
+
+        return JsonConvert.DeserializeObject<GameServerEventDto>(json)!;
+    }
+
+    private static string BuildFeedItemId(string sourceType, Guid id)
+    {
+        return $"{sourceType}:{id:N}";
     }
 }

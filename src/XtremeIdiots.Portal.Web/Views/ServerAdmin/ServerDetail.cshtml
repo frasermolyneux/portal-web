@@ -47,15 +47,6 @@
                 <i class="fa-solid fa-fw fa-circle-info"></i> Overview
             </button>
         </li>
-        @if (Model.CanViewChatLog)
-        {
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="chatlog-tab" data-bs-toggle="tab" data-bs-target="#chatlog"
-                        type="button" role="tab" aria-controls="chatlog" aria-selected="false">
-                    <i class="fa-solid fa-fw fa-commenting"></i> Chat Log
-                </button>
-            </li>
-        }
         @if (Model.CanViewRcon)
         {
             <li class="nav-item" role="presentation">
@@ -206,16 +197,67 @@
 
                 @* Live Players (merged into Overview) *@
                 <div class="col-md-8">
+                    @if (Model.CanViewChatLog)
+                    {
+                        <div class="ibox">
+                            <div class="ibox-title">
+                                <h5>
+                                    Server Feed
+                                    <span class="badge bg-secondary ms-2" id="sd-feedPendingCount" style="display: none;">0 new</span>
+                                </h5>
+                                <div class="ibox-tools d-flex align-items-center gap-2">
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="checkbox" id="sd-feedToggleChat" checked>
+                                        <label class="form-check-label" for="sd-feedToggleChat">Chat</label>
+                                    </div>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="checkbox" id="sd-feedToggleEvents" @(Model.CanViewFeedEvents ? "checked" : "") @(!Model.CanViewFeedEvents ? "disabled" : "")>
+                                        <label class="form-check-label" for="sd-feedToggleEvents">Events</label>
+                                    </div>
+                                    <input type="text" id="sd-feedEventFilter" class="form-control form-control-sm" placeholder="Filter event type" style="width: 180px;" @(Model.CanViewFeedEvents ? "" : "disabled") />
+                                    <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info" type="button">
+                                        <i class="fa-solid fa-fw fa-pause"></i> Pause
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="ibox-content" style="max-height: 420px; overflow-y: auto;" id="sd-feedContainer" role="log">
+                                <div id="sd-feedItems">
+                                    <p class="text-muted text-center"><i class="fa-solid fa-fw fa-spinner fa-spin"></i> Loading server feed...</p>
+                                </div>
+                            </div>
+                            <div class="ibox-footer">
+                                @if (!Model.CanViewFeedEvents)
+                                {
+                                    <small class="text-muted me-3">Event entries are unavailable for your role on this server.</small>
+                                }
+
+                                @if (Model.CanSay)
+                                {
+                                    <form id="sd-sayForm" class="d-flex gap-2">
+                                        <input type="text" id="sd-sayMessage" class="form-control form-control-sm"
+                                               placeholder="Type a message to send to server..." maxlength="255">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="fa-solid fa-fw fa-paper-plane"></i> Send
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    }
+
                     @if (Model.CanViewRcon)
                     {
                         <div class="ibox">
                             <div class="ibox-title">
                                 <h5>Connected Players</h5>
-                                <div class="ibox-tools">
-                                    <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info">
-                                        <i class="fa fa-pause"></i> Pause
-                                    </button>
-                                </div>
+                                @if (!Model.CanViewChatLog)
+                                {
+                                    <div class="ibox-tools">
+                                        <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info" type="button">
+                                            <i class="fa-solid fa-fw fa-pause"></i> Pause
+                                        </button>
+                                    </div>
+                                }
                             </div>
                             <div class="ibox-content">
                                 <div class="table-responsive">
@@ -240,35 +282,6 @@
                 </div>
             </div>
         </div>
-
-        @* ═══ CHAT LOG TAB ═══ *@
-        @if (Model.CanViewChatLog)
-        {
-            <div class="tab-pane fade" id="chatlog" role="tabpanel" aria-labelledby="chatlog-tab">
-                <div class="ibox">
-                    <div class="ibox-title">
-                        <h5>Live Chat Log <span class="badge bg-primary ms-2" id="sd-chatMessageCount">0</span></h5>
-                    </div>
-                    <div class="ibox-content" style="max-height: 500px; overflow-y: auto;" id="sd-chatLogContainer" role="log">
-                        <div id="sd-chatMessages">
-                            <p class="text-muted text-center"><i class="fa fa-spinner fa-spin"></i> Loading chat messages...</p>
-                        </div>
-                    </div>
-                    <div class="ibox-footer">
-                        @if (Model.CanSay)
-                        {
-                        <form id="sd-sayForm" class="d-flex gap-2">
-                            <input type="text" id="sd-sayMessage" class="form-control form-control-sm"
-                                   placeholder="Type a message to send to server..." maxlength="255">
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="fa fa-paper-plane"></i> Send
-                            </button>
-                        </form>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
 
         @* ═══ MAP CONTROL TAB (with timeline + current map highlight) ═══ *@
         @if (Model.CanViewRcon)
@@ -568,7 +581,7 @@
     <script src="~/js/rcon-utils.js"></script>
     <script src="~/js/rcon-server-status.js"></script>
     <script src="~/js/rcon-players.js"></script>
-    <script src="~/js/rcon-chat-log.js"></script>
+    <script src="~/js/server-feed.js"></script>
     <script src="~/js/rcon-map-control.js"></script>
     <script src="~/js/server-screenshots.js"></script>
 
@@ -582,7 +595,7 @@
         var serverId = '@Model.GameServer.GameServerId';
         var currentMap = '@(liveStatus?.Map ?? "")';
         var refreshEnabled = true;
-        var modulesStarted = { players: false, chatlog: false, mapcontrol: false, screenshots: false };
+        var modulesStarted = { players: false, serverFeed: false, mapcontrol: false, screenshots: false };
 
         // Initialize modules (players start immediately since they're on the overview tab)
         @if (Model.CanViewRcon)
@@ -640,24 +653,30 @@
         @if (Model.CanViewChatLog)
         {
             <text>
-            RconChatLog.init({
+            ServerFeed.init({
                 serverId: serverId,
                 antiForgeryToken: antiForgeryToken,
-                containerSelector: '#sd-chatLogContainer',
-                messagesSelector: '#sd-chatMessages',
-                messageCountSelector: '#sd-chatMessageCount',
+                containerSelector: '#sd-feedContainer',
+                itemsSelector: '#sd-feedItems',
+                pendingCountSelector: '#sd-feedPendingCount',
+                chatToggleSelector: '#sd-feedToggleChat',
+                eventsToggleSelector: '#sd-feedToggleEvents',
+                eventTypeFilterSelector: '#sd-feedEventFilter',
                 sayFormSelector: '#sd-sayForm',
                 sayInputSelector: '#sd-sayMessage'
             });
+
+            ServerFeed.start(15000);
+            modulesStarted.serverFeed = true;
             </text>
         }
 
         // Toggle refresh
         $('#sd-toggleRefresh').click(function () {
             refreshEnabled = !refreshEnabled;
-            $(this).html(refreshEnabled ? '<i class="fa fa-pause"></i> Pause' : '<i class="fa fa-play"></i> Resume');
+            $(this).html(refreshEnabled ? '<i class="fa-solid fa-fw fa-pause"></i> Pause' : '<i class="fa-solid fa-fw fa-play"></i> Resume');
             if (typeof RconPlayers !== 'undefined' && modulesStarted.players) RconPlayers.setRefreshEnabled(refreshEnabled);
-            if (typeof RconChatLog !== 'undefined' && modulesStarted.chatlog) RconChatLog.setRefreshEnabled(refreshEnabled);
+            if (typeof ServerFeed !== 'undefined' && modulesStarted.serverFeed) ServerFeed.setRefreshEnabled(refreshEnabled);
             if (typeof RconServerStatus !== 'undefined') RconServerStatus.setRefreshEnabled(refreshEnabled);
         });
 
@@ -665,10 +684,6 @@
         $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
             var target = $(e.target).attr('data-bs-target');
 
-            if (target === '#chatlog' && !modulesStarted.chatlog) {
-                RconChatLog.start(15000);
-                modulesStarted.chatlog = true;
-            }
             if (target === '#mapcontrol' && !modulesStarted.mapcontrol) {
                 RconMapControl.start();
                 modulesStarted.mapcontrol = true;
@@ -682,11 +697,6 @@
                 ServerScreenshots.start();
                 modulesStarted.screenshots = true;
             }
-        });
-
-        $('button[data-bs-toggle="tab"]').on('hidden.bs.tab', function (e) {
-            var target = $(e.target).attr('data-bs-target');
-            if (target === '#chatlog') { RconChatLog.stop(); modulesStarted.chatlog = false; }
         });
 
         // Highlight current map in the rotation carousel
@@ -724,7 +734,7 @@
         window.addEventListener('beforeunload', function () {
             if (typeof RconServerStatus !== 'undefined') RconServerStatus.dispose();
             if (typeof RconPlayers !== 'undefined') RconPlayers.dispose();
-            if (typeof RconChatLog !== 'undefined') RconChatLog.dispose();
+            if (typeof ServerFeed !== 'undefined') ServerFeed.dispose();
             if (typeof RconMapControl !== 'undefined') RconMapControl.dispose();
             if (typeof ServerScreenshots !== 'undefined') ServerScreenshots.dispose();
         });
