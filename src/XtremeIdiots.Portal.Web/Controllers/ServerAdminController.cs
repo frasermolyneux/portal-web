@@ -1505,12 +1505,9 @@ public class ServerAdminController(
                 return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
 
             var deleteResponse = await repositoryApiClient.Screenshots.V1.DeleteScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (!deleteResponse.IsSuccess)
-            {
-                return Json(new { success = false, message = "Failed to delete screenshot" });
-            }
-
-            return Json(new { success = true, message = "Screenshot deleted" });
+            return !deleteResponse.IsSuccess
+                ? Json(new { success = false, message = "Failed to delete screenshot" })
+                : Json(new { success = true, message = "Screenshot deleted" });
         }, nameof(DeleteScreenshot)).ConfigureAwait(false);
     }
 
