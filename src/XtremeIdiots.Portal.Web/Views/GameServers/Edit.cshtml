@@ -7,7 +7,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
 
-    <form asp-action="Edit" method="post">
+    <form asp-action="Edit" method="post" id="game-server-edit-form">
 
         <input type="hidden" asp-for="GameServer.GameServerId" />
 
@@ -616,5 +616,21 @@
 
         updateOverrideVisibility();
         });
+
+        var editForm = document.getElementById('game-server-edit-form');
+        if (editForm) {
+        editForm.addEventListener('submit', function () {
+        // Ensure each global-toggle boolean posts a single value.
+        document.querySelectorAll('[data-global-toggle]').forEach(function (toggle) {
+        var scope = toggle.closest('.border') || editForm;
+        var hidden = Array.from(scope.querySelectorAll('input[type="hidden"]')).find(function (input) {
+        return input.name === toggle.name;
+        });
+        if (!hidden) return;
+
+        hidden.disabled = toggle.checked;
+        });
+        });
+        }
     </script>
 }
