@@ -100,10 +100,20 @@
                                     <input type="hidden" asp-for="ChatCommands.Commands[i].Usage" />
                                     <input type="hidden" asp-for="ChatCommands.Commands[i].Description" />
                                     <input type="hidden" asp-for="ChatCommands.Commands[i].IsMutating" />
+                                    @for (var aliasIndex = 0; aliasIndex < command.Aliases.Count; aliasIndex++)
+                                    {
+                                        <input type="hidden" asp-for="ChatCommands.Commands[i].Aliases[aliasIndex]" />
+                                    }
 
                                     <div class="d-flex justify-content-between align-items-start mb-3">
                                         <div>
                                             <h6 class="mb-1">@command.Prefix</h6>
+                                            @if (command.Aliases.Count > 0)
+                                            {
+                                                <div class="small text-muted mb-1">
+                                                    Aliases: @string.Join(", ", command.Aliases)
+                                                </div>
+                                            }
                                             <div class="small text-muted mb-1">@command.Usage</div>
                                             <p class="text-muted mb-0">@command.Description</p>
                                         </div>

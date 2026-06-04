@@ -213,6 +213,9 @@ public class GameServersControllerTests
         Assert.Equal("tag-fu", fu.RequiredTags);
         Assert.Single(fu.Messages);
         Assert.Equal("server-fu-{name}", fu.Messages[0].Message);
+
+        var commands = model.ChatCommands.Commands.Single(x => x.Name == "commands");
+        Assert.Equal(["!help"], commands.Aliases);
     }
 
     [Fact]

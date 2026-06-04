@@ -9,9 +9,9 @@ using Moq;
 using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using System.Net;
 using System.Reflection;
 using System.Security.Claims;
-using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -138,6 +138,9 @@ public class GlobalSettingsControllerTests
         Assert.Single(fu.Messages);
         Assert.Equal("fu-{name}", fu.Messages[0].Message);
         Assert.True(fu.Messages[0].Enabled);
+
+        var commands = model.ChatCommands.Commands.Single(x => x.Name == "commands");
+        Assert.Equal(["!help"], commands.Aliases);
     }
 
     [Fact]

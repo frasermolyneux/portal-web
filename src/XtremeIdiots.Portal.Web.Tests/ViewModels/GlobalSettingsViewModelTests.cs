@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
@@ -43,5 +44,15 @@ public class GlobalSettingsViewModelTests
         var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
 
         Assert.True(isValid);
+    }
+
+    [Fact]
+    public void ChatCommands_DefaultCommandsIncludeAliases()
+    {
+        var model = new ChatCommandGlobalSettingsViewModel();
+
+        var commands = model.Commands.Single(x => x.Name == "commands");
+
+        Assert.Equal(["!help"], commands.Aliases);
     }
 }

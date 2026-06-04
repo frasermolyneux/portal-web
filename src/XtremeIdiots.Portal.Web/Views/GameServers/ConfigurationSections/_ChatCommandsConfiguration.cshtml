@@ -46,9 +46,17 @@ StringComparison.OrdinalIgnoreCase));
             <input type="hidden" asp-for="ChatCommands.Commands[i].Usage" />
             <input type="hidden" asp-for="ChatCommands.Commands[i].Description" />
             <input type="hidden" asp-for="ChatCommands.Commands[i].IsMutating" />
+            @for (var aliasIndex = 0; aliasIndex < command.Aliases.Count; aliasIndex++)
+            {
+                <input type="hidden" asp-for="ChatCommands.Commands[i].Aliases[aliasIndex]" />
+            }
 
             <div class="mb-3">
                 <div class="small text-muted">@command.Usage</div>
+                @if (command.Aliases.Count > 0)
+                {
+                    <div class="small text-muted">Aliases: @string.Join(", ", command.Aliases)</div>
+                }
                 <p class="text-muted mb-0">@command.Description</p>
             </div>
 

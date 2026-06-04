@@ -44,7 +44,8 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
                 Prefix = descriptor.Prefix,
                 Usage = descriptor.Usage,
                 Description = descriptor.Description,
-                IsMutating = descriptor.IsMutating
+                IsMutating = descriptor.IsMutating,
+                Aliases = descriptor.Aliases?.ToList() ?? []
             })
             .ToList();
 
@@ -67,7 +68,8 @@ public class ChatCommandServerSettingsViewModel : IValidatableObject
                 Prefix = descriptor.Prefix,
                 Usage = descriptor.Usage,
                 Description = descriptor.Description,
-                IsMutating = descriptor.IsMutating
+                IsMutating = descriptor.IsMutating,
+                Aliases = descriptor.Aliases?.ToList() ?? []
             })
             .ToList();
 
@@ -91,6 +93,8 @@ public abstract class ChatCommandEntryViewModelBase
     public string Description { get; set; } = string.Empty;
 
     public bool IsMutating { get; set; }
+
+    public List<string> Aliases { get; set; } = [];
 
     [DisplayName("Enabled")]
     public bool? Enabled { get; set; }
