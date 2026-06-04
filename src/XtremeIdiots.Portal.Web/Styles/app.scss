@@ -53,6 +53,7 @@
 @use 'features/changelog';
 @use 'features/map-rotations';
 @use 'features/game-servers';
+@use 'features/connected-players';
 
 // 7. Vendor - Third-party library overrides
 @use 'vendor/bootstrap-overrides';

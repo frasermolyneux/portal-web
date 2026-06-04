@@ -13,7 +13,9 @@ using Newtonsoft.Json.Linq;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using ConnectedPlayersApiController = XtremeIdiots.Portal.Web.ApiControllers.ConnectedPlayersController;
 
@@ -46,6 +48,21 @@ public class ConnectedPlayersControllerTests
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;
+    }
+
+    private static ClaimsPrincipal CreateSeniorAdminUser(Guid? userProfileId = null)
+    {
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.SeniorAdmin, "true")
+        };
+
+        if (userProfileId.HasValue)
+        {
+            claims.Add(new Claim(UserProfileClaimType.UserProfileId, userProfileId.Value.ToString()));
+        }
+
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }
 
     [Fact]
@@ -142,6 +159,120 @@ public class ConnectedPlayersControllerTests
             It.IsAny<int>(),
             It.IsAny<int>(),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SearchPlayers_WithoutGameType_ReturnsEmptyArray()
+    {
+        // Arrange
+        var sut = CreateSut(CreateSeniorAdminUser());
+
+        // Act
+        var result = await sut.SearchPlayers("Player", null);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsAssignableFrom<Array>(okResult.Value);
+        Assert.Empty(payload);
+
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayers(
+            It.IsAny<GameType?>(),
+            It.IsAny<PlayersFilter?>(),
+            It.IsAny<string>(),
+            It.IsAny<int>(),
+            It.IsAny<int>(),
+            It.IsAny<PlayersOrder?>(),
+            It.IsAny<PlayerEntityOptions>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SearchUserProfiles_ReturnsOnlyProfilesWithForumId()
+    {
+        // Arrange
+        var withForumId = CreateUserProfileDto("AdminOne", "12345", "admin1@example.com");
+        var withoutForumId = CreateUserProfileDto("AdminTwo", null, "admin2@example.com");
+
+        var response = new ApiResponse<CollectionModel<UserProfileDto>>(new CollectionModel<UserProfileDto>([withForumId, withoutForumId]))
+        {
+            Pagination = new ApiPagination(totalCount: 2, filteredCount: 2, skip: 0, top: 20)
+        };
+
+        mockRepositoryApiClient
+            .Setup(x => x.UserProfiles.V1.GetUserProfiles("Admin", null, 0, 20, UserProfilesOrder.DisplayNameAsc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<UserProfileDto>>(HttpStatusCode.OK, response));
+
+        var sut = CreateSut(CreateSeniorAdminUser());
+
+        // Act
+        var result = await sut.SearchUserProfiles("Admin");
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var payload = JArray.Parse(JsonConvert.SerializeObject(okResult.Value));
+
+        Assert.Single(payload);
+        Assert.Equal(withForumId.UserProfileId.ToString(), payload[0]?["id"]?.ToString());
+    }
+
+    [Fact]
+    public async Task CreateManualLinkAjax_WhenPlayerHasDifferentActiveLink_ReturnsConflict()
+    {
+        // Arrange
+        var actorProfileId = Guid.NewGuid();
+        var selectedUserProfileId = Guid.NewGuid();
+        var differentLinkedUserProfileId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+
+        var selectedUserProfile = CreateUserProfileDto("Admin", "778899", "admin@example.com", selectedUserProfileId);
+
+        var existingLink = CreateConnectedPlayerDto();
+        var existingLinkJson = JObject.FromObject(existingLink);
+        existingLinkJson["PlayerId"] = playerId;
+        existingLinkJson["UserProfileId"] = differentLinkedUserProfileId;
+        existingLinkJson["IsActive"] = true;
+        var activeLink = existingLinkJson.ToObject<ConnectedPlayerDto>()!;
+
+        var activeLinksResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>([activeLink]))
+        {
+            Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 5)
+        };
+
+        mockRepositoryApiClient
+            .Setup(x => x.UserProfiles.V1.GetUserProfile(selectedUserProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(selectedUserProfile)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(playerId, null, null, true, 0, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, activeLinksResponse));
+
+        var sut = CreateSut(CreateSeniorAdminUser(actorProfileId));
+
+        // Act
+        var result = await sut.CreateManualLinkAjax(new ConnectedPlayersApiController.CreateManualLinkAjaxRequest
+        {
+            PlayerId = playerId,
+            UserProfileId = selectedUserProfileId
+        });
+
+        // Assert
+        Assert.IsType<ConflictObjectResult>(result);
+
+        mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.CreateConnectedPlayerLink(
+            It.IsAny<CreateConnectedPlayerLinkDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static UserProfileDto CreateUserProfileDto(string? displayName, string? forumId, string? email, Guid? userProfileId = null)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            UserProfileId = userProfileId ?? Guid.NewGuid(),
+            DisplayName = displayName,
+            XtremeIdiotsForumId = forumId,
+            Email = email
+        });
+
+        return JsonConvert.DeserializeObject<UserProfileDto>(json)!;
     }
 
     private static ConnectedPlayerDto CreateConnectedPlayerDto()

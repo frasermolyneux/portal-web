@@ -1,0 +1,45 @@
+#manualLinkFilters {
+    .filter-group {
+        flex: 1 1 260px;
+    }
+}
+
+.manual-link-preview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 1rem;
+    align-items: stretch;
+    margin-top: 1rem;
+
+    .preview-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        background-color: #fff;
+    }
+
+    .preview-title {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .preview-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 1.25rem;
+        padding: 0 0.25rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .manual-link-preview {
+        grid-template-columns: 1fr;
+
+        .preview-arrow {
+            transform: rotate(90deg);
+            padding: 0.25rem 0;
+        }
+    }
+}

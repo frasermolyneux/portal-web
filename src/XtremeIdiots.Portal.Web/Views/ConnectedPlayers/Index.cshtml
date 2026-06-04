@@ -69,22 +69,98 @@
                                 <h5>Manual Link (Senior Admin)</h5>
                             </div>
                             <div class="ibox-content">
-                                <form asp-action="CreateManualLink" method="post">
+                                <form asp-action="CreateManualLink" method="post" id="manualLinkForm">
                                     @Html.AntiForgeryToken()
-                                    <div class="mb-3">
-                                        <label class="form-label" for="PlayerId">Player Id</label>
-                                        <input class="form-control" id="PlayerId" name="PlayerId"
-                                               placeholder="00000000-0000-0000-0000-000000000000" />
+
+                                    <div class="list-filters mb-2" id="manualLinkFilters">
+                                        <div class="filter-group">
+                                            <label class="form-label" for="manualLinkGameType">Game</label>
+                                            <select class="form-select" id="manualLinkGameType">
+                                                <option value="">Select game</option>
+                                                @foreach (var game in Enum.GetValues<GameType>().Where(x => x != GameType.Unknown))
+                                                {
+                                                    <option value="@game">@game</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="filter-group">
+                                            <label class="form-label" for="manualLinkUserSearch">Website Profile</label>
+                                            <input class="form-control" id="manualLinkUserSearch" autocomplete="off" placeholder="Search website profile..." />
+                                            <input type="hidden" id="manualLinkUserProfileId" name="UserProfileId" />
+                                        </div>
+                                        <div class="filter-group">
+                                            <label class="form-label" for="manualLinkPlayerSearch">Player</label>
+                                            <input class="form-control" id="manualLinkPlayerSearch" autocomplete="off" placeholder="Search player username..." />
+                                            <input type="hidden" id="manualLinkPlayerId" name="PlayerId" />
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label" for="UserProfileId">User Profile Id</label>
-                                        <input class="form-control" id="UserProfileId" name="UserProfileId"
-                                               placeholder="00000000-0000-0000-0000-000000000000" />
+
+                                    <div id="manualLinkPreview" class="manual-link-preview d-none" aria-live="polite">
+                                        <div class="preview-panel">
+                                            <h6 class="preview-title">Website Profile</h6>
+                                            <dl class="detail-fields row mb-0">
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Display Name</dt>
+                                                    <dd class="detail-value" data-field="user-display-name"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Email</dt>
+                                                    <dd class="detail-value" data-field="user-email"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Forum Id</dt>
+                                                    <dd class="detail-value" data-field="user-forum-id"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Profile Id</dt>
+                                                    <dd class="detail-value" data-field="user-profile-id"></dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+
+                                        <div class="preview-arrow" aria-hidden="true">
+                                            <i class="fa-solid fa-fw fa-arrow-right" aria-hidden="true"></i>
+                                        </div>
+
+                                        <div class="preview-panel">
+                                            <h6 class="preview-title">Player</h6>
+                                            <dl class="detail-fields row mb-0">
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Username</dt>
+                                                    <dd class="detail-value" data-field="player-username"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Guid</dt>
+                                                    <dd class="detail-value" data-field="player-guid"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">IP Address</dt>
+                                                    <dd class="detail-value" data-field="player-ip"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Game</dt>
+                                                    <dd class="detail-value" data-field="player-game-type"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Last Seen</dt>
+                                                    <dd class="detail-value" data-field="player-last-seen"></dd>
+                                                </div>
+                                                <div class="detail-field col-12">
+                                                    <dt class="detail-label">Player Id</dt>
+                                                    <dd class="detail-value" data-field="player-id"></dd>
+                                                </div>
+                                            </dl>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i>
-                                        Create Manual Link
-                                    </button>
+
+                                    <div id="manualLinkPreviewStatus" class="alert d-none mt-3 mb-3" role="status"></div>
+
+                                    <div class="mb-3">
+                                        <button type="submit" class="btn btn-primary" id="manualLinkCreateBtn" disabled>
+                                            <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i>
+                                            Create Manual Link
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </div>

@@ -3,6 +3,7 @@ $(document).ready(function () {
     const gameSel = document.getElementById('gameType');
     const statusSel = document.getElementById('isActive');
     const canUnlink = tableEl.data('can-unlink') === true || tableEl.data('can-unlink') === 'true';
+    const manualLinkForm = document.getElementById('manualLinkForm');
 
     if (!tableEl.length) {
         return;
@@ -68,6 +69,29 @@ $(document).ready(function () {
             '</form>';
     }
 
+    function getAntiForgeryToken() {
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    function showToastSuccess(message) {
+        if (window.toastr && typeof window.toastr.success === 'function') {
+            window.toastr.success(message);
+            return;
+        }
+
+        window.alert(message);
+    }
+
+    function showToastError(message) {
+        if (window.toastr && typeof window.toastr.error === 'function') {
+            window.toastr.error(message);
+            return;
+        }
+
+        window.alert(message);
+    }
+
     const table = tableEl.DataTable({
         processing: true,
         serverSide: true,
@@ -102,9 +126,9 @@ $(document).ready(function () {
             type: 'POST',
             data: function (d) { return JSON.stringify(d); },
             beforeSend: function (xhr) {
-                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-                if (tokenInput) {
-                    xhr.setRequestHeader('RequestVerificationToken', tokenInput.value);
+                const token = getAntiForgeryToken();
+                if (token) {
+                    xhr.setRequestHeader('RequestVerificationToken', token);
                 }
 
                 const url = new URL('/ConnectedPlayers/GetConnectedPlayersAjax', window.location.origin);
@@ -235,4 +259,386 @@ $(document).ready(function () {
     if (iboxContent && iboxContent.classList) {
         iboxContent.classList.add('datatable-tight');
     }
+
+    function initAutocomplete(options) {
+        const cfg = Object.assign({
+            minLength: 2,
+            delay: 250,
+            mapResultText: function (item) { return item.text || ''; },
+            mapResultValue: function (item) { return item.id; },
+            mapEmptyMessage: function () { return 'No matches found.'; },
+            queryParams: function () { return {}; },
+            onSelect: function () { }
+        }, options || {});
+
+        const input = document.querySelector(cfg.inputSelector);
+        const hidden = document.querySelector(cfg.hiddenSelector);
+        if (!input || !hidden) {
+            return null;
+        }
+
+        const box = document.createElement('div');
+        box.className = 'user-suggestions list-group position-absolute bg-white shadow';
+        box.setAttribute('role', 'listbox');
+        box.setAttribute('aria-label', 'Suggestions');
+        box.style.zIndex = '1050';
+        box.style.maxHeight = '240px';
+        box.style.overflowY = 'auto';
+        box.style.display = 'none';
+
+        input.insertAdjacentElement('afterend', box);
+
+        let timer = null;
+
+        function clearSuggestions() {
+            box.innerHTML = '';
+            box.style.display = 'none';
+        }
+
+        function setSuggestions(items) {
+            box.innerHTML = '';
+
+            if (!Array.isArray(items) || items.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'list-group-item text-muted py-1 px-2';
+                empty.textContent = cfg.mapEmptyMessage();
+                box.appendChild(empty);
+                box.style.width = input.offsetWidth + 'px';
+                box.style.display = 'block';
+                return;
+            }
+
+            items.forEach(function (item, index) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'list-group-item list-group-item-action py-1 px-2';
+                button.setAttribute('role', 'option');
+                button.id = 'connected-players-sugg-' + index;
+                button.textContent = cfg.mapResultText(item);
+                button.dataset.value = cfg.mapResultValue(item);
+                button.addEventListener('click', function () {
+                    input.value = cfg.mapResultText(item);
+                    hidden.value = cfg.mapResultValue(item);
+                    clearSuggestions();
+                    cfg.onSelect(item);
+                });
+                box.appendChild(button);
+            });
+
+            box.style.width = input.offsetWidth + 'px';
+            box.style.display = 'block';
+        }
+
+        async function doSearch(term) {
+            if (!term || term.length < cfg.minLength) {
+                clearSuggestions();
+                return;
+            }
+
+            const params = new URLSearchParams(cfg.queryParams(term));
+            params.set('term', term);
+
+            const url = cfg.searchUrl + '?' + params.toString();
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    clearSuggestions();
+                    return;
+                }
+
+                const data = await response.json();
+                setSuggestions(data);
+            } catch {
+                clearSuggestions();
+            }
+        }
+
+        input.addEventListener('input', function () {
+            hidden.value = '';
+            clearTimeout(timer);
+            const term = (input.value || '').trim();
+            timer = setTimeout(function () { doSearch(term); }, cfg.delay);
+        });
+
+        document.addEventListener('click', function (event) {
+            const withinInput = input.contains(event.target);
+            const withinBox = box.contains(event.target);
+            if (!withinInput && !withinBox) {
+                clearSuggestions();
+            }
+        });
+
+        return {
+            clear: function () {
+                input.value = '';
+                hidden.value = '';
+                clearSuggestions();
+            }
+        };
+    }
+
+    if (!manualLinkForm) {
+        return;
+    }
+
+    const manualLinkGame = document.getElementById('manualLinkGameType');
+    const manualLinkUserSearch = document.getElementById('manualLinkUserSearch');
+    const manualLinkUserProfileId = document.getElementById('manualLinkUserProfileId');
+    const manualLinkPlayerSearch = document.getElementById('manualLinkPlayerSearch');
+    const manualLinkPlayerId = document.getElementById('manualLinkPlayerId');
+    const manualLinkCreateBtn = document.getElementById('manualLinkCreateBtn');
+    const previewEl = document.getElementById('manualLinkPreview');
+    const previewStatusEl = document.getElementById('manualLinkPreviewStatus');
+
+    function setStatus(message, type) {
+        if (!previewStatusEl) {
+            return;
+        }
+
+        previewStatusEl.classList.remove('d-none', 'alert-info', 'alert-warning', 'alert-success', 'alert-danger');
+        previewStatusEl.classList.add(type || 'alert-info');
+        previewStatusEl.textContent = message;
+    }
+
+    function clearStatus() {
+        if (!previewStatusEl) {
+            return;
+        }
+
+        previewStatusEl.classList.add('d-none');
+        previewStatusEl.textContent = '';
+        previewStatusEl.classList.remove('alert-info', 'alert-warning', 'alert-success', 'alert-danger');
+    }
+
+    function setPreviewField(field, value) {
+        const el = previewEl ? previewEl.querySelector('[data-field="' + field + '"]') : null;
+        if (el) {
+            el.textContent = value || '-';
+        }
+    }
+
+    function setCreateEnabled(enabled) {
+        if (!manualLinkCreateBtn) {
+            return;
+        }
+
+        manualLinkCreateBtn.disabled = !enabled;
+    }
+
+    function clearPreview() {
+        if (!previewEl) {
+            return;
+        }
+
+        setPreviewField('user-display-name', '-');
+        setPreviewField('user-email', '-');
+        setPreviewField('user-forum-id', '-');
+        setPreviewField('user-profile-id', '-');
+        setPreviewField('player-username', '-');
+        setPreviewField('player-guid', '-');
+        setPreviewField('player-ip', '-');
+        setPreviewField('player-game-type', '-');
+        setPreviewField('player-last-seen', '-');
+        setPreviewField('player-id', '-');
+        previewEl.classList.add('d-none');
+        setCreateEnabled(false);
+    }
+
+    async function loadPreview() {
+        if (!manualLinkPlayerId?.value || !manualLinkUserProfileId?.value) {
+            clearPreview();
+            return;
+        }
+
+        const query = new URLSearchParams({
+            playerId: manualLinkPlayerId.value,
+            userProfileId: manualLinkUserProfileId.value
+        });
+
+        try {
+            const response = await fetch('/ConnectedPlayers/GetManualLinkPreview?' + query.toString(), {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(function () { return null; });
+                clearPreview();
+                setStatus(payload?.message || 'Unable to load preview for the selected values.', 'alert-danger');
+                return;
+            }
+
+            const payload = await response.json();
+            const player = payload.player || {};
+            const user = payload.userProfile || {};
+            const checks = payload.checks || {};
+
+            setPreviewField('user-display-name', user.displayName);
+            setPreviewField('user-email', user.email);
+            setPreviewField('user-forum-id', user.forumId);
+            setPreviewField('user-profile-id', user.userProfileId);
+            setPreviewField('player-username', player.username);
+            setPreviewField('player-guid', player.guid);
+            setPreviewField('player-ip', player.ipAddress);
+            setPreviewField('player-game-type', player.gameType);
+            setPreviewField('player-last-seen', player.lastSeen ? portalDate.formatDateTime(player.lastSeen) : '-');
+            setPreviewField('player-id', player.playerId);
+
+            previewEl.classList.remove('d-none');
+            setCreateEnabled(!!checks.canLink);
+
+            if (checks.canLink) {
+                setStatus(checks.message || 'Ready to create manual link.', 'alert-success');
+            } else {
+                setStatus(checks.message || 'Selected player/profile cannot be linked.', 'alert-warning');
+            }
+        } catch {
+            clearPreview();
+            setStatus('Unable to load preview for the selected values.', 'alert-danger');
+        }
+    }
+
+    const profileAutocomplete = initAutocomplete({
+        inputSelector: '#manualLinkUserSearch',
+        hiddenSelector: '#manualLinkUserProfileId',
+        searchUrl: '/ConnectedPlayers/SearchUserProfiles',
+        mapResultText: function (item) {
+            const name = item.displayName || item.text || 'Unknown';
+            const forumId = item.forumId ? ' (Forum: ' + item.forumId + ')' : '';
+            return name + forumId;
+        },
+        onSelect: function () {
+            loadPreview();
+        }
+    });
+
+    const playerAutocomplete = initAutocomplete({
+        inputSelector: '#manualLinkPlayerSearch',
+        hiddenSelector: '#manualLinkPlayerId',
+        searchUrl: '/ConnectedPlayers/SearchPlayers',
+        minLength: 3,
+        mapResultText: function (item) {
+            const username = item.username || item.text || 'Unknown';
+            const guidText = item.guid ? ' [' + item.guid + ']' : '';
+            return username + guidText;
+        },
+        queryParams: function () {
+            const gameType = manualLinkGame ? manualLinkGame.value : '';
+            return gameType ? { gameType: gameType } : {};
+        },
+        mapEmptyMessage: function () {
+            if (!manualLinkGame || !manualLinkGame.value) {
+                return 'Select a game before searching players.';
+            }
+
+            return 'No players found.';
+        },
+        onSelect: function () {
+            loadPreview();
+        }
+    });
+
+    if (manualLinkGame) {
+        manualLinkGame.addEventListener('change', function () {
+            if (playerAutocomplete) {
+                playerAutocomplete.clear();
+            }
+
+            clearPreview();
+            clearStatus();
+            if (manualLinkUserProfileId?.value) {
+                setStatus('Select a player for the selected game to continue.', 'alert-info');
+            }
+        });
+    }
+
+    if (manualLinkUserSearch) {
+        manualLinkUserSearch.addEventListener('input', function () {
+            clearPreview();
+            clearStatus();
+        });
+    }
+
+    if (manualLinkPlayerSearch) {
+        manualLinkPlayerSearch.addEventListener('input', function () {
+            clearPreview();
+            clearStatus();
+        });
+    }
+
+    manualLinkForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        if (!manualLinkPlayerId?.value || !manualLinkUserProfileId?.value) {
+            setStatus('Select both a website profile and a player before creating a link.', 'alert-warning');
+            return;
+        }
+
+        const token = getAntiForgeryToken();
+        const submitText = manualLinkCreateBtn ? manualLinkCreateBtn.innerHTML : '';
+        if (manualLinkCreateBtn) {
+            manualLinkCreateBtn.disabled = true;
+            manualLinkCreateBtn.innerHTML = '<i class="fa-solid fa-fw fa-spinner fa-spin" aria-hidden="true"></i> Creating...';
+        }
+
+        try {
+            const response = await fetch('/ConnectedPlayers/CreateManualLinkAjax', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({
+                    playerId: manualLinkPlayerId.value,
+                    userProfileId: manualLinkUserProfileId.value
+                })
+            });
+
+            const payload = await response.json().catch(function () { return null; });
+            if (!response.ok || !payload || payload.success !== true) {
+                const message = payload?.message || 'Failed to create connected player link.';
+                setStatus(message, 'alert-danger');
+                showToastError(message);
+                return;
+            }
+
+            const message = payload.message || 'Connected player link created successfully.';
+            setStatus(message, 'alert-success');
+            showToastSuccess(message);
+
+            if (manualLinkGame) {
+                manualLinkGame.value = '';
+            }
+
+            if (profileAutocomplete) {
+                profileAutocomplete.clear();
+            }
+
+            if (playerAutocomplete) {
+                playerAutocomplete.clear();
+            }
+
+            clearPreview();
+            table.ajax.reload(null, false);
+        } catch {
+            const message = 'Unexpected error while creating connected player link.';
+            setStatus(message, 'alert-danger');
+            showToastError(message);
+        } finally {
+            if (manualLinkCreateBtn) {
+                manualLinkCreateBtn.innerHTML = submitText;
+                manualLinkCreateBtn.disabled = false;
+                if (!manualLinkPlayerId?.value || !manualLinkUserProfileId?.value) {
+                    manualLinkCreateBtn.disabled = true;
+                }
+            }
+        }
+    });
+
+    clearPreview();
 });

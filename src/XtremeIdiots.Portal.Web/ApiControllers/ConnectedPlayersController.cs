@@ -8,6 +8,8 @@ using Newtonsoft.Json;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -26,6 +28,254 @@ public class ConnectedPlayersController(
     IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
     private const int FetchBatchSize = 500;
+
+    [HttpGet("SearchPlayers")]
+    public async Task<IActionResult> SearchPlayers([FromQuery] string? term, [FromQuery] GameType? gameType, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!IsSeniorAdminUser())
+            {
+                return Forbid();
+            }
+
+            var searchTerm = string.IsNullOrWhiteSpace(term) ? null : term.Trim();
+            if (searchTerm is null || searchTerm.Length < 3 || gameType is null || gameType == GameType.Unknown)
+            {
+                return Ok(Array.Empty<object>());
+            }
+
+            var usernameMatches = new List<PlayerDto>();
+            var skip = 0;
+            const int pageSize = 50;
+            const int maxScan = 1000;
+
+            while (usernameMatches.Count < 20 && skip < maxScan)
+            {
+                var response = await repositoryApiClient.Players.V1
+                    .GetPlayers(gameType, PlayersFilter.UsernameAndGuid, searchTerm, skip, pageSize, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccess || response.Result?.Data?.Items is null)
+                {
+                    Logger.LogWarning("Connected player search failed for term {Term}, game {GameType}, user {UserId}", searchTerm, gameType, User.XtremeIdiotsId());
+                    return Ok(Array.Empty<object>());
+                }
+
+                var items = response.Result.Data.Items.ToList();
+                if (items.Count == 0)
+                {
+                    break;
+                }
+
+                usernameMatches.AddRange(items.Where(x => x.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
+                skip += items.Count;
+            }
+
+            var data = usernameMatches
+                .DistinctBy(x => x.PlayerId)
+                .Take(20)
+                .Select(x => new
+                {
+                    id = x.PlayerId,
+                    text = x.Username,
+                    username = x.Username,
+                    guid = x.Guid,
+                    ipAddress = x.IpAddress,
+                    gameType = x.GameType.ToString(),
+                    lastSeen = x.LastSeen
+                })
+                .ToArray();
+
+            return Ok(data);
+        }, nameof(SearchPlayers)).ConfigureAwait(false);
+    }
+
+    [HttpGet("SearchUserProfiles")]
+    public async Task<IActionResult> SearchUserProfiles([FromQuery] string? term, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!IsSeniorAdminUser())
+            {
+                return Forbid();
+            }
+
+            var searchTerm = string.IsNullOrWhiteSpace(term) ? null : term.Trim();
+            if (searchTerm is null || searchTerm.Length < 2)
+            {
+                return Ok(Array.Empty<object>());
+            }
+
+            var response = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfiles(searchTerm, null, 0, 20, UserProfilesOrder.DisplayNameAsc, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccess || response.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("User profile search failed for term {Term}, user {UserId}", searchTerm, User.XtremeIdiotsId());
+                return Ok(Array.Empty<object>());
+            }
+
+            var data = response.Result.Data.Items
+                .Where(x => !string.IsNullOrWhiteSpace(x.XtremeIdiotsForumId))
+                .Where(x => !string.IsNullOrWhiteSpace(x.DisplayName))
+                .Select(x => new
+                {
+                    id = x.UserProfileId,
+                    text = x.DisplayName,
+                    displayName = x.DisplayName,
+                    email = x.Email,
+                    forumId = x.XtremeIdiotsForumId
+                })
+                .ToArray();
+
+            return Ok(data);
+        }, nameof(SearchUserProfiles)).ConfigureAwait(false);
+    }
+
+    [HttpGet("GetManualLinkPreview")]
+    public async Task<IActionResult> GetManualLinkPreview([FromQuery] Guid? playerId, [FromQuery] Guid? userProfileId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!IsSeniorAdminUser())
+            {
+                return Forbid();
+            }
+
+            if (playerId is null || playerId == Guid.Empty || userProfileId is null || userProfileId == Guid.Empty)
+            {
+                return BadRequest(new { message = "Both player and website profile must be selected." });
+            }
+
+            var playerResponse = await repositoryApiClient.Players.V1
+                .GetPlayer(playerId.Value, PlayerEntityOptions.None)
+                .ConfigureAwait(false);
+            if (!playerResponse.IsSuccess || playerResponse.Result?.Data is null)
+            {
+                return NotFound(new { message = "Selected player was not found." });
+            }
+
+            var userProfileResponse = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfile(userProfileId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (!userProfileResponse.IsSuccess || userProfileResponse.Result?.Data is null)
+            {
+                return NotFound(new { message = "Selected website profile was not found." });
+            }
+
+            var userProfile = userProfileResponse.Result.Data;
+            if (string.IsNullOrWhiteSpace(userProfile.XtremeIdiotsForumId))
+            {
+                return BadRequest(new { message = "Selected website profile is missing a forum id and cannot be linked." });
+            }
+
+            var activeLinkResponse = await repositoryApiClient.ConnectedPlayers.V1
+                .GetConnectedPlayers(playerId.Value, null, null, true, 0, 5, cancellationToken)
+                .ConfigureAwait(false);
+
+            var activeLinks = activeLinkResponse.IsSuccess
+                ? activeLinkResponse.Result?.Data?.Items?.ToList() ?? []
+                : [];
+
+            var hasConflict = activeLinks.Any(x => x.UserProfileId != userProfileId.Value);
+            var alreadyLinkedToSelectedProfile = activeLinks.Any(x => x.UserProfileId == userProfileId.Value);
+
+            var player = playerResponse.Result.Data;
+
+            return Ok(new
+            {
+                userProfile = ToPreviewUser(userProfile),
+                player = ToPreviewPlayer(player),
+                checks = new
+                {
+                    hasConflict,
+                    alreadyLinkedToSelectedProfile,
+                    canLink = !hasConflict && !alreadyLinkedToSelectedProfile,
+                    message = hasConflict
+                        ? "This player is already actively linked to a different website profile."
+                        : alreadyLinkedToSelectedProfile
+                            ? "This player is already linked to the selected website profile."
+                            : "Ready to create manual link."
+                }
+            });
+        }, nameof(GetManualLinkPreview)).ConfigureAwait(false);
+    }
+
+    [HttpPost("CreateManualLinkAjax")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateManualLinkAjax([FromBody] CreateManualLinkAjaxRequest? request, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!IsSeniorAdminUser())
+            {
+                return Forbid();
+            }
+
+            if (request is null || request.PlayerId == Guid.Empty || request.UserProfileId == Guid.Empty)
+            {
+                return BadRequest(new { success = false, message = "Player and website profile are required." });
+            }
+
+            var linkedByUserProfileId = TryGetCurrentUserProfileId();
+            if (linkedByUserProfileId is null)
+            {
+                return Forbid();
+            }
+
+            var userProfileResponse = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfile(request.UserProfileId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!userProfileResponse.IsSuccess || userProfileResponse.Result?.Data is null)
+            {
+                return BadRequest(new { success = false, message = "Selected website profile was not found." });
+            }
+
+            if (string.IsNullOrWhiteSpace(userProfileResponse.Result.Data.XtremeIdiotsForumId))
+            {
+                return BadRequest(new { success = false, message = "Selected website profile is missing a forum id and cannot be linked." });
+            }
+
+            var activeLinkResponse = await repositoryApiClient.ConnectedPlayers.V1
+                .GetConnectedPlayers(request.PlayerId, null, null, true, 0, 5, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!activeLinkResponse.IsSuccess)
+            {
+                return BadRequest(new { success = false, message = "Unable to validate existing links for the selected player." });
+            }
+
+            var activeLinks = activeLinkResponse.Result?.Data?.Items?.ToList() ?? [];
+            if (activeLinks.Any(x => x.UserProfileId != request.UserProfileId))
+            {
+                return Conflict(new { success = false, message = "This player is already actively linked to a different website profile." });
+            }
+
+            if (activeLinks.Any(x => x.UserProfileId == request.UserProfileId))
+            {
+                return BadRequest(new { success = false, message = "This player is already linked to the selected website profile." });
+            }
+
+            var apiResult = await repositoryApiClient.ConnectedPlayers.V1
+                .CreateConnectedPlayerLink(new CreateConnectedPlayerLinkDto
+                {
+                    PlayerId = request.PlayerId,
+                    UserProfileId = request.UserProfileId,
+                    LinkedByUserProfileId = linkedByUserProfileId,
+                    LinkMethod = ConnectedPlayerLinkMethod.AdminForced
+                }, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!apiResult.IsSuccess)
+            {
+                return BadRequest(new { success = false, message = "Failed to create connected player link. Confirm selections and try again." });
+            }
+
+            return Ok(new { success = true, message = "Connected player link created successfully." });
+        }, nameof(CreateManualLinkAjax)).ConfigureAwait(false);
+    }
 
     [HttpPost("GetConnectedPlayersAjax")]
     [ValidateAntiForgeryToken]
@@ -166,5 +416,46 @@ public class ConnectedPlayersController(
             "unlinkedAtUtc" => isAsc ? source.OrderBy(x => x.UnlinkedAtUtc) : source.OrderByDescending(x => x.UnlinkedAtUtc),
             _ => source.OrderByDescending(x => x.LinkedAtUtc)
         };
+    }
+
+    private static object ToPreviewPlayer(PlayerDto player)
+    {
+        return new
+        {
+            playerId = player.PlayerId,
+            username = player.Username,
+            guid = player.Guid,
+            ipAddress = player.IpAddress,
+            gameType = player.GameType.ToString(),
+            lastSeen = player.LastSeen
+        };
+    }
+
+    private static object ToPreviewUser(UserProfileDto userProfile)
+    {
+        return new
+        {
+            userProfileId = userProfile.UserProfileId,
+            displayName = userProfile.DisplayName,
+            email = userProfile.Email,
+            forumId = userProfile.XtremeIdiotsForumId
+        };
+    }
+
+    private bool IsSeniorAdminUser()
+    {
+        return User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin);
+    }
+
+    private Guid? TryGetCurrentUserProfileId()
+    {
+        return Guid.TryParse(User.UserProfileId(), out var profileId) ? profileId : null;
+    }
+
+    public sealed class CreateManualLinkAjaxRequest
+    {
+        public Guid PlayerId { get; init; }
+
+        public Guid UserProfileId { get; init; }
     }
 }
