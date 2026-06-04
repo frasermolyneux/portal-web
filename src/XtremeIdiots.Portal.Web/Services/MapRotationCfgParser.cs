@@ -112,9 +112,11 @@ public static partial class MapRotationCfgParser
     {
         // sv_maprotation_1, sv_maprotation_2 are continuations of sv_maprotation
         // But scr_aacp_maps_1 is NOT a continuation — it's the base variable
-        return baseVar.Equals("sv_maprotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0
-            ? true
-            : baseVar.Equals("scr_small_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0 || (baseVar.Equals("scr_med_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0) || (baseVar.Equals("scr_large_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0);
+        return suffixIndex > 0
+            && (baseVar.Equals("sv_maprotation", StringComparison.OrdinalIgnoreCase)
+                || baseVar.Equals("scr_small_rotation", StringComparison.OrdinalIgnoreCase)
+                || baseVar.Equals("scr_med_rotation", StringComparison.OrdinalIgnoreCase)
+                || baseVar.Equals("scr_large_rotation", StringComparison.OrdinalIgnoreCase));
     }
 
     private static (string BaseVar, int SuffixIndex) ParseVariableSuffix(string varName)

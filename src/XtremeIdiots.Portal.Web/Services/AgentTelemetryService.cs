@@ -190,7 +190,7 @@ public class AgentTelemetryService(
         var value = row[index];
         return value is DateTimeOffset dto
             ? dto.UtcDateTime
-            : value is DateTime dt ? dt : (DateTime?)(DateTime.TryParse(value?.ToString(), out var parsed) ? parsed : null);
+            : value is DateTime dt ? dt : DateTime.TryParse(value?.ToString(), out var parsed) ? parsed : null;
     }
 
     private static int GetIntValue(LogsTableRow row, IReadOnlyList<LogsTableColumn> columns, string columnName)
