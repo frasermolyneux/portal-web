@@ -416,12 +416,9 @@ internal static class ChatCommandSettingsJsonMapper
 
     private static string[] SplitCsv(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return [];
-        }
-
-        return value
+        return string.IsNullOrWhiteSpace(value)
+            ? []
+            : value
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(static item => !string.IsNullOrWhiteSpace(item))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -430,12 +427,9 @@ internal static class ChatCommandSettingsJsonMapper
 
     private static string[] GetStringArray(JsonElement root, string propertyName)
     {
-        if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
-        return property
+        return !root.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array
+            ? []
+            : property
             .EnumerateArray()
             .Where(static item => item.ValueKind == JsonValueKind.String)
             .Select(item => item.GetString())
