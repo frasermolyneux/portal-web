@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 using MX.InvisionCommunity.Api.Abstractions;
 using MX.InvisionCommunity.Api.Abstractions.Models;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 

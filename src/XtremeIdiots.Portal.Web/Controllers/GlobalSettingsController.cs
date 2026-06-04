@@ -1,13 +1,13 @@
-using System.Text.Json;
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MX.Observability.ApplicationInsights.Auditing;
+using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -109,7 +109,6 @@ public class GlobalSettingsController(
                 ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands),
                 errors,
                 cancellationToken).ConfigureAwait(false);
-
 
             if (errors.Count > 0)
             {
@@ -228,5 +227,4 @@ public class GlobalSettingsController(
             errors.Add(ns);
         }
     }
-
 }

@@ -1,7 +1,3 @@
-using System.Net;
-using System.Security.Claims;
-using System.Text;
-
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
@@ -9,13 +5,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-
 using Moq;
 using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
+using System.Net;
+using System.Security.Claims;
+using System.Text;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using ConnectedPlayersApiController = XtremeIdiots.Portal.Web.ApiControllers.ConnectedPlayersController;
@@ -140,7 +137,7 @@ public class ConnectedPlayersControllerTests
         mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.GetConnectedPlayers(
             It.IsAny<Guid?>(),
             It.IsAny<Guid?>(),
-            It.IsAny<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType?>(),
+            It.IsAny<Repository.Abstractions.Constants.V1.GameType?>(),
             It.IsAny<bool?>(),
             It.IsAny<int>(),
             It.IsAny<int>(),

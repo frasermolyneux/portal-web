@@ -48,16 +48,26 @@ public class TimeAgoTagHelper : TagHelper
         var minutes = span.TotalMinutes;
         var hours = span.TotalHours;
         var days = span.TotalDays;
-        if (seconds < 45) return future ? "in a few seconds" : "just now";
-        if (seconds < 90) return future ? "in a minute" : "a minute ago";
-        if (minutes < 45) return future ? $"in {Math.Round(minutes)} minutes" : $"{Math.Round(minutes)} minutes ago";
-        if (minutes < 90) return future ? "in an hour" : "an hour ago";
-        if (hours < 24) return future ? $"in {Math.Round(hours)} hours" : $"{Math.Round(hours)} hours ago";
-        if (hours < 42) return future ? "in a day" : "a day ago";
-        if (days < 30) return future ? $"in {Math.Round(days)} days" : $"{Math.Round(days)} days ago";
-        if (days < 45) return future ? "in a month" : "a month ago";
-        if (days < 365) return future ? $"in {Math.Round(days / 30)} months" : $"{Math.Round(days / 30)} months ago";
-        if (days < 545) return future ? "in a year" : "a year ago";
-        return future ? $"in {Math.Round(days / 365)} years" : $"{Math.Round(days / 365)} years ago";
+        if (seconds < 45)
+            return future ? "in a few seconds" : "just now";
+        if (seconds < 90)
+            return future ? "in a minute" : "a minute ago";
+        if (minutes < 45)
+            return future ? $"in {Math.Round(minutes)} minutes" : $"{Math.Round(minutes)} minutes ago";
+        if (minutes < 90)
+            return future ? "in an hour" : "an hour ago";
+        if (hours < 24)
+            return future ? $"in {Math.Round(hours)} hours" : $"{Math.Round(hours)} hours ago";
+        if (hours < 42)
+            return future ? "in a day" : "a day ago";
+        if (days < 30)
+            return future ? $"in {Math.Round(days)} days" : $"{Math.Round(days)} days ago";
+        if (days < 45)
+            return future ? "in a month" : "a month ago";
+        return days < 365
+            ? future ? $"in {Math.Round(days / 30)} months" : $"{Math.Round(days / 30)} months ago"
+            : days < 545
+            ? future ? "in a year" : "a year ago"
+            : future ? $"in {Math.Round(days / 365)} years" : $"{Math.Round(days / 365)} years ago";
     }
 }

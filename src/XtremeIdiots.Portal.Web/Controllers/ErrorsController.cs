@@ -1,9 +1,8 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using MX.Observability.ApplicationInsights.Auditing;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.Controllers;

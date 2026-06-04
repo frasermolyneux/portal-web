@@ -1,8 +1,7 @@
-using System.Text;
-
 using Azure.Core;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
+using System.Text;
 
 namespace XtremeIdiots.Portal.Web.Services;
 
@@ -163,13 +162,9 @@ public class AgentTelemetryService(
 
         var minutesAgo = (DateTime.UtcNow - lastEvent.Value).TotalMinutes;
 
-        if (minutesAgo <= AgentActiveThresholdMinutes)
-            return AgentActivityStatus.Active;
-
-        if (minutesAgo <= AgentIdleThresholdMinutes)
-            return AgentActivityStatus.Idle;
-
-        return AgentActivityStatus.Offline;
+        return minutesAgo <= AgentActiveThresholdMinutes
+            ? AgentActivityStatus.Active
+            : minutesAgo <= AgentIdleThresholdMinutes ? AgentActivityStatus.Idle : AgentActivityStatus.Offline;
     }
 
     private string GetAppInsightsResourceId()
@@ -189,32 +184,31 @@ public class AgentTelemetryService(
     private static DateTime? GetDateTimeValue(LogsTableRow row, IReadOnlyList<LogsTableColumn> columns, string columnName)
     {
         var index = FindColumnIndex(columns, columnName);
-        if (index < 0) return null;
+        if (index < 0)
+            return null;
 
         var value = row[index];
-        if (value is DateTimeOffset dto) return dto.UtcDateTime;
-        if (value is DateTime dt) return dt;
-        if (DateTime.TryParse(value?.ToString(), out var parsed)) return parsed;
-        return null;
+        if (value is DateTimeOffset dto)
+            return dto.UtcDateTime;
+        return value is DateTime dt ? dt : (DateTime?)(DateTime.TryParse(value?.ToString(), out var parsed) ? parsed : null);
     }
 
     private static int GetIntValue(LogsTableRow row, IReadOnlyList<LogsTableColumn> columns, string columnName)
     {
         var index = FindColumnIndex(columns, columnName);
-        if (index < 0) return 0;
+        if (index < 0)
+            return 0;
 
         var value = row[index];
-        if (value is int i) return i;
-        if (value is long l) return (int)l;
-        if (int.TryParse(value?.ToString(), out var parsed)) return parsed;
-        return 0;
+        if (value is int i)
+            return i;
+        return value is long l ? (int)l : int.TryParse(value?.ToString(), out var parsed) ? parsed : 0;
     }
 
     private static string? GetStringValue(LogsTableRow row, IReadOnlyList<LogsTableColumn> columns, string columnName)
     {
         var index = FindColumnIndex(columns, columnName);
-        if (index < 0) return null;
-        return row[index]?.ToString();
+        return index < 0 ? null : (row[index]?.ToString());
     }
 
     private static int FindColumnIndex(IReadOnlyList<LogsTableColumn> columns, string columnName)

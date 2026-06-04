@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Auth.Handlers;

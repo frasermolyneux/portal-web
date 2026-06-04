@@ -74,6 +74,7 @@ public class ServerLinkTagHelper(IConfiguration configuration) : TagHelper
                     output.SuppressOutput();
                     return;
                 }
+
                 output.Attributes.SetAttribute("href", $"hlsw://{Host}:{Port}?Game={hlswGame}");
                 output.Content.SetHtmlContent("<img src=\"/images/service-icons/hlsw.png\" alt=\"hlsw\"/>");
                 break;

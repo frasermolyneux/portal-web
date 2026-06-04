@@ -35,10 +35,7 @@ public class FileBrowseApiController(
 
             var result = await serversApiClient.FileBrowse.V1.BrowseDirectory(gameServerId, path).ConfigureAwait(false);
 
-            if (!result.IsSuccess || result.Result?.Data == null)
-                return StatusCode((int)result.StatusCode, result.Result);
-
-            return Ok(result.Result.Data);
+            return !result.IsSuccess || result.Result?.Data == null ? StatusCode((int)result.StatusCode, result.Result) : (IActionResult)Ok(result.Result.Data);
         }, nameof(Browse)).ConfigureAwait(false);
     }
 }

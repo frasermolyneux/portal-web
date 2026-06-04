@@ -1,5 +1,3 @@
-using System.Net;
-using System.Security.Claims;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authorization;
@@ -14,13 +12,15 @@ using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
-using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Services;
@@ -160,7 +160,7 @@ public class ServerAdminControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(
                 It.IsAny<ClaimsPrincipal>(),
-                It.Is<object>(resource => resource is XtremeIdiots.Portal.Web.Auth.PotentialAccessProbe),
+                It.Is<object>(resource => resource is Web.Auth.PotentialAccessProbe),
                 AuthPolicies.GameServers_Admin_Screenshots_Delete))
             .ReturnsAsync(AuthorizationResult.Success());
 
@@ -390,7 +390,7 @@ public class ServerAdminControllerTests
 
         mockRepositoryApiClient
             .Setup(x => x.LiveStatus.V1.GetGameServerLiveStatus(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus.GameServerLiveStatusDto>(HttpStatusCode.OK));
+            .ReturnsAsync(new ApiResult<Repository.Abstractions.Models.V1.LiveStatus.GameServerLiveStatusDto>(HttpStatusCode.OK));
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
@@ -418,7 +418,7 @@ public class ServerAdminControllerTests
 
         mockRepositoryApiClient
             .Setup(x => x.LiveStatus.V1.GetGameServerLiveStatus(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus.GameServerLiveStatusDto>(HttpStatusCode.OK));
+            .ReturnsAsync(new ApiResult<Repository.Abstractions.Models.V1.LiveStatus.GameServerLiveStatusDto>(HttpStatusCode.OK));
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))

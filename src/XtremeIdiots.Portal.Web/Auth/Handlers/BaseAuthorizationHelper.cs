@@ -406,7 +406,8 @@ public static class BaseAuthorizationHelper
     /// </summary>
     public static void CheckDirectPermissionGrant(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, string permissionClaimType)
     {
-        if (context.HasSucceeded) return;
+        if (context.HasSucceeded)
+            return;
 
         // Extract GameType from resource — handles all tuple patterns used across handlers
         var resourceGameType = context.Resource switch

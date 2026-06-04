@@ -16,6 +16,7 @@ public static class GameTypeExtensions
             if (displayAttr?.Name is not null)
                 return displayAttr.Name;
         }
+
         return gameType.ToString();
     }
 }

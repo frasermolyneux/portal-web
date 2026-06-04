@@ -1,8 +1,9 @@
-using System.Text.Json;
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using MX.Observability.ApplicationInsights.Auditing;
+using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
@@ -11,7 +12,6 @@ using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -372,10 +372,9 @@ public class GameServersController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(GameServerEditViewModel model, CancellationToken cancellationToken = default)
     {
-        if (model.GameServer is null)
-            return BadRequest();
-
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        return model.GameServer is null
+            ? BadRequest()
+            : await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServer.GameServerId, cancellationToken).ConfigureAwait(false);
 
@@ -725,9 +724,8 @@ public class GameServersController(
 
     private static bool GetBoolProperty(JsonElement root, string propertyName, bool defaultValue)
     {
-        if (root.TryGetProperty(propertyName, out var prop))
-        {
-            return prop.ValueKind switch
+        return root.TryGetProperty(propertyName, out var prop)
+            ? prop.ValueKind switch
             {
                 JsonValueKind.True => true,
                 JsonValueKind.False => false,
@@ -738,9 +736,8 @@ public class GameServersController(
                 JsonValueKind.Number => defaultValue,
                 JsonValueKind.Null => defaultValue,
                 _ => defaultValue
-            };
-        }
-        return defaultValue;
+            }
+            : defaultValue;
     }
 
     private static int? GetNullableIntProperty(JsonElement root, string propertyName)

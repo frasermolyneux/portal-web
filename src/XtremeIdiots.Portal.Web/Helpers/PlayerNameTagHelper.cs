@@ -1,7 +1,7 @@
+using Microsoft.AspNetCore.Razor.TagHelpers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace XtremeIdiots.Portal.Web.Helpers;
 

@@ -84,6 +84,7 @@ public class IpAddressTagHelper : TagHelper
         {
             parts.Add($"<span class=\"badge rounded-pill text-bg-primary\">{ProxyType}</span>");
         }
+
         if (IsProxy == true)
         {
             parts.Add("<span class=\"badge rounded-pill text-bg-danger\">Proxy</span>");
@@ -93,7 +94,6 @@ public class IpAddressTagHelper : TagHelper
         {
             parts.Add("<span class=\"badge rounded-pill text-bg-warning\">VPN</span>");
         }
-
 
         output.Content.SetHtmlContent(string.Join(' ', parts));
     }

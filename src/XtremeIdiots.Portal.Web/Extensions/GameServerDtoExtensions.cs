@@ -20,7 +20,7 @@ public static class GameServerDtoExtensions
             AgentEnabled = gameServerDto.AgentEnabled,
             FileTransportEnabled = fileTransportEnabled,
             FileTransportType = transportType,
-            FtpEnabled = fileTransportEnabled && transportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Ftp,
+            FtpEnabled = fileTransportEnabled && transportType == Repository.Abstractions.Constants.V1.FileTransportType.Ftp,
             RconEnabled = gameServerDto.RconEnabled,
             BanFileSyncEnabled = gameServerDto.BanFileSyncEnabled,
             BanFileRootPath = string.IsNullOrWhiteSpace(gameServerDto.BanFileRootPath) ? "/" : gameServerDto.BanFileRootPath,

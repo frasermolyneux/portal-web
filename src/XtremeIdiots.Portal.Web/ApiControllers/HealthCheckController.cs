@@ -1,9 +1,8 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MX.Observability.ApplicationInsights.Auditing;
-
 using MX.InvisionCommunity.Api.Abstractions;
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;

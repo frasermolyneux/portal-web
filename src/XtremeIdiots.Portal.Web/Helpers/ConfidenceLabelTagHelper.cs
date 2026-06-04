@@ -27,18 +27,15 @@ public class ConfidenceLabelTagHelper : TagHelper
         {
             html = "<span class=\"label label-danger\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has only been linked >0 and <2 times\">Very Low Confidence</span>";
         }
-        else if (Score is > 2 and < 5)
-        {
-            html = "<span class=\"label label-warning\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has been linked >2 and <5 times\">Average Confidence</span>";
-        }
-        else if (LastUsed < DateTime.UtcNow.AddMonths(-6))
-        {
-            html = "<span class=\"label label-warning\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has not been used in over 6 months\">Average Confidence</span>";
-        }
         else
         {
-            html = $"<span class=\"label label-success\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has been linked {Score} times\">High Confidence</span>";
+            html = Score is > 2 and < 5
+                ? "<span class=\"label label-warning\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has been linked >2 and <5 times\">Average Confidence</span>"
+                : LastUsed < DateTime.UtcNow.AddMonths(-6)
+                ? "<span class=\"label label-warning\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has not been used in over 6 months\">Average Confidence</span>"
+                : $"<span class=\"label label-success\" data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"This data record has been linked {Score} times\">High Confidence</span>";
         }
+
         output.Content.SetHtmlContent(html);
     }
 }

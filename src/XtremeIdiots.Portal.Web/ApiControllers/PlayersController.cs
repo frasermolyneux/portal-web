@@ -1,11 +1,9 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MX.Observability.ApplicationInsights.Auditing;
-
 using MX.GeoLocation.Api.Client.V1;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
-
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;

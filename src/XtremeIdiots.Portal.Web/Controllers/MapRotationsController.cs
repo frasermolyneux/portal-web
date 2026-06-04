@@ -2,19 +2,17 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
-
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
-using XtremeIdiots.Portal.Web.Services;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -44,16 +42,16 @@ public class MapRotationsController(
                 initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
             }
         }
+
         ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
     }
 
     [HttpGet]
     public async Task<IActionResult> Index(GameType? gameType, CancellationToken cancellationToken = default)
     {
-        if (gameType.HasValue && !supportedGameTypes.Contains(gameType.Value))
-            return BadRequest("Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.");
-
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        return gameType.HasValue && !supportedGameTypes.Contains(gameType.Value)
+            ? BadRequest("Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.")
+            : await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameTypes = gameType.HasValue ? [gameType.Value] : Array.Empty<GameType>();
 
@@ -76,14 +74,13 @@ public class MapRotationsController(
     public async Task<IActionResult> Create()
     {
         var canCreate = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
-        if (!canCreate.Succeeded)
-            return Forbid();
-
-        return View(new CreateMapRotationViewModel
-        {
-            Title = string.Empty,
-            GameMode = string.Empty
-        });
+        return !canCreate.Succeeded
+            ? Forbid()
+            : View(new CreateMapRotationViewModel
+            {
+                Title = string.Empty,
+                GameMode = string.Empty
+            });
     }
 
     [HttpPost]
@@ -152,10 +149,9 @@ public class MapRotationsController(
             this.AddAlertSuccess($"Map rotation '{model.Title}' has been created successfully.");
 
             var createdId = apiResponse.Result?.Data?.MapRotationId;
-            if (createdId.HasValue && createdId.Value != Guid.Empty)
-                return RedirectToAction(nameof(Details), new { id = createdId.Value });
-
-            return RedirectToAction(nameof(Index));
+            return createdId.HasValue && createdId.Value != Guid.Empty
+                ? RedirectToAction(nameof(Details), new { id = createdId.Value })
+                : RedirectToAction(nameof(Index));
         }, nameof(Create)).ConfigureAwait(false);
     }
 
@@ -194,6 +190,7 @@ public class MapRotationsController(
                     }
                 }
             }
+
             ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
 
             return View("Create", new CreateMapRotationViewModel
@@ -244,6 +241,7 @@ public class MapRotationsController(
                     }
                 }
             }
+
             ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
 
             return View(new EditMapRotationViewModel
@@ -358,7 +356,7 @@ public class MapRotationsController(
                 return authResult;
 
             // Load map details for each map in the rotation
-            var maps = new List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps.MapDto>();
+            var maps = new List<MapDto>();
             if (rotation.MapRotationMaps?.Count > 0)
             {
                 foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
@@ -372,7 +370,7 @@ public class MapRotationsController(
             }
 
             // Load game server details and operations for each assignment
-            var assignmentOperations = new Dictionary<Guid, List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.MapRotationAssignmentOperationDto>>();
+            var assignmentOperations = new Dictionary<Guid, List<MapRotationAssignmentOperationDto>>();
             if (rotation.ServerAssignments?.Count > 0)
             {
                 foreach (var assignment in rotation.ServerAssignments)
@@ -479,7 +477,7 @@ public class MapRotationsController(
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 [rotation.GameType], null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
 
-            List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers.GameServerDto> servers = serversResponse.IsSuccess && serversResponse.Result?.Data?.Items != null
+            List<Repository.Abstractions.Models.V1.GameServers.GameServerDto> servers = serversResponse.IsSuccess && serversResponse.Result?.Data?.Items != null
                 ? [.. serversResponse.Result.Data.Items]
                 : [];
 
@@ -524,7 +522,7 @@ public class MapRotationsController(
             {
                 var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                     [rotation.GameType], null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
-                List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers.GameServerDto> serverList = serversResponse.IsSuccess && serversResponse.Result?.Data?.Items != null
+                List<Repository.Abstractions.Models.V1.GameServers.GameServerDto> serverList = serversResponse.IsSuccess && serversResponse.Result?.Data?.Items != null
                     ? [.. serversResponse.Result.Data.Items]
                     : [];
                 m.AvailableServers = serverList;
@@ -773,7 +771,7 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var maps = new List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps.MapDto>();
+            var maps = new List<MapDto>();
             if (rotation.MapRotationMaps?.Count > 0)
             {
                 foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
@@ -787,7 +785,7 @@ public class MapRotationsController(
             }
 
             var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(id, 0, 20, cancellationToken).ConfigureAwait(false);
-            List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.MapRotationAssignmentOperationDto> operations = opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null
+            List<MapRotationAssignmentOperationDto> operations = opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null
                 ? [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)]
                 : [];
 
@@ -1020,7 +1018,7 @@ public class MapRotationsController(
         var queryResult = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
         return queryResult.Outcome switch
         {
-            Services.OrchestrationStatusQueryOutcome.Found => Json(new
+            OrchestrationStatusQueryOutcome.Found => Json(new
             {
                 status = "found",
                 instanceId = queryResult.Result!.InstanceId,
@@ -1029,8 +1027,8 @@ public class MapRotationsController(
                 lastUpdatedAt = queryResult.Result.LastUpdatedAt,
                 progress = queryResult.Result.Progress
             }),
-            Services.OrchestrationStatusQueryOutcome.NotFound => Json(new { status = "not_found" }),
-            Services.OrchestrationStatusQueryOutcome.Error => Json(new { status = "error" }),
+            OrchestrationStatusQueryOutcome.NotFound => Json(new { status = "not_found" }),
+            OrchestrationStatusQueryOutcome.Error => Json(new { status = "error" }),
             _ => Json(new { status = "error" })
         };
     }
@@ -1182,10 +1180,7 @@ public class MapRotationsController(
     public async Task<IActionResult> Import()
     {
         var canImport = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
-        if (!canImport.Succeeded)
-            return Forbid();
-
-        return View(new ImportMapRotationsViewModel());
+        return !canImport.Succeeded ? Forbid() : View(new ImportMapRotationsViewModel());
     }
 
     [HttpPost]

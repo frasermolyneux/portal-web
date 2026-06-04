@@ -8,12 +8,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Moq;
-using MX.Observability.ApplicationInsights.Auditing;
-using System.Net;
 using MX.Api.Abstractions;
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
-using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
+using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.ApiControllers;
 
 namespace XtremeIdiots.Portal.Web.Tests.ApiControllers;

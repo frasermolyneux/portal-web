@@ -1,6 +1,3 @@
-using System.Net;
-using System.Security.Claims;
-
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
@@ -8,11 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-
 using Moq;
 using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
-
+using System.Net;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -233,5 +230,4 @@ public class ConnectedPlayersControllerTests
             It.IsAny<ForceUnlinkConnectedPlayerDto>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
-
 }

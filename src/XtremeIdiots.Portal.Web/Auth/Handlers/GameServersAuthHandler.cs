@@ -121,6 +121,7 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 Enum.TryParse<GameType>(c.Value, out _)))
                 context.Succeed(requirement);
         }
+
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Write");
     }
 

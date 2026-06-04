@@ -126,11 +126,9 @@ public class ActivityLogController(
 
     private static List<ActivityLogCategory> ParseCategories(string? categories)
     {
-        if (string.IsNullOrWhiteSpace(categories))
-            return [];
-
-        return
-        [
+        return string.IsNullOrWhiteSpace(categories)
+            ? []
+            : [
             .. categories
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(c => Enum.TryParse<ActivityLogCategory>(c, out var cat) ? cat : (ActivityLogCategory?)null)
@@ -142,11 +140,9 @@ public class ActivityLogController(
 
     private static List<string> ParseCommaSeparated(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return [];
-
-        return
-        [
+        return string.IsNullOrWhiteSpace(value)
+            ? []
+            : [
             .. value
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Distinct()

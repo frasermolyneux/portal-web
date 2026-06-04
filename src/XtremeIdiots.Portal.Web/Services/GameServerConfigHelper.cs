@@ -78,13 +78,13 @@ public static class GameServerConfigHelper
         Dictionary<Guid, Dictionary<string, JsonElement>>? configs,
         Guid serverId, string ns, string property)
     {
-        if (configs != null &&
+        return configs != null &&
             configs.TryGetValue(serverId, out var nsConfigs) &&
             nsConfigs.TryGetValue(ns, out var root) &&
             root.TryGetProperty(property, out var val) &&
-            val.ValueKind == JsonValueKind.String)
-            return val.GetString() ?? "";
-        return "";
+            val.ValueKind == JsonValueKind.String
+            ? val.GetString() ?? ""
+            : "";
     }
 
     /// <summary>
@@ -94,12 +94,12 @@ public static class GameServerConfigHelper
         Dictionary<Guid, Dictionary<string, JsonElement>>? configs,
         Guid serverId, string ns, string property, int defaultValue = 0)
     {
-        if (configs != null &&
+        return configs != null &&
             configs.TryGetValue(serverId, out var nsConfigs) &&
             nsConfigs.TryGetValue(ns, out var root) &&
             root.TryGetProperty(property, out var val) &&
-            val.ValueKind == JsonValueKind.Number)
-            return val.GetInt32();
-        return defaultValue;
+            val.ValueKind == JsonValueKind.Number
+            ? val.GetInt32()
+            : defaultValue;
     }
 }

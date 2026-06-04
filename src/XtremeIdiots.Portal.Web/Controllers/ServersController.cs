@@ -1,7 +1,7 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
@@ -9,7 +9,6 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -114,13 +113,19 @@ public class ServersController(
                 var orderedStats = statsResponse.Result.Data.Items.OrderBy(s => s.Timestamp).ToList();
                 foreach (var stat in orderedStats)
                 {
-                    if (current is null) { current = stat; continue; }
+                    if (current is null)
+                    {
+                        current = stat;
+                        continue;
+                    }
+
                     if (current.MapName != stat.MapName)
                     {
                         viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
                             current.MapName, current.Timestamp, stat.Timestamp));
                         current = stat;
                     }
+
                     if (stat == orderedStats.Last())
                         viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
                             current.MapName, current.Timestamp, DateTime.UtcNow));

@@ -19,11 +19,6 @@ public static class GameServerFileTransportExtensions
 
     private static FileTransportType ResolveTransportType(bool enabled, FileTransportType transportType)
     {
-        if (!enabled)
-        {
-            return FileTransportType.Unknown;
-        }
-
-        return transportType == FileTransportType.Unknown ? FileTransportType.Ftp : transportType;
+        return !enabled ? FileTransportType.Unknown : transportType == FileTransportType.Unknown ? FileTransportType.Ftp : transportType;
     }
 }

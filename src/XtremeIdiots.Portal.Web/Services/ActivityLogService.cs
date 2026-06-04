@@ -1,8 +1,8 @@
-using System.Text;
 using Azure;
 using Azure.Core;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
+using System.Text;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
 
 namespace XtremeIdiots.Portal.Web.Services;
@@ -91,27 +91,19 @@ public class ActivityLogService(
 
     private static List<string> GetAllowedEventNames(IReadOnlyList<ActivityLogCategory> categories, IReadOnlyList<string> eventNames)
     {
-        if (eventNames.Count > 0)
-        {
-            return
-            [
+        return eventNames.Count > 0
+            ? [
                 .. eventNames
                     .Where(e => ActivityLogEventMap.Events.ContainsKey(e)
                         && (categories.Count == 0 || categories.Contains(ActivityLogEventMap.Events[e])))
-            ];
-        }
-
-        if (categories.Count > 0)
-        {
-            return
-            [
+            ]
+            : categories.Count > 0
+            ? [
                 .. categories
                     .SelectMany(ActivityLogEventMap.GetEventsByCategory)
                     .Distinct()
-            ];
-        }
-
-        return [.. ActivityLogEventMap.Events.Keys];
+            ]
+            : [.. ActivityLogEventMap.Events.Keys];
     }
 
     private static string BuildEventNameFilter(IReadOnlyList<string> eventNames)
@@ -185,12 +177,7 @@ public class ActivityLogService(
             new QueryTimeRange(timeRange),
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        if (response.Value.Table.Rows.Count > 0)
-        {
-            return Convert.ToInt32(response.Value.Table.Rows[0][0]);
-        }
-
-        return 0;
+        return response.Value.Table.Rows.Count > 0 ? Convert.ToInt32(response.Value.Table.Rows[0][0]) : 0;
     }
 
     private async Task<IReadOnlyList<ActivityLogEntry>> ExecuteDataQueryAsync(string resourceId, string query, TimeSpan timeRange, CancellationToken cancellationToken)
@@ -302,11 +289,9 @@ public class ActivityLogService(
 
     private static string FormatTimeSpan(TimeSpan timeSpan)
     {
-        if (timeSpan.TotalDays >= 1)
-            return $"{(int)timeSpan.TotalDays}d";
-        if (timeSpan.TotalHours >= 1)
-            return $"{(int)timeSpan.TotalHours}h";
-        return $"{(int)timeSpan.TotalMinutes}m";
+        return timeSpan.TotalDays >= 1
+            ? $"{(int)timeSpan.TotalDays}d"
+            : timeSpan.TotalHours >= 1 ? $"{(int)timeSpan.TotalHours}h" : $"{(int)timeSpan.TotalMinutes}m";
     }
 
     private static string EscapeKql(string value)

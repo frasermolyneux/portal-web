@@ -24,19 +24,16 @@ public static class PlayerEnrichmentExtensions
                 var intelligence = result.Result.Data;
                 var countryCode = !string.IsNullOrWhiteSpace(intelligence.CountryCode) ? intelligence.CountryCode : string.Empty;
 
-                if (intelligence.ProxyCheckStatus == SourceStatus.Success && intelligence.ProxyCheck is not null)
-                {
-                    return new PlayerIntelligenceData
+                return intelligence.ProxyCheckStatus == SourceStatus.Success && intelligence.ProxyCheck is not null
+                    ? new PlayerIntelligenceData
                     {
                         CountryCode = countryCode,
                         ProxyCheckRiskScore = intelligence.ProxyCheck.RiskScore,
                         IsProxy = intelligence.ProxyCheck.IsProxy,
                         IsVpn = intelligence.ProxyCheck.IsVpn,
                         ProxyType = intelligence.ProxyCheck.ProxyType
-                    };
-                }
-
-                return new PlayerIntelligenceData { CountryCode = countryCode };
+                    }
+                    : new PlayerIntelligenceData { CountryCode = countryCode };
             }
         }
         catch (Exception ex)

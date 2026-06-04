@@ -19,7 +19,8 @@ public class GameTypeIconTagHelper(IConfiguration configuration) : TagHelper
         output.Attributes.SetAttribute("alt", Game.ToString());
         output.Attributes.SetAttribute("width", Size.ToString());
         output.Attributes.SetAttribute("height", Size.ToString());
-        if (!string.IsNullOrWhiteSpace(CssClass)) output.Attributes.SetAttribute("class", CssClass);
+        if (!string.IsNullOrWhiteSpace(CssClass))
+            output.Attributes.SetAttribute("class", CssClass);
         output.TagMode = TagMode.SelfClosing;
     }
 }

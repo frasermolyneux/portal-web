@@ -1,7 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -9,7 +9,6 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;

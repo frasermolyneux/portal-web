@@ -1,8 +1,8 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using MX.Observability.ApplicationInsights.Auditing;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -136,11 +136,8 @@ public class IdentityController(
 
     private IActionResult RedirectToLocal(string? returnUrl)
     {
-        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
-        {
-            return LocalRedirect(returnUrl);
-        }
-
-        return RedirectToAction(nameof(HomeController.Index), "Home");
+        return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl)
+            : RedirectToAction(nameof(HomeController.Index), "Home");
     }
 }

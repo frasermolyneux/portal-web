@@ -1,7 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
@@ -11,7 +11,6 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -72,7 +71,7 @@ public class BanFileMonitorsController(
             // Anything else (sync disabled or agent disabled) clutters the dashboard with
             // stale data and is hidden by default; admins can opt in via ?showAll=true to
             // diagnose misconfigurations.
-            static bool IsActive(XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors.BanFileMonitorDto m)
+            static bool IsActive(BanFileMonitorDto m)
             {
                 return m.GameServer is not null
                     && m.GameServer.BanFileSyncEnabled
@@ -81,7 +80,7 @@ public class BanFileMonitorsController(
 
             var hiddenCount = showAll ? 0 : allMonitors.Count(m => !IsActive(m));
             var monitors = showAll
-                ? (IReadOnlyList<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors.BanFileMonitorDto>)allMonitors
+                ? (IReadOnlyList<BanFileMonitorDto>)allMonitors
                 : allMonitors.Where(IsActive).ToList();
 
             var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);

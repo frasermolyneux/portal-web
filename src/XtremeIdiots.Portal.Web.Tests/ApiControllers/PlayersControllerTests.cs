@@ -1,21 +1,18 @@
-using System.Net;
-using System.Security.Claims;
-using System.Text;
-
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-
 using Moq;
 using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
+using System.Net;
+using System.Security.Claims;
+using System.Text;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;

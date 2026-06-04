@@ -1,12 +1,10 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
 using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
-
+using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
-
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
@@ -24,7 +22,6 @@ using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -52,7 +49,6 @@ public class ServerAdminController(
     {
         return gameType == GameType.CallOfDuty4x;
     }
-
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -228,13 +224,19 @@ public class ServerAdminController(
                     var orderedStats = statsResponse.Result.Data.Items.OrderBy(s => s.Timestamp).ToList();
                     foreach (var stat in orderedStats)
                     {
-                        if (current is null) { current = stat; continue; }
+                        if (current is null)
+                        {
+                            current = stat;
+                            continue;
+                        }
+
                         if (current.MapName != stat.MapName)
                         {
                             viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
                                 current.MapName, current.Timestamp, stat.Timestamp));
                             current = stat;
                         }
+
                         if (stat == orderedStats.Last())
                             viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
                                 current.MapName, current.Timestamp, DateTime.UtcNow));
@@ -438,7 +440,8 @@ public class ServerAdminController(
                 Logger.LogWarning(ex, "Failed to extract map name from server status for {ServerId}", id);
             }
 
-            if (string.IsNullOrWhiteSpace(currentMapName)) currentMapName = "Unknown";
+            if (string.IsNullOrWhiteSpace(currentMapName))
+                currentMapName = "Unknown";
 
             if (!string.IsNullOrWhiteSpace(currentMapName) &&
                 currentMapName != "Unknown")
@@ -1939,12 +1942,7 @@ public class ServerAdminController(
     private bool IsJsonRequest()
     {
         var xrw = Request.Headers.XRequestedWith.ToString();
-        if (!string.IsNullOrEmpty(xrw) && xrw.Equals("XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return Request.Headers.Accept.Any(h => !string.IsNullOrEmpty(h) && h.Contains("application/json", StringComparison.OrdinalIgnoreCase));
+        return !string.IsNullOrEmpty(xrw) && xrw.Equals("XMLHttpRequest", StringComparison.OrdinalIgnoreCase) || Request.Headers.Accept.Any(h => !string.IsNullOrEmpty(h) && h.Contains("application/json", StringComparison.OrdinalIgnoreCase));
     }
 
     private IActionResult JsonOrStatus(IActionResult nonJsonResult, object jsonPayload)

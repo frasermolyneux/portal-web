@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 using Azure.Identity;
 using Azure.Monitor.Query;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -8,9 +6,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using MX.Observability.ApplicationInsights.AspNetCore;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Client;
+using MX.Observability.ApplicationInsights.AspNetCore;
+using System.Text.Json.Serialization;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Forums.Extensions;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;

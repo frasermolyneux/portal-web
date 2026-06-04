@@ -49,13 +49,15 @@ public static partial class MapRotationCfgParser
         {
             var line = lines[i];
             var match = SetLineRegex().Match(line);
-            if (!match.Success) continue;
+            if (!match.Success)
+                continue;
 
             var isCommented = !string.IsNullOrEmpty(match.Groups[1].Value);
             var varName = match.Groups[2].Value;
             var value = match.Groups[3].Value;
 
-            if (!IsRotationVariable(varName)) continue;
+            if (!IsRotationVariable(varName))
+                continue;
 
             // Check if this is a continuation variable (e.g., sv_maprotation_1, _2)
             var (baseVar, suffixIndex) = ParseVariableSuffix(varName);
@@ -114,12 +116,9 @@ public static partial class MapRotationCfgParser
             return true;
         if (baseVar.Equals("scr_small_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0)
             return true;
-        if (baseVar.Equals("scr_med_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0)
-            return true;
-        if (baseVar.Equals("scr_large_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0)
-            return true;
-
-        return false;
+        return baseVar.Equals("scr_med_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0
+            ? true
+            : baseVar.Equals("scr_large_rotation", StringComparison.OrdinalIgnoreCase) && suffixIndex > 0;
     }
 
     private static (string BaseVar, int SuffixIndex) ParseVariableSuffix(string varName)
@@ -133,6 +132,7 @@ public static partial class MapRotationCfgParser
                 return (varName[..lastUnderscore], index);
             }
         }
+
         return (varName, 0);
     }
 
@@ -184,11 +184,14 @@ public static partial class MapRotationCfgParser
         for (var offset = 1; offset <= 3 && rotationLineIndex - offset >= 0; offset++)
         {
             var commentLine = lines[rotationLineIndex - offset].Trim();
-            if (!commentLine.StartsWith("//")) break;
-            if (commentLine.StartsWith("//***")) break; // Section divider
+            if (!commentLine.StartsWith("//"))
+                break;
+            if (commentLine.StartsWith("//***"))
+                break; // Section divider
 
             var commentText = commentLine.TrimStart('/').Trim();
-            if (string.IsNullOrEmpty(commentText)) continue;
+            if (string.IsNullOrEmpty(commentText))
+                continue;
 
             rawComment = commentText;
 

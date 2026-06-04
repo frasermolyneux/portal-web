@@ -1,13 +1,12 @@
 ﻿using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
-using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -290,7 +289,7 @@ public class ProfileController(
             isLinkedPlayersCapped);
     }
 
-    private async Task<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles.UserProfileDto?> GetCurrentUserProfile(CancellationToken cancellationToken)
+    private async Task<Repository.Abstractions.Models.V1.UserProfiles.UserProfileDto?> GetCurrentUserProfile(CancellationToken cancellationToken)
     {
         var xtremeIdiotsId = User.XtremeIdiotsId();
         if (string.IsNullOrEmpty(xtremeIdiotsId))
@@ -300,10 +299,6 @@ public class ProfileController(
             .GetUserProfileByXtremeIdiotsId(xtremeIdiotsId, cancellationToken)
             .ConfigureAwait(false);
 
-        if (userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null)
-            return null;
-
-        return userProfileResponse.Result.Data;
+        return userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null ? null : userProfileResponse.Result.Data;
     }
-
 }
