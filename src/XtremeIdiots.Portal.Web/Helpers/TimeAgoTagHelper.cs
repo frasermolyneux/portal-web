@@ -48,15 +48,15 @@ public class TimeAgoTagHelper : TagHelper
         var minutes = span.TotalMinutes;
         var hours = span.TotalHours;
         var days = span.TotalDays;
-        if (seconds < 45)
-            return future ? "in a few seconds" : "just now";
-        if (seconds < 90)
-            return future ? "in a minute" : "a minute ago";
-        if (minutes < 45)
-            return future ? $"in {Math.Round(minutes)} minutes" : $"{Math.Round(minutes)} minutes ago";
-        if (minutes < 90)
-            return future ? "in an hour" : "an hour ago";
-        return hours < 24
+        return seconds < 45
+            ? future ? "in a few seconds" : "just now"
+            : seconds < 90
+            ? future ? "in a minute" : "a minute ago"
+            : minutes < 45
+            ? future ? $"in {Math.Round(minutes)} minutes" : $"{Math.Round(minutes)} minutes ago"
+            : minutes < 90
+            ? future ? "in an hour" : "an hour ago"
+            : hours < 24
             ? future ? $"in {Math.Round(hours)} hours" : $"{Math.Round(hours)} hours ago"
             : hours < 42
             ? future ? "in a day" : "a day ago"
