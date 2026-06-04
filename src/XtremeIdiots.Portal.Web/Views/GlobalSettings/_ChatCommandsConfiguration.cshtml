@@ -30,7 +30,7 @@
                                    name="ChatCommands.DefaultsEnabled" value="true" />
                         }
                         <label class="form-check-label" for="ChatCommands_DefaultsEnabled">@Html.DisplayNameFor(m =>
-                                                        m.ChatCommands.DefaultsEnabled)</label>
+                                                                                    m.ChatCommands.DefaultsEnabled)</label>
                         </div>
                         <span asp-validation-for="ChatCommands.DefaultsEnabled" class="text-danger"></span>
                     </div>
@@ -70,206 +70,211 @@
                                     <label asp-for="ChatCommands.DefaultRequiredTags" class="form-label"></label>
                                     <input asp-for="ChatCommands.DefaultRequiredTags" class="form-control" />
                                     <span asp-validation-for="ChatCommands.DefaultRequiredTags" class="text-danger"></span>
-                                    <small class="form-text text-muted">Comma-separated server tags required by default.</small>
+                                    <small class="form-text text-muted">Optional comma-separated player tags. Leave blank for no tag
+                                        requirement.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label asp-for="ChatCommands.DefaultRequiredClaims" class="form-label"></label>
+                                        <input asp-for="ChatCommands.DefaultRequiredClaims" class="form-control" />
+                                        <span asp-validation-for="ChatCommands.DefaultRequiredClaims" class="text-danger"></span>
+                                        <small class="form-text text-muted">Optional comma-separated portal claims. Leave blank for no claim
+                                            requirement.</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="ChatCommands.DefaultRequiredClaims" class="form-label"></label>
-                                    <input asp-for="ChatCommands.DefaultRequiredClaims" class="form-control" />
-                                    <span asp-validation-for="ChatCommands.DefaultRequiredClaims" class="text-danger"></span>
-                                    <small class="form-text text-muted">Comma-separated portal claims required by default.</small>
-                                </div>
+                        </div>
+
+                        <div class="ibox">
+                            <div class="ibox-title">
+                                <h5><i class="fa-solid fa-fw fa-sliders" aria-hidden="true"></i> Per-Command Overrides</h5>
                             </div>
+                            <div class="ibox-content">
+                                <p class="text-muted mb-3">
+                                    Use these overrides when a specific command should behave differently from the shared defaults above.
+                                </p>
+
+                                @for (var i = 0; i < commands.Count; i++)
+                                {
+                                    var command = commands[i];
+                                    var freshnessPlaceholder = command.IsMutating
+                                        ? Model.ChatCommands.MutatingFreshnessSeconds
+                                        : Model.ChatCommands.ReadOnlyFreshnessSeconds;
+                                    var isFuCommand = string.Equals(command.Name, "fu", StringComparison.OrdinalIgnoreCase);
+
+                                    <div class="border rounded p-3 mb-3" data-chat-command-card>
+                                        <input type="hidden" asp-for="ChatCommands.Commands[i].Name" />
+                                        <input type="hidden" asp-for="ChatCommands.Commands[i].Prefix" />
+                                        <input type="hidden" asp-for="ChatCommands.Commands[i].Usage" />
+                                        <input type="hidden" asp-for="ChatCommands.Commands[i].Description" />
+                                        <input type="hidden" asp-for="ChatCommands.Commands[i].IsMutating" />
+
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <div>
+                                                <h6 class="mb-1">@command.Prefix</h6>
+                                                <div class="small text-muted mb-1">@command.Usage</div>
+                                                <p class="text-muted mb-0">@command.Description</p>
+                                            </div>
+                                            <span class="badge bg-light text-dark border">@(command.IsMutating ? "Mutating" : "Read-only")</span>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-lg-4">
+                                                <div class="mb-3">
+                                                    <label asp-for="ChatCommands.Commands[i].Enabled" class="form-label"></label>
+                                                    <select asp-for="ChatCommands.Commands[i].Enabled" class="form-select">
+                                                        <option value="">Use default (@(Model.ChatCommands.DefaultsEnabled ? "Enabled" :
+                                                                                                                          "Disabled"))</option>
+                                <option value="true">Enabled</option>
+                                <option value="false">Disabled</option>
+                            </select>
+                            <span asp-validation-for="ChatCommands.Commands[i].Enabled" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="mb-3">
+                            <label asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-label"></label>
+                            <input asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-control" type="number"
+                                   placeholder="@freshnessPlaceholder" />
+                            <span asp-validation-for="ChatCommands.Commands[i].FreshnessSeconds" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="mb-3">
+                            <label asp-for="ChatCommands.Commands[i].RequiredTags" class="form-label"></label>
+                            <input asp-for="ChatCommands.Commands[i].RequiredTags" class="form-control"
+                                   placeholder="@Model.ChatCommands.DefaultRequiredTags" />
+                            <span asp-validation-for="ChatCommands.Commands[i].RequiredTags" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional. Leave blank to avoid extra tag gating.</small>
                         </div>
                     </div>
                 </div>
 
-                <div class="ibox">
-                    <div class="ibox-title">
-                        <h5><i class="fa-solid fa-fw fa-sliders" aria-hidden="true"></i> Per-Command Overrides</h5>
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="mb-0">
+                            <label asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-label"></label>
+                            <input asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-control"
+                                   placeholder="@Model.ChatCommands.DefaultRequiredClaims" />
+                            <span asp-validation-for="ChatCommands.Commands[i].RequiredClaims" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional. Leave blank to avoid extra claim gating.</small>
+                        </div>
                     </div>
-                    <div class="ibox-content">
-                        <p class="text-muted mb-3">
-                            Use these overrides when a specific command should behave differently from the shared defaults above.
-                        </p>
+                </div>
 
-                        @for (var i = 0; i < commands.Count; i++)
+                @if (isFuCommand)
+                {
+                    var containerId = $"global-chat-command-{i}-messages-container";
+                    var emptyStateId = $"global-chat-command-{i}-messages-empty";
+                    var addButtonId = $"global-chat-command-{i}-add-message";
+
+                    <hr />
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h6 class="mb-1">Payload Settings</h6>
+                            <p class="text-muted mb-0">Configure the templates used by <strong>!fu</strong>. Use
+                                <strong>{name}</strong> for the resolved player name.
+                            </p>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="@addButtonId">
+                            <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
+                        </button>
+                    </div>
+
+                    <p id="@emptyStateId" class="text-muted @(command.Messages.Count > 0 ? "d-none" : string.Empty)">
+                        No command-specific messages configured. The command will not have a usable payload until at least one
+                        enabled message is added.
+                    </p>
+
+                    <div id="@containerId" data-chat-command-messages-container
+                         data-field-name-prefix="ChatCommands.Commands[@i].Messages" data-empty-state-id="@emptyStateId"
+                         data-add-button-id="@addButtonId" data-template-id="global-chat-command-message-template">
+                        @for (var j = 0; j < command.Messages.Count; j++)
                         {
-                            var command = commands[i];
-                            var freshnessPlaceholder = command.IsMutating
-                                ? Model.ChatCommands.MutatingFreshnessSeconds
-                                : Model.ChatCommands.ReadOnlyFreshnessSeconds;
-                            var isFuCommand = string.Equals(command.Name, "fu", StringComparison.OrdinalIgnoreCase);
-
-                            <div class="border rounded p-3 mb-3" data-chat-command-card>
-                                <input type="hidden" asp-for="ChatCommands.Commands[i].Name" />
-                                <input type="hidden" asp-for="ChatCommands.Commands[i].Prefix" />
-                                <input type="hidden" asp-for="ChatCommands.Commands[i].Usage" />
-                                <input type="hidden" asp-for="ChatCommands.Commands[i].Description" />
-                                <input type="hidden" asp-for="ChatCommands.Commands[i].IsMutating" />
-
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <div>
-                                        <h6 class="mb-1">@command.Prefix</h6>
-                                        <div class="small text-muted mb-1">@command.Usage</div>
-                                        <p class="text-muted mb-0">@command.Description</p>
+                            <div class="border rounded p-3 mb-3" data-message-row>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="hidden" data-field="enabled-hidden"
+                                               name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
+                                        @if (command.Messages[j].Enabled)
+                                        {
+                                            <input class="form-check-input" data-field="enabled" type="checkbox"
+                                                   name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
+                                                   id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" checked="checked" />
+                                        }
+                                        else
+                                        {
+                                            <input class="form-check-input" data-field="enabled" type="checkbox"
+                                                   name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
+                                                   id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" />
+                                        }
+                                        <label class="form-check-label" data-field="enabled-label"
+                                               for="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled">Enabled</label>
                                     </div>
-                                    <span class="badge bg-light text-dark border">@(command.IsMutating ? "Mutating" : "Read-only")</span>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
+                                        <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                                                aria-label="Move message up">
+                                            <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                                                aria-label="Move message down">
+                                            <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger" data-action="remove"
+                                                aria-label="Remove message">
+                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
                                 </div>
-
-                                <div class="row">
-                                    <div class="col-lg-4">
-                                        <div class="mb-3">
-                                            <label asp-for="ChatCommands.Commands[i].Enabled" class="form-label"></label>
-                                            <select asp-for="ChatCommands.Commands[i].Enabled" class="form-select">
-                                                <option value="">Use default (@(Model.ChatCommands.DefaultsEnabled ? "Enabled" :
-                                                              "Disabled"))</option>
-                        <option value="true">Enabled</option>
-                        <option value="false">Disabled</option>
-                    </select>
-                    <span asp-validation-for="ChatCommands.Commands[i].Enabled" class="text-danger"></span>
+                                <input class="form-control" data-field="message"
+                                       name="ChatCommands.Commands[@i].Messages[@j].Message" value="@command.Messages[j].Message"
+                                       maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
+                                <small class="form-text text-muted"><span
+                                    data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
+                                    characters</small>
+                                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                                    <span class="text-danger" data-field="validation"
+                                          data-valmsg-for="ChatCommands.Commands[@i].Messages[@j].Message"
+                                          data-valmsg-replace="true"></span>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="mb-3">
-                    <label asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-label"></label>
-                    <input asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-control" type="number"
-                           placeholder="@freshnessPlaceholder" />
-                    <span asp-validation-for="ChatCommands.Commands[i].FreshnessSeconds" class="text-danger"></span>
-                </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="mb-3">
-                    <label asp-for="ChatCommands.Commands[i].RequiredTags" class="form-label"></label>
-                    <input asp-for="ChatCommands.Commands[i].RequiredTags" class="form-control"
-                           placeholder="@Model.ChatCommands.DefaultRequiredTags" />
-                    <span asp-validation-for="ChatCommands.Commands[i].RequiredTags" class="text-danger"></span>
-                </div>
-            </div>
+            }
         </div>
+    </div>
 
-        <div class="row">
-            <div class="col-lg-6">
-                <div class="mb-0">
-                    <label asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-label"></label>
-                    <input asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-control"
-                           placeholder="@Model.ChatCommands.DefaultRequiredClaims" />
-                    <span asp-validation-for="ChatCommands.Commands[i].RequiredClaims" class="text-danger"></span>
-                </div>
-            </div>
-        </div>
-
-        @if (isFuCommand)
-        {
-            var containerId = $"global-chat-command-{i}-messages-container";
-            var emptyStateId = $"global-chat-command-{i}-messages-empty";
-            var addButtonId = $"global-chat-command-{i}-add-message";
-
-            <hr />
+    <template id="global-chat-command-message-template">
+        <div class="border rounded p-3 mb-3" data-message-row>
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <div>
-                    <h6 class="mb-1">Payload Settings</h6>
-                    <p class="text-muted mb-0">Configure the templates used by <strong>!fu</strong>. Use
-                        <strong>{name}</strong> for the resolved player name.</p>
-                    </div>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="@addButtonId">
-                        <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
+                <div class="form-check form-switch mb-0">
+                    <input type="hidden" data-field="enabled-hidden" value="false" />
+                    <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                    <label class="form-check-label" data-field="enabled-label">Enabled</label>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                            aria-label="Move message up">
+                        <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                            aria-label="Move message down">
+                        <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                        <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
                     </button>
                 </div>
-
-                <p id="@emptyStateId" class="text-muted @(command.Messages.Count > 0 ? "d-none" : string.Empty)">
-                    No command-specific messages configured. The command will not have a usable payload until at least one
-                    enabled message is added.
-                </p>
-
-                <div id="@containerId" data-chat-command-messages-container
-                     data-field-name-prefix="ChatCommands.Commands[@i].Messages" data-empty-state-id="@emptyStateId"
-                     data-add-button-id="@addButtonId" data-template-id="global-chat-command-message-template">
-                    @for (var j = 0; j < command.Messages.Count; j++)
-                    {
-                        <div class="border rounded p-3 mb-3" data-message-row>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="form-check form-switch mb-0">
-                                    <input type="hidden" data-field="enabled-hidden"
-                                           name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
-                                    @if (command.Messages[j].Enabled)
-                                    {
-                                        <input class="form-check-input" data-field="enabled" type="checkbox"
-                                               name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
-                                               id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" checked="checked" />
-                                    }
-                                    else
-                                    {
-                                        <input class="form-check-input" data-field="enabled" type="checkbox"
-                                               name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
-                                               id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" />
-                                    }
-                                    <label class="form-check-label" data-field="enabled-label"
-                                           for="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled">Enabled</label>
-                                </div>
-                                <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
-                                    <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                                            aria-label="Move message up">
-                                        <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                            aria-label="Move message down">
-                                        <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger" data-action="remove"
-                                            aria-label="Remove message">
-                                        <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <input class="form-control" data-field="message"
-                                   name="ChatCommands.Commands[@i].Messages[@j].Message" value="@command.Messages[j].Message"
-                                   maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
-                            <small class="form-text text-muted"><span
-                                data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
-                                characters</small>
-                                <div class="small text-muted mt-1" data-field="preview">(preview)</div>
-                                <span class="text-danger" data-field="validation"
-                                      data-valmsg-for="ChatCommands.Commands[@i].Messages[@j].Message"
-                                      data-valmsg-replace="true"></span>
-                            </div>
-                        }
-                    </div>
-                }
             </div>
-        }
-    </div>
-</div>
-
-<template id="global-chat-command-message-template">
-    <div class="border rounded p-3 mb-3" data-message-row>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="form-check form-switch mb-0">
-                <input type="hidden" data-field="enabled-hidden" value="false" />
-                <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
-                <label class="form-check-label" data-field="enabled-label">Enabled</label>
+            <input class="form-control" data-field="message"
+                   maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
+            <small class="form-text text-muted"><span
+                data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
+                characters</small>
+                <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
             </div>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
-                <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                        aria-label="Move message up">
-                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                        aria-label="Move message down">
-                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
-                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                </button>
-            </div>
-        </div>
-        <input class="form-control" data-field="message"
-               maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
-        <small class="form-text text-muted"><span
-            data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
-            characters</small>
-            <div class="small text-muted mt-1" data-field="preview">(preview)</div>
-            <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
-        </div>
-    </template>
+        </template>

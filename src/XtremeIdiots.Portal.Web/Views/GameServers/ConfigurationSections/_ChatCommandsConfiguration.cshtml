@@ -78,7 +78,7 @@ StringComparison.OrdinalIgnoreCase));
                                 enabled state</label>
                             </div>
                             <div class="small text-muted mb-2">Global value: <strong>@(globalEnabled ? "Enabled" :
-                                          "Disabled")</strong></div>
+                                                                          "Disabled")</strong></div>
 <div id="chat-command-@i-enabled-override"
      class="@(command.UseGlobalEnabled ? "d-none" : string.Empty)">
     <label asp-for="ChatCommands.Commands[i].Enabled" class="form-label"></label>
@@ -147,12 +147,13 @@ StringComparison.OrdinalIgnoreCase));
                     global required tags</label>
                 </div>
                 <div class="small text-muted mb-2">Global value: <strong>@(string.IsNullOrWhiteSpace(globalTags) ?
-                       "None" : globalTags)</strong></div>
+                                           "None" : globalTags)</strong></div>
                     <div id="chat-command-@i-tags-override"
                          class="@(command.UseGlobalRequiredTags ? "d-none" : string.Empty)">
                         <label asp-for="ChatCommands.Commands[i].RequiredTags" class="form-label"></label>
                         <input asp-for="ChatCommands.Commands[i].RequiredTags" class="form-control" />
                         <span asp-validation-for="ChatCommands.Commands[i].RequiredTags" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional. Leave blank to avoid extra tag gating.</small>
                     </div>
                 </div>
             </div>
@@ -179,12 +180,13 @@ StringComparison.OrdinalIgnoreCase));
                             global required claims</label>
                         </div>
                         <div class="small text-muted mb-2">Global value: <strong>@(string.IsNullOrWhiteSpace(globalClaims) ?
-                                                      "None" : globalClaims)</strong></div>
+                                                                                  "None" : globalClaims)</strong></div>
                             <div id="chat-command-@i-claims-override"
                                  class="@(command.UseGlobalRequiredClaims ? "d-none" : string.Empty)">
                                 <label asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-label"></label>
                                 <input asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-control" />
                                 <span asp-validation-for="ChatCommands.Commands[i].RequiredClaims" class="text-danger"></span>
+                                <small class="form-text text-muted">Optional. Leave blank to avoid extra claim gating.</small>
                             </div>
                         </div>
                     </div>

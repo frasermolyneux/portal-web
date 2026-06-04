@@ -34,10 +34,10 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
     public int MutatingFreshnessSeconds { get; set; } = ChatCommandSettingsViewModelConstants.MutatingFreshnessSeconds;
 
     [DisplayName("Default Required Tags")]
-    public string DefaultRequiredTags { get; set; } = string.Empty;
+    public string? DefaultRequiredTags { get; set; } = string.Empty;
 
     [DisplayName("Default Required Claims")]
-    public string DefaultRequiredClaims { get; set; } = string.Empty;
+    public string? DefaultRequiredClaims { get; set; } = string.Empty;
 
     public List<ChatCommandGlobalEntryViewModel> Commands { get; set; } =
         ChatCommandDescriptorCatalog.All
@@ -103,10 +103,10 @@ public abstract class ChatCommandEntryViewModelBase
     public int? FreshnessSeconds { get; set; }
 
     [DisplayName("Required Tags")]
-    public string RequiredTags { get; set; } = string.Empty;
+    public string? RequiredTags { get; set; } = string.Empty;
 
     [DisplayName("Required Claims")]
-    public string RequiredClaims { get; set; } = string.Empty;
+    public string? RequiredClaims { get; set; } = string.Empty;
 
     public List<BroadcastMessageViewModel> Messages { get; set; } = [];
 }
@@ -230,8 +230,17 @@ internal static class ChatCommandSettingsJsonMapper
 
         defaults["enabled"] = model.DefaultsEnabled;
         defaults["freshnessSeconds"] = freshness;
-        defaults["requiredTags"] = SplitCsv(model.DefaultRequiredTags);
-        defaults["requiredClaims"] = SplitCsv(model.DefaultRequiredClaims);
+        var defaultRequiredTags = SplitCsv(model.DefaultRequiredTags);
+        if (defaultRequiredTags.Length > 0)
+        {
+            defaults["requiredTags"] = defaultRequiredTags;
+        }
+
+        var defaultRequiredClaims = SplitCsv(model.DefaultRequiredClaims);
+        if (defaultRequiredClaims.Length > 0)
+        {
+            defaults["requiredClaims"] = defaultRequiredClaims;
+        }
 
         payload["schemaVersion"] = ChatCommandSettingsConstants.SupportedSchemaVersion;
         payload["defaults"] = defaults;

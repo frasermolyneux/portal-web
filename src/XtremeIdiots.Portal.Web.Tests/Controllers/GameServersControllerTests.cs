@@ -332,6 +332,76 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_BlankChatCommandRequirements_UpsertsEmptyArrays()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>();
+
+        mockRepositoryApiClient
+                .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                        It.IsAny<Guid>(),
+                        It.IsAny<string>(),
+                        It.IsAny<UpsertConfigurationDto>(),
+                        It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+                {
+                    upsertPayloads[ns] = dto.Configuration;
+                    var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                    return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+                });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true
+            },
+            ChatCommands = new ChatCommandServerSettingsViewModel
+            {
+                Commands =
+                        [
+                                new ChatCommandServerEntryViewModel
+                                        {
+                                                Name = "fu",
+                                                Prefix = "!fu",
+                                                Usage = "!fu <player name>",
+                                                UseGlobalEnabled = false,
+                                                Enabled = false,
+                                                UseGlobalFreshness = false,
+                                                FreshnessSeconds = 4,
+                                                UseGlobalRequiredTags = false,
+                                                RequiredTags = string.Empty,
+                                                UseGlobalRequiredClaims = false,
+                                                RequiredClaims = string.Empty,
+                                                UseGlobalMessages = false,
+                                                Messages =
+                                                [
+                                                        new BroadcastMessageViewModel { Message = "server-fu-{name}", Enabled = true }
+                                                ]
+                                        }
+                        ]
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
+        using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        var fu = doc.RootElement.GetProperty("commands").GetProperty("fu");
+
+        Assert.False(fu.GetProperty("enabled").GetBoolean());
+        Assert.Equal(4, fu.GetProperty("freshnessSeconds").GetInt32());
+        Assert.Empty(fu.GetProperty("requiredTags").EnumerateArray());
+        Assert.Empty(fu.GetProperty("requiredClaims").EnumerateArray());
+        Assert.Equal("server-fu-{name}", fu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
+    }
+
+    [Fact]
     public void PopulateConfigFromNamespace_ParsesStringBooleans_ForOtherConfigNamespaces()
     {
         // Arrange

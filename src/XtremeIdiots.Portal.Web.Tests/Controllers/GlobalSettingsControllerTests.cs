@@ -2,13 +2,16 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using System.Reflection;
 using System.Security.Claims;
+using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -37,6 +40,7 @@ public class GlobalSettingsControllerTests
             User = user ?? new ClaimsPrincipal(new ClaimsIdentity("TestAuth"))
         };
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
         return controller;
     }
@@ -138,5 +142,44 @@ public class GlobalSettingsControllerTests
         Assert.Single(fu.Messages);
         Assert.Equal("fu-{name}", fu.Messages[0].Message);
         Assert.True(fu.Messages[0].Enabled);
+    }
+
+    [Fact]
+    public async Task Index_Post_ChatCommandsBlankRequirements_OmitsGlobalTagAndClaimDefaults()
+    {
+        var sut = CreateSut();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GlobalSettingsViewModel
+        {
+            ChatCommands = new ChatCommandGlobalSettingsViewModel
+            {
+                DefaultRequiredTags = string.Empty,
+                DefaultRequiredClaims = string.Empty
+            }
+        };
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        var defaults = doc.RootElement.GetProperty("defaults");
+
+        Assert.False(defaults.TryGetProperty("requiredTags", out _));
+        Assert.False(defaults.TryGetProperty("requiredClaims", out _));
     }
 }
