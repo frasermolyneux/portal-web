@@ -105,15 +105,13 @@ public class GlobalSettingsControllerTests
                             "defaults": {
                                 "enabled": true,
                                 "freshnessSeconds": { "default": 8, "readOnly": 6, "mutating": 4 },
-                                "requiredTags": ["tag-a"],
-                                "requiredClaims": ["claim-a"]
+                                "requiredTags": ["tag-a"]
                             },
                             "commands": {
                                 "fu": {
                                     "enabled": true,
                                     "freshnessSeconds": 9,
                                     "requiredTags": ["tag-fu"],
-                                    "requiredClaims": ["claim-fu"],
                                     "settings": {
                                         "messages": [
                                             { "message": "fu-{name}", "enabled": true }
@@ -132,20 +130,18 @@ public class GlobalSettingsControllerTests
         Assert.Equal(6, model.ChatCommands.ReadOnlyFreshnessSeconds);
         Assert.Equal(4, model.ChatCommands.MutatingFreshnessSeconds);
         Assert.Equal("tag-a", model.ChatCommands.DefaultRequiredTags);
-        Assert.Equal("claim-a", model.ChatCommands.DefaultRequiredClaims);
 
         var fu = model.ChatCommands.Commands.Single(x => x.Name == "fu");
         Assert.True(fu.Enabled);
         Assert.Equal(9, fu.FreshnessSeconds);
         Assert.Equal("tag-fu", fu.RequiredTags);
-        Assert.Equal("claim-fu", fu.RequiredClaims);
         Assert.Single(fu.Messages);
         Assert.Equal("fu-{name}", fu.Messages[0].Message);
         Assert.True(fu.Messages[0].Enabled);
     }
 
     [Fact]
-    public async Task Index_Post_ChatCommandsBlankRequirements_OmitsGlobalTagAndClaimDefaults()
+    public async Task Index_Post_ChatCommandsBlankRequirements_OmitsGlobalTagDefaults()
     {
         var sut = CreateSut();
         var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -166,8 +162,7 @@ public class GlobalSettingsControllerTests
         {
             ChatCommands = new ChatCommandGlobalSettingsViewModel
             {
-                DefaultRequiredTags = string.Empty,
-                DefaultRequiredClaims = string.Empty
+                DefaultRequiredTags = string.Empty
             }
         };
 
@@ -180,6 +175,5 @@ public class GlobalSettingsControllerTests
         var defaults = doc.RootElement.GetProperty("defaults");
 
         Assert.False(defaults.TryGetProperty("requiredTags", out _));
-        Assert.False(defaults.TryGetProperty("requiredClaims", out _));
     }
 }

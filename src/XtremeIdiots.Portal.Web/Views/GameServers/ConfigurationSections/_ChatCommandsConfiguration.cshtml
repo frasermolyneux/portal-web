@@ -18,6 +18,10 @@
             <strong>!fu</strong> message payloads now live inside the <code>chatCommands</code> contract. Leaving the
             server-specific list empty while using a local override will make the command unavailable on this server.
         </p>
+        <div class="alert alert-warning mt-3 mb-0" role="alert">
+            Legacy claim-based command restrictions are no longer supported. Saving chat command settings will keep only
+            tag-based authorization rules.
+        </div>
     </div>
 </div>
 
@@ -33,9 +37,6 @@ StringComparison.OrdinalIgnoreCase));
     var globalTags = !string.IsNullOrWhiteSpace(globalCommand?.RequiredTags)
         ? globalCommand.RequiredTags
         : Model.GlobalChatCommands.DefaultRequiredTags;
-    var globalClaims = !string.IsNullOrWhiteSpace(globalCommand?.RequiredClaims)
-        ? globalCommand.RequiredClaims
-        : Model.GlobalChatCommands.DefaultRequiredClaims;
     var globalMessageCount = globalCommand?.Messages?.Count ?? 0;
     var isFuCommand = string.Equals(command.Name, "fu", StringComparison.OrdinalIgnoreCase);
 
@@ -125,7 +126,7 @@ StringComparison.OrdinalIgnoreCase));
 </div>
 
 <div class="row">
-    <div class="col-lg-6">
+    <div class="col-lg-12">
         <div class="border rounded p-3 mb-3">
             <input type="hidden" name="ChatCommands.Commands[@i].UseGlobalRequiredTags" value="false" />
             <div class="form-check mb-3">
@@ -157,39 +158,6 @@ StringComparison.OrdinalIgnoreCase));
                     </div>
                 </div>
             </div>
-
-            <div class="col-lg-6">
-                <div class="border rounded p-3 mb-3">
-                    <input type="hidden" name="ChatCommands.Commands[@i].UseGlobalRequiredClaims" value="false" />
-                    <div class="form-check mb-3">
-                        @if (command.UseGlobalRequiredClaims)
-                        {
-                            <input class="form-check-input" type="checkbox"
-                                   id="ChatCommands_Commands_@(i)__UseGlobalRequiredClaims"
-                                   name="ChatCommands.Commands[@i].UseGlobalRequiredClaims" value="true" data-global-toggle
-                                   data-global-target="chat-command-@i-claims-override" checked="checked" />
-                        }
-                        else
-                        {
-                            <input class="form-check-input" type="checkbox"
-                                   id="ChatCommands_Commands_@(i)__UseGlobalRequiredClaims"
-                                   name="ChatCommands.Commands[@i].UseGlobalRequiredClaims" value="true" data-global-toggle
-                                   data-global-target="chat-command-@i-claims-override" />
-                        }
-                        <label class="form-check-label" for="ChatCommands_Commands_@(i)__UseGlobalRequiredClaims">Use
-                            global required claims</label>
-                        </div>
-                        <div class="small text-muted mb-2">Global value: <strong>@(string.IsNullOrWhiteSpace(globalClaims) ?
-                                                                                  "None" : globalClaims)</strong></div>
-                            <div id="chat-command-@i-claims-override"
-                                 class="@(command.UseGlobalRequiredClaims ? "d-none" : string.Empty)">
-                                <label asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-label"></label>
-                                <input asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-control" />
-                                <span asp-validation-for="ChatCommands.Commands[i].RequiredClaims" class="text-danger"></span>
-                                <small class="form-text text-muted">Optional. Leave blank to avoid extra claim gating.</small>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 @if (isFuCommand)

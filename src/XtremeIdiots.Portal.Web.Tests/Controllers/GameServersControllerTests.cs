@@ -190,7 +190,6 @@ public class GameServersControllerTests
                                     "enabled": false,
                                     "freshnessSeconds": 4,
                                     "requiredTags": ["tag-fu"],
-                                    "requiredClaims": ["claim-fu"],
                                     "settings": {
                                         "messages": [
                                             { "message": "server-fu-{name}", "enabled": true }
@@ -208,12 +207,10 @@ public class GameServersControllerTests
         Assert.False(fu.UseGlobalEnabled);
         Assert.False(fu.UseGlobalFreshness);
         Assert.False(fu.UseGlobalRequiredTags);
-        Assert.False(fu.UseGlobalRequiredClaims);
         Assert.False(fu.UseGlobalMessages);
         Assert.False(fu.Enabled);
         Assert.Equal(4, fu.FreshnessSeconds);
         Assert.Equal("tag-fu", fu.RequiredTags);
-        Assert.Equal("claim-fu", fu.RequiredClaims);
         Assert.Single(fu.Messages);
         Assert.Equal("server-fu-{name}", fu.Messages[0].Message);
     }
@@ -233,8 +230,7 @@ public class GameServersControllerTests
                             "defaults": {
                                 "enabled": true,
                                 "freshnessSeconds": { "default": 8, "readOnly": 6, "mutating": 4 },
-                                "requiredTags": ["tag-a"],
-                                "requiredClaims": ["claim-a"]
+                                "requiredTags": ["tag-a"]
                             },
                             "commands": {
                                 "fu": {
@@ -305,8 +301,6 @@ public class GameServersControllerTests
                                                 FreshnessSeconds = 4,
                                                 UseGlobalRequiredTags = false,
                                                 RequiredTags = "tag-fu",
-                                                UseGlobalRequiredClaims = false,
-                                                RequiredClaims = "claim-fu",
                                                 UseGlobalMessages = false,
                                                 Messages =
                                                 [
@@ -327,7 +321,6 @@ public class GameServersControllerTests
         Assert.False(fu.GetProperty("enabled").GetBoolean());
         Assert.Equal(4, fu.GetProperty("freshnessSeconds").GetInt32());
         Assert.Equal("tag-fu", fu.GetProperty("requiredTags")[0].GetString());
-        Assert.Equal("claim-fu", fu.GetProperty("requiredClaims")[0].GetString());
         Assert.Equal("server-fu-{name}", fu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
     }
 
@@ -375,8 +368,6 @@ public class GameServersControllerTests
                                                 FreshnessSeconds = 4,
                                                 UseGlobalRequiredTags = false,
                                                 RequiredTags = string.Empty,
-                                                UseGlobalRequiredClaims = false,
-                                                RequiredClaims = string.Empty,
                                                 UseGlobalMessages = false,
                                                 Messages =
                                                 [
@@ -397,7 +388,6 @@ public class GameServersControllerTests
         Assert.False(fu.GetProperty("enabled").GetBoolean());
         Assert.Equal(4, fu.GetProperty("freshnessSeconds").GetInt32());
         Assert.Empty(fu.GetProperty("requiredTags").EnumerateArray());
-        Assert.Empty(fu.GetProperty("requiredClaims").EnumerateArray());
         Assert.Equal("server-fu-{name}", fu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
     }
 

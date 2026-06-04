@@ -13,6 +13,10 @@
             Configure fleet-wide defaults for in-game chat commands. Per-command overrides below can refine the shared
             defaults.
         </p>
+        <div class="alert alert-warning" role="alert">
+            Legacy claim-based command restrictions are no longer supported. Saving chat command settings will keep only
+            tag-based authorization rules.
+        </div>
 
         <div class="row">
             <div class="col-md-4">
@@ -65,24 +69,15 @@
                                     <strong>!register</strong>.</small>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-8">
                                 <div class="mb-3">
                                     <label asp-for="ChatCommands.DefaultRequiredTags" class="form-label"></label>
                                     <input asp-for="ChatCommands.DefaultRequiredTags" class="form-control" />
                                     <span asp-validation-for="ChatCommands.DefaultRequiredTags" class="text-danger"></span>
                                     <small class="form-text text-muted">Optional comma-separated player tags. Leave blank for no tag
                                         requirement.</small>
-                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label asp-for="ChatCommands.DefaultRequiredClaims" class="form-label"></label>
-                                        <input asp-for="ChatCommands.DefaultRequiredClaims" class="form-control" />
-                                        <span asp-validation-for="ChatCommands.DefaultRequiredClaims" class="text-danger"></span>
-                                        <small class="form-text text-muted">Optional comma-separated portal claims. Leave blank for no claim
-                                            requirement.</small>
-                                        </div>
-                                    </div>
+                            </div>
                                 </div>
                             </div>
                         </div>
@@ -148,18 +143,6 @@
                                    placeholder="@Model.ChatCommands.DefaultRequiredTags" />
                             <span asp-validation-for="ChatCommands.Commands[i].RequiredTags" class="text-danger"></span>
                             <small class="form-text text-muted">Optional. Leave blank to avoid extra tag gating.</small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-lg-6">
-                        <div class="mb-0">
-                            <label asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-label"></label>
-                            <input asp-for="ChatCommands.Commands[i].RequiredClaims" class="form-control"
-                                   placeholder="@Model.ChatCommands.DefaultRequiredClaims" />
-                            <span asp-validation-for="ChatCommands.Commands[i].RequiredClaims" class="text-danger"></span>
-                            <small class="form-text text-muted">Optional. Leave blank to avoid extra claim gating.</small>
                         </div>
                     </div>
                 </div>

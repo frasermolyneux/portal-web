@@ -36,9 +36,6 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
     [DisplayName("Default Required Tags")]
     public string? DefaultRequiredTags { get; set; } = string.Empty;
 
-    [DisplayName("Default Required Claims")]
-    public string? DefaultRequiredClaims { get; set; } = string.Empty;
-
     public List<ChatCommandGlobalEntryViewModel> Commands { get; set; } =
         ChatCommandDescriptorCatalog.All
             .Select(static descriptor => new ChatCommandGlobalEntryViewModel
@@ -105,9 +102,6 @@ public abstract class ChatCommandEntryViewModelBase
     [DisplayName("Required Tags")]
     public string? RequiredTags { get; set; } = string.Empty;
 
-    [DisplayName("Required Claims")]
-    public string? RequiredClaims { get; set; } = string.Empty;
-
     public List<BroadcastMessageViewModel> Messages { get; set; } = [];
 }
 
@@ -125,9 +119,6 @@ public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelB
 
     [DisplayName("Use Global Required Tags")]
     public bool UseGlobalRequiredTags { get; set; } = true;
-
-    [DisplayName("Use Global Required Claims")]
-    public bool UseGlobalRequiredClaims { get; set; } = true;
 
     [DisplayName("Use Global Messages")]
     public bool UseGlobalMessages { get; set; } = true;
@@ -186,7 +177,6 @@ internal static class ChatCommandSettingsJsonMapper
             }
 
             target.DefaultRequiredTags = string.Join(", ", GetStringArray(defaultsElement, "requiredTags"));
-            target.DefaultRequiredClaims = string.Join(", ", GetStringArray(defaultsElement, "requiredClaims"));
         }
 
         if (root.TryGetProperty("commands", out var commandsElement) && commandsElement.ValueKind == JsonValueKind.Object)
@@ -236,12 +226,6 @@ internal static class ChatCommandSettingsJsonMapper
             defaults["requiredTags"] = defaultRequiredTags;
         }
 
-        var defaultRequiredClaims = SplitCsv(model.DefaultRequiredClaims);
-        if (defaultRequiredClaims.Length > 0)
-        {
-            defaults["requiredClaims"] = defaultRequiredClaims;
-        }
-
         payload["schemaVersion"] = ChatCommandSettingsConstants.SupportedSchemaVersion;
         payload["defaults"] = defaults;
         payload["commands"] = commands;
@@ -288,12 +272,6 @@ internal static class ChatCommandSettingsJsonMapper
             payload["requiredTags"] = requiredTags;
         }
 
-        var requiredClaims = SplitCsv(command.RequiredClaims);
-        if (requiredClaims.Length > 0)
-        {
-            payload["requiredClaims"] = requiredClaims;
-        }
-
         if (command.Messages.Count > 0)
         {
             var messagePayloads = command.Messages.Select(m =>
@@ -329,11 +307,6 @@ internal static class ChatCommandSettingsJsonMapper
         if (!command.UseGlobalRequiredTags)
         {
             payload["requiredTags"] = SplitCsv(command.RequiredTags);
-        }
-
-        if (!command.UseGlobalRequiredClaims)
-        {
-            payload["requiredClaims"] = SplitCsv(command.RequiredClaims);
         }
 
         if (!command.UseGlobalMessages && command.Messages.Count > 0)
@@ -388,15 +361,6 @@ internal static class ChatCommandSettingsJsonMapper
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
                     serverEntry.UseGlobalRequiredTags = false;
-                }
-            }
-
-            if (commandElement.TryGetProperty("requiredClaims", out _))
-            {
-                command.RequiredClaims = string.Join(", ", GetStringArray(commandElement, "requiredClaims"));
-                if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
-                {
-                    serverEntry.UseGlobalRequiredClaims = false;
                 }
             }
 
