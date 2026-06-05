@@ -14,6 +14,7 @@ var ServerFeed = (function () {
     var _seenItemIds = new Set();
     var _pendingItems = [];
     var _overrunCount = 0;
+    var _overrunNoticeShown = false;
 
     var _cursor = {
         lastSeenTimestampUtc: null,
@@ -34,6 +35,7 @@ var ServerFeed = (function () {
         _pendingItems = [];
         _seenItemIds = new Set();
         _overrunCount = 0;
+        _overrunNoticeShown = false;
         _cursor = {
             lastSeenTimestampUtc: null,
             lastSeenSourceType: null,
@@ -46,6 +48,7 @@ var ServerFeed = (function () {
             container: options.containerSelector || '#sd-feedContainer',
             items: options.itemsSelector || '#sd-feedItems',
             pendingCount: options.pendingCountSelector || '#sd-feedPendingCount',
+            overrunIndicator: options.overrunIndicatorSelector || null,
             chatToggle: options.chatToggleSelector || '#sd-feedToggleChat',
             eventsToggle: options.eventsToggleSelector || '#sd-feedToggleEvents',
             eventTypeFilter: options.eventTypeFilterSelector || '#sd-feedEventFilter',
@@ -171,11 +174,18 @@ var ServerFeed = (function () {
 
                 if (result?.diagnostics?.overrunDetected === true) {
                     _overrunCount += 1;
-                    if (_overrunCount === 1 || _overrunCount % 3 === 0) {
-                        prependSystemNotice('Feed overrun detected. Some high-volume bursts may be truncated.');
+                    if (_selectors.overrunIndicator) {
+                        $(_selectors.overrunIndicator).show();
+                    }
+                    if (!_overrunNoticeShown) {
+                        _overrunNoticeShown = true;
+                        prependSystemNotice('Feed volume is high \u2014 some items may be truncated.');
                     }
                 } else {
                     _overrunCount = 0;
+                    if (_selectors.overrunIndicator) {
+                        $(_selectors.overrunIndicator).hide();
+                    }
                 }
 
                 var dedupedItems = [];

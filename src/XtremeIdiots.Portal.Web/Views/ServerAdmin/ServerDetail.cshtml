@@ -204,6 +204,7 @@
                                 <h5>
                                     Server Feed
                                     <span class="badge bg-secondary ms-2" id="sd-feedPendingCount" style="display: none;">0 new</span>
+                                    <span class="badge bg-warning text-dark ms-1" id="sd-feedOverrunIndicator" style="display: none;" title="Feed volume is high — some items may be truncated"><i class="fa-solid fa-fw fa-triangle-exclamation"></i> High volume</span>
                                 </h5>
                                 <div class="ibox-tools d-flex align-items-center gap-2">
                                     <div class="form-check form-check-inline mb-0">
@@ -659,6 +660,7 @@
                 containerSelector: '#sd-feedContainer',
                 itemsSelector: '#sd-feedItems',
                 pendingCountSelector: '#sd-feedPendingCount',
+                overrunIndicatorSelector: '#sd-feedOverrunIndicator',
                 chatToggleSelector: '#sd-feedToggleChat',
                 eventsToggleSelector: '#sd-feedToggleEvents',
                 eventTypeFilterSelector: '#sd-feedEventFilter',
