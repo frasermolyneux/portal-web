@@ -730,7 +730,7 @@
             // Render related players using global helper (renderPlayerName) for consistency
             $('#relatedPlayersTable .player-name').each(function() {
                 var el = $(this);
-                var gameType = parseInt(el.data('game-type'));
+                var gameType = el.data('game-type');
                 var username = el.data('username');
                 var playerId = el.data('player-id');
                 try {
