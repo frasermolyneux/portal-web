@@ -1,0 +1,84 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5>Welcome Messages</h5>
+    </div>
+    <div class="ibox-content">
+        <p class="text-muted mb-3">
+            Override welcome-message behavior for this server. Leave optional overrides blank to inherit global
+            defaults.
+        </p>
+
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="mb-3">
+                    <label asp-for="WelcomeMessages.Enabled" class="form-label"></label>
+                    <select asp-for="WelcomeMessages.Enabled" class="form-select">
+                        <option value="">Use global (@(Model.GlobalWelcomeMessages.Enabled ? "Enabled" : "Disabled"))
+                        </option>
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                    <span asp-validation-for="WelcomeMessages.Enabled" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="mb-3">
+                    <input type="hidden" name="WelcomeMessages.InheritGlobalRules" value="false" />
+                    <div class="form-check mt-4">
+                        @if (Model.WelcomeMessages.InheritGlobalRules)
+                        {
+                            <input class="form-check-input" type="checkbox" id="WelcomeMessages_InheritGlobalRules"
+                                   name="WelcomeMessages.InheritGlobalRules" value="true" checked="checked" />
+                        }
+                        else
+                        {
+                            <input class="form-check-input" type="checkbox" id="WelcomeMessages_InheritGlobalRules"
+                                   name="WelcomeMessages.InheritGlobalRules" value="true" />
+                        }
+                        <label class="form-check-label" for="WelcomeMessages_InheritGlobalRules">@Html.DisplayNameFor(m
+                                                        => m.WelcomeMessages.InheritGlobalRules)</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="mb-3">
+                        <label asp-for="WelcomeMessages.StaleThresholdSeconds" class="form-label"></label>
+                        <input asp-for="WelcomeMessages.StaleThresholdSeconds" class="form-control" type="number"
+                               placeholder="@Model.GlobalWelcomeMessages.StaleThresholdSeconds" />
+                        <span asp-validation-for="WelcomeMessages.StaleThresholdSeconds" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="mb-3">
+                        <label asp-for="WelcomeMessages.DefaultConnectionDelaySeconds" class="form-label"></label>
+                        <input asp-for="WelcomeMessages.DefaultConnectionDelaySeconds" class="form-control" type="number"
+                               placeholder="@Model.GlobalWelcomeMessages.DefaultConnectionDelaySeconds" />
+                        <span asp-validation-for="WelcomeMessages.DefaultConnectionDelaySeconds" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WelcomeMessages.CountryFallback" class="form-label"></label>
+                <input asp-for="WelcomeMessages.CountryFallback" class="form-control"
+                       placeholder="@Model.GlobalWelcomeMessages.CountryFallback" />
+                <span asp-validation-for="WelcomeMessages.CountryFallback" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WelcomeMessages.LocalRulesJson" class="form-label"></label>
+                <textarea asp-for="WelcomeMessages.LocalRulesJson" class="form-control" rows="10"></textarea>
+                <span asp-validation-for="WelcomeMessages.LocalRulesJson" class="text-danger"></span>
+                <small class="form-text text-muted">Server-only rules appended after global inheritance.</small>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WelcomeMessages.RuleOverridesJson" class="form-label"></label>
+                <textarea asp-for="WelcomeMessages.RuleOverridesJson" class="form-control" rows="8"></textarea>
+                <span asp-validation-for="WelcomeMessages.RuleOverridesJson" class="text-danger"></span>
+                <small class="form-text text-muted">Override global rule fields by matching <strong>id</strong>.</small>
+            </div>
+        </div>
+    </div>

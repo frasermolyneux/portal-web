@@ -154,6 +154,10 @@ public class GameServerEditViewModel : IValidatableObject
 
     public ChatCommandGlobalSettingsViewModel GlobalChatCommands { get; set; } = new();
 
+    public WelcomeMessageServerSettingsViewModel WelcomeMessages { get; set; } = new();
+
+    public WelcomeMessageGlobalSettingsViewModel GlobalWelcomeMessages { get; set; } = new();
+
     // Auth flags for tab visibility
 
     public bool CanEditFileTransport { get; set; }
@@ -223,6 +227,11 @@ public class GameServerEditViewModel : IValidatableObject
         }
 
         foreach (var validationResult in ChatCommands.Validate(validationContext))
+        {
+            yield return validationResult;
+        }
+
+        foreach (var validationResult in WelcomeMessages.Validate(validationContext))
         {
             yield return validationResult;
         }

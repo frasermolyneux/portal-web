@@ -692,6 +692,9 @@ public class GameServersController(
                 case ChatCommandSettingsConstants.Namespace:
                     ChatCommandSettingsJsonMapper.PopulateServer(editModel.ChatCommands, root);
                     break;
+                case WelcomeMessageSettingsViewModelConstants.Namespace:
+                    WelcomeMessageSettingsJsonMapper.PopulateServer(editModel.WelcomeMessages, root);
+                    break;
                 case "broadcasts":
                     editModel.BroadcastsEnabled = GetBoolProperty(root, "enabled", false);
                     editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
@@ -805,6 +808,9 @@ public class GameServersController(
                     break;
                 case ChatCommandSettingsConstants.Namespace:
                     ChatCommandSettingsJsonMapper.PopulateGlobal(editModel.GlobalChatCommands, root);
+                    break;
+                case WelcomeMessageSettingsViewModelConstants.Namespace:
+                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(editModel.GlobalWelcomeMessages, root);
                     break;
                 default:
                     break;
@@ -1045,6 +1051,14 @@ public class GameServersController(
                 gameServerId,
                 ChatCommandSettingsConstants.Namespace,
                 ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands),
+                serverTitle,
+                errors,
+                cancellationToken).ConfigureAwait(false);
+
+            await UpsertConfigSafeAsync(
+                gameServerId,
+                WelcomeMessageSettingsViewModelConstants.Namespace,
+                WelcomeMessageSettingsJsonMapper.BuildServerConfigurationJson(model.WelcomeMessages),
                 serverTitle,
                 errors,
                 cancellationToken).ConfigureAwait(false);

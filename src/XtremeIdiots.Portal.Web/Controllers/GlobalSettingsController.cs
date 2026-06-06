@@ -110,6 +110,12 @@ public class GlobalSettingsController(
                 errors,
                 cancellationToken).ConfigureAwait(false);
 
+            await UpsertConfigSafeAsync(
+                WelcomeMessageSettingsViewModelConstants.Namespace,
+                WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages),
+                errors,
+                cancellationToken).ConfigureAwait(false);
+
             if (errors.Count > 0)
             {
                 this.AddAlertDanger($"Failed to save configuration for: {string.Join(", ", errors)}");
@@ -160,6 +166,9 @@ public class GlobalSettingsController(
                     break;
                 case ChatCommandSettingsConstants.Namespace:
                     ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, root);
+                    break;
+                case WelcomeMessageSettingsViewModelConstants.Namespace:
+                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.WelcomeMessages, root);
                     break;
                 default:
                     Logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);

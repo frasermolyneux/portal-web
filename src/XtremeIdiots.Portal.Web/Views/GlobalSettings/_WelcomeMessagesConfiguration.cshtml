@@ -1,0 +1,64 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-hand-wave" aria-hidden="true"></i> Welcome Message Defaults</h5>
+    </div>
+    <div class="ibox-content">
+        <p class="text-muted mb-3">
+            Configure global welcome-message behavior. Rule lists are entered as JSON arrays so the same contract can be
+            shared across all services and environments.
+        </p>
+
+        <div class="row">
+            <div class="col-md-3">
+                <input type="hidden" name="WelcomeMessages.Enabled" value="false" />
+                <div class="form-check mb-3 mt-4">
+                    @if (Model.WelcomeMessages.Enabled)
+                    {
+                        <input class="form-check-input" type="checkbox" id="WelcomeMessages_Enabled"
+                               name="WelcomeMessages.Enabled" value="true" checked="checked" />
+                    }
+                    else
+                    {
+                        <input class="form-check-input" type="checkbox" id="WelcomeMessages_Enabled"
+                               name="WelcomeMessages.Enabled" value="true" />
+                    }
+                    <label class="form-check-label" for="WelcomeMessages_Enabled">@Html.DisplayNameFor(m =>
+                                                m.WelcomeMessages.Enabled)</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="WelcomeMessages.StaleThresholdSeconds" class="form-label"></label>
+                        <input asp-for="WelcomeMessages.StaleThresholdSeconds" class="form-control" type="number" />
+                        <span asp-validation-for="WelcomeMessages.StaleThresholdSeconds" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="WelcomeMessages.DefaultConnectionDelaySeconds" class="form-label"></label>
+                        <input asp-for="WelcomeMessages.DefaultConnectionDelaySeconds" class="form-control" type="number" />
+                        <span asp-validation-for="WelcomeMessages.DefaultConnectionDelaySeconds" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="WelcomeMessages.CountryFallback" class="form-label"></label>
+                        <input asp-for="WelcomeMessages.CountryFallback" class="form-control" />
+                        <span asp-validation-for="WelcomeMessages.CountryFallback" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WelcomeMessages.RulesJson" class="form-label"></label>
+                <textarea asp-for="WelcomeMessages.RulesJson" class="form-control" rows="12"></textarea>
+                <span asp-validation-for="WelcomeMessages.RulesJson" class="text-danger"></span>
+                <small class="form-text text-muted">Expected contract: array of objects with fields such as
+                    <strong>id</strong>, <strong>priority</strong>, <strong>visibility</strong>,
+                    <strong>messageTemplate</strong>, <strong>requiredTags</strong>, and
+                    <strong>connectionDelaySeconds</strong>.</small>
+                </div>
+            </div>
+        </div>

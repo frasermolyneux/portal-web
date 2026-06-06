@@ -75,6 +75,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
 
+    public WelcomeMessageGlobalSettingsViewModel WelcomeMessages { get; set; } = new();
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (FunnyMessages is null)
@@ -87,6 +89,11 @@ public class GlobalSettingsViewModel : IValidatableObject
         }
 
         foreach (var validationResult in ChatCommands.Validate(validationContext))
+        {
+            yield return validationResult;
+        }
+
+        foreach (var validationResult in WelcomeMessages.Validate(validationContext))
         {
             yield return validationResult;
         }

@@ -65,6 +65,11 @@
                                         data-bs-target="#chat-commands-tab" type="button" role="tab"
                                         aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
                             </li>
+                            <li class="nav-item" role="presentation" id="welcome-messages-tab-item">
+                                <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#welcome-messages-tab" type="button" role="tab"
+                                        aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
+                            </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
                                         data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
@@ -134,6 +139,11 @@
                             <div class="tab-pane fade" id="chat-commands-tab" role="tabpanel"
                                  aria-labelledby="chat-commands-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_ChatCommandsConfiguration", Model)
+                            </div>
+
+                            <div class="tab-pane fade" id="welcome-messages-tab" role="tabpanel"
+                                 aria-labelledby="welcome-messages-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_WelcomeMessagesConfiguration", Model)
                             </div>
 
                             <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
