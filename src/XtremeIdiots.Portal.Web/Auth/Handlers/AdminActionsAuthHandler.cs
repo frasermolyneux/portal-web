@@ -113,14 +113,14 @@ public class AdminActionsAuthHandler : IAuthorizationHandler
         if (context.Resource is Tuple<GameType, string> refTuple)
         {
             BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, refTuple.Item1);
-            if (context.User.HasClaim(UserProfileClaimType.GameAdmin, refTuple.Item1.ToString()) &&
+            if (BaseAuthorizationHelper.HasGameScopedClaim(context.User, UserProfileClaimType.GameAdmin, refTuple.Item1) &&
                 BaseAuthorizationHelper.IsActionOwner(context, refTuple.Item2))
                 context.Succeed(requirement);
         }
         else if (context.Resource is (GameType gameType, string adminId))
         {
             BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
-            if (context.User.HasClaim(UserProfileClaimType.GameAdmin, gameType.ToString()) &&
+            if (BaseAuthorizationHelper.HasGameScopedClaim(context.User, UserProfileClaimType.GameAdmin, gameType) &&
                 BaseAuthorizationHelper.IsActionOwner(context, adminId))
                 context.Succeed(requirement);
         }
@@ -157,10 +157,9 @@ public class AdminActionsAuthHandler : IAuthorizationHandler
 
     private static void CheckActionSpecificEditPermissions(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType, AdminActionType adminActionType, string? adminId)
     {
-        var gameTypeString = gameType.ToString();
         var isOwner = BaseAuthorizationHelper.IsActionOwner(context, adminId);
-        var isModerator = context.User.HasClaim(UserProfileClaimType.Moderator, gameTypeString);
-        var isGameAdmin = context.User.HasClaim(UserProfileClaimType.GameAdmin, gameTypeString);
+        var isModerator = BaseAuthorizationHelper.HasGameScopedClaim(context.User, UserProfileClaimType.Moderator, gameType);
+        var isGameAdmin = BaseAuthorizationHelper.HasGameScopedClaim(context.User, UserProfileClaimType.GameAdmin, gameType);
 
         switch (adminActionType)
         {

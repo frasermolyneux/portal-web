@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -124,7 +125,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckHeadAdminAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        if (context.User.HasClaim(UserProfileClaimType.HeadAdmin, gameType.ToString()))
+        if (HasGameScopedClaim(context.User, UserProfileClaimType.HeadAdmin, gameType))
             context.Succeed(requirement);
     }
 
@@ -136,10 +137,8 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckGameAdminAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        var gameTypeString = gameType.ToString();
-
-        if (context.User.HasClaim(UserProfileClaimType.HeadAdmin, gameTypeString) ||
-            context.User.HasClaim(UserProfileClaimType.GameAdmin, gameTypeString))
+        if (HasGameScopedClaim(context.User, UserProfileClaimType.HeadAdmin, gameType) ||
+            HasGameScopedClaim(context.User, UserProfileClaimType.GameAdmin, gameType))
         {
             context.Succeed(requirement);
         }
@@ -153,10 +152,8 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckModeratorAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        var gameTypeString = gameType.ToString();
-
-        if (context.User.HasClaim(UserProfileClaimType.Moderator, gameTypeString) ||
-            context.User.HasClaim(UserProfileClaimType.GameAdmin, gameTypeString))
+        if (HasGameScopedClaim(context.User, UserProfileClaimType.Moderator, gameType) ||
+            HasGameScopedClaim(context.User, UserProfileClaimType.GameAdmin, gameType))
         {
             context.Succeed(requirement);
         }
@@ -342,7 +339,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckGameServerAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        if (context.User.HasClaim(AdditionalPermission.GameServers_Read, gameType.ToString()))
+        if (HasGameScopedClaim(context.User, AdditionalPermission.GameServers_Read, gameType))
             context.Succeed(requirement);
     }
 
@@ -392,7 +389,7 @@ public static class BaseAuthorizationHelper
     /// <param name="gameType">The game type to check permissions for</param>
     public static void CheckLiveRconAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, GameType gameType)
     {
-        if (context.User.HasClaim(AdditionalPermission.GameServers_Admin_Rcon, gameType.ToString()))
+        if (HasGameScopedClaim(context.User, AdditionalPermission.GameServers_Admin_Rcon, gameType))
             context.Succeed(requirement);
     }
 
@@ -435,7 +432,7 @@ public static class BaseAuthorizationHelper
         if (resourceGameType.HasValue)
         {
             // Check game-scoped permission
-            if (context.User.HasClaim(permissionClaimType, resourceGameType.Value.ToString()))
+            if (HasGameScopedClaim(context.User, permissionClaimType, resourceGameType.Value))
                 context.Succeed(requirement);
 
             // Also check server-scoped permission if a server ID is present
@@ -449,6 +446,26 @@ public static class BaseAuthorizationHelper
         // No resource: check if user has the permission claim with ANY value
         if (context.User.Claims.Any(c => c.Type == permissionClaimType))
             context.Succeed(requirement);
+    }
+
+    /// <summary>
+    /// Checks for a game-scoped claim, including known equivalent game mappings.
+    /// </summary>
+    public static bool HasGameScopedClaim(ClaimsPrincipal user, string claimType, GameType gameType)
+    {
+        return GetEquivalentGameTypes(gameType)
+            .Any(equivalentGameType => user.HasClaim(claimType, equivalentGameType.ToString()));
+    }
+
+    private static IReadOnlyList<GameType> GetEquivalentGameTypes(GameType gameType)
+    {
+        if (gameType == GameType.CallOfDuty4)
+            return [GameType.CallOfDuty4, GameType.CallOfDuty4x];
+
+        if (gameType == GameType.CallOfDuty4x)
+            return [GameType.CallOfDuty4x, GameType.CallOfDuty4];
+
+        return [gameType];
     }
 
     #endregion
