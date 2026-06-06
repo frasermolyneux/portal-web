@@ -1,3 +1,4 @@
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
@@ -10,7 +11,7 @@ public class RelatedPlayerEnrichedViewModel
     public Guid PlayerId { get; set; }
     public string? Username { get; set; }
     public string? IpAddress { get; set; }
-    public int GameType { get; set; }
+    public GameType GameType { get; set; }
 
     // Fields from enriched RelatedPlayerDto
     public DateTime LastSeen { get; set; }
@@ -36,7 +37,7 @@ public class RelatedPlayerEnrichedViewModel
             PlayerId = dto.PlayerId,
             Username = dto.Username,
             IpAddress = dto.IpAddress,
-            GameType = (int)dto.GameType,
+            GameType = dto.GameType,
             LastSeen = dto.LastSeen,
             HasActiveBan = dto.HasActiveBan,
             AdminActionCount = dto.AdminActionCount,
