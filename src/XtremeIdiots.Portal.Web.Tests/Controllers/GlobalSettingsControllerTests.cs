@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -178,5 +179,62 @@ public class GlobalSettingsControllerTests
         var defaults = doc.RootElement.GetProperty("defaults");
 
         Assert.False(defaults.TryGetProperty("requiredTags", out _));
+    }
+
+    [Fact]
+    public async Task Index_Post_WelcomeMessagesRules_UpsertsWelcomeMessageContract()
+    {
+        var sut = CreateSut();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GlobalSettingsViewModel
+        {
+            WelcomeMessages = new WelcomeMessageGlobalSettingsViewModel
+            {
+                Enabled = true,
+                CountryFallback = "Unknown",
+                DefaultConnectionDelaySeconds = 5,
+                StaleThresholdSeconds = 180,
+                Rules =
+                [
+                    new WelcomeMessageRuleEntryViewModel
+                    {
+                        Id = "global-rule",
+                        Enabled = true,
+                        Priority = 10,
+                        Visibility = WelcomeMessageVisibility.Public,
+                        MessageTemplate = "Welcome {name}",
+                        RequiredTagsCsv = "vip, staff",
+                        ConnectionDelaySeconds = 3
+                    }
+                ]
+            }
+        };
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(upsertPayloads.TryGetValue("welcomeMessages", out var welcomeMessagesJson));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
+        Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal(5, doc.RootElement.GetProperty("defaults").GetProperty("connectionDelaySeconds").GetInt32());
+        var firstRule = doc.RootElement.GetProperty("rules")[0];
+        Assert.Equal("global-rule", firstRule.GetProperty("id").GetString());
+        Assert.Equal("Public", firstRule.GetProperty("visibility").GetString());
+        Assert.Equal("vip", firstRule.GetProperty("requiredTags")[0].GetString());
+        Assert.Equal("staff", firstRule.GetProperty("requiredTags")[1].GetString());
     }
 }

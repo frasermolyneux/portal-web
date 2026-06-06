@@ -17,6 +17,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Models;
@@ -392,6 +393,89 @@ public class GameServersControllerTests
         Assert.Equal(4, fu.GetProperty("freshnessSeconds").GetInt32());
         Assert.Empty(fu.GetProperty("requiredTags").EnumerateArray());
         Assert.Equal("server-fu-{name}", fu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsWelcomeMessagesContract()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>();
+
+        mockRepositoryApiClient
+                .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                        It.IsAny<Guid>(),
+                        It.IsAny<string>(),
+                        It.IsAny<UpsertConfigurationDto>(),
+                        It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+                {
+                    upsertPayloads[ns] = dto.Configuration;
+                    var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                    return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+                });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true
+            },
+            WelcomeMessages = new WelcomeMessageServerSettingsViewModel
+            {
+                Enabled = true,
+                InheritGlobalRules = true,
+                CountryFallback = "Unknown",
+                DefaultConnectionDelaySeconds = 4,
+                StaleThresholdSeconds = 180,
+                LocalRules =
+                [
+                    new WelcomeMessageRuleEntryViewModel
+                    {
+                        Id = "server-rule",
+                        Enabled = true,
+                        Priority = 100,
+                        Visibility = WelcomeMessageVisibility.Private,
+                        MessageTemplate = "Welcome local {name}",
+                        RequiredTagsCsv = "vip",
+                        ConnectionDelaySeconds = 2
+                    }
+                ],
+                RuleOverrides =
+                [
+                    new WelcomeMessageRuleOverrideEntryViewModel
+                    {
+                        Id = "global-rule",
+                        Enabled = false,
+                        Priority = 90,
+                        Visibility = WelcomeMessageVisibility.Public,
+                        MessageTemplate = "Overridden template",
+                        OverrideRequiredTags = true,
+                        RequiredTagsCsv = string.Empty,
+                        ConnectionDelaySeconds = 6
+                    }
+                ]
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.True(upsertPayloads.TryGetValue("welcomeMessages", out var welcomeMessagesJson));
+        using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
+        Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.True(doc.RootElement.GetProperty("inheritGlobalRules").GetBoolean());
+
+        var localRule = doc.RootElement.GetProperty("rules")[0];
+        Assert.Equal("server-rule", localRule.GetProperty("id").GetString());
+        Assert.Equal("vip", localRule.GetProperty("requiredTags")[0].GetString());
+
+        var overrideRule = doc.RootElement.GetProperty("ruleOverrides")[0];
+        Assert.Equal("global-rule", overrideRule.GetProperty("id").GetString());
+        Assert.Equal(0, overrideRule.GetProperty("requiredTags").GetArrayLength());
     }
 
     [Fact]
