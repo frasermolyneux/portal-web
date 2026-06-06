@@ -469,6 +469,15 @@ public class GameServersController(
                 return View(model);
             }
 
+            if (canEditFileTransport.Succeeded
+                && !IsValidMapsRootPath(model.FileTransportConfigMapsRootPath))
+            {
+                ModelState.AddModelError(nameof(model.FtpConfigMapsRootPath), "Maps root path cannot contain path traversal segments.");
+                AddGameTypeViewData(model.GameServer.GameType);
+                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                return View(model);
+            }
+
             editGameServerDto.SetFileTransportProperties(selectedFileTransportEnabled, selectedFileTransportType);
             editGameServerDto.RconEnabled = model.GameServer.RconEnabled;
             editGameServerDto.BanFileSyncEnabled = model.GameServer.BanFileSyncEnabled;
@@ -655,6 +664,7 @@ public class GameServersController(
                     editModel.FileTransportConfigUsername = GetStringProperty(root, "username");
                     editModel.FileTransportConfigPassword = GetStringProperty(root, "password");
                     editModel.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
+                    editModel.FileTransportConfigMapsRootPath = GetStringProperty(root, "mapsRootPath");
                     break;
                 case "rcon":
                     editModel.RconConfigPassword = GetStringProperty(root, "password");
@@ -777,6 +787,16 @@ public class GameServersController(
         return string.IsNullOrWhiteSpace(value)
             ? GlobalSettingsViewModel.DefaultAgentName
             : value;
+    }
+
+    private static bool IsValidMapsRootPath(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+
+        var normalized = value.Replace('\\', '/');
+        var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return !segments.Any(segment => segment == "..");
     }
 
     private void PopulateGlobalDefaults(GameServerEditViewModel editModel, ConfigurationDto config)
@@ -914,7 +934,10 @@ public class GameServersController(
                 ["hostname"] = model.FileTransportConfigHostname,
                 ["port"] = model.FileTransportConfigPort,
                 ["username"] = model.FileTransportConfigUsername,
-                ["password"] = model.FileTransportConfigPassword
+                ["password"] = model.FileTransportConfigPassword,
+                ["mapsRootPath"] = string.IsNullOrWhiteSpace(model.FileTransportConfigMapsRootPath)
+                    ? null
+                    : model.FileTransportConfigMapsRootPath
             };
 
             if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase))

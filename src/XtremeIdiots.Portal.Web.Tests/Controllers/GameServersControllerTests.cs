@@ -549,6 +549,39 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public void PopulateConfigFromNamespace_FileTransportNamespace_MapsMapsRootPath()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateConfigFromNamespace");
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = FileTransportType.Sftp
+            }
+        };
+
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "sftp",
+            Configuration = /*lang=json,strict*/ """
+            {
+              "hostname": "sftp.example.com",
+              "port": 22,
+              "username": "demo",
+              "password": "secret",
+              "hostKeyFingerprint": "aa:bb:cc",
+              "mapsRootPath": "/customer-a/server1"
+            }
+            """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.Equal("/customer-a/server1", model.FileTransportConfigMapsRootPath);
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsBroadcastsContract()
     {
         // Arrange
@@ -650,6 +683,52 @@ public class GameServersControllerTests
         Assert.Equal("/screenshots", root.GetProperty("directoryPath").GetString());
         Assert.Equal("*.png", root.GetProperty("filePattern").GetString());
         Assert.Equal(45, root.GetProperty("pollIntervalSeconds").GetInt32());
+    }
+
+    [Fact]
+    public async Task SaveConfigNamespacesAsync_CanEditFileTransport_UpsertsMapsRootPath()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                FileTransportType = FileTransportType.Sftp
+            },
+            FileTransportConfigHostname = "sftp.example.com",
+            FileTransportConfigPort = 22,
+            FileTransportConfigUsername = "demo",
+            FileTransportConfigPassword = "secret",
+            FileTransportConfigHostKeyFingerprint = "aa:bb:cc",
+            FileTransportConfigMapsRootPath = "/customer-a/server1"
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, true, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.True(upsertPayloads.TryGetValue("sftp", out var transportJson));
+        using var doc = System.Text.Json.JsonDocument.Parse(transportJson);
+        var root = doc.RootElement;
+        Assert.Equal("/customer-a/server1", root.GetProperty("mapsRootPath").GetString());
     }
 
     private static MethodInfo GetPrivateInstanceMethod(string name)
