@@ -19,6 +19,7 @@ using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.Services.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -89,6 +90,10 @@ builder.Services.AddSingleton(_ => new LogsQueryClient(new DefaultAzureCredentia
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<IAgentTelemetryService, AgentTelemetryService>();
 builder.Services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+builder.Services.AddScoped<INamespaceSettingsParser, NamespaceSettingsParser>();
+builder.Services.AddScoped<INamespaceSettingsSerializer, NamespaceSettingsSerializer>();
+builder.Services.AddScoped<IGlobalSettingsService, GlobalSettingsService>();
+builder.Services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
 builder.Services.AddSingleton<IExternalTokenService, ExternalTokenService>();
 
 builder.Services.AddRepositoryApiClient(options => options

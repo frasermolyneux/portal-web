@@ -3,16 +3,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using MX.Observability.ApplicationInsights.Auditing;
-using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
-using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -32,6 +31,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class GameServersController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
+    IGameServerSettingsService gameServerSettingsService,
     TelemetryClient telemetryClient,
     ILogger<GameServersController> logger,
     IConfiguration configuration,
@@ -232,34 +232,7 @@ public class GameServersController(
                 {
                     foreach (var config in configsResult.Result.Data.Items)
                     {
-                        if (string.IsNullOrWhiteSpace(config.Configuration))
-                            continue;
-
-                        using var doc = JsonDocument.Parse(config.Configuration);
-                        var root = doc.RootElement;
-
-                        switch (config.Namespace)
-                        {
-                            case "ftp":
-                            case "sftp":
-                                var expectedNamespace = fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
-                                if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
-                                    break;
-
-                                ViewBag.FtpHostname = GetStringProperty(root, "hostname");
-                                ViewBag.FtpPort = GetIntProperty(root, "port", fileTransportType == FileTransportType.Sftp ? 22 : 21);
-                                ViewBag.FtpUsername = GetStringProperty(root, "username");
-                                ViewBag.FtpPassword = GetStringProperty(root, "password");
-                                ViewBag.FileTransportType = fileTransportType;
-                                break;
-                            case "rcon":
-                                ViewBag.RconPassword = GetStringProperty(root, "password");
-                                break;
-                            case "serverlist":
-                                break;
-                            default:
-                                break;
-                        }
+                        gameServerSettingsService.PopulateDetailsViewData(ViewData, fileTransportType, config, Logger);
                     }
                 }
             }
@@ -636,157 +609,9 @@ public class GameServersController(
         }
     }
 
-    private readonly static JsonSerializerOptions configJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     private void PopulateConfigFromNamespace(GameServerEditViewModel editModel, ConfigurationDto config)
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-                return;
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "ftp":
-                case "sftp":
-                    var expectedNamespace = GameServerEditViewModel.GetFileTransportNamespace(editModel.GameServer.FileTransportType);
-                    if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
-                        break;
-
-                    editModel.FileTransportConfigHostname = GetStringProperty(root, "hostname");
-                    editModel.FileTransportConfigPort = GetIntProperty(root, "port", GameServerEditViewModel.GetDefaultPort(editModel.GameServer.FileTransportType));
-                    editModel.FileTransportConfigUsername = GetStringProperty(root, "username");
-                    editModel.FileTransportConfigPassword = GetStringProperty(root, "password");
-                    editModel.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
-                    editModel.FileTransportConfigMapsRootPath = GetStringProperty(root, "mapsRootPath");
-                    break;
-                case "rcon":
-                    editModel.RconConfigPassword = GetStringProperty(root, "password");
-                    break;
-                case "agent":
-                    editModel.AgentConfigLogFilePath = GetStringProperty(root, "logFilePath");
-                    editModel.AgentConfigRconSyncEnabled = GetBoolProperty(root, "rconSyncEnabled", true);
-                    editModel.AgentConfigName = GetStringProperty(root, "agentName");
-                    break;
-                case "screenshots":
-                    editModel.ScreenshotConfigEnabled = GetBoolProperty(root, "enabled", false);
-                    editModel.ScreenshotConfigDirectoryPath = GetStringProperty(root, "directoryPath");
-                    editModel.ScreenshotConfigFilePattern = GetStringProperty(root, "filePattern") ?? GameServerEditViewModel.DefaultScreenshotFilePattern;
-                    editModel.ScreenshotConfigPollIntervalSeconds = GetIntProperty(root, "pollIntervalSeconds", GameServerEditViewModel.DefaultScreenshotPollIntervalSeconds);
-                    break;
-                case "banfiles":
-                    editModel.BanFileSyncConfigCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", 60);
-                    break;
-                case "serverlist":
-                    editModel.ServerListConfigHtmlBanner = GetStringProperty(root, "htmlBanner");
-                    break;
-                case "moderation":
-                    editModel.ModerationProtectedNameEnforcementEnabled = GetBoolProperty(root, "protectedNameEnforcementEnabled", true);
-                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
-                    editModel.ModerationHateSeverityThreshold = GetNullableIntProperty(root, "contentSafetyHateSeverityThreshold") ?? legacyThreshold;
-                    editModel.ModerationViolenceSeverityThreshold = GetNullableIntProperty(root, "contentSafetyViolenceSeverityThreshold") ?? legacyThreshold;
-                    editModel.ModerationSexualSeverityThreshold = GetNullableIntProperty(root, "contentSafetySexualSeverityThreshold") ?? legacyThreshold;
-                    editModel.ModerationSelfHarmSeverityThreshold = GetNullableIntProperty(root, "contentSafetySelfHarmSeverityThreshold") ?? legacyThreshold;
-                    editModel.ModerationMinMessageLength = GetNullableIntProperty(root, "minMessageLength");
-                    break;
-                case "events":
-                    editModel.EventsStaleThresholdSeconds = GetNullableIntProperty(root, "staleThresholdSeconds");
-                    editModel.EventsPlayerCacheExpirationSeconds = GetNullableIntProperty(root, "playerCacheExpirationSeconds");
-                    break;
-                case ChatCommandSettingsConstants.Namespace:
-                    ChatCommandSettingsJsonMapper.PopulateServer(editModel.ChatCommands, root);
-                    break;
-                case WelcomeMessageSettingsViewModelConstants.Namespace:
-                    WelcomeMessageSettingsJsonMapper.PopulateServer(editModel.WelcomeMessages, root);
-                    break;
-                case "broadcasts":
-                    editModel.BroadcastsEnabled = GetBoolProperty(root, "enabled", false);
-                    editModel.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
-                    editModel.BroadcastMessages = GetBroadcastMessages(root);
-                    break;
-                default:
-                    Logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
-                    break;
-            }
-        }
-        catch (JsonException ex)
-        {
-            Logger.LogWarning(ex, "Failed to parse configuration for namespace '{Namespace}'", config.Namespace);
-        }
-    }
-
-    private static string? GetStringProperty(JsonElement root, string propertyName)
-    {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String
-            ? prop.GetString()
-            : null;
-    }
-
-    private static int GetIntProperty(JsonElement root, string propertyName, int defaultValue)
-    {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number
-            ? prop.GetInt32()
-            : defaultValue;
-    }
-
-    private static bool GetBoolProperty(JsonElement root, string propertyName, bool defaultValue)
-    {
-        return root.TryGetProperty(propertyName, out var prop)
-            ? prop.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String when bool.TryParse(prop.GetString(), out var parsedBool) => parsedBool,
-                JsonValueKind.Undefined => defaultValue,
-                JsonValueKind.Object => defaultValue,
-                JsonValueKind.Array => defaultValue,
-                JsonValueKind.Number => defaultValue,
-                JsonValueKind.Null => defaultValue,
-                _ => defaultValue
-            }
-            : defaultValue;
-    }
-
-    private static int? GetNullableIntProperty(JsonElement root, string propertyName)
-    {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number
-            ? prop.GetInt32()
-            : null;
-    }
-
-    private static List<BroadcastMessageViewModel> GetBroadcastMessages(JsonElement root)
-    {
-        var messages = new List<BroadcastMessageViewModel>();
-
-        if (!root.TryGetProperty("messages", out var messagesElement) || messagesElement.ValueKind != JsonValueKind.Array)
-            return messages;
-
-        foreach (var item in messagesElement.EnumerateArray())
-        {
-            if (item.ValueKind != JsonValueKind.Object)
-                continue;
-
-            messages.Add(new BroadcastMessageViewModel
-            {
-                Message = GetStringProperty(item, "message") ?? string.Empty,
-                Enabled = GetBoolProperty(item, "enabled", true)
-            });
-        }
-
-        return messages;
-    }
-
-    private static string NormalizeAgentName(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value)
-            ? GlobalSettingsViewModel.DefaultAgentName
-            : value;
+        gameServerSettingsService.PopulateConfigFromNamespace(editModel, config, Logger);
     }
 
     private static bool IsValidMapsRootPath(string? value)
@@ -801,45 +626,7 @@ public class GameServersController(
 
     private void PopulateGlobalDefaults(GameServerEditViewModel editModel, ConfigurationDto config)
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-                return;
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "agent":
-                    editModel.GlobalAgentName = NormalizeAgentName(GetStringProperty(root, "agentName"));
-                    break;
-                case "moderation":
-                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
-                    editModel.GlobalModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationHateSeverityThreshold);
-                    editModel.GlobalModerationViolenceSeverityThreshold = GetIntProperty(root, "contentSafetyViolenceSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationViolenceSeverityThreshold);
-                    editModel.GlobalModerationSexualSeverityThreshold = GetIntProperty(root, "contentSafetySexualSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationSexualSeverityThreshold);
-                    editModel.GlobalModerationSelfHarmSeverityThreshold = GetIntProperty(root, "contentSafetySelfHarmSeverityThreshold", legacyThreshold ?? editModel.GlobalModerationSelfHarmSeverityThreshold);
-                    editModel.GlobalModerationMinMessageLength = GetIntProperty(root, "minMessageLength", editModel.GlobalModerationMinMessageLength);
-                    break;
-                case "events":
-                    editModel.GlobalEventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", editModel.GlobalEventsStaleThresholdSeconds);
-                    editModel.GlobalEventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", editModel.GlobalEventsPlayerCacheExpirationSeconds);
-                    break;
-                case ChatCommandSettingsConstants.Namespace:
-                    ChatCommandSettingsJsonMapper.PopulateGlobal(editModel.GlobalChatCommands, root);
-                    break;
-                case WelcomeMessageSettingsViewModelConstants.Namespace:
-                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(editModel.GlobalWelcomeMessages, root);
-                    break;
-                default:
-                    break;
-            }
-        }
-        catch (JsonException ex)
-        {
-            Logger.LogWarning(ex, "Failed to parse global configuration for namespace '{Namespace}'", config.Namespace);
-        }
+        gameServerSettingsService.PopulateGlobalDefaults(editModel, config, Logger);
     }
 
     private async Task RepopulateAuthFlags(GameServerEditViewModel model, GameType gameType)
@@ -879,30 +666,14 @@ public class GameServersController(
 
             foreach (var config in configsResult.Result.Data.Items)
             {
-                if (string.IsNullOrWhiteSpace(config.Configuration))
-                    continue;
-
-                if ((needsFileTransportPassword || needsFileTransportHostKeyFingerprint) && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
-                {
-                    using var doc = JsonDocument.Parse(config.Configuration);
-                    var root = doc.RootElement;
-
-                    if (needsFileTransportPassword)
-                    {
-                        model.FileTransportConfigPassword = GetStringProperty(root, "password");
-                    }
-
-                    if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase)
-                        && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint))
-                    {
-                        model.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
-                    }
-                }
-                else if (needsRconPassword && config.Namespace == "rcon")
-                {
-                    using var doc = JsonDocument.Parse(config.Configuration);
-                    model.RconConfigPassword = GetStringProperty(doc.RootElement, "password");
-                }
+                gameServerSettingsService.PopulateExistingCredentials(
+                    model,
+                    activeTransportNamespace,
+                    config,
+                    needsFileTransportPassword,
+                    needsFileTransportHostKeyFingerprint,
+                    needsRconPassword,
+                    Logger);
             }
 
             return true;
@@ -924,190 +695,10 @@ public class GameServersController(
         CancellationToken cancellationToken)
     {
         var serverTitle = model.GameServer.Title ?? "";
-        var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
 
-        // Save file transport config
-        if (canEditFileTransport)
+        foreach (var (ns, json) in gameServerSettingsService.BuildNamespaceConfigurations(model, canEditFileTransport, canEditRcon, canConfigureScreenshots))
         {
-            var fileTransportConfig = new Dictionary<string, object?>
-            {
-                ["hostname"] = model.FileTransportConfigHostname,
-                ["port"] = model.FileTransportConfigPort,
-                ["username"] = model.FileTransportConfigUsername,
-                ["password"] = model.FileTransportConfigPassword,
-                ["mapsRootPath"] = string.IsNullOrWhiteSpace(model.FileTransportConfigMapsRootPath)
-                    ? null
-                    : model.FileTransportConfigMapsRootPath
-            };
-
-            if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase))
-            {
-                fileTransportConfig["hostKeyFingerprint"] = model.FileTransportConfigHostKeyFingerprint;
-            }
-
-            await UpsertConfigSafeAsync(gameServerId, activeTransportNamespace, JsonSerializer.Serialize(fileTransportConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Save RCON config
-        if (canEditRcon)
-        {
-            await UpsertConfigSafeAsync(gameServerId, "rcon", JsonSerializer.Serialize(new
-            {
-                password = model.RconConfigPassword
-            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Save Agent config
-        if (model.GameServer.AgentEnabled)
-        {
-            await UpsertConfigSafeAsync(gameServerId, "agent", JsonSerializer.Serialize(new
-            {
-                logFilePath = model.AgentConfigLogFilePath,
-                rconSyncEnabled = model.AgentConfigRconSyncEnabled,
-                agentName = string.IsNullOrWhiteSpace(model.AgentConfigName)
-                    ? null
-                    : model.AgentConfigName
-            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (model.GameServer.AgentEnabled && canConfigureScreenshots)
-        {
-            await UpsertConfigSafeAsync(gameServerId, "screenshots", JsonSerializer.Serialize(new
-            {
-                enabled = model.ScreenshotConfigEnabled,
-                directoryPath = model.ScreenshotConfigEnabled ? model.ScreenshotConfigDirectoryPath : null,
-                filePattern = string.IsNullOrWhiteSpace(model.ScreenshotConfigFilePattern)
-                    ? GameServerEditViewModel.DefaultScreenshotFilePattern
-                    : model.ScreenshotConfigFilePattern.Trim(),
-                pollIntervalSeconds = model.ScreenshotConfigPollIntervalSeconds
-            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Save Ban File Sync config
-        if (model.GameServer.BanFileSyncEnabled)
-        {
-            await UpsertConfigSafeAsync(gameServerId, "banfiles", JsonSerializer.Serialize(new
-            {
-                checkIntervalSeconds = model.BanFileSyncConfigCheckIntervalSeconds
-            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Save Server List config
-        if (model.GameServer.ServerListEnabled)
-        {
-            await UpsertConfigSafeAsync(gameServerId, "serverlist", JsonSerializer.Serialize(new
-            {
-                htmlBanner = model.ServerListConfigHtmlBanner
-            }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Save Moderation config (only when Agent is enabled)
-        if (model.GameServer.AgentEnabled)
-        {
-            var hasOverrides = model.ModerationHateSeverityThreshold.HasValue
-                || model.ModerationViolenceSeverityThreshold.HasValue
-                || model.ModerationSexualSeverityThreshold.HasValue
-                || model.ModerationSelfHarmSeverityThreshold.HasValue
-                || model.ModerationMinMessageLength.HasValue
-                || !model.ModerationProtectedNameEnforcementEnabled;
-
-            if (hasOverrides)
-            {
-                var moderationConfig = new Dictionary<string, object?>
-                {
-                    ["protectedNameEnforcementEnabled"] = model.ModerationProtectedNameEnforcementEnabled
-                };
-
-                if (model.ModerationHateSeverityThreshold.HasValue)
-                    moderationConfig["contentSafetyHateSeverityThreshold"] = model.ModerationHateSeverityThreshold.Value;
-                if (model.ModerationViolenceSeverityThreshold.HasValue)
-                    moderationConfig["contentSafetyViolenceSeverityThreshold"] = model.ModerationViolenceSeverityThreshold.Value;
-                if (model.ModerationSexualSeverityThreshold.HasValue)
-                    moderationConfig["contentSafetySexualSeverityThreshold"] = model.ModerationSexualSeverityThreshold.Value;
-                if (model.ModerationSelfHarmSeverityThreshold.HasValue)
-                    moderationConfig["contentSafetySelfHarmSeverityThreshold"] = model.ModerationSelfHarmSeverityThreshold.Value;
-                if (model.ModerationMinMessageLength.HasValue)
-                    moderationConfig["minMessageLength"] = model.ModerationMinMessageLength.Value;
-
-                await UpsertConfigSafeAsync(gameServerId, "moderation",
-                    JsonSerializer.Serialize(moderationConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                // All defaults — upsert with just the boolean to keep the namespace clean
-                await UpsertConfigSafeAsync(gameServerId, "moderation", JsonSerializer.Serialize(new
-                {
-                    protectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
-                }, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        // Save Events config (only when Agent is enabled)
-        if (model.GameServer.AgentEnabled)
-        {
-            var hasOverrides = model.EventsStaleThresholdSeconds.HasValue
-                || model.EventsPlayerCacheExpirationSeconds.HasValue;
-
-            if (hasOverrides)
-            {
-                var eventsConfig = new Dictionary<string, object?>();
-
-                if (model.EventsStaleThresholdSeconds.HasValue)
-                    eventsConfig["staleThresholdSeconds"] = model.EventsStaleThresholdSeconds.Value;
-                if (model.EventsPlayerCacheExpirationSeconds.HasValue)
-                    eventsConfig["playerCacheExpirationSeconds"] = model.EventsPlayerCacheExpirationSeconds.Value;
-
-                await UpsertConfigSafeAsync(gameServerId, "events",
-                    JsonSerializer.Serialize(eventsConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                // Clear any existing overrides so server falls back to global defaults
-                await UpsertConfigSafeAsync(gameServerId, "events",
-                    "{}", serverTitle, errors, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        if (model.GameServer.AgentEnabled)
-        {
-            await UpsertConfigSafeAsync(
-                gameServerId,
-                ChatCommandSettingsConstants.Namespace,
-                ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands),
-                serverTitle,
-                errors,
-                cancellationToken).ConfigureAwait(false);
-
-            await UpsertConfigSafeAsync(
-                gameServerId,
-                WelcomeMessageSettingsViewModelConstants.Namespace,
-                WelcomeMessageSettingsJsonMapper.BuildServerConfigurationJson(model.WelcomeMessages),
-                serverTitle,
-                errors,
-                cancellationToken).ConfigureAwait(false);
-        }
-
-        // Save Broadcasts config (only when Agent is enabled)
-        if (model.GameServer.AgentEnabled)
-        {
-            var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);
-            if (broadcastsIntervalSeconds <= 0)
-                broadcastsIntervalSeconds = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
-
-            var broadcastsConfig = new
-            {
-                enabled = model.BroadcastsEnabled,
-                intervalSeconds = broadcastsIntervalSeconds,
-                messages = (model.BroadcastMessages ?? []).Select(m => new
-                {
-                    message = m.Message,
-                    enabled = m.Enabled
-                })
-            };
-
-            await UpsertConfigSafeAsync(gameServerId, "broadcasts",
-                JsonSerializer.Serialize(broadcastsConfig, configJsonOptions), serverTitle, errors, cancellationToken).ConfigureAwait(false);
-
+            await UpsertConfigSafeAsync(gameServerId, ns, json, serverTitle, errors, cancellationToken).ConfigureAwait(false);
         }
     }
 

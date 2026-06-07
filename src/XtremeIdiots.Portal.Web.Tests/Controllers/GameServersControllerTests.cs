@@ -17,10 +17,12 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
-using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -33,12 +35,16 @@ public class GameServersControllerTests
     private readonly Mock<ILogger<GameServersController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
     private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
+    private readonly IGameServerSettingsService gameServerSettingsService = new GameServerSettingsService(
+        new NamespaceSettingsParser(),
+        new NamespaceSettingsSerializer());
 
     private GameServersController CreateSut(ClaimsPrincipal? user = null)
     {
         var controller = new GameServersController(
             mockAuthorizationService.Object,
             mockRepositoryApiClient.Object,
+            gameServerSettingsService,
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,
@@ -72,6 +78,7 @@ public class GameServersControllerTests
             new GameServersController(
                 mockAuthorizationService.Object,
                 mockRepositoryApiClient.Object,
+                gameServerSettingsService,
                 null!,
                 mockLogger.Object,
                 mockConfiguration.Object,
@@ -86,6 +93,7 @@ public class GameServersControllerTests
             new GameServersController(
                 mockAuthorizationService.Object,
                 mockRepositoryApiClient.Object,
+                gameServerSettingsService,
                 telemetryClient,
                 null!,
                 mockConfiguration.Object,
@@ -100,6 +108,7 @@ public class GameServersControllerTests
             new GameServersController(
                 mockAuthorizationService.Object,
                 mockRepositoryApiClient.Object,
+                gameServerSettingsService,
                 telemetryClient,
                 mockLogger.Object,
                 null!,
@@ -320,6 +329,7 @@ public class GameServersControllerTests
 
         Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
         using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        Assert.Equal(ChatCommandSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         var fu = doc.RootElement.GetProperty("commands").GetProperty("fu");
 
         Assert.False(fu.GetProperty("enabled").GetBoolean());
@@ -387,6 +397,7 @@ public class GameServersControllerTests
 
         Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
         using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        Assert.Equal(ChatCommandSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         var fu = doc.RootElement.GetProperty("commands").GetProperty("fu");
 
         Assert.False(fu.GetProperty("enabled").GetBoolean());
@@ -466,6 +477,7 @@ public class GameServersControllerTests
 
         Assert.True(upsertPayloads.TryGetValue("welcomeMessages", out var welcomeMessagesJson));
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
+        Assert.Equal(WelcomeMessageSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
         Assert.True(doc.RootElement.GetProperty("inheritGlobalRules").GetBoolean());
 

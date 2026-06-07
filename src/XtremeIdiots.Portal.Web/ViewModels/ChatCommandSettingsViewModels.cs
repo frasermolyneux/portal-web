@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
-using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -230,7 +230,7 @@ internal static class ChatCommandSettingsJsonMapper
             defaults["requiredTags"] = defaultRequiredTags;
         }
 
-        payload["schemaVersion"] = ChatCommandSettingsConstants.SupportedSchemaVersion;
+        payload["schemaVersion"] = ChatCommandSettingsConstants.SchemaVersion;
         payload["defaults"] = defaults;
         payload["commands"] = commands;
 
@@ -250,7 +250,7 @@ internal static class ChatCommandSettingsJsonMapper
         }
 
         Dictionary<string, object?> payload = [];
-        payload["schemaVersion"] = ChatCommandSettingsConstants.SupportedSchemaVersion;
+        payload["schemaVersion"] = ChatCommandSettingsConstants.SchemaVersion;
         payload["commands"] = commands;
 
         return JsonSerializer.Serialize(payload);
@@ -477,6 +477,70 @@ internal static class ChatCommandSettingsJsonMapper
             ? property.GetString()
             : null;
     }
+}
+
+internal sealed record ChatCommandDescriptor(
+    string Name,
+    string Prefix,
+    string Usage,
+    string Description,
+    bool IsMutating,
+    IReadOnlyList<string>? Aliases = null);
+
+internal static class ChatCommandDescriptorCatalog
+{
+    public static ChatCommandDescriptor Commands { get; } = new(
+        "commands",
+        "!commands",
+        "!commands",
+        "List all available chat commands.",
+        false,
+        ["!help"]);
+
+    public static ChatCommandDescriptor Register { get; } = new(
+        "register",
+        "!register",
+        "!register <forum id>",
+        "Link your in-game identity with your forum account.",
+        true);
+
+    public static ChatCommandDescriptor WhoAmI { get; } = new(
+        "whoami",
+        "!whoami",
+        "!whoami",
+        "Show your currently linked forum account.",
+        false);
+
+    public static ChatCommandDescriptor Fu { get; } = new(
+        "fu",
+        "!fu",
+        "!fu <player name>",
+        "Send a random funny message to a player.",
+        true);
+
+    public static ChatCommandDescriptor Like { get; } = new(
+        "like",
+        "!like",
+        "!like <player name>",
+        "Send a positive reaction message to a player.",
+        true);
+
+    public static ChatCommandDescriptor Dislike { get; } = new(
+        "dislike",
+        "!dislike",
+        "!dislike <player name>",
+        "Send a negative reaction message to a player.",
+        true);
+
+    public static IReadOnlyList<ChatCommandDescriptor> All { get; } =
+    [
+        Commands,
+        Register,
+        WhoAmI,
+        Fu,
+        Like,
+        Dislike
+    ];
 }
 
 #pragma warning restore IDE0305

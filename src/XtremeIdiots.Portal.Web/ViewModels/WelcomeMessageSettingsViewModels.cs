@@ -2,14 +2,14 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
-using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
 public static class WelcomeMessageSettingsViewModelConstants
 {
     public const string Namespace = WelcomeMessageSettingsConstants.Namespace;
-    public const int SupportedSchemaVersion = WelcomeMessageSettingsConstants.SupportedSchemaVersion;
+    public const int SupportedSchemaVersion = WelcomeMessageSettingsConstants.SchemaVersion;
 
     public const int MinPriority = WelcomeMessageSettingsConstants.MinPriority;
     public const int MaxPriority = WelcomeMessageSettingsConstants.MaxPriority;

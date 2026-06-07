@@ -2,12 +2,11 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
-using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
-using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -18,16 +17,12 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.GlobalSettings_Admin)]
 public class GlobalSettingsController(
     IRepositoryApiClient repositoryApiClient,
+    IGlobalSettingsService globalSettingsService,
     TelemetryClient telemetryClient,
     ILogger<GlobalSettingsController> logger,
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-    private readonly static JsonSerializerOptions configJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
     {
@@ -75,46 +70,10 @@ public class GlobalSettingsController(
 
             var errors = new List<string>();
 
-            await UpsertConfigSafeAsync("agent", JsonSerializer.Serialize(new
+            foreach (var (ns, json) in globalSettingsService.BuildNamespaceConfigurations(model))
             {
-                pollIntervalMs = model.AgentPollIntervalMs,
-                statusPublishIntervalSeconds = model.AgentStatusPublishIntervalSeconds,
-                rconSyncIntervalSeconds = model.AgentRconSyncIntervalSeconds,
-                offsetSaveIntervalSeconds = model.AgentOffsetSaveIntervalSeconds,
-                agentName = model.AgentName
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
-
-            await UpsertConfigSafeAsync("banfiles", JsonSerializer.Serialize(new
-            {
-                checkIntervalSeconds = model.BanFileSyncCheckIntervalSeconds
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
-
-            await UpsertConfigSafeAsync("moderation", JsonSerializer.Serialize(new
-            {
-                contentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
-                contentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
-                contentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
-                contentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
-                minMessageLength = model.ModerationMinMessageLength
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
-
-            await UpsertConfigSafeAsync("events", JsonSerializer.Serialize(new
-            {
-                staleThresholdSeconds = model.EventsStaleThresholdSeconds,
-                playerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds
-            }, configJsonOptions), errors, cancellationToken).ConfigureAwait(false);
-
-            await UpsertConfigSafeAsync(
-                ChatCommandSettingsConstants.Namespace,
-                ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands),
-                errors,
-                cancellationToken).ConfigureAwait(false);
-
-            await UpsertConfigSafeAsync(
-                WelcomeMessageSettingsViewModelConstants.Namespace,
-                WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages),
-                errors,
-                cancellationToken).ConfigureAwait(false);
+                await UpsertConfigSafeAsync(ns, json, errors, cancellationToken).ConfigureAwait(false);
+            }
 
             if (errors.Count > 0)
             {
@@ -132,69 +91,7 @@ public class GlobalSettingsController(
 
     private void PopulateModelFromNamespace(GlobalSettingsViewModel model, ConfigurationDto config)
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-                return;
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "agent":
-                    model.AgentPollIntervalMs = GetIntProperty(root, "pollIntervalMs", model.AgentPollIntervalMs);
-                    model.AgentStatusPublishIntervalSeconds = GetIntProperty(root, "statusPublishIntervalSeconds", model.AgentStatusPublishIntervalSeconds);
-                    model.AgentRconSyncIntervalSeconds = GetIntProperty(root, "rconSyncIntervalSeconds", model.AgentRconSyncIntervalSeconds);
-                    model.AgentOffsetSaveIntervalSeconds = GetIntProperty(root, "offsetSaveIntervalSeconds", model.AgentOffsetSaveIntervalSeconds);
-                    model.AgentName = NormalizeAgentName(GetStringProperty(root, "agentName"));
-                    break;
-                case "banfiles":
-                    model.BanFileSyncCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", model.BanFileSyncCheckIntervalSeconds);
-                    break;
-                case "moderation":
-                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
-                    model.ModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? model.ModerationHateSeverityThreshold);
-                    model.ModerationViolenceSeverityThreshold = GetIntProperty(root, "contentSafetyViolenceSeverityThreshold", legacyThreshold ?? model.ModerationViolenceSeverityThreshold);
-                    model.ModerationSexualSeverityThreshold = GetIntProperty(root, "contentSafetySexualSeverityThreshold", legacyThreshold ?? model.ModerationSexualSeverityThreshold);
-                    model.ModerationSelfHarmSeverityThreshold = GetIntProperty(root, "contentSafetySelfHarmSeverityThreshold", legacyThreshold ?? model.ModerationSelfHarmSeverityThreshold);
-                    model.ModerationMinMessageLength = GetIntProperty(root, "minMessageLength", model.ModerationMinMessageLength);
-                    break;
-                case "events":
-                    model.EventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", model.EventsStaleThresholdSeconds);
-                    model.EventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", model.EventsPlayerCacheExpirationSeconds);
-                    break;
-                case ChatCommandSettingsConstants.Namespace:
-                    ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, root);
-                    break;
-                case WelcomeMessageSettingsViewModelConstants.Namespace:
-                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.WelcomeMessages, root);
-                    break;
-                default:
-                    Logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);
-                    break;
-            }
-        }
-        catch (JsonException ex)
-        {
-            Logger.LogWarning(ex, "Failed to parse global configuration for namespace '{Namespace}'", config.Namespace);
-        }
-    }
-
-    private static int GetIntProperty(JsonElement root, string propertyName, int defaultValue)
-    {
-        return root.TryGetProperty(propertyName, out var prop) &&
-               prop.ValueKind == JsonValueKind.Number &&
-               prop.TryGetInt32(out var value)
-            ? value
-            : defaultValue;
-    }
-
-    private static string? GetStringProperty(JsonElement root, string propertyName)
-    {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String
-            ? prop.GetString()
-            : null;
+        globalSettingsService.PopulateModelFromNamespace(model, config, Logger);
     }
 
     private static string NormalizeAgentName(string? value)
@@ -202,15 +99,6 @@ public class GlobalSettingsController(
         return string.IsNullOrWhiteSpace(value)
             ? GlobalSettingsViewModel.DefaultAgentName
             : value;
-    }
-
-    private static int? GetNullableIntProperty(JsonElement root, string propertyName)
-    {
-        return root.TryGetProperty(propertyName, out var prop) &&
-               prop.ValueKind == JsonValueKind.Number &&
-               prop.TryGetInt32(out var value)
-            ? value
-            : null;
     }
 
     private async Task UpsertConfigSafeAsync(

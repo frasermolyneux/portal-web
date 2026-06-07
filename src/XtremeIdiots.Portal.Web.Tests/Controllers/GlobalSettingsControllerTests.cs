@@ -14,8 +14,10 @@ using System.Reflection;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
-using XtremeIdiots.Portal.Server.Events.Processor.App.Commands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Controllers;
+using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -27,11 +29,15 @@ public class GlobalSettingsControllerTests
     private readonly Mock<ILogger<GlobalSettingsController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
     private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
+    private readonly IGlobalSettingsService globalSettingsService = new GlobalSettingsService(
+        new NamespaceSettingsParser(),
+        new NamespaceSettingsSerializer());
 
     private GlobalSettingsController CreateSut(ClaimsPrincipal? user = null)
     {
         var controller = new GlobalSettingsController(
             mockRepositoryApiClient.Object,
+            globalSettingsService,
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,
@@ -59,6 +65,7 @@ public class GlobalSettingsControllerTests
         Assert.Throws<ArgumentNullException>(() =>
             new GlobalSettingsController(
                 mockRepositoryApiClient.Object,
+                globalSettingsService,
                 null!,
                 mockLogger.Object,
                 mockConfiguration.Object,
@@ -71,6 +78,7 @@ public class GlobalSettingsControllerTests
         Assert.Throws<ArgumentNullException>(() =>
             new GlobalSettingsController(
                 mockRepositoryApiClient.Object,
+                globalSettingsService,
                 telemetryClient,
                 null!,
                 mockConfiguration.Object,
@@ -83,6 +91,7 @@ public class GlobalSettingsControllerTests
         Assert.Throws<ArgumentNullException>(() =>
             new GlobalSettingsController(
                 mockRepositoryApiClient.Object,
+                globalSettingsService,
                 telemetryClient,
                 mockLogger.Object,
                 null!,
@@ -176,6 +185,7 @@ public class GlobalSettingsControllerTests
         Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
 
         using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        Assert.Equal(ChatCommandSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         var defaults = doc.RootElement.GetProperty("defaults");
 
         Assert.False(defaults.TryGetProperty("requiredTags", out _));
@@ -229,6 +239,7 @@ public class GlobalSettingsControllerTests
         Assert.True(upsertPayloads.TryGetValue("welcomeMessages", out var welcomeMessagesJson));
 
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
+        Assert.Equal(WelcomeMessageSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
         Assert.Equal(5, doc.RootElement.GetProperty("defaults").GetProperty("connectionDelaySeconds").GetInt32());
         var firstRule = doc.RootElement.GetProperty("rules")[0];
