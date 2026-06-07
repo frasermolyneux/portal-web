@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "commands": {
+    "fu": {
+      "enabled": false,
+      "freshnessSeconds": 5,
+      "requiredTags": [
+        "moderator"
+      ],
+      "settings": {
+        "messages": [
+          {
+            "message": "local-fu-{name}",
+            "enabled": true
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "defaults": {
+    "enabled": true,
+    "freshnessSeconds": {
+      "default": 8,
+      "readOnly": 6,
+      "mutating": 4
+    },
+    "requiredTags": [
+      "staff",
+      "vip"
+    ]
+  },
+  "commands": {
+    "fu": {
+      "enabled": true,
+      "freshnessSeconds": 9,
+      "requiredTags": [
+        "trusted"
+      ],
+      "settings": {
+        "messages": [
+          {
+            "message": "fu-{name}",
+            "enabled": true
+          }
+        ]
+      }
+    }
+  }
+}

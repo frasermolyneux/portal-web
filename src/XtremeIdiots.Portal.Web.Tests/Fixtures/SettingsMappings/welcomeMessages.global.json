@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "defaults": {
+    "countryFallback": "Unknown",
+    "connectionDelaySeconds": 5,
+    "staleThresholdSeconds": 180
+  },
+  "rules": [
+    {
+      "id": "global-rule",
+      "enabled": true,
+      "priority": 100,
+      "visibility": "Public",
+      "messageTemplate": "Welcome {name}",
+      "requiredTags": [
+        "vip",
+        "staff"
+      ],
+      "connectionDelaySeconds": 3
+    }
+  ]
+}

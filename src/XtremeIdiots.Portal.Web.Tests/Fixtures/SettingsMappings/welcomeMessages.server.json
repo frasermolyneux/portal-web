@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "inheritGlobalRules": true,
+  "defaults": {
+    "countryFallback": "Unknown",
+    "connectionDelaySeconds": 4,
+    "staleThresholdSeconds": 120
+  },
+  "rules": [
+    {
+      "id": "server-rule",
+      "enabled": true,
+      "priority": 90,
+      "visibility": "Private",
+      "messageTemplate": "Local welcome {name}",
+      "requiredTags": [
+        "vip"
+      ],
+      "connectionDelaySeconds": 2
+    }
+  ],
+  "ruleOverrides": [
+    {
+      "id": "global-rule",
+      "enabled": false,
+      "priority": 80,
+      "visibility": "Public",
+      "messageTemplate": "Override template",
+      "requiredTags": [
+        "reviewed"
+      ],
+      "connectionDelaySeconds": 6
+    }
+  ]
+}

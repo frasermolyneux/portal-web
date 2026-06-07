@@ -26,4 +26,10 @@
     <ProjectReference Include="..\XtremeIdiots.Portal.Web\XtremeIdiots.Portal.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Fixtures\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

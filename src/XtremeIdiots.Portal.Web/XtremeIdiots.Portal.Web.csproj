@@ -60,6 +60,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="XtremeIdiots.Portal.Web.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="wwwroot\images\service-icons\" />
   </ItemGroup>
 
