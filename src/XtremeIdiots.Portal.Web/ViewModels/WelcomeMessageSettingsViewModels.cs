@@ -289,6 +289,78 @@ internal static class WelcomeMessageSettingsValidation
 
 internal static class WelcomeMessageSettingsJsonMapper
 {
+    public static void PopulateGlobal(
+        WelcomeMessageGlobalSettingsViewModel target,
+        WelcomeMessageSettingsDocument document)
+    {
+        target.Enabled = document.Enabled ?? true;
+
+        if (document.Defaults is not null)
+        {
+            target.CountryFallback = document.Defaults.CountryFallback ?? target.CountryFallback;
+            target.StaleThresholdSeconds = document.Defaults.StaleThresholdSeconds ?? target.StaleThresholdSeconds;
+            target.DefaultConnectionDelaySeconds = document.Defaults.ConnectionDelaySeconds ?? target.DefaultConnectionDelaySeconds;
+        }
+
+        target.Rules = document.Rules
+            .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
+            .Select(rule => new WelcomeMessageRuleEntryViewModel
+            {
+                Id = rule.Id.Trim(),
+                Enabled = rule.Enabled ?? true,
+                Priority = rule.Priority ?? 0,
+                Visibility = rule.Visibility ?? WelcomeMessageVisibility.Private,
+                MessageTemplate = (rule.MessageTemplate ?? string.Empty).Trim(),
+                RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
+                ConnectionDelaySeconds = rule.ConnectionDelaySeconds
+            })
+            .ToList();
+    }
+
+    public static void PopulateServer(
+        WelcomeMessageServerSettingsViewModel target,
+        WelcomeMessageSettingsDocument document)
+    {
+        target.Enabled = document.Enabled;
+        target.InheritGlobalRules = document.InheritGlobalRules ?? true;
+
+        if (document.Defaults is not null)
+        {
+            target.CountryFallback = document.Defaults.CountryFallback;
+            target.StaleThresholdSeconds = document.Defaults.StaleThresholdSeconds;
+            target.DefaultConnectionDelaySeconds = document.Defaults.ConnectionDelaySeconds;
+        }
+
+        target.LocalRules = document.Rules
+            .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
+            .Select(rule => new WelcomeMessageRuleEntryViewModel
+            {
+                Id = rule.Id.Trim(),
+                Enabled = rule.Enabled ?? true,
+                Priority = rule.Priority ?? 0,
+                Visibility = rule.Visibility ?? WelcomeMessageVisibility.Private,
+                MessageTemplate = (rule.MessageTemplate ?? string.Empty).Trim(),
+                RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
+                ConnectionDelaySeconds = rule.ConnectionDelaySeconds
+            })
+            .ToList();
+
+        target.RuleOverrides = document.RuleOverrides
+            .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
+            .Select(rule => new WelcomeMessageRuleOverrideEntryViewModel
+            {
+                Id = rule.Id.Trim(),
+                Enabled = rule.Enabled,
+                Priority = rule.Priority,
+                Visibility = rule.Visibility,
+                MessageTemplate = rule.MessageTemplate,
+                OverrideRequiredTags = rule.RequiredTags is not null,
+                RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
+                ConnectionDelaySeconds = rule.ConnectionDelaySeconds
+            })
+            .ToList();
+    }
+
     public static void PopulateGlobal(WelcomeMessageGlobalSettingsViewModel target, JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Object)

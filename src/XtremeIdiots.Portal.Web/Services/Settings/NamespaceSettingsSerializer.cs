@@ -1,5 +1,14 @@
 using System.Text.Json;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Events;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
@@ -8,7 +17,8 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
 {
     private readonly static JsonSerializerOptions configJsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
     public IReadOnlyList<(string Namespace, string Configuration)> BuildGlobalSettingsConfigurations(GlobalSettingsViewModel model)
@@ -16,40 +26,40 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         return
         [
             (
-                "agent",
-                JsonSerializer.Serialize(new
+                AgentSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new AgentSettingsDocument
                 {
-                    pollIntervalMs = model.AgentPollIntervalMs,
-                    statusPublishIntervalSeconds = model.AgentStatusPublishIntervalSeconds,
-                    rconSyncIntervalSeconds = model.AgentRconSyncIntervalSeconds,
-                    offsetSaveIntervalSeconds = model.AgentOffsetSaveIntervalSeconds,
-                    agentName = NormalizeAgentName(model.AgentName)
+                    PollIntervalMs = model.AgentPollIntervalMs,
+                    StatusPublishIntervalSeconds = model.AgentStatusPublishIntervalSeconds,
+                    RconSyncIntervalSeconds = model.AgentRconSyncIntervalSeconds,
+                    OffsetSaveIntervalSeconds = model.AgentOffsetSaveIntervalSeconds,
+                    AgentName = NormalizeAgentName(model.AgentName)
                 }, configJsonOptions)
             ),
             (
-                "banfiles",
-                JsonSerializer.Serialize(new
+                BanFileSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new BanFileSettingsDocument
                 {
-                    checkIntervalSeconds = model.BanFileSyncCheckIntervalSeconds
+                    CheckIntervalSeconds = model.BanFileSyncCheckIntervalSeconds
                 }, configJsonOptions)
             ),
             (
-                "moderation",
-                JsonSerializer.Serialize(new
+                ModerationSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new ModerationSettingsDocument
                 {
-                    contentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
-                    contentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
-                    contentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
-                    contentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
-                    minMessageLength = model.ModerationMinMessageLength
+                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
+                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
+                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
+                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
+                    MinMessageLength = model.ModerationMinMessageLength
                 }, configJsonOptions)
             ),
             (
-                "events",
-                JsonSerializer.Serialize(new
+                EventSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new EventSettingsDocument
                 {
-                    staleThresholdSeconds = model.EventsStaleThresholdSeconds,
-                    playerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds
+                    StaleThresholdSeconds = model.EventsStaleThresholdSeconds,
+                    PlayerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds
                 }, configJsonOptions)
             ),
             (
@@ -74,44 +84,58 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
 
         if (canEditFileTransport)
         {
-            var fileTransportConfig = new Dictionary<string, object?>
-            {
-                ["hostname"] = model.FileTransportConfigHostname,
-                ["port"] = model.FileTransportConfigPort,
-                ["username"] = model.FileTransportConfigUsername,
-                ["password"] = model.FileTransportConfigPassword,
-                ["mapsRootPath"] = string.IsNullOrWhiteSpace(model.FileTransportConfigMapsRootPath)
-                    ? null
-                    : model.FileTransportConfigMapsRootPath
-            };
-
             if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase))
             {
-                fileTransportConfig["hostKeyFingerprint"] = model.FileTransportConfigHostKeyFingerprint;
-            }
+                var sftpConfig = new SftpSettingsDocument
+                {
+                    Hostname = model.FileTransportConfigHostname,
+                    Port = model.FileTransportConfigPort,
+                    Username = model.FileTransportConfigUsername,
+                    Password = model.FileTransportConfigPassword,
+                    MapsRootPath = string.IsNullOrWhiteSpace(model.FileTransportConfigMapsRootPath)
+                        ? null
+                        : model.FileTransportConfigMapsRootPath,
+                    HostKeyFingerprint = model.FileTransportConfigHostKeyFingerprint
+                };
 
-            configurations.Add((activeTransportNamespace, JsonSerializer.Serialize(fileTransportConfig, configJsonOptions)));
+                configurations.Add((SftpSettingsConstants.Namespace, JsonSerializer.Serialize(sftpConfig, configJsonOptions)));
+            }
+            else
+            {
+                var ftpConfig = new FtpSettingsDocument
+                {
+                    Hostname = model.FileTransportConfigHostname,
+                    Port = model.FileTransportConfigPort,
+                    Username = model.FileTransportConfigUsername,
+                    Password = model.FileTransportConfigPassword,
+                    MapsRootPath = string.IsNullOrWhiteSpace(model.FileTransportConfigMapsRootPath)
+                        ? null
+                        : model.FileTransportConfigMapsRootPath
+                };
+
+                configurations.Add((FtpSettingsConstants.Namespace, JsonSerializer.Serialize(ftpConfig, configJsonOptions)));
+            }
         }
 
         if (canEditRcon)
         {
             configurations.Add((
-                "rcon",
-                JsonSerializer.Serialize(new
+                RconSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new RconSettingsDocument
                 {
-                    password = model.RconConfigPassword
+                    Password = model.RconConfigPassword
                 }, configJsonOptions)));
         }
 
         if (model.GameServer.AgentEnabled)
         {
             configurations.Add((
-                "agent",
-                JsonSerializer.Serialize(new
+                AgentSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new AgentSettingsDocument
                 {
-                    logFilePath = model.AgentConfigLogFilePath,
-                    rconSyncEnabled = model.AgentConfigRconSyncEnabled,
-                    agentName = string.IsNullOrWhiteSpace(model.AgentConfigName)
+                    LogFilePath = model.AgentConfigLogFilePath,
+                    RconSyncEnabled = model.AgentConfigRconSyncEnabled,
+                    AgentName = string.IsNullOrWhiteSpace(model.AgentConfigName)
                         ? null
                         : model.AgentConfigName
                 }, configJsonOptions)));
@@ -119,15 +143,15 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             if (canConfigureScreenshots)
             {
                 configurations.Add((
-                    "screenshots",
-                    JsonSerializer.Serialize(new
+                    ScreenshotSettingsConstants.Namespace,
+                    JsonSerializer.Serialize(new ScreenshotSettingsDocument
                     {
-                        enabled = model.ScreenshotConfigEnabled,
-                        directoryPath = model.ScreenshotConfigEnabled ? model.ScreenshotConfigDirectoryPath : null,
-                        filePattern = string.IsNullOrWhiteSpace(model.ScreenshotConfigFilePattern)
+                        Enabled = model.ScreenshotConfigEnabled,
+                        DirectoryPath = model.ScreenshotConfigEnabled ? model.ScreenshotConfigDirectoryPath : null,
+                        FilePattern = string.IsNullOrWhiteSpace(model.ScreenshotConfigFilePattern)
                             ? GameServerEditViewModel.DefaultScreenshotFilePattern
                             : model.ScreenshotConfigFilePattern.Trim(),
-                        pollIntervalSeconds = model.ScreenshotConfigPollIntervalSeconds
+                        PollIntervalSeconds = model.ScreenshotConfigPollIntervalSeconds
                     }, configJsonOptions)));
             }
 
@@ -140,45 +164,45 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
 
             if (hasModerationOverrides)
             {
-                var moderationConfig = new Dictionary<string, object?>
+                var moderationConfig = new ModerationSettingsDocument
                 {
-                    ["protectedNameEnforcementEnabled"] = model.ModerationProtectedNameEnforcementEnabled
+                    ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
                 };
 
                 if (model.ModerationHateSeverityThreshold.HasValue)
                 {
-                    moderationConfig["contentSafetyHateSeverityThreshold"] = model.ModerationHateSeverityThreshold.Value;
+                    moderationConfig.ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold.Value;
                 }
 
                 if (model.ModerationViolenceSeverityThreshold.HasValue)
                 {
-                    moderationConfig["contentSafetyViolenceSeverityThreshold"] = model.ModerationViolenceSeverityThreshold.Value;
+                    moderationConfig.ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold.Value;
                 }
 
                 if (model.ModerationSexualSeverityThreshold.HasValue)
                 {
-                    moderationConfig["contentSafetySexualSeverityThreshold"] = model.ModerationSexualSeverityThreshold.Value;
+                    moderationConfig.ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold.Value;
                 }
 
                 if (model.ModerationSelfHarmSeverityThreshold.HasValue)
                 {
-                    moderationConfig["contentSafetySelfHarmSeverityThreshold"] = model.ModerationSelfHarmSeverityThreshold.Value;
+                    moderationConfig.ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold.Value;
                 }
 
                 if (model.ModerationMinMessageLength.HasValue)
                 {
-                    moderationConfig["minMessageLength"] = model.ModerationMinMessageLength.Value;
+                    moderationConfig.MinMessageLength = model.ModerationMinMessageLength.Value;
                 }
 
-                configurations.Add(("moderation", JsonSerializer.Serialize(moderationConfig, configJsonOptions)));
+                configurations.Add((ModerationSettingsConstants.Namespace, JsonSerializer.Serialize(moderationConfig, configJsonOptions)));
             }
             else
             {
                 configurations.Add((
-                    "moderation",
-                    JsonSerializer.Serialize(new
+                    ModerationSettingsConstants.Namespace,
+                    JsonSerializer.Serialize(new ModerationSettingsDocument
                     {
-                        protectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
+                        ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
                     }, configJsonOptions)));
             }
 
@@ -187,23 +211,23 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
 
             if (hasEventsOverrides)
             {
-                var eventsConfig = new Dictionary<string, object?>();
+                var eventsConfig = new EventSettingsDocument();
 
                 if (model.EventsStaleThresholdSeconds.HasValue)
                 {
-                    eventsConfig["staleThresholdSeconds"] = model.EventsStaleThresholdSeconds.Value;
+                    eventsConfig.StaleThresholdSeconds = model.EventsStaleThresholdSeconds.Value;
                 }
 
                 if (model.EventsPlayerCacheExpirationSeconds.HasValue)
                 {
-                    eventsConfig["playerCacheExpirationSeconds"] = model.EventsPlayerCacheExpirationSeconds.Value;
+                    eventsConfig.PlayerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds.Value;
                 }
 
-                configurations.Add(("events", JsonSerializer.Serialize(eventsConfig, configJsonOptions)));
+                configurations.Add((EventSettingsConstants.Namespace, JsonSerializer.Serialize(eventsConfig, configJsonOptions)));
             }
             else
             {
-                configurations.Add(("events", "{}"));
+                configurations.Add((EventSettingsConstants.Namespace, JsonSerializer.Serialize(new EventSettingsDocument(), configJsonOptions)));
             }
 
             configurations.Add((
@@ -221,36 +245,36 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             }
 
             configurations.Add((
-                "broadcasts",
-                JsonSerializer.Serialize(new
+                BroadcastSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new BroadcastSettingsDocument
                 {
-                    enabled = model.BroadcastsEnabled,
-                    intervalSeconds = broadcastsIntervalSeconds,
-                    messages = (model.BroadcastMessages ?? []).Select(m => new
+                    Enabled = model.BroadcastsEnabled,
+                    IntervalSeconds = broadcastsIntervalSeconds,
+                    Messages = (model.BroadcastMessages ?? []).Select(m => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
                     {
-                        message = m.Message,
-                        enabled = m.Enabled
-                    })
+                        Message = m.Message,
+                        Enabled = m.Enabled
+                    }).ToList()
                 }, configJsonOptions)));
         }
 
         if (model.GameServer.BanFileSyncEnabled)
         {
             configurations.Add((
-                "banfiles",
-                JsonSerializer.Serialize(new
+                BanFileSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new BanFileSettingsDocument
                 {
-                    checkIntervalSeconds = model.BanFileSyncConfigCheckIntervalSeconds
+                    CheckIntervalSeconds = model.BanFileSyncConfigCheckIntervalSeconds
                 }, configJsonOptions)));
         }
 
         if (model.GameServer.ServerListEnabled)
         {
             configurations.Add((
-                "serverlist",
-                JsonSerializer.Serialize(new
+                ServerListSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new ServerListSettingsDocument
                 {
-                    htmlBanner = model.ServerListConfigHtmlBanner
+                    HtmlBanner = model.ServerListConfigHtmlBanner
                 }, configJsonOptions)));
         }
 

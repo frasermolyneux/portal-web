@@ -162,6 +162,32 @@ internal static class ChatCommandViewModelValidation
 
 internal static class ChatCommandSettingsJsonMapper
 {
+    public static void PopulateGlobal(ChatCommandGlobalSettingsViewModel target, ChatCommandSettingsDocument document)
+    {
+        var defaults = document.Defaults;
+        if (defaults is not null)
+        {
+            target.DefaultsEnabled = defaults.Enabled ?? target.DefaultsEnabled;
+
+            if (defaults.FreshnessSeconds is not null)
+            {
+                target.DefaultFreshnessSeconds = defaults.FreshnessSeconds.Default ?? target.DefaultFreshnessSeconds;
+                target.ReadOnlyFreshnessSeconds = defaults.FreshnessSeconds.ReadOnly ?? target.ReadOnlyFreshnessSeconds;
+                target.MutatingFreshnessSeconds = defaults.FreshnessSeconds.Mutating ?? target.MutatingFreshnessSeconds;
+            }
+
+            target.DefaultRequiredTags = string.Join(", ", (defaults.RequiredTags ?? [])
+                .Where(static item => !string.IsNullOrWhiteSpace(item)));
+        }
+
+        PopulateTypedCommandEntries(target.Commands, document.Commands, isServerOverride: false);
+    }
+
+    public static void PopulateServer(ChatCommandServerSettingsViewModel target, ChatCommandSettingsDocument document)
+    {
+        PopulateTypedCommandEntries(target.Commands, document.Commands, isServerOverride: true);
+    }
+
     public static void PopulateGlobal(ChatCommandGlobalSettingsViewModel target, JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Object)
@@ -369,6 +395,74 @@ internal static class ChatCommandSettingsJsonMapper
             }
 
             if (commandElement.TryGetProperty("settings", out var settingsElement) &&
+                settingsElement.ValueKind == JsonValueKind.Object &&
+                settingsElement.TryGetProperty("messages", out var messagesElement) &&
+                messagesElement.ValueKind == JsonValueKind.Array)
+            {
+                command.Messages = messagesElement
+                    .EnumerateArray()
+                    .Where(static item => item.ValueKind == JsonValueKind.Object)
+                    .Select(item => new BroadcastMessageViewModel
+                    {
+                        Message = GetStringProperty(item, "message") ?? string.Empty,
+                        Enabled = GetBoolProperty(item, "enabled", true)
+                    })
+                    .ToList();
+
+                if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
+                {
+                    serverEntry.UseGlobalMessages = false;
+                }
+            }
+        }
+    }
+
+    private static void PopulateTypedCommandEntries<T>(
+        IReadOnlyList<T> commands,
+        Dictionary<string, ChatCommandSettingsEntry>? commandSettings,
+        bool isServerOverride)
+        where T : ChatCommandEntryViewModelBase
+    {
+        if (commandSettings is null || commandSettings.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var command in commands)
+        {
+            if (!commandSettings.TryGetValue(command.Name, out var entry) || entry is null)
+            {
+                continue;
+            }
+
+            if (entry.Enabled.HasValue)
+            {
+                command.Enabled = entry.Enabled;
+                if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
+                {
+                    serverEntry.UseGlobalEnabled = false;
+                }
+            }
+
+            if (entry.FreshnessSeconds.HasValue)
+            {
+                command.FreshnessSeconds = entry.FreshnessSeconds;
+                if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
+                {
+                    serverEntry.UseGlobalFreshness = false;
+                }
+            }
+
+            if (entry.RequiredTags is not null)
+            {
+                command.RequiredTags = string.Join(", ", entry.RequiredTags.Where(static item => !string.IsNullOrWhiteSpace(item)));
+                if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
+                {
+                    serverEntry.UseGlobalRequiredTags = false;
+                }
+            }
+
+            if (entry.Settings is JsonElement settingsElement &&
                 settingsElement.ValueKind == JsonValueKind.Object &&
                 settingsElement.TryGetProperty("messages", out var messagesElement) &&
                 messagesElement.ValueKind == JsonValueKind.Array)

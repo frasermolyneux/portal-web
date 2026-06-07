@@ -1,235 +1,337 @@
-using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Events;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 {
+    private readonly static System.Text.Json.JsonSerializerOptions serializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public void PopulateGlobalSettingsViewModel(GlobalSettingsViewModel model, ConfigurationDto config, ILogger logger)
     {
-        try
+        if (string.IsNullOrWhiteSpace(config.Configuration))
         {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-            {
-                return;
-            }
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "agent":
-                    model.AgentPollIntervalMs = GetIntProperty(root, "pollIntervalMs", model.AgentPollIntervalMs);
-                    model.AgentStatusPublishIntervalSeconds = GetIntProperty(root, "statusPublishIntervalSeconds", model.AgentStatusPublishIntervalSeconds);
-                    model.AgentRconSyncIntervalSeconds = GetIntProperty(root, "rconSyncIntervalSeconds", model.AgentRconSyncIntervalSeconds);
-                    model.AgentOffsetSaveIntervalSeconds = GetIntProperty(root, "offsetSaveIntervalSeconds", model.AgentOffsetSaveIntervalSeconds);
-                    model.AgentName = NormalizeAgentName(GetStringProperty(root, "agentName"));
-                    break;
-                case "banfiles":
-                    model.BanFileSyncCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", model.BanFileSyncCheckIntervalSeconds);
-                    break;
-                case "moderation":
-                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
-                    model.ModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? model.ModerationHateSeverityThreshold);
-                    model.ModerationViolenceSeverityThreshold = GetIntProperty(root, "contentSafetyViolenceSeverityThreshold", legacyThreshold ?? model.ModerationViolenceSeverityThreshold);
-                    model.ModerationSexualSeverityThreshold = GetIntProperty(root, "contentSafetySexualSeverityThreshold", legacyThreshold ?? model.ModerationSexualSeverityThreshold);
-                    model.ModerationSelfHarmSeverityThreshold = GetIntProperty(root, "contentSafetySelfHarmSeverityThreshold", legacyThreshold ?? model.ModerationSelfHarmSeverityThreshold);
-                    model.ModerationMinMessageLength = GetIntProperty(root, "minMessageLength", model.ModerationMinMessageLength);
-                    break;
-                case "events":
-                    model.EventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", model.EventsStaleThresholdSeconds);
-                    model.EventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", model.EventsPlayerCacheExpirationSeconds);
-                    break;
-                case ChatCommandSettingsConstants.Namespace:
-                    ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, root);
-                    break;
-                case WelcomeMessageSettingsViewModelConstants.Namespace:
-                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.WelcomeMessages, root);
-                    break;
-                default:
-                    logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);
-                    break;
-            }
+            return;
         }
-        catch (JsonException ex)
+
+        switch (config.Namespace)
         {
-            logger.LogWarning(ex, "Failed to parse global configuration for namespace '{Namespace}'", config.Namespace);
+            case AgentSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out AgentSettingsDocument? agentDocument) && agentDocument is not null)
+                {
+                    model.AgentPollIntervalMs = agentDocument.PollIntervalMs ?? model.AgentPollIntervalMs;
+                    model.AgentStatusPublishIntervalSeconds = agentDocument.StatusPublishIntervalSeconds ?? model.AgentStatusPublishIntervalSeconds;
+                    model.AgentRconSyncIntervalSeconds = agentDocument.RconSyncIntervalSeconds ?? model.AgentRconSyncIntervalSeconds;
+                    model.AgentOffsetSaveIntervalSeconds = agentDocument.OffsetSaveIntervalSeconds ?? model.AgentOffsetSaveIntervalSeconds;
+                    model.AgentName = NormalizeAgentName(agentDocument.AgentName);
+                }
+
+                break;
+            case BanFileSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out BanFileSettingsDocument? banFileDocument) && banFileDocument?.CheckIntervalSeconds is int checkIntervalSeconds)
+                {
+                    model.BanFileSyncCheckIntervalSeconds = checkIntervalSeconds;
+                }
+
+                break;
+            case ModerationSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ModerationSettingsDocument? moderationDocument) && moderationDocument is not null)
+                {
+                    var legacyThreshold = moderationDocument.ContentSafetySeverityThreshold;
+                    model.ModerationHateSeverityThreshold = moderationDocument.ContentSafetyHateSeverityThreshold ?? legacyThreshold ?? model.ModerationHateSeverityThreshold;
+                    model.ModerationViolenceSeverityThreshold = moderationDocument.ContentSafetyViolenceSeverityThreshold ?? legacyThreshold ?? model.ModerationViolenceSeverityThreshold;
+                    model.ModerationSexualSeverityThreshold = moderationDocument.ContentSafetySexualSeverityThreshold ?? legacyThreshold ?? model.ModerationSexualSeverityThreshold;
+                    model.ModerationSelfHarmSeverityThreshold = moderationDocument.ContentSafetySelfHarmSeverityThreshold ?? legacyThreshold ?? model.ModerationSelfHarmSeverityThreshold;
+                    model.ModerationMinMessageLength = moderationDocument.MinMessageLength ?? model.ModerationMinMessageLength;
+                }
+
+                break;
+            case EventSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out EventSettingsDocument? eventDocument) && eventDocument is not null)
+                {
+                    model.EventsStaleThresholdSeconds = eventDocument.StaleThresholdSeconds ?? model.EventsStaleThresholdSeconds;
+                    model.EventsPlayerCacheExpirationSeconds = eventDocument.PlayerCacheExpirationSeconds ?? model.EventsPlayerCacheExpirationSeconds;
+                }
+
+                break;
+            case ChatCommandSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ChatCommandSettingsDocument? chatCommandsDocument) && chatCommandsDocument is not null)
+                {
+                    ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, chatCommandsDocument);
+                }
+
+                break;
+            case WelcomeMessageSettingsViewModelConstants.Namespace:
+                if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
+                {
+                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.WelcomeMessages, welcomeMessagesDocument);
+                }
+
+                break;
+            default:
+                logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);
+                break;
         }
     }
 
     public void PopulateGameServerSettingsViewModel(GameServerEditViewModel model, ConfigurationDto config, ILogger logger)
     {
-        try
+        if (string.IsNullOrWhiteSpace(config.Configuration))
         {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-            {
-                return;
-            }
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "ftp":
-                case "sftp":
-                    var expectedNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
-                    if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-
-                    model.FileTransportConfigHostname = GetStringProperty(root, "hostname");
-                    model.FileTransportConfigPort = GetIntProperty(root, "port", GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType));
-                    model.FileTransportConfigUsername = GetStringProperty(root, "username");
-                    model.FileTransportConfigPassword = GetStringProperty(root, "password");
-                    model.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
-                    model.FileTransportConfigMapsRootPath = GetStringProperty(root, "mapsRootPath");
-                    break;
-                case "rcon":
-                    model.RconConfigPassword = GetStringProperty(root, "password");
-                    break;
-                case "agent":
-                    model.AgentConfigLogFilePath = GetStringProperty(root, "logFilePath");
-                    model.AgentConfigRconSyncEnabled = GetBoolProperty(root, "rconSyncEnabled", true);
-                    model.AgentConfigName = GetStringProperty(root, "agentName");
-                    break;
-                case "screenshots":
-                    model.ScreenshotConfigEnabled = GetBoolProperty(root, "enabled", false);
-                    model.ScreenshotConfigDirectoryPath = GetStringProperty(root, "directoryPath");
-                    model.ScreenshotConfigFilePattern = GetStringProperty(root, "filePattern") ?? GameServerEditViewModel.DefaultScreenshotFilePattern;
-                    model.ScreenshotConfigPollIntervalSeconds = GetIntProperty(root, "pollIntervalSeconds", GameServerEditViewModel.DefaultScreenshotPollIntervalSeconds);
-                    break;
-                case "banfiles":
-                    model.BanFileSyncConfigCheckIntervalSeconds = GetIntProperty(root, "checkIntervalSeconds", 60);
-                    break;
-                case "serverlist":
-                    model.ServerListConfigHtmlBanner = GetStringProperty(root, "htmlBanner");
-                    break;
-                case "moderation":
-                    model.ModerationProtectedNameEnforcementEnabled = GetBoolProperty(root, "protectedNameEnforcementEnabled", true);
-                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
-                    model.ModerationHateSeverityThreshold = GetNullableIntProperty(root, "contentSafetyHateSeverityThreshold") ?? legacyThreshold;
-                    model.ModerationViolenceSeverityThreshold = GetNullableIntProperty(root, "contentSafetyViolenceSeverityThreshold") ?? legacyThreshold;
-                    model.ModerationSexualSeverityThreshold = GetNullableIntProperty(root, "contentSafetySexualSeverityThreshold") ?? legacyThreshold;
-                    model.ModerationSelfHarmSeverityThreshold = GetNullableIntProperty(root, "contentSafetySelfHarmSeverityThreshold") ?? legacyThreshold;
-                    model.ModerationMinMessageLength = GetNullableIntProperty(root, "minMessageLength");
-                    break;
-                case "events":
-                    model.EventsStaleThresholdSeconds = GetNullableIntProperty(root, "staleThresholdSeconds");
-                    model.EventsPlayerCacheExpirationSeconds = GetNullableIntProperty(root, "playerCacheExpirationSeconds");
-                    break;
-                case ChatCommandSettingsConstants.Namespace:
-                    ChatCommandSettingsJsonMapper.PopulateServer(model.ChatCommands, root);
-                    break;
-                case WelcomeMessageSettingsViewModelConstants.Namespace:
-                    WelcomeMessageSettingsJsonMapper.PopulateServer(model.WelcomeMessages, root);
-                    break;
-                case "broadcasts":
-                    model.BroadcastsEnabled = GetBoolProperty(root, "enabled", false);
-                    model.BroadcastsIntervalSeconds = GetNullableIntProperty(root, "intervalSeconds") ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
-                    model.BroadcastMessages = GetBroadcastMessages(root);
-                    break;
-                default:
-                    logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
-                    break;
-            }
+            return;
         }
-        catch (JsonException ex)
+
+        switch (config.Namespace)
         {
-            logger.LogWarning(ex, "Failed to parse configuration for namespace '{Namespace}'", config.Namespace);
+            case FtpSettingsConstants.Namespace:
+            case SftpSettingsConstants.Namespace:
+                var expectedNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
+                if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
+                if (string.Equals(config.Namespace, SftpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    && TryDeserialize(config, logger, out SftpSettingsDocument? sftpDocument)
+                    && sftpDocument is not null)
+                {
+                    model.FileTransportConfigHostname = sftpDocument.Hostname;
+                    model.FileTransportConfigPort = sftpDocument.Port ?? GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType);
+                    model.FileTransportConfigUsername = sftpDocument.Username;
+                    model.FileTransportConfigPassword = sftpDocument.Password;
+                    model.FileTransportConfigHostKeyFingerprint = sftpDocument.HostKeyFingerprint;
+                    model.FileTransportConfigMapsRootPath = sftpDocument.MapsRootPath;
+                }
+                else if (string.Equals(config.Namespace, FtpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                         && TryDeserialize(config, logger, out FtpSettingsDocument? ftpDocument)
+                         && ftpDocument is not null)
+                {
+                    model.FileTransportConfigHostname = ftpDocument.Hostname;
+                    model.FileTransportConfigPort = ftpDocument.Port ?? GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType);
+                    model.FileTransportConfigUsername = ftpDocument.Username;
+                    model.FileTransportConfigPassword = ftpDocument.Password;
+                    model.FileTransportConfigMapsRootPath = ftpDocument.MapsRootPath;
+                    model.FileTransportConfigHostKeyFingerprint = null;
+                }
+
+                break;
+            case RconSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out RconSettingsDocument? rconDocument) && rconDocument is not null)
+                {
+                    model.RconConfigPassword = rconDocument.Password;
+                }
+
+                break;
+            case AgentSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out AgentSettingsDocument? agentDocument) && agentDocument is not null)
+                {
+                    model.AgentConfigLogFilePath = agentDocument.LogFilePath;
+                    model.AgentConfigRconSyncEnabled = agentDocument.RconSyncEnabled ?? true;
+                    model.AgentConfigName = agentDocument.AgentName;
+                }
+
+                break;
+            case ScreenshotSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ScreenshotSettingsDocument? screenshotDocument) && screenshotDocument is not null)
+                {
+                    model.ScreenshotConfigEnabled = screenshotDocument.Enabled ?? false;
+                    model.ScreenshotConfigDirectoryPath = screenshotDocument.DirectoryPath;
+                    model.ScreenshotConfigFilePattern = screenshotDocument.FilePattern ?? GameServerEditViewModel.DefaultScreenshotFilePattern;
+                    model.ScreenshotConfigPollIntervalSeconds = screenshotDocument.PollIntervalSeconds ?? GameServerEditViewModel.DefaultScreenshotPollIntervalSeconds;
+                }
+
+                break;
+            case BanFileSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out BanFileSettingsDocument? banFileDocument) && banFileDocument?.CheckIntervalSeconds is int checkIntervalSeconds)
+                {
+                    model.BanFileSyncConfigCheckIntervalSeconds = checkIntervalSeconds;
+                }
+
+                break;
+            case ServerListSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
+                {
+                    model.ServerListConfigHtmlBanner = serverListDocument.HtmlBanner;
+                }
+
+                break;
+            case ModerationSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ModerationSettingsDocument? moderationDocument) && moderationDocument is not null)
+                {
+                    var legacyThreshold = moderationDocument.ContentSafetySeverityThreshold;
+                    model.ModerationProtectedNameEnforcementEnabled = moderationDocument.ProtectedNameEnforcementEnabled ?? true;
+                    model.ModerationHateSeverityThreshold = moderationDocument.ContentSafetyHateSeverityThreshold ?? legacyThreshold;
+                    model.ModerationViolenceSeverityThreshold = moderationDocument.ContentSafetyViolenceSeverityThreshold ?? legacyThreshold;
+                    model.ModerationSexualSeverityThreshold = moderationDocument.ContentSafetySexualSeverityThreshold ?? legacyThreshold;
+                    model.ModerationSelfHarmSeverityThreshold = moderationDocument.ContentSafetySelfHarmSeverityThreshold ?? legacyThreshold;
+                    model.ModerationMinMessageLength = moderationDocument.MinMessageLength;
+                }
+
+                break;
+            case EventSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out EventSettingsDocument? eventDocument) && eventDocument is not null)
+                {
+                    model.EventsStaleThresholdSeconds = eventDocument.StaleThresholdSeconds;
+                    model.EventsPlayerCacheExpirationSeconds = eventDocument.PlayerCacheExpirationSeconds;
+                }
+
+                break;
+            case ChatCommandSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ChatCommandSettingsDocument? chatCommandDocument) && chatCommandDocument is not null)
+                {
+                    ChatCommandSettingsJsonMapper.PopulateServer(model.ChatCommands, chatCommandDocument);
+                }
+
+                break;
+            case WelcomeMessageSettingsViewModelConstants.Namespace:
+                if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
+                {
+                    WelcomeMessageSettingsJsonMapper.PopulateServer(model.WelcomeMessages, welcomeMessagesDocument);
+                }
+
+                break;
+            case BroadcastSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
+                {
+                    model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
+                    model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+                    model.BroadcastMessages = (broadcastDocument.Messages ?? [])
+                        .Where(message => message is not null)
+                        .Select(message => new BroadcastMessageViewModel
+                        {
+                            Message = message?.Message ?? string.Empty,
+                            Enabled = message?.Enabled ?? true
+                        })
+                        .ToList();
+                }
+
+                break;
+            default:
+                logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
+                break;
         }
     }
 
     public void PopulateGameServerGlobalDefaults(GameServerEditViewModel model, ConfigurationDto config, ILogger logger)
     {
-        try
+        if (string.IsNullOrWhiteSpace(config.Configuration))
         {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-            {
-                return;
-            }
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "agent":
-                    model.GlobalAgentName = NormalizeAgentName(GetStringProperty(root, "agentName"));
-                    break;
-                case "moderation":
-                    var legacyThreshold = GetNullableIntProperty(root, "contentSafetySeverityThreshold");
-                    model.GlobalModerationHateSeverityThreshold = GetIntProperty(root, "contentSafetyHateSeverityThreshold", legacyThreshold ?? model.GlobalModerationHateSeverityThreshold);
-                    model.GlobalModerationViolenceSeverityThreshold = GetIntProperty(root, "contentSafetyViolenceSeverityThreshold", legacyThreshold ?? model.GlobalModerationViolenceSeverityThreshold);
-                    model.GlobalModerationSexualSeverityThreshold = GetIntProperty(root, "contentSafetySexualSeverityThreshold", legacyThreshold ?? model.GlobalModerationSexualSeverityThreshold);
-                    model.GlobalModerationSelfHarmSeverityThreshold = GetIntProperty(root, "contentSafetySelfHarmSeverityThreshold", legacyThreshold ?? model.GlobalModerationSelfHarmSeverityThreshold);
-                    model.GlobalModerationMinMessageLength = GetIntProperty(root, "minMessageLength", model.GlobalModerationMinMessageLength);
-                    break;
-                case "events":
-                    model.GlobalEventsStaleThresholdSeconds = GetIntProperty(root, "staleThresholdSeconds", model.GlobalEventsStaleThresholdSeconds);
-                    model.GlobalEventsPlayerCacheExpirationSeconds = GetIntProperty(root, "playerCacheExpirationSeconds", model.GlobalEventsPlayerCacheExpirationSeconds);
-                    break;
-                case ChatCommandSettingsConstants.Namespace:
-                    ChatCommandSettingsJsonMapper.PopulateGlobal(model.GlobalChatCommands, root);
-                    break;
-                case WelcomeMessageSettingsViewModelConstants.Namespace:
-                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.GlobalWelcomeMessages, root);
-                    break;
-                default:
-                    break;
-            }
+            return;
         }
-        catch (JsonException ex)
+
+        switch (config.Namespace)
         {
-            logger.LogWarning(ex, "Failed to parse global configuration for namespace '{Namespace}'", config.Namespace);
+            case AgentSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out AgentSettingsDocument? agentDocument) && agentDocument is not null)
+                {
+                    model.GlobalAgentName = NormalizeAgentName(agentDocument.AgentName);
+                }
+
+                break;
+            case ModerationSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ModerationSettingsDocument? moderationDocument) && moderationDocument is not null)
+                {
+                    var legacyThreshold = moderationDocument.ContentSafetySeverityThreshold;
+                    model.GlobalModerationHateSeverityThreshold = moderationDocument.ContentSafetyHateSeverityThreshold ?? legacyThreshold ?? model.GlobalModerationHateSeverityThreshold;
+                    model.GlobalModerationViolenceSeverityThreshold = moderationDocument.ContentSafetyViolenceSeverityThreshold ?? legacyThreshold ?? model.GlobalModerationViolenceSeverityThreshold;
+                    model.GlobalModerationSexualSeverityThreshold = moderationDocument.ContentSafetySexualSeverityThreshold ?? legacyThreshold ?? model.GlobalModerationSexualSeverityThreshold;
+                    model.GlobalModerationSelfHarmSeverityThreshold = moderationDocument.ContentSafetySelfHarmSeverityThreshold ?? legacyThreshold ?? model.GlobalModerationSelfHarmSeverityThreshold;
+                    model.GlobalModerationMinMessageLength = moderationDocument.MinMessageLength ?? model.GlobalModerationMinMessageLength;
+                }
+
+                break;
+            case EventSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out EventSettingsDocument? eventDocument) && eventDocument is not null)
+                {
+                    model.GlobalEventsStaleThresholdSeconds = eventDocument.StaleThresholdSeconds ?? model.GlobalEventsStaleThresholdSeconds;
+                    model.GlobalEventsPlayerCacheExpirationSeconds = eventDocument.PlayerCacheExpirationSeconds ?? model.GlobalEventsPlayerCacheExpirationSeconds;
+                }
+
+                break;
+            case ChatCommandSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out ChatCommandSettingsDocument? chatCommandsDocument) && chatCommandsDocument is not null)
+                {
+                    ChatCommandSettingsJsonMapper.PopulateGlobal(model.GlobalChatCommands, chatCommandsDocument);
+                }
+
+                break;
+            case WelcomeMessageSettingsViewModelConstants.Namespace:
+                if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
+                {
+                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.GlobalWelcomeMessages, welcomeMessagesDocument);
+                }
+
+                break;
+            default:
+                break;
         }
     }
 
     public void PopulateGameServerDetails(IDictionary<string, object?> viewData, FileTransportType fileTransportType, ConfigurationDto config, ILogger logger)
     {
-        try
+        if (string.IsNullOrWhiteSpace(config.Configuration))
         {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-            {
-                return;
-            }
-
-            using var doc = JsonDocument.Parse(config.Configuration);
-            var root = doc.RootElement;
-
-            switch (config.Namespace)
-            {
-                case "ftp":
-                case "sftp":
-                    var expectedNamespace = fileTransportType == FileTransportType.Sftp ? "sftp" : "ftp";
-                    if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-
-                    viewData["FtpHostname"] = GetStringProperty(root, "hostname");
-                    viewData["FtpPort"] = GetIntProperty(root, "port", fileTransportType == FileTransportType.Sftp ? 22 : 21);
-                    viewData["FtpUsername"] = GetStringProperty(root, "username");
-                    viewData["FtpPassword"] = GetStringProperty(root, "password");
-                    viewData["FileTransportType"] = fileTransportType;
-                    break;
-                case "rcon":
-                    viewData["RconPassword"] = GetStringProperty(root, "password");
-                    break;
-                case "serverlist":
-                    break;
-                default:
-                    break;
-            }
+            return;
         }
-        catch (JsonException ex)
+
+        switch (config.Namespace)
         {
-            logger.LogWarning(ex, "Failed to parse details configuration for namespace '{Namespace}'", config.Namespace);
+            case FtpSettingsConstants.Namespace:
+            case SftpSettingsConstants.Namespace:
+                var expectedNamespace = fileTransportType == FileTransportType.Sftp ? SftpSettingsConstants.Namespace : FtpSettingsConstants.Namespace;
+                if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
+                if (string.Equals(config.Namespace, SftpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    && TryDeserialize(config, logger, out SftpSettingsDocument? sftpDocument)
+                    && sftpDocument is not null)
+                {
+                    viewData["FtpHostname"] = sftpDocument.Hostname;
+                    viewData["FtpPort"] = sftpDocument.Port ?? 22;
+                    viewData["FtpUsername"] = sftpDocument.Username;
+                    viewData["FtpPassword"] = sftpDocument.Password;
+                    viewData["FileTransportType"] = fileTransportType;
+                }
+                else if (string.Equals(config.Namespace, FtpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                         && TryDeserialize(config, logger, out FtpSettingsDocument? ftpDocument)
+                         && ftpDocument is not null)
+                {
+                    viewData["FtpHostname"] = ftpDocument.Hostname;
+                    viewData["FtpPort"] = ftpDocument.Port ?? 21;
+                    viewData["FtpUsername"] = ftpDocument.Username;
+                    viewData["FtpPassword"] = ftpDocument.Password;
+                    viewData["FileTransportType"] = fileTransportType;
+                }
+
+                break;
+            case RconSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out RconSettingsDocument? rconDocument) && rconDocument is not null)
+                {
+                    viewData["RconPassword"] = rconDocument.Password;
+                }
+
+                break;
+            case ServerListSettingsConstants.Namespace:
+                break;
+            default:
+                break;
         }
     }
 
@@ -242,106 +344,127 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         bool needsRconPassword,
         ILogger logger)
     {
-        try
+        if (string.IsNullOrWhiteSpace(config.Configuration))
         {
-            if (string.IsNullOrWhiteSpace(config.Configuration))
-            {
-                return;
-            }
+            return;
+        }
 
-            if ((needsFileTransportPassword || needsFileTransportHostKeyFingerprint)
-                && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
+        if ((needsFileTransportPassword || needsFileTransportHostKeyFingerprint)
+            && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.Equals(activeTransportNamespace, SftpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                && TryDeserialize(config, logger, out SftpSettingsDocument? sftpDocument)
+                && sftpDocument is not null)
             {
-                using var doc = JsonDocument.Parse(config.Configuration);
-                var root = doc.RootElement;
-
                 if (needsFileTransportPassword)
                 {
-                    model.FileTransportConfigPassword = GetStringProperty(root, "password");
+                    model.FileTransportConfigPassword = sftpDocument.Password;
                 }
 
-                if (string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase)
-                    && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint))
+                if (string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint))
                 {
-                    model.FileTransportConfigHostKeyFingerprint = GetStringProperty(root, "hostKeyFingerprint");
+                    model.FileTransportConfigHostKeyFingerprint = sftpDocument.HostKeyFingerprint;
                 }
             }
-            else if (needsRconPassword && config.Namespace == "rcon")
+
+            if (string.Equals(activeTransportNamespace, FtpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                && TryDeserialize(config, logger, out FtpSettingsDocument? ftpDocument)
+                && ftpDocument is not null
+                && needsFileTransportPassword)
             {
-                using var doc = JsonDocument.Parse(config.Configuration);
-                model.RconConfigPassword = GetStringProperty(doc.RootElement, "password");
+                model.FileTransportConfigPassword = ftpDocument.Password;
             }
         }
-        catch (JsonException ex)
+        else if (needsRconPassword && string.Equals(config.Namespace, RconSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
         {
-            logger.LogWarning(ex, "Failed to parse credentials for namespace '{Namespace}'", config.Namespace);
+            if (TryDeserialize(config, logger, out RconSettingsDocument? rconDocument) && rconDocument is not null)
+            {
+                model.RconConfigPassword = rconDocument.Password;
+            }
         }
     }
 
-    private static string? GetStringProperty(JsonElement root, string propertyName)
+    private static bool TryDeserialize<T>(ConfigurationDto config, ILogger logger, out T? document)
     {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String
-            ? prop.GetString()
-            : null;
-    }
+        document = default;
 
-    private static int GetIntProperty(JsonElement root, string propertyName, int defaultValue)
-    {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out var value)
-            ? value
-            : defaultValue;
-    }
-
-    private static int? GetNullableIntProperty(JsonElement root, string propertyName)
-    {
-        return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out var value)
-            ? value
-            : null;
-    }
-
-    private static bool GetBoolProperty(JsonElement root, string propertyName, bool defaultValue)
-    {
-        return !root.TryGetProperty(propertyName, out var prop)
-            ? defaultValue
-            : prop.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String when bool.TryParse(prop.GetString(), out var parsedBool) => parsedBool,
-                JsonValueKind.Undefined => defaultValue,
-                JsonValueKind.Object => defaultValue,
-                JsonValueKind.Array => defaultValue,
-                JsonValueKind.String => defaultValue,
-                JsonValueKind.Number => defaultValue,
-                JsonValueKind.Null => defaultValue,
-                _ => defaultValue
-            };
-    }
-
-    private static List<BroadcastMessageViewModel> GetBroadcastMessages(JsonElement root)
-    {
-        var messages = new List<BroadcastMessageViewModel>();
-
-        if (!root.TryGetProperty("messages", out var messagesElement) || messagesElement.ValueKind != JsonValueKind.Array)
+        try
         {
-            return messages;
+            document = System.Text.Json.JsonSerializer.Deserialize<T>(config.Configuration, serializerOptions);
+            return document is not null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            try
+            {
+                var normalizedJson = NormalizeBooleanStrings(config.Configuration);
+                document = System.Text.Json.JsonSerializer.Deserialize<T>(normalizedJson, serializerOptions);
+                return document is not null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                logger.LogWarning(ex, "Failed to parse configuration for namespace '{Namespace}'", config.Namespace);
+                return false;
+            }
+        }
+    }
+
+    private static string NormalizeBooleanStrings(string json)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+        if (node is null)
+        {
+            return json;
         }
 
-        foreach (var item in messagesElement.EnumerateArray())
+        NormalizeBooleanNodes(node);
+        return node.ToJsonString();
+    }
+
+    private static void NormalizeBooleanNodes(System.Text.Json.Nodes.JsonNode node)
+    {
+        if (node is System.Text.Json.Nodes.JsonObject jsonObject)
         {
-            if (item.ValueKind != JsonValueKind.Object)
+            var keys = jsonObject.Select(kvp => kvp.Key).ToArray();
+            foreach (var key in keys)
             {
-                continue;
+                var child = jsonObject[key];
+                if (child is null)
+                {
+                    continue;
+                }
+
+                if (child is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var stringValue) && bool.TryParse(stringValue, out var parsedBool))
+                {
+                    jsonObject[key] = parsedBool;
+                    continue;
+                }
+
+                NormalizeBooleanNodes(child);
             }
 
-            messages.Add(new BroadcastMessageViewModel
-            {
-                Message = GetStringProperty(item, "message") ?? string.Empty,
-                Enabled = GetBoolProperty(item, "enabled", true)
-            });
+            return;
         }
 
-        return messages;
+        if (node is System.Text.Json.Nodes.JsonArray jsonArray)
+        {
+            for (var i = 0; i < jsonArray.Count; i++)
+            {
+                var child = jsonArray[i];
+                if (child is null)
+                {
+                    continue;
+                }
+
+                if (child is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var stringValue) && bool.TryParse(stringValue, out var parsedBool))
+                {
+                    jsonArray[i] = parsedBool;
+                    continue;
+                }
+
+                NormalizeBooleanNodes(child);
+            }
+        }
     }
 
     private static string NormalizeAgentName(string? value)
