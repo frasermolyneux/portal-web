@@ -407,6 +407,71 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_UseGlobalModes_OmitsCommandOverrides()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>();
+
+        mockRepositoryApiClient
+                .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                        It.IsAny<Guid>(),
+                        It.IsAny<string>(),
+                        It.IsAny<UpsertConfigurationDto>(),
+                        It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+                {
+                    upsertPayloads[ns] = dto.Configuration;
+                    var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                    return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+                });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true
+            },
+            ChatCommands = new ChatCommandServerSettingsViewModel
+            {
+                Commands =
+                        [
+                                new ChatCommandServerEntryViewModel
+                                        {
+                                                Name = "fu",
+                                                Prefix = "!fu",
+                                                Usage = "!fu <player name>",
+                                                UseGlobalEnabled = true,
+                                                Enabled = false,
+                                                UseGlobalFreshness = true,
+                                                FreshnessSeconds = 99,
+                                                UseGlobalRequiredTags = true,
+                                                RequiredTags = "tag-fu",
+                                                UseGlobalMessages = true,
+                                                Messages =
+                                                [
+                                                        new BroadcastMessageViewModel { Message = "server-fu-{name}", Enabled = false }
+                                                ]
+                                        }
+                        ]
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
+        using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        Assert.Equal(ChatCommandSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
+
+        var commands = doc.RootElement.GetProperty("commands");
+        Assert.False(commands.TryGetProperty("fu", out _));
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsWelcomeMessagesContract()
     {
         var sut = CreateSut();
@@ -910,6 +975,78 @@ public class GameServersControllerTests
         Assert.True(capturedUpdate.FileTransportEnabled);
         Assert.Equal(FileTransportType.Sftp, capturedUpdate.FileTransportType);
         Assert.Null(capturedUpdate.FtpEnabled);
+    }
+
+    [Fact]
+    public async Task Edit_WhenDependencyPrerequisitesAreOff_DoesNotAutoUnsetAgentAndBanFileSync()
+    {
+        // Arrange
+        var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
+
+        EditGameServerDto? capturedUpdate = null;
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .Callback<EditGameServerDto, CancellationToken>((dto, _) => capturedUpdate = dto)
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = true,
+                FileTransportEnabled = false,
+                FileTransportType = FileTransportType.Ftp,
+                RconEnabled = false,
+                BanFileSyncEnabled = true,
+                BanFileRootPath = "/",
+                ServerListEnabled = false
+            }
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.NotNull(capturedUpdate);
+        Assert.True(capturedUpdate.AgentEnabled);
+        Assert.True(capturedUpdate.BanFileSyncEnabled);
+        Assert.False(capturedUpdate.FileTransportEnabled);
+        Assert.False(capturedUpdate.RconEnabled);
     }
 
     private static GameServerDto CreateGameServerDto(bool ftpEnabled, bool fileTransportEnabled, string fileTransportType)
