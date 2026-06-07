@@ -40,6 +40,12 @@ The `copilot-setup-steps.yml` workflow checks out `frasermolyneux/.github-copilo
 - `patterns.nbgv-versioning`
 - `patterns.terraform-remote-state`
 
+### Platform settings contracts
+- Use `XtremeIdiots.Portal.Settings.Contracts.V1` for typed settings namespace mapping/validation.
+- Keep settings parsing/serialization in `Services/Settings`; avoid introducing controller-level raw namespace JSON parsing.
+- Do not reintroduce settings dependencies on `XtremeIdiots.Portal.ChatCommands.Abstractions.V1`; that path is compatibility-only.
+- Do not remove compatibility shims unless cross-repo shim-removal gate evidence is recorded.
+
 ### Platform consumption contracts
 - `platform.workloads`, `platform.monitoring`, `platform.hosting`, `platform.connectivity`
 

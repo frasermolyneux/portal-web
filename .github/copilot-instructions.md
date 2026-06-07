@@ -120,6 +120,13 @@ The `policy-resource` attribute passes a resource (typically `GameType`) to hand
 - PRs trigger dev Terraform plans automatically; prod plans require the `run-prd-plan` label.
 - Copilot and Dependabot PRs skip Terraform plans unless explicitly labeled.
 
+## Platform Settings Contracts
+
+- Settings namespaces are persisted in the repository as dynamic JSON, but portal-web runtime mapping must use typed contracts from `XtremeIdiots.Portal.Settings.Contracts.V1`.
+- Keep parser/serializer logic in `Services/Settings` and avoid adding ad hoc namespace/property parsing in controllers.
+- Do not reintroduce direct package dependencies on `XtremeIdiots.Portal.ChatCommands.Abstractions.V1` for settings mapping; chat/welcome settings contracts are owned by `XtremeIdiots.Portal.Settings.Contracts.V1`.
+- Compatibility-shim removal for the legacy chat package path is gated by cross-repo migration evidence; retain shims until the gate criteria in the implementation plan are explicitly met.
+
 ## Config JSON Boolean Standard
 
 - For Game Server configuration namespaces stored as JSON (`agent`, `moderation`, `events`, `broadcasts`, etc.), always serialize boolean fields as JSON booleans (`true`/`false`), never strings (`"true"`/`"false"`).

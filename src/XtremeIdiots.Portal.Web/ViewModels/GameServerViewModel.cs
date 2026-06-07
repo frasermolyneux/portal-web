@@ -61,7 +61,7 @@ public class GameServerViewModel
     public RepoFileTransportType FileTransportType { get; set; } = RepoFileTransportType.Ftp;
 
     /// <summary>
-    /// Gets or sets whether the legacy transport flag is enabled for this server
+    /// Gets or sets the compatibility FTP flag used by existing API and UI bindings
     /// </summary>
     [DisplayName("FTP")]
     public bool FtpEnabled { get; set; }

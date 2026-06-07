@@ -56,7 +56,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\XtremeIdiots.Portal.Integrations.Forums\XtremeIdiots.Portal.Integrations.Forums.csproj" />
-    <!--<ProjectReference Include="..\..\..\portal-repository\src\XtremeIdiots.Portal.Repository.Api.Client.V1\XtremeIdiots.Portal.Repository.Api.Client.V1.csproj" />-->
   </ItemGroup>
 
   <ItemGroup>

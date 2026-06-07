@@ -171,7 +171,7 @@ public class GameServerEditViewModel : IValidatableObject
     public string FileTransportScheme => GetFileTransportScheme(GameServer.FileTransportType);
     public string FileTransportNamespace => GetFileTransportNamespace(GameServer.FileTransportType);
 
-    // Legacy aliases kept for transition while Razor and JS migrate.
+    // Compatibility aliases retained for existing Razor/JS field names.
     public bool CanEditFtp { get => CanEditFileTransport; set => CanEditFileTransport = value; }
     public string? FtpConfigHostname { get => FileTransportConfigHostname; set => FileTransportConfigHostname = value; }
     public int FtpConfigPort { get => FileTransportConfigPort; set => FileTransportConfigPort = value; }
