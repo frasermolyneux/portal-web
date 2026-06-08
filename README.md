@@ -18,6 +18,7 @@
 * [Identity Manual Run](/docs/identity-manual-run.sql) - Manual SQL to validate or repair identity artifacts.
 * [Manual Steps](/docs/manual-steps.md) - Post-deployment configuration steps.
 * [Mobile Table Improvements](/docs/mobile-table-improvements.md) - Responsive table patterns and UX notes.
+* [Platform Settings Contracts](/docs/platform-settings-contracts.md) - Settings architecture, migration summary, and troubleshooting runbook.
 
 ## Overview
 

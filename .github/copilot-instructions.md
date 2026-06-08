@@ -126,6 +126,7 @@ The `policy-resource` attribute passes a resource (typically `GameType`) to hand
 - Keep parser/serializer logic in `Services/Settings` and avoid adding ad hoc namespace/property parsing in controllers.
 - Do not reintroduce direct package dependencies on `XtremeIdiots.Portal.ChatCommands.Abstractions.V1` for settings mapping; chat/welcome settings contracts are owned by `XtremeIdiots.Portal.Settings.Contracts.V1`.
 - Compatibility-shim removal for the legacy chat package path is gated by cross-repo migration evidence; retain shims until the gate criteria in the implementation plan are explicitly met.
+- For architecture and troubleshooting flow, use `docs/platform-settings-contracts.md`.
 
 ## Config JSON Boolean Standard
 
