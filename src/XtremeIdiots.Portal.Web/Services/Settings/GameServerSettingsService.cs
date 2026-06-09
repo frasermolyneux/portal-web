@@ -8,6 +8,8 @@ public sealed class GameServerSettingsService(
     INamespaceSettingsParser namespaceSettingsParser,
     INamespaceSettingsSerializer namespaceSettingsSerializer) : IGameServerSettingsService
 {
+    public IReadOnlyCollection<string> DeletedNamespaces => namespaceSettingsSerializer.DeletedNamespaces;
+
     public void PopulateConfigFromNamespace(GameServerEditViewModel model, ConfigurationDto config, ILogger logger)
     {
         namespaceSettingsParser.PopulateGameServerSettingsViewModel(model, config, logger);

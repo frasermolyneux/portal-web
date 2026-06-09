@@ -695,10 +695,23 @@ public class GameServersController(
         CancellationToken cancellationToken)
     {
         var serverTitle = model.GameServer.Title ?? "";
+        var namespacesToUpsert = gameServerSettingsService.BuildNamespaceConfigurations(model, canEditFileTransport, canEditRcon, canConfigureScreenshots);
+        var upsertedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var (ns, json) in gameServerSettingsService.BuildNamespaceConfigurations(model, canEditFileTransport, canEditRcon, canConfigureScreenshots))
+        foreach (var (ns, json) in namespacesToUpsert)
         {
+            upsertedNamespaces.Add(ns);
             await UpsertConfigSafeAsync(gameServerId, ns, json, serverTitle, errors, cancellationToken).ConfigureAwait(false);
+        }
+
+        foreach (var ns in gameServerSettingsService.DeletedNamespaces)
+        {
+            if (upsertedNamespaces.Contains(ns))
+            {
+                continue;
+            }
+
+            await DeleteConfigSafeAsync(gameServerId, ns, errors, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -733,6 +746,30 @@ public class GameServersController(
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Error upserting configuration namespace '{Namespace}' for game server {GameServerId}", ns, gameServerId);
+            errors.Add(ns);
+        }
+    }
+
+    private async Task DeleteConfigSafeAsync(
+        Guid gameServerId,
+        string ns,
+        List<string> errors,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await repositoryApiClient.GameServerConfigurations.V1
+                .DeleteConfiguration(gameServerId, ns, cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess && !result.IsNotFound)
+            {
+                Logger.LogWarning("Failed to delete configuration namespace '{Namespace}' for game server {GameServerId}", ns, gameServerId);
+                errors.Add(ns);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error deleting configuration namespace '{Namespace}' for game server {GameServerId}", ns, gameServerId);
             errors.Add(ns);
         }
     }

@@ -7,6 +7,8 @@ public sealed class GlobalSettingsService(
     INamespaceSettingsParser namespaceSettingsParser,
     INamespaceSettingsSerializer namespaceSettingsSerializer) : IGlobalSettingsService
 {
+    public IReadOnlyCollection<string> DeletedNamespaces => namespaceSettingsSerializer.DeletedNamespaces;
+
     public void PopulateModelFromNamespace(GlobalSettingsViewModel model, ConfigurationDto config, ILogger logger)
     {
         namespaceSettingsParser.PopulateGlobalSettingsViewModel(model, config, logger);

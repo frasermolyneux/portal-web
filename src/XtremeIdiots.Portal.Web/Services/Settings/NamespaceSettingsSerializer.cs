@@ -21,9 +21,15 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    public HashSet<string> DeletedNamespaces { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    IReadOnlyCollection<string> INamespaceSettingsSerializer.DeletedNamespaces => DeletedNamespaces;
+
     public IReadOnlyList<(string Namespace, string Configuration)> BuildGlobalSettingsConfigurations(GlobalSettingsViewModel model)
     {
-        return
+        ResetDeletedNamespaces();
+
+        List<(string Namespace, string Configuration)> configurations =
         [
             (
                 AgentSettingsConstants.Namespace,
@@ -61,16 +67,32 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     StaleThresholdSeconds = model.EventsStaleThresholdSeconds,
                     PlayerCacheExpirationSeconds = model.EventsPlayerCacheExpirationSeconds
                 }, configJsonOptions)
-            ),
-            (
-                ChatCommandSettingsConstants.Namespace,
-                ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)
-            ),
-            (
-                WelcomeMessageSettingsViewModelConstants.Namespace,
-                WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages)
             )
         ];
+
+        if (model.ChatCommands.DefaultsEnabled)
+        {
+            configurations.Add((
+                ChatCommandSettingsConstants.Namespace,
+                ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)));
+        }
+        else
+        {
+            DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
+        }
+
+        if (model.WelcomeMessages.Enabled)
+        {
+            configurations.Add((
+                WelcomeMessageSettingsViewModelConstants.Namespace,
+                WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages)));
+        }
+        else
+        {
+            DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
+        }
+
+        return configurations;
     }
 
     public IReadOnlyList<(string Namespace, string Configuration)> BuildGameServerConfigurations(
@@ -79,6 +101,8 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         bool canEditRcon,
         bool canConfigureScreenshots)
     {
+        ResetDeletedNamespaces();
+
         var configurations = new List<(string Namespace, string Configuration)>();
         var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
 
@@ -234,9 +258,21 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 ChatCommandSettingsConstants.Namespace,
                 ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands)));
 
+            if (!HasChatCommandServerOverrides(model.ChatCommands))
+            {
+                configurations.RemoveAll(x => x.Namespace == ChatCommandSettingsConstants.Namespace);
+                DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
+            }
+
             configurations.Add((
                 WelcomeMessageSettingsViewModelConstants.Namespace,
                 WelcomeMessageSettingsJsonMapper.BuildServerConfigurationJson(model.WelcomeMessages)));
+
+            if (!HasWelcomeMessageServerOverrides(model.WelcomeMessages))
+            {
+                configurations.RemoveAll(x => x.Namespace == WelcomeMessageSettingsViewModelConstants.Namespace);
+                DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
+            }
 
             var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);
             if (broadcastsIntervalSeconds <= 0)
@@ -244,18 +280,35 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 broadcastsIntervalSeconds = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
             }
 
-            configurations.Add((
-                BroadcastSettingsConstants.Namespace,
-                JsonSerializer.Serialize(new BroadcastSettingsDocument
-                {
-                    Enabled = model.BroadcastsEnabled,
-                    IntervalSeconds = broadcastsIntervalSeconds,
-                    Messages = (model.BroadcastMessages ?? []).Select(m => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
+            if (model.BroadcastsEnabled)
+            {
+                configurations.Add((
+                    BroadcastSettingsConstants.Namespace,
+                    JsonSerializer.Serialize(new BroadcastSettingsDocument
                     {
-                        Message = m.Message,
-                        Enabled = m.Enabled
-                    }).ToList()
-                }, configJsonOptions)));
+                        Enabled = model.BroadcastsEnabled,
+                        IntervalSeconds = broadcastsIntervalSeconds,
+                        Messages = (model.BroadcastMessages ?? []).Select(m => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
+                        {
+                            Message = m.Message,
+                            Enabled = m.Enabled
+                        }).ToList()
+                    }, configJsonOptions)));
+            }
+            else
+            {
+                DeletedNamespaces.Add(BroadcastSettingsConstants.Namespace);
+            }
+        }
+        else
+        {
+            DeletedNamespaces.Add(AgentSettingsConstants.Namespace);
+            DeletedNamespaces.Add(ScreenshotSettingsConstants.Namespace);
+            DeletedNamespaces.Add(ModerationSettingsConstants.Namespace);
+            DeletedNamespaces.Add(EventSettingsConstants.Namespace);
+            DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
+            DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
+            DeletedNamespaces.Add(BroadcastSettingsConstants.Namespace);
         }
 
         if (model.GameServer.BanFileSyncEnabled)
@@ -267,6 +320,10 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     CheckIntervalSeconds = model.BanFileSyncConfigCheckIntervalSeconds
                 }, configJsonOptions)));
         }
+        else
+        {
+            DeletedNamespaces.Add(BanFileSettingsConstants.Namespace);
+        }
 
         if (model.GameServer.ServerListEnabled)
         {
@@ -277,8 +334,37 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     HtmlBanner = model.ServerListConfigHtmlBanner
                 }, configJsonOptions)));
         }
+        else
+        {
+            DeletedNamespaces.Add(ServerListSettingsConstants.Namespace);
+        }
 
         return configurations;
+    }
+
+    private void ResetDeletedNamespaces()
+    {
+        DeletedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool HasChatCommandServerOverrides(ChatCommandServerSettingsViewModel model)
+    {
+        return model.Commands.Any(static command =>
+            !command.UseGlobalEnabled
+            || !command.UseGlobalFreshness
+            || !command.UseGlobalRequiredTags
+            || !command.UseGlobalMessages);
+    }
+
+    private static bool HasWelcomeMessageServerOverrides(WelcomeMessageServerSettingsViewModel model)
+    {
+        return model.Enabled.HasValue
+            || !model.InheritGlobalRules
+            || !string.IsNullOrWhiteSpace(model.CountryFallback)
+            || model.StaleThresholdSeconds.HasValue
+            || model.DefaultConnectionDelaySeconds.HasValue
+            || model.LocalRules.Count > 0
+            || model.RuleOverrides.Count > 0;
     }
 
     private static string NormalizeAgentName(string? value)

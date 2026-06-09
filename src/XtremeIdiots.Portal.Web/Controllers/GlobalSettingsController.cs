@@ -69,10 +69,23 @@ public class GlobalSettingsController(
             model.AgentName = NormalizeAgentName(model.AgentName);
 
             var errors = new List<string>();
+            var namespacesToUpsert = globalSettingsService.BuildNamespaceConfigurations(model);
+            var upsertedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var (ns, json) in globalSettingsService.BuildNamespaceConfigurations(model))
+            foreach (var (ns, json) in namespacesToUpsert)
             {
+                upsertedNamespaces.Add(ns);
                 await UpsertConfigSafeAsync(ns, json, errors, cancellationToken).ConfigureAwait(false);
+            }
+
+            foreach (var ns in globalSettingsService.DeletedNamespaces)
+            {
+                if (upsertedNamespaces.Contains(ns))
+                {
+                    continue;
+                }
+
+                await DeleteConfigSafeAsync(ns, errors, cancellationToken).ConfigureAwait(false);
             }
 
             if (errors.Count > 0)
@@ -121,6 +134,29 @@ public class GlobalSettingsController(
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Error upserting global configuration namespace '{Namespace}'", ns);
+            errors.Add(ns);
+        }
+    }
+
+    private async Task DeleteConfigSafeAsync(
+        string ns,
+        List<string> errors,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await repositoryApiClient.GlobalConfigurations.V1
+                .DeleteConfiguration(ns, cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess && !result.IsNotFound)
+            {
+                Logger.LogWarning("Failed to delete global configuration namespace '{Namespace}'", ns);
+                errors.Add(ns);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error deleting global configuration namespace '{Namespace}'", ns);
             errors.Add(ns);
         }
     }

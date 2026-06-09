@@ -5,6 +5,8 @@ namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 public interface IGlobalSettingsService
 {
+    IReadOnlyCollection<string> DeletedNamespaces { get; }
+
     void PopulateModelFromNamespace(GlobalSettingsViewModel model, ConfigurationDto config, ILogger logger);
 
     IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(GlobalSettingsViewModel model);

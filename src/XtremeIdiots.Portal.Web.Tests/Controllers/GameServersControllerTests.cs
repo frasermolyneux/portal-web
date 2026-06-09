@@ -17,7 +17,10 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -413,6 +416,7 @@ public class GameServersControllerTests
         var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
         var gameServerId = Guid.NewGuid();
         var upsertPayloads = new Dictionary<string, string>();
+        var deletedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         mockRepositoryApiClient
                 .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
@@ -426,6 +430,17 @@ public class GameServersControllerTests
                     var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
                     return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
                 });
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, CancellationToken _) =>
+            {
+                deletedNamespaces.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
 
         var model = new GameServerEditViewModel
         {
@@ -463,12 +478,8 @@ public class GameServersControllerTests
         var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
         await task;
 
-        Assert.True(upsertPayloads.TryGetValue("chatCommands", out var chatCommandsJson));
-        using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
-        Assert.Equal(ChatCommandSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
-
-        var commands = doc.RootElement.GetProperty("commands");
-        Assert.False(commands.TryGetProperty("fu", out _));
+        Assert.False(upsertPayloads.ContainsKey(ChatCommandSettingsConstants.Namespace));
+        Assert.Contains(ChatCommandSettingsConstants.Namespace, deletedNamespaces);
     }
 
     [Fact]
@@ -716,6 +727,60 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_BroadcastsDisabled_DeletesBroadcastsNamespace()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var deletedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, CancellationToken _) =>
+            {
+                deletedNamespaces.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true
+            },
+            BroadcastsEnabled = false,
+            BroadcastMessages =
+            [
+                new BroadcastMessageViewModel { Message = "^1Welcome", Enabled = true }
+            ]
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.False(upsertPayloads.ContainsKey("broadcasts"));
+        Assert.Contains("broadcasts", deletedNamespaces);
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_CanConfigureScreenshots_UpsertsScreenshotsContract()
     {
         var sut = CreateSut();
@@ -806,6 +871,127 @@ public class GameServersControllerTests
         using var doc = System.Text.Json.JsonDocument.Parse(transportJson);
         var root = doc.RootElement;
         Assert.Equal("/customer-a/server1", root.GetProperty("mapsRootPath").GetString());
+    }
+
+    [Fact]
+    public async Task SaveConfigNamespacesAsync_WithDisabledFeatures_CallsDeleteConfigurationAsync()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var deletedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, CancellationToken _) =>
+            {
+                deletedNamespaces.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = false,
+                BanFileSyncEnabled = false,
+                ServerListEnabled = false
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.Contains(AgentSettingsConstants.Namespace, deletedNamespaces);
+        Assert.Contains(ChatCommandSettingsConstants.Namespace, deletedNamespaces);
+        Assert.Contains(WelcomeMessageSettingsViewModelConstants.Namespace, deletedNamespaces);
+        Assert.Contains(BanFileSettingsConstants.Namespace, deletedNamespaces);
+        Assert.Contains(ServerListSettingsConstants.Namespace, deletedNamespaces);
+    }
+
+    [Fact]
+    public async Task SaveConfigNamespacesAsync_WithReenable_UpsertsThenIgnoresDelete()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var upsertedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var deletedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upsertedNamespaces.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, CancellationToken _) =>
+            {
+                deletedNamespaces.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha",
+                AgentEnabled = true,
+                BanFileSyncEnabled = true,
+                ServerListEnabled = true
+            },
+            ChatCommands = new ChatCommandServerSettingsViewModel
+            {
+                Commands =
+                [
+                    new ChatCommandServerEntryViewModel
+                    {
+                        Name = "fu",
+                        Prefix = "!fu",
+                        Usage = "!fu <player name>",
+                        UseGlobalEnabled = false,
+                        Enabled = false
+                    }
+                ]
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
+        await task;
+
+        Assert.Contains(AgentSettingsConstants.Namespace, upsertedNamespaces);
+        Assert.Contains(ChatCommandSettingsConstants.Namespace, upsertedNamespaces);
+        Assert.Contains(BanFileSettingsConstants.Namespace, upsertedNamespaces);
+        Assert.Contains(ServerListSettingsConstants.Namespace, upsertedNamespaces);
+
+        Assert.DoesNotContain(AgentSettingsConstants.Namespace, deletedNamespaces);
+        Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, deletedNamespaces);
+        Assert.DoesNotContain(BanFileSettingsConstants.Namespace, deletedNamespaces);
+        Assert.DoesNotContain(ServerListSettingsConstants.Namespace, deletedNamespaces);
     }
 
     private static MethodInfo GetPrivateInstanceMethod(string name)

@@ -6,6 +6,8 @@ namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 public interface IGameServerSettingsService
 {
+    IReadOnlyCollection<string> DeletedNamespaces { get; }
+
     void PopulateConfigFromNamespace(GameServerEditViewModel model, ConfigurationDto config, ILogger logger);
 
     void PopulateGlobalDefaults(GameServerEditViewModel model, ConfigurationDto config, ILogger logger);
