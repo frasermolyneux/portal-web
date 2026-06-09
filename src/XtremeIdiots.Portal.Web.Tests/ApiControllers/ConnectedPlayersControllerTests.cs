@@ -154,7 +154,7 @@ public class ConnectedPlayersControllerTests
         mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.GetConnectedPlayers(
             It.IsAny<Guid?>(),
             It.IsAny<Guid?>(),
-            It.IsAny<Repository.Abstractions.Constants.V1.GameType?>(),
+            It.IsAny<GameType?>(),
             It.IsAny<bool?>(),
             It.IsAny<int>(),
             It.IsAny<int>(),

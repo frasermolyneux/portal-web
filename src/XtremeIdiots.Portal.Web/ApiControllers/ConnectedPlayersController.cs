@@ -270,12 +270,9 @@ public class ConnectedPlayersController(
                 }, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!apiResult.IsSuccess)
-            {
-                return BadRequest(new { success = false, message = "Failed to create connected player link. Confirm selections and try again." });
-            }
-
-            return Ok(new { success = true, message = "Connected player link created successfully." });
+            return apiResult.IsSuccess
+                ? Ok(new { success = true, message = "Connected player link created successfully." })
+                : BadRequest(new { success = false, message = "Failed to create connected player link. Confirm selections and try again." });
         }, nameof(CreateManualLinkAjax)).ConfigureAwait(false);
     }
 
@@ -285,7 +282,7 @@ public class ConnectedPlayersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var reader = new StreamReader(Request.Body);
+            using var reader = new StreamReader(Request.Body, leaveOpen: true);
             var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);

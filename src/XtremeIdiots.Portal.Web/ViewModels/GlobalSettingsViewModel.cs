@@ -99,11 +99,11 @@ public class GlobalSettingsViewModel : IValidatableObject
         }
     }
 
-    public static IReadOnlyList<SelectListItem> BuildSeverityOptions(bool includeUseGlobalOption)
+    public static IReadOnlyList<SelectListItem> BuildSeverityOptions(bool includeInheritOption)
     {
         var options = new List<SelectListItem>();
 
-        if (includeUseGlobalOption)
+        if (includeInheritOption)
         {
             options.Add(new SelectListItem("Use global default", ""));
         }

@@ -459,13 +459,11 @@ public static class BaseAuthorizationHelper
 
     private static IReadOnlyList<GameType> GetEquivalentGameTypes(GameType gameType)
     {
-        if (gameType == GameType.CallOfDuty4)
-            return [GameType.CallOfDuty4, GameType.CallOfDuty4x];
-
-        if (gameType == GameType.CallOfDuty4x)
-            return [GameType.CallOfDuty4x, GameType.CallOfDuty4];
-
-        return [gameType];
+        return gameType == GameType.CallOfDuty4
+            ? [GameType.CallOfDuty4, GameType.CallOfDuty4x]
+            : gameType == GameType.CallOfDuty4x
+                ? [GameType.CallOfDuty4x, GameType.CallOfDuty4]
+                : [gameType];
     }
 
     #endregion

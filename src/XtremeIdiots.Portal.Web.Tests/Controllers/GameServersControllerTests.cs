@@ -217,10 +217,10 @@ public class GameServersControllerTests
         method.Invoke(sut, [model, config]);
 
         var fu = model.ChatCommands.Commands.Single(x => x.Name == "fu");
-        Assert.False(fu.UseGlobalEnabled);
-        Assert.False(fu.UseGlobalFreshness);
-        Assert.False(fu.UseGlobalRequiredTags);
-        Assert.False(fu.UseGlobalMessages);
+        Assert.True(fu.OverrideEnabled);
+        Assert.True(fu.OverrideFreshness);
+        Assert.True(fu.OverrideRequiredTags);
+        Assert.True(fu.OverrideMessages);
         Assert.False(fu.Enabled);
         Assert.Equal(4, fu.FreshnessSeconds);
         Assert.Equal("tag-fu", fu.RequiredTags);
@@ -311,13 +311,13 @@ public class GameServersControllerTests
                                                 Name = "fu",
                                                 Prefix = "!fu",
                                                 Usage = "!fu <player name>",
-                                                UseGlobalEnabled = false,
+                                                OverrideEnabled = true,
                                                 Enabled = false,
-                                                UseGlobalFreshness = false,
+                                                OverrideFreshness = true,
                                                 FreshnessSeconds = 4,
-                                                UseGlobalRequiredTags = false,
+                                                OverrideRequiredTags = true,
                                                 RequiredTags = "tag-fu",
-                                                UseGlobalMessages = false,
+                                                OverrideMessages = true,
                                                 Messages =
                                                 [
                                                         new BroadcastMessageViewModel { Message = "server-fu-{name}", Enabled = true }
@@ -379,13 +379,13 @@ public class GameServersControllerTests
                                                 Name = "fu",
                                                 Prefix = "!fu",
                                                 Usage = "!fu <player name>",
-                                                UseGlobalEnabled = false,
+                                                OverrideEnabled = true,
                                                 Enabled = false,
-                                                UseGlobalFreshness = false,
+                                                OverrideFreshness = true,
                                                 FreshnessSeconds = 4,
-                                                UseGlobalRequiredTags = false,
+                                                OverrideRequiredTags = true,
                                                 RequiredTags = string.Empty,
-                                                UseGlobalMessages = false,
+                                                OverrideMessages = true,
                                                 Messages =
                                                 [
                                                         new BroadcastMessageViewModel { Message = "server-fu-{name}", Enabled = true }
@@ -410,7 +410,7 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public async Task SaveConfigNamespacesAsync_AgentEnabled_UseGlobalModes_OmitsCommandOverrides()
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_InheritModes_OmitsCommandOverrides()
     {
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
@@ -459,13 +459,13 @@ public class GameServersControllerTests
                                                 Name = "fu",
                                                 Prefix = "!fu",
                                                 Usage = "!fu <player name>",
-                                                UseGlobalEnabled = true,
+                                                OverrideEnabled = false,
                                                 Enabled = false,
-                                                UseGlobalFreshness = true,
+                                                OverrideFreshness = false,
                                                 FreshnessSeconds = 99,
-                                                UseGlobalRequiredTags = true,
+                                                OverrideRequiredTags = false,
                                                 RequiredTags = "tag-fu",
-                                                UseGlobalMessages = true,
+                                                OverrideMessages = false,
                                                 Messages =
                                                 [
                                                         new BroadcastMessageViewModel { Message = "server-fu-{name}", Enabled = false }
@@ -973,7 +973,7 @@ public class GameServersControllerTests
                         Name = "fu",
                         Prefix = "!fu",
                         Usage = "!fu <player name>",
-                        UseGlobalEnabled = false,
+                        OverrideEnabled = true,
                         Enabled = false
                     }
                 ]

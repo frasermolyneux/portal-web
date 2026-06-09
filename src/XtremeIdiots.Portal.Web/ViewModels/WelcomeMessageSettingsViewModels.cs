@@ -118,7 +118,15 @@ public class WelcomeMessageGlobalSettingsViewModel : IValidatableObject
 public class WelcomeMessageServerSettingsViewModel : IValidatableObject
 {
     [DisplayName("Enabled Override")]
-    public bool? Enabled { get; set; }
+    public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
+
+    [DisplayName("Enabled Override")]
+    public bool? Enabled
+    {
+        get => EnabledOverride?.Value;
+
+        set => EnabledOverride = TriStateOverrideValue.From(value);
+    }
 
     [DisplayName("Inherit Global Rules")]
     public bool InheritGlobalRules { get; set; } = true;

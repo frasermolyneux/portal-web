@@ -350,10 +350,10 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
     private static bool HasChatCommandServerOverrides(ChatCommandServerSettingsViewModel model)
     {
         return model.Commands.Any(static command =>
-            !command.UseGlobalEnabled
-            || !command.UseGlobalFreshness
-            || !command.UseGlobalRequiredTags
-            || !command.UseGlobalMessages);
+            command.OverrideEnabled
+            || command.OverrideFreshness
+            || command.OverrideRequiredTags
+            || command.OverrideMessages);
     }
 
     private static bool HasWelcomeMessageServerOverrides(WelcomeMessageServerSettingsViewModel model)

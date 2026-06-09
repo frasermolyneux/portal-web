@@ -115,17 +115,17 @@ public sealed class ChatCommandGlobalEntryViewModel : ChatCommandEntryViewModelB
 
 public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelBase
 {
-    [DisplayName("Use Global Enabled")]
-    public bool UseGlobalEnabled { get; set; } = true;
+    [DisplayName("Enabled Override")]
+    public bool OverrideEnabled { get; set; }
 
-    [DisplayName("Use Global Freshness")]
-    public bool UseGlobalFreshness { get; set; } = true;
+    [DisplayName("Freshness Override")]
+    public bool OverrideFreshness { get; set; }
 
-    [DisplayName("Use Global Required Tags")]
-    public bool UseGlobalRequiredTags { get; set; } = true;
+    [DisplayName("Required Tags Override")]
+    public bool OverrideRequiredTags { get; set; }
 
-    [DisplayName("Use Global Messages")]
-    public bool UseGlobalMessages { get; set; } = true;
+    [DisplayName("Messages Override")]
+    public bool OverrideMessages { get; set; }
 }
 
 internal static class ChatCommandViewModelValidation
@@ -324,22 +324,22 @@ internal static class ChatCommandSettingsJsonMapper
     {
         Dictionary<string, object?> payload = [];
 
-        if (!command.UseGlobalEnabled && command.Enabled.HasValue)
+        if (command.OverrideEnabled && command.Enabled.HasValue)
         {
             payload["enabled"] = command.Enabled.Value;
         }
 
-        if (!command.UseGlobalFreshness && command.FreshnessSeconds.HasValue)
+        if (command.OverrideFreshness && command.FreshnessSeconds.HasValue)
         {
             payload["freshnessSeconds"] = command.FreshnessSeconds.Value;
         }
 
-        if (!command.UseGlobalRequiredTags)
+        if (command.OverrideRequiredTags)
         {
             payload["requiredTags"] = SplitCsv(command.RequiredTags);
         }
 
-        if (!command.UseGlobalMessages && command.Messages.Count > 0)
+        if (command.OverrideMessages && command.Messages.Count > 0)
         {
             var messagePayloads = command.Messages.Select(m =>
             {
@@ -372,7 +372,7 @@ internal static class ChatCommandSettingsJsonMapper
                 command.Enabled = GetNullableBoolProperty(commandElement, "enabled");
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalEnabled = false;
+                    serverEntry.OverrideEnabled = true;
                 }
             }
 
@@ -381,7 +381,7 @@ internal static class ChatCommandSettingsJsonMapper
                 command.FreshnessSeconds = GetNullableIntProperty(commandElement, "freshnessSeconds");
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalFreshness = false;
+                    serverEntry.OverrideFreshness = true;
                 }
             }
 
@@ -390,7 +390,7 @@ internal static class ChatCommandSettingsJsonMapper
                 command.RequiredTags = string.Join(", ", GetStringArray(commandElement, "requiredTags"));
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalRequiredTags = false;
+                    serverEntry.OverrideRequiredTags = true;
                 }
             }
 
@@ -411,7 +411,7 @@ internal static class ChatCommandSettingsJsonMapper
 
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalMessages = false;
+                    serverEntry.OverrideMessages = true;
                 }
             }
         }
@@ -440,7 +440,7 @@ internal static class ChatCommandSettingsJsonMapper
                 command.Enabled = entry.Enabled;
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalEnabled = false;
+                    serverEntry.OverrideEnabled = true;
                 }
             }
 
@@ -449,7 +449,7 @@ internal static class ChatCommandSettingsJsonMapper
                 command.FreshnessSeconds = entry.FreshnessSeconds;
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalFreshness = false;
+                    serverEntry.OverrideFreshness = true;
                 }
             }
 
@@ -458,7 +458,7 @@ internal static class ChatCommandSettingsJsonMapper
                 command.RequiredTags = string.Join(", ", entry.RequiredTags.Where(static item => !string.IsNullOrWhiteSpace(item)));
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalRequiredTags = false;
+                    serverEntry.OverrideRequiredTags = true;
                 }
             }
 
@@ -479,7 +479,7 @@ internal static class ChatCommandSettingsJsonMapper
 
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.UseGlobalMessages = false;
+                    serverEntry.OverrideMessages = true;
                 }
             }
         }

@@ -604,7 +604,9 @@
         var target = document.getElementById(targetId);
         if (!target) return;
 
-        target.classList.toggle('d-none', toggle.checked);
+        var mode = toggle.getAttribute('data-global-mode');
+        var hideWhenChecked = mode !== 'override';
+        target.classList.toggle('d-none', hideWhenChecked ? toggle.checked : !toggle.checked);
         });
         }
 

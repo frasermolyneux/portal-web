@@ -48,10 +48,10 @@ public class SettingsMappingFixtureTests
         var sourceFu = sourceModel.Commands.Single(command => command.Name == "fu");
         var roundTripFu = roundTripModel.Commands.Single(command => command.Name == "fu");
 
-        Assert.Equal(sourceFu.UseGlobalEnabled, roundTripFu.UseGlobalEnabled);
-        Assert.Equal(sourceFu.UseGlobalFreshness, roundTripFu.UseGlobalFreshness);
-        Assert.Equal(sourceFu.UseGlobalRequiredTags, roundTripFu.UseGlobalRequiredTags);
-        Assert.Equal(sourceFu.UseGlobalMessages, roundTripFu.UseGlobalMessages);
+        Assert.Equal(sourceFu.OverrideEnabled, roundTripFu.OverrideEnabled);
+        Assert.Equal(sourceFu.OverrideFreshness, roundTripFu.OverrideFreshness);
+        Assert.Equal(sourceFu.OverrideRequiredTags, roundTripFu.OverrideRequiredTags);
+        Assert.Equal(sourceFu.OverrideMessages, roundTripFu.OverrideMessages);
         Assert.Equal(sourceFu.Enabled, roundTripFu.Enabled);
         Assert.Equal(sourceFu.FreshnessSeconds, roundTripFu.FreshnessSeconds);
         Assert.Equal(sourceFu.RequiredTags, roundTripFu.RequiredTags);
@@ -126,9 +126,9 @@ public class SettingsMappingFixtureTests
         var model = new ChatCommandServerSettingsViewModel();
         var command = model.Commands.Single(item => item.Name == "fu");
 
-        command.UseGlobalRequiredTags = false;
+        command.OverrideRequiredTags = true;
         command.RequiredTags = "vip, staff";
-        command.UseGlobalMessages = false;
+        command.OverrideMessages = true;
         command.Messages =
         [
             new BroadcastMessageViewModel { Message = "message-one", Enabled = true }
@@ -140,16 +140,16 @@ public class SettingsMappingFixtureTests
         Assert.Equal(2, enabledFu.GetProperty("requiredTags").GetArrayLength());
         Assert.Equal("message-one", enabledFu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
 
-        command.UseGlobalRequiredTags = true;
-        command.UseGlobalMessages = true;
+        command.OverrideRequiredTags = false;
+        command.OverrideMessages = false;
 
         var disabledJson = BuildServerChat(model);
         using var disabledDoc = JsonDocument.Parse(disabledJson);
         var disabledCommands = disabledDoc.RootElement.GetProperty("commands");
         Assert.False(disabledCommands.TryGetProperty("fu", out _));
 
-        command.UseGlobalRequiredTags = false;
-        command.UseGlobalMessages = false;
+        command.OverrideRequiredTags = true;
+        command.OverrideMessages = true;
 
         var reenabledJson = BuildServerChat(model);
         using var reenabledDoc = JsonDocument.Parse(reenabledJson);
