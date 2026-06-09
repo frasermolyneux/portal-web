@@ -1,0 +1,50 @@
+@model XtremeIdiots.Portal.Web.ViewModels.TriStateOverrideSelectViewModel
+
+@{
+    var controlId = Model.FieldName
+        .Replace(".", "_", StringComparison.Ordinal)
+        .Replace("[", "_", StringComparison.Ordinal)
+        .Replace("]", string.Empty, StringComparison.Ordinal);
+    var helpId = $"{controlId}_help";
+    var errorId = $"{controlId}_error";
+    var selectedValue = Model.Value.HasValue
+        ? (Model.Value.Value ? "true" : "false")
+        : string.Empty;
+}
+
+<div class="mb-3">
+    <label class="form-label" for="@controlId">@Model.Label</label>
+    <select id="@controlId" name="@Model.FieldName" class="form-select" aria-describedby="@helpId @errorId">
+        @if (selectedValue.Length == 0)
+        {
+            <option value="" selected="selected">@Model.InheritLabel</option>
+        }
+        else
+        {
+            <option value="">@Model.InheritLabel</option>
+        }
+
+        @if (selectedValue == "true")
+        {
+            <option value="true" selected="selected">Enabled</option>
+        }
+        else
+        {
+            <option value="true">Enabled</option>
+        }
+
+        @if (selectedValue == "false")
+        {
+            <option value="false" selected="selected">Disabled</option>
+        }
+        else
+        {
+            <option value="false">Disabled</option>
+        }
+    </select>
+    <span id="@errorId" class="text-danger" data-valmsg-for="@Model.FieldName" data-valmsg-replace="true"></span>
+    @if (!string.IsNullOrWhiteSpace(Model.HelpText))
+    {
+        <small id="@helpId" class="form-text text-muted">@Model.HelpText</small>
+    }
+</div>

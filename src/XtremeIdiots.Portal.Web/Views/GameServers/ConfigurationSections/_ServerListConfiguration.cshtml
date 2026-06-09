@@ -3,14 +3,18 @@
 
 <div class="ibox">
     <div class="ibox-title">
-        Server List Configuration
+        <h5>Server List</h5>
     </div>
     <div class="ibox-content">
+        <p class="text-muted mb-3">
+            Configure server-list presentation overrides for this server.
+        </p>
         <div class="mb-3">
             <label asp-for="ServerListConfigHtmlBanner" class="form-label"></label>
-            <textarea asp-for="ServerListConfigHtmlBanner" class="form-control" rows="6" style="height: 200px"></textarea>
+            <textarea asp-for="ServerListConfigHtmlBanner" class="form-control" rows="6"></textarea>
             <span asp-validation-for="ServerListConfigHtmlBanner" class="text-danger"></span>
-            <small class="form-text text-muted">Custom HTML banner content displayed for this server in the server list.</small>
+            <small class="form-text text-muted">Custom HTML banner content displayed for this server in the server
+                list.</small>
+            </div>
         </div>
     </div>
-</div>
