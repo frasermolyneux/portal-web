@@ -200,6 +200,10 @@
 
                                                                     @await Html.PartialAsync("_WelcomeMessagesConfiguration", Model)
 
+                                                                    @await Html.PartialAsync("_BroadcastsConfiguration", Model)
+
+                                                                    @await Html.PartialAsync("_ServerListConfiguration", Model)
+
                                                                     @* Save Button *@
                                                                     <div class="ibox">
                                                                         <div class="ibox-content">
@@ -376,14 +380,16 @@
                                                             if (!containers.length) return;
 
                                                             var agentNameInput = document.getElementById('AgentName');
-                                                            var template = document.getElementById('global-chat-command-message-template');
-                                                            if (!template) return;
 
                                                             function getAgentName() {
                                                             return (agentNameInput?.value || '').trim();
                                                             }
 
                                                             containers.forEach(function (container) {
+                                                            var templateId = container.dataset.templateId;
+                                                            var template = templateId ? document.getElementById(templateId) : null;
+                                                            if (!template) return;
+
                                                             container.querySelectorAll('[data-message-row]').forEach(function (row) {
                                                             wireGlobalChatCommandRow(row, container, getAgentName);
                                                             });

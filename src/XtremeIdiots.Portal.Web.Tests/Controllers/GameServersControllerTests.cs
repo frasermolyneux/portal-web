@@ -19,6 +19,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -271,6 +272,80 @@ public class GameServersControllerTests
         Assert.True(fu.Enabled);
         Assert.Single(fu.Messages);
         Assert.Equal("global-fu-{name}", fu.Messages[0].Message);
+    }
+
+    [Fact]
+    public void PopulateGlobalDefaults_BroadcastsNamespace_MapsGlobalBroadcastDefaults()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateGlobalDefaults");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "enabled": true,
+                            "intervalSeconds": 750,
+                            "messages": [
+                                { "message": "^1Global welcome", "enabled": true }
+                            ]
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.True(model.GlobalBroadcastsEnabled);
+        Assert.Equal(750, model.GlobalBroadcastsIntervalSeconds);
+        Assert.Single(model.GlobalBroadcastMessages);
+        Assert.Equal("^1Global welcome", model.GlobalBroadcastMessages[0].Message);
+        Assert.Equal(model.GlobalBroadcastMessages, model.GlobalFunnyMessages);
+    }
+
+    [Fact]
+    public void PopulateGlobalDefaults_ServerListNamespace_MapsGlobalServerListDefaults()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateGlobalDefaults");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ServerListSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "htmlBanner": "<b>Global</b>"
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.Equal("<b>Global</b>", model.GlobalServerListHtmlBanner);
+    }
+
+    [Fact]
+    public void PopulateGlobalDefaults_ServerListLegacyNamespace_MapsGlobalServerListDefaults()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PopulateGlobalDefaults");
+        var model = new GameServerEditViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "serverList",
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "htmlBanner": "<b>Legacy global</b>"
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.Equal("<b>Legacy global</b>", model.GlobalServerListHtmlBanner);
     }
 
     [Fact]

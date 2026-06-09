@@ -1,0 +1,16 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-list" aria-hidden="true"></i> Server List Defaults</h5>
+    </div>
+    <div class="ibox-content">
+        <div class="mb-3">
+            <label asp-for="ServerListHtmlBanner" class="form-label"></label>
+            <textarea asp-for="ServerListHtmlBanner" class="form-control" rows="6"></textarea>
+            <span asp-validation-for="ServerListHtmlBanner" class="text-danger"></span>
+            <small class="form-text text-muted">Fleet-wide default HTML banner content for public server-list
+                cards.</small>
+            </div>
+        </div>
+    </div>

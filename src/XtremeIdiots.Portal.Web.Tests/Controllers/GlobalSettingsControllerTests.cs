@@ -14,7 +14,9 @@ using System.Reflection;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -154,6 +156,87 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
+    public void PopulateModelFromNamespace_BroadcastsNamespace_MapsGlobalBroadcastDefaults()
+    {
+        var sut = CreateSut();
+        var method = typeof(GlobalSettingsController).GetMethod("PopulateModelFromNamespace", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var model = new GlobalSettingsViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "enabled": true,
+                            "intervalSeconds": 600,
+                            "messages": [
+                                { "message": "^1Global welcome", "enabled": true },
+                                { "message": "^2Admins online", "enabled": false }
+                            ]
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.True(model.BroadcastsEnabled);
+        Assert.Equal(600, model.BroadcastsIntervalSeconds);
+        Assert.Equal(2, model.BroadcastMessages.Count);
+        Assert.Equal("^1Global welcome", model.BroadcastMessages[0].Message);
+        Assert.False(model.BroadcastMessages[1].Enabled);
+    }
+
+    [Fact]
+    public void PopulateModelFromNamespace_ServerListNamespace_MapsGlobalServerListDefaults()
+    {
+        var sut = CreateSut();
+        var method = typeof(GlobalSettingsController).GetMethod("PopulateModelFromNamespace", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var model = new GlobalSettingsViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ServerListSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "htmlBanner": "<b>Global</b>"
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.Equal("<b>Global</b>", model.ServerListHtmlBanner);
+    }
+
+    [Fact]
+    public void PopulateModelFromNamespace_ServerListLegacyNamespace_MapsGlobalServerListDefaults()
+    {
+        var sut = CreateSut();
+        var method = typeof(GlobalSettingsController).GetMethod("PopulateModelFromNamespace", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var model = new GlobalSettingsViewModel();
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "serverList",
+            Configuration = /*lang=json,strict*/ """
+                        {
+                            "schemaVersion": 1,
+                            "htmlBanner": "<b>Legacy global</b>"
+                        }
+                        """
+        }));
+
+        method.Invoke(sut, [model, config]);
+
+        Assert.Equal("<b>Legacy global</b>", model.ServerListHtmlBanner);
+    }
+
+    [Fact]
     public async Task Index_Post_ChatCommandsBlankRequirements_OmitsGlobalTagDefaults()
     {
         var sut = CreateSut();
@@ -247,5 +330,85 @@ public class GlobalSettingsControllerTests
         Assert.Equal("Public", firstRule.GetProperty("visibility").GetString());
         Assert.Equal("vip", firstRule.GetProperty("requiredTags")[0].GetString());
         Assert.Equal("staff", firstRule.GetProperty("requiredTags")[1].GetString());
+    }
+
+    [Fact]
+    public async Task Index_Post_BroadcastsAndServerList_UpsertsGlobalContracts()
+    {
+        var sut = CreateSut();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GlobalSettingsViewModel
+        {
+            BroadcastsEnabled = false,
+            BroadcastsIntervalSeconds = 900,
+            BroadcastMessages =
+            [
+                new BroadcastMessageViewModel
+                {
+                    Message = "^1Global welcome",
+                    Enabled = true
+                }
+            ],
+            ServerListHtmlBanner = "<b>Global banner</b>"
+        };
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(upsertPayloads.TryGetValue(BroadcastSettingsConstants.Namespace, out var broadcastsJson));
+        using var broadcastsDoc = System.Text.Json.JsonDocument.Parse(broadcastsJson);
+        Assert.Equal(BroadcastSettingsConstants.SchemaVersion, broadcastsDoc.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.False(broadcastsDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal(900, broadcastsDoc.RootElement.GetProperty("intervalSeconds").GetInt32());
+        Assert.Equal("^1Global welcome", broadcastsDoc.RootElement.GetProperty("messages")[0].GetProperty("message").GetString());
+
+        Assert.True(upsertPayloads.TryGetValue(ServerListSettingsConstants.Namespace, out var serverListJson));
+        using var serverListDoc = System.Text.Json.JsonDocument.Parse(serverListJson);
+        Assert.Equal(ServerListSettingsConstants.SchemaVersion, serverListDoc.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("<b>Global banner</b>", serverListDoc.RootElement.GetProperty("htmlBanner").GetString());
+    }
+
+    [Fact]
+    public async Task Index_Post_InvalidBroadcastMessage_DoesNotCallUpsert()
+    {
+        var sut = CreateSut();
+        sut.ModelState.AddModelError("BroadcastMessages[0].Message", "Broadcast message is required.");
+
+        var model = new GlobalSettingsViewModel
+        {
+            BroadcastsEnabled = true,
+            BroadcastsIntervalSeconds = 600,
+            BroadcastMessages =
+            [
+                new BroadcastMessageViewModel
+                {
+                    Message = "",
+                    Enabled = true
+                }
+            ]
+        };
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<ViewResult>(result);
+        mockRepositoryApiClient.Verify(
+            client => client.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

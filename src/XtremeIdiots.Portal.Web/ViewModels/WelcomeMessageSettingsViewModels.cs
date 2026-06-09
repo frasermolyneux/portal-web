@@ -124,7 +124,6 @@ public class WelcomeMessageServerSettingsViewModel : IValidatableObject
     public bool? Enabled
     {
         get => EnabledOverride?.Value;
-
         set => EnabledOverride = TriStateOverrideValue.From(value);
     }
 

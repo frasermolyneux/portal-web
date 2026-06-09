@@ -83,6 +83,30 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
+            case BroadcastSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
+                {
+                    model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
+                    model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+                    model.BroadcastMessages = (broadcastDocument.Messages ?? [])
+                        .Where(message => message is not null)
+                        .Select(message => new BroadcastMessageViewModel
+                        {
+                            Message = message?.Message ?? string.Empty,
+                            Enabled = message?.Enabled ?? true
+                        })
+                        .ToList();
+                }
+
+                break;
+            case ServerListSettingsConstants.Namespace:
+            case "serverList":
+                if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
+                {
+                    model.ServerListHtmlBanner = serverListDocument.HtmlBanner;
+                }
+
+                break;
             default:
                 logger.LogDebug("Unknown global configuration namespace '{Namespace}'", config.Namespace);
                 break;
@@ -274,6 +298,30 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
                 {
                     WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.GlobalWelcomeMessages, welcomeMessagesDocument);
+                }
+
+                break;
+            case BroadcastSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
+                {
+                    model.GlobalBroadcastsEnabled = broadcastDocument.Enabled ?? false;
+                    model.GlobalBroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? model.GlobalBroadcastsIntervalSeconds;
+                    model.GlobalBroadcastMessages = (broadcastDocument.Messages ?? [])
+                        .Where(message => message is not null)
+                        .Select(message => new BroadcastMessageViewModel
+                        {
+                            Message = message?.Message ?? string.Empty,
+                            Enabled = message?.Enabled ?? true
+                        })
+                        .ToList();
+                }
+
+                break;
+            case ServerListSettingsConstants.Namespace:
+            case "serverList":
+                if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
+                {
+                    model.GlobalServerListHtmlBanner = serverListDocument.HtmlBanner;
                 }
 
                 break;

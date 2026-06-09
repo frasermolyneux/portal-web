@@ -142,6 +142,18 @@ public class GameServerEditViewModel : IValidatableObject
 
     public List<BroadcastMessageViewModel> GlobalFunnyMessages { get; set; } = [];
 
+    public bool GlobalBroadcastsEnabled { get; set; }
+
+    public int GlobalBroadcastsIntervalSeconds { get; set; } = DefaultBroadcastIntervalSeconds;
+
+    public List<BroadcastMessageViewModel> GlobalBroadcastMessages
+    {
+        get => GlobalFunnyMessages;
+        set => GlobalFunnyMessages = value ?? [];
+    }
+
+    public string? GlobalServerListHtmlBanner { get; set; }
+
     // Global defaults (for placeholder display in override fields)
 
     public int GlobalModerationHateSeverityThreshold { get; set; } = GlobalSettingsViewModel.DisabledSeverityThreshold;

@@ -92,6 +92,28 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
         }
 
+        configurations.Add((
+            BroadcastSettingsConstants.Namespace,
+            JsonSerializer.Serialize(new BroadcastSettingsDocument
+            {
+                Enabled = model.BroadcastsEnabled,
+                IntervalSeconds = model.BroadcastsIntervalSeconds,
+                Messages = (model.BroadcastMessages ?? []).Select(message => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
+                {
+                    Message = message.Message,
+                    Enabled = message.Enabled
+                }).ToList()
+            }, configJsonOptions)));
+
+        configurations.Add((
+            ServerListSettingsConstants.Namespace,
+            JsonSerializer.Serialize(new ServerListSettingsDocument
+            {
+                HtmlBanner = string.IsNullOrWhiteSpace(model.ServerListHtmlBanner)
+                    ? null
+                    : model.ServerListHtmlBanner
+            }, configJsonOptions)));
+
         return configurations;
     }
 

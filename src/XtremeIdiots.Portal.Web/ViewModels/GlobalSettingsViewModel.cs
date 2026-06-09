@@ -69,9 +69,29 @@ public class GlobalSettingsViewModel : IValidatableObject
     [Range(1, int.MaxValue, ErrorMessage = "Player cache expiration must be at least 1 second.")]
     public int EventsPlayerCacheExpirationSeconds { get; set; } = 900;
 
-    // Global funny messages defaults
+    // Broadcast defaults
 
-    public List<BroadcastMessageViewModel> FunnyMessages { get; set; } = [];
+    [DisplayName("Enabled")]
+    public bool BroadcastsEnabled { get; set; }
+
+    [DisplayName("Interval (seconds)")]
+    [Range(1, 86400, ErrorMessage = "Broadcast interval must be between 1 and 86400 seconds.")]
+    public int BroadcastsIntervalSeconds { get; set; } = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+
+    public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
+
+    // Server list defaults
+
+    [DisplayName("HTML Banner")]
+    public string? ServerListHtmlBanner { get; set; }
+
+    // Legacy compatibility alias retained while the UI model is being normalized in later phases.
+
+    public List<BroadcastMessageViewModel> FunnyMessages
+    {
+        get => BroadcastMessages;
+        set => BroadcastMessages = value ?? [];
+    }
 
     public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
 
@@ -79,13 +99,16 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (FunnyMessages is null)
+        if (BroadcastMessages is null)
             yield break;
 
-        for (var i = 0; i < FunnyMessages.Count; i++)
+        for (var i = 0; i < BroadcastMessages.Count; i++)
         {
-            if (FunnyMessages[i].Message?.Length > MaxFunnyMessageLength)
-                yield return new ValidationResult($"Funny message cannot exceed {MaxFunnyMessageLength} characters.", [$"FunnyMessages[{i}].Message"]);
+            if (string.IsNullOrWhiteSpace(BroadcastMessages[i].Message))
+                yield return new ValidationResult("Broadcast message is required.", [$"BroadcastMessages[{i}].Message"]);
+
+            if (BroadcastMessages[i].Message?.Length > MaxFunnyMessageLength)
+                yield return new ValidationResult($"Broadcast message cannot exceed {MaxFunnyMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
         }
 
         foreach (var validationResult in ChatCommands.Validate(validationContext))
