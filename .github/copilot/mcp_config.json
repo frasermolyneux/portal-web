@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "frasermolyneux-copilot": {
+      "type": "local",
+      "command": "node",
+      "args": [".github-copilot/mcp-server/dist/index.js"],
+      "env": {
+        "GH_COPILOT_CONTENT_ROOT": ".github-copilot"
+      },
+      "tools": ["*"]
+    }
+  }
+}
