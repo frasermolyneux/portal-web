@@ -223,214 +223,42 @@
                                                             await Html.RenderPartialAsync("_ValidationScriptsPartial");
                                                         }
                                                         <script src="~/js/welcome-rules-manager.js" asp-append-version="true"></script>
+                                                        <script src="~/js/settings-row-manager.js" asp-append-version="true"></script>
                                                         <script>
-                                                            function renderCodPreview(previewElement, text) {
-                                                            var colors = {
-                                                            '1': '#ff4d4f',
-                                                            '2': '#52c41a',
-                                                            '3': '#ffd666',
-                                                            '4': '#40a9ff',
-                                                            '5': '#69c0ff',
-                                                            '6': '#fa8c16',
-                                                            '7': '#f0f0f0',
-                                                            '8': '#000000',
-                                                            '9': '#ff85c0',
-                                                            '0': '#ffffff'
-                                                            };
-
-                                                            previewElement.textContent = '';
-
-                                                            var currentColor = colors['0'];
-                                                            var lastIndex = 0;
-                                                            var regex = /\^([0-9])/g;
-                                                            var match;
-
-                                                            while ((match = regex.exec(text)) !== null) {
-                                                            var segment = text.substring(lastIndex, match.index);
-                                                            if (segment.length) {
-                                                            var span = document.createElement('span');
-                                                            span.style.color = currentColor;
-                                                            span.textContent = segment;
-                                                            previewElement.appendChild(span);
-                                                            }
-
-                                                            currentColor = colors[match[1]] || currentColor;
-                                                            lastIndex = regex.lastIndex;
-                                                            }
-
-                                                            var tail = text.substring(lastIndex);
-                                                            if (tail.length) {
-                                                            var tailSpan = document.createElement('span');
-                                                            tailSpan.style.color = currentColor;
-                                                            tailSpan.textContent = tail;
-                                                            previewElement.appendChild(tailSpan);
-                                                            }
-                                                            }
-
-                                                            function updateGlobalChatCommandRowPreview(row, agentName) {
-                                                            var input = row.querySelector('[data-field="message"]');
-                                                            var preview = row.querySelector('[data-field="preview"]');
-                                                            var count = row.querySelector('[data-field="char-count"]');
-                                                            if (!input || !preview || !count) return;
-
-                                                            var value = input.value || '';
-                                                            count.textContent = value.length.toString();
-
-                                                            var previewText = value.replaceAll('{name}', 'PlayerName');
-                                                            if (agentName.length > 0) {
-                                                            previewText = previewText.length > 0 ? (agentName + ' ' + previewText) : agentName;
-                                                            }
-
-                                                            if (!previewText.length) {
-                                                            preview.textContent = '(preview)';
-                                                            return;
-                                                            }
-
-                                                            renderCodPreview(preview, previewText);
-                                                            }
-
-                                                            function reindexGlobalChatCommandRows(container) {
-                                                            var fieldNamePrefix = container.dataset.fieldNamePrefix;
-                                                            var normalizedPrefix = fieldNamePrefix.replaceAll('.', '_').replaceAll('[', '_').replaceAll(']', '');
-
-                                                            container.querySelectorAll('[data-message-row]').forEach(function (row, index) {
-                                                            var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
-                                                            var enabled = row.querySelector('[data-field="enabled"]');
-                                                            var enabledLabel = row.querySelector('[data-field="enabled-label"]');
-                                                            var message = row.querySelector('[data-field="message"]');
-                                                            var validation = row.querySelector('[data-field="validation"]');
-
-                                                            if (enabledHidden) enabledHidden.name = fieldNamePrefix + '[' + index + '].Enabled';
-                                                            if (enabled) {
-                                                            enabled.name = fieldNamePrefix + '[' + index + '].Enabled';
-                                                            enabled.id = normalizedPrefix + '_' + index + '__Enabled';
-                                                            }
-                                                            if (enabledLabel && enabled) enabledLabel.htmlFor = enabled.id;
-                                                            if (message) {
-                                                            message.name = fieldNamePrefix + '[' + index + '].Message';
-                                                            message.id = normalizedPrefix + '_' + index + '__Message';
-                                                            }
-                                                            if (validation) {
-                                                            validation.setAttribute('data-valmsg-for', fieldNamePrefix + '[' + index + '].Message');
-                                                            }
-                                                            });
-                                                            }
-
-                                                            function updateGlobalChatCommandEmptyState(container) {
-                                                            var emptyState = document.getElementById(container.dataset.emptyStateId);
-                                                            if (!emptyState) return;
-                                                            emptyState.classList.toggle('d-none', container.querySelectorAll('[data-message-row]').length > 0);
-                                                            }
-
-                                                            function wireGlobalChatCommandRow(row, container, agentNameProvider) {
-                                                            var removeButton = row.querySelector('[data-action="remove"]');
-                                                            var moveUpButton = row.querySelector('[data-action="move-up"]');
-                                                            var moveDownButton = row.querySelector('[data-action="move-down"]');
-                                                            var messageInput = row.querySelector('[data-field="message"]');
-                                                            var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
-                                                            var enabled = row.querySelector('[data-field="enabled"]');
-
-                                                            function syncEnabledState() {
-                                                            if (!enabledHidden || !enabled) return;
-                                                            enabledHidden.disabled = enabled.checked;
-                                                            }
-
-                                                            if (removeButton) {
-                                                            removeButton.addEventListener('click', function () {
-                                                            row.remove();
-                                                            reindexGlobalChatCommandRows(container);
-                                                            updateGlobalChatCommandEmptyState(container);
-                                                            });
-                                                            }
-
-                                                            if (moveUpButton) {
-                                                            moveUpButton.addEventListener('click', function () {
-                                                            var previous = row.previousElementSibling;
-                                                            if (!previous) return;
-                                                            container.insertBefore(row, previous);
-                                                            reindexGlobalChatCommandRows(container);
-                                                            });
-                                                            }
-
-                                                            if (moveDownButton) {
-                                                            moveDownButton.addEventListener('click', function () {
-                                                            var next = row.nextElementSibling;
-                                                            if (!next) return;
-                                                            container.insertBefore(next, row);
-                                                            reindexGlobalChatCommandRows(container);
-                                                            });
-                                                            }
-
-                                                            if (messageInput) {
-                                                            messageInput.addEventListener('input', function () {
-                                                            updateGlobalChatCommandRowPreview(row, agentNameProvider());
-                                                            });
-                                                            }
-
-                                                            if (enabled) {
-                                                            enabled.addEventListener('change', syncEnabledState);
-                                                            }
-
-                                                            updateGlobalChatCommandRowPreview(row, agentNameProvider());
-                                                            syncEnabledState();
-                                                            }
-
-                                                            (function initializeGlobalChatCommandMessages() {
+                                                            (function initializeGlobalSettingsRowManagers() {
                                                             var containers = document.querySelectorAll('[data-chat-command-messages-container]');
-                                                            if (!containers.length) return;
-
                                                             var agentNameInput = document.getElementById('AgentName');
+                                                            var editors = [];
 
                                                             function getAgentName() {
                                                             return (agentNameInput?.value || '').trim();
                                                             }
 
                                                             containers.forEach(function (container) {
-                                                            var templateId = container.dataset.templateId;
-                                                            var template = templateId ? document.getElementById(templateId) : null;
-                                                            if (!template) return;
-
-                                                            container.querySelectorAll('[data-message-row]').forEach(function (row) {
-                                                            wireGlobalChatCommandRow(row, container, getAgentName);
+                                                            var editor = XISettingsRowManager.initializeMessageList({
+                                                            container: container,
+                                                            templateId: container.dataset.templateId,
+                                                            addButtonId: container.dataset.addButtonId,
+                                                            emptyStateId: container.dataset.emptyStateId,
+                                                            fieldNamePrefix: container.dataset.fieldNamePrefix,
+                                                            normalizeIdPrefix: true,
+                                                            agentNameInput: agentNameInput,
+                                                            agentNameProvider: getAgentName,
+                                                            replaceNameToken: true,
+                                                            codPreviewMode: 'always'
                                                             });
 
-                                                            var addButton = document.getElementById(container.dataset.addButtonId);
-                                                            if (addButton) {
-                                                            addButton.addEventListener('click', function () {
-                                                            var row = template.content.firstElementChild.cloneNode(true);
-                                                            wireGlobalChatCommandRow(row, container, getAgentName);
-                                                            container.appendChild(row);
-                                                            reindexGlobalChatCommandRows(container);
-                                                            updateGlobalChatCommandEmptyState(container);
-                                                            });
+                                                            if (editor) {
+                                                            editors.push(editor);
                                                             }
-
-                                                            reindexGlobalChatCommandRows(container);
-                                                            updateGlobalChatCommandEmptyState(container);
                                                             });
-
-                                                            if (agentNameInput) {
-                                                            agentNameInput.addEventListener('input', function () {
-                                                            containers.forEach(function (container) {
-                                                            container.querySelectorAll('[data-message-row]').forEach(function (row) {
-                                                            updateGlobalChatCommandRowPreview(row, getAgentName());
-                                                            });
-                                                            });
-                                                            });
-                                                            }
 
                                                             var form = document.querySelector('form[method="post"]');
                                                             if (form) {
                                                             form.addEventListener('submit', function () {
-                                                            containers.forEach(function (container) {
-                                                            reindexGlobalChatCommandRows(container);
-                                                            container.querySelectorAll('[data-message-row]').forEach(function (row) {
-                                                            var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
-                                                            var enabled = row.querySelector('[data-field="enabled"]');
-
-                                                            if (!enabledHidden || !enabled) return;
-                                                            enabledHidden.disabled = enabled.checked;
-                                                            });
+                                                            editors.forEach(function (editor) {
+                                                            editor.reindex();
+                                                            editor.syncBooleanPosts();
                                                             });
                                                             });
                                                             }

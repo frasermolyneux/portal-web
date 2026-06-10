@@ -39,6 +39,28 @@ public class SettingsUiConsistencyTests
         Assert.Contains("<h5>Server List</h5>", serverServerList);
     }
 
+    [Fact]
+    public void GlobalSettingsIndex_UsesSharedSettingsRowManagerScript()
+    {
+        var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/Index.cshtml");
+
+        Assert.Contains("~/js/settings-row-manager.js", viewMarkup);
+        Assert.Contains("XISettingsRowManager.initializeMessageList", viewMarkup);
+        Assert.DoesNotContain("function reindexGlobalChatCommandRows", viewMarkup);
+        Assert.DoesNotContain("function wireGlobalChatCommandRow", viewMarkup);
+    }
+
+    [Fact]
+    public void GameServersEdit_UsesSharedSettingsRowManagerScript()
+    {
+        var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/Edit.cshtml");
+
+        Assert.Contains("~/js/settings-row-manager.js", viewMarkup);
+        Assert.Contains("XISettingsRowManager.initializeMessageList", viewMarkup);
+        Assert.DoesNotContain("function reindexMessageRows", viewMarkup);
+        Assert.DoesNotContain("function wireMessageRow", viewMarkup);
+    }
+
     private static string ReadRepoFile(string relativePath)
     {
         var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
