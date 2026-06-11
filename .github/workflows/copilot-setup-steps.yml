@@ -1,7 +1,5 @@
 name: "Copilot Setup Steps"
 
-# Automatically run the setup steps when they are changed to allow for easy validation, and
-# allow manual testing through the repository's "Actions" tab
 on:
   workflow_dispatch:
   push:
@@ -24,21 +22,13 @@ jobs:
       # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission. If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
       contents: read
 
-    # You can define any steps you want, and they will run before the agent starts.
-    # If you do not check out your code, Copilot will do this for you.
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Checkout shared Copilot configuration
-        uses: actions/checkout@v6
+      - name: Shared Copilot setup
+        uses: frasermolyneux/actions/copilot-setup@copilot-setup/v1
         with:
-          repository: frasermolyneux/.github-copilot
-          path: .github-copilot
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-            dotnet-version: |
-              9.0.x
-              10.0.x
+          checkout-repo: 'true'
+          checkout-shared-copilot: 'true'
+          setup-dotnet: 'true'
+          dotnet-version: |
+            9.0.x
+            10.0.x
