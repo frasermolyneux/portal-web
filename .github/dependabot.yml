@@ -12,6 +12,9 @@ updates:
       nuget:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "Microsoft.ApplicationInsights.AspNetCore"
+        versions: [">=3.0.0"]
 
   - package-ecosystem: "terraform"
     assignees: ["frasermolyneux"]
