@@ -213,7 +213,7 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
-    public void PopulateModelFromNamespace_ServerListLegacyNamespace_MapsGlobalServerListDefaults()
+    public void PopulateModelFromNamespace_ServerListLegacyNamespace_IsIgnored()
     {
         var sut = CreateSut();
         var method = typeof(GlobalSettingsController).GetMethod("PopulateModelFromNamespace", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -233,7 +233,7 @@ public class GlobalSettingsControllerTests
 
         method.Invoke(sut, [model, config]);
 
-        Assert.Equal("<b>Legacy global</b>", model.ServerListHtmlBanner);
+        Assert.Null(model.ServerListHtmlBanner);
     }
 
     [Fact]
