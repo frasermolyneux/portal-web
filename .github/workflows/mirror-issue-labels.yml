@@ -23,7 +23,7 @@ jobs:
       issues: read
     steps:
       - name: Copy labels from linked issue(s)
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const body = context.payload.pull_request.body || '';
