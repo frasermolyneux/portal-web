@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <LangVersion>13</LangVersion>
+    <LangVersion>latest</LangVersion>
 
     <!-- NuGet package metadata -->
     <Authors>Fraser Molyneux</Authors>
