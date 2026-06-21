@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.14.3"
+  required_version = ">= 1.15.6"
 
   required_providers {
     azurerm = {
@@ -17,7 +17,7 @@ terraform {
 }
 
 provider "azurerm" {
-  subscription_id                 = var.subscription_id
+  subscription_id = var.subscription_id
 
   features {
     resource_group {
@@ -33,8 +33,8 @@ provider "azuread" {
 }
 
 provider "azurerm" {
-  alias                           = "dns"
-  subscription_id                 = var.dns_subscription_id
+  alias           = "dns"
+  subscription_id = var.dns_subscription_id
 
   features {}
 
