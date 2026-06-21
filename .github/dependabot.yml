@@ -13,7 +13,7 @@ updates:
         patterns:
           - "*"
     ignore:
-      - dependency-name: "Microsoft.ApplicationInsights.AspNetCore"
+      - dependency-name: "Microsoft.ApplicationInsights*"
         versions: [">=3.0.0"]
 
   - package-ecosystem: "terraform"
