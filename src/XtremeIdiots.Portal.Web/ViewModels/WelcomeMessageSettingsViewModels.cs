@@ -121,10 +121,7 @@ public class WelcomeMessageServerSettingsViewModel : IValidatableObject
     public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
     [DisplayName("Enabled Override")]
-    public bool? Enabled {
-        get => EnabledOverride?.Value;
-        set => EnabledOverride = TriStateOverrideValue.From(value);
-    }
+    public bool? Enabled { get => EnabledOverride?.Value; set => EnabledOverride = TriStateOverrideValue.From(value); }
 
     [DisplayName("Inherit Global Rules")]
     public bool InheritGlobalRules { get; set; } = true;
@@ -285,11 +282,13 @@ internal static class WelcomeMessageSettingsValidation
     {
         return string.IsNullOrWhiteSpace(value)
             ? []
-            : value
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(static item => !string.IsNullOrWhiteSpace(item))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            :
+            [
+                .. value
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(static item => !string.IsNullOrWhiteSpace(item))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+            ];
     }
 }
 
@@ -308,19 +307,21 @@ internal static class WelcomeMessageSettingsJsonMapper
             target.DefaultConnectionDelaySeconds = document.Defaults.ConnectionDelaySeconds ?? target.DefaultConnectionDelaySeconds;
         }
 
-        target.Rules = document.Rules
-            .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
-            .Select(rule => new WelcomeMessageRuleEntryViewModel
-            {
-                Id = rule.Id.Trim(),
-                Enabled = rule.Enabled ?? true,
-                Priority = rule.Priority ?? 0,
-                Visibility = rule.Visibility ?? WelcomeMessageVisibility.Private,
-                MessageTemplate = (rule.MessageTemplate ?? string.Empty).Trim(),
-                RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
-                ConnectionDelaySeconds = rule.ConnectionDelaySeconds
-            })
-            .ToList();
+        target.Rules =
+        [
+            .. document.Rules
+                .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
+                .Select(rule => new WelcomeMessageRuleEntryViewModel
+                {
+                    Id = rule.Id.Trim(),
+                    Enabled = rule.Enabled ?? true,
+                    Priority = rule.Priority ?? 0,
+                    Visibility = rule.Visibility ?? WelcomeMessageVisibility.Private,
+                    MessageTemplate = (rule.MessageTemplate ?? string.Empty).Trim(),
+                    RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
+                    ConnectionDelaySeconds = rule.ConnectionDelaySeconds
+                })
+        ];
     }
 
     public static void PopulateServer(
@@ -337,34 +338,38 @@ internal static class WelcomeMessageSettingsJsonMapper
             target.DefaultConnectionDelaySeconds = document.Defaults.ConnectionDelaySeconds;
         }
 
-        target.LocalRules = document.Rules
-            .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
-            .Select(rule => new WelcomeMessageRuleEntryViewModel
-            {
-                Id = rule.Id.Trim(),
-                Enabled = rule.Enabled ?? true,
-                Priority = rule.Priority ?? 0,
-                Visibility = rule.Visibility ?? WelcomeMessageVisibility.Private,
-                MessageTemplate = (rule.MessageTemplate ?? string.Empty).Trim(),
-                RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
-                ConnectionDelaySeconds = rule.ConnectionDelaySeconds
-            })
-            .ToList();
+        target.LocalRules =
+        [
+            .. document.Rules
+                .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
+                .Select(rule => new WelcomeMessageRuleEntryViewModel
+                {
+                    Id = rule.Id.Trim(),
+                    Enabled = rule.Enabled ?? true,
+                    Priority = rule.Priority ?? 0,
+                    Visibility = rule.Visibility ?? WelcomeMessageVisibility.Private,
+                    MessageTemplate = (rule.MessageTemplate ?? string.Empty).Trim(),
+                    RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
+                    ConnectionDelaySeconds = rule.ConnectionDelaySeconds
+                })
+        ];
 
-        target.RuleOverrides = document.RuleOverrides
-            .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
-            .Select(rule => new WelcomeMessageRuleOverrideEntryViewModel
-            {
-                Id = rule.Id.Trim(),
-                Enabled = rule.Enabled,
-                Priority = rule.Priority,
-                Visibility = rule.Visibility,
-                MessageTemplate = rule.MessageTemplate,
-                OverrideRequiredTags = rule.RequiredTags is not null,
-                RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
-                ConnectionDelaySeconds = rule.ConnectionDelaySeconds
-            })
-            .ToList();
+        target.RuleOverrides =
+        [
+            .. document.RuleOverrides
+                .Where(static rule => !string.IsNullOrWhiteSpace(rule.Id))
+                .Select(rule => new WelcomeMessageRuleOverrideEntryViewModel
+                {
+                    Id = rule.Id.Trim(),
+                    Enabled = rule.Enabled,
+                    Priority = rule.Priority,
+                    Visibility = rule.Visibility,
+                    MessageTemplate = rule.MessageTemplate,
+                    OverrideRequiredTags = rule.RequiredTags is not null,
+                    RequiredTagsCsv = string.Join(", ", (rule.RequiredTags ?? []).Where(static tag => !string.IsNullOrWhiteSpace(tag))),
+                    ConnectionDelaySeconds = rule.ConnectionDelaySeconds
+                })
+        ];
     }
 
     public static void PopulateGlobal(WelcomeMessageGlobalSettingsViewModel target, JsonElement root)
@@ -481,7 +486,7 @@ internal static class WelcomeMessageSettingsJsonMapper
 
     private static List<WelcomeMessageRuleEntryViewModel> ParseRules(JsonElement rulesElement)
     {
-        var rules = new List<WelcomeMessageRuleEntryViewModel>();
+        List<WelcomeMessageRuleEntryViewModel> rules = [];
 
         foreach (var rule in rulesElement.EnumerateArray())
         {
@@ -513,7 +518,7 @@ internal static class WelcomeMessageSettingsJsonMapper
 
     private static List<WelcomeMessageRuleOverrideEntryViewModel> ParseRuleOverrides(JsonElement overridesElement)
     {
-        var rules = new List<WelcomeMessageRuleOverrideEntryViewModel>();
+        List<WelcomeMessageRuleOverrideEntryViewModel> rules = [];
 
         foreach (var rule in overridesElement.EnumerateArray())
         {
@@ -693,13 +698,15 @@ internal static class WelcomeMessageSettingsJsonMapper
     {
         return !root.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array
             ? []
-            : property
-                .EnumerateArray()
-                .Where(static item => item.ValueKind == JsonValueKind.String)
-                .Select(item => item.GetString())
-                .Where(static item => !string.IsNullOrWhiteSpace(item))
-                .Select(static item => item!.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            :
+            [
+                .. property
+                    .EnumerateArray()
+                    .Where(static item => item.ValueKind == JsonValueKind.String)
+                    .Select(item => item.GetString())
+                    .Where(static item => !string.IsNullOrWhiteSpace(item))
+                    .Select(static item => item!.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+            ];
     }
 }

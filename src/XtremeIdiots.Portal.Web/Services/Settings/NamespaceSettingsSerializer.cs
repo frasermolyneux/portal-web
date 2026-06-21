@@ -98,11 +98,14 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             {
                 Enabled = model.BroadcastsEnabled,
                 IntervalSeconds = model.BroadcastsIntervalSeconds,
-                Messages = (model.BroadcastMessages ?? []).Select(message => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
-                {
-                    Message = message.Message,
-                    Enabled = message.Enabled
-                }).ToList()
+                Messages =
+                [
+                    .. (model.BroadcastMessages ?? []).Select(message => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
+                    {
+                        Message = message.Message,
+                        Enabled = message.Enabled
+                    })
+                ]
             }, configJsonOptions)));
 
         configurations.Add((
@@ -310,11 +313,14 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     {
                         Enabled = model.BroadcastsEnabled,
                         IntervalSeconds = broadcastsIntervalSeconds,
-                        Messages = (model.BroadcastMessages ?? []).Select(m => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
-                        {
-                            Message = m.Message,
-                            Enabled = m.Enabled
-                        }).ToList()
+                        Messages =
+                        [
+                            .. (model.BroadcastMessages ?? []).Select(m => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
+                            {
+                                Message = m.Message,
+                                Enabled = m.Enabled
+                            })
+                        ]
                     }, configJsonOptions)));
             }
             else

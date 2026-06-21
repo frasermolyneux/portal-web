@@ -88,19 +88,20 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 {
                     model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
-                    model.BroadcastMessages = (broadcastDocument.Messages ?? [])
-                        .Where(message => message is not null)
-                        .Select(message => new BroadcastMessageViewModel
-                        {
-                            Message = message?.Message ?? string.Empty,
-                            Enabled = message?.Enabled ?? true
-                        })
-                        .ToList();
+                    model.BroadcastMessages =
+                    [
+                        .. (broadcastDocument.Messages ?? [])
+                            .Where(message => message is not null)
+                            .Select(message => new BroadcastMessageViewModel
+                            {
+                                Message = message?.Message ?? string.Empty,
+                                Enabled = message?.Enabled ?? true
+                            })
+                    ];
                 }
 
                 break;
             case ServerListSettingsConstants.Namespace:
-            case "serverList":
                 if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
                 {
                     model.ServerListHtmlBanner = serverListDocument.HtmlBanner;
@@ -234,14 +235,16 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 {
                     model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
-                    model.BroadcastMessages = (broadcastDocument.Messages ?? [])
-                        .Where(message => message is not null)
-                        .Select(message => new BroadcastMessageViewModel
-                        {
-                            Message = message?.Message ?? string.Empty,
-                            Enabled = message?.Enabled ?? true
-                        })
-                        .ToList();
+                    model.BroadcastMessages =
+                    [
+                        .. (broadcastDocument.Messages ?? [])
+                            .Where(message => message is not null)
+                            .Select(message => new BroadcastMessageViewModel
+                            {
+                                Message = message?.Message ?? string.Empty,
+                                Enabled = message?.Enabled ?? true
+                            })
+                    ];
                 }
 
                 break;
@@ -306,19 +309,20 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 {
                     model.GlobalBroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.GlobalBroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? model.GlobalBroadcastsIntervalSeconds;
-                    model.GlobalBroadcastMessages = (broadcastDocument.Messages ?? [])
-                        .Where(message => message is not null)
-                        .Select(message => new BroadcastMessageViewModel
-                        {
-                            Message = message?.Message ?? string.Empty,
-                            Enabled = message?.Enabled ?? true
-                        })
-                        .ToList();
+                    model.GlobalBroadcastMessages =
+                    [
+                        .. (broadcastDocument.Messages ?? [])
+                            .Where(message => message is not null)
+                            .Select(message => new BroadcastMessageViewModel
+                            {
+                                Message = message?.Message ?? string.Empty,
+                                Enabled = message?.Enabled ?? true
+                            })
+                    ];
                 }
 
                 break;
             case ServerListSettingsConstants.Namespace:
-            case "serverList":
                 if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
                 {
                     model.GlobalServerListHtmlBanner = serverListDocument.HtmlBanner;

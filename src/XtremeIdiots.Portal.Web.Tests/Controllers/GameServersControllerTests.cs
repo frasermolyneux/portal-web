@@ -327,7 +327,7 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public void PopulateGlobalDefaults_ServerListLegacyNamespace_MapsGlobalServerListDefaults()
+    public void PopulateGlobalDefaults_ServerListLegacyNamespace_IsIgnored()
     {
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("PopulateGlobalDefaults");
@@ -345,7 +345,7 @@ public class GameServersControllerTests
 
         method.Invoke(sut, [model, config]);
 
-        Assert.Equal("<b>Legacy global</b>", model.GlobalServerListHtmlBanner);
+        Assert.Null(model.GlobalServerListHtmlBanner);
     }
 
     [Fact]
