@@ -1,4 +1,3 @@
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
@@ -12,6 +11,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.ViewModels;
+using RepositoryFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
 
@@ -334,7 +334,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         }
     }
 
-    public void PopulateGameServerDetails(IDictionary<string, object?> viewData, FileTransportType fileTransportType, ConfigurationDto config, ILogger logger)
+    public void PopulateGameServerDetails(IDictionary<string, object?> viewData, RepositoryFileTransportType fileTransportType, ConfigurationDto config, ILogger logger)
     {
         if (string.IsNullOrWhiteSpace(config.Configuration))
         {
@@ -345,7 +345,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         {
             case FtpSettingsConstants.Namespace:
             case SftpSettingsConstants.Namespace:
-                var expectedNamespace = fileTransportType == FileTransportType.Sftp ? SftpSettingsConstants.Namespace : FtpSettingsConstants.Namespace;
+                var expectedNamespace = fileTransportType == RepositoryFileTransportType.Sftp ? SftpSettingsConstants.Namespace : FtpSettingsConstants.Namespace;
                 if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
                 {
                     break;

@@ -13,7 +13,6 @@ using Newtonsoft.Json;
 using System.Net;
 using System.Reflection;
 using System.Security.Claims;
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -28,6 +27,8 @@ using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
+using RepositoryFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
+using RepositoryGameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
@@ -651,7 +652,7 @@ public class GameServersControllerTests
         {
             GameServer = new GameServerViewModel
             {
-                FileTransportType = FileTransportType.Ftp
+                FileTransportType = RepositoryFileTransportType.Ftp
             }
         };
 
@@ -720,7 +721,7 @@ public class GameServersControllerTests
         {
             GameServer = new GameServerViewModel
             {
-                FileTransportType = FileTransportType.Sftp
+                FileTransportType = RepositoryFileTransportType.Sftp
             }
         };
 
@@ -929,7 +930,7 @@ public class GameServersControllerTests
             {
                 GameServerId = gameServerId,
                 Title = "Server Alpha",
-                FileTransportType = FileTransportType.Sftp
+                FileTransportType = RepositoryFileTransportType.Sftp
             },
             FileTransportConfigHostname = "sftp.example.com",
             FileTransportConfigPort = 22,
@@ -1147,7 +1148,7 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = existingServer.AgentEnabled,
                 FileTransportEnabled = true,
-                FileTransportType = FileTransportType.Sftp,
+                FileTransportType = RepositoryFileTransportType.Sftp,
                 RconEnabled = existingServer.RconEnabled,
                 BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
                 BanFileRootPath = existingServer.BanFileRootPath,
@@ -1165,7 +1166,7 @@ public class GameServersControllerTests
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.FileTransportEnabled);
-        Assert.Equal(FileTransportType.Ftp, capturedUpdate.FileTransportType);
+        Assert.Equal(RepositoryFileTransportType.Ftp, capturedUpdate.FileTransportType);
     }
 
     [Fact]
@@ -1211,7 +1212,7 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = false,
                 FileTransportEnabled = true,
-                FileTransportType = FileTransportType.Sftp,
+                FileTransportType = RepositoryFileTransportType.Sftp,
                 RconEnabled = false,
                 BanFileSyncEnabled = false,
                 BanFileRootPath = "/",
@@ -1234,7 +1235,7 @@ public class GameServersControllerTests
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.FileTransportEnabled);
-        Assert.Equal(FileTransportType.Sftp, capturedUpdate.FileTransportType);
+        Assert.Equal(RepositoryFileTransportType.Sftp, capturedUpdate.FileTransportType);
         Assert.Null(capturedUpdate.FtpEnabled);
     }
 
@@ -1287,7 +1288,7 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = true,
                 FileTransportEnabled = false,
-                FileTransportType = FileTransportType.Ftp,
+                FileTransportType = RepositoryFileTransportType.Ftp,
                 RconEnabled = false,
                 BanFileSyncEnabled = true,
                 BanFileRootPath = "/",
@@ -1316,7 +1317,7 @@ public class GameServersControllerTests
         {
             GameServerId = Guid.NewGuid(),
             Title = "Test Server",
-            GameType = GameType.CallOfDuty4,
+            GameType = RepositoryGameType.CallOfDuty4,
             Hostname = "127.0.0.1",
             QueryPort = 28960,
             AgentEnabled = false,

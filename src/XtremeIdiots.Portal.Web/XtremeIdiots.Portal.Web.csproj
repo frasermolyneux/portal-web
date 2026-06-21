@@ -30,7 +30,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.13" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.13" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="9.0.13" />
-    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="Azure.Monitor.Query" Version="1.5.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13">
@@ -49,8 +49,8 @@
     <PackageReference Include="MX.Api.Client" Version="2.3.31" />
     <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="2.1.180" />
     <PackageReference Include="XtremeIdiots.Portal.Settings.Contracts.V1" Version="2.1.262" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.250" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="2.1.250" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="2.1.274" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="2.1.274" />
     <PackageReference Include="MX.GeoLocation.Api.Client.V1" Version="1.2.39" />
   </ItemGroup>
 
