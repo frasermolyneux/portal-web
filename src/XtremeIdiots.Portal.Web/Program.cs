@@ -2,10 +2,12 @@ using Azure.Identity;
 using Azure.Monitor.Query;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Client;
 using MX.Observability.ApplicationInsights.AspNetCore;
@@ -158,7 +160,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
 
 var app = builder.Build();
 
@@ -191,9 +194,12 @@ app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapHealthChecks("/api/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live"),
+}).AllowAnonymous();
+app.MapHealthChecks("/api/health/ready").AllowAnonymous();
 app.MapInfoEndpoint();
-
-app.UseHealthChecks(new PathString("/api/health"));
 
 using (var scope = app.Services.CreateScope())
 {
