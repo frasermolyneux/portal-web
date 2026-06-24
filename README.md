@@ -2,12 +2,12 @@
 
 [![Build and Test](https://github.com/frasermolyneux/portal-web/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/build-and-test.yml)
 [![Code Quality](https://github.com/frasermolyneux/portal-web/actions/workflows/codequality.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/codequality.yml)
-[![PR Verify](https://github.com/frasermolyneux/portal-web/actions/workflows/pr-verify.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/pr-verify.yml)
+[![Copilot Setup Steps](https://github.com/frasermolyneux/portal-web/actions/workflows/copilot-setup-steps.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/copilot-setup-steps.yml)
+[![Dependabot Auto-Merge](https://github.com/frasermolyneux/portal-web/actions/workflows/dependabot-automerge.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/dependabot-automerge.yml)
 [![Deploy Dev](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-dev.yml)
 [![Deploy Prd](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-prd.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/deploy-prd.yml)
 [![Destroy Environment](https://github.com/frasermolyneux/portal-web/actions/workflows/destroy-environment.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/destroy-environment.yml)
-[![Copilot Setup Steps](https://github.com/frasermolyneux/portal-web/actions/workflows/copilot-setup-steps.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/copilot-setup-steps.yml)
-[![Dependabot Automerge](https://github.com/frasermolyneux/portal-web/actions/workflows/dependabot-automerge.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/dependabot-automerge.yml)
+[![PR Verify](https://github.com/frasermolyneux/portal-web/actions/workflows/pr-verify.yml/badge.svg)](https://github.com/frasermolyneux/portal-web/actions/workflows/pr-verify.yml)
 
 ## Documentation
 
