@@ -136,7 +136,7 @@ jobs:
       group: ${{ github.repository }}-dev
     steps:
       - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
-        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.2
+        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.3
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}
@@ -218,7 +218,7 @@ jobs:
       group: ${{ github.repository }}-prd
     steps:
       - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
-        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.2
+        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.3
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-prd.outputs.web_app_name }}
