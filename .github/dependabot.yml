@@ -9,7 +9,7 @@ updates:
       time: "03:00"
       timezone: "Etc/UTC"
     groups:
-      nuget:
+      all-updates:
         patterns:
           - "*"
     ignore:
@@ -27,7 +27,7 @@ updates:
       time: "03:00"
       timezone: "Etc/UTC"
     groups:
-      terraform:
+      all-updates:
         patterns:
           - "*"
 
@@ -40,7 +40,7 @@ updates:
       time: "03:00"
       timezone: "Etc/UTC"
     groups:
-      github-actions:
+      all-updates:
         patterns:
           - "*"
 
@@ -53,6 +53,6 @@ updates:
       time: "03:00"
       timezone: "Etc/UTC"
     groups:
-      devcontainers:
+      all-updates:
         patterns:
           - "*"

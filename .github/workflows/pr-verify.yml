@@ -40,7 +40,7 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'deploy-dev') && contains(fromJson('["opened","synchronize","reopened","ready_for_review"]'), github.event.action)
     needs: build-and-test
     environment: Development
     runs-on: ubuntu-latest
@@ -65,7 +65,7 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'deploy-dev') && (contains(fromJson('["opened","synchronize","reopened","ready_for_review"]'), github.event.action) || (github.event.action == 'labeled' && github.event.label.name == 'deploy-dev'))
     needs: build-and-test
     environment: Development
     runs-on: ubuntu-latest
@@ -103,7 +103,7 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'deploy-dev')
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'dependabot[bot]' && contains(github.event.pull_request.labels.*.name, 'deploy-dev') && (contains(fromJson('["opened","synchronize","reopened","ready_for_review"]'), github.event.action) || (github.event.action == 'labeled' && github.event.label.name == 'deploy-dev'))
     environment: Development
     needs: [build-and-test, terraform-plan-and-apply-dev]
     runs-on: ubuntu-latest
@@ -131,7 +131,7 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    if: github.event.pull_request.draft == false && contains(github.event.pull_request.labels.*.name, 'run-prd-plan')
+    if: github.event.pull_request.draft == false && contains(github.event.pull_request.labels.*.name, 'run-prd-plan') && (contains(fromJson('["opened","synchronize","reopened","ready_for_review"]'), github.event.action) || (github.event.action == 'labeled' && github.event.label.name == 'run-prd-plan'))
     needs: build-and-test
     environment: Production
     runs-on: ubuntu-latest
