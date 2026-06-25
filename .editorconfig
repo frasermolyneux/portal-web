@@ -40,10 +40,12 @@ dotnet_diagnostic.CA1310.severity = suggestion
 dotnet_diagnostic.CA1311.severity = suggestion
 dotnet_diagnostic.CA1051.severity = suggestion
 dotnet_diagnostic.CA1001.severity = suggestion
+dotnet_diagnostic.CA1873.severity = suggestion # Logging call-site message formatting is widespread; defer mass refactor during analyzer standards rollout.
 
 # Avoid IDE0005 build coupling to GenerateDocumentationFile during standards rollout.
 dotnet_diagnostic.IDE0005.severity = none
 
+dotnet_diagnostic.IDE0011.severity = warning
 [**/*Tests.cs]
 # Keep descriptive xUnit method names with underscores for readability in test code.
 dotnet_diagnostic.CA1707.severity = none
@@ -59,3 +61,4 @@ dotnet_analyzer_diagnostic.severity = none
 
 [*.AssemblyInfo.cs]
 dotnet_analyzer_diagnostic.severity = none
+

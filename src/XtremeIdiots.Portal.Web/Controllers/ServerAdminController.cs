@@ -1728,7 +1728,7 @@ public class ServerAdminController(
             {
                 combinedItems =
                 [
-                    .. combinedItems.Where(x => IsNewerThanCursor(x, lastSeenTimestampUtc.Value, lastSeenSourceType!, lastSeenItemId!))
+                    .. combinedItems.Where(x => IsNewerThanCursor(x, lastSeenTimestampUtc.Value, lastSeenSourceType, lastSeenItemId))
                 ];
             }
 

@@ -520,8 +520,8 @@ public class ServerAdminControllerTests
 
         var items = payload["Items"] as JArray;
         Assert.NotNull(items);
-        Assert.Single(items!);
-        Assert.Equal("chat", items![0]?["SourceType"]?.Value<string>());
+        Assert.Single(items);
+        Assert.Equal("chat", items[0]?["SourceType"]?.Value<string>());
 
         mockRepositoryApiClient.Verify(
             x => x.GameServersEvents.V1.GetGameServerEvents(
@@ -590,8 +590,8 @@ public class ServerAdminControllerTests
         var items = payload["Items"] as JArray;
 
         Assert.NotNull(items);
-        Assert.Single(items!);
-        Assert.Equal(BuildFeedItemId("chat", newerId), items![0]?["ItemId"]?.Value<string>());
+        Assert.Single(items);
+        Assert.Equal(BuildFeedItemId("chat", newerId), items[0]?["ItemId"]?.Value<string>());
     }
 
     [Fact]
@@ -638,8 +638,8 @@ public class ServerAdminControllerTests
         var rawEventData = payload["Items"]?[0]?["RawEventData"]?.Value<string>();
 
         Assert.NotNull(rawEventData);
-        Assert.DoesNotContain("abc123", rawEventData!, StringComparison.Ordinal);
-        Assert.Contains("token=***", rawEventData!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("abc123", rawEventData, StringComparison.Ordinal);
+        Assert.Contains("token=***", rawEventData, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AssertJsonDataIsEmpty(IActionResult result)
