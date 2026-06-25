@@ -8,7 +8,7 @@
             "name": ".NET Core Launch (web)",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
+            "preLaunchTask": "dotnet: build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/src/XtremeIdiots.Portal.Web/bin/Debug/net9.0/XtremeIdiots.Portal.Web.dll",
             "args": [],

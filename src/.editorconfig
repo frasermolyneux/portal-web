@@ -19,6 +19,7 @@ end_of_line = crlf
 # =============================================================================
 
 dotnet_diagnostic.CA1848.severity = none  # Use the LoggerMessage delegates - Not a high performance solution
+dotnet_diagnostic.CA1001.severity = suggestion # Existing tests use disposable fixtures without full IDisposable pattern
 dotnet_diagnostic.IDE0058.severity = none # Remove unnecessary expression value - Makes the code messy 
 dotnet_diagnostic.IDE0060.severity = none # Remove unused parameter - Sometimes parameters are used for future extensibility
 dotnet_diagnostic.IDE0005.severity = none # Remove unnecessary using directives - Disabled to avoid documentation file warnings

@@ -27,7 +27,7 @@
             "problemMatcher": []
         },
         {
-            "label": "clean",
+            "label": "dotnet: clean",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -39,7 +39,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build",
+            "label": "dotnet: build",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -50,7 +50,7 @@
             ],
             "dependsOn": [
                 "libman restore",
-                "clean"
+                "dotnet: clean"
             ],
             "group": {
                 "kind": "build",
@@ -59,12 +59,12 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "test",
+            "label": "dotnet: test",
             "command": "dotnet",
             "type": "process",
             "args": [
                 "test",
-                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.sln",
                 "--filter",
                 "FullyQualifiedName!~IntegrationTests",
                 "/property:GenerateFullPaths=true",
@@ -78,7 +78,18 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "clean release",
+            "label": "dotnet: format",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "format",
+                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.sln",
+                "--verify-no-changes"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: clean-release",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -92,7 +103,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "publish",
+            "label": "dotnet: publish",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -105,12 +116,24 @@
             ],
             "dependsOn": [
                 "libman restore",
-                "clean release"
+                "dotnet: clean-release"
             ],
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "watch",
+            "label": "dotnet: run-web",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj"
+            ],
+            "dependsOn": "libman restore",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: watch-web",
             "command": "dotnet",
             "type": "process",
             "args": [

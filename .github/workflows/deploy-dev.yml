@@ -15,7 +15,7 @@ jobs:
       build_version: ${{ steps.web-ci.outputs.build_version }}
     steps:
       - id: web-ci
-        uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v1.4
+        uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v2
         with:
           dotnet-project: "XtremeIdiots.Portal.Web"
           dotnet-version: 9.0.x
