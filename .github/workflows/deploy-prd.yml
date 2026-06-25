@@ -149,6 +149,7 @@ jobs:
         with:
           info-url: "https://${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}.azurewebsites.net/info"
           expected-version: ${{ needs.build-and-test.outputs.build_version }}
+          delay-seconds: "30"
 
   terraform-plan-and-apply-prd:
     permissions:
@@ -231,3 +232,4 @@ jobs:
         with:
           info-url: "https://${{ needs.terraform-plan-and-apply-prd.outputs.web_app_name }}.azurewebsites.net/info"
           expected-version: ${{ needs.build-and-test.outputs.build_version }}
+          delay-seconds: "30"
