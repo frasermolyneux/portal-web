@@ -127,35 +127,16 @@ $(document).ready(function () {
 
     function relocateSearch() {
         try {
-            var dtFilter = document.getElementById('dataTable_filter');
-            var placeholder = document.getElementById('searchFilterGroup');
-            if (!dtFilter || !placeholder) return;
-
-            var label = dtFilter.querySelector('label');
-            if (label) {
-                var input = label.querySelector('input');
-                if (input) {
-                    input.classList.add('form-control', 'form-control-sm');
-                    input.classList.remove('form-control-sm');
-                    input.setAttribute('placeholder', 'Search rotations...');
-
-                    // Rebuild the filter group to match other filters
-                    var newGroup = document.createElement('div');
-                    newGroup.className = 'filter-group';
-                    var newLabel = document.createElement('label');
-                    newLabel.className = 'form-label';
-                    newLabel.textContent = 'Search';
-                    newGroup.appendChild(newLabel);
-                    newGroup.appendChild(input);
-
-                    var resetGroup = document.getElementById('resetFilters')?.closest('.filter-group');
-                    if (resetGroup && resetGroup.parentElement) {
-                        resetGroup.parentElement.insertBefore(newGroup, resetGroup);
-                    }
-                }
+            if (!window.PortalDataTableUi || typeof window.PortalDataTableUi.relocateSearch !== 'function') {
+                return;
             }
-            dtFilter.style.display = 'none';
-            placeholder.remove();
+
+            window.PortalDataTableUi.relocateSearch({
+                filtersContainerId: 'mapRotationsFilters',
+                placeholder: 'Search rotations...',
+                inputId: 'globalMapRotationsSearch',
+                removePlaceholderGroupId: 'searchFilterGroup'
+            });
         } catch (e) { /* swallow */ }
     }
 

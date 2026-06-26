@@ -2,6 +2,7 @@
 @use '../tokens/spacing' as *;
 @use '../tokens/typography' as *;
 @use '../layout/responsive' as *;
+@use 'sass:color';
 
 // Table component styles
 
@@ -25,7 +26,7 @@
         color: $xi-text;
     }
 
-    tbody + tbody {
+    tbody+tbody {
         border-top: 2px solid $border-color;
     }
 }
@@ -60,7 +61,7 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 
-    > .table-bordered {
+    >.table-bordered {
         border: 0;
     }
 }
@@ -156,8 +157,60 @@
     }
 }
 
+.dt-page-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-right: $spacing-md;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+
+    .dt-page-jump__label {
+        margin: 0;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        color: $xi-text;
+        white-space: nowrap;
+    }
+
+    .dt-page-jump__input {
+        width: 4.5rem;
+        min-width: 4.5rem;
+        text-align: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        border-color: $border-color;
+
+        &:focus {
+            border-color: $xi-primary;
+            box-shadow: 0 0 0 0.15rem rgba($xi-primary, 0.25);
+        }
+
+        &:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            background-color: color.adjust($gray-bg, $lightness: 2%);
+        }
+    }
+
+    .dt-page-jump__total {
+        font-size: $font-size-sm;
+        color: $xi-text-muted;
+        white-space: nowrap;
+    }
+}
+
 // Responsive table utilities (from responsive-tables.css)
 @include media-max-md {
+    .dt-page-jump {
+        width: 100%;
+        justify-content: center;
+        margin-right: 0;
+        margin-bottom: $spacing-xs;
+        padding-top: $spacing-xs;
+        padding-bottom: $spacing-xs;
+    }
+
     .table-responsive-stack {
         tr {
             display: block;

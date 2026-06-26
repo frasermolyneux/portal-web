@@ -95,33 +95,15 @@ $(document).ready(function () {
 
     function relocateSearch() {
         try {
-            const filters = document.getElementById('demosFilters');
-            const dtFilter = document.getElementById('dataTable_filter');
-            if (!filters || !dtFilter) return;
-            if (dtFilter.classList) dtFilter.classList.add('filter-group');
-            const label = dtFilter.querySelector('label');
-            if (label) {
-                const input = label.querySelector('input');
-                if (input) {
-                    if (input.classList) input.classList.add('form-control');
-                    input.placeholder = 'Search demos...';
-                    label.textContent = '';
-                    const newLabel = document.createElement('label');
-                    newLabel.className = 'form-label';
-                    newLabel.setAttribute('for', input.id || 'globalDemosSearch');
-                    if (!input.id) input.id = 'globalDemosSearch';
-                    newLabel.textContent = 'Search';
-                    dtFilter.appendChild(newLabel);
-                    dtFilter.appendChild(input);
-                }
+            if (!window.PortalDataTableUi || typeof window.PortalDataTableUi.relocateSearch !== 'function') {
+                return;
             }
-            const resetBtn = document.getElementById('resetFilters');
-            const resetGroup = resetBtn ? resetBtn.closest('.filter-group') : null;
-            if (resetGroup && resetGroup.parentElement === filters) {
-                filters.insertBefore(dtFilter, resetGroup);
-            } else {
-                filters.appendChild(dtFilter);
-            }
+
+            window.PortalDataTableUi.relocateSearch({
+                filtersContainerId: 'demosFilters',
+                placeholder: 'Search demos...',
+                inputId: 'globalDemosSearch'
+            });
         } catch { /* ignore */ }
     }
 

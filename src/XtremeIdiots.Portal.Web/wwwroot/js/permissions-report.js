@@ -98,33 +98,15 @@ $(document).ready(function () {
 
     function relocateSearch() {
         try {
-            var filters = document.getElementById('permissionsReportFilters');
-            var dtFilter = document.getElementById('dataTable_filter');
-            if (!filters || !dtFilter) return;
-            if (dtFilter.classList) dtFilter.classList.add('filter-group');
-            var label = dtFilter.querySelector('label');
-            if (label) {
-                var input = label.querySelector('input');
-                if (input) {
-                    if (input.classList) input.classList.add('form-control');
-                    input.placeholder = 'Search...';
-                    label.textContent = '';
-                    var newLabel = document.createElement('label');
-                    newLabel.className = 'form-label';
-                    newLabel.setAttribute('for', input.id || 'globalPermissionsSearch');
-                    if (!input.id) input.id = 'globalPermissionsSearch';
-                    newLabel.textContent = 'Search';
-                    dtFilter.appendChild(newLabel);
-                    dtFilter.appendChild(input);
-                }
+            if (!window.PortalDataTableUi || typeof window.PortalDataTableUi.relocateSearch !== 'function') {
+                return;
             }
-            var resetBtn = document.getElementById('resetFilters');
-            var resetGroup = resetBtn ? resetBtn.closest('.filter-group') : null;
-            if (resetGroup && resetGroup.parentElement === filters) {
-                filters.insertBefore(dtFilter, resetGroup);
-            } else {
-                filters.appendChild(dtFilter);
-            }
+
+            window.PortalDataTableUi.relocateSearch({
+                filtersContainerId: 'permissionsReportFilters',
+                placeholder: 'Search...',
+                inputId: 'globalPermissionsSearch'
+            });
         } catch (e) { /* swallow */ }
     }
 

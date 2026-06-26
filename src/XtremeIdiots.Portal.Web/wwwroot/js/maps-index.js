@@ -49,36 +49,15 @@ $(document).ready(function () {
 
     // Move the built-in DataTables search box into our custom filters bar for unified UX
     (function relocateSearch() {
-        const filters = document.getElementById('mapsFilters');
-        const dtFilter = document.getElementById('dataTable_filter'); // DataTables generates this
-        if (!filters || !dtFilter) return;
+        if (!window.PortalDataTableUi || typeof window.PortalDataTableUi.relocateSearch !== 'function') {
+            return;
+        }
 
-        dtFilter.classList.add('filter-group');
-        const label = dtFilter.querySelector('label');
-        if (label) {
-            const input = label.querySelector('input');
-            if (input) {
-                input.classList.add('form-control');
-                input.placeholder = 'Search maps...';
-                label.textContent = '';
-                const newLabel = document.createElement('label');
-                newLabel.className = 'form-label';
-                newLabel.setAttribute('for', input.id || 'globalMapsSearch');
-                if (!input.id) input.id = 'globalMapsSearch';
-                newLabel.textContent = 'Search';
-                dtFilter.appendChild(newLabel);
-                dtFilter.appendChild(input);
-            }
-        }
-        // Place search before the reset (clear filters) group so the clear button is last
-        const resetBtn = document.getElementById('resetFilters');
-        const resetGroup = resetBtn ? resetBtn.closest('.filter-group') : null;
-        if (resetGroup && resetGroup.parentElement === filters) {
-            filters.insertBefore(dtFilter, resetGroup);
-        } else {
-            // fallback
-            filters.appendChild(dtFilter);
-        }
+        window.PortalDataTableUi.relocateSearch({
+            filtersContainerId: 'mapsFilters',
+            placeholder: 'Search maps...',
+            inputId: 'globalMapsSearch'
+        });
     })();
 
     function renderMapFiles(data, row) {

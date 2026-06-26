@@ -129,125 +129,34 @@ $(document).ready(function () {
 
     function relocateSearch() {
         try {
-            const filters = document.getElementById('chatLogFilters');
-            const dtFilter = document.getElementById('dataTable_filter');
-            if (!filters || !dtFilter) {
-                console.warn('[ChatLog] relocateSearch: filter elements not ready');
+            if (!window.PortalDataTableUi || typeof window.PortalDataTableUi.relocateSearch !== 'function') {
                 return;
             }
-            if (dtFilter.classList) dtFilter.classList.add('filter-group');
-            const label = dtFilter.querySelector('label');
-            if (label) {
-                const input = label.querySelector('input');
-                if (input) {
-                    if (input.classList) input.classList.add('form-control');
-                    input.placeholder = 'Search chat...';
-                    label.textContent = '';
-                    const newLabel = document.createElement('label');
-                    newLabel.className = 'form-label';
-                    newLabel.setAttribute('for', input.id || 'globalChatSearch');
-                    if (!input.id) input.id = 'globalChatSearch';
-                    newLabel.textContent = 'Search';
-                    dtFilter.appendChild(newLabel);
-                    dtFilter.appendChild(input);
-                }
-            }
-            const resetBtn = document.getElementById('resetFilters');
-            const resetGroup = resetBtn ? resetBtn.closest('.filter-group') : null;
-            if (resetGroup && resetGroup.parentElement === filters) {
-                filters.insertBefore(dtFilter, resetGroup);
-            } else {
-                filters.appendChild(dtFilter);
-            }
-            console.log('[ChatLog] relocateSearch complete');
+
+            window.PortalDataTableUi.relocateSearch({
+                filtersContainerId: 'chatLogFilters',
+                placeholder: 'Search chat...',
+                inputId: 'globalChatSearch'
+            });
         } catch (e) {
             console.warn('[ChatLog] relocateSearch error', e);
         }
     }
 
-    function addPageJump() {
-        try {
-            const paginateDiv = document.querySelector('#dataTable_paginate');
-            if (!paginateDiv) {
-                console.warn('[ChatLog] addPageJump: paginate div not found');
-                return;
-            }
-            
-            // Don't add if already exists
-            if (document.getElementById('pageJumpContainer')) {
-                return;
-            }
-            
-            const pageInfo = table.page.info();
-            const totalPages = pageInfo.pages;
-            
-            // Create the page jump container
-            const jumpContainer = document.createElement('div');
-            jumpContainer.id = 'pageJumpContainer';
-            jumpContainer.className = 'datatable-page-jump';
-            jumpContainer.innerHTML = `
-                <span class="page-jump-label">Go to page:</span>
-                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" max="${totalPages}" value="${pageInfo.page + 1}" />
-                <span class="page-jump-total">of ${totalPages}</span>
-            `;
-            
-            // Insert before the pagination controls
-            paginateDiv.parentNode.insertBefore(jumpContainer, paginateDiv);
-            
-            // Helper function for page navigation
-            function navigateToPage(inputElement) {
-                const pageInfo = table.page.info();
-                const pageNum = parseInt(inputElement.value, 10);
-                
-                // Check for valid number and range
-                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pageInfo.pages) {
-                    table.page(pageNum - 1).draw(false);
-                } else {
-                    // Reset to current page if invalid or out of range
-                    inputElement.value = pageInfo.page + 1;
-                }
-            }
-            
-            // Add event handler for the input
-            const pageInput = document.getElementById('pageJumpInput');
-            if (pageInput) {
-                pageInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        navigateToPage(this);
-                    }
-                });
-                
-                pageInput.addEventListener('blur', function() {
-                    navigateToPage(this);
-                });
-                
-                // Update page jump on table redraw
-                table.on('draw.dt', function() {
-                    const pageInfo = table.page.info();
-                    pageInput.value = pageInfo.page + 1;
-                    pageInput.max = pageInfo.pages;
-                    
-                    const totalSpan = document.querySelector('.page-jump-total');
-                    if (totalSpan) {
-                        totalSpan.textContent = `of ${pageInfo.pages}`;
-                    }
-                });
-            }
-            
-            console.log('[ChatLog] addPageJump complete');
-        } catch (e) {
-            console.warn('[ChatLog] addPageJump error', e);
-        }
-    }
-
     // Run after DataTables initialization to avoid timing issues
-    table.on('init.dt', function () { 
-        relocateSearch(); 
-        addPageJump();
+    table.on('init.dt', function () {
+        relocateSearch();
+        if (window.PortalDataTableUi && typeof window.PortalDataTableUi.attachPageJump === 'function') {
+            window.PortalDataTableUi.attachPageJump(table, { label: 'Go to page' });
+        }
     });
     // Fallback in case init event missed (safety timeout)
     setTimeout(relocateSearch, 1200);
-    setTimeout(addPageJump, 1200);
+    setTimeout(function () {
+        if (window.PortalDataTableUi && typeof window.PortalDataTableUi.attachPageJump === 'function') {
+            window.PortalDataTableUi.attachPageJump(table, { label: 'Go to page' });
+        }
+    }, 1200);
 
     if (lockedSel) lockedSel.addEventListener('change', function () { table.ajax.reload(null, false); });
     if (gameTypeSel) gameTypeSel.addEventListener('change', function () {
