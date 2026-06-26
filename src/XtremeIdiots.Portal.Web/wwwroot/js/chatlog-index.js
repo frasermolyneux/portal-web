@@ -147,14 +147,14 @@ $(document).ready(function () {
     table.on('init.dt', function () {
         relocateSearch();
         if (window.PortalDataTableUi && typeof window.PortalDataTableUi.attachPageJump === 'function') {
-            window.PortalDataTableUi.attachPageJump(table, { label: 'Go to page' });
+            window.PortalDataTableUi.attachPageJump(table, { label: 'Page' });
         }
     });
     // Fallback in case init event missed (safety timeout)
     setTimeout(relocateSearch, 1200);
     setTimeout(function () {
         if (window.PortalDataTableUi && typeof window.PortalDataTableUi.attachPageJump === 'function') {
-            window.PortalDataTableUi.attachPageJump(table, { label: 'Go to page' });
+            window.PortalDataTableUi.attachPageJump(table, { label: 'Page' });
         }
     }, 1200);
 

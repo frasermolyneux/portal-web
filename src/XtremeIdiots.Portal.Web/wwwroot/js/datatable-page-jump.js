@@ -1,7 +1,7 @@
 // Shared DataTables UI helpers.
 // Usage:
 //   PortalDataTableUi.relocateSearch({ filtersContainerId: 'playersFilters', placeholder: 'Search players...' });
-//   PortalDataTableUi.attachPageJump(tableApi, { label: 'Go to page' });
+//   PortalDataTableUi.attachPageJump(tableApi, { label: 'Page' });
 (function (window) {
     'use strict';
 
@@ -101,7 +101,7 @@
         }
 
         const settings = Object.assign({
-            label: 'Go to page',
+            label: 'Page',
             hideWhenSinglePage: true
         }, options || {});
 
@@ -144,11 +144,16 @@
 
         const total = document.createElement('span');
         total.className = 'dt-page-jump__total';
-        total.setAttribute('aria-live', 'polite');
+        total.setAttribute('aria-hidden', 'true');
+
+        const totalSr = document.createElement('span');
+        totalSr.className = 'visually-hidden';
+        totalSr.setAttribute('aria-live', 'polite');
 
         container.appendChild(label);
         container.appendChild(input);
         container.appendChild(total);
+        container.appendChild(totalSr);
 
         paginateElement.parentElement.insertBefore(container, paginateElement);
         const eventNamespace = '.dt.pageJump.' + tableId;
@@ -164,7 +169,8 @@
 
             input.value = currentPage;
             input.max = totalPages;
-            total.textContent = 'of ' + totalPages;
+            total.textContent = '/ ' + totalPages;
+            totalSr.textContent = 'of ' + totalPages + ' pages';
 
             const shouldHide = settings.hideWhenSinglePage && totalPages <= 1;
             container.style.display = shouldHide ? 'none' : '';
