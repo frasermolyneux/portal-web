@@ -2,6 +2,33 @@
 (function () {
     'use strict';
 
+    function generateGuid() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+
+        // Fallback for older browsers that do not support crypto.randomUUID.
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (character) {
+            var random = Math.random() * 16 | 0;
+            var value = character === 'x' ? random : (random & 0x3 | 0x8);
+            return value.toString(16);
+        });
+    }
+
+    function ensureRuleId(row, autoGenerateId) {
+        if (!autoGenerateId) {
+            return;
+        }
+
+        var idField = row.querySelector('[data-field="id"]');
+        if (!idField || idField.tagName === 'SELECT') {
+            return;
+        }
+
+        var current = (idField.value || '').trim();
+        idField.value = current.length > 0 ? current : generateGuid();
+    }
+
     function updateRuleCharCount(row) {
         var messageTemplate = row.querySelector('[data-field="message-template"]');
         var charCount = row.querySelector('[data-field="char-count"]');
@@ -38,12 +65,15 @@
     function reindex(container) {
         var fieldNamePrefix = container.dataset.fieldNamePrefix;
         var validationPrefix = container.dataset.validationPrefix || fieldNamePrefix;
+        var autoGenerateId = container.dataset.autoGenerateId === 'true';
         var normalizedPrefix = fieldNamePrefix.replaceAll('.', '_').replaceAll('[', '_').replaceAll(']', '');
         var priorityMode = container.dataset.priorityMode || 'none';
         var startPriority = parseInt(container.dataset.priorityStart || '1000', 10);
         var rows = Array.from(container.querySelectorAll('[data-welcome-rule-row]'));
 
         rows.forEach(function (row, index) {
+            ensureRuleId(row, autoGenerateId);
+
             var id = row.querySelector('[data-field="id"]');
             var priority = row.querySelector('[data-field="priority"]');
             var visibility = row.querySelector('[data-field="visibility"]');
@@ -158,7 +188,7 @@
         });
     }
 
-    function wireRow(row, container) {
+    function wireRow(row, container, autoGenerateId) {
         var moveUpButton = row.querySelector('[data-action="move-up"]');
         var moveDownButton = row.querySelector('[data-action="move-down"]');
         var removeButton = row.querySelector('[data-action="remove"]');
@@ -213,6 +243,7 @@
             });
         }
 
+        ensureRuleId(row, autoGenerateId);
         updateRuleCharCount(row);
         updateRequiredTagsOverride(row);
     }
@@ -221,19 +252,21 @@
         var container = document.getElementById(containerId);
         if (!container) return;
 
+        var autoGenerateId = container.dataset.autoGenerateId === 'true';
+
         var templateId = container.dataset.templateId;
         var template = document.getElementById(templateId);
         if (!template) return;
 
         container.querySelectorAll('[data-welcome-rule-row]').forEach(function (row) {
-            wireRow(row, container);
+            wireRow(row, container, autoGenerateId);
         });
 
         var addButton = document.getElementById(addButtonId);
         if (addButton) {
             addButton.addEventListener('click', function () {
                 var row = template.content.firstElementChild.cloneNode(true);
-                wireRow(row, container);
+                wireRow(row, container, autoGenerateId);
                 container.appendChild(row);
                 reindex(container);
                 updateEmptyState(container);

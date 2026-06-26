@@ -76,6 +76,7 @@
              data-priority-start="1000"
              data-template-id="global-welcome-rule-template"
              data-priority-mode="descending"
+               data-auto-generate-id="true"
              data-hidden-required-tags-override="false"
              data-validation-prefix="WelcomeMessages.Rules">
             @for (var i = 0; i < rules.Count; i++)
@@ -109,15 +110,9 @@
                         </div>
                     </div>
 
+                    <input asp-for="WelcomeMessages.Rules[i].Id" data-field="id" type="hidden" />
+
                     <div class="row">
-                        <div class="col-lg-4">
-                            <div class="mb-3">
-                                <label asp-for="WelcomeMessages.Rules[i].Id" class="form-label"></label>
-                                <input asp-for="WelcomeMessages.Rules[i].Id" data-field="id" class="form-control" maxlength="120" />
-                                <span class="text-danger" data-field="id-validation"
-                                      data-valmsg-for="WelcomeMessages.Rules[@i].Id" data-valmsg-replace="true"></span>
-                            </div>
-                        </div>
                         <div class="col-lg-2">
                             <div class="mb-3">
                                 <label asp-for="WelcomeMessages.Rules[i].Priority" class="form-label"></label>
@@ -191,14 +186,9 @@
             </div>
         </div>
 
+        <input id="WelcomeMessages_Rules_0__Id" name="WelcomeMessages.Rules[0].Id" data-field="id" type="hidden" />
+
         <div class="row">
-            <div class="col-lg-4">
-                <div class="mb-3">
-                    <label class="form-label" data-field="id-label" for="WelcomeMessages_Rules_0__Id">Rule Id</label>
-                    <input id="WelcomeMessages_Rules_0__Id" name="WelcomeMessages.Rules[0].Id" data-field="id" class="form-control" maxlength="120" />
-                    <span class="text-danger" data-field="id-validation" data-valmsg-for="WelcomeMessages.Rules[0].Id" data-valmsg-replace="true"></span>
-                </div>
-            </div>
             <div class="col-lg-2">
                 <div class="mb-3">
                     <label class="form-label" data-field="priority-label" for="WelcomeMessages_Rules_0__Priority">Priority</label>

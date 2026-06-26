@@ -3,6 +3,7 @@
 @{
     var localRules = Model.WelcomeMessages.LocalRules ?? [];
     var ruleOverrides = Model.WelcomeMessages.RuleOverrides ?? [];
+    var globalRules = Model.GlobalWelcomeMessages.Rules ?? [];
 }
 
 <div class="ibox">
@@ -92,6 +93,7 @@
                 <div id="server-welcome-local-rules-container" data-field-name-prefix="WelcomeMessages.LocalRules"
                      data-empty-state-id="server-welcome-local-rules-empty" data-priority-start="1000"
                      data-template-id="server-welcome-local-rule-template" data-priority-mode="descending"
+                     data-auto-generate-id="true"
                      data-hidden-required-tags-override="false" data-validation-prefix="WelcomeMessages.LocalRules">
                     @for (var i = 0; i < localRules.Count; i++)
                     {
@@ -131,16 +133,9 @@
                                 </div>
                             </div>
 
+                            <input asp-for="WelcomeMessages.LocalRules[i].Id" data-field="id" type="hidden" />
+
                             <div class="row">
-                                <div class="col-lg-4">
-                                    <div class="mb-3">
-                                        <label asp-for="WelcomeMessages.LocalRules[i].Id" class="form-label"></label>
-                                        <input asp-for="WelcomeMessages.LocalRules[i].Id" data-field="id" class="form-control"
-                                               maxlength="120" />
-                                        <span class="text-danger" data-field="id-validation"
-                                              data-valmsg-for="WelcomeMessages.LocalRules[@i].Id" data-valmsg-replace="true"></span>
-                                    </div>
-                                </div>
                                 <div class="col-lg-2">
                                     <div class="mb-3">
                                         <label asp-for="WelcomeMessages.LocalRules[i].Priority" class="form-label"></label>
@@ -209,7 +204,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div>
                                 <h6 class="mb-1">Rule Overrides</h6>
-                                <p class="text-muted mb-0">Override specific global rule fields by matching rule id.</p>
+                                <p class="text-muted mb-0">Override specific global rules by selecting a rule.</p>
                             </div>
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="add-server-welcome-rule-override">
                                 <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add override
@@ -250,8 +245,28 @@
                                         <div class="col-lg-4">
                                             <div class="mb-3">
                                                 <label asp-for="WelcomeMessages.RuleOverrides[i].Id" class="form-label"></label>
-                                                <input asp-for="WelcomeMessages.RuleOverrides[i].Id" data-field="id" class="form-control"
-                                                       maxlength="120" />
+                                                @{
+                                                    var selectedRuleId = ruleOverrides[i].Id ?? string.Empty;
+                                                    var hasMatchingGlobalRule = globalRules.Any(rule =>
+                                                        string.Equals(rule.Id, selectedRuleId, StringComparison.OrdinalIgnoreCase));
+                                                }
+                                                <select asp-for="WelcomeMessages.RuleOverrides[i].Id" data-field="id" class="form-select">
+                                                    <option value="">Select rule</option>
+                                                    @for (var ruleIndex = 0; ruleIndex < globalRules.Count; ruleIndex++)
+                                                    {
+                                                        var rule = globalRules[ruleIndex];
+                                                        var selected = string.Equals(selectedRuleId, rule.Id, StringComparison.OrdinalIgnoreCase);
+                                                        var messagePreview = string.IsNullOrWhiteSpace(rule.MessageTemplate)
+                                                            ? "Untitled rule"
+                                                            : rule.MessageTemplate;
+                                                        var optionLabel = $"Rule {ruleIndex + 1} (P{rule.Priority}) - {messagePreview}";
+                                                        <option value="@rule.Id" selected="@(selected ? "selected" : null)">@optionLabel</option>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(selectedRuleId) && !hasMatchingGlobalRule)
+                                                    {
+                                                        <option value="@selectedRuleId" selected="selected">Unknown rule (legacy)</option>
+                                                    }
+                                                </select>
                                                 <span class="text-danger" data-field="id-validation"
                                                       data-valmsg-for="WelcomeMessages.RuleOverrides[@i].Id"
                                                       data-valmsg-replace="true"></span>
@@ -354,6 +369,7 @@
                                         </div>
                                     }
                                 </div>
+
                             </div>
                         </div>
 
@@ -382,17 +398,10 @@
                                     </div>
                                 </div>
 
+                                <input id="WelcomeMessages_LocalRules_0__Id" name="WelcomeMessages.LocalRules[0].Id" data-field="id"
+                                       type="hidden" />
+
                                 <div class="row">
-                                    <div class="col-lg-4">
-                                        <div class="mb-3">
-                                            <label class="form-label" data-field="id-label" for="WelcomeMessages_LocalRules_0__Id">Rule
-                                                Id</label>
-                                                <input id="WelcomeMessages_LocalRules_0__Id" name="WelcomeMessages.LocalRules[0].Id" data-field="id"
-                                                       class="form-control" maxlength="120" />
-                                                <span class="text-danger" data-field="id-validation"
-                                                      data-valmsg-for="WelcomeMessages.LocalRules[0].Id" data-valmsg-replace="true"></span>
-                                            </div>
-                                        </div>
                                         <div class="col-lg-2">
                                             <div class="mb-3">
                                                 <label class="form-label" data-field="priority-label"
@@ -480,10 +489,20 @@
                                         <div class="row">
                                             <div class="col-lg-4">
                                                 <div class="mb-3">
-                                                    <label class="form-label" data-field="id-label" for="WelcomeMessages_RuleOverrides_0__Id">Rule
-                                                        Id</label>
-                                                        <input id="WelcomeMessages_RuleOverrides_0__Id" name="WelcomeMessages.RuleOverrides[0].Id"
-                                                               data-field="id" class="form-control" maxlength="120" />
+                                                    <label class="form-label" data-field="id-label" for="WelcomeMessages_RuleOverrides_0__Id">Rule</label>
+                                                        <select id="WelcomeMessages_RuleOverrides_0__Id" name="WelcomeMessages.RuleOverrides[0].Id"
+                                                                data-field="id" class="form-select">
+                                                            <option value="">Select rule</option>
+                                                            @for (var ruleIndex = 0; ruleIndex < globalRules.Count; ruleIndex++)
+                                                            {
+                                                                var rule = globalRules[ruleIndex];
+                                                                var messagePreview = string.IsNullOrWhiteSpace(rule.MessageTemplate)
+                                                                    ? "Untitled rule"
+                                                                    : rule.MessageTemplate;
+                                                                var optionLabel = $"Rule {ruleIndex + 1} (P{rule.Priority}) - {messagePreview}";
+                                                                <option value="@rule.Id">@optionLabel</option>
+                                                            }
+                                                        </select>
                                                         <span class="text-danger" data-field="id-validation"
                                                               data-valmsg-for="WelcomeMessages.RuleOverrides[0].Id" data-valmsg-replace="true"></span>
                                                     </div>
