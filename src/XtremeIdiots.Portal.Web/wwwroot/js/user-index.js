@@ -74,11 +74,13 @@ $(document).ready(function () {
             { data: 'displayName', name: 'displayName', orderable: true },
             { data: 'email', name: 'email', orderable: false },
             { data: null, name: 'roles', orderable: false, defaultContent: '', render: function (data, type, row) { return renderRoles(row); } },
-            { data: null, defaultContent: '', orderable: false, render: function (data, type, row) {
-                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-                const token = tokenInput ? tokenInput.value : '';
-                return logOutUserLink(row['xtremeIdiotsForumId'], '<input name="__RequestVerificationToken" type="hidden" value="' + token + '" />');
-            } }
+            {
+                data: null, defaultContent: '', orderable: false, render: function (data, type, row) {
+                    const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                    const token = tokenInput ? tokenInput.value : '';
+                    return logOutUserLink(row['xtremeIdiotsForumId'], '<input name="__RequestVerificationToken" type="hidden" value="' + token + '" />');
+                }
+            }
         ]
     });
 
@@ -96,7 +98,7 @@ $(document).ready(function () {
         } catch { /* swallow */ }
     }
 
-    table.on('init.dt', function(){ relocateSearch(); });
+    table.on('init.dt', function () { relocateSearch(); });
     setTimeout(relocateSearch, 1000);
 
     function reloadTable() { table.ajax.reload(null, false); }

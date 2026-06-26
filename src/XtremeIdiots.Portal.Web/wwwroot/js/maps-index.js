@@ -41,7 +41,7 @@ $(document).ready(function () {
         columns: [
             { data: 'gameType', name: 'gameType', orderable: true, render: function (data) { return gameTypeIcon(data); } },
             { data: 'mapName', name: 'mapName', orderable: true },
-            { data: 'mapFiles', name: 'mapFiles', orderable: false, render: function(data, type, row) { return renderMapFiles(data, row); } },
+            { data: 'mapFiles', name: 'mapFiles', orderable: false, render: function (data, type, row) { return renderMapFiles(data, row); } },
             { data: null, name: 'popularity', orderable: true, render: renderPopularity, className: 'popularity-column' },
             { data: null, orderable: false, render: renderImage }
         ]

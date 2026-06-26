@@ -1,7 +1,7 @@
 // Game Servers Index - Initialize DataTables with responsive
 $(document).ready(function () {
     const gameServersTable = $('#gameServersTable');
-    
+
     if (gameServersTable.length && gameServersTable.find('tbody tr').length > 0) {
         const table = gameServersTable.DataTable({
             responsive: {

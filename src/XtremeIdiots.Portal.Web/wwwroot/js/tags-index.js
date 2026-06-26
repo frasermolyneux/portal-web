@@ -1,7 +1,7 @@
 // Tags Index - Initialize DataTables with responsive
 $(document).ready(function () {
     const tagsTable = $('#tagsTable');
-    
+
     if (tagsTable.length && tagsTable.find('tbody tr').length > 0) {
         const table = tagsTable.DataTable({
             responsive: {
