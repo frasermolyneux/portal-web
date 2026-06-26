@@ -11,7 +11,6 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 public class GameServerEditViewModel : IValidatableObject
 {
     public const int DefaultBroadcastIntervalSeconds = 500;
-    public const int MaxBroadcastMessageLength = 120;
     public const int MaxFunnyMessageLength = 120;
     public const string DefaultScreenshotFilePattern = "*.jpg";
     public const int DefaultScreenshotPollIntervalSeconds = 60;
@@ -221,8 +220,8 @@ public class GameServerEditViewModel : IValidatableObject
         {
             for (var i = 0; i < BroadcastMessages.Count; i++)
             {
-                if (BroadcastMessages[i].Message?.Length > MaxBroadcastMessageLength)
-                    yield return new ValidationResult($"Broadcast message cannot exceed {MaxBroadcastMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
+                if (string.IsNullOrWhiteSpace(BroadcastMessages[i].Message))
+                    yield return new ValidationResult("Broadcast message is required.", [$"BroadcastMessages[{i}].Message"]);
             }
         }
 

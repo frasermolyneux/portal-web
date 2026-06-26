@@ -652,12 +652,7 @@ public class ServerAdminController(
                 return Json(new { success = false, message = "Message cannot be empty" });
             }
 
-            // Limit message length
             message = message.Trim();
-            if (message.Length > 255)
-            {
-                message = message[..255];
-            }
 
             var sayResult = await serversApiClient.Rcon.V1.Say(id, message).ConfigureAwait(false);
 

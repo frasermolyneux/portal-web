@@ -77,11 +77,7 @@
                                 </button>
                             </div>
                         </div>
-                        <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message"
-                               maxlength="@GameServerEditViewModel.MaxBroadcastMessageLength" />
-                        <small class="form-text text-muted"><span
-                            data-field="char-count">0</span>/@GameServerEditViewModel.MaxBroadcastMessageLength
-                            characters</small>
+                                     <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message" />
                             <div class="small text-muted mt-1" data-field="preview">(preview)</div>
                             <span class="text-danger" data-field="validation"
                                   asp-validation-for="BroadcastMessages[i].Message"></span>
@@ -113,10 +109,7 @@
                         </button>
                     </div>
                 </div>
-                <input class="form-control" data-field="message"
-                       maxlength="@GameServerEditViewModel.MaxBroadcastMessageLength" />
-                <small class="form-text text-muted"><span
-                    data-field="char-count">0</span>/@GameServerEditViewModel.MaxBroadcastMessageLength characters</small>
+                          <input class="form-control" data-field="message" />
                     <div class="small text-muted mt-1" data-field="preview">(preview)</div>
                     <span class="text-danger" data-field="validation"></span>
                 </div>

@@ -14,7 +14,7 @@ public class GameServerEditViewModelTests
     }
 
     [Fact]
-    public void Validate_WhenBroadcastMessageExceeds120Characters_ReturnsValidationError()
+    public void Validate_WhenBroadcastMessageExceeds120Characters_IsValid()
     {
         var model = CreateValidModel();
         model.BroadcastMessages =
@@ -28,7 +28,7 @@ public class GameServerEditViewModelTests
 
         var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
 
-        Assert.False(isValid);
+        Assert.True(isValid);
     }
 
     [Fact]
@@ -47,6 +47,26 @@ public class GameServerEditViewModelTests
         var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
 
         Assert.True(isValid);
+    }
+
+    [Fact]
+    public void Validate_WhenBroadcastMessageIsBlank_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.BroadcastMessages =
+        [
+            new BroadcastMessageViewModel
+            {
+                Message = " ",
+                Enabled = true
+            }
+        ];
+
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
+
+        Assert.False(isValid);
+        Assert.Contains(validationResults, r => r.MemberNames.Contains("BroadcastMessages[0].Message"));
     }
 
     [Fact]

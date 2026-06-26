@@ -381,6 +381,69 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
+    public async Task SendSayCommand_WithLongMessage_ForwardsUntruncatedTrimmedMessage()
+    {
+        var serverId = Guid.NewGuid();
+        var longMessage = new string('A', 400);
+        var inputMessage = $"  {longMessage}  ";
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Say))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Rcon.V1.Say(serverId, longMessage))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        var sut = CreateSut();
+
+        var result = await sut.SendSayCommand(serverId, inputMessage, CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.Rcon.V1.Say(serverId, longMessage), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendSayCommand_WithWhitespaceMessage_ReturnsValidationFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Say))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var result = await sut.SendSayCommand(serverId, "   ", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("Message cannot be empty", payload.Value<string>("message"));
+
+        mockServersApiClient.Verify(x => x.Rcon.V1.Say(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ServerDetail_WhenGameTypeIsNotCallOfDuty4x_HidesScreenshotFeatures()
     {
         var serverId = Guid.NewGuid();
