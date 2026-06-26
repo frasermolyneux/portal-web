@@ -39,7 +39,7 @@
         <div class="d-flex flex-wrap gap-4">
             @if (Model.CanEditFileTransport)
             {
-                <div class="form-check form-switch">
+                <div class="form-check">
                     <input class="form-check-input feature-toggle" asp-for="GameServer.FileTransportEnabled"
                            data-toggle-tab="filetransfer-tab-btn" />
                     <label class="form-check-label ms-1" asp-for="GameServer.FileTransportEnabled">
@@ -52,7 +52,7 @@
             {
                 <input type="hidden" asp-for="GameServer.FileTransportEnabled" />
             }
-            <div class="form-check form-switch">
+            <div class="form-check">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.RconEnabled"
                        data-toggle-tab="rcon-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.RconEnabled">
@@ -60,7 +60,7 @@
                                                                                 m.GameServer.RconEnabled)
                 </label>
             </div>
-            <div class="form-check form-switch">
+            <div class="form-check">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.AgentEnabled"
                        data-toggle-tab="agent-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.AgentEnabled">
@@ -68,7 +68,7 @@
                                                                                 m.GameServer.AgentEnabled)
                 </label>
             </div>
-            <div class="form-check form-switch">
+            <div class="form-check">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.BanFileSyncEnabled"
                        data-toggle-tab="banfilesync-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.BanFileSyncEnabled">
@@ -76,7 +76,7 @@
                                                                                 m.GameServer.BanFileSyncEnabled)
                 </label>
             </div>
-            <div class="form-check form-switch">
+            <div class="form-check">
                 <input class="form-check-input feature-toggle" asp-for="GameServer.ServerListEnabled"
                        data-toggle-tab="serverlist-tab-btn" />
                 <label class="form-check-label ms-1" asp-for="GameServer.ServerListEnabled">

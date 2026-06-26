@@ -91,6 +91,68 @@ public class SettingsUiConsistencyTests
         Assert.Contains("FieldName = $\"ChatCommands.Commands[{i}].Enabled\"", chatCommandsMarkup);
     }
 
+    [Fact]
+    public void GlobalChatCommandsEnabled_IsBinaryAndDoesNotUseTriStateInheritOption()
+    {
+        var chatCommandsMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
+
+        Assert.DoesNotContain("Use default", chatCommandsMarkup);
+        Assert.DoesNotContain("Inherit global", chatCommandsMarkup);
+        Assert.DoesNotContain("Views/Shared/Components/TriStateOverrideSelect.cshtml", chatCommandsMarkup);
+        Assert.Contains("<option value=\"true\">Enabled</option>", chatCommandsMarkup);
+        Assert.Contains("<option value=\"false\">Disabled</option>", chatCommandsMarkup);
+    }
+
+    [Fact]
+    public void ChatCommandFuMessages_GlobalAndServerOfferMultilineImport()
+    {
+        var globalMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
+        var serverMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_ChatCommandsConfiguration.cshtml");
+
+        Assert.Contains("Import multiline", globalMarkup);
+        Assert.Contains("data-import-button-id", globalMarkup);
+
+        Assert.Contains("Import multiline", serverMarkup);
+        Assert.Contains("data-import-button-id", serverMarkup);
+    }
+
+    [Fact]
+    public void SettingsRowManager_SupportsMultilineImportSplitFilterAndCap()
+    {
+        var managerScript = ReadRepoFile("src/XtremeIdiots.Portal.Web/wwwroot/js/settings-row-manager.js");
+
+        Assert.Contains("split(/\\r?\\n/)", managerScript);
+        Assert.Contains("line.trim()", managerScript);
+        Assert.Contains("line.length > 0", managerScript);
+        Assert.Contains("maxImportRows", managerScript);
+        Assert.Contains("showMultilineImportDialog", managerScript);
+        Assert.Contains("data-action=\"import\"", managerScript);
+        Assert.Contains("data-action=\"cancel\"", managerScript);
+        Assert.Contains("aria-labelledby", managerScript);
+    }
+
+    [Fact]
+    public void GlobalAndServerSettings_DoNotUseSliderStyleSwitchWrappersForEnabledCheckboxes()
+    {
+        var globalBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_BroadcastsConfiguration.cshtml");
+        var globalChatCommands = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
+        var globalWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
+
+        var serverGeneral = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_GeneralConfiguration.cshtml");
+        var serverBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_BroadcastsConfiguration.cshtml");
+        var serverChatCommands = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_ChatCommandsConfiguration.cshtml");
+        var serverWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+
+        Assert.DoesNotContain("form-switch", globalBroadcasts);
+        Assert.DoesNotContain("form-switch", globalChatCommands);
+        Assert.DoesNotContain("form-switch", globalWelcomeMessages);
+
+        Assert.DoesNotContain("form-switch", serverGeneral);
+        Assert.DoesNotContain("form-switch", serverBroadcasts);
+        Assert.DoesNotContain("form-switch", serverChatCommands);
+        Assert.DoesNotContain("form-switch", serverWelcomeMessages);
+    }
+
     private static string ReadRepoFile(string relativePath)
     {
         var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));

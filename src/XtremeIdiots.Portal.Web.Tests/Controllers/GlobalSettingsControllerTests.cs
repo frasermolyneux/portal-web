@@ -275,6 +275,76 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
+    public async Task Index_Post_ChatCommandsDefaultsDisabled_PreservesFuMessages()
+    {
+        var sut = CreateSut();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GlobalSettingsViewModel
+        {
+            ChatCommands = new ChatCommandGlobalSettingsViewModel
+            {
+                DefaultsEnabled = false,
+                Commands =
+                [
+                    new ChatCommandGlobalEntryViewModel
+                    {
+                        Name = "fu",
+                        Prefix = "!fu",
+                        Usage = "!fu <player name>",
+                        Description = "Send a random funny message to a player.",
+                        IsMutating = true,
+                        Messages =
+                        [
+                            new BroadcastMessageViewModel
+                            {
+                                Message = "fu-{name}",
+                                Enabled = true
+                            }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(upsertPayloads.TryGetValue(ChatCommandSettingsConstants.Namespace, out var chatCommandsJson));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(chatCommandsJson);
+        var defaults = doc.RootElement.GetProperty("defaults");
+        Assert.False(defaults.GetProperty("enabled").GetBoolean());
+
+        var fu = doc.RootElement
+            .GetProperty("commands")
+            .GetProperty("fu")
+            .GetProperty("settings")
+            .GetProperty("messages")[0];
+
+        Assert.Equal("fu-{name}", fu.GetProperty("message").GetString());
+        Assert.True(fu.GetProperty("enabled").GetBoolean());
+
+        mockRepositoryApiClient.Verify(
+            client => client.GlobalConfigurations.V1.DeleteConfiguration(
+                ChatCommandSettingsConstants.Namespace,
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task Index_Post_WelcomeMessagesRules_UpsertsWelcomeMessageContract()
     {
         var sut = CreateSut();
@@ -330,6 +400,66 @@ public class GlobalSettingsControllerTests
         Assert.Equal("Public", firstRule.GetProperty("visibility").GetString());
         Assert.Equal("vip", firstRule.GetProperty("requiredTags")[0].GetString());
         Assert.Equal("staff", firstRule.GetProperty("requiredTags")[1].GetString());
+    }
+
+    [Fact]
+    public async Task Index_Post_WelcomeMessagesDisabled_PreservesRulesAndDoesNotDeleteNamespace()
+    {
+        var sut = CreateSut();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GlobalSettingsViewModel
+        {
+            WelcomeMessages = new WelcomeMessageGlobalSettingsViewModel
+            {
+                Enabled = false,
+                CountryFallback = "Unknown",
+                DefaultConnectionDelaySeconds = 5,
+                StaleThresholdSeconds = 180,
+                Rules =
+                [
+                    new WelcomeMessageRuleEntryViewModel
+                    {
+                        Id = "global-rule",
+                        Enabled = true,
+                        Priority = 10,
+                        Visibility = WelcomeMessageVisibility.Public,
+                        MessageTemplate = "Welcome {name}",
+                        RequiredTagsCsv = "vip",
+                        ConnectionDelaySeconds = 3
+                    }
+                ]
+            }
+        };
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(upsertPayloads.TryGetValue(WelcomeMessageSettingsViewModelConstants.Namespace, out var welcomeMessagesJson));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
+        Assert.False(doc.RootElement.GetProperty("enabled").GetBoolean());
+        var firstRule = doc.RootElement.GetProperty("rules")[0];
+        Assert.Equal("global-rule", firstRule.GetProperty("id").GetString());
+        Assert.Equal("Welcome {name}", firstRule.GetProperty("messageTemplate").GetString());
+
+        mockRepositoryApiClient.Verify(
+            client => client.GlobalConfigurations.V1.DeleteConfiguration(
+                WelcomeMessageSettingsViewModelConstants.Namespace,
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

@@ -142,6 +142,94 @@
         enabledHidden.disabled = enabled.checked;
     }
 
+    function buildImportedMessages(rawText) {
+        if (!rawText || !rawText.length) {
+            return [];
+        }
+
+        return rawText
+            .split(/\r?\n/)
+            .map(function (line) {
+                return line.trim();
+            })
+            .filter(function (line) {
+                return line.length > 0;
+            });
+    }
+
+    function showMultilineImportDialog(title, placeholder, onConfirm, options) {
+        var settings = options || {};
+        var dialogLabelId = settings.dialogLabelId || 'settings-row-manager-import-title';
+        var textareaId = settings.textareaId || 'settings-row-manager-import-textarea';
+        var triggerElement = settings.triggerElement || null;
+
+        if (typeof HTMLDialogElement === 'undefined') {
+            var fallbackInput = window.prompt(title + '\n\nPaste one message per line:', '');
+            if (fallbackInput === null) {
+                return;
+            }
+
+            onConfirm(fallbackInput);
+            return;
+        }
+
+        var dialog = document.createElement('dialog');
+        dialog.className = 'rounded border p-0';
+        dialog.setAttribute('aria-labelledby', dialogLabelId);
+
+        dialog.innerHTML = [
+            '<form method="dialog" class="p-3" style="min-width: min(640px, 90vw);">',
+            '<h6 class="mb-2" id="' + dialogLabelId + '">' + title + '</h6>',
+            '<p class="text-muted mb-2">Paste one message per line. Empty lines are ignored.</p>',
+            '<label class="form-label" for="' + textareaId + '">Messages</label>',
+            '<textarea class="form-control mb-3" id="' + textareaId + '" rows="10" placeholder="' + placeholder + '"></textarea>',
+            '<div class="d-flex justify-content-end gap-2">',
+            '<button type="button" class="btn btn-outline-secondary" data-action="cancel">Cancel</button>',
+            '<button type="button" class="btn btn-primary" data-action="import">Import</button>',
+            '</div>',
+            '</form>'
+        ].join('');
+
+        document.body.appendChild(dialog);
+
+        var textarea = dialog.querySelector('textarea');
+        var cancelButton = dialog.querySelector('[data-action="cancel"]');
+        var importButton = dialog.querySelector('[data-action="import"]');
+
+        function closeDialog() {
+            dialog.close();
+            dialog.remove();
+            if (triggerElement && typeof triggerElement.focus === 'function') {
+                triggerElement.focus();
+            }
+        }
+
+        cancelButton.addEventListener('click', closeDialog);
+        importButton.addEventListener('click', function () {
+            onConfirm(textarea.value || '');
+            closeDialog();
+        });
+
+        dialog.addEventListener('cancel', function () {
+            closeDialog();
+        }, { once: true });
+
+        dialog.showModal();
+        textarea.focus();
+    }
+
+    function appendMessageRow(template, settings, messageValue) {
+        var row = template.content.firstElementChild.cloneNode(true);
+        var messageInput = row.querySelector('[data-field="message"]');
+
+        if (messageInput) {
+            messageInput.value = messageValue || '';
+        }
+
+        wireSettingsRow(row, settings);
+        settings.container.appendChild(row);
+    }
+
     function wireSettingsRow(row, options) {
         var removeButton = row.querySelector('[data-action="remove"]');
         var moveUpButton = row.querySelector('[data-action="move-up"]');
@@ -218,11 +306,43 @@
         var addButton = document.getElementById(options.addButtonId);
         if (addButton) {
             addButton.addEventListener('click', function () {
-                var row = template.content.firstElementChild.cloneNode(true);
-                wireSettingsRow(row, settings);
-                container.appendChild(row);
+                appendMessageRow(template, settings, '');
                 reindexRowsByFieldPrefix(container, settings.fieldNamePrefix, settings.normalizeIdPrefix);
                 updateMessageEmptyState(container, settings.emptyStateId);
+            });
+        }
+
+        var importButtonId = options.importButtonId;
+        var importButton = importButtonId ? document.getElementById(importButtonId) : null;
+        var maxImportRows = Number.isFinite(options.maxImportRows) && options.maxImportRows > 0
+            ? Math.floor(options.maxImportRows)
+            : 200;
+        if (importButton) {
+            importButton.addEventListener('click', function () {
+                showMultilineImportDialog(
+                    'Import command messages',
+                    'Example: Hello {name}!',
+                    function (rawText) {
+                        var importedMessages = buildImportedMessages(rawText);
+                        if (importedMessages.length === 0) {
+                            return;
+                        }
+
+                        if (importedMessages.length > maxImportRows) {
+                            importedMessages = importedMessages.slice(0, maxImportRows);
+                        }
+
+                        importedMessages.forEach(function (messageText) {
+                            appendMessageRow(template, settings, messageText);
+                        });
+
+                        reindexRowsByFieldPrefix(container, settings.fieldNamePrefix, settings.normalizeIdPrefix);
+                        updateMessageEmptyState(container, settings.emptyStateId);
+                    }, {
+                    dialogLabelId: container.id + '-import-title',
+                    textareaId: container.id + '-import-textarea',
+                    triggerElement: importButton
+                });
             });
         }
 

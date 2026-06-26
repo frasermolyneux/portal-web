@@ -45,7 +45,7 @@
                 {
                     <div class="border rounded p-3 mb-3" data-message-row="broadcast">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="form-check form-switch mb-0">
+                            <div class="form-check mb-0">
                                 <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled"
                                        value="false" />
                                 @if (broadcastMessages[i].Enabled)
@@ -90,7 +90,7 @@
         <template id="global-broadcast-message-template">
             <div class="border rounded p-3 mb-3" data-message-row="broadcast">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="form-check form-switch mb-0">
+                    <div class="form-check mb-0">
                         <input type="hidden" data-field="enabled-hidden" value="false" />
                         <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
                         <label class="form-check-label" data-field="enabled-label">Enabled</label>

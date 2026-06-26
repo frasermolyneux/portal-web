@@ -124,11 +124,24 @@
                                         <div class="col-lg-4">
                                             <div class="mb-3">
                                                 <label asp-for="ChatCommands.Commands[i].Enabled" class="form-label"></label>
-                                                <select asp-for="ChatCommands.Commands[i].Enabled" class="form-select">
-                                                    <option value="">Use default (@(Model.ChatCommands.DefaultsEnabled ? "Enabled" :
-                                                                                                                                                                                                                                          "Disabled"))</option>
-                            <option value="true">Enabled</option>
-                            <option value="false">Disabled</option>
+                                                <select id="ChatCommands_Commands_@(i)__Enabled" name="ChatCommands.Commands[@i].Enabled" class="form-select">
+                                                    @if (command.Enabled ?? Model.ChatCommands.DefaultsEnabled)
+                                                    {
+                                                        <option value="true" selected="selected">Enabled</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="true">Enabled</option>
+                                                    }
+
+                                                    @if (!(command.Enabled ?? Model.ChatCommands.DefaultsEnabled))
+                                                    {
+                                                        <option value="false" selected="selected">Disabled</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="false">Disabled</option>
+                                                    }
                         </select>
                         <span asp-validation-for="ChatCommands.Commands[i].Enabled" class="text-danger"></span>
                     </div>
@@ -157,6 +170,7 @@
                 var containerId = $"global-chat-command-{i}-messages-container";
                 var emptyStateId = $"global-chat-command-{i}-messages-empty";
                 var addButtonId = $"global-chat-command-{i}-add-message";
+                var importButtonId = $"global-chat-command-{i}-import-messages";
 
                 <hr />
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -169,6 +183,9 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="@addButtonId">
                         <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
                     </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="@importButtonId">
+                        <i class="fa-solid fa-fw fa-file-import" aria-hidden="true"></i> Import multiline
+                    </button>
                 </div>
 
                 <p id="@emptyStateId" class="text-muted @(command.Messages.Count > 0 ? "d-none" : string.Empty)">
@@ -178,12 +195,13 @@
 
                 <div id="@containerId" data-chat-command-messages-container
                      data-field-name-prefix="ChatCommands.Commands[@i].Messages" data-empty-state-id="@emptyStateId"
-                     data-add-button-id="@addButtonId" data-template-id="global-chat-command-message-template">
+                     data-add-button-id="@addButtonId" data-import-button-id="@importButtonId"
+                     data-template-id="global-chat-command-message-template">
                     @for (var j = 0; j < command.Messages.Count; j++)
                     {
                         <div class="border rounded p-3 mb-3" data-message-row>
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="form-check form-switch mb-0">
+                                <div class="form-check mb-0">
                                     <input type="hidden" data-field="enabled-hidden"
                                            name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
                                     @if (command.Messages[j].Enabled)
@@ -238,7 +256,7 @@
 <template id="global-chat-command-message-template">
     <div class="border rounded p-3 mb-3" data-message-row>
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="form-check form-switch mb-0">
+            <div class="form-check mb-0">
                 <input type="hidden" data-field="enabled-hidden" value="false" />
                 <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
                 <label class="form-check-label" data-field="enabled-label">Enabled</label>

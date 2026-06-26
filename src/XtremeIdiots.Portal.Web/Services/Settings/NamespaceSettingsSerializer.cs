@@ -70,27 +70,17 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             )
         ];
 
-        if (model.ChatCommands.DefaultsEnabled)
-        {
-            configurations.Add((
-                ChatCommandSettingsConstants.Namespace,
-                ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)));
-        }
-        else
-        {
-            DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
-        }
+        // Keep the chatCommands namespace even when defaults are disabled so command payloads
+        // (for example !fu messages) are not dropped on save.
+        configurations.Add((
+            ChatCommandSettingsConstants.Namespace,
+            ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)));
 
-        if (model.WelcomeMessages.Enabled)
-        {
-            configurations.Add((
-                WelcomeMessageSettingsViewModelConstants.Namespace,
-                WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages)));
-        }
-        else
-        {
-            DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
-        }
+        // Keep the welcomeMessages namespace even when disabled so rule/message definitions
+        // survive toggle changes and can be re-enabled without data loss.
+        configurations.Add((
+            WelcomeMessageSettingsViewModelConstants.Namespace,
+            WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages)));
 
         configurations.Add((
             BroadcastSettingsConstants.Namespace,

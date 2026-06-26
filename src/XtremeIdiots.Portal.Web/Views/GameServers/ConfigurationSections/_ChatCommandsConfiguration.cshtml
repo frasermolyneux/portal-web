@@ -148,6 +148,7 @@ StringComparison.OrdinalIgnoreCase));
             var containerId = $"server-chat-command-{i}-messages-container";
             var emptyStateId = $"server-chat-command-{i}-messages-empty";
             var addButtonId = $"server-chat-command-{i}-add-message";
+            var importButtonId = $"server-chat-command-{i}-import-messages";
 
             <div class="border rounded p-3 mb-0">
                 <input type="hidden" name="ChatCommands.Commands[@i].OverrideMessages" value="false" />
@@ -180,6 +181,9 @@ StringComparison.OrdinalIgnoreCase));
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="@addButtonId">
                                     <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
                                 </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="@importButtonId">
+                                    <i class="fa-solid fa-fw fa-file-import" aria-hidden="true"></i> Import multiline
+                                </button>
                             </div>
 
                             <p id="@emptyStateId" class="text-muted @(command.Messages.Count > 0 ? "d-none" : string.Empty)">
@@ -188,12 +192,13 @@ StringComparison.OrdinalIgnoreCase));
 
                             <div id="@containerId" data-chat-command-messages-container
                                  data-field-name-prefix="ChatCommands.Commands[@i].Messages" data-empty-state-id="@emptyStateId"
-                                 data-add-button-id="@addButtonId" data-template-id="server-chat-command-message-template">
+                                   data-add-button-id="@addButtonId" data-import-button-id="@importButtonId"
+                                   data-template-id="server-chat-command-message-template">
                                 @for (var j = 0; j < command.Messages.Count; j++)
                                 {
                                     <div class="border rounded p-3 mb-3" data-message-row>
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <div class="form-check form-switch mb-0">
+                                            <div class="form-check mb-0">
                                                 <input type="hidden" data-field="enabled-hidden"
                                                        name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
                                                 @if (command.Messages[j].Enabled)
@@ -249,7 +254,7 @@ StringComparison.OrdinalIgnoreCase));
         <template id="server-chat-command-message-template">
             <div class="border rounded p-3 mb-3" data-message-row>
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="form-check form-switch mb-0">
+                    <div class="form-check mb-0">
                         <input type="hidden" data-field="enabled-hidden" value="false" />
                         <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
                         <label class="form-check-label" data-field="enabled-label">Enabled</label>

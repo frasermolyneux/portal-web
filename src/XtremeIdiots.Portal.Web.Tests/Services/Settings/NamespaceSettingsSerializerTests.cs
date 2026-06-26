@@ -83,6 +83,40 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
+    public void BuildGlobalSettingsConfigurations_WelcomeMessagesDisabled_PreservesRulesAndDoesNotDeleteNamespace()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            WelcomeMessages = new WelcomeMessageGlobalSettingsViewModel
+            {
+                Enabled = false,
+                Rules =
+                [
+                    new WelcomeMessageRuleEntryViewModel
+                    {
+                        Id = "global-rule",
+                        Enabled = true,
+                        Priority = 1000,
+                        Visibility = WelcomeMessageVisibility.Public,
+                        MessageTemplate = "Welcome {name}",
+                        RequiredTagsCsv = "vip"
+                    }
+                ]
+            }
+        };
+
+        var configurations = serializer.BuildGlobalSettingsConfigurations(model);
+
+        var (_, welcomeConfiguration) = Assert.Single(configurations, configuration => configuration.Namespace == WelcomeMessageSettingsViewModelConstants.Namespace);
+        using var welcomeDoc = JsonDocument.Parse(welcomeConfiguration);
+
+        Assert.False(welcomeDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal("global-rule", welcomeDoc.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
+        Assert.Equal("Welcome {name}", welcomeDoc.RootElement.GetProperty("rules")[0].GetProperty("messageTemplate").GetString());
+        Assert.DoesNotContain(WelcomeMessageSettingsViewModelConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
     public void ChatCommands_DisableThenReenable_DeletesThenRecreatesNamespaceWithSamePayload()
     {
         var model = BuildDefaultModel();
