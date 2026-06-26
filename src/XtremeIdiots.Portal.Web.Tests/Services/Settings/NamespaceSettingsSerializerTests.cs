@@ -88,7 +88,6 @@ public class NamespaceSettingsSerializerTests
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = true;
         var command = model.ChatCommands.Commands.Single(x => x.Name == "fu");
-        command.OverrideEnabled = true;
         command.Enabled = false;
         command.OverrideMessages = true;
         command.Messages =
@@ -103,14 +102,14 @@ public class NamespaceSettingsSerializerTests
         var enabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         var enabledJson = Assert.Single(enabledConfigurations, x => x.Namespace == ChatCommandSettingsConstants.Namespace).Configuration;
 
-        command.OverrideEnabled = false;
+        command.Enabled = null;
         command.OverrideMessages = false;
 
         var disabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         Assert.DoesNotContain(disabledConfigurations, x => x.Namespace == ChatCommandSettingsConstants.Namespace);
         Assert.Contains(ChatCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
 
-        command.OverrideEnabled = true;
+        command.Enabled = false;
         command.OverrideMessages = true;
 
         var reenabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
@@ -176,7 +175,7 @@ public class NamespaceSettingsSerializerTests
         var enabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         var enabledJson = Assert.Single(enabledConfigurations, x => x.Namespace == BroadcastSettingsConstants.Namespace).Configuration;
 
-        model.BroadcastsEnabled = false;
+        model.BroadcastsEnabled = null;
 
         var disabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         Assert.DoesNotContain(disabledConfigurations, x => x.Namespace == BroadcastSettingsConstants.Namespace);
@@ -332,7 +331,7 @@ public class NamespaceSettingsSerializerTests
         // Test inherit parity: server broadcasts disabled should delete namespace (inherit global)
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = true;
-        model.BroadcastsEnabled = false;  // inherit global broadcasts (tri-state not exposed, but disabled = inherit)
+        model.BroadcastsEnabled = null;  // inherit global broadcasts
 
         var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 

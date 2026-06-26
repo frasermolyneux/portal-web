@@ -116,7 +116,22 @@ public sealed class ChatCommandGlobalEntryViewModel : ChatCommandEntryViewModelB
 public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelBase
 {
     [DisplayName("Enabled Override")]
-    public bool OverrideEnabled { get; set; }
+    public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
+
+    [DisplayName("Enabled Override")]
+    public bool OverrideEnabled {
+        get => EnabledOverride?.Value is not null;
+        set => Enabled = value ? Enabled ?? false : null;
+    }
+
+    [DisplayName("Enabled Override")]
+    public new bool? Enabled {
+        get => EnabledOverride?.Value;
+        set {
+            base.Enabled = value;
+            EnabledOverride = TriStateOverrideValue.From(value);
+        }
+    }
 
     [DisplayName("Freshness Override")]
     public bool OverrideFreshness { get; set; }
@@ -324,9 +339,9 @@ internal static class ChatCommandSettingsJsonMapper
     {
         Dictionary<string, object?> payload = [];
 
-        if (command.OverrideEnabled && command.Enabled.HasValue)
+        if (command.EnabledOverride.Value.HasValue)
         {
-            payload["enabled"] = command.Enabled.Value;
+            payload["enabled"] = command.EnabledOverride.Value;
         }
 
         if (command.OverrideFreshness && command.FreshnessSeconds.HasValue)
@@ -369,10 +384,13 @@ internal static class ChatCommandSettingsJsonMapper
 
             if (commandElement.TryGetProperty("enabled", out _))
             {
-                command.Enabled = GetNullableBoolProperty(commandElement, "enabled");
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.OverrideEnabled = true;
+                    serverEntry.EnabledOverride = TriStateOverrideValue.From(GetNullableBoolProperty(commandElement, "enabled"));
+                }
+                else
+                {
+                    command.Enabled = GetNullableBoolProperty(commandElement, "enabled");
                 }
             }
 
@@ -437,10 +455,13 @@ internal static class ChatCommandSettingsJsonMapper
 
             if (entry.Enabled.HasValue)
             {
-                command.Enabled = entry.Enabled;
                 if (isServerOverride && command is ChatCommandServerEntryViewModel serverEntry)
                 {
-                    serverEntry.OverrideEnabled = true;
+                    serverEntry.EnabledOverride = TriStateOverrideValue.From(entry.Enabled);
+                }
+                else
+                {
+                    command.Enabled = entry.Enabled;
                 }
             }
 

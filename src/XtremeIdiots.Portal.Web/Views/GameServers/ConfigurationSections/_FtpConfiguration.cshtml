@@ -3,7 +3,7 @@
 
 <div class="ibox">
     <div class="ibox-title">
-        File Transfer Configuration
+        <h5>File Transfer Configuration</h5>
     </div>
     <div class="ibox-content">
         <div class="mb-3">
@@ -43,8 +43,7 @@
                         <div class="input-group">
                             <input name="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput"
                                    value="@Model.FtpConfigPassword" />
-                            <button class="btn btn-outline-secondary" type="button"
-                                    onclick="togglePasswordVisibility('ftpPasswordInput', this)">
+                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="ftpPasswordInput">
                                 <i class="fa-solid fa-fw fa-eye"></i>
                             </button>
                         </div>
@@ -67,7 +66,11 @@
                             <div class="input-group">
                                 <input asp-for="FtpConfigMapsRootPath" class="form-control" type="text" maxlength="255" placeholder="/" />
                                 <button class="btn btn-outline-secondary" type="button"
-                                        onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'FtpConfigMapsRootPath', { selectionMode: 'directory', initialPath: document.getElementById('FtpConfigMapsRootPath')?.value || '/' })">
+                                        data-file-browser
+                                        data-server-id="@Model.GameServer.GameServerId"
+                                        data-target-id="FtpConfigMapsRootPath"
+                                        data-selection-mode="directory"
+                                        data-initial-path-source="FtpConfigMapsRootPath">
                                     <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                                 </button>
                             </div>

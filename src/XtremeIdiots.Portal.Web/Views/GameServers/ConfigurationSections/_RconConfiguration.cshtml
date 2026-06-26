@@ -3,14 +3,14 @@
 
 <div class="ibox">
     <div class="ibox-title">
-        RCON Configuration
+        <h5>RCON Configuration</h5>
     </div>
     <div class="ibox-content">
         <div class="mb-3">
             <label asp-for="RconConfigPassword" class="form-label"></label>
             <div class="input-group">
                 <input name="RconConfigPassword" class="form-control" type="password" id="rconPasswordInput" value="@Model.RconConfigPassword" />
-                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('rconPasswordInput', this)">
+                <button class="btn btn-outline-secondary" type="button" data-password-toggle="rconPasswordInput">
                     <i class="fa-solid fa-fw fa-eye"></i>
                 </button>
             </div>

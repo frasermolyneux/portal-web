@@ -20,7 +20,11 @@
                 @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
                 {
                     <button class="btn btn-outline-secondary" type="button"
-                            onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'GameServer_BanFileRootPath', { selectionMode: 'directory', initialPath: document.getElementById('GameServer_BanFileRootPath').value || '/' })">
+                            data-file-browser
+                            data-server-id="@Model.GameServer.GameServerId"
+                            data-target-id="GameServer_BanFileRootPath"
+                            data-selection-mode="directory"
+                            data-initial-path-source="GameServer_BanFileRootPath">
                         <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                     </button>
                 }

@@ -223,7 +223,7 @@ public class GameServersControllerTests
         Assert.True(fu.OverrideFreshness);
         Assert.True(fu.OverrideRequiredTags);
         Assert.True(fu.OverrideMessages);
-        Assert.False(fu.Enabled);
+        Assert.False(fu.EnabledOverride.Value);
         Assert.Equal(4, fu.FreshnessSeconds);
         Assert.Equal("tag-fu", fu.RequiredTags);
         Assert.Single(fu.Messages);
@@ -387,7 +387,6 @@ public class GameServersControllerTests
                                                 Name = "fu",
                                                 Prefix = "!fu",
                                                 Usage = "!fu <player name>",
-                                                OverrideEnabled = true,
                                                 Enabled = false,
                                                 OverrideFreshness = true,
                                                 FreshnessSeconds = 4,
@@ -455,7 +454,6 @@ public class GameServersControllerTests
                                                 Name = "fu",
                                                 Prefix = "!fu",
                                                 Usage = "!fu <player name>",
-                                                OverrideEnabled = true,
                                                 Enabled = false,
                                                 OverrideFreshness = true,
                                                 FreshnessSeconds = 4,
@@ -535,8 +533,7 @@ public class GameServersControllerTests
                                                 Name = "fu",
                                                 Prefix = "!fu",
                                                 Usage = "!fu <player name>",
-                                                OverrideEnabled = false,
-                                                Enabled = false,
+                                            Enabled = null,
                                                 OverrideFreshness = false,
                                                 FreshnessSeconds = 99,
                                                 OverrideRequiredTags = false,
@@ -842,7 +839,7 @@ public class GameServersControllerTests
                 Title = "Server Alpha",
                 AgentEnabled = true
             },
-            BroadcastsEnabled = false,
+            BroadcastsEnabled = null,
             BroadcastMessages =
             [
                 new BroadcastMessageViewModel { Message = "^1Welcome", Enabled = true }

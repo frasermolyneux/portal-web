@@ -305,7 +305,9 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 broadcastsIntervalSeconds = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
             }
 
-            if (model.BroadcastsEnabled)
+            var hasBroadcastOverrides = model.BroadcastsEnabled.HasValue;
+
+            if (hasBroadcastOverrides)
             {
                 configurations.Add((
                     BroadcastSettingsConstants.Namespace,
@@ -378,7 +380,7 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
     private static bool HasChatCommandServerOverrides(ChatCommandServerSettingsViewModel model)
     {
         return model.Commands.Any(static command =>
-            command.OverrideEnabled
+            command.EnabledOverride.Value.HasValue
             || command.OverrideFreshness
             || command.OverrideRequiredTags
             || command.OverrideMessages);

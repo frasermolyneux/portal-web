@@ -233,7 +233,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
             case BroadcastSettingsConstants.Namespace:
                 if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
                 {
-                    model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
+                    model.BroadcastsEnabled = broadcastDocument.Enabled;
                     model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
                     model.BroadcastMessages =
                     [

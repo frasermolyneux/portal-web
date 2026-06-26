@@ -125,8 +125,11 @@ public class GameServerEditViewModel : IValidatableObject
 
     // Broadcasts configuration (parsed from "broadcasts" config namespace)
 
-    [DisplayName("Enabled")]
-    public bool BroadcastsEnabled { get; set; }
+    [DisplayName("Enabled Override")]
+    public TriStateOverrideValue BroadcastsEnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
+
+    [DisplayName("Enabled Override")]
+    public bool? BroadcastsEnabled { get => BroadcastsEnabledOverride?.Value; set => BroadcastsEnabledOverride = TriStateOverrideValue.From(value); }
 
     [DisplayName("Interval (seconds)")]
     [Range(1, 86400, ErrorMessage = "Broadcast interval must be between 1 and 86400 seconds.")]

@@ -63,38 +63,16 @@ StringComparison.OrdinalIgnoreCase));
             <div class="row">
                 <div class="col-lg-6">
                     <div class="border rounded p-3 mb-3">
-                        <input type="hidden" name="ChatCommands.Commands[@i].OverrideEnabled" value="false" />
-                        <div class="form-check mb-3">
-                            @if (command.OverrideEnabled)
-                            {
-                                <input class="form-check-input" type="checkbox" id="ChatCommands_Commands_@(i)__OverrideEnabled"
-                                       name="ChatCommands.Commands[@i].OverrideEnabled" value="true" data-global-toggle
-                                       data-global-mode="override" data-global-target="chat-command-@i-enabled-override"
-                                       checked="checked" />
-                            }
-                            else
-                            {
-                                <input class="form-check-input" type="checkbox" id="ChatCommands_Commands_@(i)__OverrideEnabled"
-                                       name="ChatCommands.Commands[@i].OverrideEnabled" value="true" data-global-toggle
-                                       data-global-mode="override" data-global-target="chat-command-@i-enabled-override" />
-                            }
-                            <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideEnabled">Override
-                                enabled state</label>
-                            </div>
-                            <div class="small text-muted mb-2">Global value: <strong>@(globalEnabled ? "Enabled" :
-                                                                                                                                          "Disabled")</strong></div>
-<div id="chat-command-@i-enabled-override"
-     class="@(!command.OverrideEnabled ? "d-none" : string.Empty)">
-    <label asp-for="ChatCommands.Commands[i].Enabled" class="form-label"></label>
-    <select asp-for="ChatCommands.Commands[i].Enabled" class="form-select">
-        <option value="">Choose setting</option>
-        <option value="true">Enabled</option>
-        <option value="false">Disabled</option>
-    </select>
-    <span asp-validation-for="ChatCommands.Commands[i].Enabled" class="text-danger"></span>
-</div>
-</div>
-</div>
+                        @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml", new TriStateOverrideSelectViewModel
+                        {
+                            FieldName = $"ChatCommands.Commands[{i}].Enabled",
+                            Label = Html.DisplayNameFor(m => m.ChatCommands.Commands[i].Enabled).ToString(),
+                            Value = command.EnabledOverride.Value,
+                            InheritLabel = $"Inherit global ({(globalEnabled ? "Enabled" : "Disabled")})",
+                            HelpText = "Select Inherit to use global command defaults, or choose Enabled/Disabled for this server."
+                        })
+                    </div>
+                </div>
 
 <div class="col-lg-6">
     <div class="border rounded p-3 mb-3">

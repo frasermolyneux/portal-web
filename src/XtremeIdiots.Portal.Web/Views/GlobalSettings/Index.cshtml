@@ -6,264 +6,312 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <form asp-action="Index" method="post">
-        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-12">
+                <div class="container-fluid">
+                    <ul class="nav nav-tabs" id="globalSettingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="general-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#general-tab" type="button" role="tab" aria-controls="general-tab"
+                                    aria-selected="true">General</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#agent-tab" type="button" role="tab" aria-controls="agent-tab"
+                                    aria-selected="false">Agent</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="broadcasts-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
+                                    aria-selected="false">Broadcasts</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="chat-commands-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#chat-commands-tab" type="button" role="tab"
+                                    aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#welcome-messages-tab" type="button" role="tab"
+                                    aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
+                                    aria-selected="false">Chat Moderation</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="events-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#events-tab" type="button" role="tab" aria-controls="events-tab"
+                                    aria-selected="false">Event Processing</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#banfilesync-tab" type="button" role="tab"
+                                    aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="serverlist-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#serverlist-tab" type="button" role="tab" aria-controls="serverlist-tab"
+                                    aria-selected="false">Server List</button>
+                        </li>
+                    </ul>
 
-                @* Agent Defaults *@
-                <div class="ibox">
-                    <div class="ibox-title">
-                        <h5><i class="fa-solid fa-fw fa-robot" aria-hidden="true"></i> Agent Defaults</h5>
-                    </div>
-                    <div class="ibox-content">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label asp-for="AgentPollIntervalMs" class="form-label"></label>
-                                    <input asp-for="AgentPollIntervalMs" class="form-control" type="number" />
-                                    <span asp-validation-for="AgentPollIntervalMs" class="text-danger"></span>
-                                    <small class="form-text text-muted">How frequently agents check for new log
-                                        data.</small>
-                                    </div>
+                    <div class="tab-content" id="globalSettingsTabContent">
+                        <div class="tab-pane fade show active" id="general-tab" role="tabpanel" aria-labelledby="general-tab-btn">
+                            <div class="ibox">
+                                <div class="ibox-title">
+                                    <h5><i class="fa-solid fa-fw fa-sliders" aria-hidden="true"></i> Global Defaults Overview</h5>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label asp-for="AgentStatusPublishIntervalSeconds" class="form-label"></label>
-                                        <input asp-for="AgentStatusPublishIntervalSeconds" class="form-control"
-                                               type="number" />
-                                        <span asp-validation-for="AgentStatusPublishIntervalSeconds"
-                                              class="text-danger"></span>
-                                        <small class="form-text text-muted">How often agents publish server status
-                                            snapshots.</small>
+                                <div class="ibox-content">
+                                    <p class="text-muted mb-0">Configure fleet-wide defaults that server-level settings can inherit or override.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="agent-tab" role="tabpanel" aria-labelledby="agent-tab-btn">
+                            <div class="ibox">
+                                <div class="ibox-title">
+                                    <h5><i class="fa-solid fa-fw fa-robot" aria-hidden="true"></i> Agent Defaults</h5>
+                                </div>
+                                <div class="ibox-content">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="AgentPollIntervalMs" class="form-label"></label>
+                                                <input asp-for="AgentPollIntervalMs" class="form-control" type="number" />
+                                                <span asp-validation-for="AgentPollIntervalMs" class="text-danger"></span>
+                                                <small class="form-text text-muted">How frequently agents check for new log data.</small>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label asp-for="AgentName" class="form-label"></label>
-                                            <input asp-for="AgentName" class="form-control" maxlength="120" />
-                                            <span asp-validation-for="AgentName" class="text-danger"></span>
-                                            <small class="form-text text-muted">Prefix prepended to automated broadcast
-                                                messages. Use CoD color tokens if desired.</small>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="AgentStatusPublishIntervalSeconds" class="form-label"></label>
+                                                <input asp-for="AgentStatusPublishIntervalSeconds" class="form-control" type="number" />
+                                                <span asp-validation-for="AgentStatusPublishIntervalSeconds" class="text-danger"></span>
+                                                <small class="form-text text-muted">How often agents publish server status snapshots.</small>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="mb-3">
+                                                <label asp-for="AgentName" class="form-label"></label>
+                                                <input asp-for="AgentName" class="form-control" maxlength="120" />
+                                                <span asp-validation-for="AgentName" class="text-danger"></span>
+                                                <small class="form-text text-muted">Prefix prepended to automated broadcast messages. Use CoD color tokens if desired.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
                                                 <label asp-for="AgentRconSyncIntervalSeconds" class="form-label"></label>
                                                 <input asp-for="AgentRconSyncIntervalSeconds" class="form-control" type="number" />
                                                 <span asp-validation-for="AgentRconSyncIntervalSeconds" class="text-danger"></span>
-                                                <small class="form-text text-muted">How often agents query game servers via
-                                                    RCON/Query.</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label asp-for="AgentOffsetSaveIntervalSeconds" class="form-label"></label>
-                                                    <input asp-for="AgentOffsetSaveIntervalSeconds" class="form-control"
-                                                           type="number" />
-                                                    <span asp-validation-for="AgentOffsetSaveIntervalSeconds"
-                                                          class="text-danger"></span>
-                                                    <small class="form-text text-muted">How often agents persist log file read
-                                                        position.</small>
-                                                    </div>
-                                                </div>
+                                                <small class="form-text text-muted">How often agents query game servers via RCON/Query.</small>
                                             </div>
                                         </div>
                                     </div>
-
-                                    @* Ban File Sync Defaults *@
-                                    <div class="ibox">
-                                        <div class="ibox-title">
-                                            <h5><i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban File Sync Defaults</h5>
-                                        </div>
-                                        <div class="ibox-content">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label asp-for="BanFileSyncCheckIntervalSeconds" class="form-label"></label>
-                                                        <input asp-for="BanFileSyncCheckIntervalSeconds" class="form-control"
-                                                               type="number" />
-                                                        <span asp-validation-for="BanFileSyncCheckIntervalSeconds"
-                                                              class="text-danger"></span>
-                                                        <small class="form-text text-muted">How often agents check ban files for new
-                                                            entries.</small>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="AgentOffsetSaveIntervalSeconds" class="form-label"></label>
+                                                <input asp-for="AgentOffsetSaveIntervalSeconds" class="form-control" type="number" />
+                                                <span asp-validation-for="AgentOffsetSaveIntervalSeconds" class="text-danger"></span>
+                                                <small class="form-text text-muted">How often agents persist log file read position.</small>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        @* Moderation Defaults *@
-                                        <div class="ibox">
-                                            <div class="ibox-title">
-                                                <h5><i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Chat Moderation</h5>
+                        <div class="tab-pane fade" id="broadcasts-tab" role="tabpanel" aria-labelledby="broadcasts-tab-btn">
+                            @await Html.PartialAsync("_BroadcastsConfiguration", Model)
+                        </div>
+
+                        <div class="tab-pane fade" id="chat-commands-tab" role="tabpanel" aria-labelledby="chat-commands-tab-btn">
+                            @await Html.PartialAsync("_ChatCommandsConfiguration", Model)
+                        </div>
+
+                        <div class="tab-pane fade" id="welcome-messages-tab" role="tabpanel" aria-labelledby="welcome-messages-tab-btn">
+                            @await Html.PartialAsync("_WelcomeMessagesConfiguration", Model)
+                        </div>
+
+                        <div class="tab-pane fade" id="moderation-tab" role="tabpanel" aria-labelledby="moderation-tab-btn">
+                            <div class="ibox">
+                                <div class="ibox-title">
+                                    <h5><i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Chat Moderation</h5>
+                                </div>
+                                <div class="ibox-content">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="ModerationHateSeverityThreshold" class="form-label"></label>
+                                                <select asp-for="ModerationHateSeverityThreshold" class="form-select"
+                                                        asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                                <span asp-validation-for="ModerationHateSeverityThreshold" class="text-danger"></span>
+                                                <small class="form-text text-muted">Minimum hate severity (0-6) that triggers moderation, or Disabled.</small>
                                             </div>
-                                            <div class="ibox-content">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label asp-for="ModerationHateSeverityThreshold" class="form-label"></label>
-                                                            <select asp-for="ModerationHateSeverityThreshold" class="form-select"
-                                                                    asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
-                                                            <span asp-validation-for="ModerationHateSeverityThreshold"
-                                                                  class="text-danger"></span>
-                                                            <small class="form-text text-muted">Minimum hate severity (0–6) that triggers
-                                                                moderation, or Disabled.</small>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="mb-3">
-                                                                <label asp-for="ModerationViolenceSeverityThreshold" class="form-label"></label>
-                                                                <select asp-for="ModerationViolenceSeverityThreshold" class="form-select"
-                                                                        asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
-                                                                <span asp-validation-for="ModerationViolenceSeverityThreshold"
-                                                                      class="text-danger"></span>
-                                                                <small class="form-text text-muted">Minimum violence severity (0–6) that triggers
-                                                                    moderation, or Disabled.</small>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="row">
-                                                            <div class="col-md-6">
-                                                                <div class="mb-3">
-                                                                    <label asp-for="ModerationSexualSeverityThreshold" class="form-label"></label>
-                                                                    <select asp-for="ModerationSexualSeverityThreshold" class="form-select"
-                                                                            asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
-                                                                    <span asp-validation-for="ModerationSexualSeverityThreshold"
-                                                                          class="text-danger"></span>
-                                                                    <small class="form-text text-muted">Minimum sexual severity (0–6) that triggers
-                                                                        moderation, or Disabled.</small>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-md-6">
-                                                                    <div class="mb-3">
-                                                                        <label asp-for="ModerationSelfHarmSeverityThreshold" class="form-label"></label>
-                                                                        <select asp-for="ModerationSelfHarmSeverityThreshold" class="form-select"
-                                                                                asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
-                                                                        <span asp-validation-for="ModerationSelfHarmSeverityThreshold"
-                                                                              class="text-danger"></span>
-                                                                        <small class="form-text text-muted">Minimum self-harm severity (0–6) that triggers
-                                                                            moderation, or Disabled.</small>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row">
-                                                                    <div class="col-md-6">
-                                                                        <div class="mb-3">
-                                                                            <label asp-for="ModerationMinMessageLength" class="form-label"></label>
-                                                                            <input asp-for="ModerationMinMessageLength" class="form-control" type="number" />
-                                                                            <span asp-validation-for="ModerationMinMessageLength" class="text-danger"></span>
-                                                                            <small class="form-text text-muted">Messages shorter than this skip content safety
-                                                                                analysis.</small>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="ModerationViolenceSeverityThreshold" class="form-label"></label>
+                                                <select asp-for="ModerationViolenceSeverityThreshold" class="form-select"
+                                                        asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                                <span asp-validation-for="ModerationViolenceSeverityThreshold" class="text-danger"></span>
+                                                <small class="form-text text-muted">Minimum violence severity (0-6) that triggers moderation, or Disabled.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="ModerationSexualSeverityThreshold" class="form-label"></label>
+                                                <select asp-for="ModerationSexualSeverityThreshold" class="form-select"
+                                                        asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                                <span asp-validation-for="ModerationSexualSeverityThreshold" class="text-danger"></span>
+                                                <small class="form-text text-muted">Minimum sexual severity (0-6) that triggers moderation, or Disabled.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="ModerationSelfHarmSeverityThreshold" class="form-label"></label>
+                                                <select asp-for="ModerationSelfHarmSeverityThreshold" class="form-select"
+                                                        asp-items="XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel.BuildSeverityOptions(false)"></select>
+                                                <span asp-validation-for="ModerationSelfHarmSeverityThreshold" class="text-danger"></span>
+                                                <small class="form-text text-muted">Minimum self-harm severity (0-6) that triggers moderation, or Disabled.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="ModerationMinMessageLength" class="form-label"></label>
+                                                <input asp-for="ModerationMinMessageLength" class="form-control" type="number" />
+                                                <span asp-validation-for="ModerationMinMessageLength" class="text-danger"></span>
+                                                <small class="form-text text-muted">Messages shorter than this skip content safety analysis.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                                            @* Event Processing Defaults *@
-                                                            <div class="ibox">
-                                                                <div class="ibox-title">
-                                                                    <h5><i class="fa-solid fa-fw fa-timeline" aria-hidden="true"></i> Event Processing</h5>
-                                                                </div>
-                                                                <div class="ibox-content">
-                                                                    <div class="row">
-                                                                        <div class="col-md-6">
-                                                                            <div class="mb-3">
-                                                                                <label asp-for="EventsStaleThresholdSeconds" class="form-label"></label>
-                                                                                <input asp-for="EventsStaleThresholdSeconds" class="form-control" type="number" />
-                                                                                <span asp-validation-for="EventsStaleThresholdSeconds" class="text-danger"></span>
-                                                                                <small class="form-text text-muted">Events older than this are logged as
-                                                                                    warnings.</small>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div class="col-md-6">
-                                                                                <div class="mb-3">
-                                                                                    <label asp-for="EventsPlayerCacheExpirationSeconds" class="form-label"></label>
-                                                                                    <input asp-for="EventsPlayerCacheExpirationSeconds" class="form-control"
-                                                                                           type="number" />
-                                                                                    <span asp-validation-for="EventsPlayerCacheExpirationSeconds"
-                                                                                          class="text-danger"></span>
-                                                                                    <small class="form-text text-muted">How long player data is cached before
-                                                                                        re-fetch.</small>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
+                        <div class="tab-pane fade" id="events-tab" role="tabpanel" aria-labelledby="events-tab-btn">
+                            <div class="ibox">
+                                <div class="ibox-title">
+                                    <h5><i class="fa-solid fa-fw fa-timeline" aria-hidden="true"></i> Event Processing</h5>
+                                </div>
+                                <div class="ibox-content">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="EventsStaleThresholdSeconds" class="form-label"></label>
+                                                <input asp-for="EventsStaleThresholdSeconds" class="form-control" type="number" />
+                                                <span asp-validation-for="EventsStaleThresholdSeconds" class="text-danger"></span>
+                                                <small class="form-text text-muted">Events older than this are logged as warnings.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="EventsPlayerCacheExpirationSeconds" class="form-label"></label>
+                                                <input asp-for="EventsPlayerCacheExpirationSeconds" class="form-control" type="number" />
+                                                <span asp-validation-for="EventsPlayerCacheExpirationSeconds" class="text-danger"></span>
+                                                <small class="form-text text-muted">How long player data is cached before re-fetch.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                                                    @await Html.PartialAsync("_ChatCommandsConfiguration", Model)
+                        <div class="tab-pane fade" id="banfilesync-tab" role="tabpanel" aria-labelledby="banfilesync-tab-btn">
+                            <div class="ibox">
+                                <div class="ibox-title">
+                                    <h5><i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban File Sync Defaults</h5>
+                                </div>
+                                <div class="ibox-content">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label asp-for="BanFileSyncCheckIntervalSeconds" class="form-label"></label>
+                                                <input asp-for="BanFileSyncCheckIntervalSeconds" class="form-control" type="number" />
+                                                <span asp-validation-for="BanFileSyncCheckIntervalSeconds" class="text-danger"></span>
+                                                <small class="form-text text-muted">How often agents check ban files for new entries.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                                                    @await Html.PartialAsync("_WelcomeMessagesConfiguration", Model)
+                        <div class="tab-pane fade" id="serverlist-tab" role="tabpanel" aria-labelledby="serverlist-tab-btn">
+                            @await Html.PartialAsync("_ServerListConfiguration", Model)
+                        </div>
+                    </div>
 
-                                                                    @await Html.PartialAsync("_BroadcastsConfiguration", Model)
+                    <div class="ibox mt-3">
+                        <div class="ibox-content">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        </div>
+                        <div class="ibox-footer ibox-footer--sticky">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-fw fa-floppy-disk" aria-hidden="true"></i> Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
 
-                                                                    @await Html.PartialAsync("_ServerListConfiguration", Model)
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script src="~/js/welcome-rules-manager.js" asp-append-version="true"></script>
+    <script src="~/js/settings-row-manager.js" asp-append-version="true"></script>
+    <script>
+        (function initializeGlobalSettingsRowManagers() {
+            var containers = document.querySelectorAll('[data-chat-command-messages-container]');
+            var agentNameInput = document.getElementById('AgentName');
+            var editors = [];
 
-                                                                    @* Save Button *@
-                                                                    <div class="ibox">
-                                                                        <div class="ibox-footer">
-                                                                            <button type="submit" class="btn btn-primary">
-                                                                                <i class="fa-solid fa-fw fa-floppy-disk" aria-hidden="true"></i> Save Settings
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
+            function getAgentName() {
+                return (agentNameInput?.value || '').trim();
+            }
 
-                                                                </div>
-                                                            </div>
-                                                        </form>
-                                                    </div>
+            containers.forEach(function (container) {
+                var editor = XISettingsRowManager.initializeMessageList({
+                    container: container,
+                    templateId: container.dataset.templateId,
+                    addButtonId: container.dataset.addButtonId,
+                    emptyStateId: container.dataset.emptyStateId,
+                    fieldNamePrefix: container.dataset.fieldNamePrefix,
+                    normalizeIdPrefix: true,
+                    agentNameInput: agentNameInput,
+                    agentNameProvider: getAgentName,
+                    replaceNameToken: true,
+                    codPreviewMode: 'always'
+                });
 
-                                                    @section Scripts {
-                                                        @{
-                                                            await Html.RenderPartialAsync("_ValidationScriptsPartial");
-                                                        }
-                                                        <script src="~/js/welcome-rules-manager.js" asp-append-version="true"></script>
-                                                        <script src="~/js/settings-row-manager.js" asp-append-version="true"></script>
-                                                        <script>
-                                                            (function initializeGlobalSettingsRowManagers() {
-                                                            var containers = document.querySelectorAll('[data-chat-command-messages-container]');
-                                                            var agentNameInput = document.getElementById('AgentName');
-                                                            var editors = [];
+                if (editor) {
+                    editors.push(editor);
+                }
+            });
 
-                                                            function getAgentName() {
-                                                            return (agentNameInput?.value || '').trim();
-                                                            }
+            var form = document.querySelector('form[method="post"]');
+            if (form) {
+                form.addEventListener('submit', function () {
+                    editors.forEach(function (editor) {
+                        editor.reindex();
+                        editor.syncBooleanPosts();
+                    });
+                });
+            }
+        })();
 
-                                                            containers.forEach(function (container) {
-                                                            var editor = XISettingsRowManager.initializeMessageList({
-                                                            container: container,
-                                                            templateId: container.dataset.templateId,
-                                                            addButtonId: container.dataset.addButtonId,
-                                                            emptyStateId: container.dataset.emptyStateId,
-                                                            fieldNamePrefix: container.dataset.fieldNamePrefix,
-                                                            normalizeIdPrefix: true,
-                                                            agentNameInput: agentNameInput,
-                                                            agentNameProvider: getAgentName,
-                                                            replaceNameToken: true,
-                                                            codPreviewMode: 'always'
-                                                            });
-
-                                                            if (editor) {
-                                                            editors.push(editor);
-                                                            }
-                                                            });
-
-                                                            var form = document.querySelector('form[method="post"]');
-                                                            if (form) {
-                                                            form.addEventListener('submit', function () {
-                                                            editors.forEach(function (editor) {
-                                                            editor.reindex();
-                                                            editor.syncBooleanPosts();
-                                                            });
-                                                            });
-                                                            }
-                                                            })();
-
-                                                            XIWelcomeRulesManager.initializeEditor('global-welcome-rules-container', 'add-global-welcome-rule');
-                                                        </script>
-                                                    }
+        XIWelcomeRulesManager.initializeEditor('global-welcome-rules-container', 'add-global-welcome-rule');
+    </script>
+}

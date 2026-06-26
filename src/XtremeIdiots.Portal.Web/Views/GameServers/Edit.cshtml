@@ -217,6 +217,46 @@
         }
         }
 
+        document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+        var targetInputId = button.getAttribute('data-password-toggle');
+        if (!targetInputId) return;
+        togglePasswordVisibility(targetInputId, button);
+        });
+        });
+
+        document.querySelectorAll('[data-file-browser]').forEach(function (button) {
+        button.addEventListener('click', function () {
+        var serverId = button.getAttribute('data-server-id');
+        var targetId = button.getAttribute('data-target-id');
+        if (!serverId || !targetId) return;
+
+        var extensionFilter = button.getAttribute('data-extension-filter');
+        var selectionMode = button.getAttribute('data-selection-mode');
+        var initialPathSource = button.getAttribute('data-initial-path-source');
+
+        if (selectionMode === 'directory') {
+        var initialPath = '/';
+        if (initialPathSource) {
+        initialPath = document.getElementById(initialPathSource)?.value || '/';
+        }
+
+        openFileTransportBrowser(serverId, targetId, {
+        selectionMode: 'directory',
+        initialPath: initialPath
+        });
+        return;
+        }
+
+        if (extensionFilter) {
+        openFileTransportBrowser(serverId, targetId, extensionFilter);
+        return;
+        }
+
+        openFileTransportBrowser(serverId, targetId);
+        });
+        });
+
         // Toggle tab visibility when feature checkboxes change
         document.querySelectorAll('.feature-toggle[data-toggle-tab]').forEach(function (checkbox) {
         checkbox.addEventListener('change', function () {
@@ -266,13 +306,6 @@
 
         if (defaultPortValue) {
         defaultPortValue.textContent = currentMeta.defaultPort;
-        }
-
-        if (fileTransferTab) {
-        var title = fileTransferTab.querySelector('.ibox-title');
-        if (title) {
-        title.textContent = 'File Transfer Configuration';
-        }
         }
 
         if (sftpHostKeyGroup) {

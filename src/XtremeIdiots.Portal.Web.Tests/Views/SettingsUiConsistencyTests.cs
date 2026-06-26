@@ -51,6 +51,23 @@ public class SettingsUiConsistencyTests
     }
 
     [Fact]
+    public void GlobalSettingsIndex_UsesTabbedLayoutAlignedWithServerSettings()
+    {
+        var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/Index.cshtml");
+
+        Assert.Contains("id=\"globalSettingsTabs\"", viewMarkup);
+        Assert.Contains("General", viewMarkup);
+        Assert.Contains("Agent", viewMarkup);
+        Assert.Contains("Broadcasts", viewMarkup);
+        Assert.Contains("Chat Commands", viewMarkup);
+        Assert.Contains("Welcome Messages", viewMarkup);
+        Assert.Contains("Chat Moderation", viewMarkup);
+        Assert.Contains("Event Processing", viewMarkup);
+        Assert.Contains("Ban File Sync", viewMarkup);
+        Assert.Contains("Server List", viewMarkup);
+    }
+
+    [Fact]
     public void GameServersEdit_UsesSharedSettingsRowManagerScript()
     {
         var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/Edit.cshtml");
@@ -59,6 +76,19 @@ public class SettingsUiConsistencyTests
         Assert.Contains("XISettingsRowManager.initializeMessageList", viewMarkup);
         Assert.DoesNotContain("function reindexMessageRows", viewMarkup);
         Assert.DoesNotContain("function wireMessageRow", viewMarkup);
+    }
+
+    [Fact]
+    public void GameServerBroadcastsAndChatCommandEnabledUseTriStateOverrideSelect()
+    {
+        var broadcastsMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_BroadcastsConfiguration.cshtml");
+        var chatCommandsMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_ChatCommandsConfiguration.cshtml");
+
+        Assert.Contains("Views/Shared/Components/TriStateOverrideSelect.cshtml", broadcastsMarkup);
+        Assert.Contains("FieldName = \"BroadcastsEnabled\"", broadcastsMarkup);
+
+        Assert.Contains("Views/Shared/Components/TriStateOverrideSelect.cshtml", chatCommandsMarkup);
+        Assert.Contains("FieldName = $\"ChatCommands.Commands[{i}].Enabled\"", chatCommandsMarkup);
     }
 
     private static string ReadRepoFile(string relativePath)

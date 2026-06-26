@@ -13,7 +13,10 @@
                 @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
                 {
                     <button class="btn btn-outline-secondary" type="button"
-                            onclick="openFileTransportBrowser('@Model.GameServer.GameServerId', 'AgentConfigLogFilePath', '.log')">
+                            data-file-browser
+                            data-server-id="@Model.GameServer.GameServerId"
+                            data-target-id="AgentConfigLogFilePath"
+                            data-extension-filter=".log">
                         <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                     </button>
                 }
