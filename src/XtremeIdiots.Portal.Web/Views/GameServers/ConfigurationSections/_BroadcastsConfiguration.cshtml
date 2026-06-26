@@ -48,8 +48,6 @@
                         <div class="border rounded p-3 mb-3" data-message-row="broadcast">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div class="form-check mb-0">
-                                    <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled"
-                                           value="false" />
                                     @if (broadcastMessages[i].Enabled)
                                     {
                                         <input class="form-check-input" data-field="enabled" type="checkbox"
@@ -61,6 +59,8 @@
                                         <input class="form-check-input" data-field="enabled" type="checkbox"
                                                name="BroadcastMessages[@i].Enabled" value="true" id="BroadcastMessages_@(i)__Enabled" />
                                     }
+                                     <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled"
+                                         value="false" />
                                     <label class="form-check-label" data-field="enabled-label"
                                            for="BroadcastMessages_@(i)__Enabled">Enabled</label>
                                 </div>
@@ -93,8 +93,8 @@
                 <div class="border rounded p-3 mb-3" data-message-row="broadcast">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="form-check mb-0">
-                            <input type="hidden" data-field="enabled-hidden" value="false" />
                             <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                                <input type="hidden" data-field="enabled-hidden" value="false" />
                             <label class="form-check-label" data-field="enabled-label">Enabled</label>
                         </div>
                         <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">

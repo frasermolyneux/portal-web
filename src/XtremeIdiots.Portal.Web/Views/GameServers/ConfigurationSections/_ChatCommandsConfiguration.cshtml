@@ -199,8 +199,6 @@ StringComparison.OrdinalIgnoreCase));
                                     <div class="border rounded p-3 mb-3" data-message-row>
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <div class="form-check mb-0">
-                                                <input type="hidden" data-field="enabled-hidden"
-                                                       name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
                                                 @if (command.Messages[j].Enabled)
                                                 {
                                                     <input class="form-check-input" data-field="enabled" type="checkbox"
@@ -213,6 +211,8 @@ StringComparison.OrdinalIgnoreCase));
                                                            name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
                                                            id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" />
                                                 }
+                                                      <input type="hidden" data-field="enabled-hidden"
+                                                          name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
                                                 <label class="form-check-label" data-field="enabled-label"
                                                        for="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled">Enabled</label>
                                             </div>
@@ -255,8 +255,8 @@ StringComparison.OrdinalIgnoreCase));
             <div class="border rounded p-3 mb-3" data-message-row>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="form-check mb-0">
-                        <input type="hidden" data-field="enabled-hidden" value="false" />
                         <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                            <input type="hidden" data-field="enabled-hidden" value="false" />
                         <label class="form-check-label" data-field="enabled-label">Enabled</label>
                     </div>
                     <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">

@@ -104,6 +104,84 @@ public class SettingsUiConsistencyTests
     }
 
     [Fact]
+    public void GlobalWelcomeAndChatDefaults_CheckboxMarkupPlacesHiddenFallbackAfterCheckbox()
+    {
+        var welcomeMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
+        var chatMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
+
+        var welcomeCheckboxIndex = welcomeMarkup.IndexOf("name=\"WelcomeMessages.Enabled\" value=\"true\"", StringComparison.Ordinal);
+        var welcomeHiddenIndex = welcomeMarkup.IndexOf("name=\"WelcomeMessages.Enabled\" value=\"false\"", StringComparison.Ordinal);
+        Assert.True(welcomeCheckboxIndex >= 0, "WelcomeMessages.Enabled checkbox markup not found.");
+        Assert.True(welcomeHiddenIndex > welcomeCheckboxIndex,
+            "WelcomeMessages.Enabled hidden fallback must be rendered after the checkbox.");
+
+        var chatCheckboxIndex = chatMarkup.IndexOf("name=\"ChatCommands.DefaultsEnabled\" value=\"true\"", StringComparison.Ordinal);
+        var chatHiddenIndex = chatMarkup.IndexOf("name=\"ChatCommands.DefaultsEnabled\" value=\"false\"", StringComparison.Ordinal);
+        Assert.True(chatCheckboxIndex >= 0, "ChatCommands.DefaultsEnabled checkbox markup not found.");
+        Assert.True(chatHiddenIndex > chatCheckboxIndex,
+            "ChatCommands.DefaultsEnabled hidden fallback must be rendered after the checkbox.");
+    }
+
+    [Fact]
+    public void ServerWelcomeInheritGlobalRules_CheckboxMarkupPlacesHiddenFallbackAfterCheckbox()
+    {
+        var welcomeServerMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+
+        var checkboxIndex = welcomeServerMarkup.IndexOf("name=\"WelcomeMessages.InheritGlobalRules\" value=\"true\"", StringComparison.Ordinal);
+        var hiddenIndex = welcomeServerMarkup.IndexOf("name=\"WelcomeMessages.InheritGlobalRules\" value=\"false\"", StringComparison.Ordinal);
+
+        Assert.True(checkboxIndex >= 0, "WelcomeMessages.InheritGlobalRules checkbox markup not found.");
+        Assert.True(hiddenIndex > checkboxIndex,
+            "WelcomeMessages.InheritGlobalRules hidden fallback must be rendered after the checkbox.");
+    }
+
+    [Fact]
+    public void DynamicEnabledRows_PlaceHiddenFallbackAfterCheckboxInGlobalSettings()
+    {
+        var globalBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_BroadcastsConfiguration.cshtml");
+        var globalChatCommands = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
+        var globalWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
+
+        AssertCheckboxBeforeHidden(globalBroadcasts,
+            "name=\"BroadcastMessages[@i].Enabled\" value=\"true\"",
+            "data-field=\"enabled-hidden\" name=\"BroadcastMessages[@i].Enabled\"",
+            "Global broadcasts row enabled");
+
+        AssertCheckboxBeforeHidden(globalChatCommands,
+            "name=\"ChatCommands.Commands[@i].Messages[@j].Enabled\" value=\"true\"",
+            "name=\"ChatCommands.Commands[@i].Messages[@j].Enabled\" value=\"false\"",
+            "Global chat command message row enabled");
+
+        AssertCheckboxBeforeHidden(globalWelcomeMessages,
+            "name=\"WelcomeMessages.Rules[@i].Enabled\" value=\"true\"",
+            "name=\"WelcomeMessages.Rules[@i].Enabled\" value=\"false\"",
+            "Global welcome rule row enabled");
+    }
+
+    [Fact]
+    public void DynamicEnabledRows_PlaceHiddenFallbackAfterCheckboxInServerSettings()
+    {
+        var serverBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_BroadcastsConfiguration.cshtml");
+        var serverChatCommands = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_ChatCommandsConfiguration.cshtml");
+        var serverWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+
+        AssertCheckboxBeforeHidden(serverBroadcasts,
+            "name=\"BroadcastMessages[@i].Enabled\" value=\"true\"",
+            "data-field=\"enabled-hidden\" name=\"BroadcastMessages[@i].Enabled\"",
+            "Server broadcasts row enabled");
+
+        AssertCheckboxBeforeHidden(serverChatCommands,
+            "name=\"ChatCommands.Commands[@i].Messages[@j].Enabled\" value=\"true\"",
+            "name=\"ChatCommands.Commands[@i].Messages[@j].Enabled\" value=\"false\"",
+            "Server chat command message row enabled");
+
+        AssertCheckboxBeforeHidden(serverWelcomeMessages,
+            "name=\"WelcomeMessages.LocalRules[@i].Enabled\"",
+            "data-field=\"enabled-hidden\" name=\"WelcomeMessages.LocalRules[@i].Enabled\"",
+            "Server welcome local rule row enabled");
+    }
+
+    [Fact]
     public void ChatCommandFuMessages_GlobalAndServerOfferMultilineImport()
     {
         var globalMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
@@ -158,5 +236,14 @@ public class SettingsUiConsistencyTests
         var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
         var absolutePath = Path.Combine(repoRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
         return File.ReadAllText(absolutePath);
+    }
+
+    private static void AssertCheckboxBeforeHidden(string markup, string checkboxNeedle, string hiddenNeedle, string context)
+    {
+        var checkboxIndex = markup.IndexOf(checkboxNeedle, StringComparison.Ordinal);
+        var hiddenIndex = markup.IndexOf(hiddenNeedle, StringComparison.Ordinal);
+
+        Assert.True(checkboxIndex >= 0, $"{context}: checkbox markup not found.");
+        Assert.True(hiddenIndex > checkboxIndex, $"{context}: hidden fallback must be rendered after the checkbox.");
     }
 }
