@@ -894,7 +894,7 @@ public class MapRotationsController(
                 TempData["ShowActivationRestartReminder"] = true;
                 TrackSuccessTelemetry("MapRotationAssignmentActivated", nameof(ActivateAssignment));
 
-                // Auto-promote rotation status to Active if still in Draft or Testing
+                // Auto-promote rotation status to Published if still in Draft or Testing
                 if (rotation.Status is MapRotationStatus.Draft or MapRotationStatus.Testing)
                 {
                     var writeAuth = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
@@ -921,11 +921,11 @@ public class MapRotationsController(
                             var promoteResult = await repositoryApiClient.MapRotations.V1.UpdateMapRotation(promoteDto, cancellationToken).ConfigureAwait(false);
                             if (promoteResult.IsSuccess)
                             {
-                                this.AddAlertInfo("Rotation status automatically promoted to Active.");
+                                this.AddAlertInfo("Rotation status automatically promoted to Published.");
                             }
                             else
                             {
-                                Logger.LogWarning("Failed to auto-promote rotation {RotationId} status to Active", mapRotationId);
+                                Logger.LogWarning("Failed to auto-promote rotation {RotationId} status to Published", mapRotationId);
                             }
                         }
                     }

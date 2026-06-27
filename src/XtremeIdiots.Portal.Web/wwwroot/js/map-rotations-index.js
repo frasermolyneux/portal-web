@@ -5,7 +5,7 @@ $(document).ready(function () {
     const statusBadgeMap = {
         'Draft': '<span class="badge bg-warning text-dark">Draft</span>',
         'Testing': '<span class="badge bg-primary">Testing</span>',
-        'Active': '<span class="badge bg-success">Active</span>',
+        'Active': '<span class="badge bg-success">Published</span>',
         'Archived': '<span class="badge bg-dark">Archived</span>'
     };
 
