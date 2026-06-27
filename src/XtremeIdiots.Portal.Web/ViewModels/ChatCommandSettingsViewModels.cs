@@ -143,18 +143,15 @@ public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelB
     public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
     [DisplayName("Enabled Override")]
-    public bool OverrideEnabled
-    {
+    public bool OverrideEnabled {
         get => EnabledOverride?.Value is not null;
         set => Enabled = value ? Enabled ?? false : null;
     }
 
     [DisplayName("Enabled Override")]
-    public new bool? Enabled
-    {
+    public new bool? Enabled {
         get => EnabledOverride?.Value;
-        set
-        {
+        set {
             base.Enabled = value;
             EnabledOverride = TriStateOverrideValue.From(value);
         }
@@ -691,8 +688,8 @@ internal static class ChatCommandDescriptorCatalog
     public static ChatCommandDescriptor Register { get; } = new(
         "register",
         "!register",
-        "!register <forum id>",
-        "Link your in-game identity with your forum account.",
+        "!register CODE",
+        "Link your in-game identity to a portal profile using an activation code.",
         true);
 
     public static ChatCommandDescriptor WhoAmI { get; } = new(
