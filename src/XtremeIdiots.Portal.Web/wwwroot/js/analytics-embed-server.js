@@ -30,15 +30,18 @@
     async function loadDetail() {
         const r = A.range('30d');
         const q = A.buildQuery({ id: serverId, from: r.from, to: r.to });
-        const [events, chat, maps] = await Promise.all([
+        const [events, chat, chatCommands, maps] = await Promise.all([
             A.fetchJson('/api/Analytics/server/events' + q).catch(function () { return { byType: [] }; }),
             A.fetchJson('/api/Analytics/server/chat' + A.buildQuery({ id: serverId, from: r.from, to: r.to, top: 10 })).catch(function () { return { topChatters: [] }; }),
+            A.fetchJson('/api/Analytics/server/chat-commands' + A.buildQuery({ id: serverId, from: r.from, to: r.to, top: 15 })).catch(function () { return { commands: [] }; }),
             A.fetchJson('/api/Analytics/server/map-rotation' + q).catch(function () { return { maps: [] }; })
         ]);
         A.renderTable('analytics-embed-server-events', ['Event type', 'Count'],
             (events.byType || []).map(function (i) { return [i.eventType, A.fmtNumber(i.count)]; }));
         A.renderTable('analytics-embed-server-chat', ['Player', 'Messages'],
             (chat.topChatters || []).map(function (i) { return [i.username, A.fmtNumber(i.count)]; }));
+        A.renderTable('analytics-embed-server-chat-commands', ['Command', 'Executed', 'Denied'],
+            (chatCommands.commands || []).map(function (i) { return [i.command, A.fmtNumber(i.count), A.fmtNumber(i.deniedCount)]; }));
         A.renderTable('analytics-embed-server-maps', ['Map', 'Avg', 'Share'],
             (maps.maps || []).map(function (i) { return [i.mapName, Math.round(i.avgPlayers * 10) / 10, (Math.round(i.sharePercent * 10) / 10) + '%']; }));
     }

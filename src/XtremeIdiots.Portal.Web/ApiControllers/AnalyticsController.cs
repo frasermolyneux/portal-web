@@ -166,6 +166,12 @@ public class AnalyticsController(
         return Json(() => repositoryApiClient.ServerAnalytics.V1.GetChatSummary(id, Utc(from), Utc(to), top, cancellationToken), nameof(ServerChat));
     }
 
+    [HttpGet("server/chat-commands")]
+    public Task<IActionResult> ServerChatCommands(Guid id, DateTime from, DateTime to, int top = AnalyticsQueryDefaults.DefaultTop, CancellationToken cancellationToken = default)
+    {
+        return Json(() => repositoryApiClient.ServerAnalytics.V1.GetChatCommandsSummary(id, Utc(from), Utc(to), top, cancellationToken), nameof(ServerChatCommands));
+    }
+
     [HttpGet("server/map-rotation")]
     public Task<IActionResult> ServerMapRotation(Guid id, DateTime from, DateTime to, CancellationToken cancellationToken = default)
     {
