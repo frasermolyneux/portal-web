@@ -18,6 +18,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
@@ -55,6 +56,28 @@ public class MapRotationsControllerTests
         controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
         return controller;
+    }
+
+    [Fact]
+    public async Task Create_Get_WhenAuthorized_UsesDraftAsDefaultStatus()
+    {
+        // Arrange
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Create();
+
+        // Assert
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<CreateMapRotationViewModel>(view.Model);
+        Assert.Equal(MapRotationStatus.Draft, model.Status);
     }
 
     [Fact]
@@ -143,7 +166,7 @@ public class MapRotationsControllerTests
 
         mockRepositoryApiClient
             .Setup(x => x.MapRotations.V1.UpdateMapRotation(
-                It.Is<UpdateMapRotationDto>(dto => dto.MapRotationId == mapRotationId && dto.Status == MapRotationStatus.Active),
+                It.Is<UpdateMapRotationDto>(dto => dto.MapRotationId == mapRotationId && dto.Status == MapRotationStatus.Published),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(freshRotation)));
 

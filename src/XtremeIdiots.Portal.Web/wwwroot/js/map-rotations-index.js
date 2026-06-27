@@ -5,6 +5,7 @@ $(document).ready(function () {
     const statusBadgeMap = {
         'Draft': '<span class="badge bg-warning text-dark">Draft</span>',
         'Testing': '<span class="badge bg-primary">Testing</span>',
+        'Published': '<span class="badge bg-success">Published</span>',
         'Active': '<span class="badge bg-success">Published</span>',
         'Archived': '<span class="badge bg-dark">Archived</span>'
     };
@@ -15,11 +16,11 @@ $(document).ready(function () {
         searchDelay: 800,
         stateSave: true,
         stateSaveParams: function (settings, data) {
-            data._mapRotationsStructureVersion = 2;
+            data._mapRotationsStructureVersion = 3;
             if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
         },
         stateLoadParams: function (settings, data) {
-            if (data._mapRotationsStructureVersion !== 2) {
+            if (data._mapRotationsStructureVersion !== 3) {
                 var key = 'DataTables_dataTable_' + window.location.pathname;
                 try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
                 return false;

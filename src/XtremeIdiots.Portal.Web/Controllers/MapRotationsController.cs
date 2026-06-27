@@ -911,7 +911,7 @@ public class MapRotationsController(
                                 Title = freshRotation.Title,
                                 Description = freshRotation.Description,
                                 GameMode = freshRotation.GameMode,
-                                Status = MapRotationStatus.Active,
+                                Status = MapRotationStatus.Published,
                                 Category = freshRotation.Category,
                                 SequenceOrder = freshRotation.SequenceOrder,
                                 LastModifiedByUserId = Guid.TryParse(User.UserProfileId(), out var upId) ? upId : null,

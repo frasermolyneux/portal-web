@@ -22,7 +22,7 @@ public class CreateMapRotationViewModel
     public required string GameMode { get; set; }
 
     [DisplayName("Status")]
-    public MapRotationStatus Status { get; set; } = MapRotationStatus.Active;
+    public MapRotationStatus Status { get; set; } = MapRotationStatus.Draft;
 
     [DisplayName("Category")]
     public string? Category { get; set; }
