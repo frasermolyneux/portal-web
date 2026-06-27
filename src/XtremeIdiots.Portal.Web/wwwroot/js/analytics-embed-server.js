@@ -43,8 +43,24 @@
             (maps.maps || []).map(function (i) { return [i.mapName, Math.round(i.avgPlayers * 10) / 10, (Math.round(i.sharePercent * 10) / 10) + '%']; }));
     }
 
-    loadTrend().catch(function (e) { A.showFallback('analytics-embed-server-trend-fallback', String(e)); });
-    if (mode === 'full') {
-        loadDetail();
+    function run() {
+        loadTrend().catch(function (e) { A.showFallback('analytics-embed-server-trend-fallback', String(e)); });
+        if (mode === 'full') {
+            loadDetail();
+        }
+    }
+
+    // When embedded inside an inactive tab the chart container has no size at load time, so defer
+    // loading until the tab is first shown. Outside a tab (e.g. the server info page) load immediately.
+    const tabPane = host.closest('.tab-pane');
+    if (tabPane && !tabPane.classList.contains('active')) {
+        const trigger = document.querySelector('[data-bs-toggle="tab"][data-bs-target="#' + tabPane.id + '"]');
+        if (trigger) {
+            trigger.addEventListener('shown.bs.tab', run, { once: true });
+        } else {
+            run();
+        }
+    } else {
+        run();
     }
 })();
