@@ -600,18 +600,8 @@
 </div>
 }
 
-<!-- Admin Actions -->
-<div class="row">
-    <div class="col-12">
-        @await Component.InvokeAsync("AdminActions", new { adminActions = player.AdminActions, linkToPlayer = false, playerDto = player })
-    </div>
-</div>
-}
-
-</div>
-
-@{ var analyticsPlayerId = ViewContext.RouteData.Values["id"]; }
-<div class="row" policy="@AuthPolicies.Dashboard_Read">
+    var analyticsPlayerId = ViewContext.RouteData.Values["id"];
+    <div class="row" policy="@AuthPolicies.Dashboard_Read">
     <div class="col-12">
         <div class="ibox" id="analytics-embed-player" data-player-id="@analyticsPlayerId">
             <div class="ibox-title d-flex justify-content-between align-items-center">
@@ -628,6 +618,16 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Admin Actions -->
+<div class="row">
+    <div class="col-12">
+        @await Component.InvokeAsync("AdminActions", new { adminActions = player.AdminActions, linkToPlayer = false, playerDto = player })
+    </div>
+</div>
+}
+
 </div>
 
 @* ReSharper disable once Razor.SectionNotResolved *@
