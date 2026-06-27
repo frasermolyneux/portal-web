@@ -1,6 +1,9 @@
 @*
     Shared analytics comparison controls. Pages read these inputs in their page JS
-    (ids: af-range, af-bucket, af-compareMode, af-comparePeriods, af-alignMode, af-normalize, af-refresh).
+    (ids: af-range, af-bucket, af-compare, af-alignMode, af-normalize, af-refresh).
+    af-compare drives the comparison overlays directly: 0 = none, otherwise the number of
+    prior periods to overlay. Page JS maps any value >= 1 to RollingPeriods so the number
+    of comparison lines matches the selection.
 *@
 <div class="ibox">
     <div class="ibox-content">
@@ -25,19 +28,12 @@
                 </select>
             </div>
             <div class="col-auto">
-                <label for="af-compareMode" class="form-label mb-1">Compare</label>
-                <select id="af-compareMode" class="form-select form-select-sm">
-                    <option value="None" selected>None</option>
-                    <option value="PreviousPeriod">Previous period</option>
-                    <option value="RollingPeriods">Rolling periods</option>
-                </select>
-            </div>
-            <div class="col-auto">
-                <label for="af-comparePeriods" class="form-label mb-1">Periods</label>
-                <select id="af-comparePeriods" class="form-select form-select-sm">
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
+                <label for="af-compare" class="form-label mb-1">Compare with</label>
+                <select id="af-compare" class="form-select form-select-sm">
+                    <option value="0" selected>None</option>
+                    <option value="1">Previous period</option>
+                    <option value="2">Previous 2 periods</option>
+                    <option value="3">Previous 3 periods</option>
                 </select>
             </div>
             <div class="col-auto">

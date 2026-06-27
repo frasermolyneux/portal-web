@@ -9,13 +9,14 @@
 
     function controls() {
         const r = A.range(document.getElementById('af-range').value);
+        const periods = parseInt(document.getElementById('af-compare').value, 10) || 0;
         return {
             gameType: document.getElementById('af-game').value,
             from: r.from,
             to: r.to,
             bucket: document.getElementById('af-bucket').value,
-            compareMode: document.getElementById('af-compareMode').value,
-            comparePeriods: document.getElementById('af-comparePeriods').value,
+            compareMode: periods > 0 ? 'RollingPeriods' : 'None',
+            comparePeriods: periods > 0 ? periods : 1,
             alignMode: document.getElementById('af-alignMode').value,
             normalize: document.getElementById('af-normalize').checked,
             timezone: tz
