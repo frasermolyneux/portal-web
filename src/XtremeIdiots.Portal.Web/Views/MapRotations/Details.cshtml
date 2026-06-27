@@ -165,7 +165,11 @@
                     <div class="ibox-content">
                         <div class="text-muted small mb-3">
                             <i class="fa-solid fa-fw fa-circle-info"></i>
-                            <strong>Deployment</strong> syncs maps to a server's file system. <strong>Activation</strong> updates the server's config file to use this rotation. After activation, the server needs a restart for changes to take effect.
+                            <strong>Recommended sequence:</strong> Assign next rotation -> Sync -> Activate -> Restart server -> Unassign previous assignment.
+                            <br />
+                            <strong>Deployment</strong> syncs maps to the server file system. <strong>Activation</strong> switches the live config target.
+                            Activating a new assignment on the same target automatically deactivates the previously active assignment.
+                            Removed assignments are retained for 48 hours, then purged automatically.
                         </div>
                         @if (Model.Rotation.ServerAssignments == null || Model.Rotation.ServerAssignments.Count == 0)
                         {
@@ -283,8 +287,8 @@
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1">
-                                                                <i class="fa-solid fa-fw fa-play"></i> Activate
+                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1" title="Activating this assignment will automatically deactivate any currently active assignment on the same config target.">
+                                                                <i class="fa-solid fa-fw fa-play"></i> Activate (Handover)
                                                             </button>
                                                         </form>
                                                     }
@@ -299,14 +303,27 @@
                                                             </button>
                                                         </form>
                                                     }
-                                                    <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="DeleteAssignment" method="post" class="d-inline">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                        <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Are you sure you want to unassign this server? Maps will be removed from the server.">
-                                                            <i class="fa-solid fa-fw fa-unlink"></i> Unassign
-                                                        </button>
-                                                    </form>
+                                                    @if (assignment.DeploymentState is not DeploymentState.Removed and not DeploymentState.Removing)
+                                                    {
+                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="DeleteAssignment" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Are you sure you want to unassign this server? Maps will be removed from the server.">
+                                                                <i class="fa-solid fa-fw fa-unlink"></i> Unassign
+                                                            </button>
+                                                        </form>
+
+                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="DeleteAssignment" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                                            <input type="hidden" name="force" value="true" />
+                                                            <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Force unassign skips map cleanup. Use only if normal unassign is blocked. Continue?">
+                                                                <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Force Unassign
+                                                            </button>
+                                                        </form>
+                                                    }
                                                 </td>
                                             </tr>
                                         }

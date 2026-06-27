@@ -679,7 +679,7 @@ public class MapRotationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> DeleteAssignment(Guid assignmentId, Guid mapRotationId, bool force = false, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -705,22 +705,36 @@ public class MapRotationsController(
 
             var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
 
-            // If already removed, delete the DB record directly
             if (assignment.DeploymentState == DeploymentState.Removed)
             {
-                var deleteResponse = await repositoryApiClient.MapRotations.V1.DeleteServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+                this.AddAlertInfo("This assignment is already unassigned. Removed assignments are retained for 48 hours and then purged automatically.");
+                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+            }
 
-                if (!deleteResponse.IsSuccess)
+            if (force)
+            {
+                var forceUpdate = new UpdateMapRotationServerAssignmentDto(assignmentId)
                 {
-                    this.AddAlertDanger("An error occurred while removing the server assignment.");
+                    DeploymentState = DeploymentState.Removed,
+                    ActivationState = ActivationState.Inactive,
+                    UnassignedAt = DateTime.UtcNow,
+                    LastError = "Force unassigned by operator",
+                    LastErrorAt = DateTime.UtcNow
+                };
+
+                var updateResponse = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(forceUpdate, cancellationToken).ConfigureAwait(false);
+
+                if (!updateResponse.IsSuccess)
+                {
+                    this.AddAlertDanger("Failed to force unassign this assignment. Please try again.");
                 }
                 else
                 {
-                    this.AddAlertSuccess("Server assignment has been removed.");
-                    TrackSuccessTelemetry("MapRotationAssignmentDeleted", nameof(DeleteAssignment));
+                    this.AddAlertWarning("Force unassign completed. This assignment is now marked as removed and will be purged automatically after 48 hours.");
+                    TrackSuccessTelemetry("MapRotationAssignmentForceUnassigned", nameof(DeleteAssignment));
                 }
 
-                return RedirectToAction(nameof(Details), new { id = mapRotationId });
+                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
             }
 
             // Trigger the Remove orchestration to clean up maps from the server
@@ -728,7 +742,7 @@ public class MapRotationsController(
 
             if (result.Success)
             {
-                this.AddAlertSuccess("Unassign triggered. Maps are being removed from the server.");
+                this.AddAlertSuccess("Unassign started. Maps are being removed from the server now. Once completed, this assignment will remain visible for 48 hours before automatic purge.");
                 TempData["PendingInstanceId"] = $"maprot-remove-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentDeleted", nameof(DeleteAssignment));
             }

@@ -32,12 +32,19 @@
                 {
                     <div class="alert alert-info mb-3">
                         <i class="fa-solid fa-fw fa-circle-info"></i>
-                        <strong>Activation triggered.</strong> The server will need a restart for changes to take effect.
+                        <strong>Activation handover started.</strong> The selected assignment is now becoming active and any previous active assignment on the same target is deactivated automatically.
+                        The server still needs a restart for the map rotation change to take effect.
                         <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@Model.Assignment.GameServerId" class="alert-link">
                             Go to Server Admin <i class="fa-solid fa-fw fa-arrow-right"></i>
                         </a>
                     </div>
                 }
+
+                <div class="alert alert-secondary mb-3">
+                    <i class="fa-solid fa-fw fa-list-check"></i>
+                    <strong>Workflow:</strong> 1) Sync files 2) Activate handover 3) Restart server 4) Unassign old assignment.
+                    Removed assignments stay visible for 48 hours before automatic cleanup.
+                </div>
 
                 @if (isAacpAssignment)
                 {
@@ -148,8 +155,8 @@
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                    <button type="submit" class="btn btn-outline-primary btn-sm me-1">
-                                        <i class="fa-solid fa-fw fa-play"></i> Activate
+                                    <button type="submit" class="btn btn-outline-primary btn-sm me-1" title="Activating this assignment automatically deactivates any currently active assignment on the same target.">
+                                        <i class="fa-solid fa-fw fa-play"></i> Activate (Handover)
                                     </button>
                                 </form>
                             }
@@ -175,7 +182,7 @@
                                     </button>
                                 </form>
                             }
-                            @if (Model.Assignment.DeploymentState is not DeploymentState.Removing)
+                            @if (Model.Assignment.DeploymentState is not DeploymentState.Removing and not DeploymentState.Removed)
                             {
                                 <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="DeleteAssignment" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
@@ -183,6 +190,16 @@
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-danger btn-sm me-1" data-confirm="Are you sure you want to unassign this server? Maps will be removed from the server.">
                                         <i class="fa-solid fa-fw fa-unlink"></i> Unassign
+                                    </button>
+                                </form>
+
+                                <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@Model.Rotation.GameType" asp-action="DeleteAssignment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                    <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
+                                    <input type="hidden" name="force" value="true" />
+                                    <button type="submit" class="btn btn-outline-warning btn-sm me-1" data-confirm="Force unassign skips map cleanup. Use only if normal unassign is blocked. Continue?">
+                                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Force Unassign
                                     </button>
                                 </form>
                             }
