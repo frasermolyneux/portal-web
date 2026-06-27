@@ -116,6 +116,7 @@ public class PlayersControllerTests
 
         Assert.Single(data);
         Assert.Equal("Trusted", data[0]?["tags"]?[0]?["name"]?.Value<string>());
+        Assert.Equal("<span class=\"badge bg-success\">Trusted</span>", data[0]?["tags"]?[0]?["tagHtml"]?.Value<string>());
 
         mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayers(
             GameType.CallOfDuty4,

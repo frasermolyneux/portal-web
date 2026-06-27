@@ -89,6 +89,14 @@ $(document).ready(function () {
             .replace(/'/g, '&#39;');
     }
 
+    function isRenderableTagHtml(value) {
+        if (typeof value !== 'string') return false;
+
+        const trimmed = value.trim();
+        const sanitizedPattern = /^<span\s+class="[a-zA-Z0-9_\- ]+">(?:<i\s+class="[a-zA-Z0-9_\- ]+"><\/i>\s*)?[^<>]+<\/span>$/;
+        return sanitizedPattern.test(trimmed);
+    }
+
     function renderPlayerTags(tags, type) {
         if (!Array.isArray(tags) || tags.length === 0) {
             return type === 'display' ? '<span class="text-muted">-</span>' : '';
@@ -105,6 +113,10 @@ $(document).ready(function () {
         const visibleTagHtml = tags
             .slice(0, maxVisibleTags)
             .map(function (tag) {
+                if (isRenderableTagHtml(tag?.tagHtml)) {
+                    return '<span class="me-1">' + tag.tagHtml + '</span>';
+                }
+
                 if (tag?.name) {
                     return '<span class="badge bg-secondary me-1">' + escapeHtml(tag.name) + '</span>';
                 }

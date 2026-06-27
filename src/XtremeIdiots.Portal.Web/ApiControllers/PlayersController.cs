@@ -90,7 +90,8 @@ public class PlayersController(
                     tags = (player.Tags ?? []).Select(t => new
                     {
                         t.TagId,
-                        name = t.Tag?.Name
+                        name = t.Tag?.Name,
+                        tagHtml = t.Tag?.TagHtml
                     }),
                     player.FirstSeen,
                     player.LastSeen,
