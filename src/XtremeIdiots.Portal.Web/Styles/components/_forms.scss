@@ -71,7 +71,8 @@ select.form-control {
 .form-select {
     display: block;
     width: 100%;
-    padding: 0.5rem 0.75rem;
+    // Reserve space on the right for the native dropdown arrow so it never overlaps the text.
+    padding: 0.5rem 2.25rem 0.5rem 0.75rem;
     font-size: $font-size-base;
     font-weight: $font-weight-normal;
     line-height: $line-height-base;
@@ -188,7 +189,7 @@ select.form-control {
     align-items: stretch;
     width: 100%;
 
-    > .form-control {
+    >.form-control {
         position: relative;
         flex: 1 1 auto;
         width: 1%;
