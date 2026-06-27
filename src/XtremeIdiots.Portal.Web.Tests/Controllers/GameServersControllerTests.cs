@@ -947,11 +947,12 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public async Task SaveConfigNamespacesAsync_WithDisabledFeatures_CallsDeleteConfigurationAsync()
+    public async Task SaveConfigNamespacesAsync_WithDisabledFeatures_DoesNotCallDeleteConfigurationAsync()
     {
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
         var gameServerId = Guid.NewGuid();
+        var upsertedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var deletedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         mockRepositoryApiClient
@@ -960,7 +961,11 @@ public class GameServersControllerTests
                 It.IsAny<string>(),
                 It.IsAny<UpsertConfigurationDto>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upsertedNamespaces.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
 
         mockRepositoryApiClient
             .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
@@ -988,11 +993,10 @@ public class GameServersControllerTests
         var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
         await task;
 
-        Assert.Contains(AgentSettingsConstants.Namespace, deletedNamespaces);
-        Assert.Contains(ChatCommandSettingsConstants.Namespace, deletedNamespaces);
-        Assert.Contains(WelcomeMessageSettingsViewModelConstants.Namespace, deletedNamespaces);
-        Assert.Contains(BanFileSettingsConstants.Namespace, deletedNamespaces);
-        Assert.Contains(ServerListSettingsConstants.Namespace, deletedNamespaces);
+        Assert.DoesNotContain(AgentSettingsConstants.Namespace, upsertedNamespaces);
+        Assert.DoesNotContain(BanFileSettingsConstants.Namespace, upsertedNamespaces);
+        Assert.DoesNotContain(ServerListSettingsConstants.Namespace, upsertedNamespaces);
+        Assert.Empty(deletedNamespaces);
     }
 
     [Fact]

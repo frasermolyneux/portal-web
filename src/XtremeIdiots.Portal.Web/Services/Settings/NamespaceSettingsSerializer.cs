@@ -320,16 +320,8 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 DeletedNamespaces.Add(BroadcastSettingsConstants.Namespace);
             }
         }
-        else
-        {
-            DeletedNamespaces.Add(AgentSettingsConstants.Namespace);
-            DeletedNamespaces.Add(ScreenshotSettingsConstants.Namespace);
-            DeletedNamespaces.Add(ModerationSettingsConstants.Namespace);
-            DeletedNamespaces.Add(EventSettingsConstants.Namespace);
-            DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
-            DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
-            DeletedNamespaces.Add(BroadcastSettingsConstants.Namespace);
-        }
+        // Agent acts as a runtime feature flag. When disabled, keep persisted
+        // namespace settings intact so re-enabling restores prior configuration.
 
         if (model.GameServer.BanFileSyncEnabled)
         {
@@ -340,10 +332,8 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     CheckIntervalSeconds = model.BanFileSyncConfigCheckIntervalSeconds
                 }, configJsonOptions)));
         }
-        else
-        {
-            DeletedNamespaces.Add(BanFileSettingsConstants.Namespace);
-        }
+        // Ban file sync acts as a runtime feature flag. When disabled, keep
+        // persisted namespace settings intact for later re-enable.
 
         if (model.GameServer.ServerListEnabled)
         {
@@ -354,10 +344,8 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     HtmlBanner = model.ServerListConfigHtmlBanner
                 }, configJsonOptions)));
         }
-        else
-        {
-            DeletedNamespaces.Add(ServerListSettingsConstants.Namespace);
-        }
+        // Server list acts as a runtime feature flag. When disabled, keep
+        // persisted namespace settings intact for later re-enable.
 
         return configurations;
     }

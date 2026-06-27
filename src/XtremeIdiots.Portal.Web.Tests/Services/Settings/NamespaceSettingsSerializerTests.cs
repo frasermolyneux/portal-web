@@ -16,36 +16,36 @@ public class NamespaceSettingsSerializerTests
     private readonly NamespaceSettingsSerializer serializer = new();
 
     [Fact]
-    public void AgentDisabledMarksAgentNamespaceForDeletion()
+    public void AgentDisabled_DoesNotMarkAgentNamespaceForDeletion()
     {
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = false;
 
         _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 
-        Assert.Contains(AgentSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(AgentSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
-    public void BanFilesSyncDisabledMarksBanFilesNamespaceForDeletion()
+    public void BanFilesSyncDisabled_DoesNotMarkBanFilesNamespaceForDeletion()
     {
         var model = BuildDefaultModel();
         model.GameServer.BanFileSyncEnabled = false;
 
         _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 
-        Assert.Contains(BanFileSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(BanFileSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
-    public void ServerListDisabledMarksServerListNamespaceForDeletion()
+    public void ServerListDisabled_DoesNotMarkServerListNamespaceForDeletion()
     {
         var model = BuildDefaultModel();
         model.GameServer.ServerListEnabled = false;
 
         _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 
-        Assert.Contains(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
-    public void ServerList_DisableThenReenable_DeletesThenRecreatesNamespaceWithSamePayload()
+    public void ServerList_DisableThenReenable_PreservesNamespacePayload()
     {
         var model = BuildDefaultModel();
         model.GameServer.ServerListEnabled = true;
@@ -234,9 +234,8 @@ public class NamespaceSettingsSerializerTests
 
         model.GameServer.ServerListEnabled = false;
 
-        var disabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
-        Assert.DoesNotContain(disabledConfigurations, x => x.Namespace == ServerListSettingsConstants.Namespace);
-        Assert.Contains(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+        Assert.DoesNotContain(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
 
         model.GameServer.ServerListEnabled = true;
 
@@ -400,16 +399,16 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
-    public void ServerList_ServerDisabled_DeletesNamespaceForParityWithInheritState()
+    public void ServerList_ServerDisabled_DoesNotDeleteNamespace()
     {
-        // Test inherit parity: server serverlist disabled should delete namespace (inherit global)
+        // Top-level server list toggle is a runtime flag; disabling should not
+        // delete persisted namespace settings.
         var model = BuildDefaultModel();
         model.GameServer.ServerListEnabled = false;  // inherit global serverlist
 
-        var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+        _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 
-        Assert.DoesNotContain(configurations, x => x.Namespace == ServerListSettingsConstants.Namespace);
-        Assert.Contains(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
@@ -429,7 +428,7 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
-    public void AgentDisabled_WithServerOverrides_DeletesAgentDependentNamespaces()
+    public void AgentDisabled_WithServerOverrides_DoesNotDeleteAgentDependentNamespaces()
     {
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = false;
@@ -445,18 +444,14 @@ public class NamespaceSettingsSerializerTests
             }
         ];
 
-        var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+        _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 
-        Assert.DoesNotContain(configurations, x => x.Namespace == BroadcastSettingsConstants.Namespace);
-        Assert.DoesNotContain(configurations, x => x.Namespace == ChatCommandSettingsConstants.Namespace);
-        Assert.DoesNotContain(configurations, x => x.Namespace == WelcomeMessageSettingsViewModelConstants.Namespace);
-        Assert.Contains(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
-        Assert.Contains(ChatCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
-        Assert.Contains(WelcomeMessageSettingsViewModelConstants.Namespace, serializer.DeletedNamespaces);
-
-        // Verify that non-agent-dependent namespaces are NOT marked for deletion
-        Assert.DoesNotContain(BanFileSettingsConstants.Namespace, serializer.DeletedNamespaces);
-        Assert.DoesNotContain(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        // Agent off should not trigger namespace deletion; persisted values remain
+        // intact for later re-enable.
+        Assert.DoesNotContain(AgentSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(WelcomeMessageSettingsViewModelConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     private static GameServerEditViewModel BuildDefaultModel()
