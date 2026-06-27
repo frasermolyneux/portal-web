@@ -54,6 +54,7 @@
 @use 'features/map-rotations';
 @use 'features/game-servers';
 @use 'features/connected-players';
+@use 'features/analytics';
 
 // 7. Vendor - Third-party library overrides
 @use 'vendor/bootstrap-overrides';

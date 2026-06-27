@@ -209,8 +209,32 @@
     </div>
 </div>
 
+<div class="row" policy="@AuthPolicies.Dashboard_Read">
+    <div class="col-12">
+        <div class="ibox" id="analytics-embed-server" data-server-id="@serverId" data-mode="light">
+            <div class="ibox-title d-flex justify-content-between align-items-center">
+                <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Activity &mdash; last 30 days</h5>
+                <a asp-controller="Analytics" asp-action="Server" asp-route-id="@serverId" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> Open in Analytics
+                </a>
+            </div>
+            <div class="ibox-content">
+                <div id="analytics-embed-server-summary" class="mb-2"></div>
+                <div style="position: relative; height: 240px;"><canvas id="analytics-embed-server-trend"></canvas></div>
+                <pre id="analytics-embed-server-trend-fallback" class="mt-2 analytics-fallback"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <div policy="@AuthPolicies.Dashboard_Read">
+        <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-embed-server.js" asp-append-version="true"></script>
+    </div>
 
     <script>
         var serverId = '@serverId';

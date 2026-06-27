@@ -610,10 +610,36 @@
 
 </div>
 
+@{ var analyticsPlayerId = ViewContext.RouteData.Values["id"]; }
+<div class="row" policy="@AuthPolicies.Dashboard_Read">
+    <div class="col-12">
+        <div class="ibox" id="analytics-embed-player" data-player-id="@analyticsPlayerId">
+            <div class="ibox-title d-flex justify-content-between align-items-center">
+                <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player analytics &mdash; last 90 days</h5>
+                <a asp-controller="Analytics" asp-action="Player" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Analytics
+                </a>
+            </div>
+            <div class="ibox-content">
+                <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2 mb-3" id="analytics-embed-player-kpis"></div>
+                <div id="analytics-embed-player-summary" class="mb-2"></div>
+                <div style="position: relative; height: 260px;"><canvas id="analytics-embed-player-trend"></canvas></div>
+                <pre id="analytics-embed-player-trend-fallback" class="mt-2 analytics-fallback"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
 @* ReSharper disable once Razor.SectionNotResolved *@
 
 @section scripts {
     <form id="__af" method="post" class="af-hidden">@Html.AntiForgeryToken()</form>
+
+    <div policy="@AuthPolicies.Dashboard_Read">
+        <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-embed-player.js" asp-append-version="true"></script>
+    </div>
     <script type="text/javascript">
 
         $(document).ready(function() {

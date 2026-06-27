@@ -1,0 +1,70 @@
+@model XtremeIdiots.Portal.Web.ViewModels.Analytics.AnalyticsGameViewModel
+@{
+    ViewData["Title"] = "Game Analytics";
+}
+
+<div class="page-header mb-3">
+    <h2><i class="fa-solid fa-fw fa-gamepad" aria-hidden="true"></i> Game Analytics</h2>
+    <p class="text-muted mb-0">Per-game trends with server, player and map breakdowns.</p>
+</div>
+
+<div class="ibox mb-2">
+    <div class="ibox-content">
+        <label for="af-game" class="form-label mb-1">Game</label>
+        <select id="af-game" class="form-select form-select-sm" style="max-width: 320px;">
+            @foreach (var game in Model.Games)
+            {
+                if (game == Model.SelectedGame)
+                {
+                    <option value="@game" selected>@game</option>
+                }
+                else
+                {
+                    <option value="@game">@game</option>
+                }
+            }
+        </select>
+    </div>
+</div>
+
+<partial name="_AnalyticsControls" />
+
+<div class="row row-cols-2 row-cols-md-5 g-2 my-1" id="game-kpis"></div>
+
+<div class="ibox">
+    <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Activity trend</h5></div>
+    <div class="ibox-content">
+        <div id="game-trend-summary" class="mb-2"></div>
+        <div style="position: relative; height: 320px;"><canvas id="game-trend"></canvas></div>
+        <pre id="game-trend-fallback" class="mt-2 analytics-fallback"></pre>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Servers</h5></div>
+            <div class="ibox-content">
+                <div style="position: relative; height: 260px;"><canvas id="game-servers"></canvas></div>
+                <pre id="game-servers-fallback" class="mt-2 analytics-fallback"></pre>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Top players</h5></div>
+            <div class="ibox-content" id="game-players"></div>
+        </div>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title"><h5>Top maps</h5></div>
+    <div class="ibox-content" id="game-maps"></div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-game.js" asp-append-version="true"></script>
+}

@@ -570,6 +570,29 @@
     </div>
 }
 
+<div class="row" policy="@AuthPolicies.Dashboard_Read">
+    <div class="col-12">
+        <div class="ibox" id="analytics-embed-server" data-server-id="@Model.GameServer.GameServerId" data-mode="full">
+            <div class="ibox-title d-flex justify-content-between align-items-center">
+                <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Analytics &mdash; last 30 days</h5>
+                <a asp-controller="Analytics" asp-action="Server" asp-route-id="@Model.GameServer.GameServerId" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> Open in Analytics
+                </a>
+            </div>
+            <div class="ibox-content">
+                <div id="analytics-embed-server-summary" class="mb-2"></div>
+                <div style="position: relative; height: 260px;"><canvas id="analytics-embed-server-trend"></canvas></div>
+                <pre id="analytics-embed-server-trend-fallback" class="mt-2 analytics-fallback"></pre>
+                <div class="row mt-3">
+                    <div class="col-md-4"><h6>Events by type</h6><div id="analytics-embed-server-events"></div></div>
+                    <div class="col-md-4"><h6>Top chatters</h6><div id="analytics-embed-server-chat"></div></div>
+                    <div class="col-md-4"><h6>Map rotation</h6><div id="analytics-embed-server-maps"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 
     <environment names="Development">
@@ -585,6 +608,12 @@
     <script src="~/js/server-feed.js"></script>
     <script src="~/js/rcon-map-control.js"></script>
     <script src="~/js/server-screenshots.js"></script>
+
+    <div policy="@AuthPolicies.Dashboard_Read">
+        <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-embed-server.js" asp-append-version="true"></script>
+    </div>
 
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
 

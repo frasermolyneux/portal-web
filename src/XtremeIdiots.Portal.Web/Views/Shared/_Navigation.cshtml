@@ -95,6 +95,39 @@
                 <i class="fa-solid fa-fw fa-gauge" aria-hidden="true"></i> Dashboard
             </a>
 
+            <div policy="@AuthPolicies.Dashboard_Read">
+                <a class="nav-link text-white @(IsAnyControllerSelected("Analytics") ? "active" : "")"
+                   href="#analyticsMenu" data-bs-toggle="collapse" data-testid="nav-analytics-toggle"
+                   aria-expanded="@(IsAnyControllerSelected("Analytics") ? "true" : "false")">
+                    <i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Analytics
+                    <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
+                </a>
+                <div class="collapse @(IsAnyControllerSelected("Analytics") ? "show" : "")" id="analyticsMenu">
+                    <nav class="nav flex-column ms-3">
+                        <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Global")" asp-controller="Analytics"
+                           asp-action="Global" data-testid="nav-analytics-global">
+                            <i class="fa-solid fa-fw fa-globe" aria-hidden="true"></i> Global
+                        </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Game")" asp-controller="Analytics"
+                           asp-action="Game" data-testid="nav-analytics-game">
+                            <i class="fa-solid fa-fw fa-gamepad" aria-hidden="true"></i> Game
+                        </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Server")" asp-controller="Analytics"
+                           asp-action="Server" data-testid="nav-analytics-server">
+                            <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Server
+                        </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Player")" asp-controller="Analytics"
+                           asp-action="Player" data-testid="nav-analytics-player">
+                            <i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Player
+                        </a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Maps")" asp-controller="Analytics"
+                           asp-action="Maps" data-testid="nav-analytics-maps">
+                            <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
+                        </a>
+                    </nav>
+                </div>
+            </div>
+
             <div>
                 <a class="nav-link text-white @(IsAnyControllerSelected("Servers", "Maps") ? "active" : "")"
                    href="#serversMenu" data-bs-toggle="collapse" data-testid="nav-servers-toggle"

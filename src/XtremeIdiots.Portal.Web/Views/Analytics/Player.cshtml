@@ -1,0 +1,56 @@
+@model XtremeIdiots.Portal.Web.ViewModels.Analytics.AnalyticsPlayerViewModel
+@{
+    ViewData["Title"] = "Player Analytics";
+}
+
+<div class="page-header mb-3">
+    <h2><i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Player Analytics</h2>
+    <p class="text-muted mb-0">New, active and returning players with week-on-week / month-on-month comparison.</p>
+</div>
+
+<partial name="_AnalyticsControls" />
+
+<div class="row row-cols-2 row-cols-md-4 g-2 my-1" id="player-kpis"></div>
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Active players trend</h5>
+    </div>
+    <div class="ibox-content">
+        <div id="player-trend-summary" class="mb-2"></div>
+        <div style="position: relative; height: 320px;"><canvas id="player-trend"></canvas></div>
+        <pre id="player-trend-fallback" class="mt-2 analytics-fallback"></pre>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title">
+                <h5>Most active players</h5>
+            </div>
+            <div class="ibox-content" id="player-top"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title">
+                <h5>By game</h5>
+            </div>
+            <div class="ibox-content" id="player-by-game"></div>
+        </div>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5>By server</h5>
+    </div>
+    <div class="ibox-content" id="player-by-server"></div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-player.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,64 @@
+@*
+    Shared analytics comparison controls. Pages read these inputs in their page JS
+    (ids: af-range, af-bucket, af-compareMode, af-comparePeriods, af-alignMode, af-normalize, af-refresh).
+*@
+<div class="ibox">
+    <div class="ibox-content">
+        <div class="row g-2 align-items-end list-filters">
+            <div class="col-auto">
+                <label for="af-range" class="form-label mb-1">Range</label>
+                <select id="af-range" class="form-select form-select-sm">
+                    <option value="24h">Last 24 hours</option>
+                    <option value="7d" selected>Last 7 days</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                    <option value="180d">Last 180 days</option>
+                    <option value="365d">Last 365 days</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="af-bucket" class="form-label mb-1">Bucket</label>
+                <select id="af-bucket" class="form-select form-select-sm">
+                    <option value="FifteenMinutes">15 minutes</option>
+                    <option value="OneHour">Hourly</option>
+                    <option value="OneDay" selected>Daily</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="af-compareMode" class="form-label mb-1">Compare</label>
+                <select id="af-compareMode" class="form-select form-select-sm">
+                    <option value="None" selected>None</option>
+                    <option value="PreviousPeriod">Previous period</option>
+                    <option value="RollingPeriods">Rolling periods</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="af-comparePeriods" class="form-label mb-1">Periods</label>
+                <select id="af-comparePeriods" class="form-select form-select-sm">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="af-alignMode" class="form-label mb-1">Align</label>
+                <select id="af-alignMode" class="form-select form-select-sm">
+                    <option value="None" selected>Elapsed</option>
+                    <option value="Week">Week</option>
+                    <option value="Month">Month</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="af-normalize" />
+                    <label class="form-check-label" for="af-normalize">Index to 100</label>
+                </div>
+            </div>
+            <div class="col-auto">
+                <button id="af-refresh" type="button" class="btn btn-primary btn-sm mt-4">
+                    <i class="fa-solid fa-fw fa-arrows-rotate" aria-hidden="true"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

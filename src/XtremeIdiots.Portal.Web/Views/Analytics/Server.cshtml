@@ -1,0 +1,78 @@
+@model XtremeIdiots.Portal.Web.ViewModels.Analytics.AnalyticsServerViewModel
+@{
+    ViewData["Title"] = "Server Analytics";
+}
+
+<div class="page-header mb-3">
+    <h2><i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Server Analytics</h2>
+    <p class="text-muted mb-0">Per-server activity, live players, events, chat and map rotation.</p>
+</div>
+
+<div class="ibox mb-2">
+    <div class="ibox-content">
+        <label for="af-server" class="form-label mb-1">Server</label>
+        <select id="af-server" class="form-select form-select-sm" style="max-width: 480px;">
+            @foreach (var server in Model.Servers)
+            {
+                if (Model.SelectedServerId == server.GameServerId)
+                {
+                    <option value="@server.GameServerId" selected>@server.GameType - @server.Title</option>
+                }
+                else
+                {
+                    <option value="@server.GameServerId">@server.GameType - @server.Title</option>
+                }
+            }
+        </select>
+    </div>
+</div>
+
+<partial name="_AnalyticsControls" />
+
+<div class="row row-cols-2 row-cols-md-5 g-2 my-1" id="server-kpis"></div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="ibox">
+            <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player count trend</h5></div>
+            <div class="ibox-content">
+                <div id="server-trend-summary" class="mb-2"></div>
+                <div style="position: relative; height: 320px;"><canvas id="server-trend"></canvas></div>
+                <pre id="server-trend-fallback" class="mt-2 analytics-fallback"></pre>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="ibox">
+            <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-signal" aria-hidden="true"></i> Live now</h5></div>
+            <div class="ibox-content" id="server-live"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Events by type</h5></div>
+            <div class="ibox-content" id="server-events"></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Top chatters</h5></div>
+            <div class="ibox-content" id="server-chat"></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Map rotation</h5></div>
+            <div class="ibox-content" id="server-maps"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-server.js" asp-append-version="true"></script>
+}

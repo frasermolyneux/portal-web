@@ -110,6 +110,36 @@
         </div>
     }
 
+    @* ─── Analytics (new — layered alongside legacy widgets) ─── *@
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="ibox">
+                <div class="ibox-title d-flex justify-content-between align-items-center">
+                    <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Analytics &mdash; last 30 days</h5>
+                    <a asp-controller="Analytics" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Analytics
+                    </a>
+                </div>
+                <div class="ibox-content">
+                    <div class="row row-cols-2 row-cols-md-4 g-2 mb-3" id="dashboard-analytics-kpis"></div>
+                    <div style="position: relative; height: 260px;"><canvas id="dashboard-analytics-trend"></canvas></div>
+                    <pre id="dashboard-analytics-trend-fallback" class="mt-2 analytics-fallback"></pre>
+                    <div class="row mt-3">
+                        <div class="col-md-4"><h6>Top games</h6><div id="dashboard-analytics-games"></div></div>
+                        <div class="col-md-4"><h6>Top servers</h6><div id="dashboard-analytics-servers"></div></div>
+                        <div class="col-md-4"><h6>Top maps</h6><div id="dashboard-analytics-maps"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @section Scripts {
+        <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+        <script src="~/js/analytics-embed-dashboard.js" asp-append-version="true"></script>
+    }
+
     <div class="row">
         @* ─── Server Health Table ─── *@
         <div class="col-lg-8 mb-4">

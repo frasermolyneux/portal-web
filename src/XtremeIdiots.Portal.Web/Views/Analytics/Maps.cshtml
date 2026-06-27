@@ -1,0 +1,87 @@
+@model XtremeIdiots.Portal.Web.ViewModels.Analytics.AnalyticsMapsViewModel
+@{
+    ViewData["Title"] = "Maps Analytics";
+}
+
+<div class="page-header mb-3">
+    <h2><i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps Analytics</h2>
+    <p class="text-muted mb-0">Most played and voted maps, hotspots and breakdowns.</p>
+</div>
+
+<div class="ibox mb-2">
+    <div class="ibox-content">
+        <div class="row g-2 align-items-end list-filters">
+            <div class="col-auto">
+                <label for="af-range" class="form-label mb-1">Range</label>
+                <select id="af-range" class="form-select form-select-sm">
+                    <option value="7d">Last 7 days</option>
+                    <option value="30d" selected>Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                    <option value="180d">Last 180 days</option>
+                    <option value="365d">Last 365 days</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="af-server" class="form-label mb-1">Server (for per-server breakdown)</label>
+                <select id="af-server" class="form-select form-select-sm" style="max-width: 420px;">
+                    <option value="">— Select a server —</option>
+                    @foreach (var server in Model.Servers)
+                    {
+                        <option value="@server.GameServerId">@server.GameType - @server.Title</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <button id="af-refresh" type="button" class="btn btn-primary btn-sm mt-4">
+                    <i class="fa-solid fa-fw fa-arrows-rotate" aria-hidden="true"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cols-2 row-cols-md-3 g-2 my-1" id="maps-kpis"></div>
+
+<div class="ibox">
+    <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-fire" aria-hidden="true"></i> Hotspots (highest average players)</h5></div>
+    <div class="ibox-content">
+        <div style="position: relative; height: 300px;"><canvas id="maps-hotspots"></canvas></div>
+        <pre id="maps-hotspots-fallback" class="mt-2 analytics-fallback"></pre>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Most played</h5></div>
+            <div class="ibox-content" id="maps-top-played"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Most voted</h5></div>
+            <div class="ibox-content" id="maps-top-voted"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title"><h5>By game</h5></div>
+            <div class="ibox-content" id="maps-by-game"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="ibox">
+            <div class="ibox-title"><h5>By server</h5></div>
+            <div class="ibox-content" id="maps-by-server"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-common.js" asp-append-version="true"></script>
+    <script src="~/js/analytics-maps.js" asp-append-version="true"></script>
+}
