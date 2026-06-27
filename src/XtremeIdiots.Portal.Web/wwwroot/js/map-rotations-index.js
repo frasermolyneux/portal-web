@@ -36,7 +36,7 @@ $(document).ready(function () {
             { targets: 2, responsivePriority: 4, width: '70px' },
             { targets: 3, responsivePriority: 5, width: '80px' },
             { targets: 4, responsivePriority: 6, width: '50px' },
-            { targets: 5, responsivePriority: 7, width: '50px' },
+            { targets: 5, responsivePriority: 7, width: '170px' },
             { targets: 6, responsivePriority: 8, width: '90px' },
             { targets: 7, responsivePriority: 9, width: '100px' },
             { targets: 8, responsivePriority: 2, orderable: false, width: '120px' }
@@ -88,7 +88,16 @@ $(document).ready(function () {
             },
             {
                 data: 'serverCount', name: 'serverCount', orderable: true,
-                render: function (data) { return '<span class="badge bg-secondary">' + data + '</span>'; }
+                render: function (data) {
+                    var count = Number(data) || 0;
+
+                    if (count === 0) {
+                        return '<span class="badge bg-secondary">Inactive</span>';
+                    }
+
+                    var serverLabel = count === 1 ? 'server' : 'servers';
+                    return '<span class="badge bg-success">Active on ' + count + ' ' + serverLabel + '</span>';
+                }
             },
             {
                 data: 'updatedAt', name: 'updatedAt', orderable: true,
