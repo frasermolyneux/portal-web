@@ -36,6 +36,10 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
     [DisplayName("Default Required Tags")]
     public string? DefaultRequiredTags { get; set; } = string.Empty;
 
+    public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
+
+    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+
     public List<ChatCommandGlobalEntryViewModel> Commands { get; set; } =
         ChatCommandDescriptorCatalog.All
             .Select(static descriptor => new ChatCommandGlobalEntryViewModel
@@ -51,15 +55,32 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        foreach (var validationResult in ChatCommandViewModelValidation.ValidateCommands(Commands))
+        foreach (var validationResult in ChatCommandViewModelValidation.ValidateCommands(
+            Commands,
+            AllowedRequiredTags,
+            RequiredTagsCatalogAvailable))
         {
             yield return validationResult;
+        }
+
+        foreach (var invalidTag in ChatCommandViewModelValidation.GetInvalidTags(
+            DefaultRequiredTags,
+            AllowedRequiredTags,
+            RequiredTagsCatalogAvailable))
+        {
+            yield return new ValidationResult(
+                $"Default required tag '{invalidTag}' is not available.",
+                [nameof(DefaultRequiredTags)]);
         }
     }
 }
 
 public class ChatCommandServerSettingsViewModel : IValidatableObject
 {
+    public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
+
+    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+
     public List<ChatCommandServerEntryViewModel> Commands { get; set; } =
         ChatCommandDescriptorCatalog.All
             .Select(static descriptor => new ChatCommandServerEntryViewModel
@@ -75,7 +96,10 @@ public class ChatCommandServerSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        foreach (var validationResult in ChatCommandViewModelValidation.ValidateCommands(Commands))
+        foreach (var validationResult in ChatCommandViewModelValidation.ValidateCommands(
+            Commands,
+            AllowedRequiredTags,
+            RequiredTagsCatalogAvailable))
         {
             yield return validationResult;
         }
@@ -119,15 +143,18 @@ public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelB
     public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
     [DisplayName("Enabled Override")]
-    public bool OverrideEnabled {
+    public bool OverrideEnabled
+    {
         get => EnabledOverride?.Value is not null;
         set => Enabled = value ? Enabled ?? false : null;
     }
 
     [DisplayName("Enabled Override")]
-    public new bool? Enabled {
+    public new bool? Enabled
+    {
         get => EnabledOverride?.Value;
-        set {
+        set
+        {
             base.Enabled = value;
             EnabledOverride = TriStateOverrideValue.From(value);
         }
@@ -145,7 +172,10 @@ public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelB
 
 internal static class ChatCommandViewModelValidation
 {
-    public static IEnumerable<ValidationResult> ValidateCommands<T>(IReadOnlyList<T>? commands)
+    public static IEnumerable<ValidationResult> ValidateCommands<T>(
+        IReadOnlyList<T>? commands,
+        IReadOnlyList<string> allowedRequiredTags,
+        bool requiredTagsCatalogAvailable)
         where T : ChatCommandEntryViewModelBase
     {
         if (commands is null)
@@ -153,9 +183,30 @@ internal static class ChatCommandViewModelValidation
             yield break;
         }
 
+        var allowedTagSet = allowedRequiredTags
+            .Where(static tag => !string.IsNullOrWhiteSpace(tag))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         for (var commandIndex = 0; commandIndex < commands.Count; commandIndex++)
         {
             var command = commands[commandIndex];
+
+            var validateRequiredTags = command is not ChatCommandServerEntryViewModel serverCommand
+                || serverCommand.OverrideRequiredTags;
+
+            if (validateRequiredTags)
+            {
+                foreach (var invalidTag in GetInvalidTags(
+                    command.RequiredTags,
+                    allowedTagSet,
+                    requiredTagsCatalogAvailable))
+                {
+                    yield return new ValidationResult(
+                        $"Required tag '{invalidTag}' is not available.",
+                        [$"Commands[{commandIndex}].RequiredTags"]);
+                }
+            }
+
             if (command.Messages is null)
             {
                 continue;
@@ -170,6 +221,37 @@ internal static class ChatCommandViewModelValidation
                         $"Command message cannot exceed {ChatCommandSettingsViewModelConstants.MaxCommandMessageLength} characters.",
                         [$"Commands[{commandIndex}].Messages[{messageIndex}].Message"]);
                 }
+            }
+        }
+    }
+
+    public static IEnumerable<string> GetInvalidTags(
+        string? csvValue,
+        IReadOnlyList<string> allowedRequiredTags,
+        bool requiredTagsCatalogAvailable)
+    {
+        var allowedTagSet = allowedRequiredTags
+            .Where(static tag => !string.IsNullOrWhiteSpace(tag))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return GetInvalidTags(csvValue, allowedTagSet, requiredTagsCatalogAvailable);
+    }
+
+    private static IEnumerable<string> GetInvalidTags(
+        string? csvValue,
+        HashSet<string> allowedTagSet,
+        bool requiredTagsCatalogAvailable)
+    {
+        if (!requiredTagsCatalogAvailable)
+        {
+            yield break;
+        }
+
+        foreach (var selectedTag in RequiredTagsSelection.SplitCsv(csvValue))
+        {
+            if (!allowedTagSet.Contains(selectedTag))
+            {
+                yield return selectedTag;
             }
         }
     }
@@ -508,13 +590,7 @@ internal static class ChatCommandSettingsJsonMapper
 
     private static string[] SplitCsv(string? value)
     {
-        return string.IsNullOrWhiteSpace(value)
-            ? []
-            : value
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(static item => !string.IsNullOrWhiteSpace(item))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        return RequiredTagsSelection.SplitCsv(value);
     }
 
     private static string[] GetStringArray(JsonElement root, string propertyName)

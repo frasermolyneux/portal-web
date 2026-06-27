@@ -1,0 +1,60 @@
+@model XtremeIdiots.Portal.Web.ViewModels.RequiredTagsSelectorViewModel
+
+@{
+    var hiddenId = Model.FieldName
+        .Replace(".", "_", StringComparison.Ordinal)
+        .Replace("[", "_", StringComparison.Ordinal)
+        .Replace("]", string.Empty, StringComparison.Ordinal);
+
+    var selectId = $"{hiddenId}_Selector";
+    var helpId = $"{hiddenId}_Help";
+    var hasHelpText = !string.IsNullOrWhiteSpace(Model.HelpText);
+    var selectedTags = XtremeIdiots.Portal.Web.ViewModels.RequiredTagsSelection.SplitCsv(Model.Value);
+    var selectedTagSet = selectedTags.ToHashSet(StringComparer.OrdinalIgnoreCase);
+}
+
+<div class="mb-3" data-required-tags-selector>
+    <label class="form-label" for="@selectId" data-field="@Model.LabelDataField">@Model.Label</label>
+    <input type="hidden" id="@hiddenId" name="@Model.FieldName" value="@Model.Value" data-required-tags-hidden
+           data-field="@Model.DataField" />
+    @if (hasHelpText)
+    {
+        <select id="@selectId" class="form-select" multiple size="6" data-required-tags-select
+                data-field="@Model.SelectDataField" aria-describedby="@helpId">
+            @foreach (var option in Model.Options)
+            {
+                if (selectedTagSet.Contains(option.Name))
+                {
+                    <option value="@option.Name" selected="selected">@option.DisplayName</option>
+                }
+                else
+                {
+                    <option value="@option.Name">@option.DisplayName</option>
+                }
+            }
+        </select>
+    }
+    else
+    {
+        <select id="@selectId" class="form-select" multiple size="6" data-required-tags-select
+                data-field="@Model.SelectDataField">
+            @foreach (var option in Model.Options)
+            {
+                if (selectedTagSet.Contains(option.Name))
+                {
+                    <option value="@option.Name" selected="selected">@option.DisplayName</option>
+                }
+                else
+                {
+                    <option value="@option.Name">@option.DisplayName</option>
+                }
+            }
+        </select>
+    }
+    @if (hasHelpText)
+    {
+        <small id="@helpId" class="form-text text-muted" data-field="@Model.HelpDataField">@Model.HelpText</small>
+    }
+    <div class="d-flex flex-wrap gap-2 mt-2" data-required-tags-selected
+         data-required-tags-placeholder="@Model.Placeholder"></div>
+</div>

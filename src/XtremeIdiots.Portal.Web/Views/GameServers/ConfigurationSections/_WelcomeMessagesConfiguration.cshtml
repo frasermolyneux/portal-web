@@ -43,7 +43,7 @@
                         }
                         <input type="hidden" name="WelcomeMessages.InheritGlobalRules" value="false" />
                         <label class="form-check-label" for="WelcomeMessages_InheritGlobalRules">@Html.DisplayNameFor(m
-                                                            => m.WelcomeMessages.InheritGlobalRules)</label>
+                                                                                        => m.WelcomeMessages.InheritGlobalRules)</label>
                         </div>
                         <small class="form-text text-muted d-block">When enabled, global rules run before any server-local
                             rules.</small>
@@ -93,8 +93,8 @@
                 <div id="server-welcome-local-rules-container" data-field-name-prefix="WelcomeMessages.LocalRules"
                      data-empty-state-id="server-welcome-local-rules-empty" data-priority-start="1000"
                      data-template-id="server-welcome-local-rule-template" data-priority-mode="descending"
-                     data-auto-generate-id="true"
-                     data-hidden-required-tags-override="false" data-validation-prefix="WelcomeMessages.LocalRules">
+                     data-auto-generate-id="true" data-hidden-required-tags-override="false"
+                     data-validation-prefix="WelcomeMessages.LocalRules">
                     @for (var i = 0; i < localRules.Count; i++)
                     {
                         <div class="border rounded p-3 mb-3" data-welcome-rule-row>
@@ -112,8 +112,8 @@
                                                id="WelcomeMessages_LocalRules_@(i)__Enabled" name="WelcomeMessages.LocalRules[@i].Enabled"
                                                value="true" />
                                     }
-                                     <input type="hidden" data-field="enabled-hidden" name="WelcomeMessages.LocalRules[@i].Enabled"
-                                         value="false" />
+                                    <input type="hidden" data-field="enabled-hidden" name="WelcomeMessages.LocalRules[@i].Enabled"
+                                           value="false" />
                                     <label class="form-check-label" data-field="enabled-label"
                                            for="WelcomeMessages_LocalRules_@(i)__Enabled">Enabled</label>
                                 </div>
@@ -186,418 +186,456 @@
                                 </div>
 
                                 <div class="mb-0">
-                                    <label asp-for="WelcomeMessages.LocalRules[i].RequiredTagsCsv" class="form-label"></label>
-                                    <input asp-for="WelcomeMessages.LocalRules[i].RequiredTagsCsv" data-field="required-tags"
-                                           class="form-control" />
-                                    <small class="form-text text-muted">Comma-separated tags. Leave blank for no tag
-                                        requirements.</small>
+                                    @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml", new
+                    RequiredTagsSelectorViewModel
+                                    {
+                                        FieldName = $"WelcomeMessages.LocalRules[{i}].RequiredTagsCsv",
+                                        Label = Html.DisplayNameFor(m => m.WelcomeMessages.LocalRules[i].RequiredTagsCsv).ToString(),
+                                        Value = localRules[i].RequiredTagsCsv,
+                                        Options = Model.AvailableRequiredTags,
+                                        HelpText = "Select optional player tags. Leave blank for no tag requirements.",
+                                        Placeholder = "No tags required",
+                                        DataField = "required-tags",
+                                        SelectDataField = "required-tags-select",
+                                        LabelDataField = "required-tags-label",
+                                        HelpDataField = "required-tags-help"
+                                    })
+                                    <span class="text-danger" data-field="required-tags-validation"
+                                          data-valmsg-for="WelcomeMessages.LocalRules[@i].RequiredTagsCsv"
+                                          data-valmsg-replace="true"></span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h6 class="mb-1">Rule Overrides</h6>
+                            <p class="text-muted mb-0">Override specific global rules by selecting a rule.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-server-welcome-rule-override">
+                            <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add override
+                        </button>
+                    </div>
+
+                    <p id="server-welcome-rule-overrides-empty"
+                       class="text-muted @(ruleOverrides.Count > 0 ? "d-none" : string.Empty)">
+                        No rule overrides configured.
+                    </p>
+
+                    <div id="server-welcome-rule-overrides-container" data-field-name-prefix="WelcomeMessages.RuleOverrides"
+                         data-empty-state-id="server-welcome-rule-overrides-empty" data-priority-start="1000"
+                         data-template-id="server-welcome-override-template" data-priority-mode="none"
+                         data-hidden-required-tags-override="true" data-validation-prefix="WelcomeMessages.RuleOverrides">
+                        @for (var i = 0; i < ruleOverrides.Count; i++)
+                        {
+                            <div class="border rounded p-3 mb-3" data-welcome-rule-row>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0">Rule Override</h6>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Rule override ordering">
+                                        <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                                                aria-label="Move override up">
+                                            <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                                                aria-label="Move override down">
+                                            <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger" data-action="remove"
+                                                aria-label="Remove override">
+                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-lg-4">
+                                        <div class="mb-3">
+                                            <label asp-for="WelcomeMessages.RuleOverrides[i].Id" class="form-label"></label>
+                                            @{
+                                                var selectedRuleId = ruleOverrides[i].Id ?? string.Empty;
+                                                var hasMatchingGlobalRule = globalRules.Any(rule =>
+                                                    string.Equals(rule.Id, selectedRuleId, StringComparison.OrdinalIgnoreCase));
+                                            }
+                                            <select asp-for="WelcomeMessages.RuleOverrides[i].Id" data-field="id" class="form-select">
+                                                <option value="">Select rule</option>
+                                                @for (var ruleIndex = 0; ruleIndex < globalRules.Count; ruleIndex++)
+                                                {
+                                                    var rule = globalRules[ruleIndex];
+                                                    var selected = string.Equals(selectedRuleId, rule.Id,
+                            StringComparison.OrdinalIgnoreCase);
+                                                    var messagePreview = string.IsNullOrWhiteSpace(rule.MessageTemplate)
+                                                        ? "Untitled rule"
+                                                        : rule.MessageTemplate;
+                                                    var optionLabel = $"Rule {ruleIndex + 1} (P{rule.Priority}) - {messagePreview}";
+                                                    <option value="@rule.Id" selected="@(selected ? "selected" : null)">@optionLabel
+                                                    </option>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(selectedRuleId) && !hasMatchingGlobalRule)
+                                                {
+                                                    <option value="@selectedRuleId" selected="selected">Unknown rule (legacy)</option>
+                                                }
+                                            </select>
+                                            <span class="text-danger" data-field="id-validation"
+                                                  data-valmsg-for="WelcomeMessages.RuleOverrides[@i].Id"
+                                                  data-valmsg-replace="true"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-2">
+                                        <div class="mb-3">
+                                            <label asp-for="WelcomeMessages.RuleOverrides[i].Enabled" class="form-label"></label>
+                                            <select asp-for="WelcomeMessages.RuleOverrides[i].Enabled" data-field="enabled-override"
+                                                    class="form-select">
+                                                <option value="">No change</option>
+                                                <option value="true">Enabled</option>
+                                                <option value="false">Disabled</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-3">
+                                        <div class="mb-3">
+                                            <label asp-for="WelcomeMessages.RuleOverrides[i].Priority" class="form-label"></label>
+                                            <input asp-for="WelcomeMessages.RuleOverrides[i].Priority" data-field="priority"
+                                                   class="form-control" type="number" />
+                                            <span class="text-danger" data-field="priority-validation"
+                                                  data-valmsg-for="WelcomeMessages.RuleOverrides[@i].Priority"
+                                                  data-valmsg-replace="true"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-3">
+                                        <div class="mb-3">
+                                            <label asp-for="WelcomeMessages.RuleOverrides[i].Visibility" class="form-label"></label>
+                                            <select asp-for="WelcomeMessages.RuleOverrides[i].Visibility" data-field="visibility"
+                                                    class="form-select">
+                                                <option value="">No change</option>
+                                                <option value="Private">Private</option>
+                                                <option value="Public">Public</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-lg-9">
+                                        <div class="mb-3">
+                                            <label asp-for="WelcomeMessages.RuleOverrides[i].MessageTemplate"
+                                                   class="form-label"></label>
+                                            <textarea asp-for="WelcomeMessages.RuleOverrides[i].MessageTemplate"
+                                                      data-field="message-template" class="form-control" rows="3"></textarea>
+                                            <small class="form-text text-muted"><span
+                                                data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.WelcomeMessageSettingsViewModelConstants.MaxMessageTemplateLength
+                                                characters</small>
+                                                <span class="text-danger" data-field="message-template-validation"
+                                                      data-valmsg-for="WelcomeMessages.RuleOverrides[@i].MessageTemplate"
+                                                      data-valmsg-replace="true"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3">
+                                            <div class="mb-3">
+                                                <label asp-for="WelcomeMessages.RuleOverrides[i].ConnectionDelaySeconds"
+                                                       class="form-label"></label>
+                                                <input asp-for="WelcomeMessages.RuleOverrides[i].ConnectionDelaySeconds"
+                                                       data-field="connection-delay" class="form-control" type="number" />
+                                                <span class="text-danger" data-field="connection-delay-validation"
+                                                      data-valmsg-for="WelcomeMessages.RuleOverrides[@i].ConnectionDelaySeconds"
+                                                      data-valmsg-replace="true"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <input type="hidden" name="WelcomeMessages.RuleOverrides[@i].OverrideRequiredTags" value="false"
+                                           data-field="required-tags-override-hidden" />
+                                    <div class="form-check mb-2">
+                                        @if (ruleOverrides[i].OverrideRequiredTags)
+                                        {
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="WelcomeMessages_RuleOverrides_@(i)__OverrideRequiredTags"
+                                                   name="WelcomeMessages.RuleOverrides[@i].OverrideRequiredTags" value="true"
+                                                   data-field="required-tags-override" checked="checked" />
+                                        }
+                                        else
+                                        {
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="WelcomeMessages_RuleOverrides_@(i)__OverrideRequiredTags"
+                                                   name="WelcomeMessages.RuleOverrides[@i].OverrideRequiredTags" value="true"
+                                                   data-field="required-tags-override" />
+                                        }
+                                        <label class="form-check-label" data-field="required-tags-override-label"
+                                               for="WelcomeMessages_RuleOverrides_@(i)__OverrideRequiredTags">Override required tags</label>
+                                    </div>
+
+                                    <div data-field="required-tags-wrapper"
+                                         class="@(ruleOverrides[i].OverrideRequiredTags ? string.Empty : "d-none")">
+                                        @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml", new
+                RequiredTagsSelectorViewModel
+                                        {
+                                            FieldName = $"WelcomeMessages.RuleOverrides[{i}].RequiredTagsCsv",
+                                            Label = Html.DisplayNameFor(m => m.WelcomeMessages.RuleOverrides[i].RequiredTagsCsv).ToString(),
+                                            Value = ruleOverrides[i].RequiredTagsCsv,
+                                            Options = Model.AvailableRequiredTags,
+                                            HelpText = "Select optional player tags. Leave blank to clear required tags.",
+                                            Placeholder = "No tags required",
+                                            DataField = "required-tags",
+                                            SelectDataField = "required-tags-select",
+                                            LabelDataField = "required-tags-label",
+                                            HelpDataField = "required-tags-help"
+                                        })
                                         <span class="text-danger" data-field="required-tags-validation"
-                                              data-valmsg-for="WelcomeMessages.LocalRules[@i].RequiredTagsCsv"
+                                              data-valmsg-for="WelcomeMessages.RuleOverrides[@i].RequiredTagsCsv"
                                               data-valmsg-replace="true"></span>
                                     </div>
                                 </div>
                             }
                         </div>
 
-                        <hr />
+                    </div>
+                </div>
 
+                <template id="server-welcome-local-rule-template">
+                    <div class="border rounded p-3 mb-3" data-welcome-rule-row>
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div>
-                                <h6 class="mb-1">Rule Overrides</h6>
-                                <p class="text-muted mb-0">Override specific global rules by selecting a rule.</p>
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" data-field="enabled" id="WelcomeMessages_LocalRules_0__Enabled"
+                                       name="WelcomeMessages.LocalRules[0].Enabled" type="checkbox" value="true" checked="checked" />
+                                <input type="hidden" data-field="enabled-hidden" name="WelcomeMessages.LocalRules[0].Enabled"
+                                       value="false" />
+                                <label class="form-check-label" data-field="enabled-label"
+                                       for="WelcomeMessages_LocalRules_0__Enabled">Enabled</label>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-server-welcome-rule-override">
-                                <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add override
-                            </button>
-                        </div>
-
-                        <p id="server-welcome-rule-overrides-empty"
-                           class="text-muted @(ruleOverrides.Count > 0 ? "d-none" : string.Empty)">
-                            No rule overrides configured.
-                        </p>
-
-                        <div id="server-welcome-rule-overrides-container" data-field-name-prefix="WelcomeMessages.RuleOverrides"
-                             data-empty-state-id="server-welcome-rule-overrides-empty" data-priority-start="1000"
-                             data-template-id="server-welcome-override-template" data-priority-mode="none"
-                             data-hidden-required-tags-override="true" data-validation-prefix="WelcomeMessages.RuleOverrides">
-                            @for (var i = 0; i < ruleOverrides.Count; i++)
-                            {
-                                <div class="border rounded p-3 mb-3" data-welcome-rule-row>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Rule Override</h6>
-                                        <div class="btn-group btn-group-sm" role="group" aria-label="Rule override ordering">
-                                            <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                                                    aria-label="Move override up">
-                                                <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                                    aria-label="Move override down">
-                                                <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger" data-action="remove"
-                                                    aria-label="Remove override">
-                                                <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-4">
-                                            <div class="mb-3">
-                                                <label asp-for="WelcomeMessages.RuleOverrides[i].Id" class="form-label"></label>
-                                                @{
-                                                    var selectedRuleId = ruleOverrides[i].Id ?? string.Empty;
-                                                    var hasMatchingGlobalRule = globalRules.Any(rule =>
-                                                        string.Equals(rule.Id, selectedRuleId, StringComparison.OrdinalIgnoreCase));
-                                                }
-                                                <select asp-for="WelcomeMessages.RuleOverrides[i].Id" data-field="id" class="form-select">
-                                                    <option value="">Select rule</option>
-                                                    @for (var ruleIndex = 0; ruleIndex < globalRules.Count; ruleIndex++)
-                                                    {
-                                                        var rule = globalRules[ruleIndex];
-                                                        var selected = string.Equals(selectedRuleId, rule.Id, StringComparison.OrdinalIgnoreCase);
-                                                        var messagePreview = string.IsNullOrWhiteSpace(rule.MessageTemplate)
-                                                            ? "Untitled rule"
-                                                            : rule.MessageTemplate;
-                                                        var optionLabel = $"Rule {ruleIndex + 1} (P{rule.Priority}) - {messagePreview}";
-                                                        <option value="@rule.Id" selected="@(selected ? "selected" : null)">@optionLabel</option>
-                                                    }
-                                                    @if (!string.IsNullOrWhiteSpace(selectedRuleId) && !hasMatchingGlobalRule)
-                                                    {
-                                                        <option value="@selectedRuleId" selected="selected">Unknown rule (legacy)</option>
-                                                    }
-                                                </select>
-                                                <span class="text-danger" data-field="id-validation"
-                                                      data-valmsg-for="WelcomeMessages.RuleOverrides[@i].Id"
-                                                      data-valmsg-replace="true"></span>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-2">
-                                            <div class="mb-3">
-                                                <label asp-for="WelcomeMessages.RuleOverrides[i].Enabled" class="form-label"></label>
-                                                <select asp-for="WelcomeMessages.RuleOverrides[i].Enabled" data-field="enabled-override"
-                                                        class="form-select">
-                                                    <option value="">No change</option>
-                                                    <option value="true">Enabled</option>
-                                                    <option value="false">Disabled</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3">
-                                            <div class="mb-3">
-                                                <label asp-for="WelcomeMessages.RuleOverrides[i].Priority" class="form-label"></label>
-                                                <input asp-for="WelcomeMessages.RuleOverrides[i].Priority" data-field="priority"
-                                                       class="form-control" type="number" />
-                                                <span class="text-danger" data-field="priority-validation"
-                                                      data-valmsg-for="WelcomeMessages.RuleOverrides[@i].Priority"
-                                                      data-valmsg-replace="true"></span>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3">
-                                            <div class="mb-3">
-                                                <label asp-for="WelcomeMessages.RuleOverrides[i].Visibility" class="form-label"></label>
-                                                <select asp-for="WelcomeMessages.RuleOverrides[i].Visibility" data-field="visibility"
-                                                        class="form-select">
-                                                    <option value="">No change</option>
-                                                    <option value="Private">Private</option>
-                                                    <option value="Public">Public</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-9">
-                                            <div class="mb-3">
-                                                <label asp-for="WelcomeMessages.RuleOverrides[i].MessageTemplate"
-                                                       class="form-label"></label>
-                                                <textarea asp-for="WelcomeMessages.RuleOverrides[i].MessageTemplate"
-                                                          data-field="message-template" class="form-control" rows="3"></textarea>
-                                                <small class="form-text text-muted"><span
-                                                    data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.WelcomeMessageSettingsViewModelConstants.MaxMessageTemplateLength
-                                                    characters</small>
-                                                    <span class="text-danger" data-field="message-template-validation"
-                                                          data-valmsg-for="WelcomeMessages.RuleOverrides[@i].MessageTemplate"
-                                                          data-valmsg-replace="true"></span>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-3">
-                                                <div class="mb-3">
-                                                    <label asp-for="WelcomeMessages.RuleOverrides[i].ConnectionDelaySeconds"
-                                                           class="form-label"></label>
-                                                    <input asp-for="WelcomeMessages.RuleOverrides[i].ConnectionDelaySeconds"
-                                                           data-field="connection-delay" class="form-control" type="number" />
-                                                    <span class="text-danger" data-field="connection-delay-validation"
-                                                          data-valmsg-for="WelcomeMessages.RuleOverrides[@i].ConnectionDelaySeconds"
-                                                          data-valmsg-replace="true"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <input type="hidden" name="WelcomeMessages.RuleOverrides[@i].OverrideRequiredTags" value="false"
-                                               data-field="required-tags-override-hidden" />
-                                        <div class="form-check mb-2">
-                                            @if (ruleOverrides[i].OverrideRequiredTags)
-                                            {
-                                                <input class="form-check-input" type="checkbox"
-                                                       id="WelcomeMessages_RuleOverrides_@(i)__OverrideRequiredTags"
-                                                       name="WelcomeMessages.RuleOverrides[@i].OverrideRequiredTags" value="true"
-                                                       data-field="required-tags-override" checked="checked" />
-                                            }
-                                            else
-                                            {
-                                                <input class="form-check-input" type="checkbox"
-                                                       id="WelcomeMessages_RuleOverrides_@(i)__OverrideRequiredTags"
-                                                       name="WelcomeMessages.RuleOverrides[@i].OverrideRequiredTags" value="true"
-                                                       data-field="required-tags-override" />
-                                            }
-                                            <label class="form-check-label" data-field="required-tags-override-label"
-                                                   for="WelcomeMessages_RuleOverrides_@(i)__OverrideRequiredTags">Override required tags</label>
-                                        </div>
-
-                                        <div data-field="required-tags-wrapper"
-                                             class="@(ruleOverrides[i].OverrideRequiredTags ? string.Empty : "d-none")">
-                                            <label asp-for="WelcomeMessages.RuleOverrides[i].RequiredTagsCsv" class="form-label"></label>
-                                            <input asp-for="WelcomeMessages.RuleOverrides[i].RequiredTagsCsv" data-field="required-tags"
-                                                   class="form-control" />
-                                            <small class="form-text text-muted">Comma-separated tags. Leave blank to clear required
-                                                tags.</small>
-                                                <span class="text-danger" data-field="required-tags-validation"
-                                                      data-valmsg-for="WelcomeMessages.RuleOverrides[@i].RequiredTagsCsv"
-                                                      data-valmsg-replace="true"></span>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Local welcome rule ordering">
+                                <button type="button" class="btn btn-outline-secondary" data-action="move-up" aria-label="Move rule up">
+                                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                                        aria-label="Move rule down">
+                                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove rule">
+                                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                                </button>
                             </div>
                         </div>
 
-                        <template id="server-welcome-local-rule-template">
-                            <div class="border rounded p-3 mb-3" data-welcome-rule-row>
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="form-check mb-0">
-                                        <input class="form-check-input" data-field="enabled" id="WelcomeMessages_LocalRules_0__Enabled"
-                                               name="WelcomeMessages.LocalRules[0].Enabled" type="checkbox" value="true" checked="checked" />
-                                         <input type="hidden" data-field="enabled-hidden" name="WelcomeMessages.LocalRules[0].Enabled"
-                                             value="false" />
-                                        <label class="form-check-label" data-field="enabled-label"
-                                               for="WelcomeMessages_LocalRules_0__Enabled">Enabled</label>
+                        <input id="WelcomeMessages_LocalRules_0__Id" name="WelcomeMessages.LocalRules[0].Id" data-field="id"
+                               type="hidden" />
+
+                        <div class="row">
+                            <div class="col-lg-2">
+                                <div class="mb-3">
+                                    <label class="form-label" data-field="priority-label"
+                                           for="WelcomeMessages_LocalRules_0__Priority">Priority</label>
+                                    <input id="WelcomeMessages_LocalRules_0__Priority" name="WelcomeMessages.LocalRules[0].Priority"
+                                           data-field="priority" class="form-control" type="number" />
+                                    <span class="text-danger" data-field="priority-validation"
+                                          data-valmsg-for="WelcomeMessages.LocalRules[0].Priority" data-valmsg-replace="true"></span>
+                                </div>
+                            </div>
+                            <div class="col-lg-3">
+                                <div class="mb-3">
+                                    <label class="form-label" data-field="visibility-label"
+                                           for="WelcomeMessages_LocalRules_0__Visibility">Visibility</label>
+                                    <select id="WelcomeMessages_LocalRules_0__Visibility"
+                                            name="WelcomeMessages.LocalRules[0].Visibility" data-field="visibility" class="form-select">
+                                        <option value="Private">Private</option>
+                                        <option value="Public">Public</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-lg-3">
+                                <div class="mb-3">
+                                    <label class="form-label" data-field="connection-delay-label"
+                                           for="WelcomeMessages_LocalRules_0__ConnectionDelaySeconds">Delay Override (seconds)</label>
+                                    <input id="WelcomeMessages_LocalRules_0__ConnectionDelaySeconds"
+                                           name="WelcomeMessages.LocalRules[0].ConnectionDelaySeconds" data-field="connection-delay"
+                                           class="form-control" type="number" />
+                                    <span class="text-danger" data-field="connection-delay-validation"
+                                          data-valmsg-for="WelcomeMessages.LocalRules[0].ConnectionDelaySeconds"
+                                          data-valmsg-replace="true"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label" data-field="message-template-label"
+                                           for="WelcomeMessages_LocalRules_0__MessageTemplate">Message Template</label>
+                                    <textarea id="WelcomeMessages_LocalRules_0__MessageTemplate"
+                                              name="WelcomeMessages.LocalRules[0].MessageTemplate" data-field="message-template"
+                                              class="form-control" rows="3"></textarea>
+                                    <small class="form-text text-muted"><span
+                                        data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.WelcomeMessageSettingsViewModelConstants.MaxMessageTemplateLength
+                                        characters</small>
+                                        <span class="text-danger" data-field="message-template-validation"
+                                              data-valmsg-for="WelcomeMessages.LocalRules[0].MessageTemplate"
+                                              data-valmsg-replace="true"></span>
                                     </div>
-                                    <div class="btn-group btn-group-sm" role="group" aria-label="Local welcome rule ordering">
-                                        <button type="button" class="btn btn-outline-secondary" data-action="move-up" aria-label="Move rule up">
-                                            <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                                aria-label="Move rule down">
-                                            <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove rule">
-                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                                        </button>
+                                </div>
+                            </div>
+
+                            <div class="mb-0">
+                                @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml", new
+RequiredTagsSelectorViewModel
+                                {
+                                    FieldName = "WelcomeMessages.LocalRules[0].RequiredTagsCsv",
+                                    Label = "Required Tags",
+                                    Value = null,
+                                    Options = Model.AvailableRequiredTags,
+                                    HelpText = "Select optional player tags. Leave blank for no tag requirements.",
+                                    Placeholder = "No tags required",
+                                    DataField = "required-tags",
+                                    SelectDataField = "required-tags-select",
+                                    LabelDataField = "required-tags-label",
+                                    HelpDataField = "required-tags-help"
+                                })
+                                <span class="text-danger" data-field="required-tags-validation"
+                                      data-valmsg-for="WelcomeMessages.LocalRules[0].RequiredTagsCsv" data-valmsg-replace="true"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template id="server-welcome-override-template">
+                        <div class="border rounded p-3 mb-3" data-welcome-rule-row>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">Rule Override</h6>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Rule override ordering">
+                                    <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                                            aria-label="Move override up">
+                                        <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                                            aria-label="Move override down">
+                                        <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove override">
+                                        <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-4">
+                                    <div class="mb-3">
+                                        <label class="form-label" data-field="id-label"
+                                               for="WelcomeMessages_RuleOverrides_0__Id">Rule</label>
+                                        <select id="WelcomeMessages_RuleOverrides_0__Id" name="WelcomeMessages.RuleOverrides[0].Id"
+                                                data-field="id" class="form-select">
+                                            <option value="">Select rule</option>
+                                            @for (var ruleIndex = 0; ruleIndex < globalRules.Count; ruleIndex++)
+                                            {
+                                                var rule = globalRules[ruleIndex];
+                                                var messagePreview = string.IsNullOrWhiteSpace(rule.MessageTemplate)
+                                                    ? "Untitled rule"
+                                                    : rule.MessageTemplate;
+                                                var optionLabel = $"Rule {ruleIndex + 1} (P{rule.Priority}) - {messagePreview}";
+                                                <option value="@rule.Id">@optionLabel</option>
+                                            }
+                                        </select>
+                                        <span class="text-danger" data-field="id-validation"
+                                              data-valmsg-for="WelcomeMessages.RuleOverrides[0].Id" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                                <div class="col-lg-2">
+                                    <div class="mb-3">
+                                        <label class="form-label" data-field="enabled-override-label"
+                                               for="WelcomeMessages_RuleOverrides_0__Enabled">Enabled Override</label>
+                                        <select id="WelcomeMessages_RuleOverrides_0__Enabled"
+                                                name="WelcomeMessages.RuleOverrides[0].Enabled" data-field="enabled-override"
+                                                class="form-select">
+                                            <option value="">No change</option>
+                                            <option value="true">Enabled</option>
+                                            <option value="false">Disabled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-3">
+                                    <div class="mb-3">
+                                        <label class="form-label" data-field="priority-label"
+                                               for="WelcomeMessages_RuleOverrides_0__Priority">Priority Override</label>
+                                        <input id="WelcomeMessages_RuleOverrides_0__Priority"
+                                               name="WelcomeMessages.RuleOverrides[0].Priority" data-field="priority" class="form-control"
+                                               type="number" />
+                                        <span class="text-danger" data-field="priority-validation"
+                                              data-valmsg-for="WelcomeMessages.RuleOverrides[0].Priority" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                                <div class="col-lg-3">
+                                    <div class="mb-3">
+                                        <label class="form-label" data-field="visibility-label"
+                                               for="WelcomeMessages_RuleOverrides_0__Visibility">Visibility Override</label>
+                                        <select id="WelcomeMessages_RuleOverrides_0__Visibility"
+                                                name="WelcomeMessages.RuleOverrides[0].Visibility" data-field="visibility" class="form-select">
+                                            <option value="">No change</option>
+                                            <option value="Private">Private</option>
+                                            <option value="Public">Public</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-9">
+                                    <div class="mb-3">
+                                        <label class="form-label" data-field="message-template-label"
+                                               for="WelcomeMessages_RuleOverrides_0__MessageTemplate">Message Template Override</label>
+                                        <textarea id="WelcomeMessages_RuleOverrides_0__MessageTemplate"
+                                                  name="WelcomeMessages.RuleOverrides[0].MessageTemplate" data-field="message-template"
+                                                  class="form-control" rows="3"></textarea>
+                                        <small class="form-text text-muted"><span
+                                            data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.WelcomeMessageSettingsViewModelConstants.MaxMessageTemplateLength
+                                            characters</small>
+                                            <span class="text-danger" data-field="message-template-validation"
+                                                  data-valmsg-for="WelcomeMessages.RuleOverrides[0].MessageTemplate"
+                                                  data-valmsg-replace="true"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-3">
+                                        <div class="mb-3">
+                                            <label class="form-label" data-field="connection-delay-label"
+                                                   for="WelcomeMessages_RuleOverrides_0__ConnectionDelaySeconds">Delay Override (seconds)</label>
+                                            <input id="WelcomeMessages_RuleOverrides_0__ConnectionDelaySeconds"
+                                                   name="WelcomeMessages.RuleOverrides[0].ConnectionDelaySeconds" data-field="connection-delay"
+                                                   class="form-control" type="number" />
+                                            <span class="text-danger" data-field="connection-delay-validation"
+                                                  data-valmsg-for="WelcomeMessages.RuleOverrides[0].ConnectionDelaySeconds"
+                                                  data-valmsg-replace="true"></span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <input id="WelcomeMessages_LocalRules_0__Id" name="WelcomeMessages.LocalRules[0].Id" data-field="id"
-                                       type="hidden" />
+                                <input type="hidden" data-field="required-tags-override-hidden"
+                                       name="WelcomeMessages.RuleOverrides[0].OverrideRequiredTags" value="false" />
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" id="WelcomeMessages_RuleOverrides_0__OverrideRequiredTags"
+                                           name="WelcomeMessages.RuleOverrides[0].OverrideRequiredTags" data-field="required-tags-override"
+                                           type="checkbox" value="true" />
+                                    <label class="form-check-label" data-field="required-tags-override-label"
+                                           for="WelcomeMessages_RuleOverrides_0__OverrideRequiredTags">Override required tags</label>
+                                </div>
 
-                                <div class="row">
-                                        <div class="col-lg-2">
-                                            <div class="mb-3">
-                                                <label class="form-label" data-field="priority-label"
-                                                       for="WelcomeMessages_LocalRules_0__Priority">Priority</label>
-                                                <input id="WelcomeMessages_LocalRules_0__Priority" name="WelcomeMessages.LocalRules[0].Priority"
-                                                       data-field="priority" class="form-control" type="number" />
-                                                <span class="text-danger" data-field="priority-validation"
-                                                      data-valmsg-for="WelcomeMessages.LocalRules[0].Priority" data-valmsg-replace="true"></span>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3">
-                                            <div class="mb-3">
-                                                <label class="form-label" data-field="visibility-label"
-                                                       for="WelcomeMessages_LocalRules_0__Visibility">Visibility</label>
-                                                <select id="WelcomeMessages_LocalRules_0__Visibility"
-                                                        name="WelcomeMessages.LocalRules[0].Visibility" data-field="visibility" class="form-select">
-                                                    <option value="Private">Private</option>
-                                                    <option value="Public">Public</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3">
-                                            <div class="mb-3">
-                                                <label class="form-label" data-field="connection-delay-label"
-                                                       for="WelcomeMessages_LocalRules_0__ConnectionDelaySeconds">Delay Override (seconds)</label>
-                                                <input id="WelcomeMessages_LocalRules_0__ConnectionDelaySeconds"
-                                                       name="WelcomeMessages.LocalRules[0].ConnectionDelaySeconds" data-field="connection-delay"
-                                                       class="form-control" type="number" />
-                                                <span class="text-danger" data-field="connection-delay-validation"
-                                                      data-valmsg-for="WelcomeMessages.LocalRules[0].ConnectionDelaySeconds"
-                                                      data-valmsg-replace="true"></span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div data-field="required-tags-wrapper" class="d-none">
+                                    @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml", new
+RequiredTagsSelectorViewModel
+                                    {
+                                        FieldName = "WelcomeMessages.RuleOverrides[0].RequiredTagsCsv",
+                                        Label = "Required Tags Override",
+                                        Value = null,
+                                        Options = Model.AvailableRequiredTags,
+                                        HelpText = "Select optional player tags. Leave blank to clear required tags.",
+                                        Placeholder = "No tags required",
+                                        DataField = "required-tags",
+                                        SelectDataField = "required-tags-select",
+                                        LabelDataField = "required-tags-label",
+                                        HelpDataField = "required-tags-help"
+                                    })
+                                    <span class="text-danger" data-field="required-tags-validation"
+                                          data-valmsg-for="WelcomeMessages.RuleOverrides[0].RequiredTagsCsv" data-valmsg-replace="true"></span>
+                                </div>
+                            </div>
+                        </template>
 
-                                    <div class="row">
-                                        <div class="col-lg-12">
-                                            <div class="mb-3">
-                                                <label class="form-label" data-field="message-template-label"
-                                                       for="WelcomeMessages_LocalRules_0__MessageTemplate">Message Template</label>
-                                                <textarea id="WelcomeMessages_LocalRules_0__MessageTemplate"
-                                                          name="WelcomeMessages.LocalRules[0].MessageTemplate" data-field="message-template"
-                                                          class="form-control" rows="3"></textarea>
-                                                <small class="form-text text-muted"><span
-                                                    data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.WelcomeMessageSettingsViewModelConstants.MaxMessageTemplateLength
-                                                    characters</small>
-                                                    <span class="text-danger" data-field="message-template-validation"
-                                                          data-valmsg-for="WelcomeMessages.LocalRules[0].MessageTemplate"
-                                                          data-valmsg-replace="true"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-0">
-                                            <label class="form-label" data-field="required-tags-label"
-                                                   for="WelcomeMessages_LocalRules_0__RequiredTagsCsv">Required Tags</label>
-                                            <input id="WelcomeMessages_LocalRules_0__RequiredTagsCsv"
-                                                   name="WelcomeMessages.LocalRules[0].RequiredTagsCsv" data-field="required-tags" class="form-control" />
-                                            <small class="form-text text-muted">Comma-separated tags. Leave blank for no tag requirements.</small>
-                                            <span class="text-danger" data-field="required-tags-validation"
-                                                  data-valmsg-for="WelcomeMessages.LocalRules[0].RequiredTagsCsv" data-valmsg-replace="true"></span>
-                                        </div>
-                                    </div>
-                                </template>
-
-                                <template id="server-welcome-override-template">
-                                    <div class="border rounded p-3 mb-3" data-welcome-rule-row>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="mb-0">Rule Override</h6>
-                                            <div class="btn-group btn-group-sm" role="group" aria-label="Rule override ordering">
-                                                <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                                                        aria-label="Move override up">
-                                                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                                        aria-label="Move override down">
-                                                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove override">
-                                                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-lg-4">
-                                                <div class="mb-3">
-                                                    <label class="form-label" data-field="id-label" for="WelcomeMessages_RuleOverrides_0__Id">Rule</label>
-                                                        <select id="WelcomeMessages_RuleOverrides_0__Id" name="WelcomeMessages.RuleOverrides[0].Id"
-                                                                data-field="id" class="form-select">
-                                                            <option value="">Select rule</option>
-                                                            @for (var ruleIndex = 0; ruleIndex < globalRules.Count; ruleIndex++)
-                                                            {
-                                                                var rule = globalRules[ruleIndex];
-                                                                var messagePreview = string.IsNullOrWhiteSpace(rule.MessageTemplate)
-                                                                    ? "Untitled rule"
-                                                                    : rule.MessageTemplate;
-                                                                var optionLabel = $"Rule {ruleIndex + 1} (P{rule.Priority}) - {messagePreview}";
-                                                                <option value="@rule.Id">@optionLabel</option>
-                                                            }
-                                                        </select>
-                                                        <span class="text-danger" data-field="id-validation"
-                                                              data-valmsg-for="WelcomeMessages.RuleOverrides[0].Id" data-valmsg-replace="true"></span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-lg-2">
-                                                    <div class="mb-3">
-                                                        <label class="form-label" data-field="enabled-override-label"
-                                                               for="WelcomeMessages_RuleOverrides_0__Enabled">Enabled Override</label>
-                                                        <select id="WelcomeMessages_RuleOverrides_0__Enabled"
-                                                                name="WelcomeMessages.RuleOverrides[0].Enabled" data-field="enabled-override"
-                                                                class="form-select">
-                                                            <option value="">No change</option>
-                                                            <option value="true">Enabled</option>
-                                                            <option value="false">Disabled</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-lg-3">
-                                                    <div class="mb-3">
-                                                        <label class="form-label" data-field="priority-label"
-                                                               for="WelcomeMessages_RuleOverrides_0__Priority">Priority Override</label>
-                                                        <input id="WelcomeMessages_RuleOverrides_0__Priority"
-                                                               name="WelcomeMessages.RuleOverrides[0].Priority" data-field="priority" class="form-control"
-                                                               type="number" />
-                                                        <span class="text-danger" data-field="priority-validation"
-                                                              data-valmsg-for="WelcomeMessages.RuleOverrides[0].Priority" data-valmsg-replace="true"></span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-lg-3">
-                                                    <div class="mb-3">
-                                                        <label class="form-label" data-field="visibility-label"
-                                                               for="WelcomeMessages_RuleOverrides_0__Visibility">Visibility Override</label>
-                                                        <select id="WelcomeMessages_RuleOverrides_0__Visibility"
-                                                                name="WelcomeMessages.RuleOverrides[0].Visibility" data-field="visibility" class="form-select">
-                                                            <option value="">No change</option>
-                                                            <option value="Private">Private</option>
-                                                            <option value="Public">Public</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-lg-9">
-                                                    <div class="mb-3">
-                                                        <label class="form-label" data-field="message-template-label"
-                                                               for="WelcomeMessages_RuleOverrides_0__MessageTemplate">Message Template Override</label>
-                                                        <textarea id="WelcomeMessages_RuleOverrides_0__MessageTemplate"
-                                                                  name="WelcomeMessages.RuleOverrides[0].MessageTemplate" data-field="message-template"
-                                                                  class="form-control" rows="3"></textarea>
-                                                        <small class="form-text text-muted"><span
-                                                            data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.WelcomeMessageSettingsViewModelConstants.MaxMessageTemplateLength
-                                                            characters</small>
-                                                            <span class="text-danger" data-field="message-template-validation"
-                                                                  data-valmsg-for="WelcomeMessages.RuleOverrides[0].MessageTemplate"
-                                                                  data-valmsg-replace="true"></span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-lg-3">
-                                                        <div class="mb-3">
-                                                            <label class="form-label" data-field="connection-delay-label"
-                                                                   for="WelcomeMessages_RuleOverrides_0__ConnectionDelaySeconds">Delay Override (seconds)</label>
-                                                            <input id="WelcomeMessages_RuleOverrides_0__ConnectionDelaySeconds"
-                                                                   name="WelcomeMessages.RuleOverrides[0].ConnectionDelaySeconds" data-field="connection-delay"
-                                                                   class="form-control" type="number" />
-                                                            <span class="text-danger" data-field="connection-delay-validation"
-                                                                  data-valmsg-for="WelcomeMessages.RuleOverrides[0].ConnectionDelaySeconds"
-                                                                  data-valmsg-replace="true"></span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <input type="hidden" data-field="required-tags-override-hidden"
-                                                       name="WelcomeMessages.RuleOverrides[0].OverrideRequiredTags" value="false" />
-                                                <div class="form-check mb-2">
-                                                    <input class="form-check-input" id="WelcomeMessages_RuleOverrides_0__OverrideRequiredTags"
-                                                           name="WelcomeMessages.RuleOverrides[0].OverrideRequiredTags" data-field="required-tags-override"
-                                                           type="checkbox" value="true" />
-                                                    <label class="form-check-label" data-field="required-tags-override-label"
-                                                           for="WelcomeMessages_RuleOverrides_0__OverrideRequiredTags">Override required tags</label>
-                                                </div>
-
-                                                <div data-field="required-tags-wrapper" class="d-none">
-                                                    <label class="form-label" data-field="required-tags-label"
-                                                           for="WelcomeMessages_RuleOverrides_0__RequiredTagsCsv">Required Tags Override</label>
-                                                    <input id="WelcomeMessages_RuleOverrides_0__RequiredTagsCsv"
-                                                           name="WelcomeMessages.RuleOverrides[0].RequiredTagsCsv" data-field="required-tags"
-                                                           class="form-control" />
-                                                    <small class="form-text text-muted">Comma-separated tags. Leave blank to clear required tags.</small>
-                                                    <span class="text-danger" data-field="required-tags-validation"
-                                                          data-valmsg-for="WelcomeMessages.RuleOverrides[0].RequiredTagsCsv" data-valmsg-replace="true"></span>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        @section Scripts {
-                                            <script src="~/js/welcome-rules-manager.js"></script>
-                                        }
+                        @section Scripts {
+                            <script src="~/js/welcome-rules-manager.js"></script>
+                        }

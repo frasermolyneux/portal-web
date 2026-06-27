@@ -87,7 +87,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     // Legacy compatibility alias retained while the UI model is being normalized in later phases.
 
-    public List<BroadcastMessageViewModel> FunnyMessages {
+    public List<BroadcastMessageViewModel> FunnyMessages
+    {
         get => BroadcastMessages;
         set => BroadcastMessages = value ?? [];
     }
@@ -95,6 +96,8 @@ public class GlobalSettingsViewModel : IValidatableObject
     public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
 
     public WelcomeMessageGlobalSettingsViewModel WelcomeMessages { get; set; } = new();
+
+    public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -119,6 +122,17 @@ public class GlobalSettingsViewModel : IValidatableObject
         {
             yield return validationResult;
         }
+    }
+
+    public void ApplyAvailableRequiredTags(
+        IReadOnlyList<RequiredTagOptionViewModel> requiredTags,
+        bool requiredTagsCatalogAvailable = true)
+    {
+        AvailableRequiredTags = requiredTags;
+        ChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
+        ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
+        WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public static IReadOnlyList<SelectListItem> BuildSeverityOptions(bool includeInheritOption)

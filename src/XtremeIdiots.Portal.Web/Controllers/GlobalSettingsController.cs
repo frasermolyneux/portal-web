@@ -29,6 +29,8 @@ public class GlobalSettingsController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var model = new GlobalSettingsViewModel();
+            var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
+            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
 
             try
             {
@@ -62,6 +64,8 @@ public class GlobalSettingsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
+            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;
@@ -159,5 +163,62 @@ public class GlobalSettingsController(
             Logger.LogWarning(ex, "Error deleting global configuration namespace '{Namespace}'", ns);
             errors.Add(ns);
         }
+    }
+
+    private async Task<(IReadOnlyList<RequiredTagOptionViewModel> Tags, bool IsCatalogAvailable)> GetAvailableRequiredTagsAsync(CancellationToken cancellationToken)
+    {
+        const int pageSize = 100;
+        var tags = new List<RequiredTagOptionViewModel>();
+        var skip = 0;
+
+        while (true)
+        {
+            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(skip, pageSize, cancellationToken).ConfigureAwait(false);
+            if (!tagsResponse.IsSuccess || tagsResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to retrieve tags for global settings required tags list");
+                return ([], false);
+            }
+
+            var page = tagsResponse.Result.Data.Items.Where(static tag => tag is not null).ToList();
+            if (page.Count == 0)
+            {
+                break;
+            }
+
+            tags.AddRange(page
+                .Where(static tag => !string.IsNullOrWhiteSpace(tag.Name))
+                .Select(static tag => new RequiredTagOptionViewModel
+                {
+                    Name = tag.Name,
+                    DisplayName = tag.Name
+                }));
+
+            var pagination = tagsResponse.Result.Pagination;
+            if (pagination is not null)
+            {
+                var totalAvailable = Math.Max(pagination.TotalCount, pagination.FilteredCount);
+                var nextSkip = pagination.Skip + pagination.Top;
+                if (nextSkip <= skip || nextSkip >= totalAvailable)
+                {
+                    break;
+                }
+
+                skip = nextSkip;
+                continue;
+            }
+
+            if (page.Count < pageSize)
+            {
+                break;
+            }
+
+            skip += page.Count;
+        }
+
+        return ([.. tags
+            .GroupBy(static tag => tag.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.First())
+            .OrderBy(static tag => tag.DisplayName, StringComparer.OrdinalIgnoreCase)], true);
     }
 }

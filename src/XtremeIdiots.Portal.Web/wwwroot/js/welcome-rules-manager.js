@@ -51,6 +51,14 @@
         }
     }
 
+    function initializeRequiredTagsSelectors(root) {
+        if (!window.XIRequiredTagsSelector || typeof window.XIRequiredTagsSelector.initializeWithin !== 'function') {
+            return;
+        }
+
+        window.XIRequiredTagsSelector.initializeWithin(root);
+    }
+
     function updateEmptyState(container) {
         var emptyStateId = container.dataset.emptyStateId;
         if (!emptyStateId) return;
@@ -79,6 +87,9 @@
             var visibility = row.querySelector('[data-field="visibility"]');
             var messageTemplate = row.querySelector('[data-field="message-template"]');
             var requiredTags = row.querySelector('[data-field="required-tags"]');
+            var requiredTagsSelect = row.querySelector('[data-field="required-tags-select"]');
+            var requiredTagsLabel = row.querySelector('[data-field="required-tags-label"]');
+            var requiredTagsHelp = row.querySelector('[data-field="required-tags-help"]');
             var connectionDelay = row.querySelector('[data-field="connection-delay"]');
             var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
             var enabled = row.querySelector('[data-field="enabled"]');
@@ -114,6 +125,34 @@
             if (requiredTags) {
                 requiredTags.name = fieldNamePrefix + '[' + index + '].RequiredTagsCsv';
                 requiredTags.id = normalizedPrefix + '_' + index + '__RequiredTagsCsv';
+            }
+
+            if (requiredTagsSelect) {
+                if (requiredTags && requiredTags.id) {
+                    requiredTagsSelect.id = requiredTags.id + '_Selector';
+                } else {
+                    requiredTagsSelect.id = normalizedPrefix + '_' + index + '__RequiredTagsCsv_Selector';
+                }
+            }
+
+            if (requiredTagsLabel && requiredTagsSelect) {
+                requiredTagsLabel.htmlFor = requiredTagsSelect.id;
+            }
+
+            if (requiredTagsHelp) {
+                if (requiredTags && requiredTags.id) {
+                    requiredTagsHelp.id = requiredTags.id + '_Help';
+                } else {
+                    requiredTagsHelp.id = normalizedPrefix + '_' + index + '__RequiredTagsCsv_Help';
+                }
+            }
+
+            if (requiredTagsSelect) {
+                if (requiredTagsHelp) {
+                    requiredTagsSelect.setAttribute('aria-describedby', requiredTagsHelp.id);
+                } else {
+                    requiredTagsSelect.removeAttribute('aria-describedby');
+                }
             }
 
             if (connectionDelay) {
@@ -186,6 +225,8 @@
             updateRuleCharCount(row);
             updateRequiredTagsOverride(row);
         });
+
+        initializeRequiredTagsSelectors(container);
     }
 
     function wireRow(row, container, autoGenerateId) {
@@ -246,6 +287,7 @@
         ensureRuleId(row, autoGenerateId);
         updateRuleCharCount(row);
         updateRequiredTagsOverride(row);
+        initializeRequiredTagsSelectors(row);
     }
 
     function initializeEditor(containerId, addButtonId) {

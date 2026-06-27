@@ -106,9 +106,18 @@ public class WelcomeMessageGlobalSettingsViewModel : IValidatableObject
 
     public List<WelcomeMessageRuleEntryViewModel> Rules { get; set; } = [];
 
+    public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
+
+    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        foreach (var result in WelcomeMessageSettingsValidation.ValidateRules(Rules, nameof(Rules), requireTemplate: true))
+        foreach (var result in WelcomeMessageSettingsValidation.ValidateRules(
+            Rules,
+            nameof(Rules),
+            requireTemplate: true,
+            AllowedRequiredTags,
+            RequiredTagsCatalogAvailable))
         {
             yield return result;
         }
@@ -142,14 +151,27 @@ public class WelcomeMessageServerSettingsViewModel : IValidatableObject
 
     public List<WelcomeMessageRuleOverrideEntryViewModel> RuleOverrides { get; set; } = [];
 
+    public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
+
+    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        foreach (var result in WelcomeMessageSettingsValidation.ValidateRules(LocalRules, nameof(LocalRules), requireTemplate: true))
+        foreach (var result in WelcomeMessageSettingsValidation.ValidateRules(
+            LocalRules,
+            nameof(LocalRules),
+            requireTemplate: true,
+            AllowedRequiredTags,
+            RequiredTagsCatalogAvailable))
         {
             yield return result;
         }
 
-        foreach (var result in WelcomeMessageSettingsValidation.ValidateRuleOverrides(RuleOverrides, nameof(RuleOverrides)))
+        foreach (var result in WelcomeMessageSettingsValidation.ValidateRuleOverrides(
+            RuleOverrides,
+            nameof(RuleOverrides),
+            AllowedRequiredTags,
+            RequiredTagsCatalogAvailable))
         {
             yield return result;
         }
@@ -161,12 +183,18 @@ internal static class WelcomeMessageSettingsValidation
     public static IEnumerable<ValidationResult> ValidateRules(
         IReadOnlyList<WelcomeMessageRuleEntryViewModel>? rules,
         string memberPrefix,
-        bool requireTemplate)
+        bool requireTemplate,
+        IReadOnlyList<string> allowedRequiredTags,
+        bool requiredTagsCatalogAvailable)
     {
         if (rules is null)
         {
             yield break;
         }
+
+        var allowedTagSet = allowedRequiredTags
+            .Where(static tag => !string.IsNullOrWhiteSpace(tag))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < rules.Count; i++)
@@ -212,6 +240,13 @@ internal static class WelcomeMessageSettingsValidation
                     [$"{memberPrefix}[{i}].RequiredTagsCsv"]);
             }
 
+            foreach (var invalidTag in tags.Where(tag => requiredTagsCatalogAvailable && !allowedTagSet.Contains(tag)))
+            {
+                yield return new ValidationResult(
+                    $"Required tag '{invalidTag}' is not available.",
+                    [$"{memberPrefix}[{i}].RequiredTagsCsv"]);
+            }
+
             if (rule.ConnectionDelaySeconds.HasValue
                 && (rule.ConnectionDelaySeconds.Value < WelcomeMessageSettingsViewModelConstants.MinConnectionDelaySeconds
                     || rule.ConnectionDelaySeconds.Value > WelcomeMessageSettingsViewModelConstants.MaxConnectionDelaySeconds))
@@ -225,12 +260,18 @@ internal static class WelcomeMessageSettingsValidation
 
     public static IEnumerable<ValidationResult> ValidateRuleOverrides(
         IReadOnlyList<WelcomeMessageRuleOverrideEntryViewModel>? overrides,
-        string memberPrefix)
+        string memberPrefix,
+        IReadOnlyList<string> allowedRequiredTags,
+        bool requiredTagsCatalogAvailable)
     {
         if (overrides is null)
         {
             yield break;
         }
+
+        var allowedTagSet = allowedRequiredTags
+            .Where(static tag => !string.IsNullOrWhiteSpace(tag))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < overrides.Count; i++)
@@ -265,6 +306,13 @@ internal static class WelcomeMessageSettingsValidation
                         $"Required tags override supports at most {WelcomeMessageSettingsViewModelConstants.MaxRequiredTags} tags.",
                         [$"{memberPrefix}[{i}].RequiredTagsCsv"]);
                 }
+
+                foreach (var invalidTag in tags.Where(tag => requiredTagsCatalogAvailable && !allowedTagSet.Contains(tag)))
+                {
+                    yield return new ValidationResult(
+                        $"Required tag '{invalidTag}' is not available.",
+                        [$"{memberPrefix}[{i}].RequiredTagsCsv"]);
+                }
             }
 
             if (row.ConnectionDelaySeconds.HasValue
@@ -280,15 +328,7 @@ internal static class WelcomeMessageSettingsValidation
 
     public static string[] SplitCsv(string? value)
     {
-        return string.IsNullOrWhiteSpace(value)
-            ? []
-            :
-            [
-                .. value
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Where(static item => !string.IsNullOrWhiteSpace(item))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-            ];
+        return RequiredTagsSelection.SplitCsv(value);
     }
 }
 

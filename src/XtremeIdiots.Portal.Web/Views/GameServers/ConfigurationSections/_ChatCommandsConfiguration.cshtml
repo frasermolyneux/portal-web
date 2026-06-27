@@ -63,7 +63,8 @@ StringComparison.OrdinalIgnoreCase));
             <div class="row">
                 <div class="col-lg-6">
                     <div class="border rounded p-3 mb-3">
-                        @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml", new TriStateOverrideSelectViewModel
+                        @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml", new
+                    TriStateOverrideSelectViewModel
                         {
                             FieldName = $"ChatCommands.Commands[{i}].Enabled",
                             Label = Html.DisplayNameFor(m => m.ChatCommands.Commands[i].Enabled).ToString(),
@@ -74,211 +75,218 @@ StringComparison.OrdinalIgnoreCase));
                     </div>
                 </div>
 
-<div class="col-lg-6">
-    <div class="border rounded p-3 mb-3">
-        <input type="hidden" name="ChatCommands.Commands[@i].OverrideFreshness" value="false" />
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 mb-3">
+                        <input type="hidden" name="ChatCommands.Commands[@i].OverrideFreshness" value="false" />
+                        <div class="form-check mb-3">
+                            @if (command.OverrideFreshness)
+                            {
+                                <input class="form-check-input" type="checkbox"
+                                       id="ChatCommands_Commands_@(i)__OverrideFreshness"
+                                       name="ChatCommands.Commands[@i].OverrideFreshness" value="true" data-global-toggle
+                                       data-global-mode="override" data-global-target="chat-command-@i-freshness-override"
+                                       checked="checked" />
+                            }
+                            else
+                            {
+                                <input class="form-check-input" type="checkbox"
+                                       id="ChatCommands_Commands_@(i)__OverrideFreshness"
+                                       name="ChatCommands.Commands[@i].OverrideFreshness" value="true" data-global-toggle
+                                       data-global-mode="override" data-global-target="chat-command-@i-freshness-override" />
+                            }
+                            <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideFreshness">Override
+                                freshness</label>
+                            </div>
+                            <div class="small text-muted mb-2">Global value: <strong>@globalFreshness</strong> second(s)</div>
+                            <div id="chat-command-@i-freshness-override"
+                                 class="@(!command.OverrideFreshness ? "d-none" : string.Empty)">
+                                <label asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-label"></label>
+                                <input asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-control" type="number" />
+                                <span asp-validation-for="ChatCommands.Commands[i].FreshnessSeconds" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="border rounded p-3 mb-3">
+                            <input type="hidden" name="ChatCommands.Commands[@i].OverrideRequiredTags" value="false" />
+                            <div class="form-check mb-3">
+                                @if (command.OverrideRequiredTags)
+                                {
+                                    <input class="form-check-input" type="checkbox"
+                                           id="ChatCommands_Commands_@(i)__OverrideRequiredTags"
+                                           name="ChatCommands.Commands[@i].OverrideRequiredTags" value="true" data-global-toggle
+                                           data-global-mode="override" data-global-target="chat-command-@i-tags-override"
+                                           checked="checked" />
+                                }
+                                else
+                                {
+                                    <input class="form-check-input" type="checkbox"
+                                           id="ChatCommands_Commands_@(i)__OverrideRequiredTags"
+                                           name="ChatCommands.Commands[@i].OverrideRequiredTags" value="true" data-global-toggle
+                                           data-global-mode="override" data-global-target="chat-command-@i-tags-override" />
+                                }
+                                <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideRequiredTags">Override
+                                    required tags</label>
+                                </div>
+                                <div class="small text-muted mb-2">Global value: <strong>@(string.IsNullOrWhiteSpace(globalTags) ?
+                                                                                                                       "None" : globalTags)</strong></div>
+<div id="chat-command-@i-tags-override"
+     class="@(!command.OverrideRequiredTags ? "d-none" : string.Empty)">
+    @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml", new
+    RequiredTagsSelectorViewModel
+    {
+        FieldName = $"ChatCommands.Commands[{i}].RequiredTags",
+        Label = Html.DisplayNameFor(m => m.ChatCommands.Commands[i].RequiredTags).ToString(),
+        Value = command.RequiredTags,
+        Options = Model.AvailableRequiredTags,
+        HelpText = "Optional. Leave blank to avoid extra tag gating.",
+        Placeholder = "No tags required"
+    })
+    <span asp-validation-for="ChatCommands.Commands[i].RequiredTags" class="text-danger"></span>
+</div>
+</div>
+</div>
+</div>
+
+        @if (isFuCommand)
+{
+    var containerId = $"server-chat-command-{i}-messages-container";
+    var emptyStateId = $"server-chat-command-{i}-messages-empty";
+    var addButtonId = $"server-chat-command-{i}-add-message";
+    var importButtonId = $"server-chat-command-{i}-import-messages";
+
+    <div class="border rounded p-3 mb-0">
+        <input type="hidden" name="ChatCommands.Commands[@i].OverrideMessages" value="false" />
         <div class="form-check mb-3">
-            @if (command.OverrideFreshness)
+            @if (command.OverrideMessages)
             {
-                <input class="form-check-input" type="checkbox"
-                       id="ChatCommands_Commands_@(i)__OverrideFreshness"
-                       name="ChatCommands.Commands[@i].OverrideFreshness" value="true" data-global-toggle
-                       data-global-mode="override" data-global-target="chat-command-@i-freshness-override"
+                <input class="form-check-input" type="checkbox" id="ChatCommands_Commands_@(i)__OverrideMessages"
+                       name="ChatCommands.Commands[@i].OverrideMessages" value="true" data-global-toggle
+                       data-global-mode="override" data-global-target="chat-command-@i-messages-override"
                        checked="checked" />
             }
             else
             {
-                <input class="form-check-input" type="checkbox"
-                       id="ChatCommands_Commands_@(i)__OverrideFreshness"
-                       name="ChatCommands.Commands[@i].OverrideFreshness" value="true" data-global-toggle
-                       data-global-mode="override" data-global-target="chat-command-@i-freshness-override" />
+                <input class="form-check-input" type="checkbox" id="ChatCommands_Commands_@(i)__OverrideMessages"
+                       name="ChatCommands.Commands[@i].OverrideMessages" value="true" data-global-toggle
+                       data-global-mode="override" data-global-target="chat-command-@i-messages-override" />
             }
-            <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideFreshness">Override
-                freshness</label>
+            <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideMessages">Override
+                messages</label>
             </div>
-            <div class="small text-muted mb-2">Global value: <strong>@globalFreshness</strong> second(s)</div>
-            <div id="chat-command-@i-freshness-override"
-                 class="@(!command.OverrideFreshness ? "d-none" : string.Empty)">
-                <label asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-label"></label>
-                <input asp-for="ChatCommands.Commands[i].FreshnessSeconds" class="form-control" type="number" />
-                <span asp-validation-for="ChatCommands.Commands[i].FreshnessSeconds" class="text-danger"></span>
-            </div>
+            <div class="small text-muted mb-2">Global value: <strong>@globalMessageCount</strong> message(s)</div>
+
+            <div id="chat-command-@i-messages-override" class="@(!command.OverrideMessages ? "d-none" : string.Empty)">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h6 class="mb-1">Server Message Overrides</h6>
+                        <p class="text-muted mb-0">Use <strong>{name}</strong> for the resolved player name. Disabled or
+                            empty lists make the command unavailable on this server.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="@addButtonId">
+                            <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="@importButtonId">
+                            <i class="fa-solid fa-fw fa-file-import" aria-hidden="true"></i> Import multiline
+                        </button>
+                    </div>
+
+                    <p id="@emptyStateId" class="text-muted @(command.Messages.Count > 0 ? "d-none" : string.Empty)">
+                        No server-specific messages configured.
+                    </p>
+
+                    <div id="@containerId" data-chat-command-messages-container
+                         data-field-name-prefix="ChatCommands.Commands[@i].Messages" data-empty-state-id="@emptyStateId"
+                         data-add-button-id="@addButtonId" data-import-button-id="@importButtonId"
+                         data-template-id="server-chat-command-message-template">
+                        @for (var j = 0; j < command.Messages.Count; j++)
+                        {
+                            <div class="border rounded p-3 mb-3" data-message-row>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="form-check mb-0">
+                                        @if (command.Messages[j].Enabled)
+                                        {
+                                            <input class="form-check-input" data-field="enabled" type="checkbox"
+                                                   name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
+                                                   id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" checked="checked" />
+                                        }
+                                        else
+                                        {
+                                            <input class="form-check-input" data-field="enabled" type="checkbox"
+                                                   name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
+                                                   id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" />
+                                        }
+                                        <input type="hidden" data-field="enabled-hidden"
+                                               name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
+                                        <label class="form-check-label" data-field="enabled-label"
+                                               for="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled">Enabled</label>
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
+                                        <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                                                aria-label="Move message up">
+                                            <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                                                aria-label="Move message down">
+                                            <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger" data-action="remove"
+                                                aria-label="Remove message">
+                                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <input class="form-control" data-field="message"
+                                       name="ChatCommands.Commands[@i].Messages[@j].Message" value="@command.Messages[j].Message"
+                                       maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
+                                <small class="form-text text-muted"><span
+                                    data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
+                                    characters</small>
+                                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                                    <span class="text-danger" data-field="validation"
+                                          data-valmsg-for="ChatCommands.Commands[@i].Messages[@j].Message"
+                                          data-valmsg-replace="true"></span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
-</div>
+}
 
-<div class="row">
-    <div class="col-lg-12">
-        <div class="border rounded p-3 mb-3">
-            <input type="hidden" name="ChatCommands.Commands[@i].OverrideRequiredTags" value="false" />
-            <div class="form-check mb-3">
-                @if (command.OverrideRequiredTags)
-                {
-                    <input class="form-check-input" type="checkbox"
-                           id="ChatCommands_Commands_@(i)__OverrideRequiredTags"
-                           name="ChatCommands.Commands[@i].OverrideRequiredTags" value="true" data-global-toggle
-                           data-global-mode="override" data-global-target="chat-command-@i-tags-override"
-                           checked="checked" />
-                }
-                else
-                {
-                    <input class="form-check-input" type="checkbox"
-                           id="ChatCommands_Commands_@(i)__OverrideRequiredTags"
-                           name="ChatCommands.Commands[@i].OverrideRequiredTags" value="true" data-global-toggle
-                           data-global-mode="override" data-global-target="chat-command-@i-tags-override" />
-                }
-                <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideRequiredTags">Override
-                    required tags</label>
-                </div>
-                <div class="small text-muted mb-2">Global value: <strong>@(string.IsNullOrWhiteSpace(globalTags) ?
-                                                                                   "None" : globalTags)</strong></div>
-                    <div id="chat-command-@i-tags-override"
-                         class="@(!command.OverrideRequiredTags ? "d-none" : string.Empty)">
-                        <label asp-for="ChatCommands.Commands[i].RequiredTags" class="form-label"></label>
-                        <input asp-for="ChatCommands.Commands[i].RequiredTags" class="form-control" />
-                        <span asp-validation-for="ChatCommands.Commands[i].RequiredTags" class="text-danger"></span>
-                        <small class="form-text text-muted">Optional. Leave blank to avoid extra tag gating.</small>
-                    </div>
-                </div>
+<template id="server-chat-command-message-template">
+    <div class="border rounded p-3 mb-3" data-message-row>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="form-check mb-0">
+                <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                <input type="hidden" data-field="enabled-hidden" value="false" />
+                <label class="form-check-label" data-field="enabled-label">Enabled</label>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
+                <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                        aria-label="Move message up">
+                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                        aria-label="Move message down">
+                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                </button>
             </div>
         </div>
-
-        @if (isFuCommand)
-        {
-            var containerId = $"server-chat-command-{i}-messages-container";
-            var emptyStateId = $"server-chat-command-{i}-messages-empty";
-            var addButtonId = $"server-chat-command-{i}-add-message";
-            var importButtonId = $"server-chat-command-{i}-import-messages";
-
-            <div class="border rounded p-3 mb-0">
-                <input type="hidden" name="ChatCommands.Commands[@i].OverrideMessages" value="false" />
-                <div class="form-check mb-3">
-                    @if (command.OverrideMessages)
-                    {
-                        <input class="form-check-input" type="checkbox" id="ChatCommands_Commands_@(i)__OverrideMessages"
-                               name="ChatCommands.Commands[@i].OverrideMessages" value="true" data-global-toggle
-                               data-global-mode="override" data-global-target="chat-command-@i-messages-override"
-                               checked="checked" />
-                    }
-                    else
-                    {
-                        <input class="form-check-input" type="checkbox" id="ChatCommands_Commands_@(i)__OverrideMessages"
-                               name="ChatCommands.Commands[@i].OverrideMessages" value="true" data-global-toggle
-                               data-global-mode="override" data-global-target="chat-command-@i-messages-override" />
-                    }
-                    <label class="form-check-label" for="ChatCommands_Commands_@(i)__OverrideMessages">Override
-                        messages</label>
-                    </div>
-                    <div class="small text-muted mb-2">Global value: <strong>@globalMessageCount</strong> message(s)</div>
-
-                    <div id="chat-command-@i-messages-override" class="@(!command.OverrideMessages ? "d-none" : string.Empty)">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div>
-                                <h6 class="mb-1">Server Message Overrides</h6>
-                                <p class="text-muted mb-0">Use <strong>{name}</strong> for the resolved player name. Disabled or
-                                    empty lists make the command unavailable on this server.</p>
-                                </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="@addButtonId">
-                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add message
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="@importButtonId">
-                                    <i class="fa-solid fa-fw fa-file-import" aria-hidden="true"></i> Import multiline
-                                </button>
-                            </div>
-
-                            <p id="@emptyStateId" class="text-muted @(command.Messages.Count > 0 ? "d-none" : string.Empty)">
-                                No server-specific messages configured.
-                            </p>
-
-                            <div id="@containerId" data-chat-command-messages-container
-                                 data-field-name-prefix="ChatCommands.Commands[@i].Messages" data-empty-state-id="@emptyStateId"
-                                   data-add-button-id="@addButtonId" data-import-button-id="@importButtonId"
-                                   data-template-id="server-chat-command-message-template">
-                                @for (var j = 0; j < command.Messages.Count; j++)
-                                {
-                                    <div class="border rounded p-3 mb-3" data-message-row>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <div class="form-check mb-0">
-                                                @if (command.Messages[j].Enabled)
-                                                {
-                                                    <input class="form-check-input" data-field="enabled" type="checkbox"
-                                                           name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
-                                                           id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" checked="checked" />
-                                                }
-                                                else
-                                                {
-                                                    <input class="form-check-input" data-field="enabled" type="checkbox"
-                                                           name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="true"
-                                                           id="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled" />
-                                                }
-                                                      <input type="hidden" data-field="enabled-hidden"
-                                                          name="ChatCommands.Commands[@i].Messages[@j].Enabled" value="false" />
-                                                <label class="form-check-label" data-field="enabled-label"
-                                                       for="ChatCommands_Commands_@(i)__Messages_@(j)__Enabled">Enabled</label>
-                                            </div>
-                                            <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
-                                                <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                                                        aria-label="Move message up">
-                                                    <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                                        aria-label="Move message down">
-                                                    <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-outline-danger" data-action="remove"
-                                                        aria-label="Remove message">
-                                                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <input class="form-control" data-field="message"
-                                               name="ChatCommands.Commands[@i].Messages[@j].Message" value="@command.Messages[j].Message"
-                                               maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
-                                        <small class="form-text text-muted"><span
-                                            data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
-                                            characters</small>
-                                            <div class="small text-muted mt-1" data-field="preview">(preview)</div>
-                                            <span class="text-danger" data-field="validation"
-                                                  data-valmsg-for="ChatCommands.Commands[@i].Messages[@j].Message"
-                                                  data-valmsg-replace="true"></span>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-
-        <template id="server-chat-command-message-template">
-            <div class="border rounded p-3 mb-3" data-message-row>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
-                            <input type="hidden" data-field="enabled-hidden" value="false" />
-                        <label class="form-check-label" data-field="enabled-label">Enabled</label>
-                    </div>
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Command message ordering">
-                        <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                                aria-label="Move message up">
-                            <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                aria-label="Move message down">
-                            <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
-                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </div>
-                <input class="form-control" data-field="message"
-                       maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
-                <small class="form-text text-muted"><span
-                    data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
-                    characters</small>
-                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
-                    <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
-                </div>
-            </template>
+        <input class="form-control" data-field="message"
+               maxlength="@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength" />
+        <small class="form-text text-muted"><span
+            data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
+            characters</small>
+            <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+            <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
+        </div>
+    </template>

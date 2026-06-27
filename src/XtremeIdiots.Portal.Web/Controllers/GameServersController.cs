@@ -292,6 +292,8 @@ public class GameServersController(
                 CanEditRcon = canEditGameServerRcon.Succeeded,
                 CanConfigureScreenshots = canConfigureScreenshots.Succeeded
             };
+            var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
+            editModel.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
 
             // Fetch configuration namespaces
             try
@@ -387,6 +389,8 @@ public class GameServersController(
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
             var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
+            var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
+            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
 
             if (!canConfigureScreenshots.Succeeded)
             {
@@ -787,5 +791,62 @@ public class GameServersController(
                 { "NewValue", newValue.ToString() }
             });
         }
+    }
+
+    private async Task<(IReadOnlyList<RequiredTagOptionViewModel> Tags, bool IsCatalogAvailable)> GetAvailableRequiredTagsAsync(CancellationToken cancellationToken)
+    {
+        const int pageSize = 100;
+        var tags = new List<RequiredTagOptionViewModel>();
+        var skip = 0;
+
+        while (true)
+        {
+            var tagsResponse = await repositoryApiClient.Tags.V1.GetTags(skip, pageSize, cancellationToken).ConfigureAwait(false);
+            if (!tagsResponse.IsSuccess || tagsResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to retrieve tags for game server required tags list");
+                return ([], false);
+            }
+
+            var page = tagsResponse.Result.Data.Items.Where(static tag => tag is not null).ToList();
+            if (page.Count == 0)
+            {
+                break;
+            }
+
+            tags.AddRange(page
+                .Where(static tag => !string.IsNullOrWhiteSpace(tag.Name))
+                .Select(static tag => new RequiredTagOptionViewModel
+                {
+                    Name = tag.Name,
+                    DisplayName = tag.Name
+                }));
+
+            var pagination = tagsResponse.Result.Pagination;
+            if (pagination is not null)
+            {
+                var totalAvailable = Math.Max(pagination.TotalCount, pagination.FilteredCount);
+                var nextSkip = pagination.Skip + pagination.Top;
+                if (nextSkip <= skip || nextSkip >= totalAvailable)
+                {
+                    break;
+                }
+
+                skip = nextSkip;
+                continue;
+            }
+
+            if (page.Count < pageSize)
+            {
+                break;
+            }
+
+            skip += page.Count;
+        }
+
+        return ([.. tags
+            .GroupBy(static tag => tag.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.First())
+            .OrderBy(static tag => tag.DisplayName, StringComparer.OrdinalIgnoreCase)], true);
     }
 }

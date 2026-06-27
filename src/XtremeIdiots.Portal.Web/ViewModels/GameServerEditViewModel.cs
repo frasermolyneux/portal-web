@@ -148,7 +148,8 @@ public class GameServerEditViewModel : IValidatableObject
 
     public int GlobalBroadcastsIntervalSeconds { get; set; } = DefaultBroadcastIntervalSeconds;
 
-    public List<BroadcastMessageViewModel> GlobalBroadcastMessages {
+    public List<BroadcastMessageViewModel> GlobalBroadcastMessages
+    {
         get => GlobalFunnyMessages;
         set => GlobalFunnyMessages = value ?? [];
     }
@@ -173,6 +174,8 @@ public class GameServerEditViewModel : IValidatableObject
     public WelcomeMessageServerSettingsViewModel WelcomeMessages { get; set; } = new();
 
     public WelcomeMessageGlobalSettingsViewModel GlobalWelcomeMessages { get; set; } = new();
+
+    public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
     // Auth flags for tab visibility
 
@@ -252,6 +255,21 @@ public class GameServerEditViewModel : IValidatableObject
         {
             yield return validationResult;
         }
+    }
+
+    public void ApplyAvailableRequiredTags(
+        IReadOnlyList<RequiredTagOptionViewModel> requiredTags,
+        bool requiredTagsCatalogAvailable = true)
+    {
+        AvailableRequiredTags = requiredTags;
+        ChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
+        ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
+        WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        GlobalChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
+        GlobalChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        GlobalWelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
+        GlobalWelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 }
 
