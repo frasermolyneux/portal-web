@@ -3,76 +3,78 @@
     ViewData["Title"] = "Global Analytics";
 }
 
-<div class="page-header mb-3">
-    <h2><i class="fa-solid fa-fw fa-globe" aria-hidden="true"></i> Global Analytics</h2>
-    <p class="text-muted mb-0">Estate-wide activity with week-on-week / month-on-month comparison.</p>
-</div>
-
-<partial name="_AnalyticsControls" />
-
-<div class="row row-cols-2 row-cols-md-4 g-2 my-1" id="global-kpis"></div>
-
-<div class="ibox">
-    <div class="ibox-title d-flex justify-content-between align-items-center">
-        <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player activity trend</h5>
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="page-header mb-3">
+        <h2><i class="fa-solid fa-fw fa-globe" aria-hidden="true"></i> Global Analytics</h2>
+        <p class="text-muted mb-0">Estate-wide activity with week-on-week / month-on-month comparison.</p>
     </div>
-    <div class="ibox-content">
-        <div id="global-trend-summary" class="mb-2"></div>
-        <div style="position: relative; height: 320px;">
-            <canvas id="global-trend"></canvas>
+
+    <partial name="_AnalyticsControls" />
+
+    <div class="row row-cols-2 row-cols-md-4 g-2 my-1" id="global-kpis"></div>
+
+    <div class="ibox">
+        <div class="ibox-title d-flex justify-content-between align-items-center">
+            <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player activity trend</h5>
         </div>
-        <pre id="global-trend-fallback" class="mt-2 analytics-fallback"></pre>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-lg-6">
-        <div class="ibox">
-            <div class="ibox-title">
-                <h5>Top games</h5>
+        <div class="ibox-content">
+            <div id="global-trend-summary" class="mb-2"></div>
+            <div style="position: relative; height: 320px;">
+                <canvas id="global-trend"></canvas>
             </div>
-            <div class="ibox-content">
-                <div style="position: relative; height: 260px;"><canvas id="global-games"></canvas></div>
-                <pre id="global-games-fallback" class="mt-2 analytics-fallback"></pre>
-            </div>
+            <pre id="global-trend-fallback" class="mt-2 analytics-fallback"></pre>
         </div>
     </div>
-    <div class="col-lg-6">
-        <div class="ibox">
-            <div class="ibox-title">
-                <h5>Top servers</h5>
-            </div>
-            <div class="ibox-content">
-                <div style="position: relative; height: 260px;"><canvas id="global-servers"></canvas></div>
-                <pre id="global-servers-fallback" class="mt-2 analytics-fallback"></pre>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col-lg-4">
-        <div class="ibox">
-            <div class="ibox-title">
-                <h5>Most active players</h5>
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Top games</h5>
+                </div>
+                <div class="ibox-content">
+                    <div style="position: relative; height: 260px;"><canvas id="global-games"></canvas></div>
+                    <pre id="global-games-fallback" class="mt-2 analytics-fallback"></pre>
+                </div>
             </div>
-            <div class="ibox-content" id="global-players"></div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Top servers</h5>
+                </div>
+                <div class="ibox-content">
+                    <div style="position: relative; height: 260px;"><canvas id="global-servers"></canvas></div>
+                    <pre id="global-servers-fallback" class="mt-2 analytics-fallback"></pre>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <div class="ibox">
-            <div class="ibox-title">
-                <h5>Player geography</h5>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Most active players</h5>
+                </div>
+                <div class="ibox-content" id="global-players"></div>
             </div>
-            <div class="ibox-content" id="global-geo"></div>
         </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="ibox">
-            <div class="ibox-title">
-                <h5>Moderation</h5>
+        <div class="col-lg-4">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Player geography</h5>
+                </div>
+                <div class="ibox-content" id="global-geo"></div>
             </div>
-            <div class="ibox-content" id="global-moderation"></div>
+        </div>
+        <div class="col-lg-4">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Moderation</h5>
+                </div>
+                <div class="ibox-content" id="global-moderation"></div>
+            </div>
         </div>
     </div>
 </div>

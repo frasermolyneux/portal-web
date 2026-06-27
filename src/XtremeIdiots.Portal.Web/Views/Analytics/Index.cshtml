@@ -2,67 +2,72 @@
     ViewData["Title"] = "Analytics";
 }
 
-<div class="ibox">
-    <div class="ibox-title">
-        <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Analytics</h5>
-    </div>
-    <div class="ibox-content">
-        <p class="text-muted">
-            Command centres for week-on-week, month-on-month and rolling-period comparison analytics
-            across the estate. All time ranges are computed in UTC and rendered in your local time zone.
-        </p>
-        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
-            <div class="col">
-                <a class="text-decoration-none" asp-action="Global">
-                    <div class="ibox mb-0">
-                        <div class="ibox-content">
-                            <h5 class="mb-1"><i class="fa-solid fa-fw fa-globe" aria-hidden="true"></i> Global</h5>
-                            <small class="text-muted">Estate-wide activity, breakdowns, geography and
-                                moderation.</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col">
-                    <a class="text-decoration-none" asp-action="Game">
-                        <div class="ibox mb-0">
-                            <div class="ibox-content">
-                                <h5 class="mb-1"><i class="fa-solid fa-fw fa-gamepad" aria-hidden="true"></i> Game</h5>
-                                <small class="text-muted">Per-game trends with server, player and map breakdowns.</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col">
-                    <a class="text-decoration-none" asp-action="Server">
-                        <div class="ibox mb-0">
-                            <div class="ibox-content">
-                                <h5 class="mb-1"><i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Server</h5>
-                                <small class="text-muted">Per-server activity, live players, events, chat and maps.</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col">
-                    <a class="text-decoration-none" asp-action="Player">
-                        <div class="ibox mb-0">
-                            <div class="ibox-content">
-                                <h5 class="mb-1"><i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Player</h5>
-                                <small class="text-muted">New, active and returning players, leaders and breakdowns.</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col">
-                    <a class="text-decoration-none" asp-action="Maps">
-                        <div class="ibox mb-0">
-                            <div class="ibox-content">
-                                <h5 class="mb-1"><i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps</h5>
-                                <small class="text-muted">Most played and voted maps, hotspots and breakdowns.</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="ibox">
+        <div class="ibox-title">
+            <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Analytics</h5>
         </div>
-    </div>
+        <div class="ibox-content">
+            <p class="text-muted">
+                Command centres for week-on-week, month-on-month and rolling-period comparison analytics
+                across the estate. All time ranges are computed in UTC and rendered in your local time zone.
+            </p>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                <div class="col">
+                    <a class="text-decoration-none" asp-action="Global">
+                        <div class="ibox mb-0">
+                            <div class="ibox-content">
+                                <h5 class="mb-1"><i class="fa-solid fa-fw fa-globe" aria-hidden="true"></i> Global</h5>
+                                <small class="text-muted">Estate-wide activity, breakdowns, geography and
+                                    moderation.</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a class="text-decoration-none" asp-action="Game">
+                            <div class="ibox mb-0">
+                                <div class="ibox-content">
+                                    <h5 class="mb-1"><i class="fa-solid fa-fw fa-gamepad" aria-hidden="true"></i> Game</h5>
+                                    <small class="text-muted">Per-game trends with server, player and map
+                                        breakdowns.</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a class="text-decoration-none" asp-action="Server">
+                                <div class="ibox mb-0">
+                                    <div class="ibox-content">
+                                        <h5 class="mb-1"><i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Server</h5>
+                                        <small class="text-muted">Per-server activity, live players, events, chat and
+                                            maps.</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col">
+                                <a class="text-decoration-none" asp-action="Player">
+                                    <div class="ibox mb-0">
+                                        <div class="ibox-content">
+                                            <h5 class="mb-1"><i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Player</h5>
+                                            <small class="text-muted">New, active and returning players, leaders and
+                                                breakdowns.</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col">
+                                    <a class="text-decoration-none" asp-action="Maps">
+                                        <div class="ibox mb-0">
+                                            <div class="ibox-content">
+                                                <h5 class="mb-1"><i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps</h5>
+                                                <small class="text-muted">Most played and voted maps, hotspots and breakdowns.</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
