@@ -435,10 +435,6 @@
                                                     <tr>
                                                         <td>
                                                             <small>@(bfm.RemoteFilePath ?? "(awaiting first check)")</small>
-                                                            @if (!string.IsNullOrWhiteSpace(bfm.LegacyRemoteFilePath))
-                                                            {
-                                                                <br /><small class="text-muted">Legacy: @bfm.LegacyRemoteFilePath</small>
-                                                            }
                                                         </td>
                                                         <td>
                                                             @if (bfm.LastCheckUtc.HasValue)
@@ -446,10 +442,6 @@
                                                                 var checkElapsed = DateTime.UtcNow - bfm.LastCheckUtc.Value;
                                                                 var checkClass = checkElapsed.TotalMinutes < 15 ? "text-success" : checkElapsed.TotalHours < 1 ? "text-warning" : "text-danger";
                                                                 <small class="@checkClass">@bfm.LastCheckUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                                @if (bfm.LegacyLastCheckUtc.HasValue)
-                                                                {
-                                                                    <br /><small class="text-muted">Legacy: @bfm.LegacyLastCheckUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                                }
                                                             }
                                                             else
                                                             {
@@ -460,10 +452,6 @@
                                                             @if (bfm.LastPushUtc.HasValue)
                                                             {
                                                                 <small>@bfm.LastPushUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                                @if (bfm.LegacyLastPushUtc.HasValue)
-                                                                {
-                                                                    <br /><small class="text-muted">Legacy: @bfm.LegacyLastPushUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                                }
                                                             }
                                                             else
                                                             {

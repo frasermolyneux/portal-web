@@ -77,12 +77,6 @@ def = 0)
                                     {
                                         <span class="text-muted">awaiting first check</span>
                                     }
-                                    @if (!string.IsNullOrWhiteSpace(Model.LegacyRemoteFilePath))
-                                    {
-                                        <br />
-                                        <small class="text-muted">Legacy lane:
-                                            <code>@Model.LegacyRemoteFilePath</code></small>
-                                        }
                                     </dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
@@ -125,11 +119,6 @@ def = 0)
                                             <br /><small class="text-danger">@Model.ConsecutiveFailureCount consecutive
                                             failure(s)</small>
                                         }
-                                        @if (Model.LegacyLastCheckUtc.HasValue)
-                                        {
-                                            <br /><small class="text-muted">Legacy:
-                                            @Model.LegacyLastCheckUtc.Value.ToString("u")</small>
-                                        }
                                     </dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
@@ -158,16 +147,6 @@ def = 0)
                                         {
                                             <br /><small class="text-muted">ETag: @Model.LastPushedETag</small>
                                         }
-                                        @if (Model.LegacyLastPushUtc.HasValue)
-                                        {
-                                            <br /><small class="text-muted">Legacy:
-                                            @Model.LegacyLastPushUtc.Value.ToString("u")</small>
-                                            @if (Model.LegacyLastPushedSize.HasValue)
-                                            {
-                                                <br /><small class="text-muted">Legacy size:
-                                                @Model.LegacyLastPushedSize.Value.ToString("N0") bytes</small>
-                                            }
-                                        }
                                     </dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
@@ -177,16 +156,6 @@ def = 0)
                                         @if (!string.IsNullOrWhiteSpace(Model.LastCentralBlobETag))
                                         {
                                             <br /><small class="text-muted">ETag: @Model.LastCentralBlobETag</small>
-                                        }
-                                        @if (Model.LegacyLastCentralBlobUtc.HasValue)
-                                        {
-                                            <br /><small class="text-muted">Legacy:
-                                            @Model.LegacyLastCentralBlobUtc.Value.ToString("u")</small>
-                                            @if (!string.IsNullOrWhiteSpace(Model.LegacyLastCentralBlobETag))
-                                            {
-                                                <br /><small class="text-muted">Legacy ETag:
-                                                @Model.LegacyLastCentralBlobETag</small>
-                                            }
                                         }
                                     </dd>
                                 </div>
@@ -204,17 +173,6 @@ def = 0)
                                                         <span class="ms-3"><strong>External (PBBAN/B3/EXT):</strong>
                                                             @(Model.RemoteExternalCount ?? 0)</span>
                                                         }
-                                                        @if (Model.LegacyRemoteTotalLineCount.HasValue)
-                                                        {
-                                                            <br /><span class="text-muted"><strong>Legacy Total:</strong>
-                                                            @Model.LegacyRemoteTotalLineCount.Value.ToString("N0")</span>
-                                                            <span class="ms-3 text-muted"><strong>Legacy Untagged:</strong>
-                                                                @(Model.LegacyRemoteUntaggedCount ?? 0)</span>
-                                                                <span class="ms-3 text-muted"><strong>Legacy Portal:</strong>
-                                                                    @(Model.LegacyRemoteBanSyncCount ?? 0)</span>
-                                                                    <span class="ms-3 text-muted"><strong>Legacy External:</strong>
-                                                                        @(Model.LegacyRemoteExternalCount ?? 0)</span>
-                                                                    }
                                     else
                                                                     {
                                                                         <span class="text-muted">not yet counted</span>

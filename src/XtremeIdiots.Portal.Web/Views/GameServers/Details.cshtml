@@ -174,10 +174,6 @@
                                                 {
                                                     <br /><small class="text-danger">@item.LastCheckResult</small>
                                                 }
-                                                @if (item.LegacyLastCheckUtc.HasValue)
-                                                {
-                                                    <br /><small class="text-muted">Legacy: @item.LegacyLastCheckUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                }
                                             }
                                             else
                                             {
@@ -188,10 +184,6 @@
                                             @if (item.LastPushUtc.HasValue)
                                             {
                                                 <span title="@item.LastPushUtc.Value.ToString("u")">@item.LastPushUtc.Value.ToString("dd MMM HH:mm")</span>
-                                                @if (item.LegacyLastPushUtc.HasValue)
-                                                {
-                                                    <br /><small class="text-muted">Legacy: @item.LegacyLastPushUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                }
                                             }
                                             else
                                             {
