@@ -2,6 +2,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -538,19 +539,66 @@ public class MapRotationsController(
                 return modelValidationResult;
             }
 
+            var normalizedConfigVariableName = model.ConfigVariableName?.ToLowerInvariant();
+
+            var hasExactDuplicateAssignment = rotation.ServerAssignments?.Any(a =>
+                a.MapRotationId == model.MapRotationId &&
+                a.GameServerId == model.GameServerId &&
+                string.Equals(a.ConfigFilePath, model.ConfigFilePath, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.ConfigVariableName, normalizedConfigVariableName, StringComparison.OrdinalIgnoreCase) &&
+                a.DeploymentState != DeploymentState.Removed &&
+                a.DeploymentState != DeploymentState.Removing &&
+                a.DeploymentState != DeploymentState.Failed) == true;
+
+            if (hasExactDuplicateAssignment)
+            {
+                ModelState.AddModelError(string.Empty, "An assignment already exists for this rotation and server with the same config file path and variable name.");
+                await RepopulateServers(model).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
+            }
+
             var createDto = new CreateMapRotationServerAssignmentDto(model.MapRotationId, model.GameServerId)
             {
                 ConfigFilePath = model.ConfigFilePath,
-                ConfigVariableName = model.ConfigVariableName?.ToLowerInvariant(),
+                ConfigVariableName = normalizedConfigVariableName,
                 PlayerCountMin = model.PlayerCountMin,
                 PlayerCountMax = model.PlayerCountMax
             };
 
-            var apiResponse = await repositoryApiClient.MapRotations.V1.CreateServerAssignment(createDto, cancellationToken).ConfigureAwait(false);
+            ApiResult<MapRotationServerAssignmentDto> apiResponse;
+
+            try
+            {
+                apiResponse = await repositoryApiClient.MapRotations.V1.CreateServerAssignment(createDto, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogWarning(ex,
+                    "Validation failure creating map rotation assignment for MapRotationId {MapRotationId} and GameServerId {GameServerId}",
+                    model.MapRotationId,
+                    model.GameServerId);
+
+                ModelState.AddModelError(string.Empty, "Unable to create server assignment. Please review the values and try again.");
+                await RepopulateServers(model).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
+            }
 
             if (!apiResponse.IsSuccess)
             {
-                this.AddAlertDanger("An error occurred while creating the server assignment.");
+                if (apiResponse.Result?.Errors != null)
+                {
+                    foreach (var error in apiResponse.Result.Errors)
+                    {
+                        ModelState.AddModelError(error.Target ?? string.Empty, error.Message ?? "An error occurred");
+                    }
+                }
+                else
+                {
+                    ModelState.AddModelError(string.Empty, "An error occurred while creating the server assignment.");
+                }
+
                 await RepopulateServers(model).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
                 return View(model);
@@ -653,6 +701,25 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            async Task RepopulateAssignmentForm(EditMapRotationAssignmentViewModel m)
+            {
+                var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
+                var server = serverResponse.IsSuccess ? serverResponse.Result?.Data : null;
+
+                m.GameServerTitle = server?.Title ?? assignment.GameServerId.ToString();
+
+                var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
+                m.CanBrowseFileTransport = canBrowseFileTransport.Succeeded;
+                m.FileTransportType = server?.FileTransportType ?? FileTransportType.Unknown;
+            }
+
+            var modelValidationResult = await CheckModelStateAsync(model, RepopulateAssignmentForm).ConfigureAwait(false);
+            if (modelValidationResult != null)
+            {
+                ViewData["RotationTitle"] = rotation.Title;
+                return modelValidationResult;
+            }
+
             var updateDto = new UpdateMapRotationServerAssignmentDto(model.MapRotationServerAssignmentId)
             {
                 ConfigFilePath = model.ConfigFilePath,
@@ -661,12 +728,42 @@ public class MapRotationsController(
                 PlayerCountMax = model.PlayerCountMax
             };
 
-            var apiResponse = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(updateDto, cancellationToken).ConfigureAwait(false);
+            ApiResult apiResponse;
+
+            try
+            {
+                apiResponse = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(updateDto, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogWarning(ex,
+                    "Validation failure updating map rotation assignment {AssignmentId} for MapRotationId {MapRotationId}",
+                    model.MapRotationServerAssignmentId,
+                    model.MapRotationId);
+
+                ModelState.AddModelError(string.Empty, "Unable to update server assignment. Please review the values and try again.");
+                await RepopulateAssignmentForm(model).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
+            }
 
             if (!apiResponse.IsSuccess)
             {
-                this.AddAlertDanger("Failed to update server assignment.");
-                return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
+                if (apiResponse.Result?.Errors != null)
+                {
+                    foreach (var error in apiResponse.Result.Errors)
+                    {
+                        ModelState.AddModelError(error.Target ?? string.Empty, error.Message ?? "An error occurred");
+                    }
+                }
+                else
+                {
+                    ModelState.AddModelError(string.Empty, "Failed to update server assignment.");
+                }
+
+                await RepopulateAssignmentForm(model).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
             }
 
             this.AddAlertSuccess("Server assignment updated successfully.");

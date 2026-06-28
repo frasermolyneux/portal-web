@@ -13,6 +13,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -182,5 +183,364 @@ public class MapRotationsControllerTests
 
         var alertsJson = sut.TempData["Alerts"]?.ToString() ?? string.Empty;
         Assert.Contains("Rotation status automatically promoted to Published.", alertsJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateAssignment_WhenExactDuplicateExists_ReturnsViewWithValidationError()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var rotation = new MapRotationDto(
+            mapRotationId,
+            GameType.CallOfDuty5,
+            "Rotation 2",
+            "desc",
+            "dm",
+            version: 2,
+            contentHash: null,
+            createdAt: DateTime.UtcNow.AddDays(-2),
+            updatedAt: DateTime.UtcNow.AddHours(-2),
+            mapRotationMaps: [],
+            serverAssignments:
+            [
+                new MapRotationServerAssignmentDto(
+                    Guid.NewGuid(),
+                    mapRotationId,
+                    gameServerId,
+                    DeploymentState.Synced,
+                    ActivationState.Active,
+                    deployedVersion: 2,
+                    activatedVersion: 2,
+                    configFilePath: "server.cfg",
+                    configVariableName: "sv_maprotation",
+                    lastError: null,
+                    lastErrorAt: null,
+                    createdAt: DateTime.UtcNow.AddDays(-2),
+                    updatedAt: DateTime.UtcNow.AddHours(-2),
+                    unassignedAt: null)
+            ]);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(),
+                null,
+                null,
+                0,
+                100,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = gameServerId,
+            ConfigFilePath = "server.cfg",
+            ConfigVariableName = "sv_maprotation"
+        };
+
+        // Act
+        var result = await sut.CreateAssignment(model);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var returnedModel = Assert.IsType<CreateMapRotationAssignmentViewModel>(viewResult.Model);
+        Assert.Equal(mapRotationId, returnedModel.MapRotationId);
+
+        Assert.True(sut.ModelState.ContainsKey(string.Empty));
+        Assert.Contains(
+            sut.ModelState[string.Empty]!.Errors,
+            e => e.ErrorMessage.Contains("An assignment already exists for this rotation and server with the same config file path and variable name.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task CreateAssignment_WhenApiThrowsHttpRequestException_ReturnsViewWithValidationError()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var rotation = new MapRotationDto(
+            mapRotationId,
+            GameType.CallOfDuty5,
+            "Rotation 2",
+            "desc",
+            "dm",
+            version: 2,
+            contentHash: null,
+            createdAt: DateTime.UtcNow.AddDays(-2),
+            updatedAt: DateTime.UtcNow.AddHours(-2),
+            mapRotationMaps: [],
+            serverAssignments: []);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(),
+                null,
+                null,
+                0,
+                100,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("bad request", null, HttpStatusCode.BadRequest));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = gameServerId,
+            ConfigFilePath = "server.cfg",
+            ConfigVariableName = "sv_maprotation"
+        };
+
+        // Act
+        var result = await sut.CreateAssignment(model);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var returnedModel = Assert.IsType<CreateMapRotationAssignmentViewModel>(viewResult.Model);
+        Assert.Equal(mapRotationId, returnedModel.MapRotationId);
+
+        Assert.True(sut.ModelState.ContainsKey(string.Empty));
+        Assert.Contains(
+            sut.ModelState[string.Empty]!.Errors,
+            e => e.ErrorMessage.Contains("Unable to create server assignment. Please review the values and try again.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task EditAssignment_WhenApiValidationFails_ReturnsViewWithValidationError()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var assignmentId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var assignment = new MapRotationServerAssignmentDto(
+            assignmentId,
+            mapRotationId,
+            gameServerId,
+            DeploymentState.Synced,
+            ActivationState.Inactive,
+            deployedVersion: 1,
+            activatedVersion: null,
+            configFilePath: "server.cfg",
+            configVariableName: "sv_maprotation",
+            lastError: null,
+            lastErrorAt: null,
+            createdAt: DateTime.UtcNow.AddDays(-1),
+            updatedAt: DateTime.UtcNow.AddHours(-1),
+            unassignedAt: null);
+
+        var rotation = new MapRotationDto(
+            mapRotationId,
+            GameType.CallOfDuty5,
+            "Rotation 2",
+            "desc",
+            "dm",
+            version: 2,
+            contentHash: null,
+            createdAt: DateTime.UtcNow.AddDays(-2),
+            updatedAt: DateTime.UtcNow.AddHours(-2),
+            mapRotationMaps: [],
+            serverAssignments: [assignment]);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetServerAssignment(assignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(assignment)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.NotFound));
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.BadRequest, new ApiResponse(new ApiError("DUPLICATE_CONFIG_TARGET", "An assignment already exists for this rotation and server with the same config file path and variable name."))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var model = new EditMapRotationAssignmentViewModel
+        {
+            MapRotationServerAssignmentId = assignmentId,
+            MapRotationId = mapRotationId,
+            GameServerId = gameServerId,
+            ConfigFilePath = "server.cfg",
+            ConfigVariableName = "sv_maprotation",
+            PlayerCountMin = 0,
+            PlayerCountMax = 20
+        };
+
+        // Act
+        var result = await sut.EditAssignment(model);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var returnedModel = Assert.IsType<EditMapRotationAssignmentViewModel>(viewResult.Model);
+        Assert.Equal(mapRotationId, returnedModel.MapRotationId);
+
+        Assert.True(sut.ModelState.ContainsKey(string.Empty));
+        Assert.Contains(
+            sut.ModelState[string.Empty]!.Errors,
+            e => e.ErrorMessage.Contains("An assignment already exists for this rotation and server with the same config file path and variable name.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task EditAssignment_WhenApiThrowsHttpRequestException_ReturnsViewWithValidationError()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var assignmentId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var assignment = new MapRotationServerAssignmentDto(
+            assignmentId,
+            mapRotationId,
+            gameServerId,
+            DeploymentState.Synced,
+            ActivationState.Inactive,
+            deployedVersion: 1,
+            activatedVersion: null,
+            configFilePath: "server.cfg",
+            configVariableName: "sv_maprotation",
+            lastError: null,
+            lastErrorAt: null,
+            createdAt: DateTime.UtcNow.AddDays(-1),
+            updatedAt: DateTime.UtcNow.AddHours(-1),
+            unassignedAt: null);
+
+        var rotation = new MapRotationDto(
+            mapRotationId,
+            GameType.CallOfDuty5,
+            "Rotation 2",
+            "desc",
+            "dm",
+            version: 2,
+            contentHash: null,
+            createdAt: DateTime.UtcNow.AddDays(-2),
+            updatedAt: DateTime.UtcNow.AddHours(-2),
+            mapRotationMaps: [],
+            serverAssignments: [assignment]);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetServerAssignment(assignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(assignment)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.NotFound));
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("bad request", null, HttpStatusCode.BadRequest));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var model = new EditMapRotationAssignmentViewModel
+        {
+            MapRotationServerAssignmentId = assignmentId,
+            MapRotationId = mapRotationId,
+            GameServerId = gameServerId,
+            ConfigFilePath = "server.cfg",
+            ConfigVariableName = "sv_maprotation",
+            PlayerCountMin = 0,
+            PlayerCountMax = 20
+        };
+
+        // Act
+        var result = await sut.EditAssignment(model);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        var returnedModel = Assert.IsType<EditMapRotationAssignmentViewModel>(viewResult.Model);
+        Assert.Equal(mapRotationId, returnedModel.MapRotationId);
+
+        Assert.True(sut.ModelState.ContainsKey(string.Empty));
+        Assert.Contains(
+            sut.ModelState[string.Empty]!.Errors,
+            e => e.ErrorMessage.Contains("Unable to update server assignment. Please review the values and try again.", StringComparison.Ordinal));
     }
 }
