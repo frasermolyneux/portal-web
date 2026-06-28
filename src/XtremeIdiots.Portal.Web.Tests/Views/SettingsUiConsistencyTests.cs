@@ -260,10 +260,19 @@ public class SettingsUiConsistencyTests
 
     private static void AssertCheckboxBeforeHidden(string markup, string checkboxNeedle, string hiddenNeedle, string context)
     {
-        var checkboxIndex = markup.IndexOf(checkboxNeedle, StringComparison.Ordinal);
-        var hiddenIndex = markup.IndexOf(hiddenNeedle, StringComparison.Ordinal);
+        var normalizedMarkup = NormalizeWhitespace(markup);
+        var normalizedCheckboxNeedle = NormalizeWhitespace(checkboxNeedle);
+        var normalizedHiddenNeedle = NormalizeWhitespace(hiddenNeedle);
+
+        var checkboxIndex = normalizedMarkup.IndexOf(normalizedCheckboxNeedle, StringComparison.Ordinal);
+        var hiddenIndex = normalizedMarkup.IndexOf(normalizedHiddenNeedle, StringComparison.Ordinal);
 
         Assert.True(checkboxIndex >= 0, $"{context}: checkbox markup not found.");
         Assert.True(hiddenIndex > checkboxIndex, $"{context}: hidden fallback must be rendered after the checkbox.");
+    }
+
+    private static string NormalizeWhitespace(string value)
+    {
+        return string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }
