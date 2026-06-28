@@ -218,10 +218,11 @@ public class ProtectedNamesController(
     /// Deletes a protected name by ID
     /// </summary>
     /// <param name="id">The protected name ID to delete</param>
+    /// <param name="playerId">Optional owner player ID used for redirect after deletion</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Redirects to player details on success</returns>
     [HttpGet]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Delete(Guid id, Guid? playerId = null, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -236,41 +237,55 @@ public class ProtectedNamesController(
             if (authResult is not null)
                 return authResult;
 
+            var redirectPlayerId = playerId;
+
             var protectedNameResponse = await repositoryApiClient.Players.V1.GetProtectedName(id).ConfigureAwait(false);
 
-            if (protectedNameResponse.IsNotFound)
+            if (protectedNameResponse.IsSuccess && protectedNameResponse.Result?.Data is not null)
             {
-                Logger.LogWarning("Protected name {ProtectedNameId} not found when deleting", id);
-                return NotFound();
+                redirectPlayerId = protectedNameResponse.Result.Data.PlayerId;
             }
-
-            if (!protectedNameResponse.IsSuccess || protectedNameResponse.Result?.Data is null)
+            else if (!protectedNameResponse.IsNotFound)
             {
                 Logger.LogWarning("Failed to retrieve protected name {ProtectedNameId} for deletion", id);
                 return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
             }
 
-            var playerId = protectedNameResponse.Result.Data.PlayerId;
             var deleteProtectedNameDto = new DeleteProtectedNameDto(id);
             var response = await repositoryApiClient.Players.V1.DeleteProtectedName(deleteProtectedNameDto).ConfigureAwait(false);
 
-            if (!response.IsSuccess)
+            if (!response.IsSuccess && !response.IsNotFound)
             {
                 Logger.LogWarning("Failed to delete protected name {ProtectedNameId} for user {UserId}",
                     id, User.XtremeIdiotsId());
                 return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
             }
 
-            TrackSuccessTelemetry("ProtectedNameDeleted", nameof(Delete), new Dictionary<string, string>
+            if (response.IsNotFound)
             {
-                { "ProtectedNameId", id.ToString() },
-                { "PlayerId", playerId.ToString() }
-            });
+                Logger.LogInformation("Protected name {ProtectedNameId} was already deleted before request completed", id);
 
-            this.AddAlertSuccess("Protected name has been successfully deleted");
+                TrackSuccessTelemetry("ProtectedNameDeleteNoOp", nameof(Delete), new Dictionary<string, string>
+                {
+                    { "ProtectedNameId", id.ToString() }
+                });
 
-            return RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController), new { id = playerId });
-        }, nameof(Delete), $"id: {id}").ConfigureAwait(false);
+                this.AddAlertInfo("Protected name was already deleted");
+            }
+            else
+            {
+                TrackSuccessTelemetry("ProtectedNameDeleted", nameof(Delete), new Dictionary<string, string>
+                {
+                    { "ProtectedNameId", id.ToString() }
+                });
+
+                this.AddAlertSuccess("Protected name has been successfully deleted");
+            }
+
+            return redirectPlayerId.HasValue
+                ? RedirectToAction(nameof(PlayersController.Details), nameof(PlayersController), new { id = redirectPlayerId.Value })
+                : RedirectToAction(nameof(Index));
+        }, nameof(Delete), $"id: {id}, playerId: {playerId}").ConfigureAwait(false);
     }
 
     /// <summary>
