@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Html;
 using System.Text;
+using System.Text.Encodings.Web;
 
 namespace XtremeIdiots.Portal.Web.Extensions;
 
@@ -32,11 +33,13 @@ public static class IPAddressExtensions
 
         if (linkToDetails)
         {
-            sb.Append($"<a href=\"/IPAddresses/Details?ipAddress={ipAddress}\">{ipAddress}</a>");
+            var encodedIpAddress = UrlEncoder.Default.Encode(ipAddress);
+            var encodedIpText = HtmlEncoder.Default.Encode(ipAddress);
+            sb.Append($"<a href=\"/IPAddresses/Details?ipAddress={encodedIpAddress}\">{encodedIpText}</a>");
         }
         else
         {
-            sb.Append(ipAddress);
+            sb.Append(HtmlEncoder.Default.Encode(ipAddress));
         }
 
         if (riskScore.HasValue)
@@ -47,7 +50,8 @@ public static class IPAddressExtensions
 
         if (!string.IsNullOrEmpty(proxyType))
         {
-            sb.Append($" <span class=\"badge rounded-pill text-bg-primary\">{proxyType}</span>");
+            var encodedProxyType = HtmlEncoder.Default.Encode(proxyType);
+            sb.Append($" <span class=\"badge rounded-pill text-bg-primary\">{encodedProxyType}</span>");
         }
 
         if (isProxy == true)

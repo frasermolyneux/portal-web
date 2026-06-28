@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 using MX.GeoLocation.Abstractions.Models.V1_1;
+using System.Text.Encodings.Web;
 
 namespace XtremeIdiots.Portal.Web.Helpers;
 
@@ -12,9 +13,24 @@ public class FlagImageTagHelper : TagHelper
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagName = "img";
-        var code = string.IsNullOrWhiteSpace(CountryCode) ? "unknown" : CountryCode.ToLower();
+        var code = NormalizeCountryCode(CountryCode);
         output.Attributes.SetAttribute("src", $"/images/flags/{code}.png");
         output.TagMode = TagMode.SelfClosing;
+    }
+
+    private static string NormalizeCountryCode(string? countryCode)
+    {
+        if (string.IsNullOrWhiteSpace(countryCode))
+        {
+            return "unknown";
+        }
+
+        var normalized = countryCode.Trim().ToLowerInvariant();
+        var isTwoLetterCode = normalized.Length == 2
+            && normalized[0] is >= 'a' and <= 'z'
+            && normalized[1] is >= 'a' and <= 'z';
+
+        return isTwoLetterCode ? normalized : "unknown";
     }
 }
 
@@ -61,11 +77,13 @@ public class IpAddressTagHelper : TagHelper
             return;
         }
 
-        var code = string.IsNullOrEmpty(CountryCode) ? "unknown" : CountryCode.ToLower();
+        var code = NormalizeCountryCode(CountryCode);
+        var encodedIpAddress = UrlEncoder.Default.Encode(Ip);
+        var encodedIpText = HtmlEncoder.Default.Encode(Ip);
         List<string> parts =
         [
             $"<img src=\"/images/flags/{code}.png\" />",
-            LinkToDetails ? $"<a href=\"/IPAddresses/Details?ipAddress={Ip}\">{Ip}</a>" : Ip
+            LinkToDetails ? $"<a href=\"/IPAddresses/Details?ipAddress={encodedIpAddress}\">{encodedIpText}</a>" : encodedIpText
         ];
 
         if (Risk.HasValue)
@@ -82,7 +100,8 @@ public class IpAddressTagHelper : TagHelper
 
         if (!string.IsNullOrEmpty(ProxyType))
         {
-            parts.Add($"<span class=\"badge rounded-pill text-bg-primary\">{ProxyType}</span>");
+            var encodedProxyType = HtmlEncoder.Default.Encode(ProxyType);
+            parts.Add($"<span class=\"badge rounded-pill text-bg-primary\">{encodedProxyType}</span>");
         }
 
         if (IsProxy == true)
@@ -96,5 +115,20 @@ public class IpAddressTagHelper : TagHelper
         }
 
         output.Content.SetHtmlContent(string.Join(' ', parts));
+    }
+
+    private static string NormalizeCountryCode(string? countryCode)
+    {
+        if (string.IsNullOrWhiteSpace(countryCode))
+        {
+            return "unknown";
+        }
+
+        var normalized = countryCode.Trim().ToLowerInvariant();
+        var isTwoLetterCode = normalized.Length == 2
+            && normalized[0] is >= 'a' and <= 'z'
+            && normalized[1] is >= 'a' and <= 'z';
+
+        return isTwoLetterCode ? normalized : "unknown";
     }
 }

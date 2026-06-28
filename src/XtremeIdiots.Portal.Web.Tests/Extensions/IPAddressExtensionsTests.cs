@@ -162,6 +162,53 @@ public class IPAddressExtensionsTests
     }
 
     [Fact]
+    public void FormatIPAddress_WithIpv6Address_EncodesLinkQueryParameter()
+    {
+        // Arrange
+        var ipAddress = "2607:9b00:a200::10";
+
+        // Act
+        var result = ipAddress.FormatIPAddress(linkToDetails: true);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("ipAddress=2607%3A9b00%3Aa200%3A%3A10", result.Value);
+    }
+
+    [Fact]
+    public void FormatIPAddress_WithUnsafeIpAddress_EncodesVisibleText()
+    {
+        // Arrange
+        var ipAddress = "<script>alert('x')</script>";
+
+        // Act
+        var result = ipAddress.FormatIPAddress(linkToDetails: true);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("ipAddress=%3Cscript%3Ealert", result.Value);
+        Assert.Contains("%3C%2Fscript%3E", result.Value);
+        Assert.Contains("&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;", result.Value);
+        Assert.DoesNotContain("><script>", result.Value);
+    }
+
+    [Fact]
+    public void FormatIPAddress_WithInvalidCountryCode_UsesUnknownFlag()
+    {
+        // Arrange
+        var ipAddress = "192.168.1.1";
+        var countryCode = "gb\" onerror=\"alert(1)";
+
+        // Act
+        var result = ipAddress.FormatIPAddress(countryCode: countryCode);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("unknown.png", result.Value);
+        Assert.DoesNotContain("onerror", result.Value);
+    }
+
+    [Fact]
     public void FormatIPAddress_WithHighRiskScore_UsesCorrectBadgeClass()
     {
         // Arrange

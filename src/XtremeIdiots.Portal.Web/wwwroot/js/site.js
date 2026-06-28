@@ -188,17 +188,24 @@ function geoLocationIpLink(ipAddress) {
 function formatIPAddress(ipAddress, riskScore, isProxy, isVpn, type = '', countryCode = '', linkToDetails = true) {
     if (!ipAddress) return '';
     let result = '';
+    const escapedIpAddress = escapeHtml(ipAddress);
+
+    // Restrict flag file codes to two alpha chars to prevent attribute/path injection.
+    const normalizedCountryCode = (countryCode || '').toLowerCase();
+    const safeCountryCode = /^[a-z]{2}$/.test(normalizedCountryCode) ? normalizedCountryCode : '';
+    const escapedCountryCode = escapeHtml(countryCode || '');
 
     // 1. Country Flag (skip if unknown to avoid broken image)
-    if (countryCode && countryCode !== '') {
-        result += "<img src='/images/flags/" + countryCode.toLowerCase() + ".png' alt='" + countryCode + " flag' /> ";
+    if (safeCountryCode !== '') {
+        result += "<img src='/images/flags/" + safeCountryCode + ".png' alt='" + escapedCountryCode + " flag' /> ";
     }
 
     // 2. IP Address (with or without link)
     if (linkToDetails) {
-        result += "<a href='/IPAddresses/Details?ipAddress=" + ipAddress + "'>" + ipAddress + "</a> ";
+        const encodedIpAddress = encodeURIComponent(ipAddress);
+        result += "<a href='/IPAddresses/Details?ipAddress=" + encodedIpAddress + "'>" + escapedIpAddress + "</a> ";
     } else {
-        result += ipAddress + " ";
+        result += escapedIpAddress + " ";
     }
 
     // 3. Risk Score Pill
@@ -217,7 +224,8 @@ function formatIPAddress(ipAddress, riskScore, isProxy, isVpn, type = '', countr
 
     // 4. Type Pill
     if (type && type !== '') {
-        result += "<span class='badge rounded-pill text-bg-primary'>" + type + "</span> ";
+        const escapedType = escapeHtml(type);
+        result += "<span class='badge rounded-pill text-bg-primary'>" + escapedType + "</span> ";
     }
 
     // 5. Proxy Pill
