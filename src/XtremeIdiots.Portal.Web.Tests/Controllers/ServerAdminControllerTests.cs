@@ -85,8 +85,11 @@ public class ServerAdminControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
 
         mockServersApiClient
-            .Setup(x => x.Rcon.V1.Say(serverId, longMessage))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+            .Setup(x => x.CoD4xRcon.V1.ConSay(
+                serverId,
+                It.Is<CoD4xMessageRequestDto>(r => r.Message == longMessage),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
 
         var sut = CreateSut();
 
@@ -96,7 +99,10 @@ public class ServerAdminControllerTests
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.True(payload.Value<bool>("success"));
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.Say(serverId, longMessage), Times.Once);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ConSay(
+            serverId,
+            It.Is<CoD4xMessageRequestDto>(r => r.Message == longMessage),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -125,7 +131,10 @@ public class ServerAdminControllerTests
         Assert.False(payload.Value<bool>("success"));
         Assert.Equal("Message cannot be empty", payload.Value<string>("message"));
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.Say(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ConSay(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xMessageRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -440,7 +449,7 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
-    public async Task TempBanRconPlayer_CoD4xIdentifierFailure_FallsBackToSlotTempBan()
+    public async Task TempBanRconPlayer_CoD4xIdentifierFailure_ReturnsFailureWithoutGenericFallback()
     {
         var serverId = Guid.NewGuid();
 
@@ -461,29 +470,25 @@ public class ServerAdminControllerTests
                 HttpStatusCode.OK,
                 new ApiResponse<CoD4xBanCommandResponseDto>(new CoD4xBanCommandResponseDto { IsSuccess = false })));
 
-        mockServersApiClient
-            .Setup(x => x.Rcon.V1.TempBanPlayer(serverId, 4))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
-
         var sut = CreateSut();
 
         var result = await sut.TempBanRconPlayer(serverId, 4, "guid-abc", "PlayerOne", CancellationToken.None);
 
         var jsonResult = Assert.IsType<JsonResult>(result);
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
-        Assert.True(payload.Value<bool>("success"));
+        Assert.False(payload.Value<bool>("success"));
 
         mockServersApiClient.Verify(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
             serverId,
             It.IsAny<CoD4xTempBanRequestDto>(),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.TempBanPlayer(serverId, 4), Times.Once);
+        mockServersApiClient.Verify(x => x.Rcon.V1.TempBanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
         mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
-    public async Task BanRconPlayer_CoD4xIdentifierFailure_FallsBackToSlotBan()
+    public async Task BanRconPlayer_CoD4xIdentifierFailure_ReturnsFailureWithoutGenericFallback()
     {
         var serverId = Guid.NewGuid();
 
@@ -504,24 +509,24 @@ public class ServerAdminControllerTests
                 HttpStatusCode.OK,
                 new ApiResponse<CoD4xBanCommandResponseDto>(new CoD4xBanCommandResponseDto { IsSuccess = false })));
 
-        mockServersApiClient
-            .Setup(x => x.Rcon.V1.BanPlayer(serverId, 9))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
-
         var sut = CreateSut();
 
         var result = await sut.BanRconPlayer(serverId, 9, "guid-def", "PlayerTwo", CancellationToken.None);
 
         var jsonResult = Assert.IsType<JsonResult>(result);
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
-        Assert.True(payload.Value<bool>("success"));
+        Assert.False(payload.Value<bool>("success"));
 
         mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
             serverId,
             It.IsAny<CoD4xPermBanRequestDto>(),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(serverId, 9), Times.Once);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     private static GameServerDto CreateGameServerDto(Guid gameServerId, GameType gameType = GameType.CallOfDuty4)

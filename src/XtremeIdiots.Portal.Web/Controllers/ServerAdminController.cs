@@ -6,6 +6,7 @@ using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
@@ -292,7 +293,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id).ConfigureAwait(false);
+            var getServerStatusResult = await GetServerStatusAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data?.Players is null)
             {
@@ -408,7 +409,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id).ConfigureAwait(false);
+            var getServerStatusResult = await GetServerStatusAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null)
             {
@@ -486,7 +487,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getCurrentMapResult = await serversApiClient.Rcon.V1.GetCurrentMap(id).ConfigureAwait(false);
+            var getCurrentMapResult = await GetCurrentMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getCurrentMapResult.IsSuccess || getCurrentMapResult.Result?.Data is null)
             {
@@ -533,7 +534,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerInfoResult = await serversApiClient.Rcon.V1.GetServerInfo(id).ConfigureAwait(false);
+            var getServerInfoResult = await GetServerInfoAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getServerInfoResult.IsSuccess || getServerInfoResult.Result?.Data is null)
             {
@@ -561,7 +562,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getSystemInfoResult = await serversApiClient.Rcon.V1.GetSystemInfo(id).ConfigureAwait(false);
+            var getSystemInfoResult = await GetSystemInfoAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getSystemInfoResult.IsSuccess || getSystemInfoResult.Result?.Data is null)
             {
@@ -589,7 +590,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getCommandListResult = await serversApiClient.Rcon.V1.GetCommandList(id).ConfigureAwait(false);
+            var getCommandListResult = await GetCommandListAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getCommandListResult.IsSuccess || getCommandListResult.Result?.Data is null)
             {
@@ -638,7 +639,7 @@ public class ServerAdminController(
 
             message = message.Trim();
 
-            var sayResult = await serversApiClient.Rcon.V1.Say(id, message).ConfigureAwait(false);
+            var sayResult = await SendSayAsync(id, gameServerData!.GameType, message, cancellationToken).ConfigureAwait(false);
 
             if (!sayResult.IsSuccess)
             {
@@ -671,7 +672,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id).ConfigureAwait(false);
+            var getServerMapsResult = await GetServerMapsAsync(id, gameServerData!.GameType).ConfigureAwait(false);
 
             if (!getServerMapsResult.IsSuccess || getServerMapsResult.Result?.Data?.Items is null)
             {
@@ -748,7 +749,7 @@ public class ServerAdminController(
             Logger.LogInformation("Attempting to load map {MapName} on server {ServerId}", mapName, id);
 
             // Call the actual LoadMap RCON command
-            var loadMapResult = await serversApiClient.Rcon.V1.ChangeMap(id, mapName).ConfigureAwait(false);
+            var loadMapResult = await ChangeMapAsync(id, gameServerData!.GameType, mapName, cancellationToken).ConfigureAwait(false);
 
             if (!loadMapResult.IsSuccess)
             {
@@ -794,7 +795,7 @@ public class ServerAdminController(
             if (mapAuthResult is not null)
                 return mapAuthResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.RestartMap(id).ConfigureAwait(false);
+            var restartResult = await RestartMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -834,7 +835,7 @@ public class ServerAdminController(
             if (mapAuthResult is not null)
                 return mapAuthResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.FastRestartMap(id).ConfigureAwait(false);
+            var restartResult = await FastRestartMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -874,7 +875,7 @@ public class ServerAdminController(
             if (mapAuthResult is not null)
                 return mapAuthResult;
 
-            var nextMapResult = await serversApiClient.Rcon.V1.NextMap(id).ConfigureAwait(false);
+            var nextMapResult = await NextMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!nextMapResult.IsSuccess)
             {
@@ -914,7 +915,7 @@ public class ServerAdminController(
             if (restartAuthResult is not null)
                 return restartAuthResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.Restart(id).ConfigureAwait(false);
+            var restartResult = await RestartServerAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -974,7 +975,7 @@ public class ServerAdminController(
             try
             {
                 // Kick the player via RCON using slot number
-                var kickResult = await serversApiClient.Rcon.V1.KickPlayer(id, playerSlot).ConfigureAwait(false);
+                var kickResult = await KickPlayerAsync(id, gameServerData.GameType, playerSlot, cancellationToken).ConfigureAwait(false);
 
                 if (!kickResult.IsSuccess)
                 {
@@ -1055,37 +1056,26 @@ public class ServerAdminController(
                 var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
                 var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
-                var rconSuccess = false;
-
-                if (gameServerData.GameType == GameType.CallOfDuty4x && !string.IsNullOrWhiteSpace(normalizedPlayerGuid))
+                if (gameServerData.GameType != GameType.CallOfDuty4x)
                 {
-                    var banResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
-                        id,
-                        new CoD4xTempBanRequestDto
-                        {
-                            PlayerIdentifier = normalizedPlayerGuid,
-                            DurationMinutes = tempBanDurationMinutes
-                        },
-                        cancellationToken).ConfigureAwait(false);
+                    throw CreateUnsupportedGameTypeException(nameof(TempBanRconPlayer), gameServerData.GameType);
+                }
 
-                    rconSuccess = banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
+                if (string.IsNullOrWhiteSpace(normalizedPlayerGuid))
+                {
+                    return Json(new { success = false, error = "InvalidInput", message = "A player GUID is required for CoD4x temp bans" });
+                }
 
-                    if (!rconSuccess)
+                var banResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                    id,
+                    new CoD4xTempBanRequestDto
                     {
-                        Logger.LogWarning(
-                            "CoD4x identifier temp-ban failed for player {PlayerGuid} on server {ServerId}; falling back to slot {PlayerSlot}",
-                            normalizedPlayerGuid,
-                            id,
-                            playerSlot);
-                    }
-                }
+                        PlayerIdentifier = normalizedPlayerGuid,
+                        DurationMinutes = tempBanDurationMinutes
+                    },
+                    cancellationToken).ConfigureAwait(false);
 
-                if (!rconSuccess)
-                {
-                    // Fallback for non-CoD4x games and for CoD4x identifier-command failures.
-                    var banResult = await serversApiClient.Rcon.V1.TempBanPlayer(id, playerSlot).ConfigureAwait(false);
-                    rconSuccess = banResult.IsSuccess;
-                }
+                var rconSuccess = banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
 
                 if (!rconSuccess)
                 {
@@ -1165,36 +1155,15 @@ public class ServerAdminController(
             try
             {
                 var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
-                var rconSuccess = false;
 
-                if (gameServerData.GameType == GameType.CallOfDuty4x && !string.IsNullOrWhiteSpace(normalizedPlayerGuid))
+                if (gameServerData.GameType != GameType.CallOfDuty4x)
                 {
-                    var banResult = await serversApiClient.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
-                        id,
-                        new CoD4xPermBanRequestDto
-                        {
-                            PlayerIdentifier = normalizedPlayerGuid
-                        },
-                        cancellationToken).ConfigureAwait(false);
-
-                    rconSuccess = banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
-
-                    if (!rconSuccess)
-                    {
-                        Logger.LogWarning(
-                            "CoD4x identifier ban failed for player {PlayerGuid} on server {ServerId}; falling back to slot {PlayerSlot}",
-                            normalizedPlayerGuid,
-                            id,
-                            playerSlot);
-                    }
+                    throw CreateUnsupportedGameTypeException(nameof(BanRconPlayer), gameServerData.GameType);
                 }
 
-                if (!rconSuccess)
-                {
-                    // Fallback for non-CoD4x games and for CoD4x identifier-command failures.
-                    var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
-                    rconSuccess = banResult.IsSuccess;
-                }
+                var rconSuccess = !string.IsNullOrWhiteSpace(normalizedPlayerGuid)
+                    ? await BanCoD4xPlayerByIdentifierAsync(id, normalizedPlayerGuid, cancellationToken).ConfigureAwait(false)
+                    : await BanCoD4xPlayerBySlotAsync(id, playerSlot, cancellationToken).ConfigureAwait(false);
 
                 if (!rconSuccess)
                 {
@@ -1228,6 +1197,255 @@ public class ServerAdminController(
                 return Json(new { success = false, error = "Exception", message = "An error occurred while banning the player" });
             }
         }, nameof(BanRconPlayer)).ConfigureAwait(false);
+    }
+
+    private async Task<bool> BanCoD4xPlayerByIdentifierAsync(Guid serverId, string playerIdentifier, CancellationToken cancellationToken)
+    {
+        var banResult = await serversApiClient.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            serverId,
+            new CoD4xPermBanRequestDto
+            {
+                PlayerIdentifier = playerIdentifier
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        return banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
+    }
+
+    private async Task<bool> BanCoD4xPlayerBySlotAsync(Guid serverId, int playerSlot, CancellationToken cancellationToken)
+    {
+        var banResult = await serversApiClient.CoD4xRcon.V1.BanClient(
+            serverId,
+            new CoD4xClientReasonRequestDto
+            {
+                ClientId = playerSlot
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        return banResult.IsSuccess;
+    }
+
+    private async Task<ApiResult<ServerRconStatusResponseDto>> GetServerStatusAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        if (gameType != GameType.CallOfDuty4x)
+        {
+            throw CreateUnsupportedGameTypeException(nameof(GetServerStatusAsync), gameType);
+        }
+
+        var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+        if (!cod4xStatusResult.IsSuccess || cod4xStatusResult.Result?.Data is null)
+        {
+            return new ApiResult<ServerRconStatusResponseDto>(
+                cod4xStatusResult.StatusCode,
+                new ApiResponse<ServerRconStatusResponseDto>());
+        }
+
+        var mappedStatus = new ServerRconStatusResponseDto
+        {
+            Players =
+            [
+                .. cod4xStatusResult.Result.Data.Players.Select(p => new ServerRconPlayerDto
+                {
+                    Num = p.Num,
+                    Guid = p.PlayerIdentifier,
+                    Name = p.Name,
+                    IpAddress = ExtractIpAddress(p.Address),
+                    Rate = p.Rate,
+                    Ping = p.Ping ?? 0
+                })
+            ]
+        };
+
+        return new ApiResult<ServerRconStatusResponseDto>(
+            HttpStatusCode.OK,
+            new ApiResponse<ServerRconStatusResponseDto>(mappedStatus));
+    }
+
+    private Task<ApiResult<RconCurrentMapDto>> GetCurrentMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.Insurgency => serversApiClient.InsurgencyRcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.Rust => serversApiClient.RustRcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.Left4Dead2 => serversApiClient.L4d2Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4x => GetCoD4xCurrentMapAsync(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetCurrentMapAsync), gameType),
+        };
+    }
+
+    private async Task<ApiResult<RconCurrentMapDto>> GetCoD4xCurrentMapAsync(Guid serverId, CancellationToken cancellationToken)
+    {
+        var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+        return cod4xStatusResult.IsSuccess && !string.IsNullOrWhiteSpace(cod4xStatusResult.Result?.Data?.MapName)
+            ? new ApiResult<RconCurrentMapDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<RconCurrentMapDto>(new RconCurrentMapDto(cod4xStatusResult.Result.Data.MapName!)))
+            : new ApiResult<RconCurrentMapDto>(
+                cod4xStatusResult.StatusCode,
+                new ApiResponse<RconCurrentMapDto>());
+    }
+
+    private Task<ApiResult<string>> GetServerInfoAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.ServerInfo(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerInfoAsync), gameType),
+        };
+    }
+
+    private Task<ApiResult<string>> GetSystemInfoAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.SystemInfo(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetSystemInfoAsync), gameType),
+        };
+    }
+
+    private Task<ApiResult<string>> GetCommandListAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.CmdList(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetCommandListAsync), gameType),
+        };
+    }
+
+    private async Task<ApiResult> SendSayAsync(Guid serverId, GameType gameType, string message, CancellationToken cancellationToken)
+    {
+        var sendTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.Insurgency => serversApiClient.InsurgencyRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.Rust => serversApiClient.RustRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.Left4Dead2 => serversApiClient.L4d2Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.ConSay(
+                serverId,
+                new CoD4xMessageRequestDto { Message = message },
+                cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(SendSayAsync), gameType),
+        };
+
+        return await sendTask.ConfigureAwait(false);
+    }
+
+    private Task<ApiResult<RconMapCollectionDto>> GetServerMapsAsync(Guid serverId, GameType gameType)
+    {
+        _ = serverId;
+        throw CreateUnsupportedGameTypeException(nameof(GetServerMapsAsync), gameType);
+    }
+
+    private async Task<ApiResult> ChangeMapAsync(Guid serverId, GameType gameType, string mapName, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.Map(
+                serverId,
+                new CoD4xMapRequestDto { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(ChangeMapAsync), gameType),
+        };
+    }
+
+    private async Task<ApiResult> RestartMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var restartTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.RestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.RestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.RestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.MapRestart(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(RestartMapAsync), gameType),
+        };
+
+        return await restartTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> FastRestartMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var restartTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.FastRestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.FastRestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.FastRestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.FastRestart(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(FastRestartMapAsync), gameType),
+        };
+
+        return await restartTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> NextMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var nextMapTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.NextMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.NextMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.NextMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.MapRotate(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(NextMapAsync), gameType),
+        };
+
+        return await nextMapTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> RestartServerAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var restartTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.Restart(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.Restart(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.Restart(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.KillServer(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(RestartServerAsync), gameType),
+        };
+
+        return await restartTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> KickPlayerAsync(Guid serverId, GameType gameType, int playerSlot, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.ClientKick(
+                serverId,
+                new CoD4xClientReasonRequestDto { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(KickPlayerAsync), gameType),
+        };
+    }
+
+    private async static Task<ApiResult> ToApiResultTask(Task<ApiResult<string>> apiResultTask)
+    {
+        var result = await apiResultTask.ConfigureAwait(false);
+        return ToApiResult(result);
+    }
+
+    private static ApiResult ToApiResult(ApiResult<string> result)
+    {
+        return new ApiResult(result.StatusCode, new ApiResponse());
+    }
+
+    private static NotSupportedException CreateUnsupportedGameTypeException(string operationName, GameType gameType)
+    {
+        return new NotSupportedException($"{operationName} is not supported for game type '{gameType}'.");
+    }
+
+    private static string? ExtractIpAddress(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return null;
+        }
+
+        var separatorIndex = address.LastIndexOf(':');
+        return separatorIndex > 0 ? address[..separatorIndex] : address;
     }
 
     /// <summary>
