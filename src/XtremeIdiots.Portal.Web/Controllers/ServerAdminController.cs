@@ -1067,10 +1067,43 @@ public class ServerAdminController(
 
             try
             {
-                // Ban the player via RCON using slot number (most servers don't have separate temp ban RCON command)
-                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
+                var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
+                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+                var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
-                if (!banResult.IsSuccess)
+                var rconSuccess = false;
+
+                if (gameServerData.GameType == GameType.CallOfDuty4x && !string.IsNullOrWhiteSpace(normalizedPlayerGuid))
+                {
+                    var banResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                        id,
+                        new CoD4xTempBanRequestDto
+                        {
+                            PlayerIdentifier = normalizedPlayerGuid,
+                            DurationMinutes = tempBanDurationMinutes
+                        },
+                        cancellationToken).ConfigureAwait(false);
+
+                    rconSuccess = banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
+
+                    if (!rconSuccess)
+                    {
+                        Logger.LogWarning(
+                            "CoD4x identifier temp-ban failed for player {PlayerGuid} on server {ServerId}; falling back to slot {PlayerSlot}",
+                            normalizedPlayerGuid,
+                            id,
+                            playerSlot);
+                    }
+                }
+
+                if (!rconSuccess)
+                {
+                    // Fallback for non-CoD4x games and for CoD4x identifier-command failures.
+                    var banResult = await serversApiClient.Rcon.V1.TempBanPlayer(id, playerSlot).ConfigureAwait(false);
+                    rconSuccess = banResult.IsSuccess;
+                }
+
+                if (!rconSuccess)
                 {
                     Logger.LogWarning("Failed to temp ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
                         playerName, playerSlot, id);
@@ -1078,13 +1111,11 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record with expiry if we have a GUID
-                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
-
-                if (!string.IsNullOrWhiteSpace(playerGuid))
+                if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
                 {
-                    var expiryDate = DateTime.UtcNow.AddDays(tempBanDurationDays);
+                    var expiryDate = DateTime.UtcNow.AddMinutes(tempBanDurationMinutes);
                     await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, playerGuid, playerName, AdminActionType.TempBan,
+                        gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.TempBan,
                         $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
                         cancellationToken,
                         expiryDate).ConfigureAwait(false);
@@ -1149,10 +1180,39 @@ public class ServerAdminController(
 
             try
             {
-                // Ban the player via RCON using slot number
-                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
+                var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
+                var rconSuccess = false;
 
-                if (!banResult.IsSuccess)
+                if (gameServerData.GameType == GameType.CallOfDuty4x && !string.IsNullOrWhiteSpace(normalizedPlayerGuid))
+                {
+                    var banResult = await serversApiClient.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+                        id,
+                        new CoD4xPermBanRequestDto
+                        {
+                            PlayerIdentifier = normalizedPlayerGuid
+                        },
+                        cancellationToken).ConfigureAwait(false);
+
+                    rconSuccess = banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
+
+                    if (!rconSuccess)
+                    {
+                        Logger.LogWarning(
+                            "CoD4x identifier ban failed for player {PlayerGuid} on server {ServerId}; falling back to slot {PlayerSlot}",
+                            normalizedPlayerGuid,
+                            id,
+                            playerSlot);
+                    }
+                }
+
+                if (!rconSuccess)
+                {
+                    // Fallback for non-CoD4x games and for CoD4x identifier-command failures.
+                    var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
+                    rconSuccess = banResult.IsSuccess;
+                }
+
+                if (!rconSuccess)
                 {
                     Logger.LogWarning("Failed to ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
                         playerName, playerSlot, id);
@@ -1160,10 +1220,10 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record if we have a GUID
-                if (!string.IsNullOrWhiteSpace(playerGuid))
+                if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
                 {
                     await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, playerGuid, playerName, AdminActionType.Ban,
+                        gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.Ban,
                         $"Player banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
                         cancellationToken).ConfigureAwait(false);
                 }
