@@ -18,7 +18,6 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -46,8 +45,6 @@ public class ServerAdminController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-    private const int PendingScreenshotInitialLifetimeSeconds = 15;
-    private const int PendingScreenshotConfirmedLifetimeMinutes = 2;
     private readonly static string[] sensitiveEventDataKeyFragments =
     [
         "password",
@@ -60,11 +57,6 @@ public class ServerAdminController(
         "connectionstring",
         "connection_string"
     ];
-
-    private static bool SupportsScreenshots(GameType gameType)
-    {
-        return gameType == GameType.CallOfDuty4x;
-    }
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -178,19 +170,14 @@ public class ServerAdminController(
             var mapRotAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.MapRotations_Read);
             var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read);
             var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Write);
-            var screenshotsReadAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Screenshots_Read);
-            var screenshotsDeleteAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Screenshots_Delete);
             var feedEventsAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Read);
 
             // Check fine-grained RCON sub-action permissions in parallel
             var sayAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Say);
             var mapCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Map);
             var restartSrvAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Restart);
-            var screenshotCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Screenshot);
 
-            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, screenshotsReadAuth, screenshotsDeleteAuth, sayAuth, mapCmdAuth, restartSrvAuth, screenshotCmdAuth, feedEventsAuth).ConfigureAwait(false);
-
-            var isScreenshotSupportedGameType = SupportsScreenshots(gs.GameType);
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth, feedEventsAuth).ConfigureAwait(false);
 
             var viewModel = new ServerDetailViewModel
             {
@@ -202,12 +189,9 @@ public class ServerAdminController(
                 CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
                 CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded,
                 CanViewFeedEvents = (await feedEventsAuth.ConfigureAwait(false)).Succeeded,
-                CanViewScreenshots = isScreenshotSupportedGameType && (await screenshotsReadAuth.ConfigureAwait(false)).Succeeded,
                 CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
                 CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
-                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded,
-                CanTakeScreenshot = isScreenshotSupportedGameType && (await screenshotCmdAuth.ConfigureAwait(false)).Succeeded,
-                CanDeleteScreenshots = (await screenshotsDeleteAuth.ConfigureAwait(false)).Succeeded
+                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded
             };
 
             // Fetch overview data (non-critical — page renders without it)
@@ -1244,344 +1228,6 @@ public class ServerAdminController(
                 return Json(new { success = false, error = "Exception", message = "An error occurred while banning the player" });
             }
         }, nameof(BanRconPlayer)).ConfigureAwait(false);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> TakeRconScreenshot(Guid id, string playerIdentifier, string playerName, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(TakeRconScreenshot), cancellationToken).ConfigureAwait(false);
-            if (actionResult is not null)
-                return actionResult;
-
-            var screenshotAuthResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameServerData!.GameType,
-                AuthPolicies.GameServers_Admin_Rcon_Screenshot,
-                nameof(TakeRconScreenshot),
-                "GameServer",
-                $"ServerId:{id},GameType:{gameServerData.GameType}",
-                gameServerData).ConfigureAwait(false);
-
-            if (screenshotAuthResult is not null)
-                return Json(new { success = false, message = "You don't have permission to request screenshots" });
-
-            if (!SupportsScreenshots(gameServerData.GameType))
-            {
-                return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
-            }
-
-            if (string.IsNullOrWhiteSpace(playerIdentifier))
-            {
-                return Json(new { success = false, message = "Player identifier is required" });
-            }
-
-            var normalizedPlayerIdentifier = playerIdentifier.Trim();
-            var normalizedPlayerName = string.IsNullOrWhiteSpace(playerName) ? null : playerName.Trim();
-            var pendingRequestedAtUtc = DateTime.UtcNow;
-
-            var pendingRequestResponse = await repositoryApiClient.Screenshots.V1.CreatePendingScreenshotRequest(
-                new CreatePendingScreenshotRequestDto
-                {
-                    GameServerId = id,
-                    PlayerIdentifier = normalizedPlayerIdentifier,
-                    PlayerName = normalizedPlayerName,
-                    RequestedAtUtc = pendingRequestedAtUtc,
-                    ExpiresAtUtc = pendingRequestedAtUtc.AddSeconds(PendingScreenshotInitialLifetimeSeconds),
-                    CreatedBy = User.Username()
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!pendingRequestResponse.IsSuccess)
-            {
-                Logger.LogWarning(
-                    "Failed to create pending screenshot request for server {ServerId} and player {PlayerIdentifier}",
-                    id,
-                    normalizedPlayerIdentifier);
-
-                return Json(new { success = false, message = "Failed to prepare screenshot request. Please try again." });
-            }
-
-            var result = await serversApiClient.Rcon.V1.TakeScreenshot(id, new TakeScreenshotRequestDto
-            {
-                PlayerIdentifier = normalizedPlayerIdentifier
-            }, cancellationToken).ConfigureAwait(false);
-
-            if (!result.IsSuccess)
-            {
-                return Json(new { success = false, message = "Failed to request screenshot from game server" });
-            }
-
-            var confirmedRequestedAtUtc = DateTime.UtcNow;
-            var pendingRefreshResponse = await repositoryApiClient.Screenshots.V1.CreatePendingScreenshotRequest(
-                new CreatePendingScreenshotRequestDto
-                {
-                    GameServerId = id,
-                    PlayerIdentifier = normalizedPlayerIdentifier,
-                    PlayerName = normalizedPlayerName,
-                    RequestedAtUtc = confirmedRequestedAtUtc,
-                    ExpiresAtUtc = confirmedRequestedAtUtc.AddMinutes(PendingScreenshotConfirmedLifetimeMinutes),
-                    CreatedBy = User.Username()
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!pendingRefreshResponse.IsSuccess)
-            {
-                Logger.LogWarning(
-                    "Failed to extend pending screenshot request lifetime for server {ServerId} and player {PlayerIdentifier}",
-                    id,
-                    normalizedPlayerIdentifier);
-            }
-
-            TrackSuccessTelemetry("RconScreenshotRequested", nameof(TakeRconScreenshot), new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "GameType", gameServerData.GameType.ToString() },
-                { "PlayerIdentifier", normalizedPlayerIdentifier }
-            });
-
-            return Json(new { success = true, message = $"Screenshot requested for {(string.IsNullOrWhiteSpace(normalizedPlayerName) ? "player" : normalizedPlayerName)}. It may take a short time to appear." });
-        }, nameof(TakeRconScreenshot)).ConfigureAwait(false);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetScreenshots(
-        Guid id,
-        int skipEntries = 0,
-        int takeEntries = 1000,
-        string? playerIdentifier = null,
-        string? playerName = null,
-        DateTime? capturedFromUtc = null,
-        DateTime? capturedToUtc = null,
-        string? source = null,
-        bool includeDeleted = false,
-        CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var potentialReadAccess = await authorizationService
-                .AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_Screenshots_Read)
-                .ConfigureAwait(false);
-            if (!potentialReadAccess.Succeeded)
-            {
-                return Unauthorized();
-            }
-
-            if (includeDeleted)
-            {
-                var potentialDeleteAccess = await authorizationService
-                    .AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_Screenshots_Delete)
-                    .ConfigureAwait(false);
-                if (!potentialDeleteAccess.Succeeded)
-                {
-                    return Unauthorized();
-                }
-            }
-
-            ApiResult<GameServerDto> gameServerResponse;
-            try
-            {
-                gameServerResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-            }
-            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return Json(new { data = Array.Empty<object>() });
-            }
-            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                Logger.LogWarning(ex, "Timed out retrieving game server {ServerId} for {ActionName}", id, nameof(GetScreenshots));
-                return Json(new { data = Array.Empty<object>() });
-            }
-
-            if (gameServerResponse.IsNotFound || gameServerResponse.Result?.Data is null)
-            {
-                return NotFound();
-            }
-
-            var gameServer = gameServerResponse.Result.Data;
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameServer.GameType,
-                AuthPolicies.GameServers_Admin_Screenshots_Read,
-                nameof(GetScreenshots),
-                "GameServer",
-                $"ServerId:{id},GameType:{gameServer.GameType}",
-                gameServer).ConfigureAwait(false);
-
-            if (authResult is not null)
-                return authResult;
-
-            if (!SupportsScreenshots(gameServer.GameType))
-            {
-                return BadRequest(new { message = "Screenshots are only supported for CallOfDuty4x servers" });
-            }
-
-            if (includeDeleted)
-            {
-                var includeDeletedAuthResult = await CheckAuthorizationAsync(
-                    authorizationService,
-                    gameServer.GameType,
-                    AuthPolicies.GameServers_Admin_Screenshots_Delete,
-                    nameof(GetScreenshots),
-                    "GameServer",
-                    $"ServerId:{id},GameType:{gameServer.GameType},IncludeDeleted:true",
-                    gameServer).ConfigureAwait(false);
-
-                if (includeDeletedAuthResult is not null)
-                    return includeDeletedAuthResult;
-            }
-
-            ApiResult<CollectionModel<ScreenshotDto>> screenshotsResponse;
-            try
-            {
-                screenshotsResponse = await repositoryApiClient.Screenshots.V1.GetScreenshots(
-                    id,
-                    Math.Max(skipEntries, 0),
-                    Math.Clamp(takeEntries, 1, 2000),
-                    ScreenshotOrder.CapturedUtcDesc,
-                    cancellationToken,
-                    new GetScreenshotsQuery
-                    {
-                        PlayerIdentifier = playerIdentifier,
-                        PlayerName = playerName,
-                        CapturedFromUtc = capturedFromUtc,
-                        CapturedToUtc = capturedToUtc,
-                        Source = source,
-                        IncludeDeleted = includeDeleted
-                    }).ConfigureAwait(false);
-            }
-            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return Json(new { data = Array.Empty<object>() });
-            }
-            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                Logger.LogWarning(ex, "Timed out retrieving screenshots for game server {ServerId} in {ActionName}", id, nameof(GetScreenshots));
-                return Json(new { data = Array.Empty<object>() });
-            }
-
-            if (!screenshotsResponse.IsSuccess || screenshotsResponse.Result?.Data?.Items is null)
-            {
-                return Json(new { data = Array.Empty<object>() });
-            }
-
-            var data = screenshotsResponse.Result.Data.Items.Select(s => new
-            {
-                screenshotId = s.ScreenshotId,
-                capturedUtc = s.CapturedUtc,
-                playerIdentifier = s.PlayerIdentifier,
-                playerName = s.PlayerName,
-                linkSource = s.LinkSource,
-                linkConfidence = s.LinkConfidence,
-                linkDiagnostics = s.LinkDiagnostics,
-                source = s.Source,
-                sourceFileName = s.SourceFileName,
-                sizeBytes = s.SizeBytes,
-                contentType = s.ContentType,
-                deleted = s.Deleted,
-                deletedUtc = s.DeletedUtc
-            });
-
-            return Json(new { data });
-        }, nameof(GetScreenshots)).ConfigureAwait(false);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetScreenshotContent(Guid id, Guid screenshotId, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var screenshotResponse = await repositoryApiClient.Screenshots.V1.GetScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (screenshotResponse.IsNotFound || screenshotResponse.Result?.Data is null)
-            {
-                return NotFound();
-            }
-
-            var screenshot = screenshotResponse.Result.Data;
-            if (screenshot.GameServerId != id)
-            {
-                return NotFound();
-            }
-
-            if (!Enum.TryParse<GameType>(screenshot.GameType, true, out var gameType) || gameType == GameType.Unknown)
-            {
-                return BadRequest();
-            }
-
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameType,
-                AuthPolicies.GameServers_Admin_Screenshots_Read,
-                nameof(GetScreenshotContent),
-                "Screenshot",
-                $"ScreenshotId:{screenshotId},ServerId:{id},GameType:{gameType}",
-                screenshot).ConfigureAwait(false);
-
-            if (authResult is not null)
-                return authResult;
-
-            if (!SupportsScreenshots(gameType))
-            {
-                return BadRequest();
-            }
-
-            var contentResponse = await repositoryApiClient.Screenshots.V1.GetScreenshotContent(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (!contentResponse.IsSuccess || contentResponse.Result?.Data is null)
-            {
-                return NotFound();
-            }
-
-            var content = contentResponse.Result.Data;
-            var fileName = string.IsNullOrWhiteSpace(content.FileName) ? $"{screenshotId}.jpg" : content.FileName;
-            return File(content.Content, content.ContentType, fileName);
-        }, nameof(GetScreenshotContent)).ConfigureAwait(false);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteScreenshot(Guid id, Guid screenshotId, CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var screenshotResponse = await repositoryApiClient.Screenshots.V1.GetScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (screenshotResponse.IsNotFound || screenshotResponse.Result?.Data is null)
-            {
-                return Json(new { success = false, message = "Screenshot not found" });
-            }
-
-            var screenshot = screenshotResponse.Result.Data;
-            if (screenshot.GameServerId != id)
-            {
-                return Json(new { success = false, message = "Screenshot not found" });
-            }
-
-            if (!Enum.TryParse<GameType>(screenshot.GameType, true, out var gameType) || gameType == GameType.Unknown)
-            {
-                return Json(new { success = false, message = "Invalid screenshot game type" });
-            }
-
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameType,
-                AuthPolicies.GameServers_Admin_Screenshots_Delete,
-                nameof(DeleteScreenshot),
-                "Screenshot",
-                $"ScreenshotId:{screenshotId},ServerId:{id},GameType:{gameType}",
-                screenshot).ConfigureAwait(false);
-
-            if (authResult is not null)
-                return Json(new { success = false, message = "You don't have permission to delete screenshots" });
-
-            if (!SupportsScreenshots(gameType))
-                return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
-
-            var deleteResponse = await repositoryApiClient.Screenshots.V1.DeleteScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            return !deleteResponse.IsSuccess
-                ? Json(new { success = false, message = "Failed to delete screenshot" })
-                : Json(new { success = true, message = "Screenshot deleted" });
-        }, nameof(DeleteScreenshot)).ConfigureAwait(false);
     }
 
     /// <summary>
