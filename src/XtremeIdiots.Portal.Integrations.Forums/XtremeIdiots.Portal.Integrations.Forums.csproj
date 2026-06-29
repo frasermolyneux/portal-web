@@ -14,8 +14,8 @@
     <PackageReference Include="MX.Api.Abstractions" Version="2.3.60" />
     <PackageReference Include="MX.Api.Client" Version="2.3.60" />
     <PackageReference Include="MX.InvisionCommunity.Api.Client" Version="1.0.49" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="3.0.15" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="3.0.15" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="4.0.1" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="4.0.1" />
   </ItemGroup>
 
 </Project>

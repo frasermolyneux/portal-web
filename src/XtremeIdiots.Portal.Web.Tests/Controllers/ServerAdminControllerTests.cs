@@ -406,8 +406,14 @@ public class ServerAdminControllerTests
                 r.DurationMinutes > 0),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.TempBanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
-        mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xPermBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -445,7 +451,10 @@ public class ServerAdminControllerTests
             It.Is<CoD4xPermBanRequestDto>(r => r.PlayerIdentifier == "guid-def"),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -483,8 +492,14 @@ public class ServerAdminControllerTests
             It.IsAny<CoD4xTempBanRequestDto>(),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.TempBanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
-        mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xPermBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -526,7 +541,10 @@ public class ServerAdminControllerTests
             It.IsAny<Guid>(),
             It.IsAny<CoD4xClientReasonRequestDto>(),
             It.IsAny<CancellationToken>()), Times.Never);
-        mockServersApiClient.Verify(x => x.Rcon.V1.BanPlayer(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static GameServerDto CreateGameServerDto(Guid gameServerId, GameType gameType = GameType.CallOfDuty4)
