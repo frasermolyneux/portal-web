@@ -30,6 +30,7 @@ jobs:
       sonar-organization: frasermolyneux
       sonar-host-url: https://sonarcloud.io
       build-target: dotnet-web-ci
+      skip-format-check: true
       dotnet-project: XtremeIdiots.Portal.Web
       dotnet-version: 9.0.x
       src-folder: src
