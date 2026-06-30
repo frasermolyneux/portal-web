@@ -1056,26 +1056,13 @@ public class ServerAdminController(
                 var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
                 var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
-                if (gameServerData.GameType != GameType.CallOfDuty4x)
-                {
-                    throw CreateUnsupportedGameTypeException(nameof(TempBanRconPlayer), gameServerData.GameType);
-                }
-
-                if (string.IsNullOrWhiteSpace(normalizedPlayerGuid))
-                {
-                    return Json(new { success = false, error = "InvalidInput", message = "A player GUID is required for CoD4x temp bans" });
-                }
-
-                var banResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                var rconSuccess = await TempBanPlayerAsync(
                     id,
-                    new CoD4xTempBanRequestDto
-                    {
-                        PlayerIdentifier = normalizedPlayerGuid,
-                        DurationMinutes = tempBanDurationMinutes
-                    },
+                    gameServerData.GameType,
+                    playerSlot,
+                    normalizedPlayerGuid,
+                    tempBanDurationMinutes,
                     cancellationToken).ConfigureAwait(false);
-
-                var rconSuccess = banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
 
                 if (!rconSuccess)
                 {
@@ -1087,7 +1074,10 @@ public class ServerAdminController(
                 // Create admin action record with expiry if we have a GUID
                 if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
                 {
-                    var expiryDate = DateTime.UtcNow.AddMinutes(tempBanDurationMinutes);
+                    DateTime? expiryDate = gameServerData.GameType == GameType.CallOfDuty4x
+                        ? DateTime.UtcNow.AddMinutes(tempBanDurationMinutes)
+                        : null;
+
                     await CreateAdminActionForRconOperationAsync(
                         gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.TempBan,
                         $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
@@ -1102,7 +1092,11 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
-                return Json(new { success = true, message = $"Player {playerName} has been temp banned for {tempBanDurationDays} days" });
+                var successMessage = gameServerData.GameType == GameType.CallOfDuty4x
+                    ? $"Player {playerName} has been temp banned for {tempBanDurationDays} days"
+                    : $"Player {playerName} has been temp banned using server default duration";
+
+                return Json(new { success = true, message = successMessage });
             }
             catch (Exception ex)
             {
@@ -1156,14 +1150,12 @@ public class ServerAdminController(
             {
                 var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
 
-                if (gameServerData.GameType != GameType.CallOfDuty4x)
-                {
-                    throw CreateUnsupportedGameTypeException(nameof(BanRconPlayer), gameServerData.GameType);
-                }
-
-                var rconSuccess = !string.IsNullOrWhiteSpace(normalizedPlayerGuid)
-                    ? await BanCoD4xPlayerByIdentifierAsync(id, normalizedPlayerGuid, cancellationToken).ConfigureAwait(false)
-                    : await BanCoD4xPlayerBySlotAsync(id, playerSlot, cancellationToken).ConfigureAwait(false);
+                var rconSuccess = await BanPlayerAsync(
+                    id,
+                    gameServerData.GameType,
+                    playerSlot,
+                    normalizedPlayerGuid,
+                    cancellationToken).ConfigureAwait(false);
 
                 if (!rconSuccess)
                 {
@@ -1197,6 +1189,87 @@ public class ServerAdminController(
                 return Json(new { success = false, error = "Exception", message = "An error occurred while banning the player" });
             }
         }, nameof(BanRconPlayer)).ConfigureAwait(false);
+    }
+
+    private async Task<bool> TempBanPlayerAsync(
+        Guid serverId,
+        GameType gameType,
+        int playerSlot,
+        string playerIdentifier,
+        int durationMinutes,
+        CancellationToken cancellationToken)
+    {
+        if (gameType == GameType.CallOfDuty4x)
+        {
+            if (string.IsNullOrWhiteSpace(playerIdentifier))
+            {
+                return false;
+            }
+
+            var cod4xBanResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                serverId,
+                new CoD4xTempBanRequestDto
+                {
+                    PlayerIdentifier = playerIdentifier,
+                    DurationMinutes = durationMinutes
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            return cod4xBanResult.IsSuccess && cod4xBanResult.Result?.Data?.IsSuccess == true;
+        }
+
+        var tempBanResult = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => await serversApiClient.Cod2Rcon.V1.TempBan(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty4 => await serversApiClient.Cod4Rcon.V1.TempBan(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty5 => await serversApiClient.Cod5Rcon.V1.TempBan(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            _ => throw CreateUnsupportedGameTypeException(nameof(TempBanPlayerAsync), gameType),
+        };
+
+        return tempBanResult.IsSuccess;
+    }
+
+    private async Task<bool> BanPlayerAsync(
+        Guid serverId,
+        GameType gameType,
+        int playerSlot,
+        string playerIdentifier,
+        CancellationToken cancellationToken)
+    {
+        if (gameType == GameType.CallOfDuty4x)
+        {
+            return !string.IsNullOrWhiteSpace(playerIdentifier)
+                ? await BanCoD4xPlayerByIdentifierAsync(serverId, playerIdentifier, cancellationToken).ConfigureAwait(false)
+                : await BanCoD4xPlayerBySlotAsync(serverId, playerSlot, cancellationToken).ConfigureAwait(false);
+        }
+
+        var banResult = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => await serversApiClient.Cod2Rcon.V1.Ban(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty4 => await serversApiClient.Cod4Rcon.V1.Ban(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty5 => await serversApiClient.Cod5Rcon.V1.Ban(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            _ => throw CreateUnsupportedGameTypeException(nameof(BanPlayerAsync), gameType),
+        };
+
+        return banResult.IsSuccess;
     }
 
     private async Task<bool> BanCoD4xPlayerByIdentifierAsync(Guid serverId, string playerIdentifier, CancellationToken cancellationToken)
@@ -1395,6 +1468,7 @@ public class ServerAdminController(
             (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.GetMaps(serverId),
             (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.GetMaps(serverId),
             (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.GetMaps(serverId),
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.GetMaps(serverId),
             _ => throw CreateUnsupportedGameTypeException(nameof(GetServerMapsAsync), gameType),
         };
     }
@@ -1483,6 +1557,18 @@ public class ServerAdminController(
     {
         return (int)gameType switch
         {
+            (int)GameType.CallOfDuty2 => ToApiResult(await serversApiClient.Cod2Rcon.V1.Kick(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty4 => ToApiResult(await serversApiClient.Cod4Rcon.V1.Kick(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty5 => ToApiResult(await serversApiClient.Cod5Rcon.V1.Kick(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
             (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.ClientKick(
                 serverId,
                 new CoD4xClientReasonRequestDto { ClientId = playerSlot },
