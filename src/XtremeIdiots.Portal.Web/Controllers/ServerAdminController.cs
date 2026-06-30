@@ -1336,7 +1336,7 @@ public class ServerAdminController(
                     Num = p.Num,
                     Guid = p.PlayerIdentifier,
                     Name = p.Name,
-                    IpAddress = ExtractIpAddress(p.Address),
+                    IpAddress = p.IpAddress,
                     Rate = p.Rate,
                     Ping = p.Ping ?? 0
                 })
@@ -1591,17 +1591,6 @@ public class ServerAdminController(
     private static NotSupportedException CreateUnsupportedGameTypeException(string operationName, GameType gameType)
     {
         return new NotSupportedException($"{operationName} is not supported for game type '{gameType}'.");
-    }
-
-    private static string? ExtractIpAddress(string? address)
-    {
-        if (string.IsNullOrWhiteSpace(address))
-        {
-            return null;
-        }
-
-        var separatorIndex = address.LastIndexOf(':');
-        return separatorIndex > 0 ? address[..separatorIndex] : address;
     }
 
     /// <summary>
