@@ -1227,11 +1227,25 @@ public class ServerAdminController(
 
     private async Task<ApiResult<ServerRconStatusResponseDto>> GetServerStatusAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
     {
-        if (gameType != GameType.CallOfDuty4x)
+#pragma warning disable IDE0010 // Populate switch
+#pragma warning disable IDE0072 // Add missing cases
+        return gameType switch
         {
-            throw CreateUnsupportedGameTypeException(nameof(GetServerStatusAsync), gameType);
-        }
+            GameType.CallOfDuty2 => MapGameScopedStatus(
+                await serversApiClient.Cod2Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty4 => MapGameScopedStatus(
+                await serversApiClient.Cod4Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty5 => MapGameScopedStatus(
+                await serversApiClient.Cod5Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty4x => await GetCoD4xStatusAsync(serverId, cancellationToken).ConfigureAwait(false),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerStatusAsync), gameType),
+        };
+#pragma warning restore IDE0072 // Add missing cases
+#pragma warning restore IDE0010 // Populate switch
+    }
 
+    private async Task<ApiResult<ServerRconStatusResponseDto>> GetCoD4xStatusAsync(Guid serverId, CancellationToken cancellationToken)
+    {
         var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
         if (!cod4xStatusResult.IsSuccess || cod4xStatusResult.Result?.Data is null)
         {
@@ -1252,6 +1266,36 @@ public class ServerAdminController(
                     IpAddress = ExtractIpAddress(p.Address),
                     Rate = p.Rate,
                     Ping = p.Ping ?? 0
+                })
+            ]
+        };
+
+        return new ApiResult<ServerRconStatusResponseDto>(
+            HttpStatusCode.OK,
+            new ApiResponse<ServerRconStatusResponseDto>(mappedStatus));
+    }
+
+    private static ApiResult<ServerRconStatusResponseDto> MapGameScopedStatus(ApiResult<RconStatusResponseDto> statusResult)
+    {
+        if (!statusResult.IsSuccess || statusResult.Result?.Data is null)
+        {
+            return new ApiResult<ServerRconStatusResponseDto>(
+                statusResult.StatusCode,
+                new ApiResponse<ServerRconStatusResponseDto>());
+        }
+
+        var mappedStatus = new ServerRconStatusResponseDto
+        {
+            Players =
+            [
+                .. statusResult.Result.Data.Players.Select(p => new ServerRconPlayerDto
+                {
+                    Num = p.Num,
+                    Guid = p.Guid,
+                    Name = p.Name,
+                    IpAddress = p.IpAddress,
+                    Rate = p.Rate,
+                    Ping = p.Ping
                 })
             ]
         };
@@ -1292,6 +1336,9 @@ public class ServerAdminController(
     {
         return (int)gameType switch
         {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.ServerInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.ServerInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.ServerInfo(serverId, cancellationToken),
             (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.ServerInfo(serverId, cancellationToken),
             _ => throw CreateUnsupportedGameTypeException(nameof(GetServerInfoAsync), gameType),
         };
@@ -1301,6 +1348,9 @@ public class ServerAdminController(
     {
         return (int)gameType switch
         {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.SystemInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.SystemInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.SystemInfo(serverId, cancellationToken),
             (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.SystemInfo(serverId, cancellationToken),
             _ => throw CreateUnsupportedGameTypeException(nameof(GetSystemInfoAsync), gameType),
         };
@@ -1310,6 +1360,9 @@ public class ServerAdminController(
     {
         return (int)gameType switch
         {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.CmdList(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.CmdList(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.CmdList(serverId, cancellationToken),
             (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.CmdList(serverId, cancellationToken),
             _ => throw CreateUnsupportedGameTypeException(nameof(GetCommandListAsync), gameType),
         };
@@ -1337,14 +1390,31 @@ public class ServerAdminController(
 
     private Task<ApiResult<RconMapCollectionDto>> GetServerMapsAsync(Guid serverId, GameType gameType)
     {
-        _ = serverId;
-        throw CreateUnsupportedGameTypeException(nameof(GetServerMapsAsync), gameType);
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.GetMaps(serverId),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.GetMaps(serverId),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.GetMaps(serverId),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerMapsAsync), gameType),
+        };
     }
 
     private async Task<ApiResult> ChangeMapAsync(Guid serverId, GameType gameType, string mapName, CancellationToken cancellationToken)
     {
         return (int)gameType switch
         {
+            (int)GameType.CallOfDuty2 => ToApiResult(await serversApiClient.Cod2Rcon.V1.Map(
+                serverId,
+                new ChangeMapRequest { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty4 => ToApiResult(await serversApiClient.Cod4Rcon.V1.Map(
+                serverId,
+                new ChangeMapRequest { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty5 => ToApiResult(await serversApiClient.Cod5Rcon.V1.Map(
+                serverId,
+                new ChangeMapRequest { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
             (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.Map(
                 serverId,
                 new CoD4xMapRequestDto { MapName = mapName },
