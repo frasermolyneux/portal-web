@@ -182,6 +182,50 @@ public class SettingsUiConsistencyTests
     }
 
     [Fact]
+    public void WelcomeMessagePriorityFields_AreHiddenButRemainInDomForBindingAndReindexing()
+    {
+        var globalWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
+        var serverWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+
+        AssertContainsNormalized(
+            globalWelcomeMessages,
+            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label asp-for=\"WelcomeMessages.Rules[i].Priority\" class=\"form-label\"></label>",
+            "Global welcome existing-rule priority should be hidden.");
+        AssertContainsNormalized(
+            globalWelcomeMessages,
+            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label class=\"form-label\" data-field=\"priority-label\" for=\"WelcomeMessages_Rules_0__Priority\">Priority</label>",
+            "Global welcome template-rule priority should be hidden.");
+
+        AssertContainsNormalized(
+            serverWelcomeMessages,
+            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label asp-for=\"WelcomeMessages.LocalRules[i].Priority\" class=\"form-label\"></label>",
+            "Server welcome local existing-rule priority should be hidden.");
+        AssertContainsNormalized(
+            serverWelcomeMessages,
+            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label class=\"form-label\" data-field=\"priority-label\" for=\"WelcomeMessages_LocalRules_0__Priority\">Priority</label>",
+            "Server welcome local template-rule priority should be hidden.");
+
+        AssertContainsNormalized(
+            serverWelcomeMessages,
+            "<div class=\"col-lg-3 d-none\"> <div class=\"mb-3\"> <label asp-for=\"WelcomeMessages.RuleOverrides[i].Priority\" class=\"form-label\"></label>",
+            "Server welcome override existing-rule priority should be hidden.");
+        AssertContainsNormalized(
+            serverWelcomeMessages,
+            "<div class=\"col-lg-3 d-none\"> <div class=\"mb-3\"> <label class=\"form-label\" data-field=\"priority-label\" for=\"WelcomeMessages_RuleOverrides_0__Priority\">Priority Override</label>",
+            "Server welcome override template-rule priority should be hidden.");
+
+        Assert.Contains("asp-for=\"WelcomeMessages.Rules[i].Priority\"", globalWelcomeMessages);
+        Assert.Contains("name=\"WelcomeMessages.Rules[0].Priority\"", globalWelcomeMessages);
+        Assert.Contains("data-field=\"priority\"", globalWelcomeMessages);
+
+        Assert.Contains("asp-for=\"WelcomeMessages.LocalRules[i].Priority\"", serverWelcomeMessages);
+        Assert.Contains("name=\"WelcomeMessages.LocalRules[0].Priority\"", serverWelcomeMessages);
+        Assert.Contains("asp-for=\"WelcomeMessages.RuleOverrides[i].Priority\"", serverWelcomeMessages);
+        Assert.Contains("name=\"WelcomeMessages.RuleOverrides[0].Priority\"", serverWelcomeMessages);
+        Assert.Contains("data-field=\"priority\"", serverWelcomeMessages);
+    }
+
+    [Fact]
     public void ChatCommandFuMessages_GlobalAndServerOfferMultilineImport()
     {
         var globalMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
@@ -260,10 +304,27 @@ public class SettingsUiConsistencyTests
 
     private static void AssertCheckboxBeforeHidden(string markup, string checkboxNeedle, string hiddenNeedle, string context)
     {
-        var checkboxIndex = markup.IndexOf(checkboxNeedle, StringComparison.Ordinal);
-        var hiddenIndex = markup.IndexOf(hiddenNeedle, StringComparison.Ordinal);
+        var normalizedMarkup = NormalizeWhitespace(markup);
+        var normalizedCheckboxNeedle = NormalizeWhitespace(checkboxNeedle);
+        var normalizedHiddenNeedle = NormalizeWhitespace(hiddenNeedle);
+
+        var checkboxIndex = normalizedMarkup.IndexOf(normalizedCheckboxNeedle, StringComparison.Ordinal);
+        var hiddenIndex = normalizedMarkup.IndexOf(normalizedHiddenNeedle, StringComparison.Ordinal);
 
         Assert.True(checkboxIndex >= 0, $"{context}: checkbox markup not found.");
         Assert.True(hiddenIndex > checkboxIndex, $"{context}: hidden fallback must be rendered after the checkbox.");
+    }
+
+    private static void AssertContainsNormalized(string markup, string needle, string context)
+    {
+        var normalizedMarkup = NormalizeWhitespace(markup);
+        var normalizedNeedle = NormalizeWhitespace(needle);
+
+        Assert.Contains(normalizedNeedle, normalizedMarkup, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeWhitespace(string value)
+    {
+        return string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }

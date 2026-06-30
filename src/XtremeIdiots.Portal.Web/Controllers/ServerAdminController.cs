@@ -6,6 +6,7 @@ using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
@@ -18,7 +19,6 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -46,8 +46,6 @@ public class ServerAdminController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-    private const int PendingScreenshotInitialLifetimeSeconds = 15;
-    private const int PendingScreenshotConfirmedLifetimeMinutes = 2;
     private readonly static string[] sensitiveEventDataKeyFragments =
     [
         "password",
@@ -60,11 +58,6 @@ public class ServerAdminController(
         "connectionstring",
         "connection_string"
     ];
-
-    private static bool SupportsScreenshots(GameType gameType)
-    {
-        return gameType == GameType.CallOfDuty4x;
-    }
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -178,19 +171,14 @@ public class ServerAdminController(
             var mapRotAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.MapRotations_Read);
             var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read);
             var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Write);
-            var screenshotsReadAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Screenshots_Read);
-            var screenshotsDeleteAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Screenshots_Delete);
             var feedEventsAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Read);
 
             // Check fine-grained RCON sub-action permissions in parallel
             var sayAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Say);
             var mapCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Map);
             var restartSrvAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Restart);
-            var screenshotCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Screenshot);
 
-            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, screenshotsReadAuth, screenshotsDeleteAuth, sayAuth, mapCmdAuth, restartSrvAuth, screenshotCmdAuth, feedEventsAuth).ConfigureAwait(false);
-
-            var isScreenshotSupportedGameType = SupportsScreenshots(gs.GameType);
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth, feedEventsAuth).ConfigureAwait(false);
 
             var viewModel = new ServerDetailViewModel
             {
@@ -202,12 +190,9 @@ public class ServerAdminController(
                 CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
                 CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded,
                 CanViewFeedEvents = (await feedEventsAuth.ConfigureAwait(false)).Succeeded,
-                CanViewScreenshots = isScreenshotSupportedGameType && (await screenshotsReadAuth.ConfigureAwait(false)).Succeeded,
                 CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
                 CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
-                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded,
-                CanTakeScreenshot = isScreenshotSupportedGameType && (await screenshotCmdAuth.ConfigureAwait(false)).Succeeded,
-                CanDeleteScreenshots = (await screenshotsDeleteAuth.ConfigureAwait(false)).Succeeded
+                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded
             };
 
             // Fetch overview data (non-critical — page renders without it)
@@ -308,7 +293,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id).ConfigureAwait(false);
+            var getServerStatusResult = await GetServerStatusAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data?.Players is null)
             {
@@ -424,7 +409,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerStatusResult = await serversApiClient.Rcon.V1.GetServerStatus(id).ConfigureAwait(false);
+            var getServerStatusResult = await GetServerStatusAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data is null)
             {
@@ -502,7 +487,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getCurrentMapResult = await serversApiClient.Rcon.V1.GetCurrentMap(id).ConfigureAwait(false);
+            var getCurrentMapResult = await GetCurrentMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getCurrentMapResult.IsSuccess || getCurrentMapResult.Result?.Data is null)
             {
@@ -549,7 +534,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerInfoResult = await serversApiClient.Rcon.V1.GetServerInfo(id).ConfigureAwait(false);
+            var getServerInfoResult = await GetServerInfoAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getServerInfoResult.IsSuccess || getServerInfoResult.Result?.Data is null)
             {
@@ -577,7 +562,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getSystemInfoResult = await serversApiClient.Rcon.V1.GetSystemInfo(id).ConfigureAwait(false);
+            var getSystemInfoResult = await GetSystemInfoAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getSystemInfoResult.IsSuccess || getSystemInfoResult.Result?.Data is null)
             {
@@ -605,7 +590,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getCommandListResult = await serversApiClient.Rcon.V1.GetCommandList(id).ConfigureAwait(false);
+            var getCommandListResult = await GetCommandListAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!getCommandListResult.IsSuccess || getCommandListResult.Result?.Data is null)
             {
@@ -654,7 +639,7 @@ public class ServerAdminController(
 
             message = message.Trim();
 
-            var sayResult = await serversApiClient.Rcon.V1.Say(id, message).ConfigureAwait(false);
+            var sayResult = await SendSayAsync(id, gameServerData!.GameType, message, cancellationToken).ConfigureAwait(false);
 
             if (!sayResult.IsSuccess)
             {
@@ -687,7 +672,7 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id).ConfigureAwait(false);
+            var getServerMapsResult = await GetServerMapsAsync(id, gameServerData!.GameType).ConfigureAwait(false);
 
             if (!getServerMapsResult.IsSuccess || getServerMapsResult.Result?.Data?.Items is null)
             {
@@ -764,7 +749,7 @@ public class ServerAdminController(
             Logger.LogInformation("Attempting to load map {MapName} on server {ServerId}", mapName, id);
 
             // Call the actual LoadMap RCON command
-            var loadMapResult = await serversApiClient.Rcon.V1.ChangeMap(id, mapName).ConfigureAwait(false);
+            var loadMapResult = await ChangeMapAsync(id, gameServerData!.GameType, mapName, cancellationToken).ConfigureAwait(false);
 
             if (!loadMapResult.IsSuccess)
             {
@@ -810,7 +795,7 @@ public class ServerAdminController(
             if (mapAuthResult is not null)
                 return mapAuthResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.RestartMap(id).ConfigureAwait(false);
+            var restartResult = await RestartMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -850,7 +835,7 @@ public class ServerAdminController(
             if (mapAuthResult is not null)
                 return mapAuthResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.FastRestartMap(id).ConfigureAwait(false);
+            var restartResult = await FastRestartMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -890,7 +875,7 @@ public class ServerAdminController(
             if (mapAuthResult is not null)
                 return mapAuthResult;
 
-            var nextMapResult = await serversApiClient.Rcon.V1.NextMap(id).ConfigureAwait(false);
+            var nextMapResult = await NextMapAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!nextMapResult.IsSuccess)
             {
@@ -930,7 +915,7 @@ public class ServerAdminController(
             if (restartAuthResult is not null)
                 return restartAuthResult;
 
-            var restartResult = await serversApiClient.Rcon.V1.Restart(id).ConfigureAwait(false);
+            var restartResult = await RestartServerAsync(id, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
 
             if (!restartResult.IsSuccess)
             {
@@ -990,7 +975,7 @@ public class ServerAdminController(
             try
             {
                 // Kick the player via RCON using slot number
-                var kickResult = await serversApiClient.Rcon.V1.KickPlayer(id, playerSlot).ConfigureAwait(false);
+                var kickResult = await KickPlayerAsync(id, gameServerData.GameType, playerSlot, cancellationToken).ConfigureAwait(false);
 
                 if (!kickResult.IsSuccess)
                 {
@@ -1067,10 +1052,19 @@ public class ServerAdminController(
 
             try
             {
-                // Ban the player via RCON using slot number (most servers don't have separate temp ban RCON command)
-                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
+                var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
+                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+                var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
-                if (!banResult.IsSuccess)
+                var rconSuccess = await TempBanPlayerAsync(
+                    id,
+                    gameServerData.GameType,
+                    playerSlot,
+                    normalizedPlayerGuid,
+                    tempBanDurationMinutes,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!rconSuccess)
                 {
                     Logger.LogWarning("Failed to temp ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
                         playerName, playerSlot, id);
@@ -1078,13 +1072,14 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record with expiry if we have a GUID
-                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
-
-                if (!string.IsNullOrWhiteSpace(playerGuid))
+                if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
                 {
-                    var expiryDate = DateTime.UtcNow.AddDays(tempBanDurationDays);
+                    DateTime? expiryDate = gameServerData.GameType == GameType.CallOfDuty4x
+                        ? DateTime.UtcNow.AddMinutes(tempBanDurationMinutes)
+                        : null;
+
                     await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, playerGuid, playerName, AdminActionType.TempBan,
+                        gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.TempBan,
                         $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
                         cancellationToken,
                         expiryDate).ConfigureAwait(false);
@@ -1097,7 +1092,11 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
-                return Json(new { success = true, message = $"Player {playerName} has been temp banned for {tempBanDurationDays} days" });
+                var successMessage = gameServerData.GameType == GameType.CallOfDuty4x
+                    ? $"Player {playerName} has been temp banned for {tempBanDurationDays} days"
+                    : $"Player {playerName} has been temp banned using server default duration";
+
+                return Json(new { success = true, message = successMessage });
             }
             catch (Exception ex)
             {
@@ -1149,10 +1148,16 @@ public class ServerAdminController(
 
             try
             {
-                // Ban the player via RCON using slot number
-                var banResult = await serversApiClient.Rcon.V1.BanPlayer(id, playerSlot).ConfigureAwait(false);
+                var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
 
-                if (!banResult.IsSuccess)
+                var rconSuccess = await BanPlayerAsync(
+                    id,
+                    gameServerData.GameType,
+                    playerSlot,
+                    normalizedPlayerGuid,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!rconSuccess)
                 {
                     Logger.LogWarning("Failed to ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
                         playerName, playerSlot, id);
@@ -1160,10 +1165,10 @@ public class ServerAdminController(
                 }
 
                 // Create admin action record if we have a GUID
-                if (!string.IsNullOrWhiteSpace(playerGuid))
+                if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
                 {
                     await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, playerGuid, playerName, AdminActionType.Ban,
+                        gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.Ban,
                         $"Player banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
                         cancellationToken).ConfigureAwait(false);
                 }
@@ -1186,342 +1191,417 @@ public class ServerAdminController(
         }, nameof(BanRconPlayer)).ConfigureAwait(false);
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> TakeRconScreenshot(Guid id, string playerIdentifier, string playerName, CancellationToken cancellationToken = default)
+    private async Task<bool> TempBanPlayerAsync(
+        Guid serverId,
+        GameType gameType,
+        int playerSlot,
+        string playerIdentifier,
+        int durationMinutes,
+        CancellationToken cancellationToken)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        if (gameType == GameType.CallOfDuty4x)
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(TakeRconScreenshot), cancellationToken).ConfigureAwait(false);
-            if (actionResult is not null)
-                return actionResult;
-
-            var screenshotAuthResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameServerData!.GameType,
-                AuthPolicies.GameServers_Admin_Rcon_Screenshot,
-                nameof(TakeRconScreenshot),
-                "GameServer",
-                $"ServerId:{id},GameType:{gameServerData.GameType}",
-                gameServerData).ConfigureAwait(false);
-
-            if (screenshotAuthResult is not null)
-                return Json(new { success = false, message = "You don't have permission to request screenshots" });
-
-            if (!SupportsScreenshots(gameServerData.GameType))
-            {
-                return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
-            }
-
             if (string.IsNullOrWhiteSpace(playerIdentifier))
             {
-                return Json(new { success = false, message = "Player identifier is required" });
+                return false;
             }
 
-            var normalizedPlayerIdentifier = playerIdentifier.Trim();
-            var normalizedPlayerName = string.IsNullOrWhiteSpace(playerName) ? null : playerName.Trim();
-            var pendingRequestedAtUtc = DateTime.UtcNow;
-
-            var pendingRequestResponse = await repositoryApiClient.Screenshots.V1.CreatePendingScreenshotRequest(
-                new CreatePendingScreenshotRequestDto
+            var cod4xBanResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                serverId,
+                new CoD4xTempBanRequestDto
                 {
-                    GameServerId = id,
-                    PlayerIdentifier = normalizedPlayerIdentifier,
-                    PlayerName = normalizedPlayerName,
-                    RequestedAtUtc = pendingRequestedAtUtc,
-                    ExpiresAtUtc = pendingRequestedAtUtc.AddSeconds(PendingScreenshotInitialLifetimeSeconds),
-                    CreatedBy = User.Username()
+                    PlayerIdentifier = playerIdentifier,
+                    DurationMinutes = durationMinutes
                 },
                 cancellationToken).ConfigureAwait(false);
 
-            if (!pendingRequestResponse.IsSuccess)
+            return cod4xBanResult.IsSuccess && cod4xBanResult.Result?.Data?.IsSuccess == true;
+        }
+
+        var tempBanResult = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => await serversApiClient.Cod2Rcon.V1.TempBan(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty4 => await serversApiClient.Cod4Rcon.V1.TempBan(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty5 => await serversApiClient.Cod5Rcon.V1.TempBan(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            _ => throw CreateUnsupportedGameTypeException(nameof(TempBanPlayerAsync), gameType),
+        };
+
+        return tempBanResult.IsSuccess;
+    }
+
+    private async Task<bool> BanPlayerAsync(
+        Guid serverId,
+        GameType gameType,
+        int playerSlot,
+        string playerIdentifier,
+        CancellationToken cancellationToken)
+    {
+        if (gameType == GameType.CallOfDuty4x)
+        {
+            return !string.IsNullOrWhiteSpace(playerIdentifier)
+                ? await BanCoD4xPlayerByIdentifierAsync(serverId, playerIdentifier, cancellationToken).ConfigureAwait(false)
+                : await BanCoD4xPlayerBySlotAsync(serverId, playerSlot, cancellationToken).ConfigureAwait(false);
+        }
+
+        var banResult = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => await serversApiClient.Cod2Rcon.V1.Ban(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty4 => await serversApiClient.Cod4Rcon.V1.Ban(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            (int)GameType.CallOfDuty5 => await serversApiClient.Cod5Rcon.V1.Ban(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false),
+            _ => throw CreateUnsupportedGameTypeException(nameof(BanPlayerAsync), gameType),
+        };
+
+        return banResult.IsSuccess;
+    }
+
+    private async Task<bool> BanCoD4xPlayerByIdentifierAsync(Guid serverId, string playerIdentifier, CancellationToken cancellationToken)
+    {
+        var banResult = await serversApiClient.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            serverId,
+            new CoD4xPermBanRequestDto
             {
-                Logger.LogWarning(
-                    "Failed to create pending screenshot request for server {ServerId} and player {PlayerIdentifier}",
-                    id,
-                    normalizedPlayerIdentifier);
+                PlayerIdentifier = playerIdentifier
+            },
+            cancellationToken).ConfigureAwait(false);
 
-                return Json(new { success = false, message = "Failed to prepare screenshot request. Please try again." });
-            }
+        return banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
+    }
 
-            var result = await serversApiClient.Rcon.V1.TakeScreenshot(id, new TakeScreenshotRequestDto
+    private async Task<bool> BanCoD4xPlayerBySlotAsync(Guid serverId, int playerSlot, CancellationToken cancellationToken)
+    {
+        var banResult = await serversApiClient.CoD4xRcon.V1.BanClient(
+            serverId,
+            new CoD4xClientReasonRequestDto
             {
-                PlayerIdentifier = normalizedPlayerIdentifier
-            }, cancellationToken).ConfigureAwait(false);
+                ClientId = playerSlot
+            },
+            cancellationToken).ConfigureAwait(false);
 
-            if (!result.IsSuccess)
-            {
-                return Json(new { success = false, message = "Failed to request screenshot from game server" });
-            }
+        return banResult.IsSuccess;
+    }
 
-            var confirmedRequestedAtUtc = DateTime.UtcNow;
-            var pendingRefreshResponse = await repositoryApiClient.Screenshots.V1.CreatePendingScreenshotRequest(
-                new CreatePendingScreenshotRequestDto
+    private async Task<ApiResult<ServerRconStatusResponseDto>> GetServerStatusAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+#pragma warning disable IDE0010 // Populate switch
+#pragma warning disable IDE0072 // Add missing cases
+        return gameType switch
+        {
+            GameType.CallOfDuty2 => MapGameScopedStatus(
+                await serversApiClient.Cod2Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty4 => MapGameScopedStatus(
+                await serversApiClient.Cod4Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty5 => MapGameScopedStatus(
+                await serversApiClient.Cod5Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty4x => await GetCoD4xStatusAsync(serverId, cancellationToken).ConfigureAwait(false),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerStatusAsync), gameType),
+        };
+#pragma warning restore IDE0072 // Add missing cases
+#pragma warning restore IDE0010 // Populate switch
+    }
+
+    private async Task<ApiResult<ServerRconStatusResponseDto>> GetCoD4xStatusAsync(Guid serverId, CancellationToken cancellationToken)
+    {
+        var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+        if (!cod4xStatusResult.IsSuccess || cod4xStatusResult.Result?.Data is null)
+        {
+            return new ApiResult<ServerRconStatusResponseDto>(
+                cod4xStatusResult.StatusCode,
+                new ApiResponse<ServerRconStatusResponseDto>());
+        }
+
+        var mappedStatus = new ServerRconStatusResponseDto
+        {
+            Players =
+            [
+                .. cod4xStatusResult.Result.Data.Players.Select(p => new ServerRconPlayerDto
                 {
-                    GameServerId = id,
-                    PlayerIdentifier = normalizedPlayerIdentifier,
-                    PlayerName = normalizedPlayerName,
-                    RequestedAtUtc = confirmedRequestedAtUtc,
-                    ExpiresAtUtc = confirmedRequestedAtUtc.AddMinutes(PendingScreenshotConfirmedLifetimeMinutes),
-                    CreatedBy = User.Username()
-                },
-                cancellationToken).ConfigureAwait(false);
+                    Num = p.Num,
+                    Guid = p.PlayerIdentifier,
+                    Name = p.Name,
+                    IpAddress = ExtractIpAddress(p.Address),
+                    Rate = p.Rate,
+                    Ping = p.Ping ?? 0
+                })
+            ]
+        };
 
-            if (!pendingRefreshResponse.IsSuccess)
-            {
-                Logger.LogWarning(
-                    "Failed to extend pending screenshot request lifetime for server {ServerId} and player {PlayerIdentifier}",
-                    id,
-                    normalizedPlayerIdentifier);
-            }
-
-            TrackSuccessTelemetry("RconScreenshotRequested", nameof(TakeRconScreenshot), new Dictionary<string, string>
-            {
-                { "ServerId", id.ToString() },
-                { "GameType", gameServerData.GameType.ToString() },
-                { "PlayerIdentifier", normalizedPlayerIdentifier }
-            });
-
-            return Json(new { success = true, message = $"Screenshot requested for {(string.IsNullOrWhiteSpace(normalizedPlayerName) ? "player" : normalizedPlayerName)}. It may take a short time to appear." });
-        }, nameof(TakeRconScreenshot)).ConfigureAwait(false);
+        return new ApiResult<ServerRconStatusResponseDto>(
+            HttpStatusCode.OK,
+            new ApiResponse<ServerRconStatusResponseDto>(mappedStatus));
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetScreenshots(
-        Guid id,
-        int skipEntries = 0,
-        int takeEntries = 1000,
-        string? playerIdentifier = null,
-        string? playerName = null,
-        DateTime? capturedFromUtc = null,
-        DateTime? capturedToUtc = null,
-        string? source = null,
-        bool includeDeleted = false,
-        CancellationToken cancellationToken = default)
+    private static ApiResult<ServerRconStatusResponseDto> MapGameScopedStatus(ApiResult<RconStatusResponseDto> statusResult)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        if (!statusResult.IsSuccess || statusResult.Result?.Data is null)
         {
-            var potentialReadAccess = await authorizationService
-                .AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_Screenshots_Read)
-                .ConfigureAwait(false);
-            if (!potentialReadAccess.Succeeded)
-            {
-                return Unauthorized();
-            }
+            return new ApiResult<ServerRconStatusResponseDto>(
+                statusResult.StatusCode,
+                new ApiResponse<ServerRconStatusResponseDto>());
+        }
 
-            if (includeDeleted)
-            {
-                var potentialDeleteAccess = await authorizationService
-                    .AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_Screenshots_Delete)
-                    .ConfigureAwait(false);
-                if (!potentialDeleteAccess.Succeeded)
+        var mappedStatus = new ServerRconStatusResponseDto
+        {
+            Players =
+            [
+                .. statusResult.Result.Data.Players.Select(p => new ServerRconPlayerDto
                 {
-                    return Unauthorized();
-                }
-            }
+                    Num = p.Num,
+                    Guid = p.Guid,
+                    Name = p.Name,
+                    IpAddress = p.IpAddress,
+                    Rate = p.Rate,
+                    Ping = p.Ping
+                })
+            ]
+        };
 
-            ApiResult<GameServerDto> gameServerResponse;
-            try
-            {
-                gameServerResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-            }
-            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return Json(new { data = Array.Empty<object>() });
-            }
-            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                Logger.LogWarning(ex, "Timed out retrieving game server {ServerId} for {ActionName}", id, nameof(GetScreenshots));
-                return Json(new { data = Array.Empty<object>() });
-            }
-
-            if (gameServerResponse.IsNotFound || gameServerResponse.Result?.Data is null)
-            {
-                return NotFound();
-            }
-
-            var gameServer = gameServerResponse.Result.Data;
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameServer.GameType,
-                AuthPolicies.GameServers_Admin_Screenshots_Read,
-                nameof(GetScreenshots),
-                "GameServer",
-                $"ServerId:{id},GameType:{gameServer.GameType}",
-                gameServer).ConfigureAwait(false);
-
-            if (authResult is not null)
-                return authResult;
-
-            if (!SupportsScreenshots(gameServer.GameType))
-            {
-                return BadRequest(new { message = "Screenshots are only supported for CallOfDuty4x servers" });
-            }
-
-            if (includeDeleted)
-            {
-                var includeDeletedAuthResult = await CheckAuthorizationAsync(
-                    authorizationService,
-                    gameServer.GameType,
-                    AuthPolicies.GameServers_Admin_Screenshots_Delete,
-                    nameof(GetScreenshots),
-                    "GameServer",
-                    $"ServerId:{id},GameType:{gameServer.GameType},IncludeDeleted:true",
-                    gameServer).ConfigureAwait(false);
-
-                if (includeDeletedAuthResult is not null)
-                    return includeDeletedAuthResult;
-            }
-
-            ApiResult<CollectionModel<ScreenshotDto>> screenshotsResponse;
-            try
-            {
-                screenshotsResponse = await repositoryApiClient.Screenshots.V1.GetScreenshots(
-                    id,
-                    Math.Max(skipEntries, 0),
-                    Math.Clamp(takeEntries, 1, 2000),
-                    ScreenshotOrder.CapturedUtcDesc,
-                    cancellationToken,
-                    new GetScreenshotsQuery
-                    {
-                        PlayerIdentifier = playerIdentifier,
-                        PlayerName = playerName,
-                        CapturedFromUtc = capturedFromUtc,
-                        CapturedToUtc = capturedToUtc,
-                        Source = source,
-                        IncludeDeleted = includeDeleted
-                    }).ConfigureAwait(false);
-            }
-            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return Json(new { data = Array.Empty<object>() });
-            }
-            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                Logger.LogWarning(ex, "Timed out retrieving screenshots for game server {ServerId} in {ActionName}", id, nameof(GetScreenshots));
-                return Json(new { data = Array.Empty<object>() });
-            }
-
-            if (!screenshotsResponse.IsSuccess || screenshotsResponse.Result?.Data?.Items is null)
-            {
-                return Json(new { data = Array.Empty<object>() });
-            }
-
-            var data = screenshotsResponse.Result.Data.Items.Select(s => new
-            {
-                screenshotId = s.ScreenshotId,
-                capturedUtc = s.CapturedUtc,
-                playerIdentifier = s.PlayerIdentifier,
-                playerName = s.PlayerName,
-                linkSource = s.LinkSource,
-                linkConfidence = s.LinkConfidence,
-                linkDiagnostics = s.LinkDiagnostics,
-                source = s.Source,
-                sourceFileName = s.SourceFileName,
-                sizeBytes = s.SizeBytes,
-                contentType = s.ContentType,
-                deleted = s.Deleted,
-                deletedUtc = s.DeletedUtc
-            });
-
-            return Json(new { data });
-        }, nameof(GetScreenshots)).ConfigureAwait(false);
+        return new ApiResult<ServerRconStatusResponseDto>(
+            HttpStatusCode.OK,
+            new ApiResponse<ServerRconStatusResponseDto>(mappedStatus));
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetScreenshotContent(Guid id, Guid screenshotId, CancellationToken cancellationToken = default)
+    private Task<ApiResult<RconCurrentMapDto>> GetCurrentMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        return (int)gameType switch
         {
-            var screenshotResponse = await repositoryApiClient.Screenshots.V1.GetScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (screenshotResponse.IsNotFound || screenshotResponse.Result?.Data is null)
-            {
-                return NotFound();
-            }
-
-            var screenshot = screenshotResponse.Result.Data;
-            if (screenshot.GameServerId != id)
-            {
-                return NotFound();
-            }
-
-            if (!Enum.TryParse<GameType>(screenshot.GameType, true, out var gameType) || gameType == GameType.Unknown)
-            {
-                return BadRequest();
-            }
-
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameType,
-                AuthPolicies.GameServers_Admin_Screenshots_Read,
-                nameof(GetScreenshotContent),
-                "Screenshot",
-                $"ScreenshotId:{screenshotId},ServerId:{id},GameType:{gameType}",
-                screenshot).ConfigureAwait(false);
-
-            if (authResult is not null)
-                return authResult;
-
-            if (!SupportsScreenshots(gameType))
-            {
-                return BadRequest();
-            }
-
-            var contentResponse = await repositoryApiClient.Screenshots.V1.GetScreenshotContent(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (!contentResponse.IsSuccess || contentResponse.Result?.Data is null)
-            {
-                return NotFound();
-            }
-
-            var content = contentResponse.Result.Data;
-            var fileName = string.IsNullOrWhiteSpace(content.FileName) ? $"{screenshotId}.jpg" : content.FileName;
-            return File(content.Content, content.ContentType, fileName);
-        }, nameof(GetScreenshotContent)).ConfigureAwait(false);
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.Insurgency => serversApiClient.InsurgencyRcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.Rust => serversApiClient.RustRcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.Left4Dead2 => serversApiClient.L4d2Rcon.V1.GetCurrentMap(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4x => GetCoD4xCurrentMapAsync(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetCurrentMapAsync), gameType),
+        };
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteScreenshot(Guid id, Guid screenshotId, CancellationToken cancellationToken = default)
+    private async Task<ApiResult<RconCurrentMapDto>> GetCoD4xCurrentMapAsync(Guid serverId, CancellationToken cancellationToken)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+        return cod4xStatusResult.IsSuccess && !string.IsNullOrWhiteSpace(cod4xStatusResult.Result?.Data?.MapName)
+            ? new ApiResult<RconCurrentMapDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<RconCurrentMapDto>(new RconCurrentMapDto(cod4xStatusResult.Result.Data.MapName!)))
+            : new ApiResult<RconCurrentMapDto>(
+                cod4xStatusResult.StatusCode,
+                new ApiResponse<RconCurrentMapDto>());
+    }
+
+    private Task<ApiResult<string>> GetServerInfoAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
         {
-            var screenshotResponse = await repositoryApiClient.Screenshots.V1.GetScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            if (screenshotResponse.IsNotFound || screenshotResponse.Result?.Data is null)
-            {
-                return Json(new { success = false, message = "Screenshot not found" });
-            }
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.ServerInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.ServerInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.ServerInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.ServerInfo(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerInfoAsync), gameType),
+        };
+    }
 
-            var screenshot = screenshotResponse.Result.Data;
-            if (screenshot.GameServerId != id)
-            {
-                return Json(new { success = false, message = "Screenshot not found" });
-            }
+    private Task<ApiResult<string>> GetSystemInfoAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.SystemInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.SystemInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.SystemInfo(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.SystemInfo(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetSystemInfoAsync), gameType),
+        };
+    }
 
-            if (!Enum.TryParse<GameType>(screenshot.GameType, true, out var gameType) || gameType == GameType.Unknown)
-            {
-                return Json(new { success = false, message = "Invalid screenshot game type" });
-            }
+    private Task<ApiResult<string>> GetCommandListAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.CmdList(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.CmdList(serverId, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.CmdList(serverId, cancellationToken),
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.CmdList(serverId, cancellationToken),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetCommandListAsync), gameType),
+        };
+    }
 
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                gameType,
-                AuthPolicies.GameServers_Admin_Screenshots_Delete,
-                nameof(DeleteScreenshot),
-                "Screenshot",
-                $"ScreenshotId:{screenshotId},ServerId:{id},GameType:{gameType}",
-                screenshot).ConfigureAwait(false);
+    private async Task<ApiResult> SendSayAsync(Guid serverId, GameType gameType, string message, CancellationToken cancellationToken)
+    {
+        var sendTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.Insurgency => serversApiClient.InsurgencyRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.Rust => serversApiClient.RustRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.Left4Dead2 => serversApiClient.L4d2Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.ConSay(
+                serverId,
+                new CoD4xMessageRequestDto { Message = message },
+                cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(SendSayAsync), gameType),
+        };
 
-            if (authResult is not null)
-                return Json(new { success = false, message = "You don't have permission to delete screenshots" });
+        return await sendTask.ConfigureAwait(false);
+    }
 
-            if (!SupportsScreenshots(gameType))
-                return Json(new { success = false, message = "Screenshots are only supported for CallOfDuty4x servers" });
+    private Task<ApiResult<RconMapCollectionDto>> GetServerMapsAsync(Guid serverId, GameType gameType)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.GetMaps(serverId),
+            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.GetMaps(serverId),
+            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.GetMaps(serverId),
+            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.GetMaps(serverId),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerMapsAsync), gameType),
+        };
+    }
 
-            var deleteResponse = await repositoryApiClient.Screenshots.V1.DeleteScreenshot(screenshotId, cancellationToken).ConfigureAwait(false);
-            return !deleteResponse.IsSuccess
-                ? Json(new { success = false, message = "Failed to delete screenshot" })
-                : Json(new { success = true, message = "Screenshot deleted" });
-        }, nameof(DeleteScreenshot)).ConfigureAwait(false);
+    private async Task<ApiResult> ChangeMapAsync(Guid serverId, GameType gameType, string mapName, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResult(await serversApiClient.Cod2Rcon.V1.Map(
+                serverId,
+                new ChangeMapRequest { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty4 => ToApiResult(await serversApiClient.Cod4Rcon.V1.Map(
+                serverId,
+                new ChangeMapRequest { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty5 => ToApiResult(await serversApiClient.Cod5Rcon.V1.Map(
+                serverId,
+                new ChangeMapRequest { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.Map(
+                serverId,
+                new CoD4xMapRequestDto { MapName = mapName },
+                cancellationToken).ConfigureAwait(false)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(ChangeMapAsync), gameType),
+        };
+    }
+
+    private async Task<ApiResult> RestartMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var restartTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.RestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.RestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.RestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.MapRestart(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(RestartMapAsync), gameType),
+        };
+
+        return await restartTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> FastRestartMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var restartTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.FastRestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.FastRestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.FastRestartMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.FastRestart(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(FastRestartMapAsync), gameType),
+        };
+
+        return await restartTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> NextMapAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var nextMapTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.NextMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.NextMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.NextMap(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.MapRotate(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(NextMapAsync), gameType),
+        };
+
+        return await nextMapTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> RestartServerAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        var restartTask = (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResultTask(serversApiClient.Cod2Rcon.V1.Restart(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4 => ToApiResultTask(serversApiClient.Cod4Rcon.V1.Restart(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty5 => ToApiResultTask(serversApiClient.Cod5Rcon.V1.Restart(serverId, cancellationToken)),
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.KillServer(serverId, cancellationToken)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(RestartServerAsync), gameType),
+        };
+
+        return await restartTask.ConfigureAwait(false);
+    }
+
+    private async Task<ApiResult> KickPlayerAsync(Guid serverId, GameType gameType, int playerSlot, CancellationToken cancellationToken)
+    {
+        return (int)gameType switch
+        {
+            (int)GameType.CallOfDuty2 => ToApiResult(await serversApiClient.Cod2Rcon.V1.Kick(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty4 => ToApiResult(await serversApiClient.Cod4Rcon.V1.Kick(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty5 => ToApiResult(await serversApiClient.Cod5Rcon.V1.Kick(
+                serverId,
+                new ClientSlotRequest { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.ClientKick(
+                serverId,
+                new CoD4xClientReasonRequestDto { ClientId = playerSlot },
+                cancellationToken).ConfigureAwait(false)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(KickPlayerAsync), gameType),
+        };
+    }
+
+    private async static Task<ApiResult> ToApiResultTask(Task<ApiResult<string>> apiResultTask)
+    {
+        var result = await apiResultTask.ConfigureAwait(false);
+        return ToApiResult(result);
+    }
+
+    private static ApiResult ToApiResult(ApiResult<string> result)
+    {
+        return new ApiResult(result.StatusCode, new ApiResponse());
+    }
+
+    private static NotSupportedException CreateUnsupportedGameTypeException(string operationName, GameType gameType)
+    {
+        return new NotSupportedException($"{operationName} is not supported for game type '{gameType}'.");
+    }
+
+    private static string? ExtractIpAddress(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return null;
+        }
+
+        var separatorIndex = address.LastIndexOf(':');
+        return separatorIndex > 0 ? address[..separatorIndex] : address;
     }
 
     /// <summary>

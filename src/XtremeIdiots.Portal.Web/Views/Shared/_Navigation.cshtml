@@ -386,6 +386,12 @@
                asp-controller="Tags" asp-action="Index">
                 <i class="fa-solid fa-fw fa-tags" aria-hidden="true"></i> Player Tags
             </a>
+
+            <a policy="@AuthPolicies.GlobalSettings_Admin"
+               class="nav-link text-white @Html.IsSelected("DataMaintenance", "Index")"
+               asp-controller="DataMaintenance" asp-action="Index" data-testid="nav-data-maintenance">
+                <i class="fa-solid fa-fw fa-database" aria-hidden="true"></i> Data Maintenance
+            </a>
         </nav>
     </div>
 

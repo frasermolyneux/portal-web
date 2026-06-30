@@ -28,7 +28,7 @@
                     }
                     <input type="hidden" name="WelcomeMessages.Enabled" value="false" />
                     <label class="form-check-label" for="WelcomeMessages_Enabled">@Html.DisplayNameFor(m =>
-                                                m.WelcomeMessages.Enabled)</label>
+                                                                        m.WelcomeMessages.Enabled)</label>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -115,7 +115,7 @@
                         <input asp-for="WelcomeMessages.Rules[i].Id" data-field="id" type="hidden" />
 
                         <div class="row">
-                            <div class="col-lg-2">
+                            <div class="col-lg-2 d-none">
                                 <div class="mb-3">
                                     <label asp-for="WelcomeMessages.Rules[i].Priority" class="form-label"></label>
                                     <input asp-for="WelcomeMessages.Rules[i].Priority" data-field="priority"
@@ -214,7 +214,7 @@
                 <input id="WelcomeMessages_Rules_0__Id" name="WelcomeMessages.Rules[0].Id" data-field="id" type="hidden" />
 
                 <div class="row">
-                    <div class="col-lg-2">
+                    <div class="col-lg-2 d-none">
                         <div class="mb-3">
                             <label class="form-label" data-field="priority-label"
                                    for="WelcomeMessages_Rules_0__Priority">Priority</label>

@@ -1,0 +1,145 @@
+@model XtremeIdiots.Portal.Web.ViewModels.DataMaintenanceViewModel
+
+@{
+    ViewData["Title"] = "Data Maintenance";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>Data Maintenance</h5>
+                </div>
+                <div class="ibox-content">
+                    <p class="text-muted mb-3">
+                        Use this page to permanently delete a single player profile and associated data.
+                        This action is restricted to Senior Admins and cannot be undone.
+                    </p>
+
+                    <form id="lookupPlayerForm" asp-action="LookupPlayer" method="post" class="mb-0">
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label asp-for="LookupPlayerId" class="form-label">Player Id</label>
+                                    <input asp-for="LookupPlayerId" class="form-control" autocomplete="off"
+                                           placeholder="e.g. 00000000-0000-0000-0000-000000000000" />
+                                    <span asp-validation-for="LookupPlayerId" class="text-danger"></span>
+                                    <small class="form-text text-muted">Only Player Id lookup is supported.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="ibox-footer d-flex justify-content-end">
+                    <button type="submit" form="lookupPlayerForm" class="btn btn-primary">
+                        <i class="fa-solid fa-fw fa-magnifying-glass" aria-hidden="true"></i> Lookup Player
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Player is not null)
+    {
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Lookup Result</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <dl class="detail-fields row">
+                            <div class="detail-field col-md-6">
+                                <dt class="detail-label">Username</dt>
+                                <dd class="detail-value">@Model.Player.Username</dd>
+                            </div>
+                            <div class="detail-field col-md-6">
+                                <dt class="detail-label">Player Id</dt>
+                                <dd class="detail-value" id="resolvedPlayerId">@Model.Player.PlayerId</dd>
+                            </div>
+                            <div class="detail-field col-md-6">
+                                <dt class="detail-label">Game</dt>
+                                <dd class="detail-value"><game-type-icon game="@Model.Player.GameType"
+                                                                             class="me-1"></game-type-icon> @Model.Player.GameType</dd>
+                                </div>
+                                <div class="detail-field col-md-6">
+                                    <dt class="detail-label">Guid</dt>
+                                    <dd class="detail-value">@Model.Player.PlayerGuid</dd>
+                                </div>
+                                <div class="detail-field col-md-6">
+                                    <dt class="detail-label">Current IP</dt>
+                                    <dd class="detail-value">@Model.Player.IpAddress</dd>
+                                </div>
+                                <div class="detail-field col-md-6">
+                                    <dt class="detail-label">Last Seen</dt>
+                                    <dd class="detail-value">@Model.Player.LastSeen.ToString("yyyy-MM-dd HH:mm:ss UTC")</dd>
+                                </div>
+                            </dl>
+
+                            <div class="row mt-2">
+                                <div class="col-md-2 col-6"><strong>Aliases:</strong> @Model.Player.AliasCount</div>
+                                <div class="col-md-2 col-6"><strong>IPs:</strong> @Model.Player.IpAddressCount</div>
+                                <div class="col-md-2 col-6"><strong>Admin Actions:</strong> @Model.Player.AdminActionCount</div>
+                                <div class="col-md-2 col-6"><strong>Protected Names:</strong> @Model.Player.ProtectedNameCount
+                                </div>
+                                <div class="col-md-2 col-6"><strong>Related Players:</strong> @Model.Player.RelatedPlayerCount
+                                </div>
+                                <div class="col-md-2 col-6"><strong>Tags:</strong> @Model.Player.TagCount</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="ibox border border-danger">
+                        <div class="ibox-title bg-danger text-white">
+                            <h5><i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Danger Zone</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <p class="mb-2">
+                                Deleting this player removes the player profile and associated records, including aliases, IP
+                                addresses,
+                                admin actions, connected player links, map votes, tags, protected names, recent players, chat
+                                messages, and reports.
+                            </p>
+                            <p class="mb-3"><strong>This operation is permanent and cannot be undone.</strong></p>
+
+                            <form asp-action="DeletePlayer" method="post" id="deletePlayerForm">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="playerId" value="@Model.Player.PlayerId" />
+
+                                <div class="mb-3">
+                                    <label asp-for="ConfirmationText" class="form-label">Type the Player Id to confirm
+                                        deletion</label>
+                                        <input asp-for="ConfirmationText" class="form-control" id="deleteConfirmationText"
+                                               autocomplete="off" placeholder="@Model.Player.PlayerId" />
+                                        <span asp-validation-for="ConfirmationText" class="text-danger"></span>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="ibox-footer d-flex justify-content-end">
+                                <button type="submit" form="deletePlayerForm" class="btn btn-danger" id="deletePlayerButton"
+                                        data-expected-player-id="@Model.Player.PlayerId"
+                                        data-confirm="Are you sure you want to permanently delete this player and all associated data?"
+                                        disabled>
+                                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Delete Player Permanently
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @section Scripts {
+            <partial name="_ValidationScriptsPartial" />
+            <script src="~/js/data-maintenance-index.js" asp-append-version="true"></script>
+        }

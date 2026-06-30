@@ -36,11 +36,12 @@
                                         <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
                                                 title="Browse server files via file transport"
                                                 onclick="openFileTransportBrowser('@Model.GameServerId', 'ConfigFilePathInput', '.cfg')">
-                                            <i class="fa-solid fa-folder-open me-1"></i>Browse
+                                            <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
                                         </button>
                                     }
                                 </div>
                                 <small class="form-text text-muted">Path to the config file on the game server.</small>
+                                <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                             </div>
                             <div class="mb-3">
                                 <label asp-for="@Model.ConfigVariableName" class="form-label"></label>
@@ -57,17 +58,20 @@
                                 </datalist>
                                 <small class="form-text text-muted">The config variable to write the rotation string
                                     to.</small>
+                                <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
                                         <input asp-for="@Model.PlayerCountMin" type="number" class="form-control" min="0"
                                                placeholder="Optional" />
+                                        <span asp-validation-for="@Model.PlayerCountMin" class="text-danger"></span>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label asp-for="@Model.PlayerCountMax" class="form-label"></label>
                                         <input asp-for="@Model.PlayerCountMax" type="number" class="form-control" min="0"
                                                placeholder="Optional" />
+                                        <span asp-validation-for="@Model.PlayerCountMax" class="text-danger"></span>
                                     </div>
                                 </div>
                                 <div class="mb-3">

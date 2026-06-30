@@ -20,7 +20,7 @@ using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Screenshots;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -67,320 +67,6 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
-    public async Task GetScreenshots_ForwardsFiltersToRepositoryClient()
-    {
-        var serverId = Guid.NewGuid();
-        var capturedFromUtc = DateTime.UtcNow.AddHours(-2);
-        var capturedToUtc = DateTime.UtcNow.AddHours(-1);
-        GetScreenshotsQuery? capturedQuery = null;
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.Screenshots.V1.GetScreenshots(
-                serverId,
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                ScreenshotOrder.CapturedUtcDesc,
-                It.IsAny<CancellationToken>(),
-                It.IsAny<GetScreenshotsQuery>()))
-            .Callback<Guid, int, int, ScreenshotOrder?, CancellationToken, GetScreenshotsQuery?>((_, _, _, _, _, query) => capturedQuery = query)
-            .ReturnsAsync(new ApiResult<CollectionModel<ScreenshotDto>>(HttpStatusCode.OK, new ApiResponse<CollectionModel<ScreenshotDto>>(new CollectionModel<ScreenshotDto>([]))));
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(
-            serverId,
-            skipEntries: 10,
-            takeEntries: 25,
-            playerIdentifier: "123",
-            playerName: "alpha",
-            capturedFromUtc: capturedFromUtc,
-            capturedToUtc: capturedToUtc,
-            source: "agent-monitor",
-            includeDeleted: false,
-            cancellationToken: CancellationToken.None);
-
-        var json = Assert.IsType<JsonResult>(result);
-        Assert.NotNull(json.Value);
-        Assert.NotNull(capturedQuery);
-        Assert.Equal("123", capturedQuery.PlayerIdentifier);
-        Assert.Equal("alpha", capturedQuery.PlayerName);
-        Assert.Equal(capturedFromUtc, capturedQuery.CapturedFromUtc);
-        Assert.Equal(capturedToUtc, capturedQuery.CapturedToUtc);
-        Assert.Equal("agent-monitor", capturedQuery.Source);
-        Assert.False(capturedQuery.IncludeDeleted);
-    }
-
-    [Fact]
-    public async Task GetScreenshots_IncludeDeletedWithoutDeletePermission_ReturnsUnauthorized()
-    {
-        var serverId = Guid.NewGuid();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Delete))
-            .ReturnsAsync(AuthorizationResult.Failed());
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(serverId, includeDeleted: true, cancellationToken: CancellationToken.None);
-
-        Assert.IsType<UnauthorizedResult>(result);
-    }
-
-    [Fact]
-    public async Task GetScreenshots_IncludeDeletedScopedAuthorizationFails_ReturnsUnauthorized()
-    {
-        var serverId = Guid.NewGuid();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<ClaimsPrincipal>(),
-                It.IsAny<object>(),
-                AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<ClaimsPrincipal>(),
-                It.Is<object>(resource => resource is Web.Auth.PotentialAccessProbe),
-                AuthPolicies.GameServers_Admin_Screenshots_Delete))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<ClaimsPrincipal>(),
-                It.Is<object>(resource => resource is GameType),
-                AuthPolicies.GameServers_Admin_Screenshots_Delete))
-            .ReturnsAsync(AuthorizationResult.Failed());
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(serverId, includeDeleted: true, cancellationToken: CancellationToken.None);
-
-        Assert.IsType<UnauthorizedResult>(result);
-    }
-
-    [Fact]
-    public async Task GetScreenshots_WhenGetGameServerTimesOut_ReturnsEmptyData()
-    {
-        var serverId = Guid.NewGuid();
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TaskCanceledException("Simulated timeout"));
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(serverId, cancellationToken: CancellationToken.None);
-
-        AssertJsonDataIsEmpty(result);
-    }
-
-    [Fact]
-    public async Task GetScreenshots_WhenGetScreenshotsTimesOut_ReturnsEmptyData()
-    {
-        var serverId = Guid.NewGuid();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.Screenshots.V1.GetScreenshots(
-                serverId,
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                ScreenshotOrder.CapturedUtcDesc,
-                It.IsAny<CancellationToken>(),
-                It.IsAny<GetScreenshotsQuery>()))
-            .ThrowsAsync(new TaskCanceledException("Simulated timeout"));
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(serverId, cancellationToken: CancellationToken.None);
-
-        AssertJsonDataIsEmpty(result);
-    }
-
-    [Fact]
-    public async Task GetScreenshots_WhenRequestIsCanceled_ReturnsEmptyData()
-    {
-        var serverId = Guid.NewGuid();
-        using var cancellationSource = new CancellationTokenSource();
-        await cancellationSource.CancelAsync();
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TaskCanceledException("User canceled request"));
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token);
-
-        AssertJsonDataIsEmpty(result);
-    }
-
-    [Fact]
-    public async Task GetScreenshots_WhenScreenshotsRequestIsCanceled_ReturnsEmptyData()
-    {
-        var serverId = Guid.NewGuid();
-        using var cancellationSource = new CancellationTokenSource();
-        await cancellationSource.CancelAsync();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Read))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.Screenshots.V1.GetScreenshots(
-                serverId,
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                ScreenshotOrder.CapturedUtcDesc,
-                It.IsAny<CancellationToken>(),
-                It.IsAny<GetScreenshotsQuery>()))
-            .ThrowsAsync(new TaskCanceledException("User canceled request"));
-
-        var sut = CreateSut();
-
-        var result = await sut.GetScreenshots(serverId, cancellationToken: cancellationSource.Token);
-
-        AssertJsonDataIsEmpty(result);
-    }
-
-    [Fact]
-    public async Task TakeRconScreenshot_WhenPendingRequestFails_ReturnsFailureAndDoesNotInvokeRcon()
-    {
-        var serverId = Guid.NewGuid();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Screenshot))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.Screenshots.V1.CreatePendingScreenshotRequest(It.IsAny<CreatePendingScreenshotRequestDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<PendingScreenshotRequestDto>(HttpStatusCode.BadRequest));
-
-        var sut = CreateSut();
-
-        var result = await sut.TakeRconScreenshot(serverId, "player-guid-001", "Alpha", CancellationToken.None);
-
-        var jsonResult = Assert.IsType<JsonResult>(result);
-        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
-        Assert.False(payload.Value<bool>("success"));
-
-        mockServersApiClient.Verify(
-            x => x.Rcon.V1.TakeScreenshot(It.IsAny<Guid>(), It.IsAny<TakeScreenshotRequestDto>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task TakeRconScreenshot_WhenPendingRequestSucceeds_CreatesPendingAndInvokesRconScreenshot()
-    {
-        var serverId = Guid.NewGuid();
-        var pendingRequests = new List<CreatePendingScreenshotRequestDto>();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Screenshot))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        mockRepositoryApiClient
-            .Setup(x => x.Screenshots.V1.CreatePendingScreenshotRequest(It.IsAny<CreatePendingScreenshotRequestDto>(), It.IsAny<CancellationToken>()))
-            .Callback<CreatePendingScreenshotRequestDto, CancellationToken>((request, _) => pendingRequests.Add(request))
-            .ReturnsAsync(new ApiResult<PendingScreenshotRequestDto>(HttpStatusCode.OK, new ApiResponse<PendingScreenshotRequestDto>(new PendingScreenshotRequestDto())));
-
-        mockServersApiClient
-            .Setup(x => x.Rcon.V1.TakeScreenshot(serverId, It.IsAny<TakeScreenshotRequestDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
-
-        var sut = CreateSut();
-
-        var result = await sut.TakeRconScreenshot(serverId, "  player-guid-002  ", "  Bravo  ", CancellationToken.None);
-
-        var jsonResult = Assert.IsType<JsonResult>(result);
-        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
-        Assert.True(payload.Value<bool>("success"));
-
-        Assert.Equal(2, pendingRequests.Count);
-
-        var initialPendingRequest = pendingRequests[0];
-        Assert.Equal(serverId, initialPendingRequest.GameServerId);
-        Assert.Equal("player-guid-002", initialPendingRequest.PlayerIdentifier);
-        Assert.Equal("Bravo", initialPendingRequest.PlayerName);
-        Assert.NotNull(initialPendingRequest.RequestedAtUtc);
-        Assert.NotNull(initialPendingRequest.ExpiresAtUtc);
-
-        var confirmedPendingRequest = pendingRequests[1];
-        Assert.Equal(serverId, confirmedPendingRequest.GameServerId);
-        Assert.Equal("player-guid-002", confirmedPendingRequest.PlayerIdentifier);
-        Assert.Equal("Bravo", confirmedPendingRequest.PlayerName);
-        Assert.NotNull(confirmedPendingRequest.RequestedAtUtc);
-        Assert.NotNull(confirmedPendingRequest.ExpiresAtUtc);
-
-        var initialLifetime = initialPendingRequest.ExpiresAtUtc.Value - initialPendingRequest.RequestedAtUtc.Value;
-        var confirmedLifetime = confirmedPendingRequest.ExpiresAtUtc.Value - confirmedPendingRequest.RequestedAtUtc.Value;
-        Assert.True(confirmedLifetime > initialLifetime);
-
-        mockServersApiClient.Verify(
-            x => x.Rcon.V1.TakeScreenshot(
-                serverId,
-                It.Is<TakeScreenshotRequestDto>(request => request.PlayerIdentifier == "player-guid-002"),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
     public async Task SendSayCommand_WithLongMessage_ForwardsUntruncatedTrimmedMessage()
     {
         var serverId = Guid.NewGuid();
@@ -400,8 +86,11 @@ public class ServerAdminControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
 
         mockServersApiClient
-            .Setup(x => x.Rcon.V1.Say(serverId, longMessage))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+            .Setup(x => x.CoD4xRcon.V1.ConSay(
+                serverId,
+                It.Is<CoD4xMessageRequestDto>(r => r.Message == longMessage),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
 
         var sut = CreateSut();
 
@@ -411,7 +100,10 @@ public class ServerAdminControllerTests
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.True(payload.Value<bool>("success"));
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.Say(serverId, longMessage), Times.Once);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ConSay(
+            serverId,
+            It.Is<CoD4xMessageRequestDto>(r => r.Message == longMessage),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -440,39 +132,14 @@ public class ServerAdminControllerTests
         Assert.False(payload.Value<bool>("success"));
         Assert.Equal("Message cannot be empty", payload.Value<string>("message"));
 
-        mockServersApiClient.Verify(x => x.Rcon.V1.Say(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ConSay(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xMessageRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task ServerDetail_WhenGameTypeIsNotCallOfDuty4x_HidesScreenshotFeatures()
-    {
-        var serverId = Guid.NewGuid();
-
-        mockRepositoryApiClient
-            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4))));
-
-        mockRepositoryApiClient
-            .Setup(x => x.LiveStatus.V1.GetGameServerLiveStatus(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<Repository.Abstractions.Models.V1.LiveStatus.GameServerLiveStatusDto>(HttpStatusCode.OK));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
-            .ReturnsAsync(AuthorizationResult.Success());
-
-        var sut = CreateSut();
-
-        var result = await sut.ServerDetail(serverId, CancellationToken.None);
-
-        var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<ServerDetailViewModel>(viewResult.Model);
-
-        Assert.False(model.CanViewScreenshots);
-        Assert.False(model.CanTakeScreenshot);
-    }
-
-    [Fact]
-    public async Task ServerDetail_WhenGameTypeIsCallOfDuty4x_ShowsScreenshotFeaturesWithPermission()
+    public async Task ServerDetail_WhenAuthorized_ShowsFeedEventsFlag()
     {
         var serverId = Guid.NewGuid();
 
@@ -495,8 +162,6 @@ public class ServerAdminControllerTests
         var viewResult = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<ServerDetailViewModel>(viewResult.Model);
 
-        Assert.True(model.CanViewScreenshots);
-        Assert.True(model.CanTakeScreenshot);
         Assert.True(model.CanViewFeedEvents);
     }
 
@@ -705,14 +370,470 @@ public class ServerAdminControllerTests
         Assert.Contains("token=***", rawEventData, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void AssertJsonDataIsEmpty(IActionResult result)
+    [Fact]
+    public async Task TempBanRconPlayer_CoD4xWithGuid_UsesCoD4xIdentifierEndpoint()
     {
-        var json = Assert.IsType<JsonResult>(result);
-        var payload = JObject.Parse(JsonConvert.SerializeObject(json.Value));
-        var dataToken = payload["data"];
-        Assert.NotNull(dataToken);
-        Assert.Equal(JTokenType.Array, dataToken.Type);
-        Assert.False(dataToken.HasValues);
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                serverId,
+                It.IsAny<CoD4xTempBanRequestDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CoD4xBanCommandResponseDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<CoD4xBanCommandResponseDto>(new CoD4xBanCommandResponseDto { IsSuccess = true })));
+
+        var sut = CreateSut();
+
+        var result = await sut.TempBanRconPlayer(serverId, 4, "guid-abc", "PlayerOne", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+            serverId,
+            It.Is<CoD4xTempBanRequestDto>(r =>
+                r.PlayerIdentifier == "guid-abc" &&
+                r.DurationMinutes > 0),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xPermBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BanRconPlayer_CoD4xWithGuid_UsesCoD4xIdentifierEndpoint()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+                serverId,
+                It.IsAny<CoD4xPermBanRequestDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CoD4xBanCommandResponseDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<CoD4xBanCommandResponseDto>(new CoD4xBanCommandResponseDto { IsSuccess = true })));
+
+        var sut = CreateSut();
+
+        var result = await sut.BanRconPlayer(serverId, 9, "guid-def", "PlayerTwo", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            serverId,
+            It.Is<CoD4xPermBanRequestDto>(r => r.PlayerIdentifier == "guid-def"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TempBanRconPlayer_CoD4xIdentifierFailure_ReturnsFailureWithoutGenericFallback()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+                serverId,
+                It.IsAny<CoD4xTempBanRequestDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CoD4xBanCommandResponseDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<CoD4xBanCommandResponseDto>(new CoD4xBanCommandResponseDto { IsSuccess = false })));
+
+        var sut = CreateSut();
+
+        var result = await sut.TempBanRconPlayer(serverId, 4, "guid-abc", "PlayerOne", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+            serverId,
+            It.IsAny<CoD4xTempBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xPermBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BanRconPlayer_CoD4xIdentifierFailure_ReturnsFailureWithoutGenericFallback()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+                serverId,
+                It.IsAny<CoD4xPermBanRequestDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CoD4xBanCommandResponseDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<CoD4xBanCommandResponseDto>(new CoD4xBanCommandResponseDto { IsSuccess = false })));
+
+        var sut = CreateSut();
+
+        var result = await sut.BanRconPlayer(serverId, 9, "guid-def", "PlayerTwo", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            serverId,
+            It.IsAny<CoD4xPermBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task KickRconPlayer_Cod4_UsesGameScopedKickEndpoint()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Cod4Rcon.V1.Kick(
+                serverId,
+                It.IsAny<ClientSlotRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
+
+        var sut = CreateSut();
+
+        var result = await sut.KickRconPlayer(serverId, 2, "", "PlayerThree", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.Cod4Rcon.V1.Kick(
+            serverId,
+            It.Is<ClientSlotRequest>(r => r.ClientId == 2),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ClientKick(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task KickRconPlayer_Cod4_WhenRconFails_ReturnsFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Cod4Rcon.V1.Kick(
+                serverId,
+                It.IsAny<ClientSlotRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        var result = await sut.KickRconPlayer(serverId, 2, string.Empty, "PlayerThree", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("RconFailed", payload.Value<string>("error"));
+    }
+
+    [Fact]
+    public async Task TempBanRconPlayer_Cod2_UsesGameScopedTempBanEndpointWithServerDefaultDuration()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty2))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Cod2Rcon.V1.TempBan(
+                serverId,
+                It.IsAny<ClientSlotRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
+
+        var sut = CreateSut();
+
+        var result = await sut.TempBanRconPlayer(serverId, 4, string.Empty, "PlayerFour", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+        Assert.Contains("server default", payload.Value<string>("message") ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        mockServersApiClient.Verify(x => x.Cod2Rcon.V1.TempBan(
+            serverId,
+            It.Is<ClientSlotRequest>(r => r.ClientId == 4),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xTempBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TempBanRconPlayer_Cod2_WhenRconFails_ReturnsFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty2))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Cod2Rcon.V1.TempBan(
+                serverId,
+                It.IsAny<ClientSlotRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        var result = await sut.TempBanRconPlayer(serverId, 4, string.Empty, "PlayerFour", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("RconFailed", payload.Value<string>("error"));
+    }
+
+    [Fact]
+    public async Task BanRconPlayer_Cod5_UsesGameScopedBanEndpoint()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty5))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Cod5Rcon.V1.Ban(
+                serverId,
+                It.IsAny<ClientSlotRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
+
+        var sut = CreateSut();
+
+        var result = await sut.BanRconPlayer(serverId, 7, string.Empty, "PlayerFive", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.Cod5Rcon.V1.Ban(
+            serverId,
+            It.Is<ClientSlotRequest>(r => r.ClientId == 7),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xPermBanRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
+            It.IsAny<Guid>(),
+            It.IsAny<CoD4xClientReasonRequestDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BanRconPlayer_Cod5_WhenRconFails_ReturnsFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty5))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.Cod5Rcon.V1.Ban(
+                serverId,
+                It.IsAny<ClientSlotRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        var result = await sut.BanRconPlayer(serverId, 7, string.Empty, "PlayerFive", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("RconFailed", payload.Value<string>("error"));
+    }
+
+    [Fact]
+    public async Task GetMapRotation_Cod4x_UsesCod4xMapsEndpoint()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RconMapCollectionDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<RconMapCollectionDto>(new RconMapCollectionDto([
+                    new RconMapDto("war", "mp_crash")
+                ]))));
+
+        mockRepositoryApiClient
+            .Setup(x => x.Maps.V1.GetMaps(
+                It.IsAny<GameType?>(),
+                It.IsAny<string[]?>(),
+                It.IsAny<MapsFilter?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<MapsOrder?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapDto>>(new CollectionModel<MapDto>([]))));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetMapRotation(serverId, CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMapRotation_Cod4x_WhenMapsRequestFails_ReturnsFailurePayload()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RconMapCollectionDto>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        var result = await sut.GetMapRotation(serverId, CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.False(payload.Value<bool>("success"));
+
+        var maps = payload["maps"] as JArray;
+        Assert.NotNull(maps);
+        Assert.Empty(maps);
     }
 
     private static GameServerDto CreateGameServerDto(Guid gameServerId, GameType gameType = GameType.CallOfDuty4)

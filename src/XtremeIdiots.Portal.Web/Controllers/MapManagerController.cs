@@ -2,6 +2,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -53,12 +54,15 @@ public class MapManagerController(
             if (actionResult != null)
                 return actionResult;
 
-            var getServerMapsResult = await serversApiClient.Rcon.V1.GetServerMaps(id).ConfigureAwait(false);
             var getLoadedServerMapsFromHostResult = await serversApiClient.Maps.V1.GetLoadedServerMapsFromHost(id).ConfigureAwait(false);
+
+            var rconMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?
+                .Select(m => new RconMapDto(gameServerData!.GameType.ToString(), m.Name))
+                .ToList() ?? [];
 
             var mapsCollectionApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                 gameServerData!.GameType,
-                getServerMapsResult.Result?.Data?.Items?.Select(m => m.MapName).ToArray(),
+                [.. rconMaps.Select(m => m.MapName)],
                 null, null, 0, 50, MapsOrder.MapNameAsc).ConfigureAwait(false);
 
             // Fetch rotation assignments for this server
@@ -105,7 +109,7 @@ public class MapManagerController(
             {
                 Maps = allMaps,
                 ServerMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?.ToList() ?? [],
-                RconMaps = getServerMapsResult.Result?.Data?.Items?.ToList() ?? [],
+                RconMaps = rconMaps,
                 RotationAssignments = assignments,
                 Rotations = rotations
             };

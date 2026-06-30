@@ -7,16 +7,29 @@ public static class GeoLocationDtoExtensions
 {
     public static HtmlString FlagImage(this GeoLocationDto geoLocationDto)
     {
-        return !string.IsNullOrWhiteSpace(geoLocationDto.CountryCode)
-            ? new HtmlString($"<img src=\"/images/flags/{geoLocationDto.CountryCode.ToLower()}.png\" />")
-            : new HtmlString("<img src=\"/images/flags/unknown.png\" />");
+        var countryCode = NormalizeCountryCode(geoLocationDto.CountryCode);
+        return new HtmlString($"<img src=\"/images/flags/{countryCode}.png\" />");
     }
 
     public static HtmlString FlagImage(this string? countryCode)
     {
-        return !string.IsNullOrWhiteSpace(countryCode)
-            ? new HtmlString($"<img src=\"/images/flags/{countryCode.ToLower()}.png\" />")
-            : new HtmlString("<img src=\"/images/flags/unknown.png\" />");
+        var normalizedCountryCode = NormalizeCountryCode(countryCode);
+        return new HtmlString($"<img src=\"/images/flags/{normalizedCountryCode}.png\" />");
+    }
+
+    private static string NormalizeCountryCode(string? countryCode)
+    {
+        if (string.IsNullOrWhiteSpace(countryCode))
+        {
+            return "unknown";
+        }
+
+        var normalized = countryCode.Trim().ToLowerInvariant();
+        var isTwoLetterCode = normalized.Length == 2
+            && normalized[0] is >= 'a' and <= 'z'
+            && normalized[1] is >= 'a' and <= 'z';
+
+        return isTwoLetterCode ? normalized : "unknown";
     }
 
     public static HtmlString LocationSummary(this GeoLocationDto geoLocationDto)

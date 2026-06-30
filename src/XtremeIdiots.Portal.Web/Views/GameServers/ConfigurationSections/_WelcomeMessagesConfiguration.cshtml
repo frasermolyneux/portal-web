@@ -136,7 +136,7 @@
                             <input asp-for="WelcomeMessages.LocalRules[i].Id" data-field="id" type="hidden" />
 
                             <div class="row">
-                                <div class="col-lg-2">
+                                <div class="col-lg-2 d-none">
                                     <div class="mb-3">
                                         <label asp-for="WelcomeMessages.LocalRules[i].Priority" class="form-label"></label>
                                         <input asp-for="WelcomeMessages.LocalRules[i].Priority" data-field="priority"
@@ -294,7 +294,7 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="col-lg-3">
+                                    <div class="col-lg-3 d-none">
                                         <div class="mb-3">
                                             <label asp-for="WelcomeMessages.RuleOverrides[i].Priority" class="form-label"></label>
                                             <input asp-for="WelcomeMessages.RuleOverrides[i].Priority" data-field="priority"
@@ -422,7 +422,7 @@
                                type="hidden" />
 
                         <div class="row">
-                            <div class="col-lg-2">
+                            <div class="col-lg-2 d-none">
                                 <div class="mb-3">
                                     <label class="form-label" data-field="priority-label"
                                            for="WelcomeMessages_LocalRules_0__Priority">Priority</label>
@@ -550,7 +550,7 @@ RequiredTagsSelectorViewModel
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-lg-3">
+                                <div class="col-lg-3 d-none">
                                     <div class="mb-3">
                                         <label class="form-label" data-field="priority-label"
                                                for="WelcomeMessages_RuleOverrides_0__Priority">Priority Override</label>
