@@ -68,7 +68,8 @@
                             <hr />
                             <div class="form-check mb-3">
                                 <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="FileTransportEnabled" id="FileTransportEnabled" />
+                                    <input class="form-check-input" asp-for="FileTransportEnabled"
+                                           id="FileTransportEnabled" />
                                     @Html.DisplayNameFor(model => model.FileTransportEnabled)
                                 </label>
                             </div>
@@ -94,61 +95,63 @@
                             </div>
                             <div class="mb-3">
                                 <label asp-for="BanFileRootPath" class="form-label"></label>
-                                <input asp-for="BanFileRootPath" class="form-control" type="text" maxlength="255" placeholder="/" />
+                                <input asp-for="BanFileRootPath" class="form-control" type="text" maxlength="255"
+                                       placeholder="/" />
                                 <span asp-validation-for="BanFileRootPath" class="text-danger"></span>
-                                <small class="form-text text-muted">File transport root path beneath which the ban file lives. Defaults to <code>/</code>.</small>
-                            </div>
-                            <div class="form-check mb-3">
-                                <label class="form-check-label">
-                                    <input class="form-check-input" asp-for="ServerListEnabled" />
-                                    @Html.DisplayNameFor(model => model.ServerListEnabled)
-                                </label>
+                                <small class="form-text text-muted">File transport root path beneath which the ban file
+                                    lives. Defaults to <code>/</code>.</small>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <label class="form-check-label">
+                                        <input class="form-check-input" asp-for="ServerListEnabled" />
+                                        @Html.DisplayNameFor(model => model.ServerListEnabled)
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
-
             </div>
-        </div>
 
-        <div class="row">
-            <div class="col-12">
+            <div class="row">
+                <div class="col-12">
 
-                <div class="container-fluid">
-                    <div class="ibox">
-                        <div class="ibox-title">
-                            @ViewData["Title"]
-                        </div>
-                        <div class="ibox-content">
-
-                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                            <div class="mb-3">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create
-                                </button>
+                    <div class="container-fluid">
+                        <div class="ibox">
+                            <div class="ibox-title">
+                                @ViewData["Title"]
                             </div>
+                            <div class="ibox-content">
 
-                        </div>
-                        <div class="ibox-footer">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a class="btn btn-outline-secondary" asp-action="Index"><i
+                                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                                <div class="mb-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Create
+                                    </button>
+                                </div>
+
+                            </div>
+                            <div class="ibox-footer">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a class="btn btn-outline-secondary" asp-action="Index"><i
                                         class="fa-solid fa-fw fa-arrow-left"></i> Back to List</a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
-            </div>
+            </form>
+
         </div>
 
-    </form>
+        @* ReSharper disable once Razor.SectionNotResolved *@
 
-</div>
-
-@* ReSharper disable once Razor.SectionNotResolved *@
-
-@section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
-}
+        @section Scripts {
+            @{
+                await Html.RenderPartialAsync("_ValidationScriptsPartial");
+            }
+        }
