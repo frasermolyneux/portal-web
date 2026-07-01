@@ -12,6 +12,9 @@
     var liveStatus = Model.LiveStatus;
     var serverTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title;
     var serverId = gs.GameServerId;
+    var selectedCod4xTargetVersion = !string.IsNullOrWhiteSpace(Model.Cod4xOperationRequestTargetVersion)
+        ? Model.Cod4xOperationRequestTargetVersion
+        : Model.Cod4xRuntimeCurrentVersion;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -521,7 +524,32 @@
                                     {
                                         <div class="mb-2">
                                             <label for="sd-cod4x-targetVersion" class="form-label">Target Version (for Install)</label>
-                                            <input id="sd-cod4x-targetVersion" type="text" class="form-control" placeholder="e.g. 1.2.4" />
+                                            @if (Model.Cod4xAvailableVersions.Any())
+                                            {
+                                                <select id="sd-cod4x-targetVersion" class="form-select">
+                                                    <option value="">Select a published version...</option>
+                                                    @foreach (var availableVersion in Model.Cod4xAvailableVersions)
+                                                    {
+                                                        if (string.Equals(availableVersion, selectedCod4xTargetVersion, StringComparison.OrdinalIgnoreCase))
+                                                        {
+                                                            <option value="@availableVersion" selected>@availableVersion</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@availableVersion">@availableVersion</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <input id="sd-cod4x-targetVersion"
+                                                       type="text"
+                                                       class="form-control"
+                                                       value="@selectedCod4xTargetVersion"
+                                                       placeholder="e.g. v1.2.4" />
+                                                <small class="form-text text-muted">Published versions were not discovered, so enter the target version manually.</small>
+                                            }
                                         </div>
                                         <div class="d-grid gap-2">
                                             <button id="sd-cod4x-install" type="button" class="btn btn-primary btn-sm">

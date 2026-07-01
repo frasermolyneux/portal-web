@@ -37,6 +37,7 @@ locals {
   app_insights            = data.terraform_remote_state.portal_core.outputs.app_insights
   app_service_plan        = data.terraform_remote_state.portal_core.outputs.app_service_plans["apps"]
   sql_server              = data.terraform_remote_state.portal_core.outputs.sql_server
+  cod4x_plugin_artifacts  = data.terraform_remote_state.portal_cod4x_plugin.outputs
 
   # Local Resource Naming
   web_app_name      = "app-portal-web-${var.environment}-${var.location}-${random_id.environment_id.hex}"

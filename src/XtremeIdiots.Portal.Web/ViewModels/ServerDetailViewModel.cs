@@ -51,4 +51,5 @@ public class ServerDetailViewModel
     public string? Cod4xOperationRequestTargetVersion { get; set; }
     public DateTimeOffset? Cod4xOperationRequestRequestedAtUtc { get; set; }
     public string? Cod4xOperationRequestRequestedBy { get; set; }
+    public List<string> Cod4xAvailableVersions { get; set; } = [];
 }

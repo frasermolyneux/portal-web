@@ -250,6 +250,11 @@ public class ServerAdminControllerTests
         Assert.NotNull(serializedDocument!.OperationRequest);
         Assert.Equal(Cod4xPluginOperationAction.Install, serializedDocument.OperationRequest!.Action);
         Assert.Equal("1.2.4", serializedDocument.OperationRequest.TargetVersion);
+        Assert.NotNull(serializedDocument.OperationRequest.ExtensionData);
+        Assert.True(serializedDocument.OperationRequest.ExtensionData!.TryGetValue("artifactPath", out var artifactPathElement));
+        Assert.Equal(JsonValueKind.String, artifactPathElement.ValueKind);
+        Assert.Contains("1.2.4", artifactPathElement.GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("portal-cod4x-plugin", artifactPathElement.GetString(), StringComparison.OrdinalIgnoreCase);
 
         Assert.NotNull(serializedDocument.RuntimeState);
         Assert.Equal("1.2.3", serializedDocument.RuntimeState!.CurrentVersion);

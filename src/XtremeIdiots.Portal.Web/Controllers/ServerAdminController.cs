@@ -1,3 +1,6 @@
+using Azure;
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -69,6 +72,10 @@ public class ServerAdminController(
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
+
+    private const string Cod4xArtifactsPrefix = "releases/";
+    private const string DefaultCod4xPluginArtifactRoot = "/tmp/portal-cod4x-plugin-artifacts";
+    private const string Cod4xPluginArtifactFileName = "portal-cod4x-plugin";
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -246,6 +253,14 @@ public class ServerAdminController(
                 catch (Exception ex)
                 {
                     Logger.LogWarning(ex, "Failed to load CoD4x plugin settings for server {ServerId}", id);
+                }
+
+                if (viewModel.CanManageCoD4xPluginLifecycle)
+                {
+                    viewModel.Cod4xAvailableVersions =
+                    [
+                        .. await GetAvailableCod4xPluginVersionsAsync(cancellationToken).ConfigureAwait(false)
+                    ];
                 }
             }
 
@@ -1034,6 +1049,7 @@ public class ServerAdminController(
             var normalizedTargetVersion = string.IsNullOrWhiteSpace(targetVersion)
                 ? null
                 : targetVersion.Trim();
+            string? installArtifactPath = null;
 
             if (action == Cod4xPluginOperationAction.Install && string.IsNullOrWhiteSpace(normalizedTargetVersion))
             {
@@ -1051,6 +1067,8 @@ public class ServerAdminController(
                 {
                     return Json(new { success = false, message = "Target version contains invalid characters." });
                 }
+
+                installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, gameServerData.Platform);
             }
 
             if (action != Cod4xPluginOperationAction.Install)
@@ -1099,6 +1117,14 @@ public class ServerAdminController(
                 RequestedAtUtc = requestedAtUtc,
                 RequestedBy = requestedBy
             };
+
+            if (action == Cod4xPluginOperationAction.Install && !string.IsNullOrWhiteSpace(installArtifactPath))
+            {
+                cod4xPluginSettings.OperationRequest.ExtensionData = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["artifactPath"] = SystemTextJsonSerializer.SerializeToElement(installArtifactPath)
+                };
+            }
 
             var serializedConfiguration = SystemTextJsonSerializer.Serialize(cod4xPluginSettings, cod4xPluginJsonOptions);
             var upsertResult = await repositoryApiClient.GameServerConfigurations.V1.UpsertConfiguration(
@@ -1150,6 +1176,184 @@ public class ServerAdminController(
         }
 
         return true;
+    }
+
+    private async Task<IReadOnlyList<string>> GetAvailableCod4xPluginVersionsAsync(CancellationToken cancellationToken)
+    {
+        var storageAccountName = Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"];
+        var containerName = Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"];
+
+        if (string.IsNullOrWhiteSpace(storageAccountName)
+            || string.IsNullOrWhiteSpace(containerName))
+        {
+            return [];
+        }
+
+        try
+        {
+            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ManagedIdentityClientId = Configuration["AZURE_CLIENT_ID"]
+            });
+
+            var containerUri = new Uri($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            var containerClient = new BlobContainerClient(containerUri, credential);
+
+            var discoveredVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            await foreach (var blobItem in containerClient
+                               .GetBlobsByHierarchyAsync(
+                                   traits: Azure.Storage.Blobs.Models.BlobTraits.None,
+                                   states: Azure.Storage.Blobs.Models.BlobStates.None,
+                                   delimiter: "/",
+                                   prefix: Cod4xArtifactsPrefix,
+                                   cancellationToken: cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                if (!blobItem.IsPrefix || !TryParseCod4xReleaseVersion(blobItem.Prefix, out var version))
+                {
+                    continue;
+                }
+
+                discoveredVersions.Add(version);
+            }
+
+            var versions = discoveredVersions.ToList();
+            versions.Sort(CompareCod4xVersionTokensDescending);
+            return versions;
+        }
+        catch (Exception ex) when (ex is RequestFailedException or CredentialUnavailableException or AuthenticationFailedException)
+        {
+            Logger.LogWarning(
+                ex,
+                "Failed to load published CoD4x plugin versions from storage account {StorageAccount} container {Container}",
+                storageAccountName,
+                containerName);
+            return [];
+        }
+    }
+
+    private static bool TryParseCod4xReleaseVersion(string? prefix, out string version)
+    {
+        version = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(prefix)
+            || !prefix.StartsWith(Cod4xArtifactsPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var token = prefix[Cod4xArtifactsPrefix.Length..].Trim('/');
+        if (string.IsNullOrWhiteSpace(token)
+            || token.Length > Cod4xPluginSettingsConstants.MaxVersionLength
+            || !IsValidCod4xTargetVersion(token))
+        {
+            return false;
+        }
+
+        version = token;
+        return true;
+    }
+
+    private static int CompareCod4xVersionTokensDescending(string? left, string? right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return 0;
+        }
+
+        if (left is null)
+        {
+            return 1;
+        }
+
+        if (right is null)
+        {
+            return -1;
+        }
+
+        if (!TryParseCod4xSemanticVersion(left, out var leftMajor, out var leftMinor, out var leftPatch, out var leftSuffix)
+            || !TryParseCod4xSemanticVersion(right, out var rightMajor, out var rightMinor, out var rightPatch, out var rightSuffix))
+        {
+            return string.Compare(right, left, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var majorCompare = rightMajor.CompareTo(leftMajor);
+        if (majorCompare != 0)
+        {
+            return majorCompare;
+        }
+
+        var minorCompare = rightMinor.CompareTo(leftMinor);
+        if (minorCompare != 0)
+        {
+            return minorCompare;
+        }
+
+        var patchCompare = rightPatch.CompareTo(leftPatch);
+        if (patchCompare != 0)
+        {
+            return patchCompare;
+        }
+
+        var leftHasSuffix = !string.IsNullOrWhiteSpace(leftSuffix);
+        var rightHasSuffix = !string.IsNullOrWhiteSpace(rightSuffix);
+        return leftHasSuffix == rightHasSuffix
+            ? string.Compare(rightSuffix, leftSuffix, StringComparison.OrdinalIgnoreCase)
+            : leftHasSuffix ? 1 : -1;
+    }
+
+    private static bool TryParseCod4xSemanticVersion(
+        string value,
+        out int major,
+        out int minor,
+        out int patch,
+        out string suffix)
+    {
+        major = 0;
+        minor = 0;
+        patch = 0;
+        suffix = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.StartsWith('v') || value.StartsWith('V')
+            ? value[1..]
+            : value;
+
+        var suffixStart = normalized.IndexOf('-');
+        if (suffixStart >= 0)
+        {
+            suffix = normalized[suffixStart..];
+            normalized = normalized[..suffixStart];
+        }
+
+        var components = normalized.Split('.', StringSplitOptions.None);
+        return components.Length == 3
+               && int.TryParse(components[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out major)
+               && int.TryParse(components[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out minor)
+               && int.TryParse(components[2], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out patch);
+    }
+
+    private string BuildCod4xArtifactPath(string targetVersion, GameServerPlatform platform)
+    {
+        var configuredRootPath = Configuration["CoD4xPluginLifecycle:ArtifactRootPath"];
+        var artifactRootPath = string.IsNullOrWhiteSpace(configuredRootPath)
+            ? DefaultCod4xPluginArtifactRoot
+            : configuredRootPath;
+
+        var platformFolder = platform == GameServerPlatform.Windows ? "windows" : "linux";
+        var extension = platform == GameServerPlatform.Windows ? ".dll" : ".so";
+
+        return Path.Combine(
+            artifactRootPath,
+            Cod4xArtifactsPrefix.TrimEnd('/'),
+            targetVersion,
+            platformFolder,
+            "x86",
+            $"{Cod4xPluginArtifactFileName}{extension}");
     }
 
     /// <summary>

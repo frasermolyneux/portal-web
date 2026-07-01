@@ -56,61 +56,10 @@
 
                         <hr />
 
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <h6 class="mb-2">Runtime State</h6>
-                                <dl class="row mb-0">
-                                    <dt class="col-6">Current Version</dt>
-                                    <dd class="col-6">@(Model.Cod4xRuntimeCurrentVersion ?? "-")</dd>
-
-                                    <dt class="col-6">Known Good</dt>
-                                    <dd class="col-6">@(Model.Cod4xRuntimePreviousKnownGoodVersion ?? "-")</dd>
-
-                                    <dt class="col-6">Last Status</dt>
-                                    <dd class="col-6">@Model.Cod4xRuntimeLastOperationStatus</dd>
-
-                                    <dt class="col-6">Last Operation</dt>
-                                    <dd class="col-6">@(Model.Cod4xRuntimeLastOperationId ?? "-")</dd>
-
-                                    <dt class="col-6">Last Updated</dt>
-                                    <dd class="col-6">@(Model.Cod4xRuntimeLastOperationUtc?.ToString("u") ?? "-")</dd>
-                                </dl>
-
-                                @if (!string.IsNullOrWhiteSpace(Model.Cod4xRuntimeLastError))
-                                {
-                                    <div class="alert alert-warning mt-2 mb-0">
-                                        <strong>Last Error:</strong> @Model.Cod4xRuntimeLastError
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="col-md-6">
-                                <h6 class="mb-2">Pending Operation</h6>
-                                @if (Model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown)
-                                {
-                                    <dl class="row mb-0">
-                                        <dt class="col-6">Operation Id</dt>
-                                        <dd class="col-6">@(Model.Cod4xOperationRequestOperationId ?? "-")</dd>
-
-                                        <dt class="col-6">Action</dt>
-                                        <dd class="col-6">@Model.Cod4xOperationRequestAction</dd>
-
-                                        <dt class="col-6">Target Version</dt>
-                                        <dd class="col-6">@(Model.Cod4xOperationRequestTargetVersion ?? "-")</dd>
-
-                                        <dt class="col-6">Requested At</dt>
-                                        <dd class="col-6">@(Model.Cod4xOperationRequestRequestedAtUtc?.ToString("u") ?? "-")</dd>
-
-                                        <dt class="col-6">Requested By</dt>
-                                        <dd class="col-6">@(Model.Cod4xOperationRequestRequestedBy ?? "-")</dd>
-                                    </dl>
-                                }
-                                else
-                                {
-                                    <p class="text-muted mb-0">No pending CoD4x plugin operation request.</p>
-                                }
-                            </div>
-                        </div>
+                        <p class="text-muted mb-0">
+                            CoD4x plugin lifecycle status and version operations are managed from
+                            <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@Model.GameServer.GameServerId">Server Admin &gt; Server Detail</a>.
+                        </p>
                     </div>
                 </div>
             </div>

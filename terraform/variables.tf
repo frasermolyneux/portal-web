@@ -62,6 +62,18 @@ variable "portal_core_state" {
   })
 }
 
+variable "portal_cod4x_plugin_state" {
+  description = "Backend config for portal-cod4x-plugin remote state"
+  type = object({
+    resource_group_name  = string
+    storage_account_name = string
+    container_name       = string
+    key                  = string
+    subscription_id      = string
+    tenant_id            = string
+  })
+}
+
 variable "dns_subscription_id" {}
 variable "dns_resource_group_name" {}
 variable "dns_subdomain" {}

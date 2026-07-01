@@ -38,6 +38,10 @@ resource "azurerm_linux_web_app" "app" {
 
     "AZURE_CLIENT_ID" = local.web_identity.client_id
 
+    "CoD4xPluginLifecycle__ArtifactsStorageAccountName" = local.cod4x_plugin_artifacts.artifacts_storage_account_name
+    "CoD4xPluginLifecycle__ArtifactsContainerName"      = local.cod4x_plugin_artifacts.artifacts_storage_container_name
+    "CoD4xPluginLifecycle__ArtifactRootPath"            = "/tmp/portal-cod4x-plugin-artifacts"
+
     "minTlsVersion"                              = "1.2"
     "APPLICATIONINSIGHTS_CONNECTION_STRING"      = data.azurerm_application_insights.app_insights.connection_string
     "ApplicationInsights__ResourceId"            = data.azurerm_application_insights.app_insights.id
