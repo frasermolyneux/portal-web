@@ -80,4 +80,54 @@ public class GlobalSettingsViewModelTests
 
         Assert.Equal(["!help"], commands.Aliases);
     }
+
+    [Fact]
+    public void ApplyAvailableRequiredTags_Cod4xPowerMappings_NewTagsDefaultToZero()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            Cod4xPowerTagMappingsJson = /*lang=json,strict*/ """
+            [
+              { "tag": "HeadAdmin", "power": 90, "enabled": true }
+            ]
+            """
+        };
+
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "HeadAdmin", DisplayName = "HeadAdmin" },
+            new RequiredTagOptionViewModel { Name = "NewTag", DisplayName = "NewTag" }
+        ]);
+
+        Assert.Equal(2, model.Cod4xPowerTagMappings.Count);
+
+        var existingTag = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "HeadAdmin", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(90, existingTag.Power);
+
+        var newTag = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "NewTag", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, newTag.Power);
+    }
+
+    [Fact]
+    public void ApplyAvailableRequiredTags_Cod4xPowerMappings_RemovedTagsAreDroppedAndJsonUpdated()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            Cod4xPowerTagMappings =
+            [
+                new Cod4xPowerTagMappingViewModel { Tag = "KeepTag", Power = 25 },
+                new Cod4xPowerTagMappingViewModel { Tag = "RemovedTag", Power = 80 }
+            ]
+        };
+
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "KeepTag", DisplayName = "KeepTag" }
+        ]);
+
+        Assert.Single(model.Cod4xPowerTagMappings);
+        Assert.Equal("KeepTag", model.Cod4xPowerTagMappings[0].Tag);
+        Assert.Equal(25, model.Cod4xPowerTagMappings[0].Power);
+        Assert.DoesNotContain("RemovedTag", model.Cod4xPowerTagMappingsJson, StringComparison.OrdinalIgnoreCase);
+    }
 }

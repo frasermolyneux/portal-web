@@ -117,10 +117,9 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 Enabled = model.Cod4xPluginEnabled
             }, configJsonOptions)));
 
-        var globalCod4xPowerTagMappings =
-            Cod4xSettingsViewModelHelpers.TryParsePowerMappingsJson(model.Cod4xPowerTagMappingsJson, out var parsedGlobalCod4xPowerTagMappings)
-                ? parsedGlobalCod4xPowerTagMappings
-                : [];
+        var globalCod4xPowerTagMappings = Cod4xSettingsViewModelHelpers.BuildPowerTagMappingsForPersistence(
+            model.Cod4xPowerTagMappings,
+            model.Cod4xPowerTagMappingsJson);
 
         configurations.Add((
             Cod4xPowerSettingsConstants.Namespace,
@@ -401,11 +400,9 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             }
             else
             {
-                var cod4xPowerTagMappings = Cod4xSettingsViewModelHelpers.TryParsePowerMappingsJson(
-                    model.Cod4xPowerTagMappingsJson,
-                    out var parsedCod4xPowerTagMappings)
-                    ? parsedCod4xPowerTagMappings
-                    : [];
+                var cod4xPowerTagMappings = Cod4xSettingsViewModelHelpers.BuildPowerTagMappingsForPersistence(
+                    model.Cod4xPowerTagMappings,
+                    model.Cod4xPowerTagMappingsJson);
 
                 configurations.Add((
                     Cod4xPowerSettingsConstants.Namespace,

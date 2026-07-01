@@ -1,4 +1,5 @@
 @model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower
 
 <div class="ibox">
     <div class="ibox-title">
@@ -19,7 +20,7 @@
                 <input class="form-check-input" asp-for="Cod4xInheritPluginSettings" />
                 <label class="form-check-label" asp-for="Cod4xInheritPluginSettings"></label>
                 <small class="form-text text-muted d-block">Global value: <strong>@(Model.GlobalCod4xPluginEnabled ?
-                            "Enabled" : "Disabled")</strong></small>
+                                                "Enabled" : "Disabled")</strong></small>
                 </div>
 
                 <div id="cod4x-plugin-override-panel">
@@ -41,7 +42,7 @@
                     <input class="form-check-input" asp-for="Cod4xInheritPowerSettings" />
                     <label class="form-check-label" asp-for="Cod4xInheritPowerSettings"></label>
                     <small class="form-text text-muted d-block">Global enabled: <strong>@(Model.GlobalCod4xPowerEnabled ?
-                                "Enabled" : "Disabled")</strong>, default power:
+                                                        "Enabled" : "Disabled")</strong>, default power:
                         <strong>@Model.GlobalCod4xPowerDefaultPower</strong></small>
                     </div>
 
@@ -62,66 +63,104 @@
                             </div>
                         </div>
 
+                        <input type="hidden" asp-for="Cod4xPowerTagMappingsJson" />
+
                         <div class="mb-0">
-                            <label asp-for="Cod4xPowerTagMappingsJson" class="form-label"></label>
-                            <textarea asp-for="Cod4xPowerTagMappingsJson" class="form-control" rows="8"></textarea>
-                            <span asp-validation-for="Cod4xPowerTagMappingsJson" class="text-danger"></span>
-                            <small class="form-text text-muted">Enter a JSON array of objects with <strong>tag</strong>,
-                                <strong>power</strong>, and optional <strong>enabled</strong> properties.</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="ibox">
-                    <div class="ibox-title">
-                        <h5><i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> Command Minimum Power</h5>
-                    </div>
-                    <div class="ibox-content">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" asp-for="Cod4xInheritCommandSettings" />
-                            <label class="form-check-label" asp-for="Cod4xInheritCommandSettings"></label>
-                            <small class="form-text text-muted d-block">Global command enforcement:
-                                <strong>@(Model.GlobalCod4xCommandsEnabled ? "Enabled" : "Disabled")</strong></small>
-                            </div>
-
-                            <div id="cod4x-command-override-panel">
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" asp-for="Cod4xCommandsEnabled" />
-                                    <label class="form-check-label" asp-for="Cod4xCommandsEnabled"></label>
-                                </div>
-
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th>Command</th>
-                                                <th style="width: 160px;">Enabled</th>
-                                                <th style="width: 220px;">Minimum Power</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @for (var i = 0; i < Model.Cod4xCommands.Count; i++)
-                                            {
+                            <label class="form-label">CoD4x Power Tag Mappings</label>
+                            @if (Model.Cod4xPowerTagMappings.Count == 0)
+                            {
+                                <p class="text-muted mb-0">No tags are currently available. Add tags first to manage CoD4x power
+                                    mappings.</p>
+                                }
+                            else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover align-middle mb-2">
+                                            <thead>
                                                 <tr>
-                                                    <td>
-                                                        <input type="hidden" asp-for="Cod4xCommands[i].Name" />
-                                                        <strong>@Model.Cod4xCommands[i].Name</strong>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" asp-for="Cod4xCommands[i].Enabled" />
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <input asp-for="Cod4xCommands[i].MinPower" class="form-control" type="number" />
-                                                        <span asp-validation-for="Cod4xCommands[i].MinPower" class="text-danger"></span>
-                                                    </td>
+                                                    <th>Tag</th>
+                                                    <th style="width: 220px;">Assigned Power</th>
                                                 </tr>
-                                            }
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                @for (var i = 0; i < Model.Cod4xPowerTagMappings.Count; i++)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <input type="hidden" asp-for="Cod4xPowerTagMappings[i].Tag" />
+                                                            <strong>@Model.Cod4xPowerTagMappings[i].Tag</strong>
+                                                        </td>
+                                                        <td>
+                                                            <input asp-for="Cod4xPowerTagMappings[i].Power" class="form-control" type="number"
+                                                                   min="0" max="@Cod4xPowerSettingsConstants.MaxPower" />
+                                                            <span asp-validation-for="Cod4xPowerTagMappings[i].Power"
+                                                                  class="text-danger"></span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+
+                                <span asp-validation-for="Cod4xPowerTagMappingsJson" class="text-danger"></span>
+                                <small class="form-text text-muted">Tags are sourced from the tag catalog. New tags default to
+                                    <strong>0</strong> and removed tags are dropped from this list (and from saved JSON) on the next
+                                    save.</small>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="ibox">
+                        <div class="ibox-title">
+                            <h5><i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> Command Minimum Power</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" asp-for="Cod4xInheritCommandSettings" />
+                                <label class="form-check-label" asp-for="Cod4xInheritCommandSettings"></label>
+                                <small class="form-text text-muted d-block">Global command enforcement:
+                                    <strong>@(Model.GlobalCod4xCommandsEnabled ? "Enabled" : "Disabled")</strong></small>
+                                </div>
+
+                                <div id="cod4x-command-override-panel">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" asp-for="Cod4xCommandsEnabled" />
+                                        <label class="form-check-label" asp-for="Cod4xCommandsEnabled"></label>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Command</th>
+                                                    <th style="width: 160px;">Enabled</th>
+                                                    <th style="width: 220px;">Minimum Power</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (var i = 0; i < Model.Cod4xCommands.Count; i++)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <input type="hidden" asp-for="Cod4xCommands[i].Name" />
+                                                            <strong>@Model.Cod4xCommands[i].Name</strong>
+                                                        </td>
+                                                        <td>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" asp-for="Cod4xCommands[i].Enabled" />
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <input asp-for="Cod4xCommands[i].MinPower" class="form-control" type="number" />
+                                                            <span asp-validation-for="Cod4xCommands[i].MinPower" class="text-danger"></span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>

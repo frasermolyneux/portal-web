@@ -124,6 +124,8 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     model.Cod4xPowerEnabled = cod4xPowerDocument.Enabled ?? model.Cod4xPowerEnabled;
                     model.Cod4xPowerDefaultPower = cod4xPowerDocument.DefaultPower ?? model.Cod4xPowerDefaultPower;
                     model.Cod4xPowerTagMappingsJson = Cod4xSettingsViewModelHelpers.SerializePowerMappingsJson(cod4xPowerDocument.TagMappings);
+                    model.Cod4xPowerTagMappings = [];
+                    model.SyncCod4xPowerTagMappings();
                 }
 
                 break;
@@ -291,6 +293,8 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     model.Cod4xPowerEnabled = cod4xPowerDocument.Enabled ?? false;
                     model.Cod4xPowerDefaultPower = cod4xPowerDocument.DefaultPower ?? model.Cod4xPowerDefaultPower;
                     model.Cod4xPowerTagMappingsJson = Cod4xSettingsViewModelHelpers.SerializePowerMappingsJson(cod4xPowerDocument.TagMappings);
+                    model.Cod4xPowerTagMappings = [];
+                    model.SyncCod4xPowerTagMappings();
                 }
 
                 break;

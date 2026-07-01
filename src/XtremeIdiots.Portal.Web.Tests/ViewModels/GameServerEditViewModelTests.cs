@@ -158,6 +158,56 @@ public class GameServerEditViewModelTests
         Assert.Equal(60, model.ScreenshotConfigPollIntervalSeconds);
     }
 
+    [Fact]
+    public void ApplyAvailableRequiredTags_Cod4xPowerMappings_NewTagsDefaultToZero()
+    {
+        var model = new GameServerEditViewModel
+        {
+            Cod4xPowerTagMappingsJson = /*lang=json,strict*/ """
+            [
+              { "tag": "Moderator", "power": 40, "enabled": true }
+            ]
+            """
+        };
+
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "Moderator", DisplayName = "Moderator" },
+            new RequiredTagOptionViewModel { Name = "NewTag", DisplayName = "NewTag" }
+        ]);
+
+        Assert.Equal(2, model.Cod4xPowerTagMappings.Count);
+
+        var existingTag = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "Moderator", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(40, existingTag.Power);
+
+        var newTag = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "NewTag", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, newTag.Power);
+    }
+
+    [Fact]
+    public void ApplyAvailableRequiredTags_Cod4xPowerMappings_RemovedTagsAreDroppedAndJsonUpdated()
+    {
+        var model = new GameServerEditViewModel
+        {
+            Cod4xPowerTagMappings =
+            [
+                new Cod4xPowerTagMappingViewModel { Tag = "KeepTag", Power = 30 },
+                new Cod4xPowerTagMappingViewModel { Tag = "RemovedTag", Power = 75 }
+            ]
+        };
+
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "KeepTag", DisplayName = "KeepTag" }
+        ]);
+
+        Assert.Single(model.Cod4xPowerTagMappings);
+        Assert.Equal("KeepTag", model.Cod4xPowerTagMappings[0].Tag);
+        Assert.Equal(30, model.Cod4xPowerTagMappings[0].Power);
+        Assert.DoesNotContain("RemovedTag", model.Cod4xPowerTagMappingsJson, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static GameServerEditViewModel CreateValidModel()
     {
         return new GameServerEditViewModel

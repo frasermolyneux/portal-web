@@ -99,6 +99,8 @@ public class GlobalSettingsViewModel : IValidatableObject
     [DisplayName("CoD4x Power Tag Mappings (JSON)")]
     public string Cod4xPowerTagMappingsJson { get; set; } = "[]";
 
+    public List<Cod4xPowerTagMappingViewModel> Cod4xPowerTagMappings { get; set; } = [];
+
     // CoD4x command defaults
 
     [DisplayName("CoD4x Command Power Enforcement Enabled")]
@@ -113,7 +115,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     // Legacy compatibility alias retained while the UI model is being normalized in later phases.
 
-    public List<BroadcastMessageViewModel> FunnyMessages {
+    public List<BroadcastMessageViewModel> FunnyMessages
+    {
         get => BroadcastMessages;
         set => BroadcastMessages = value ?? [];
     }
@@ -124,8 +127,12 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
+    public bool IsRequiredTagsCatalogAvailable { get; private set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        SyncCod4xPowerTagMappings();
+
         if (BroadcastMessages is null)
             yield break;
 
@@ -148,34 +155,26 @@ public class GlobalSettingsViewModel : IValidatableObject
             yield return validationResult;
         }
 
-        if (!Cod4xSettingsViewModelHelpers.TryParsePowerMappingsJson(Cod4xPowerTagMappingsJson, out var parsedMappings))
+        var seenTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < Cod4xPowerTagMappings.Count; i++)
         {
-            yield return new ValidationResult("CoD4x power tag mappings must be valid JSON.", [nameof(Cod4xPowerTagMappingsJson)]);
-        }
-        else
-        {
-            var seenTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            for (var i = 0; i < parsedMappings.Count; i++)
+            var mapping = Cod4xPowerTagMappings[i];
+            if (string.IsNullOrWhiteSpace(mapping.Tag))
             {
-                var mapping = parsedMappings[i];
-                if (string.IsNullOrWhiteSpace(mapping.Tag))
-                {
-                    yield return new ValidationResult($"CoD4x power mapping at index {i} is missing a tag.", [nameof(Cod4xPowerTagMappingsJson)]);
-                    continue;
-                }
+                yield return new ValidationResult($"CoD4x power mapping at index {i} is missing a tag.", [nameof(Cod4xPowerTagMappingsJson)]);
+                continue;
+            }
 
-                if (!seenTags.Add(mapping.Tag.Trim()))
-                {
-                    yield return new ValidationResult($"CoD4x power tag '{mapping.Tag}' is duplicated.", [nameof(Cod4xPowerTagMappingsJson)]);
-                }
+            if (!seenTags.Add(mapping.Tag.Trim()))
+            {
+                yield return new ValidationResult($"CoD4x power tag '{mapping.Tag}' is duplicated.", [nameof(Cod4xPowerTagMappingsJson)]);
+            }
 
-                if (mapping.Power is int mappingPower &&
-                    (mappingPower < Cod4xPowerSettingsConstants.MinPower || mappingPower > Cod4xPowerSettingsConstants.MaxPower))
-                {
-                    yield return new ValidationResult(
-                        $"CoD4x power for tag '{mapping.Tag}' must be between {Cod4xPowerSettingsConstants.MinPower} and {Cod4xPowerSettingsConstants.MaxPower}.",
-                        [nameof(Cod4xPowerTagMappingsJson)]);
-                }
+            if (mapping.Power is < 0 or > Cod4xPowerSettingsConstants.MaxPower)
+            {
+                yield return new ValidationResult(
+                    $"CoD4x power for tag '{mapping.Tag}' must be between 0 and {Cod4xPowerSettingsConstants.MaxPower}.",
+                    [nameof(Cod4xPowerTagMappingsJson)]);
             }
         }
 
@@ -193,11 +192,29 @@ public class GlobalSettingsViewModel : IValidatableObject
         IReadOnlyList<RequiredTagOptionViewModel> requiredTags,
         bool requiredTagsCatalogAvailable = true)
     {
+        IsRequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         AvailableRequiredTags = requiredTags;
+        SyncCod4xPowerTagMappings();
         ChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+    }
+
+    public void SyncCod4xPowerTagMappings()
+    {
+        if (!IsRequiredTagsCatalogAvailable)
+        {
+            return;
+        }
+
+        Cod4xPowerTagMappings = Cod4xSettingsViewModelHelpers.BuildPowerTagMappings(
+            AvailableRequiredTags,
+            Cod4xPowerTagMappings,
+            Cod4xPowerTagMappingsJson);
+
+        Cod4xPowerTagMappingsJson = Cod4xSettingsViewModelHelpers.SerializePowerMappingsJson(
+            Cod4xSettingsViewModelHelpers.BuildPowerTagMappingsForPersistence(Cod4xPowerTagMappings, Cod4xPowerTagMappingsJson));
     }
 
     public static IReadOnlyList<SelectListItem> BuildSeverityOptions(bool includeInheritOption)

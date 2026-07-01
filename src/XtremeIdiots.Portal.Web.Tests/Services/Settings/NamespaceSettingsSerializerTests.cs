@@ -517,6 +517,39 @@ public class NamespaceSettingsSerializerTests
         Assert.Contains(Cod4xCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
+    [Fact]
+    public void BuildGlobalSettingsConfigurations_Cod4xPowerMappings_PreservesExistingEnabledFlag()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            Cod4xPowerEnabled = true,
+            Cod4xPowerDefaultPower = 50,
+            Cod4xPowerTagMappings =
+            [
+                new Cod4xPowerTagMappingViewModel
+                {
+                    Tag = "HeadAdmin",
+                    Power = 90
+                }
+            ],
+            Cod4xPowerTagMappingsJson = /*lang=json,strict*/ """
+            [
+              { "tag": "HeadAdmin", "power": 90, "enabled": false }
+            ]
+            """
+        };
+
+        var configurations = serializer.BuildGlobalSettingsConfigurations(model);
+        var (_, powerJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPowerSettingsConstants.Namespace);
+
+        using var powerDoc = JsonDocument.Parse(powerJson);
+        var mapping = powerDoc.RootElement.GetProperty("tagMappings")[0];
+
+        Assert.Equal("HeadAdmin", mapping.GetProperty("tag").GetString());
+        Assert.Equal(90, mapping.GetProperty("power").GetInt32());
+        Assert.False(mapping.GetProperty("enabled").GetBoolean());
+    }
+
     private static GameServerEditViewModel BuildDefaultModel()
     {
         return new GameServerEditViewModel

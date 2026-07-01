@@ -199,6 +199,73 @@ public class NamespaceSettingsParserTests
         Assert.Equal(88, kickCommand.MinPower);
     }
 
+    [Fact]
+    public void PopulateGlobalSettingsViewModel_Cod4xPower_AppliedAfterRequiredTags_UsesJsonValues()
+    {
+        var model = new GlobalSettingsViewModel();
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "SeniorAdmin", DisplayName = "SeniorAdmin" },
+            new RequiredTagOptionViewModel { Name = "Moderator", DisplayName = "Moderator" }
+        ]);
+
+        var powerConfig = BuildConfiguration(Cod4xPowerSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true,
+          "defaultPower": 55,
+          "tagMappings": [
+            { "tag": "SeniorAdmin", "power": 100, "enabled": true }
+          ]
+        }
+        """);
+
+        parser.PopulateGlobalSettingsViewModel(model, powerConfig, logger);
+
+        var seniorAdmin = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "SeniorAdmin", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(100, seniorAdmin.Power);
+
+        var moderator = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "Moderator", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, moderator.Power);
+    }
+
+    [Fact]
+    public void PopulateGameServerSettingsViewModel_Cod4xPower_AppliedAfterRequiredTags_UsesJsonValues()
+    {
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameType = GameType.CallOfDuty4x
+            }
+        };
+
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "Moderator", DisplayName = "Moderator" },
+            new RequiredTagOptionViewModel { Name = "HeadAdmin", DisplayName = "HeadAdmin" }
+        ]);
+
+        var powerConfig = BuildConfiguration(Cod4xPowerSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true,
+          "defaultPower": 60,
+          "tagMappings": [
+            { "tag": "Moderator", "power": 40, "enabled": true }
+          ]
+        }
+        """);
+
+        parser.PopulateGameServerSettingsViewModel(model, powerConfig, logger);
+
+        var moderator = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "Moderator", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(40, moderator.Power);
+
+        var headAdmin = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "HeadAdmin", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, headAdmin.Power);
+    }
+
     private static ConfigurationDto BuildConfiguration(string ns, string configuration)
     {
         return JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new

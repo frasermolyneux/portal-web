@@ -115,10 +115,162 @@ public static class Cod4xSettingsViewModelHelpers
         }
     }
 
+    public static List<Cod4xPowerTagMappingViewModel> BuildPowerTagMappings(
+        IReadOnlyList<RequiredTagOptionViewModel> availableTags,
+        IEnumerable<Cod4xPowerTagMappingViewModel>? currentMappings,
+        string? mappingsJson)
+    {
+        var mappingLookup = BuildPowerTagMappingLookup(currentMappings, mappingsJson);
+
+        return
+        [
+            .. availableTags
+                .Where(static tag => !string.IsNullOrWhiteSpace(tag.Name))
+                .Select(static tag => tag.Name.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(tag => new Cod4xPowerTagMappingViewModel
+                {
+                    Tag = tag,
+                    Power = mappingLookup.TryGetValue(tag, out var power)
+                        ? power
+                        : 0
+                })
+        ];
+    }
+
+    public static List<Cod4xPowerTagMapping> BuildPowerTagMappingsForPersistence(
+        IEnumerable<Cod4xPowerTagMappingViewModel>? mappings,
+        string? fallbackMappingsJson = null)
+    {
+        var outputByTag = new Dictionary<string, Cod4xPowerTagMapping>(StringComparer.OrdinalIgnoreCase);
+        var hasEditorMappings = false;
+        var fallbackByTag = new Dictionary<string, Cod4xPowerTagMapping>(StringComparer.OrdinalIgnoreCase);
+
+        if (TryParsePowerMappingsJson(fallbackMappingsJson, out var parsedFallbackMappings))
+        {
+            foreach (var mapping in parsedFallbackMappings)
+            {
+                if (string.IsNullOrWhiteSpace(mapping.Tag))
+                {
+                    continue;
+                }
+
+                var normalizedTag = mapping.Tag.Trim();
+                fallbackByTag[normalizedTag] = new Cod4xPowerTagMapping
+                {
+                    Tag = normalizedTag,
+                    Power = mapping.Power,
+                    Enabled = mapping.Enabled
+                };
+            }
+        }
+
+        foreach (var mapping in mappings ?? [])
+        {
+            if (mapping is null || string.IsNullOrWhiteSpace(mapping.Tag))
+            {
+                continue;
+            }
+
+            hasEditorMappings = true;
+
+            var normalizedTag = mapping.Tag.Trim();
+            var normalizedPower = Math.Clamp(mapping.Power, 0, Cod4xPowerSettingsConstants.MaxPower);
+            if (normalizedPower <= 0)
+            {
+                continue;
+            }
+
+            var enabled = true;
+            if (fallbackByTag.TryGetValue(normalizedTag, out var existingMapping))
+            {
+                enabled = existingMapping.Enabled;
+            }
+
+            outputByTag[normalizedTag] = new Cod4xPowerTagMapping
+            {
+                Tag = normalizedTag,
+                Power = normalizedPower,
+                Enabled = enabled
+            };
+        }
+
+        if (!hasEditorMappings)
+        {
+            foreach (var mapping in fallbackByTag.Values)
+            {
+                if (string.IsNullOrWhiteSpace(mapping.Tag) || !mapping.Power.HasValue)
+                {
+                    continue;
+                }
+
+                var normalizedTag = mapping.Tag.Trim();
+                var normalizedPower = Math.Clamp(mapping.Power.Value, 0, Cod4xPowerSettingsConstants.MaxPower);
+                if (normalizedPower <= 0)
+                {
+                    continue;
+                }
+
+                outputByTag[normalizedTag] = new Cod4xPowerTagMapping
+                {
+                    Tag = normalizedTag,
+                    Power = normalizedPower,
+                    Enabled = mapping.Enabled
+                };
+            }
+        }
+
+        return
+        [
+            .. outputByTag.Values
+        ];
+    }
+
     public static string SerializePowerMappingsJson(IEnumerable<Cod4xPowerTagMapping>? mappings)
     {
         var safeMappings = (mappings ?? []).Where(static mapping => mapping is not null);
         return JsonSerializer.Serialize(safeMappings, editorJsonOptions);
+    }
+
+    private static Dictionary<string, int> BuildPowerTagMappingLookup(
+        IEnumerable<Cod4xPowerTagMappingViewModel>? currentMappings,
+        string? mappingsJson)
+    {
+        var mappingLookup = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var hasCurrentMappings = false;
+
+        foreach (var mapping in currentMappings ?? [])
+        {
+            if (mapping is null || string.IsNullOrWhiteSpace(mapping.Tag))
+            {
+                continue;
+            }
+
+            hasCurrentMappings = true;
+            mappingLookup[mapping.Tag.Trim()] = Math.Clamp(mapping.Power, 0, Cod4xPowerSettingsConstants.MaxPower);
+        }
+
+        if (hasCurrentMappings)
+        {
+            return mappingLookup;
+        }
+
+        if (!TryParsePowerMappingsJson(mappingsJson, out var parsedMappings))
+        {
+            return mappingLookup;
+        }
+
+        foreach (var mapping in parsedMappings)
+        {
+            if (mapping is null || string.IsNullOrWhiteSpace(mapping.Tag))
+            {
+                continue;
+            }
+
+            mappingLookup[mapping.Tag.Trim()] = Math.Clamp(mapping.Power.GetValueOrDefault(), 0, Cod4xPowerSettingsConstants.MaxPower);
+        }
+
+        return mappingLookup;
     }
 
     public static string ResolveCanonicalCommandName(string? commandName)
@@ -141,4 +293,14 @@ public sealed class Cod4xCommandViewModel
     [Range(Cod4xCommandSettingsConstants.MinPower, Cod4xCommandSettingsConstants.MaxPower,
         ErrorMessage = "Minimum power must be between 1 and 100.")]
     public int MinPower { get; set; } = Cod4xCommandSettingsConstants.MinPower;
+}
+
+public sealed class Cod4xPowerTagMappingViewModel
+{
+    public string Tag { get; set; } = string.Empty;
+
+    [DisplayName("Power")]
+    [Range(0, Cod4xPowerSettingsConstants.MaxPower,
+        ErrorMessage = "Power must be between 0 and 100.")]
+    public int Power { get; set; }
 }
