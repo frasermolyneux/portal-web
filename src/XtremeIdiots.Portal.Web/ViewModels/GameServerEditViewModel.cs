@@ -150,8 +150,7 @@ public class GameServerEditViewModel : IValidatableObject
 
     public int GlobalBroadcastsIntervalSeconds { get; set; } = DefaultBroadcastIntervalSeconds;
 
-    public List<BroadcastMessageViewModel> GlobalBroadcastMessages
-    {
+    public List<BroadcastMessageViewModel> GlobalBroadcastMessages {
         get => GlobalFunnyMessages;
         set => GlobalFunnyMessages = value ?? [];
     }
