@@ -113,7 +113,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     // Legacy compatibility alias retained while the UI model is being normalized in later phases.
 
-    public List<BroadcastMessageViewModel> FunnyMessages {
+    public List<BroadcastMessageViewModel> FunnyMessages
+    {
         get => BroadcastMessages;
         set => BroadcastMessages = value ?? [];
     }

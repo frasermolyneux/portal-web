@@ -39,51 +39,52 @@
             <label asp-for="Cod4xPowerTagMappingsJson" class="form-label"></label>
             <textarea asp-for="Cod4xPowerTagMappingsJson" class="form-control" rows="8"></textarea>
             <span asp-validation-for="Cod4xPowerTagMappingsJson" class="text-danger"></span>
-            <small class="form-text text-muted">Enter a JSON array of objects with <strong>tag</strong>, <strong>power</strong>, and optional <strong>enabled</strong> properties.</small>
+            <small class="form-text text-muted">Enter a JSON array of objects with <strong>tag</strong>,
+                <strong>power</strong>, and optional <strong>enabled</strong> properties.</small>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="ibox">
-    <div class="ibox-title">
-        <h5><i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> CoD4x Command Minimum Power</h5>
-    </div>
-    <div class="ibox-content">
-        <div class="form-check mb-3">
-            <input class="form-check-input" asp-for="Cod4xCommandsEnabled" />
-            <label class="form-check-label" asp-for="Cod4xCommandsEnabled"></label>
+    <div class="ibox">
+        <div class="ibox-title">
+            <h5><i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> CoD4x Command Minimum Power</h5>
         </div>
+        <div class="ibox-content">
+            <div class="form-check mb-3">
+                <input class="form-check-input" asp-for="Cod4xCommandsEnabled" />
+                <label class="form-check-label" asp-for="Cod4xCommandsEnabled"></label>
+            </div>
 
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>Command</th>
-                        <th style="width: 160px;">Enabled</th>
-                        <th style="width: 220px;">Minimum Power</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (var i = 0; i < Model.Cod4xCommands.Count; i++)
-                    {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead>
                         <tr>
-                            <td>
-                                <input type="hidden" asp-for="Cod4xCommands[i].Name" />
-                                <strong>@Model.Cod4xCommands[i].Name</strong>
-                            </td>
-                            <td>
-                                <div class="form-check">
-                                    <input class="form-check-input" asp-for="Cod4xCommands[i].Enabled" />
-                                </div>
-                            </td>
-                            <td>
-                                <input asp-for="Cod4xCommands[i].MinPower" class="form-control" type="number" />
-                                <span asp-validation-for="Cod4xCommands[i].MinPower" class="text-danger"></span>
-                            </td>
+                            <th>Command</th>
+                            <th style="width: 160px;">Enabled</th>
+                            <th style="width: 220px;">Minimum Power</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Cod4xCommands.Count; i++)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="hidden" asp-for="Cod4xCommands[i].Name" />
+                                    <strong>@Model.Cod4xCommands[i].Name</strong>
+                                </td>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input" asp-for="Cod4xCommands[i].Enabled" />
+                                    </div>
+                                </td>
+                                <td>
+                                    <input asp-for="Cod4xCommands[i].MinPower" class="form-control" type="number" />
+                                    <span asp-validation-for="Cod4xCommands[i].MinPower" class="text-danger"></span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
