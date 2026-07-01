@@ -402,15 +402,18 @@ public class GameServersController(
             if (authResult != null)
                 return authResult;
 
-            // Platform is immutable in Edit; ignore any client-posted value.
-            model.GameServer.Platform = gameServerData.Platform;
+            if (!Enum.IsDefined(model.GameServer.Platform) || model.GameServer.Platform == GameServerPlatform.Unknown)
+            {
+                var platformFieldName = $"{nameof(GameServerEditViewModel.GameServer)}.{nameof(GameServerViewModel.Platform)}";
+                ModelState.AddModelError(platformFieldName, "Platform is required.");
+            }
 
             var editGameServerDto = new EditGameServerDto(gameServerData.GameServerId)
             {
                 Title = model.GameServer.Title,
                 Hostname = model.GameServer.Hostname,
                 QueryPort = model.GameServer.QueryPort,
-                Platform = gameServerData.Platform
+                Platform = model.GameServer.Platform
             };
 
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);

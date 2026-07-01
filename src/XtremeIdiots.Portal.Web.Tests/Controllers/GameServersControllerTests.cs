@@ -1318,7 +1318,7 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public async Task Edit_WhenPlatformIsTamperedInPost_PreservesPersistedPlatform()
+    public async Task Edit_WhenPlatformIsPosted_UsesPostedPlatform()
     {
         // Arrange
         var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
@@ -1382,7 +1382,131 @@ public class GameServersControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", redirect.ActionName);
         Assert.NotNull(capturedUpdate);
-        Assert.Equal(existingServer.Platform, capturedUpdate.Platform);
+        Assert.Equal(tamperedPlatform, capturedUpdate.Platform);
+    }
+
+    [Fact]
+    public async Task Edit_WhenPlatformIsUnknown_ReturnsViewWithModelError()
+    {
+        // Arrange
+        var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Platform = RepositoryGameServerPlatform.Unknown,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = existingServer.AgentEnabled,
+                FileTransportEnabled = existingServer.FileTransportEnabled,
+                FileTransportType = existingServer.FileTransportType,
+                RconEnabled = existingServer.RconEnabled,
+                BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
+                BanFileRootPath = existingServer.BanFileRootPath,
+                ServerListEnabled = existingServer.ServerListEnabled
+            }
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        Assert.Same(model, viewResult.Model);
+        Assert.False(sut.ModelState.IsValid);
+        Assert.True(sut.ModelState.TryGetValue("GameServer.Platform", out var platformModelState));
+        Assert.NotNull(platformModelState);
+        Assert.Contains(platformModelState.Errors, static e => string.Equals(e.ErrorMessage, "Platform is required.", StringComparison.Ordinal));
+
+        mockRepositoryApiClient.Verify(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Edit_WhenPlatformEnumIsInvalid_ReturnsViewWithModelError()
+    {
+        // Arrange
+        var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Platform = (RepositoryGameServerPlatform)999,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = existingServer.AgentEnabled,
+                FileTransportEnabled = existingServer.FileTransportEnabled,
+                FileTransportType = existingServer.FileTransportType,
+                RconEnabled = existingServer.RconEnabled,
+                BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
+                BanFileRootPath = existingServer.BanFileRootPath,
+                ServerListEnabled = existingServer.ServerListEnabled
+            }
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        Assert.Same(model, viewResult.Model);
+        Assert.False(sut.ModelState.IsValid);
+        Assert.True(sut.ModelState.TryGetValue("GameServer.Platform", out var platformModelState));
+        Assert.NotNull(platformModelState);
+        Assert.Contains(platformModelState.Errors, static e => string.Equals(e.ErrorMessage, "Platform is required.", StringComparison.Ordinal));
+
+        mockRepositoryApiClient.Verify(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

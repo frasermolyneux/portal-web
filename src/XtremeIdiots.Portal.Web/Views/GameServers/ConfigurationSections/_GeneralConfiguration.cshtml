@@ -15,9 +15,7 @@
         </div>
         <div class="mb-3">
             <label asp-for="GameServer.Platform" class="form-label"></label>
-            <select asp-for="GameServer.Platform" class="form-select" asp-items="ViewBag.Platform"
-                    disabled="disabled"></select>
-            <input type="hidden" asp-for="GameServer.Platform" />
+            <select asp-for="GameServer.Platform" class="form-select" asp-items="ViewBag.Platform"></select>
             <span asp-validation-for="GameServer.Platform" class="text-danger"></span>
         </div>
         <div class="mb-3">
