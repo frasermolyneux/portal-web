@@ -101,7 +101,8 @@ public class NamespaceSettingsParserTests
         var pluginConfig = BuildConfiguration(Cod4xPluginSettingsConstants.Namespace, /*lang=json,strict*/ """
         {
           "schemaVersion": 1,
-          "enabled": true
+          "enabled": true,
+          "pluginRootDirectory": "/plugins"
         }
         """);
 
@@ -131,6 +132,7 @@ public class NamespaceSettingsParserTests
         parser.PopulateGlobalSettingsViewModel(model, commandConfig, logger);
 
         Assert.True(model.Cod4xPluginEnabled);
+        Assert.Equal("/plugins", model.Cod4xPluginRootDirectory);
         Assert.True(model.Cod4xPowerEnabled);
         Assert.Equal(55, model.Cod4xPowerDefaultPower);
         Assert.Contains("SeniorAdmin", model.Cod4xPowerTagMappingsJson, StringComparison.Ordinal);
@@ -155,7 +157,23 @@ public class NamespaceSettingsParserTests
         var pluginConfig = BuildConfiguration(Cod4xPluginSettingsConstants.Namespace, /*lang=json,strict*/ """
         {
           "schemaVersion": 1,
-          "enabled": true
+          "enabled": true,
+          "pluginRootDirectory": "/servers/cod4x/plugins",
+          "runtimeState": {
+            "currentVersion": "1.2.3",
+            "previousKnownGoodVersion": "1.2.2",
+            "lastOperationId": "op-123",
+            "lastOperationStatus": "Succeeded",
+            "lastOperationUtc": "2026-01-01T12:00:00Z",
+            "lastError": "none"
+          },
+          "operationRequest": {
+            "operationId": "op-124",
+            "action": "Install",
+            "targetVersion": "1.2.4",
+            "requestedAtUtc": "2026-01-01T13:00:00Z",
+            "requestedBy": "tester"
+          }
         }
         """);
 
@@ -189,6 +207,16 @@ public class NamespaceSettingsParserTests
         Assert.False(model.Cod4xInheritCommandSettings);
 
         Assert.True(model.Cod4xPluginEnabled);
+        Assert.Equal("/servers/cod4x/plugins", model.Cod4xPluginRootDirectory);
+        Assert.Equal("1.2.3", model.Cod4xRuntimeCurrentVersion);
+        Assert.Equal("1.2.2", model.Cod4xRuntimePreviousKnownGoodVersion);
+        Assert.Equal("op-123", model.Cod4xRuntimeLastOperationId);
+        Assert.Equal(Cod4xPluginOperationStatus.Succeeded, model.Cod4xRuntimeLastOperationStatus);
+        Assert.Equal("none", model.Cod4xRuntimeLastError);
+        Assert.Equal("op-124", model.Cod4xOperationRequestOperationId);
+        Assert.Equal(Cod4xPluginOperationAction.Install, model.Cod4xOperationRequestAction);
+        Assert.Equal("1.2.4", model.Cod4xOperationRequestTargetVersion);
+        Assert.Equal("tester", model.Cod4xOperationRequestRequestedBy);
         Assert.True(model.Cod4xPowerEnabled);
         Assert.Equal(60, model.Cod4xPowerDefaultPower);
         Assert.Contains("Moderator", model.Cod4xPowerTagMappingsJson, StringComparison.Ordinal);
@@ -197,6 +225,47 @@ public class NamespaceSettingsParserTests
         var kickCommand = Assert.Single(model.Cod4xCommands, static command => string.Equals(command.Name, "kick", StringComparison.OrdinalIgnoreCase));
         Assert.False(kickCommand.Enabled);
         Assert.Equal(88, kickCommand.MinPower);
+    }
+
+    [Fact]
+    public void PopulateGameServerSettingsViewModel_Cod4xPluginLifecycleOnly_PreservesInheritAndMapsRuntimeState()
+    {
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameType = GameType.CallOfDuty4x
+            }
+        };
+
+        var pluginConfig = BuildConfiguration(Cod4xPluginSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "runtimeState": {
+            "currentVersion": "1.2.3",
+            "lastOperationId": "op-123",
+            "lastOperationStatus": "Succeeded"
+          },
+          "operationRequest": {
+            "operationId": "op-124",
+            "action": "Install",
+            "targetVersion": "1.2.4",
+            "requestedBy": "tester"
+          }
+        }
+        """);
+
+        parser.PopulateGameServerSettingsViewModel(model, pluginConfig, logger);
+
+        Assert.True(model.Cod4xInheritPluginSettings);
+        Assert.False(model.Cod4xPluginEnabled);
+        Assert.Equal("1.2.3", model.Cod4xRuntimeCurrentVersion);
+        Assert.Equal("op-123", model.Cod4xRuntimeLastOperationId);
+        Assert.Equal(Cod4xPluginOperationStatus.Succeeded, model.Cod4xRuntimeLastOperationStatus);
+        Assert.Equal("op-124", model.Cod4xOperationRequestOperationId);
+        Assert.Equal(Cod4xPluginOperationAction.Install, model.Cod4xOperationRequestAction);
+        Assert.Equal("1.2.4", model.Cod4xOperationRequestTargetVersion);
+        Assert.Equal("tester", model.Cod4xOperationRequestRequestedBy);
     }
 
     [Fact]

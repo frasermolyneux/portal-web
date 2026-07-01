@@ -86,6 +86,10 @@ public class GlobalSettingsViewModel : IValidatableObject
     [DisplayName("CoD4x Plugin Enabled")]
     public bool Cod4xPluginEnabled { get; set; }
 
+    [DisplayName("Plugin Root Directory")]
+    [MaxLength(512, ErrorMessage = "Plugin root directory must be 512 characters or fewer.")]
+    public string? Cod4xPluginRootDirectory { get; set; }
+
     // CoD4x power defaults
 
     [DisplayName("CoD4x Power Sync Enabled")]

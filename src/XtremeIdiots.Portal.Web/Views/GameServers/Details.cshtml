@@ -34,6 +34,10 @@
                                 <dd class="detail-value">@Html.DisplayFor(model => model.GameType)</dd>
                             </div>
                             <div class="detail-field col-sm-6">
+                                <dt class="detail-label">@Html.DisplayNameFor(model => model.Platform)</dt>
+                                <dd class="detail-value">@Html.DisplayFor(model => model.Platform)</dd>
+                            </div>
+                            <div class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.Hostname)</dt>
                                 <dd class="detail-value">
                                     <server-host host="@Model.Hostname" port="@Model.QueryPort"></server-host>

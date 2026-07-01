@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
@@ -164,6 +165,32 @@ public class GameServerEditViewModel : IValidatableObject
     [DisplayName("CoD4x Plugin Enabled")]
     public bool Cod4xPluginEnabled { get; set; }
 
+    [DisplayName("Plugin Root Directory")]
+    [MaxLength(512, ErrorMessage = "Plugin root directory must be 512 characters or fewer.")]
+    public string? Cod4xPluginRootDirectory { get; set; }
+
+    public string? Cod4xRuntimeCurrentVersion { get; set; }
+
+    public string? Cod4xRuntimePreviousKnownGoodVersion { get; set; }
+
+    public string? Cod4xRuntimeLastOperationId { get; set; }
+
+    public Cod4xPluginOperationStatus Cod4xRuntimeLastOperationStatus { get; set; } = Cod4xPluginOperationStatus.Unknown;
+
+    public DateTimeOffset? Cod4xRuntimeLastOperationUtc { get; set; }
+
+    public string? Cod4xRuntimeLastError { get; set; }
+
+    public string? Cod4xOperationRequestOperationId { get; set; }
+
+    public Cod4xPluginOperationAction Cod4xOperationRequestAction { get; set; } = Cod4xPluginOperationAction.Unknown;
+
+    public string? Cod4xOperationRequestTargetVersion { get; set; }
+
+    public DateTimeOffset? Cod4xOperationRequestRequestedAtUtc { get; set; }
+
+    public string? Cod4xOperationRequestRequestedBy { get; set; }
+
     // CoD4x power settings
 
     [DisplayName("Inherit Global CoD4x Power Settings")]
@@ -195,6 +222,8 @@ public class GameServerEditViewModel : IValidatableObject
     // CoD4x global defaults for reference on server-level overrides
 
     public bool GlobalCod4xPluginEnabled { get; set; }
+
+    public string? GlobalCod4xPluginRootDirectory { get; set; }
 
     public bool GlobalCod4xPowerEnabled { get; set; }
 

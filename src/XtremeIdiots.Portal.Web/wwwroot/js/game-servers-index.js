@@ -13,17 +13,18 @@ $(document).ready(function () {
             autoWidth: false,
             paging: true,
             pageLength: 25,
-            order: [[0, 'asc']], // Position ascending
+            order: [[0, 'asc']], // Game type ascending
             columnDefs: [
                 { targets: 0, responsivePriority: 3 }, // Game Type
-                { targets: 1, responsivePriority: 1 }, // Title - always visible
-                { targets: 2, responsivePriority: 4 }, // Hostname
-                { targets: 3, responsivePriority: 7 }, // FileTransportEnabled
-                { targets: 4, responsivePriority: 8 }, // RconEnabled
-                { targets: 5, responsivePriority: 9 }, // AgentEnabled
-                { targets: 6, responsivePriority: 10 }, // BanFileSyncEnabled
-                { targets: 7, responsivePriority: 11 }, // ServerListEnabled
-                { targets: 8, responsivePriority: 2 }  // Actions - high priority
+                { targets: 1, responsivePriority: 6 }, // Platform
+                { targets: 2, responsivePriority: 1 }, // Title - always visible
+                { targets: 3, responsivePriority: 4 }, // Hostname
+                { targets: 4, responsivePriority: 7 }, // FileTransportEnabled
+                { targets: 5, responsivePriority: 8 }, // RconEnabled
+                { targets: 6, responsivePriority: 9 }, // AgentEnabled
+                { targets: 7, responsivePriority: 10 }, // BanFileSyncEnabled
+                { targets: 8, responsivePriority: 11 }, // ServerListEnabled
+                { targets: 9, responsivePriority: 2 }  // Actions - high priority
             ],
             language: {
                 search: '<i class="fa fa-search" aria-hidden="true"></i>',

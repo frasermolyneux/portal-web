@@ -83,6 +83,9 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 case GameServersAdminRconScreenshot:
                     HandleAdminRconScreenshot(context, requirement);
                     break;
+                case GameServersAdminCoD4xPluginLifecycle:
+                    HandleAdminCoD4xPluginLifecycle(context, requirement);
+                    break;
                 case GameServersAdminScreenshotsRead:
                     HandleAdminScreenshotsRead(context, requirement);
                     break;
@@ -281,6 +284,12 @@ public class GameServersAuthHandler : IAuthorizationHandler
     {
         BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Screenshot");
+    }
+
+    private static void HandleAdminCoD4xPluginLifecycle(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
+        BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle);
     }
 
     private static void HandleAdminScreenshotsRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)

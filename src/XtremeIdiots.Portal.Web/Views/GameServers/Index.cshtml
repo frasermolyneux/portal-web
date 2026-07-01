@@ -49,6 +49,9 @@
                                                 @Html.DisplayNameFor(model => model.GameType)
                                             </th>
                                             <th scope="col">
+                                                @Html.DisplayNameFor(model => model.Platform)
+                                            </th>
+                                            <th scope="col">
                                                 @Html.DisplayNameFor(model => model.Title)
                                             </th>
                                             <th scope="col">
@@ -76,6 +79,9 @@
                                             <tr>
                                                 <td>
                                                     <game-type-icon game="@item.GameType"></game-type-icon>
+                                                </td>
+                                                <td>
+                                                    @Html.DisplayFor(modelItem => item.Platform)
                                                 </td>
                                                 <td>
                                                     @Html.DisplayFor(modelItem => item.Title)

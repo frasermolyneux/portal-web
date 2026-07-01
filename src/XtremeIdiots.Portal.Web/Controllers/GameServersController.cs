@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using MX.Observability.ApplicationInsights.Auditing;
+using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -37,6 +39,14 @@ public class GameServersController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
+    private readonly static JsonSerializerOptions cod4xPluginJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+    };
+
+    private bool skipCod4xPluginNamespaceMutations;
 
     /// <summary>
     /// Displays a list of game servers accessible to the current user
@@ -117,6 +127,7 @@ public class GameServersController(
                 return Forbid();
 
             AddGameTypeViewData();
+            AddPlatformViewData();
             return await Task.FromResult(View(new GameServerViewModel())).ConfigureAwait(false);
         }, nameof(Create)).ConfigureAwait(false);
     }
@@ -127,7 +138,16 @@ public class GameServersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var modelValidationResult = CheckModelState(model, m => AddGameTypeViewData(m.GameType));
+            if (!Enum.IsDefined(model.Platform) || model.Platform == GameServerPlatform.Unknown)
+            {
+                ModelState.AddModelError(nameof(model.Platform), "Platform is required.");
+            }
+
+            var modelValidationResult = CheckModelState(model, m =>
+            {
+                AddGameTypeViewData(m.GameType);
+                AddPlatformViewData(m.Platform);
+            });
             if (modelValidationResult is not null)
                 return modelValidationResult;
 
@@ -149,6 +169,7 @@ public class GameServersController(
             createGameServerDto.Title = model.Title;
             createGameServerDto.Hostname = model.Hostname;
             createGameServerDto.QueryPort = model.QueryPort;
+            createGameServerDto.Platform = model.Platform;
 
             createGameServerDto.AgentEnabled = model.AgentEnabled;
             createGameServerDto.SetFileTransportProperties(model.FileTransportEnabled, model.FileTransportType);
@@ -177,6 +198,7 @@ public class GameServersController(
 
                 this.AddAlertDanger("Failed to create the game server. Please try again.");
                 AddGameTypeViewData(model.GameType);
+                AddPlatformViewData(model.Platform);
                 return View(model);
             }
         }, "CreatePost").ConfigureAwait(false);
@@ -266,6 +288,7 @@ public class GameServersController(
 
             var gameServerData = gameServerApiResponse.Result.Data;
             AddGameTypeViewData(gameServerData.GameType);
+            AddPlatformViewData(gameServerData.Platform);
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -379,11 +402,15 @@ public class GameServersController(
             if (authResult != null)
                 return authResult;
 
+            // Platform is immutable in Edit; ignore any client-posted value.
+            model.GameServer.Platform = gameServerData.Platform;
+
             var editGameServerDto = new EditGameServerDto(gameServerData.GameServerId)
             {
                 Title = model.GameServer.Title,
                 Hostname = model.GameServer.Hostname,
-                QueryPort = model.GameServer.QueryPort
+                QueryPort = model.GameServer.QueryPort,
+                Platform = gameServerData.Platform
             };
 
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
@@ -391,6 +418,19 @@ public class GameServersController(
             var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
+
+            if (gameServerData.GameType == GameType.CallOfDuty4x)
+            {
+                var cod4xStatePreserved = await PreserveServerManagedCod4xLifecycleStateAsync(model, gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
+                if (!cod4xStatePreserved)
+                {
+                    ModelState.AddModelError(string.Empty, "Failed to load CoD4x plugin lifecycle state. Please retry.");
+                    AddGameTypeViewData(model.GameServer.GameType);
+                    AddPlatformViewData(model.GameServer.Platform);
+                    await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                    return View(model);
+                }
+            }
 
             if (!canConfigureScreenshots.Succeeded)
             {
@@ -405,7 +445,11 @@ public class GameServersController(
                 ModelState.Remove(nameof(GameServerEditViewModel.ScreenshotConfigPollIntervalSeconds));
             }
 
-            var modelValidationResult = CheckModelState(model, m => AddGameTypeViewData(m.GameServer.GameType));
+            var modelValidationResult = CheckModelState(model, m =>
+            {
+                AddGameTypeViewData(m.GameServer.GameType);
+                AddPlatformViewData(m.GameServer.Platform);
+            });
             if (modelValidationResult is not null)
             {
                 await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
@@ -418,6 +462,7 @@ public class GameServersController(
             {
                 ModelState.AddModelError(string.Empty, "Failed to verify existing passwords. Please try again.");
                 AddGameTypeViewData(model.GameServer.GameType);
+                AddPlatformViewData(model.GameServer.Platform);
                 await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
                 return View(model);
             }
@@ -442,6 +487,7 @@ public class GameServersController(
             {
                 ModelState.AddModelError(nameof(model.FtpConfigHostKeyFingerprint), "SFTP host key fingerprint is required when SFTP is enabled.");
                 AddGameTypeViewData(model.GameServer.GameType);
+                AddPlatformViewData(model.GameServer.Platform);
                 await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
                 return View(model);
             }
@@ -451,6 +497,7 @@ public class GameServersController(
             {
                 ModelState.AddModelError(nameof(model.FtpConfigMapsRootPath), "Maps root path cannot contain path traversal segments.");
                 AddGameTypeViewData(model.GameServer.GameType);
+                AddPlatformViewData(model.GameServer.Platform);
                 await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
                 return View(model);
             }
@@ -470,6 +517,7 @@ public class GameServersController(
 
                 this.AddAlertDanger("Failed to update the game server. Please try again.");
                 AddGameTypeViewData(model.GameServer.GameType);
+                AddPlatformViewData(model.GameServer.Platform);
                 await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
                 return View(model);
             }
@@ -613,6 +661,26 @@ public class GameServersController(
         }
     }
 
+    private void AddPlatformViewData(GameServerPlatform? selected = null)
+    {
+        try
+        {
+            selected ??= GameServerPlatform.Unknown;
+
+            var platforms = Enum.GetValues<GameServerPlatform>();
+            ViewData[nameof(GameServerViewModel.Platform)] = new SelectList(platforms, selected);
+
+            Logger.LogDebug("Added {PlatformCount} platforms to ViewData with {SelectedPlatform} selected",
+                platforms.Length, selected);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adding platform ViewData for user {UserId}", User.XtremeIdiotsId());
+
+            ViewData[nameof(GameServerViewModel.Platform)] = new SelectList(Array.Empty<GameServerPlatform>(), selected ?? GameServerPlatform.Unknown);
+        }
+    }
+
     private void PopulateConfigFromNamespace(GameServerEditViewModel editModel, ConfigurationDto config)
     {
         gameServerSettingsService.PopulateConfigFromNamespace(editModel, config, Logger);
@@ -689,6 +757,82 @@ public class GameServersController(
         }
     }
 
+    private async Task<bool> PreserveServerManagedCod4xLifecycleStateAsync(
+        GameServerEditViewModel model,
+        Guid gameServerId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var configsResult = await repositoryApiClient.GameServerConfigurations.V1
+                .GetConfigurations(gameServerId, cancellationToken).ConfigureAwait(false);
+
+            if (!configsResult.IsSuccess || configsResult.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to load CoD4x lifecycle state for game server {GameServerId}", gameServerId);
+                return false;
+            }
+
+            var cod4xPluginConfig = configsResult.Result.Data.Items.FirstOrDefault(static config =>
+                string.Equals(config.Namespace, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase));
+
+            if (cod4xPluginConfig is null || string.IsNullOrWhiteSpace(cod4xPluginConfig.Configuration))
+            {
+                skipCod4xPluginNamespaceMutations = false;
+                ResetCod4xServerManagedFields(model);
+                return true;
+            }
+
+            if (!Cod4xPluginSettingsJsonHelper.TryDeserialize(
+                cod4xPluginConfig.Configuration,
+                cod4xPluginJsonOptions,
+                out var cod4xPluginDocument)
+                || cod4xPluginDocument is null)
+            {
+                skipCod4xPluginNamespaceMutations = true;
+                Logger.LogWarning("Failed to parse CoD4x plugin lifecycle state for game server {GameServerId}. Skipping CoD4x plugin namespace updates for this request.", gameServerId);
+                ResetCod4xServerManagedFields(model);
+                return true;
+            }
+
+            skipCod4xPluginNamespaceMutations = false;
+
+            model.Cod4xRuntimeCurrentVersion = cod4xPluginDocument.RuntimeState?.CurrentVersion;
+            model.Cod4xRuntimePreviousKnownGoodVersion = cod4xPluginDocument.RuntimeState?.PreviousKnownGoodVersion;
+            model.Cod4xRuntimeLastOperationId = cod4xPluginDocument.RuntimeState?.LastOperationId;
+            model.Cod4xRuntimeLastOperationStatus = cod4xPluginDocument.RuntimeState?.LastOperationStatus ?? Cod4xPluginOperationStatus.Unknown;
+            model.Cod4xRuntimeLastOperationUtc = cod4xPluginDocument.RuntimeState?.LastOperationUtc;
+            model.Cod4xRuntimeLastError = cod4xPluginDocument.RuntimeState?.LastError;
+            model.Cod4xOperationRequestOperationId = cod4xPluginDocument.OperationRequest?.OperationId;
+            model.Cod4xOperationRequestAction = cod4xPluginDocument.OperationRequest?.Action ?? Cod4xPluginOperationAction.Unknown;
+            model.Cod4xOperationRequestTargetVersion = cod4xPluginDocument.OperationRequest?.TargetVersion;
+            model.Cod4xOperationRequestRequestedAtUtc = cod4xPluginDocument.OperationRequest?.RequestedAtUtc;
+            model.Cod4xOperationRequestRequestedBy = cod4xPluginDocument.OperationRequest?.RequestedBy;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to preserve CoD4x lifecycle state for game server {GameServerId}", gameServerId);
+            return false;
+        }
+    }
+
+    private static void ResetCod4xServerManagedFields(GameServerEditViewModel model)
+    {
+        model.Cod4xRuntimeCurrentVersion = null;
+        model.Cod4xRuntimePreviousKnownGoodVersion = null;
+        model.Cod4xRuntimeLastOperationId = null;
+        model.Cod4xRuntimeLastOperationStatus = Cod4xPluginOperationStatus.Unknown;
+        model.Cod4xRuntimeLastOperationUtc = null;
+        model.Cod4xRuntimeLastError = null;
+        model.Cod4xOperationRequestOperationId = null;
+        model.Cod4xOperationRequestAction = Cod4xPluginOperationAction.Unknown;
+        model.Cod4xOperationRequestTargetVersion = null;
+        model.Cod4xOperationRequestRequestedAtUtc = null;
+        model.Cod4xOperationRequestRequestedBy = null;
+    }
+
     private async Task SaveConfigNamespacesAsync(
         GameServerEditViewModel model,
         Guid gameServerId,
@@ -698,24 +842,41 @@ public class GameServersController(
         List<string> errors,
         CancellationToken cancellationToken)
     {
-        var serverTitle = model.GameServer.Title ?? "";
-        var namespacesToUpsert = gameServerSettingsService.BuildNamespaceConfigurations(model, canEditFileTransport, canEditRcon, canConfigureScreenshots);
-        var upsertedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var (ns, json) in namespacesToUpsert)
+        try
         {
-            upsertedNamespaces.Add(ns);
-            await UpsertConfigSafeAsync(gameServerId, ns, json, serverTitle, errors, cancellationToken).ConfigureAwait(false);
-        }
+            var serverTitle = model.GameServer.Title ?? "";
+            var namespacesToUpsert = gameServerSettingsService.BuildNamespaceConfigurations(model, canEditFileTransport, canEditRcon, canConfigureScreenshots);
+            var upsertedNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var ns in gameServerSettingsService.DeletedNamespaces)
-        {
-            if (upsertedNamespaces.Contains(ns))
+            foreach (var (ns, json) in namespacesToUpsert)
             {
-                continue;
+                if (skipCod4xPluginNamespaceMutations && string.Equals(ns, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                upsertedNamespaces.Add(ns);
+                await UpsertConfigSafeAsync(gameServerId, ns, json, serverTitle, errors, cancellationToken).ConfigureAwait(false);
             }
 
-            await DeleteConfigSafeAsync(gameServerId, ns, errors, cancellationToken).ConfigureAwait(false);
+            foreach (var ns in gameServerSettingsService.DeletedNamespaces)
+            {
+                if (skipCod4xPluginNamespaceMutations && string.Equals(ns, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (upsertedNamespaces.Contains(ns))
+                {
+                    continue;
+                }
+
+                await DeleteConfigSafeAsync(gameServerId, ns, errors, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            skipCod4xPluginNamespaceMutations = false;
         }
     }
 

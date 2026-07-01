@@ -1,6 +1,7 @@
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services;
 
@@ -21,6 +22,7 @@ public class ServerDetailViewModel
     public bool CanViewStatus { get; set; }
     public bool CanEditServer { get; set; }
     public bool CanViewFeedEvents { get; set; }
+    public bool CanManageCoD4xPluginLifecycle { get; set; }
 
     // Fine-grained RCON action flags — determines which buttons are rendered within the RCON tab
     public bool CanSay { get; set; }
@@ -34,4 +36,19 @@ public class ServerDetailViewModel
 
     // Agent & Ban File tab data
     public List<BanFileMonitorDto> BanFileMonitors { get; set; } = [];
+
+    // CoD4x plugin lifecycle state
+    public bool? Cod4xPluginEnabled { get; set; }
+    public string? Cod4xPluginRootDirectory { get; set; }
+    public string? Cod4xRuntimeCurrentVersion { get; set; }
+    public string? Cod4xRuntimePreviousKnownGoodVersion { get; set; }
+    public string? Cod4xRuntimeLastOperationId { get; set; }
+    public Cod4xPluginOperationStatus Cod4xRuntimeLastOperationStatus { get; set; } = Cod4xPluginOperationStatus.Unknown;
+    public DateTimeOffset? Cod4xRuntimeLastOperationUtc { get; set; }
+    public string? Cod4xRuntimeLastError { get; set; }
+    public string? Cod4xOperationRequestOperationId { get; set; }
+    public Cod4xPluginOperationAction Cod4xOperationRequestAction { get; set; } = Cod4xPluginOperationAction.Unknown;
+    public string? Cod4xOperationRequestTargetVersion { get; set; }
+    public DateTimeOffset? Cod4xOperationRequestRequestedAtUtc { get; set; }
+    public string? Cod4xOperationRequestRequestedBy { get; set; }
 }

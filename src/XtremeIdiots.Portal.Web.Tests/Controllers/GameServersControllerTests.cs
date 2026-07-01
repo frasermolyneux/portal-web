@@ -20,6 +20,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -28,6 +29,7 @@ using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 using RepositoryFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
+using RepositoryGameServerPlatform = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameServerPlatform;
 using RepositoryGameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -1145,6 +1147,7 @@ public class GameServersControllerTests
                 GameServerId = existingServer.GameServerId,
                 Title = existingServer.Title,
                 GameType = existingServer.GameType,
+                Platform = existingServer.Platform,
                 Hostname = existingServer.Hostname,
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = existingServer.AgentEnabled,
@@ -1209,6 +1212,7 @@ public class GameServersControllerTests
                 GameServerId = existingServer.GameServerId,
                 Title = existingServer.Title,
                 GameType = existingServer.GameType,
+                Platform = existingServer.Platform,
                 Hostname = existingServer.Hostname,
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = false,
@@ -1285,6 +1289,7 @@ public class GameServersControllerTests
                 GameServerId = existingServer.GameServerId,
                 Title = existingServer.Title,
                 GameType = existingServer.GameType,
+                Platform = existingServer.Platform,
                 Hostname = existingServer.Hostname,
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = true,
@@ -1312,6 +1317,222 @@ public class GameServersControllerTests
         Assert.False(capturedUpdate.RconEnabled);
     }
 
+    [Fact]
+    public async Task Edit_WhenPlatformIsTamperedInPost_PreservesPersistedPlatform()
+    {
+        // Arrange
+        var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        EditGameServerDto? capturedUpdate = null;
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .Callback<EditGameServerDto, CancellationToken>((dto, _) => capturedUpdate = dto)
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var tamperedPlatform = existingServer.Platform == RepositoryGameServerPlatform.Windows
+            ? RepositoryGameServerPlatform.Linux
+            : RepositoryGameServerPlatform.Windows;
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Platform = tamperedPlatform,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = existingServer.AgentEnabled,
+                FileTransportEnabled = existingServer.FileTransportEnabled,
+                FileTransportType = existingServer.FileTransportType,
+                RconEnabled = existingServer.RconEnabled,
+                BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
+                BanFileRootPath = existingServer.BanFileRootPath,
+                ServerListEnabled = existingServer.ServerListEnabled
+            }
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.NotNull(capturedUpdate);
+        Assert.Equal(existingServer.Platform, capturedUpdate.Platform);
+    }
+
+    [Fact]
+    public async Task Edit_WhenCod4xPluginConfigIsMalformed_DoesNotBlockAndSkipsCod4xPluginNamespaceMutation()
+    {
+        // Arrange
+        var existingServer = JsonConvert.DeserializeObject<GameServerDto>(JsonConvert.SerializeObject(new
+        {
+            GameServerId = Guid.NewGuid(),
+            Title = "CoD4x Test Server",
+            GameType = RepositoryGameType.CallOfDuty4x,
+            Platform = "Windows",
+            Hostname = "127.0.0.1",
+            QueryPort = 28960,
+            AgentEnabled = false,
+            FileTransportEnabled = false,
+            FileTransportType = "Ftp",
+            FtpEnabled = false,
+            RconEnabled = false,
+            BanFileSyncEnabled = false,
+            BanFileRootPath = "/",
+            ServerListEnabled = false,
+            ServerListPosition = 1
+        }))!;
+
+        var malformedCod4xPluginConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "cod4xPlugin",
+            Configuration = "{ bad-json",
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([malformedCod4xPluginConfig]))));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Credentials_Rcon_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Screenshots_Configure))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Platform = existingServer.Platform,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                AgentEnabled = existingServer.AgentEnabled,
+                FileTransportEnabled = existingServer.FileTransportEnabled,
+                FileTransportType = existingServer.FileTransportType,
+                RconEnabled = existingServer.RconEnabled,
+                BanFileSyncEnabled = existingServer.BanFileSyncEnabled,
+                BanFileRootPath = existingServer.BanFileRootPath,
+                ServerListEnabled = existingServer.ServerListEnabled,
+                ServerListPosition = existingServer.ServerListPosition
+            },
+            Cod4xInheritPluginSettings = true
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        // Assert
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            It.IsAny<Guid>(),
+            Cod4xPluginSettingsConstants.Namespace,
+            It.IsAny<UpsertConfigurationDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            It.IsAny<Guid>(),
+            Cod4xPluginSettingsConstants.Namespace,
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_WhenPlatformEnumIsInvalid_ReturnsViewWithModelError()
+    {
+        // Arrange
+        var model = new GameServerViewModel
+        {
+            Title = "Test Server",
+            GameType = RepositoryGameType.CallOfDuty4,
+            Platform = (RepositoryGameServerPlatform)999,
+            Hostname = "127.0.0.1",
+            QueryPort = 28960,
+            BanFileRootPath = "/"
+        };
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Create(model, CancellationToken.None);
+
+        // Assert
+        var viewResult = Assert.IsType<ViewResult>(result);
+        Assert.Same(model, viewResult.Model);
+        Assert.False(sut.ModelState.IsValid);
+        Assert.True(sut.ModelState.TryGetValue(nameof(GameServerViewModel.Platform), out var platformModelState));
+        Assert.NotNull(platformModelState);
+        Assert.Contains(platformModelState.Errors, static e => string.Equals(e.ErrorMessage, "Platform is required.", StringComparison.Ordinal));
+
+        mockRepositoryApiClient.Verify(x => x.GameServers.V1.CreateGameServer(It.IsAny<CreateGameServerDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static GameServerDto CreateGameServerDto(bool ftpEnabled, bool fileTransportEnabled, string fileTransportType)
     {
         var json = JsonConvert.SerializeObject(new
@@ -1319,6 +1540,7 @@ public class GameServersControllerTests
             GameServerId = Guid.NewGuid(),
             Title = "Test Server",
             GameType = RepositoryGameType.CallOfDuty4,
+            Platform = "Windows",
             Hostname = "127.0.0.1",
             QueryPort = 28960,
             AgentEnabled = false,

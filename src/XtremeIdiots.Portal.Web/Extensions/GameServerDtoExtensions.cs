@@ -15,6 +15,7 @@ public static class GameServerDtoExtensions
             GameServerId = gameServerDto.GameServerId,
             Title = gameServerDto.Title,
             GameType = gameServerDto.GameType,
+            Platform = gameServerDto.Platform,
             Hostname = gameServerDto.Hostname,
             QueryPort = gameServerDto.QueryPort,
             AgentEnabled = gameServerDto.AgentEnabled,

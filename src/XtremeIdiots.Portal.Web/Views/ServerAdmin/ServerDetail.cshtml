@@ -1,6 +1,8 @@
 @using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Web.Services
 @using XtremeIdiots.Portal.Web.ViewModels
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin
 @model ServerDetailViewModel
 
 @{
@@ -87,6 +89,8 @@
                                 <dd class="col-7"><server-host host="@gs.Hostname" port="@gs.QueryPort"></server-host></dd>
                                 <dt class="col-5">Game</dt>
                                 <dd class="col-7"><game-type-icon game="@gs.GameType" size="16" /> @gs.GameType</dd>
+                                <dt class="col-5">Platform</dt>
+                                <dd class="col-7">@gs.Platform</dd>
                                 @if (!string.IsNullOrWhiteSpace(liveStatus?.Map))
                                 {
                                     <dt class="col-5">Current Map</dt>
@@ -461,6 +465,83 @@
                                 }
                             </div>
                         </div>
+
+                        @if (Model.GameServer.GameType == GameType.CallOfDuty4x)
+                        {
+                            <div class="ibox">
+                                <div class="ibox-title"><h5>CoD4x Plugin Lifecycle</h5></div>
+                                <div class="ibox-content">
+                                    <dl class="row mb-3">
+                                        <dt class="col-5">Plugin Enabled</dt>
+                                        <dd class="col-7">@(Model.Cod4xPluginEnabled.HasValue ? (Model.Cod4xPluginEnabled.Value ? "Enabled" : "Disabled") : "Inherited")</dd>
+
+                                        <dt class="col-5">Plugin Root</dt>
+                                        <dd class="col-7">@(string.IsNullOrWhiteSpace(Model.Cod4xPluginRootDirectory) ? "-" : Model.Cod4xPluginRootDirectory)</dd>
+
+                                        <dt class="col-5">Current Version</dt>
+                                        <dd class="col-7">@(Model.Cod4xRuntimeCurrentVersion ?? "-")</dd>
+
+                                        <dt class="col-5">Known Good</dt>
+                                        <dd class="col-7">@(Model.Cod4xRuntimePreviousKnownGoodVersion ?? "-")</dd>
+
+                                        <dt class="col-5">Last Status</dt>
+                                        <dd class="col-7" id="sd-cod4x-lastStatus">@Model.Cod4xRuntimeLastOperationStatus</dd>
+
+                                        <dt class="col-5">Last Operation</dt>
+                                        <dd class="col-7">@(Model.Cod4xRuntimeLastOperationId ?? "-")</dd>
+
+                                        <dt class="col-5">Last Updated</dt>
+                                        <dd class="col-7">@(Model.Cod4xRuntimeLastOperationUtc?.ToString("u") ?? "-")</dd>
+
+                                        <dt class="col-5">Pending Request</dt>
+                                        <dd class="col-7">
+                                            @if (Model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown)
+                                            {
+                                                <span>@Model.Cod4xOperationRequestAction</span>
+                                                @if (!string.IsNullOrWhiteSpace(Model.Cod4xOperationRequestTargetVersion))
+                                                {
+                                                    <span> (@Model.Cod4xOperationRequestTargetVersion)</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </dd>
+                                    </dl>
+
+                                    @if (!string.IsNullOrWhiteSpace(Model.Cod4xRuntimeLastError))
+                                    {
+                                        <div class="alert alert-warning mb-3">
+                                            <strong>Last Error:</strong> @Model.Cod4xRuntimeLastError
+                                        </div>
+                                    }
+
+                                    @if (Model.CanManageCoD4xPluginLifecycle)
+                                    {
+                                        <div class="mb-2">
+                                            <label for="sd-cod4x-targetVersion" class="form-label">Target Version (for Install)</label>
+                                            <input id="sd-cod4x-targetVersion" type="text" class="form-control" placeholder="e.g. 1.2.4" />
+                                        </div>
+                                        <div class="d-grid gap-2">
+                                            <button id="sd-cod4x-install" type="button" class="btn btn-primary btn-sm">
+                                                <i class="fa-solid fa-fw fa-download" aria-hidden="true"></i> Request Install
+                                            </button>
+                                            <button id="sd-cod4x-rollback" type="button" class="btn btn-outline-secondary btn-sm">
+                                                <i class="fa-solid fa-fw fa-rotate-left" aria-hidden="true"></i> Request Rollback
+                                            </button>
+                                            <button id="sd-cod4x-unload" type="button" class="btn btn-outline-danger btn-sm">
+                                                <i class="fa-solid fa-fw fa-eject" aria-hidden="true"></i> Request Unload
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted mb-0">You do not have permission to request plugin lifecycle operations.</p>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -594,6 +675,44 @@
             if (typeof ServerFeed !== 'undefined' && modulesStarted.serverFeed) ServerFeed.setRefreshEnabled(refreshEnabled);
             if (typeof RconServerStatus !== 'undefined') RconServerStatus.setRefreshEnabled(refreshEnabled);
         });
+
+        function requestCod4xPluginOperation(action) {
+            var targetVersion = $('#sd-cod4x-targetVersion').val();
+            if (action === 'Install' && (!targetVersion || !String(targetVersion).trim())) {
+                toastr.warning('Target version is required for install operations.');
+                return;
+            }
+
+            $.ajax({
+                url: '/ServerAdmin/RequestCod4xPluginOperation',
+                type: 'POST',
+                headers: { 'RequestVerificationToken': antiForgeryToken },
+                data: {
+                    id: serverId,
+                    action: action,
+                    targetVersion: targetVersion
+                },
+                success: function(response) {
+                    if (response && response.success) {
+                        toastr.success(response.message || 'CoD4x plugin operation requested.');
+                        setTimeout(function () { window.location.reload(); }, 1200);
+                        return;
+                    }
+
+                    toastr.error((response && response.message) || 'Failed to request CoD4x plugin operation.');
+                },
+                error: function(xhr) {
+                    var responseMessage = xhr && xhr.responseJSON && xhr.responseJSON.message
+                        ? xhr.responseJSON.message
+                        : 'Failed to request CoD4x plugin operation.';
+                    toastr.error(responseMessage);
+                }
+            });
+        }
+
+        $('#sd-cod4x-install').on('click', function () { requestCod4xPluginOperation('Install'); });
+        $('#sd-cod4x-rollback').on('click', function () { requestCod4xPluginOperation('Rollback'); });
+        $('#sd-cod4x-unload').on('click', function () { requestCod4xPluginOperation('Unload'); });
 
         // Start/stop modules on tab visibility
         $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {

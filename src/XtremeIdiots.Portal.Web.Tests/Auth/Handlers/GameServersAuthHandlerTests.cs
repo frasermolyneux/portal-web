@@ -89,6 +89,32 @@ public class GameServersAuthHandlerTests
         Assert.True(context.HasSucceeded);
     }
 
+    [Fact]
+    public async Task HandleAsync_CoD4xPluginLifecycle_SucceedsForHeadAdmin()
+    {
+        var requirement = new GameServersAdminCoD4xPluginLifecycle();
+        var user = CreateUser(new Claim(UserProfileClaimType.HeadAdmin, GameType.CallOfDuty4x.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4x);
+
+        var sut = new GameServersAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CoD4xPluginLifecycle_SucceedsForDirectPermissionGrant()
+    {
+        var requirement = new GameServersAdminCoD4xPluginLifecycle();
+        var user = CreateUser(new Claim(AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4x);
+
+        var sut = new GameServersAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
     private static ClaimsPrincipal CreateUser(params Claim[] claims)
     {
         var identity = new ClaimsIdentity(claims, authenticationType: "TestAuthType");

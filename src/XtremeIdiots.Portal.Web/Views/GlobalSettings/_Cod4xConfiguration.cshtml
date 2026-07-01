@@ -11,6 +11,11 @@
             <label class="form-check-label" asp-for="Cod4xPluginEnabled"></label>
         </div>
         <span asp-validation-for="Cod4xPluginEnabled" class="text-danger"></span>
+        <div class="mt-3 mb-2">
+            <label asp-for="Cod4xPluginRootDirectory" class="form-label"></label>
+            <input asp-for="Cod4xPluginRootDirectory" class="form-control" type="text" placeholder="/plugins" />
+            <span asp-validation-for="Cod4xPluginRootDirectory" class="text-danger"></span>
+        </div>
         <p class="text-muted mb-0">Controls whether CoD4x plugin synchronization is enabled by default.</p>
     </div>
 </div>

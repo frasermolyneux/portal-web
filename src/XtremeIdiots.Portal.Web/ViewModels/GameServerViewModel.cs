@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using GameServerPlatform = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameServerPlatform;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
@@ -28,6 +29,13 @@ public class GameServerViewModel
     [Required]
     [DisplayName("Game")]
     public GameType GameType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the operating system platform for the server host
+    /// </summary>
+    [Required]
+    [DisplayName("Platform")]
+    public GameServerPlatform Platform { get; set; }
 
     /// <summary>
     /// Gets or sets the hostname or IP address of the game server

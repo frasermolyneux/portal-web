@@ -45,6 +45,7 @@ public static class AuthPolicies
     public const string GameServers_Admin_Rcon_Say = "GameServers.Admin.Rcon.Say";
     public const string GameServers_Admin_Rcon_Restart = "GameServers.Admin.Rcon.Restart";
     public const string GameServers_Admin_Rcon_Screenshot = "GameServers.Admin.Rcon.Screenshot";
+    public const string GameServers_Admin_CoD4xPluginLifecycle = "GameServers.Admin.CoD4xPluginLifecycle";
     public const string GameServers_Admin_Screenshots_Read = "GameServers.Admin.Screenshots.Read";
     public const string GameServers_Admin_Screenshots_Delete = "GameServers.Admin.Screenshots.Delete";
     public const string GameServers_Admin_Screenshots_Configure = "GameServers.Admin.Screenshots.Configure";

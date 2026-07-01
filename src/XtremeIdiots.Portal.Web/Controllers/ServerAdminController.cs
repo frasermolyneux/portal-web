@@ -7,6 +7,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
@@ -15,11 +16,13 @@ using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -27,6 +30,7 @@ using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Models.ServerFeed;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
+using SystemTextJsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
@@ -58,6 +62,13 @@ public class ServerAdminController(
         "connectionstring",
         "connection_string"
     ];
+
+    private readonly static JsonSerializerOptions cod4xPluginJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+    };
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -172,13 +183,14 @@ public class ServerAdminController(
             var statusAuth = authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read);
             var editAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Write);
             var feedEventsAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Read);
+            var cod4xLifecycleAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle);
 
             // Check fine-grained RCON sub-action permissions in parallel
             var sayAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Say);
             var mapCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Map);
             var restartSrvAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Restart);
 
-            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth, feedEventsAuth).ConfigureAwait(false);
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth, feedEventsAuth, cod4xLifecycleAuth).ConfigureAwait(false);
 
             var viewModel = new ServerDetailViewModel
             {
@@ -190,10 +202,52 @@ public class ServerAdminController(
                 CanViewStatus = (await statusAuth.ConfigureAwait(false)).Succeeded,
                 CanEditServer = (await editAuth.ConfigureAwait(false)).Succeeded,
                 CanViewFeedEvents = (await feedEventsAuth.ConfigureAwait(false)).Succeeded,
+                CanManageCoD4xPluginLifecycle = gs.GameType == GameType.CallOfDuty4x && (await cod4xLifecycleAuth.ConfigureAwait(false)).Succeeded,
                 CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
                 CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
                 CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded
             };
+
+            if (gs.GameType == GameType.CallOfDuty4x)
+            {
+                try
+                {
+                    var configurationResult = await repositoryApiClient.GameServerConfigurations.V1
+                        .GetConfigurations(gs.GameServerId, cancellationToken).ConfigureAwait(false);
+
+                    if (configurationResult.IsSuccess && configurationResult.Result?.Data?.Items is not null)
+                    {
+                        var cod4xPluginConfiguration = configurationResult.Result.Data.Items.FirstOrDefault(static config =>
+                            string.Equals(config.Namespace, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase));
+
+                        if (cod4xPluginConfiguration is not null && !string.IsNullOrWhiteSpace(cod4xPluginConfiguration.Configuration))
+                        {
+                            var cod4xPluginSettings = SystemTextJsonSerializer.Deserialize<Cod4xPluginSettingsDocument>(
+                                    cod4xPluginConfiguration.Configuration,
+                                    cod4xPluginJsonOptions)
+                                ?? new Cod4xPluginSettingsDocument();
+
+                            viewModel.Cod4xPluginEnabled = cod4xPluginSettings.Enabled;
+                            viewModel.Cod4xPluginRootDirectory = cod4xPluginSettings.PluginRootDirectory;
+                            viewModel.Cod4xRuntimeCurrentVersion = cod4xPluginSettings.RuntimeState?.CurrentVersion;
+                            viewModel.Cod4xRuntimePreviousKnownGoodVersion = cod4xPluginSettings.RuntimeState?.PreviousKnownGoodVersion;
+                            viewModel.Cod4xRuntimeLastOperationId = cod4xPluginSettings.RuntimeState?.LastOperationId;
+                            viewModel.Cod4xRuntimeLastOperationStatus = cod4xPluginSettings.RuntimeState?.LastOperationStatus ?? Cod4xPluginOperationStatus.Unknown;
+                            viewModel.Cod4xRuntimeLastOperationUtc = cod4xPluginSettings.RuntimeState?.LastOperationUtc;
+                            viewModel.Cod4xRuntimeLastError = cod4xPluginSettings.RuntimeState?.LastError;
+                            viewModel.Cod4xOperationRequestOperationId = cod4xPluginSettings.OperationRequest?.OperationId;
+                            viewModel.Cod4xOperationRequestAction = cod4xPluginSettings.OperationRequest?.Action ?? Cod4xPluginOperationAction.Unknown;
+                            viewModel.Cod4xOperationRequestTargetVersion = cod4xPluginSettings.OperationRequest?.TargetVersion;
+                            viewModel.Cod4xOperationRequestRequestedAtUtc = cod4xPluginSettings.OperationRequest?.RequestedAtUtc;
+                            viewModel.Cod4xOperationRequestRequestedBy = cod4xPluginSettings.OperationRequest?.RequestedBy;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to load CoD4x plugin settings for server {ServerId}", id);
+                }
+            }
 
             // Fetch overview data (non-critical — page renders without it)
             try
@@ -931,6 +985,171 @@ public class ServerAdminController(
 
             return Json(new { success = true, message = "Server restart command sent successfully" });
         }, nameof(RestartServer)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestCod4xPluginOperation(
+        Guid id,
+        Cod4xPluginOperationAction action,
+        string? targetVersion,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+
+            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Game server {ServerId} not found when requesting CoD4x plugin lifecycle operation", id);
+                return NotFound();
+            }
+
+            var gameServerData = gameServerApiResponse.Result.Data;
+
+            if (gameServerData.GameType != GameType.CallOfDuty4x)
+            {
+                return Json(new { success = false, message = "CoD4x plugin lifecycle operations are only supported for CoD4x servers." });
+            }
+
+            var lifecycleAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData.GameType,
+                AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle,
+                nameof(RequestCod4xPluginOperation),
+                "GameServer",
+                $"ServerId:{id},GameType:{gameServerData.GameType}",
+                gameServerData).ConfigureAwait(false);
+
+            if (lifecycleAuthResult is not null)
+            {
+                return lifecycleAuthResult;
+            }
+
+            if (!Enum.IsDefined(action) || action == Cod4xPluginOperationAction.Unknown)
+            {
+                return Json(new { success = false, message = "A valid CoD4x plugin operation is required." });
+            }
+
+            var normalizedTargetVersion = string.IsNullOrWhiteSpace(targetVersion)
+                ? null
+                : targetVersion.Trim();
+
+            if (action == Cod4xPluginOperationAction.Install && string.IsNullOrWhiteSpace(normalizedTargetVersion))
+            {
+                return Json(new { success = false, message = "Target version is required for install operations." });
+            }
+
+            if (action == Cod4xPluginOperationAction.Install && normalizedTargetVersion is not null)
+            {
+                if (normalizedTargetVersion.Length > Cod4xPluginSettingsConstants.MaxVersionLength)
+                {
+                    return Json(new { success = false, message = $"Target version must be {Cod4xPluginSettingsConstants.MaxVersionLength} characters or fewer." });
+                }
+
+                if (!IsValidCod4xTargetVersion(normalizedTargetVersion))
+                {
+                    return Json(new { success = false, message = "Target version contains invalid characters." });
+                }
+            }
+
+            if (action != Cod4xPluginOperationAction.Install)
+            {
+                normalizedTargetVersion = null;
+            }
+
+            var configResult = await repositoryApiClient.GameServerConfigurations.V1.GetConfigurations(id, cancellationToken).ConfigureAwait(false);
+            if (!configResult.IsSuccess || configResult.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to load game server configurations for CoD4x operation request on server {ServerId}", id);
+                return Json(new { success = false, message = "Unable to load current CoD4x plugin settings." });
+            }
+
+            var existingCod4xPluginConfig = configResult.Result.Data.Items.FirstOrDefault(static config =>
+                string.Equals(config.Namespace, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase));
+
+            Cod4xPluginSettingsDocument cod4xPluginSettings;
+            if (existingCod4xPluginConfig is null || string.IsNullOrWhiteSpace(existingCod4xPluginConfig.Configuration))
+            {
+                cod4xPluginSettings = new Cod4xPluginSettingsDocument();
+            }
+            else if (!Cod4xPluginSettingsJsonHelper.TryDeserialize(
+                existingCod4xPluginConfig.Configuration,
+                cod4xPluginJsonOptions,
+                out var existingCod4xPluginSettings)
+                || existingCod4xPluginSettings is null)
+            {
+                Logger.LogWarning("Failed to parse existing CoD4x plugin configuration for server {ServerId}", id);
+                return Json(new { success = false, message = "Unable to parse current CoD4x plugin settings." });
+            }
+            else
+            {
+                cod4xPluginSettings = existingCod4xPluginSettings;
+            }
+
+            var requestedAtUtc = DateTimeOffset.UtcNow;
+            var operationId = Guid.NewGuid().ToString("N");
+            var requestedBy = User.Username() ?? "unknown";
+            cod4xPluginSettings.SchemaVersion = Cod4xPluginSettingsConstants.SchemaVersion;
+            cod4xPluginSettings.OperationRequest = new Cod4xPluginOperationRequest
+            {
+                OperationId = operationId,
+                Action = action,
+                TargetVersion = normalizedTargetVersion,
+                RequestedAtUtc = requestedAtUtc,
+                RequestedBy = requestedBy
+            };
+
+            var serializedConfiguration = SystemTextJsonSerializer.Serialize(cod4xPluginSettings, cod4xPluginJsonOptions);
+            var upsertResult = await repositoryApiClient.GameServerConfigurations.V1.UpsertConfiguration(
+                id,
+                Cod4xPluginSettingsConstants.Namespace,
+                new UpsertConfigurationDto { Configuration = serializedConfiguration },
+                cancellationToken).ConfigureAwait(false);
+
+            if (!upsertResult.IsSuccess)
+            {
+                Logger.LogWarning("Failed to persist CoD4x plugin lifecycle request for server {ServerId}", id);
+                return Json(new { success = false, message = "Failed to queue CoD4x plugin operation request." });
+            }
+
+            TrackSuccessTelemetry("CoD4xPluginOperationRequested", nameof(RequestCod4xPluginOperation), new Dictionary<string, string>
+            {
+                { "ServerId", id.ToString() },
+                { "Action", action.ToString() },
+                { "OperationId", operationId },
+                { "RequestedBy", requestedBy }
+            });
+
+            return Json(new
+            {
+                success = true,
+                operationId,
+                action = action.ToString(),
+                targetVersion = normalizedTargetVersion,
+                requestedAtUtc = requestedAtUtc,
+                message = "CoD4x plugin operation request queued successfully."
+            });
+        }, nameof(RequestCod4xPluginOperation)).ConfigureAwait(false);
+    }
+
+    private static bool IsValidCod4xTargetVersion(string version)
+    {
+        if (string.IsNullOrEmpty(version) || !char.IsLetterOrDigit(version[0]))
+        {
+            return false;
+        }
+
+        for (var i = 1; i < version.Length; i++)
+        {
+            var current = version[i];
+            if (!char.IsLetterOrDigit(current) && current is not '.' and not '_' and not '-')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

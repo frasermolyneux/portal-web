@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
@@ -464,6 +465,7 @@ public class NamespaceSettingsSerializerTests
         var model = new GlobalSettingsViewModel
         {
             Cod4xPluginEnabled = true,
+            Cod4xPluginRootDirectory = "/plugins",
             Cod4xPowerEnabled = true,
             Cod4xPowerDefaultPower = 44,
             Cod4xPowerTagMappingsJson = /*lang=json,strict*/ """
@@ -483,6 +485,7 @@ public class NamespaceSettingsSerializerTests
         var (_, pluginJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPluginSettingsConstants.Namespace);
         using var pluginDoc = JsonDocument.Parse(pluginJson);
         Assert.True(pluginDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal("/plugins", pluginDoc.RootElement.GetProperty("pluginRootDirectory").GetString());
 
         var (_, powerJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPowerSettingsConstants.Namespace);
         using var powerDoc = JsonDocument.Parse(powerJson);
@@ -515,6 +518,66 @@ public class NamespaceSettingsSerializerTests
         Assert.Contains(Cod4xPluginSettingsConstants.Namespace, serializer.DeletedNamespaces);
         Assert.Contains(Cod4xPowerSettingsConstants.Namespace, serializer.DeletedNamespaces);
         Assert.Contains(Cod4xCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_Cod4xPluginOverride_PreservesRuntimeStateAndOperationRequest()
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.GameType = GameType.CallOfDuty4x;
+        model.Cod4xInheritPluginSettings = false;
+        model.Cod4xPluginEnabled = true;
+        model.Cod4xPluginRootDirectory = "/servers/cod4x/plugins";
+        model.Cod4xRuntimeCurrentVersion = "1.2.3";
+        model.Cod4xRuntimePreviousKnownGoodVersion = "1.2.2";
+        model.Cod4xRuntimeLastOperationId = "op-123";
+        model.Cod4xRuntimeLastOperationStatus = Cod4xPluginOperationStatus.Succeeded;
+        model.Cod4xRuntimeLastOperationUtc = DateTimeOffset.Parse("2026-01-01T12:00:00Z", CultureInfo.InvariantCulture);
+        model.Cod4xRuntimeLastError = "none";
+        model.Cod4xOperationRequestOperationId = "op-124";
+        model.Cod4xOperationRequestAction = Cod4xPluginOperationAction.Install;
+        model.Cod4xOperationRequestTargetVersion = "1.2.4";
+        model.Cod4xOperationRequestRequestedAtUtc = DateTimeOffset.Parse("2026-01-01T13:00:00Z", CultureInfo.InvariantCulture);
+        model.Cod4xOperationRequestRequestedBy = "tester";
+
+        var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+        var (_, pluginJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPluginSettingsConstants.Namespace);
+
+        using var pluginDoc = JsonDocument.Parse(pluginJson);
+        Assert.True(pluginDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal("/servers/cod4x/plugins", pluginDoc.RootElement.GetProperty("pluginRootDirectory").GetString());
+        Assert.Equal("1.2.3", pluginDoc.RootElement.GetProperty("runtimeState").GetProperty("currentVersion").GetString());
+        Assert.Equal("Succeeded", pluginDoc.RootElement.GetProperty("runtimeState").GetProperty("lastOperationStatus").GetString());
+        Assert.Equal("op-124", pluginDoc.RootElement.GetProperty("operationRequest").GetProperty("operationId").GetString());
+        Assert.Equal("Install", pluginDoc.RootElement.GetProperty("operationRequest").GetProperty("action").GetString());
+        Assert.Equal("1.2.4", pluginDoc.RootElement.GetProperty("operationRequest").GetProperty("targetVersion").GetString());
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_Cod4xInheritPluginWithLifecycleState_PersistsLifecycleOnlyDocument()
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.GameType = GameType.CallOfDuty4x;
+        model.Cod4xInheritPluginSettings = true;
+        model.Cod4xRuntimeCurrentVersion = "1.2.3";
+        model.Cod4xRuntimeLastOperationId = "op-123";
+        model.Cod4xRuntimeLastOperationStatus = Cod4xPluginOperationStatus.Succeeded;
+        model.Cod4xOperationRequestOperationId = "op-124";
+        model.Cod4xOperationRequestAction = Cod4xPluginOperationAction.Install;
+        model.Cod4xOperationRequestTargetVersion = "1.2.4";
+        model.Cod4xOperationRequestRequestedBy = "tester";
+
+        var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+        var (_, pluginJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPluginSettingsConstants.Namespace);
+
+        using var pluginDoc = JsonDocument.Parse(pluginJson);
+        Assert.True(pluginDoc.RootElement.TryGetProperty("enabled", out var enabledProperty));
+        Assert.Equal(JsonValueKind.Null, enabledProperty.ValueKind);
+        Assert.True(pluginDoc.RootElement.TryGetProperty("pluginRootDirectory", out var pluginRootDirectoryProperty));
+        Assert.Equal(JsonValueKind.Null, pluginRootDirectoryProperty.ValueKind);
+        Assert.Equal("1.2.3", pluginDoc.RootElement.GetProperty("runtimeState").GetProperty("currentVersion").GetString());
+        Assert.Equal("op-124", pluginDoc.RootElement.GetProperty("operationRequest").GetProperty("operationId").GetString());
+        Assert.DoesNotContain(Cod4xPluginSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]

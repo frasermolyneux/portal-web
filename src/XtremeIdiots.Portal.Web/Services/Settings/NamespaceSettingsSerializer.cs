@@ -114,7 +114,10 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             Cod4xPluginSettingsConstants.Namespace,
             JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
             {
-                Enabled = model.Cod4xPluginEnabled
+                Enabled = model.Cod4xPluginEnabled,
+                PluginRootDirectory = string.IsNullOrWhiteSpace(model.Cod4xPluginRootDirectory)
+                    ? null
+                    : model.Cod4xPluginRootDirectory.Trim()
             }, configJsonOptions)));
 
         var globalCod4xPowerTagMappings = Cod4xSettingsViewModelHelpers.BuildPowerTagMappingsForPersistence(
@@ -380,9 +383,27 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
 
         if (model.IsCod4xGameServer)
         {
+            var cod4xRuntimeState = BuildCod4xRuntimeState(model);
+            var cod4xOperationRequest = BuildCod4xOperationRequest(model);
+
             if (model.Cod4xInheritPluginSettings)
             {
-                DeletedNamespaces.Add(Cod4xPluginSettingsConstants.Namespace);
+                if (cod4xRuntimeState is null && cod4xOperationRequest is null)
+                {
+                    DeletedNamespaces.Add(Cod4xPluginSettingsConstants.Namespace);
+                }
+                else
+                {
+                    configurations.Add((
+                        Cod4xPluginSettingsConstants.Namespace,
+                        JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
+                        {
+                            Enabled = null,
+                            PluginRootDirectory = null,
+                            RuntimeState = cod4xRuntimeState,
+                            OperationRequest = cod4xOperationRequest
+                        }, configJsonOptions)));
+                }
             }
             else
             {
@@ -390,7 +411,12 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     Cod4xPluginSettingsConstants.Namespace,
                     JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
                     {
-                        Enabled = model.Cod4xPluginEnabled
+                        Enabled = model.Cod4xPluginEnabled,
+                        PluginRootDirectory = string.IsNullOrWhiteSpace(model.Cod4xPluginRootDirectory)
+                            ? null
+                            : model.Cod4xPluginRootDirectory.Trim(),
+                        RuntimeState = cod4xRuntimeState,
+                        OperationRequest = cod4xOperationRequest
                     }, configJsonOptions)));
             }
 
@@ -463,5 +489,61 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         return string.IsNullOrWhiteSpace(value)
             ? GlobalSettingsViewModel.DefaultAgentName
             : value;
+    }
+
+    private static Cod4xPluginRuntimeState? BuildCod4xRuntimeState(GameServerEditViewModel model)
+    {
+        var hasState = !string.IsNullOrWhiteSpace(model.Cod4xRuntimeCurrentVersion)
+            || !string.IsNullOrWhiteSpace(model.Cod4xRuntimePreviousKnownGoodVersion)
+            || !string.IsNullOrWhiteSpace(model.Cod4xRuntimeLastOperationId)
+            || model.Cod4xRuntimeLastOperationStatus != Cod4xPluginOperationStatus.Unknown
+            || model.Cod4xRuntimeLastOperationUtc.HasValue
+            || !string.IsNullOrWhiteSpace(model.Cod4xRuntimeLastError);
+
+        return !hasState
+            ? null
+            : new Cod4xPluginRuntimeState
+            {
+                CurrentVersion = string.IsNullOrWhiteSpace(model.Cod4xRuntimeCurrentVersion)
+                ? null
+                : model.Cod4xRuntimeCurrentVersion.Trim(),
+                PreviousKnownGoodVersion = string.IsNullOrWhiteSpace(model.Cod4xRuntimePreviousKnownGoodVersion)
+                ? null
+                : model.Cod4xRuntimePreviousKnownGoodVersion.Trim(),
+                LastOperationId = string.IsNullOrWhiteSpace(model.Cod4xRuntimeLastOperationId)
+                ? null
+                : model.Cod4xRuntimeLastOperationId.Trim(),
+                LastOperationStatus = model.Cod4xRuntimeLastOperationStatus,
+                LastOperationUtc = model.Cod4xRuntimeLastOperationUtc,
+                LastError = string.IsNullOrWhiteSpace(model.Cod4xRuntimeLastError)
+                ? null
+                : model.Cod4xRuntimeLastError.Trim()
+            };
+    }
+
+    private static Cod4xPluginOperationRequest? BuildCod4xOperationRequest(GameServerEditViewModel model)
+    {
+        var hasRequest = !string.IsNullOrWhiteSpace(model.Cod4xOperationRequestOperationId)
+            || model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown
+            || !string.IsNullOrWhiteSpace(model.Cod4xOperationRequestTargetVersion)
+            || model.Cod4xOperationRequestRequestedAtUtc.HasValue
+            || !string.IsNullOrWhiteSpace(model.Cod4xOperationRequestRequestedBy);
+
+        return !hasRequest
+            ? null
+            : new Cod4xPluginOperationRequest
+            {
+                OperationId = string.IsNullOrWhiteSpace(model.Cod4xOperationRequestOperationId)
+                ? null
+                : model.Cod4xOperationRequestOperationId.Trim(),
+                Action = model.Cod4xOperationRequestAction,
+                TargetVersion = string.IsNullOrWhiteSpace(model.Cod4xOperationRequestTargetVersion)
+                ? null
+                : model.Cod4xOperationRequestTargetVersion.Trim(),
+                RequestedAtUtc = model.Cod4xOperationRequestRequestedAtUtc,
+                RequestedBy = string.IsNullOrWhiteSpace(model.Cod4xOperationRequestRequestedBy)
+                ? null
+                : model.Cod4xOperationRequestRequestedBy.Trim()
+            };
     }
 }

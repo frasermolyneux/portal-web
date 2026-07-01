@@ -14,23 +14,34 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
+using SystemTextJsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
 public class ServerAdminControllerTests
 {
+    private readonly static JsonSerializerOptions cod4xPluginJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly Mock<IServersApiClient> mockServersApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
@@ -163,6 +174,237 @@ public class ServerAdminControllerTests
         var model = Assert.IsType<ServerDetailViewModel>(viewResult.Model);
 
         Assert.True(model.CanViewFeedEvents);
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_Install_WhenValid_QueuesOperationAndPreservesRuntimeState()
+    {
+        var serverId = Guid.NewGuid();
+        var existingCod4xConfigJson = /*lang=json,strict*/ """
+            {
+              "schemaVersion": 1,
+              "enabled": true,
+              "pluginRootDirectory": "/plugins",
+              "runtimeState": {
+                "currentVersion": "1.2.3",
+                "previousKnownGoodVersion": "1.2.2",
+                "lastOperationId": "prev-op",
+                "lastOperationStatus": "Succeeded",
+                "lastOperationUtc": "2026-01-01T12:00:00Z",
+                "lastError": null
+              }
+            }
+            """;
+
+        var existingCod4xConfiguration = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = Cod4xPluginSettingsConstants.Namespace,
+            Configuration = existingCod4xConfigJson,
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([existingCod4xConfiguration]))));
+
+        UpsertConfigurationDto? capturedUpsertDto = null;
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                serverId,
+                Cod4xPluginSettingsConstants.Namespace,
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Guid, string, UpsertConfigurationDto, CancellationToken>((_, _, dto, _) => capturedUpsertDto = dto)
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        var sut = CreateSut();
+
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            Cod4xPluginOperationAction.Install,
+            "1.2.4",
+            CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+
+        Assert.NotNull(capturedUpsertDto);
+        Assert.NotNull(capturedUpsertDto!.Configuration);
+
+        var serializedDocument = SystemTextJsonSerializer.Deserialize<Cod4xPluginSettingsDocument>(
+            capturedUpsertDto.Configuration,
+            cod4xPluginJsonOptions);
+
+        Assert.NotNull(serializedDocument);
+        Assert.NotNull(serializedDocument!.OperationRequest);
+        Assert.Equal(Cod4xPluginOperationAction.Install, serializedDocument.OperationRequest!.Action);
+        Assert.Equal("1.2.4", serializedDocument.OperationRequest.TargetVersion);
+
+        Assert.NotNull(serializedDocument.RuntimeState);
+        Assert.Equal("1.2.3", serializedDocument.RuntimeState!.CurrentVersion);
+        Assert.Equal("1.2.2", serializedDocument.RuntimeState.PreviousKnownGoodVersion);
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_WhenExistingConfigContainsLegacyBooleanString_QueuesOperation()
+    {
+        var serverId = Guid.NewGuid();
+        var existingCod4xConfigJson = /*lang=json,strict*/ """
+            {
+              "schemaVersion": 1,
+              "enabled": "true",
+              "pluginRootDirectory": "/plugins",
+              "runtimeState": {
+                "currentVersion": "1.2.3",
+                "lastOperationId": "prev-op",
+                "lastOperationStatus": "Succeeded"
+              }
+            }
+            """;
+
+        var existingCod4xConfiguration = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = Cod4xPluginSettingsConstants.Namespace,
+            Configuration = existingCod4xConfigJson,
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([existingCod4xConfiguration]))));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                serverId,
+                Cod4xPluginSettingsConstants.Namespace,
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+
+        var sut = CreateSut();
+
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            Cod4xPluginOperationAction.Install,
+            "1.2.4",
+            CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_Install_WithInvalidVersion_ReturnsValidationFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            Cod4xPluginOperationAction.Install,
+            "1.2.4 bad",
+            CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("Target version contains invalid characters.", payload.Value<string>("message"));
+
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            It.IsAny<Guid>(),
+            It.IsAny<string>(),
+            It.IsAny<UpsertConfigurationDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_WithInvalidActionEnum_ReturnsValidationFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            (Cod4xPluginOperationAction)999,
+            null,
+            CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("A valid CoD4x plugin operation is required.", payload.Value<string>("message"));
+
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            It.IsAny<Guid>(),
+            It.IsAny<string>(),
+            It.IsAny<UpsertConfigurationDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_ForNonCod4xServer_ReturnsFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4))));
+
+        var sut = CreateSut();
+
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            Cod4xPluginOperationAction.Rollback,
+            null,
+            CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("CoD4x plugin lifecycle operations are only supported for CoD4x servers.", payload.Value<string>("message"));
     }
 
     [Fact]

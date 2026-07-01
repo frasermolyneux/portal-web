@@ -115,6 +115,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
                 {
                     model.Cod4xPluginEnabled = cod4xPluginDocument.Enabled ?? model.Cod4xPluginEnabled;
+                    model.Cod4xPluginRootDirectory = cod4xPluginDocument.PluginRootDirectory;
                 }
 
                 break;
@@ -281,8 +282,14 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
             case Cod4xPluginSettingsConstants.Namespace:
                 if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
                 {
-                    model.Cod4xInheritPluginSettings = false;
+                    var hasPluginOverrides = cod4xPluginDocument.Enabled.HasValue
+                        || !string.IsNullOrWhiteSpace(cod4xPluginDocument.PluginRootDirectory);
+
+                    model.Cod4xInheritPluginSettings = !hasPluginOverrides;
                     model.Cod4xPluginEnabled = cod4xPluginDocument.Enabled ?? false;
+                    model.Cod4xPluginRootDirectory = cod4xPluginDocument.PluginRootDirectory;
+                    ApplyCod4xRuntimeState(model, cod4xPluginDocument.RuntimeState);
+                    ApplyCod4xOperationRequest(model, cod4xPluginDocument.OperationRequest);
                 }
 
                 break;
@@ -393,6 +400,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
                 {
                     model.GlobalCod4xPluginEnabled = cod4xPluginDocument.Enabled ?? model.GlobalCod4xPluginEnabled;
+                    model.GlobalCod4xPluginRootDirectory = cod4xPluginDocument.PluginRootDirectory;
                 }
 
                 break;
@@ -608,5 +616,24 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         return string.IsNullOrWhiteSpace(value)
             ? GlobalSettingsViewModel.DefaultAgentName
             : value;
+    }
+
+    private static void ApplyCod4xRuntimeState(GameServerEditViewModel model, Cod4xPluginRuntimeState? runtimeState)
+    {
+        model.Cod4xRuntimeCurrentVersion = runtimeState?.CurrentVersion;
+        model.Cod4xRuntimePreviousKnownGoodVersion = runtimeState?.PreviousKnownGoodVersion;
+        model.Cod4xRuntimeLastOperationId = runtimeState?.LastOperationId;
+        model.Cod4xRuntimeLastOperationStatus = runtimeState?.LastOperationStatus ?? Cod4xPluginOperationStatus.Unknown;
+        model.Cod4xRuntimeLastOperationUtc = runtimeState?.LastOperationUtc;
+        model.Cod4xRuntimeLastError = runtimeState?.LastError;
+    }
+
+    private static void ApplyCod4xOperationRequest(GameServerEditViewModel model, Cod4xPluginOperationRequest? operationRequest)
+    {
+        model.Cod4xOperationRequestOperationId = operationRequest?.OperationId;
+        model.Cod4xOperationRequestAction = operationRequest?.Action ?? Cod4xPluginOperationAction.Unknown;
+        model.Cod4xOperationRequestTargetVersion = operationRequest?.TargetVersion;
+        model.Cod4xOperationRequestRequestedAtUtc = operationRequest?.RequestedAtUtc;
+        model.Cod4xOperationRequestRequestedBy = operationRequest?.RequestedBy;
     }
 }
