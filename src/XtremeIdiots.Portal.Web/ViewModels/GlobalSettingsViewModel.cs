@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -80,6 +81,31 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
 
+    // CoD4x plugin defaults
+
+    [DisplayName("CoD4x Plugin Enabled")]
+    public bool Cod4xPluginEnabled { get; set; }
+
+    // CoD4x power defaults
+
+    [DisplayName("CoD4x Power Sync Enabled")]
+    public bool Cod4xPowerEnabled { get; set; }
+
+    [DisplayName("CoD4x Default Power")]
+    [Range(Cod4xPowerSettingsConstants.MinPower, Cod4xPowerSettingsConstants.MaxPower,
+        ErrorMessage = "Default power must be between 1 and 100.")]
+    public int Cod4xPowerDefaultPower { get; set; } = Cod4xPowerSettingsConstants.DefaultPower;
+
+    [DisplayName("CoD4x Power Tag Mappings (JSON)")]
+    public string Cod4xPowerTagMappingsJson { get; set; } = "[]";
+
+    // CoD4x command defaults
+
+    [DisplayName("CoD4x Command Power Enforcement Enabled")]
+    public bool Cod4xCommandsEnabled { get; set; }
+
+    public List<Cod4xCommandViewModel> Cod4xCommands { get; set; } = Cod4xSettingsViewModelHelpers.CreateDefaultCommands();
+
     // Server list defaults
 
     [DisplayName("HTML Banner")]
@@ -120,6 +146,46 @@ public class GlobalSettingsViewModel : IValidatableObject
         foreach (var validationResult in WelcomeMessages.Validate(validationContext))
         {
             yield return validationResult;
+        }
+
+        if (!Cod4xSettingsViewModelHelpers.TryParsePowerMappingsJson(Cod4xPowerTagMappingsJson, out var parsedMappings))
+        {
+            yield return new ValidationResult("CoD4x power tag mappings must be valid JSON.", [nameof(Cod4xPowerTagMappingsJson)]);
+        }
+        else
+        {
+            var seenTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < parsedMappings.Count; i++)
+            {
+                var mapping = parsedMappings[i];
+                if (string.IsNullOrWhiteSpace(mapping.Tag))
+                {
+                    yield return new ValidationResult($"CoD4x power mapping at index {i} is missing a tag.", [nameof(Cod4xPowerTagMappingsJson)]);
+                    continue;
+                }
+
+                if (!seenTags.Add(mapping.Tag.Trim()))
+                {
+                    yield return new ValidationResult($"CoD4x power tag '{mapping.Tag}' is duplicated.", [nameof(Cod4xPowerTagMappingsJson)]);
+                }
+
+                if (mapping.Power is int mappingPower &&
+                    (mappingPower < Cod4xPowerSettingsConstants.MinPower || mappingPower > Cod4xPowerSettingsConstants.MaxPower))
+                {
+                    yield return new ValidationResult(
+                        $"CoD4x power for tag '{mapping.Tag}' must be between {Cod4xPowerSettingsConstants.MinPower} and {Cod4xPowerSettingsConstants.MaxPower}.",
+                        [nameof(Cod4xPowerTagMappingsJson)]);
+                }
+            }
+        }
+
+        foreach (var command in Cod4xCommands)
+        {
+            if (command.MinPower is < 1 or > 100)
+            {
+                yield return new ValidationResult("Each CoD4x command minimum power must be between 1 and 100.", [nameof(Cod4xCommands)]);
+                break;
+            }
         }
     }
 

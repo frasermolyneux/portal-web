@@ -93,6 +93,14 @@
                                     data-bs-target="#serverlist-tab" type="button" role="tab" aria-controls="serverlist-tab"
                                     aria-selected="false">Server List</button>
                         </li>
+                        @if (Model.IsCod4xGameServer)
+                        {
+                            <li class="nav-item" role="presentation" id="cod4x-tab-item">
+                                <button class="nav-link" id="cod4x-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#cod4x-tab" type="button" role="tab" aria-controls="cod4x-tab"
+                                        aria-selected="false">CoD4x</button>
+                            </li>
+                        }
                     </ul>
 
                     <div class="tab-content" id="serverConfigTabContent">
@@ -165,6 +173,13 @@
                              aria-labelledby="serverlist-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_ServerListConfiguration", Model)
                         </div>
+
+                        @if (Model.IsCod4xGameServer)
+                        {
+                            <div class="tab-pane fade" id="cod4x-tab" role="tabpanel" aria-labelledby="cod4x-tab-btn">
+                                @await Html.PartialAsync("ConfigurationSections/_Cod4xConfiguration", Model)
+                            </div>
+                        }
 
                     </div>
 
@@ -379,8 +394,31 @@
         });
         }
 
+        function updateCod4xOverridePanels() {
+        var cod4xPluginInherit = document.getElementById('Cod4xInheritPluginSettings');
+        var cod4xPowerInherit = document.getElementById('Cod4xInheritPowerSettings');
+        var cod4xCommandInherit = document.getElementById('Cod4xInheritCommandSettings');
+
+        var cod4xPluginPanel = document.getElementById('cod4x-plugin-override-panel');
+        var cod4xPowerPanel = document.getElementById('cod4x-power-override-panel');
+        var cod4xCommandPanel = document.getElementById('cod4x-command-override-panel');
+
+        if (cod4xPluginInherit && cod4xPluginPanel) {
+        cod4xPluginPanel.classList.toggle('d-none', cod4xPluginInherit.checked);
+        }
+
+        if (cod4xPowerInherit && cod4xPowerPanel) {
+        cod4xPowerPanel.classList.toggle('d-none', cod4xPowerInherit.checked);
+        }
+
+        if (cod4xCommandInherit && cod4xCommandPanel) {
+        cod4xCommandPanel.classList.toggle('d-none', cod4xCommandInherit.checked);
+        }
+        }
+
         enforceToggleDependencies();
         updateFileTransportUi();
+        updateCod4xOverridePanels();
 
         var fileTransportTypeSelect = document.getElementById('GameServer_FileTransportType');
         if (fileTransportTypeSelect) {
@@ -390,6 +428,11 @@
         ['GameServer_FileTransportEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', enforceToggleDependencies);
+        });
+
+        ['Cod4xInheritPluginSettings', 'Cod4xInheritPowerSettings', 'Cod4xInheritCommandSettings'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateCod4xOverridePanels);
         });
 
         function isCodGameType() {

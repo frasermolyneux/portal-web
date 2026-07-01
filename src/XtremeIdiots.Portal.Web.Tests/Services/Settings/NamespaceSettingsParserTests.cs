@@ -3,6 +3,9 @@ using Moq;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -88,6 +91,112 @@ public class NamespaceSettingsParserTests
         Assert.Equal("existing-sftp-password", model.FileTransportConfigPassword);
         Assert.Equal("aa:bb:cc", model.FileTransportConfigHostKeyFingerprint);
         Assert.Equal("existing-rcon-password", model.RconConfigPassword);
+    }
+
+    [Fact]
+    public void PopulateGlobalSettingsViewModel_Cod4xNamespaces_MapToModel()
+    {
+        var model = new GlobalSettingsViewModel();
+
+        var pluginConfig = BuildConfiguration(Cod4xPluginSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true
+        }
+        """);
+
+        var powerConfig = BuildConfiguration(Cod4xPowerSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true,
+          "defaultPower": 55,
+          "tagMappings": [
+            { "tag": "SeniorAdmin", "power": 100, "enabled": true }
+          ]
+        }
+        """);
+
+        var commandConfig = BuildConfiguration(Cod4xCommandSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true,
+          "commands": {
+            "say": { "enabled": false, "minPower": 77 }
+          }
+        }
+        """);
+
+        parser.PopulateGlobalSettingsViewModel(model, pluginConfig, logger);
+        parser.PopulateGlobalSettingsViewModel(model, powerConfig, logger);
+        parser.PopulateGlobalSettingsViewModel(model, commandConfig, logger);
+
+        Assert.True(model.Cod4xPluginEnabled);
+        Assert.True(model.Cod4xPowerEnabled);
+        Assert.Equal(55, model.Cod4xPowerDefaultPower);
+        Assert.Contains("SeniorAdmin", model.Cod4xPowerTagMappingsJson, StringComparison.Ordinal);
+
+        Assert.True(model.Cod4xCommandsEnabled);
+        var sayCommand = Assert.Single(model.Cod4xCommands, static command => string.Equals(command.Name, "say", StringComparison.OrdinalIgnoreCase));
+        Assert.False(sayCommand.Enabled);
+        Assert.Equal(77, sayCommand.MinPower);
+    }
+
+    [Fact]
+    public void PopulateGameServerSettingsViewModel_Cod4xNamespaces_DisablesInheritAndAppliesOverrides()
+    {
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameType = GameType.CallOfDuty4x
+            }
+        };
+
+        var pluginConfig = BuildConfiguration(Cod4xPluginSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true
+        }
+        """);
+
+        var powerConfig = BuildConfiguration(Cod4xPowerSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true,
+          "defaultPower": 60,
+          "tagMappings": [
+            { "tag": "Moderator", "power": 40, "enabled": true }
+          ]
+        }
+        """);
+
+        var commandConfig = BuildConfiguration(Cod4xCommandSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "enabled": true,
+          "commands": {
+            "kick": { "enabled": false, "minPower": 88 }
+          }
+        }
+        """);
+
+        parser.PopulateGameServerSettingsViewModel(model, pluginConfig, logger);
+        parser.PopulateGameServerSettingsViewModel(model, powerConfig, logger);
+        parser.PopulateGameServerSettingsViewModel(model, commandConfig, logger);
+
+        Assert.False(model.Cod4xInheritPluginSettings);
+        Assert.False(model.Cod4xInheritPowerSettings);
+        Assert.False(model.Cod4xInheritCommandSettings);
+
+        Assert.True(model.Cod4xPluginEnabled);
+        Assert.True(model.Cod4xPowerEnabled);
+        Assert.Equal(60, model.Cod4xPowerDefaultPower);
+        Assert.Contains("Moderator", model.Cod4xPowerTagMappingsJson, StringComparison.Ordinal);
+
+        Assert.True(model.Cod4xCommandsEnabled);
+        var kickCommand = Assert.Single(model.Cod4xCommands, static command => string.Equals(command.Name, "kick", StringComparison.OrdinalIgnoreCase));
+        Assert.False(kickCommand.Enabled);
+        Assert.Equal(88, kickCommand.MinPower);
     }
 
     private static ConfigurationDto BuildConfiguration(string ns, string configuration)

@@ -4,10 +4,14 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
+using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 
 namespace XtremeIdiots.Portal.Web.Tests.Services.Settings;
 
@@ -452,6 +456,65 @@ public class NamespaceSettingsSerializerTests
         Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
         Assert.DoesNotContain(WelcomeMessageSettingsViewModelConstants.Namespace, serializer.DeletedNamespaces);
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void BuildGlobalSettingsConfigurations_IncludesCod4xNamespaces()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            Cod4xPluginEnabled = true,
+            Cod4xPowerEnabled = true,
+            Cod4xPowerDefaultPower = 44,
+            Cod4xPowerTagMappingsJson = /*lang=json,strict*/ """
+            [
+              { "tag": "HeadAdmin", "power": 90, "enabled": true }
+            ]
+            """,
+            Cod4xCommandsEnabled = true
+        };
+
+        var kickCommand = model.Cod4xCommands.Single(static command => string.Equals(command.Name, "kick", StringComparison.OrdinalIgnoreCase));
+        kickCommand.Enabled = false;
+        kickCommand.MinPower = 81;
+
+        var configurations = serializer.BuildGlobalSettingsConfigurations(model);
+
+        var (_, pluginJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPluginSettingsConstants.Namespace);
+        using var pluginDoc = JsonDocument.Parse(pluginJson);
+        Assert.True(pluginDoc.RootElement.GetProperty("enabled").GetBoolean());
+
+        var (_, powerJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPowerSettingsConstants.Namespace);
+        using var powerDoc = JsonDocument.Parse(powerJson);
+        Assert.True(powerDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal(44, powerDoc.RootElement.GetProperty("defaultPower").GetInt32());
+        Assert.Equal("HeadAdmin", powerDoc.RootElement.GetProperty("tagMappings")[0].GetProperty("tag").GetString());
+
+        var (_, commandsJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xCommandSettingsConstants.Namespace);
+        using var commandsDoc = JsonDocument.Parse(commandsJson);
+        Assert.True(commandsDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.False(commandsDoc.RootElement.GetProperty("commands").GetProperty("kick").GetProperty("enabled").GetBoolean());
+        Assert.Equal(81, commandsDoc.RootElement.GetProperty("commands").GetProperty("kick").GetProperty("minPower").GetInt32());
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_Cod4xInheritFlags_DeleteCod4xNamespaces()
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.GameType = GameType.CallOfDuty4x;
+        model.Cod4xInheritPluginSettings = true;
+        model.Cod4xInheritPowerSettings = true;
+        model.Cod4xInheritCommandSettings = true;
+
+        var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+
+        Assert.DoesNotContain(configurations, static configuration => configuration.Namespace == Cod4xPluginSettingsConstants.Namespace);
+        Assert.DoesNotContain(configurations, static configuration => configuration.Namespace == Cod4xPowerSettingsConstants.Namespace);
+        Assert.DoesNotContain(configurations, static configuration => configuration.Namespace == Cod4xCommandSettingsConstants.Namespace);
+
+        Assert.Contains(Cod4xPluginSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.Contains(Cod4xPowerSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.Contains(Cod4xCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     private static GameServerEditViewModel BuildDefaultModel()

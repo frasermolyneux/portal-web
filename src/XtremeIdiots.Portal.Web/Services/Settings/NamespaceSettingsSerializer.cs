@@ -3,6 +3,9 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Events;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
@@ -105,6 +108,35 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 HtmlBanner = string.IsNullOrWhiteSpace(model.ServerListHtmlBanner)
                     ? null
                     : model.ServerListHtmlBanner
+            }, configJsonOptions)));
+
+        configurations.Add((
+            Cod4xPluginSettingsConstants.Namespace,
+            JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
+            {
+                Enabled = model.Cod4xPluginEnabled
+            }, configJsonOptions)));
+
+        var globalCod4xPowerTagMappings =
+            Cod4xSettingsViewModelHelpers.TryParsePowerMappingsJson(model.Cod4xPowerTagMappingsJson, out var parsedGlobalCod4xPowerTagMappings)
+                ? parsedGlobalCod4xPowerTagMappings
+                : [];
+
+        configurations.Add((
+            Cod4xPowerSettingsConstants.Namespace,
+            JsonSerializer.Serialize(new Cod4xPowerSettingsDocument
+            {
+                Enabled = model.Cod4xPowerEnabled,
+                DefaultPower = model.Cod4xPowerDefaultPower,
+                TagMappings = globalCod4xPowerTagMappings
+            }, configJsonOptions)));
+
+        configurations.Add((
+            Cod4xCommandSettingsConstants.Namespace,
+            JsonSerializer.Serialize(new Cod4xCommandSettingsDocument
+            {
+                Enabled = model.Cod4xCommandsEnabled,
+                Commands = Cod4xSettingsViewModelHelpers.BuildCommandDictionary(model.Cod4xCommands)
             }, configJsonOptions)));
 
         return configurations;
@@ -346,6 +378,60 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         }
         // Server list acts as a runtime feature flag. When disabled, keep
         // persisted namespace settings intact for later re-enable.
+
+        if (model.IsCod4xGameServer)
+        {
+            if (model.Cod4xInheritPluginSettings)
+            {
+                DeletedNamespaces.Add(Cod4xPluginSettingsConstants.Namespace);
+            }
+            else
+            {
+                configurations.Add((
+                    Cod4xPluginSettingsConstants.Namespace,
+                    JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
+                    {
+                        Enabled = model.Cod4xPluginEnabled
+                    }, configJsonOptions)));
+            }
+
+            if (model.Cod4xInheritPowerSettings)
+            {
+                DeletedNamespaces.Add(Cod4xPowerSettingsConstants.Namespace);
+            }
+            else
+            {
+                var cod4xPowerTagMappings = Cod4xSettingsViewModelHelpers.TryParsePowerMappingsJson(
+                    model.Cod4xPowerTagMappingsJson,
+                    out var parsedCod4xPowerTagMappings)
+                    ? parsedCod4xPowerTagMappings
+                    : [];
+
+                configurations.Add((
+                    Cod4xPowerSettingsConstants.Namespace,
+                    JsonSerializer.Serialize(new Cod4xPowerSettingsDocument
+                    {
+                        Enabled = model.Cod4xPowerEnabled,
+                        DefaultPower = model.Cod4xPowerDefaultPower,
+                        TagMappings = cod4xPowerTagMappings
+                    }, configJsonOptions)));
+            }
+
+            if (model.Cod4xInheritCommandSettings)
+            {
+                DeletedNamespaces.Add(Cod4xCommandSettingsConstants.Namespace);
+            }
+            else
+            {
+                configurations.Add((
+                    Cod4xCommandSettingsConstants.Namespace,
+                    JsonSerializer.Serialize(new Cod4xCommandSettingsDocument
+                    {
+                        Enabled = model.Cod4xCommandsEnabled,
+                        Commands = Cod4xSettingsViewModelHelpers.BuildCommandDictionary(model.Cod4xCommands)
+                    }, configJsonOptions)));
+            }
+        }
 
         return configurations;
     }

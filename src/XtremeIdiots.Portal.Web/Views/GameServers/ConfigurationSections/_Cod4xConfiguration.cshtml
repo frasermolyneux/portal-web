@@ -1,0 +1,121 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5>CoD4x Settings</h5>
+    </div>
+    <div class="ibox-content">
+        <p class="text-muted mb-0">Configure server-level CoD4x overrides. Keep inherit enabled to use fleet-wide defaults from Global Settings.</p>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-puzzle-piece" aria-hidden="true"></i> Plugin</h5>
+    </div>
+    <div class="ibox-content">
+        <div class="form-check mb-3">
+            <input class="form-check-input" asp-for="Cod4xInheritPluginSettings" />
+            <label class="form-check-label" asp-for="Cod4xInheritPluginSettings"></label>
+            <small class="form-text text-muted d-block">Global value: <strong>@(Model.GlobalCod4xPluginEnabled ? "Enabled" : "Disabled")</strong></small>
+        </div>
+
+        <div id="cod4x-plugin-override-panel">
+            <div class="form-check mb-0">
+                <input class="form-check-input" asp-for="Cod4xPluginEnabled" />
+                <label class="form-check-label" asp-for="Cod4xPluginEnabled"></label>
+            </div>
+            <span asp-validation-for="Cod4xPluginEnabled" class="text-danger"></span>
+        </div>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-bolt" aria-hidden="true"></i> Power</h5>
+    </div>
+    <div class="ibox-content">
+        <div class="form-check mb-3">
+            <input class="form-check-input" asp-for="Cod4xInheritPowerSettings" />
+            <label class="form-check-label" asp-for="Cod4xInheritPowerSettings"></label>
+            <small class="form-text text-muted d-block">Global enabled: <strong>@(Model.GlobalCod4xPowerEnabled ? "Enabled" : "Disabled")</strong>, default power: <strong>@Model.GlobalCod4xPowerDefaultPower</strong></small>
+        </div>
+
+        <div id="cod4x-power-override-panel">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" asp-for="Cod4xPowerEnabled" />
+                        <label class="form-check-label" asp-for="Cod4xPowerEnabled"></label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label asp-for="Cod4xPowerDefaultPower" class="form-label"></label>
+                        <input asp-for="Cod4xPowerDefaultPower" class="form-control" type="number" />
+                        <span asp-validation-for="Cod4xPowerDefaultPower" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-0">
+                <label asp-for="Cod4xPowerTagMappingsJson" class="form-label"></label>
+                <textarea asp-for="Cod4xPowerTagMappingsJson" class="form-control" rows="8"></textarea>
+                <span asp-validation-for="Cod4xPowerTagMappingsJson" class="text-danger"></span>
+                <small class="form-text text-muted">Enter a JSON array of objects with <strong>tag</strong>, <strong>power</strong>, and optional <strong>enabled</strong> properties.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> Command Minimum Power</h5>
+    </div>
+    <div class="ibox-content">
+        <div class="form-check mb-3">
+            <input class="form-check-input" asp-for="Cod4xInheritCommandSettings" />
+            <label class="form-check-label" asp-for="Cod4xInheritCommandSettings"></label>
+            <small class="form-text text-muted d-block">Global command enforcement: <strong>@(Model.GlobalCod4xCommandsEnabled ? "Enabled" : "Disabled")</strong></small>
+        </div>
+
+        <div id="cod4x-command-override-panel">
+            <div class="form-check mb-3">
+                <input class="form-check-input" asp-for="Cod4xCommandsEnabled" />
+                <label class="form-check-label" asp-for="Cod4xCommandsEnabled"></label>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Command</th>
+                            <th style="width: 160px;">Enabled</th>
+                            <th style="width: 220px;">Minimum Power</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Cod4xCommands.Count; i++)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="hidden" asp-for="Cod4xCommands[i].Name" />
+                                    <strong>@Model.Cod4xCommands[i].Name</strong>
+                                </td>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input" asp-for="Cod4xCommands[i].Enabled" />
+                                    </div>
+                                </td>
+                                <td>
+                                    <input asp-for="Cod4xCommands[i].MinPower" class="form-control" type="number" />
+                                    <span asp-validation-for="Cod4xCommands[i].MinPower" class="text-danger"></span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

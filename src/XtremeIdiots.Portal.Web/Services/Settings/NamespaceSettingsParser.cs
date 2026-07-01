@@ -3,6 +3,9 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Events;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
@@ -105,6 +108,31 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
                 {
                     model.ServerListHtmlBanner = serverListDocument.HtmlBanner;
+                }
+
+                break;
+            case Cod4xPluginSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
+                {
+                    model.Cod4xPluginEnabled = cod4xPluginDocument.Enabled ?? model.Cod4xPluginEnabled;
+                }
+
+                break;
+            case Cod4xPowerSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xPowerSettingsDocument? cod4xPowerDocument) && cod4xPowerDocument is not null)
+                {
+                    model.Cod4xPowerEnabled = cod4xPowerDocument.Enabled ?? model.Cod4xPowerEnabled;
+                    model.Cod4xPowerDefaultPower = cod4xPowerDocument.DefaultPower ?? model.Cod4xPowerDefaultPower;
+                    model.Cod4xPowerTagMappingsJson = Cod4xSettingsViewModelHelpers.SerializePowerMappingsJson(cod4xPowerDocument.TagMappings);
+                }
+
+                break;
+            case Cod4xCommandSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xCommandSettingsDocument? cod4xCommandDocument) && cod4xCommandDocument is not null)
+                {
+                    model.Cod4xCommandsEnabled = cod4xCommandDocument.Enabled ?? model.Cod4xCommandsEnabled;
+                    model.Cod4xCommands = Cod4xSettingsViewModelHelpers.CreateDefaultCommands();
+                    Cod4xSettingsViewModelHelpers.ApplyCommandOverrides(model.Cod4xCommands, cod4xCommandDocument.Commands);
                 }
 
                 break;
@@ -248,6 +276,34 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
+            case Cod4xPluginSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
+                {
+                    model.Cod4xInheritPluginSettings = false;
+                    model.Cod4xPluginEnabled = cod4xPluginDocument.Enabled ?? false;
+                }
+
+                break;
+            case Cod4xPowerSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xPowerSettingsDocument? cod4xPowerDocument) && cod4xPowerDocument is not null)
+                {
+                    model.Cod4xInheritPowerSettings = false;
+                    model.Cod4xPowerEnabled = cod4xPowerDocument.Enabled ?? false;
+                    model.Cod4xPowerDefaultPower = cod4xPowerDocument.DefaultPower ?? model.Cod4xPowerDefaultPower;
+                    model.Cod4xPowerTagMappingsJson = Cod4xSettingsViewModelHelpers.SerializePowerMappingsJson(cod4xPowerDocument.TagMappings);
+                }
+
+                break;
+            case Cod4xCommandSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xCommandSettingsDocument? cod4xCommandDocument) && cod4xCommandDocument is not null)
+                {
+                    model.Cod4xInheritCommandSettings = false;
+                    model.Cod4xCommandsEnabled = cod4xCommandDocument.Enabled ?? false;
+                    model.Cod4xCommands = Cod4xSettingsViewModelHelpers.CreateDefaultCommands();
+                    Cod4xSettingsViewModelHelpers.ApplyCommandOverrides(model.Cod4xCommands, cod4xCommandDocument.Commands);
+                }
+
+                break;
             default:
                 logger.LogDebug("Unknown configuration namespace '{Namespace}' for game server", config.Namespace);
                 break;
@@ -326,6 +382,30 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out ServerListSettingsDocument? serverListDocument) && serverListDocument is not null)
                 {
                     model.GlobalServerListHtmlBanner = serverListDocument.HtmlBanner;
+                }
+
+                break;
+            case Cod4xPluginSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
+                {
+                    model.GlobalCod4xPluginEnabled = cod4xPluginDocument.Enabled ?? model.GlobalCod4xPluginEnabled;
+                }
+
+                break;
+            case Cod4xPowerSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xPowerSettingsDocument? cod4xPowerDocument) && cod4xPowerDocument is not null)
+                {
+                    model.GlobalCod4xPowerEnabled = cod4xPowerDocument.Enabled ?? model.GlobalCod4xPowerEnabled;
+                    model.GlobalCod4xPowerDefaultPower = cod4xPowerDocument.DefaultPower ?? model.GlobalCod4xPowerDefaultPower;
+                }
+
+                break;
+            case Cod4xCommandSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out Cod4xCommandSettingsDocument? cod4xCommandDocument) && cod4xCommandDocument is not null)
+                {
+                    model.GlobalCod4xCommandsEnabled = cod4xCommandDocument.Enabled ?? model.GlobalCod4xCommandsEnabled;
+                    model.GlobalCod4xCommands = Cod4xSettingsViewModelHelpers.CreateDefaultCommands();
+                    Cod4xSettingsViewModelHelpers.ApplyCommandOverrides(model.GlobalCod4xCommands, cod4xCommandDocument.Commands);
                 }
 
                 break;
