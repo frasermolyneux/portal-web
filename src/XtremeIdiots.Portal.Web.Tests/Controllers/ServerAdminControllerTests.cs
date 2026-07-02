@@ -205,7 +205,7 @@ public class ServerAdminControllerTests
 
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x, GameServerPlatform.Windows))));
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
@@ -255,6 +255,11 @@ public class ServerAdminControllerTests
         Assert.Equal(JsonValueKind.String, artifactPathElement.ValueKind);
         Assert.Contains("1.2.4", artifactPathElement.GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("portal-cod4x-plugin", artifactPathElement.GetString(), StringComparison.OrdinalIgnoreCase);
+        var artifactPath = artifactPathElement.GetString()!.Replace('\\', '/');
+        Assert.Contains("/releases/1.2.4/", artifactPath, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/windows/", artifactPath, StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(".dll", artifactPath, StringComparison.OrdinalIgnoreCase);
+        Assert.False(serializedDocument.OperationRequest.ExtensionData.ContainsKey("artifactPathFallback"));
 
         Assert.NotNull(serializedDocument.RuntimeState);
         Assert.Equal("1.2.3", serializedDocument.RuntimeState!.CurrentVersion);
@@ -287,7 +292,7 @@ public class ServerAdminControllerTests
 
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x, GameServerPlatform.Windows))));
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
@@ -318,6 +323,67 @@ public class ServerAdminControllerTests
         var jsonResult = Assert.IsType<JsonResult>(result);
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.True(payload.Value<bool>("success"));
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_Install_WithUnsupportedPlatform_ReturnsFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(
+                CreateGameServerDto(serverId, GameType.CallOfDuty4x, GameServerPlatform.Unknown))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            Cod4xPluginOperationAction.Install,
+            "1.2.4",
+            CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Contains("not supported", payload.Value<string>("message"), StringComparison.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            It.IsAny<Guid>(),
+            It.IsAny<string>(),
+            It.IsAny<UpsertConfigurationDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void TryResolveCod4xArtifactPlatform_WhenRequestedPlatformMissing_ReturnsFalse()
+    {
+        var resolved = ServerAdminController.TryResolveCod4xArtifactPlatform(
+            GameServerPlatform.Windows,
+            hasWindowsArtifacts: false,
+            hasLinuxArtifacts: true,
+            out var resolvedPlatform);
+
+        Assert.False(resolved);
+        Assert.Equal(GameServerPlatform.Unknown, resolvedPlatform);
+    }
+
+    [Fact]
+    public void TryResolveCod4xArtifactPlatform_WhenRequestedPlatformPresent_ReturnsRequestedPlatform()
+    {
+        var resolved = ServerAdminController.TryResolveCod4xArtifactPlatform(
+            GameServerPlatform.Linux,
+            hasWindowsArtifacts: true,
+            hasLinuxArtifacts: true,
+            out var resolvedPlatform);
+
+        Assert.True(resolved);
+        Assert.Equal(GameServerPlatform.Linux, resolvedPlatform);
     }
 
     [Fact]
@@ -1083,13 +1149,17 @@ public class ServerAdminControllerTests
         Assert.Empty(maps);
     }
 
-    private static GameServerDto CreateGameServerDto(Guid gameServerId, GameType gameType = GameType.CallOfDuty4)
+    private static GameServerDto CreateGameServerDto(
+        Guid gameServerId,
+        GameType gameType = GameType.CallOfDuty4,
+        GameServerPlatform platform = GameServerPlatform.Windows)
     {
         var json = JsonConvert.SerializeObject(new
         {
             GameServerId = gameServerId,
             Title = "Test Server",
             GameType = gameType,
+            Platform = platform,
             Hostname = "127.0.0.1",
             QueryPort = 28960,
             AgentEnabled = true,

@@ -1068,7 +1068,17 @@ public class ServerAdminController(
                     return Json(new { success = false, message = "Target version contains invalid characters." });
                 }
 
-                installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, gameServerData.Platform);
+                var artifactPlatformResolution = await TryResolveCod4xInstallArtifactPlatformAsync(
+                    normalizedTargetVersion,
+                    gameServerData.Platform,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!artifactPlatformResolution.IsSuccess)
+                {
+                    return Json(new { success = false, message = artifactPlatformResolution.ErrorMessage ?? "Unable to resolve requested CoD4x plugin artifact." });
+                }
+
+                installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, artifactPlatformResolution.Platform);
             }
 
             if (action != Cod4xPluginOperationAction.Install)
@@ -1180,25 +1190,13 @@ public class ServerAdminController(
 
     private async Task<IReadOnlyList<string>> GetAvailableCod4xPluginVersionsAsync(CancellationToken cancellationToken)
     {
-        var storageAccountName = Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"];
-        var containerName = Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"];
-
-        if (string.IsNullOrWhiteSpace(storageAccountName)
-            || string.IsNullOrWhiteSpace(containerName))
+        if (!TryCreateCod4xArtifactContainerClient(out var containerClient, out _))
         {
             return [];
         }
 
         try
         {
-            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-            {
-                ManagedIdentityClientId = Configuration["AZURE_CLIENT_ID"]
-            });
-
-            var containerUri = new Uri($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
-            var containerClient = new BlobContainerClient(containerUri, credential);
-
             var discoveredVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             await foreach (var blobItem in containerClient
                                .GetBlobsByHierarchyAsync(
@@ -1223,12 +1221,187 @@ public class ServerAdminController(
         }
         catch (Exception ex) when (ex is RequestFailedException or CredentialUnavailableException or AuthenticationFailedException)
         {
+            Logger.LogWarning(ex, "Failed to load published CoD4x plugin versions from configured artifacts storage.");
+            return [];
+        }
+    }
+
+    private async Task<Cod4xArtifactPlatformResolution> TryResolveCod4xInstallArtifactPlatformAsync(
+        string targetVersion,
+        GameServerPlatform requestedPlatform,
+        CancellationToken cancellationToken)
+    {
+        if (!TryCreateCod4xArtifactContainerClient(out var containerClient, out var configurationError))
+        {
+            if (requestedPlatform is not (GameServerPlatform.Windows or GameServerPlatform.Linux))
+            {
+                return Cod4xArtifactPlatformResolution.Failure(
+                    $"Game server platform '{requestedPlatform}' is not supported for CoD4x plugin installation.");
+            }
+
+            Logger.LogWarning(
+                "CoD4x artifact discovery is unavailable; using requested platform {RequestedPlatform}. Reason: {Reason}",
+                requestedPlatform,
+                configurationError);
+
+            return Cod4xArtifactPlatformResolution.Success(requestedPlatform);
+        }
+
+        try
+        {
+            if (requestedPlatform is not (GameServerPlatform.Windows or GameServerPlatform.Linux))
+            {
+                return Cod4xArtifactPlatformResolution.Failure(
+                    $"Game server platform '{requestedPlatform}' is not supported for CoD4x plugin installation.");
+            }
+
+            var versionPrefix = $"{Cod4xArtifactsPrefix.TrimEnd('/')}/{targetVersion.Trim('/')}/";
+            var windowsPrefix = $"{versionPrefix}windows/";
+            var linuxPrefix = $"{versionPrefix}linux/";
+
+            var hasWindowsArtifacts = false;
+            var hasLinuxArtifacts = false;
+
+            await foreach (var blobItem in containerClient
+                               .GetBlobsByHierarchyAsync(
+                                   traits: Azure.Storage.Blobs.Models.BlobTraits.None,
+                                   states: Azure.Storage.Blobs.Models.BlobStates.None,
+                                   delimiter: "/",
+                                   prefix: versionPrefix,
+                                   cancellationToken: cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                if (!blobItem.IsPrefix || string.IsNullOrWhiteSpace(blobItem.Prefix))
+                {
+                    continue;
+                }
+
+                if (blobItem.Prefix.Equals(windowsPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    hasWindowsArtifacts = true;
+                    continue;
+                }
+
+                if (blobItem.Prefix.Equals(linuxPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    hasLinuxArtifacts = true;
+                }
+            }
+
+            if (!hasWindowsArtifacts && !hasLinuxArtifacts)
+            {
+                return Cod4xArtifactPlatformResolution.Failure($"No published CoD4x plugin artifacts were found for version '{targetVersion}'.");
+            }
+
+            if (!TryResolveCod4xArtifactPlatform(
+                    requestedPlatform,
+                    hasWindowsArtifacts,
+                    hasLinuxArtifacts,
+                    out var resolvedPlatform))
+            {
+                var expectedPlatformFolder = requestedPlatform == GameServerPlatform.Windows ? "windows" : "linux";
+                return Cod4xArtifactPlatformResolution.Failure(
+                    $"No published CoD4x plugin artifacts were found for version '{targetVersion}' and platform '{expectedPlatformFolder}'.");
+            }
+
+            return Cod4xArtifactPlatformResolution.Success(resolvedPlatform);
+        }
+        catch (Exception ex) when (ex is RequestFailedException or CredentialUnavailableException or AuthenticationFailedException)
+        {
             Logger.LogWarning(
                 ex,
-                "Failed to load published CoD4x plugin versions from storage account {StorageAccount} container {Container}",
+                "Failed to resolve CoD4x plugin artifact platform for version {TargetVersion}",
+                targetVersion);
+
+            return Cod4xArtifactPlatformResolution.Failure($"Unable to verify published CoD4x plugin artifacts for version '{targetVersion}'.");
+        }
+    }
+
+    internal static bool TryResolveCod4xArtifactPlatform(
+        GameServerPlatform requestedPlatform,
+        bool hasWindowsArtifacts,
+        bool hasLinuxArtifacts,
+        out GameServerPlatform resolvedPlatform)
+    {
+        resolvedPlatform = GameServerPlatform.Unknown;
+
+        if (requestedPlatform == GameServerPlatform.Windows)
+        {
+            if (!hasWindowsArtifacts)
+            {
+                return false;
+            }
+
+            resolvedPlatform = GameServerPlatform.Windows;
+            return true;
+        }
+
+        if (requestedPlatform == GameServerPlatform.Linux)
+        {
+            if (!hasLinuxArtifacts)
+            {
+                return false;
+            }
+
+            resolvedPlatform = GameServerPlatform.Linux;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryCreateCod4xArtifactContainerClient(out BlobContainerClient containerClient, out string error)
+    {
+        containerClient = default!;
+        error = string.Empty;
+
+        var storageAccountName = Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"];
+        var containerName = Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"];
+
+        if (string.IsNullOrWhiteSpace(storageAccountName)
+            || string.IsNullOrWhiteSpace(containerName))
+        {
+            error = "Artifacts storage account or container name is not configured.";
+            return false;
+        }
+
+        try
+        {
+            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ManagedIdentityClientId = Configuration["AZURE_CLIENT_ID"]
+            });
+
+            var containerUri = new Uri($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            containerClient = new BlobContainerClient(containerUri, credential);
+            return true;
+        }
+        catch (Exception ex) when (ex is UriFormatException or ArgumentException)
+        {
+            Logger.LogWarning(
+                ex,
+                "Invalid CoD4x artifacts storage configuration for account {StorageAccount} container {Container}",
                 storageAccountName,
                 containerName);
-            return [];
+
+            error = "Artifacts storage configuration is invalid.";
+            return false;
+        }
+    }
+
+    private readonly record struct Cod4xArtifactPlatformResolution(
+        bool IsSuccess,
+        GameServerPlatform Platform,
+        string? ErrorMessage)
+    {
+        public static Cod4xArtifactPlatformResolution Success(GameServerPlatform platform)
+        {
+            return new(true, platform, null);
+        }
+
+        public static Cod4xArtifactPlatformResolution Failure(string errorMessage)
+        {
+            return new(false, default, errorMessage);
         }
     }
 
