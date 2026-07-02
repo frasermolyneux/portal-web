@@ -398,13 +398,17 @@ public class ServerAdminController(
         var isVpn = false;
         var proxyType = string.Empty;
 
-        // Try to find existing player profile by GUID (cached briefly to avoid repeated lookups across polls)
+        // Try to find existing player profile by GUID (successful lookups cached briefly to avoid repeated lookups across polls)
         string guid = rconPlayer.Guid?.ToString() ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(guid))
         {
-            playerProfile = await memoryCache.GetOrCreateAsync($"rcon-player-profile:{gameType}:{guid}", async entry =>
+            var profileCacheKey = $"rcon-player-profile:{gameType}:{guid}";
+            if (memoryCache.TryGetValue(profileCacheKey, out PlayerDto? cachedProfile))
             {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+                playerProfile = cachedProfile;
+            }
+            else
+            {
                 try
                 {
                     // Search for player by GUID using GetPlayers with filter
@@ -413,51 +417,57 @@ public class ServerAdminController(
 
                     if (playerResponse.IsSuccess && playerResponse.Result?.Data?.Items?.Any() == true)
                     {
-                        return playerResponse.Result.Data.Items.First();
+                        playerProfile = playerResponse.Result.Data.Items.First();
+
+                        // Only cache successful lookups so a transient failure or "not found" isn't served stale.
+                        memoryCache.Set(profileCacheKey, playerProfile, TimeSpan.FromSeconds(60));
                     }
                 }
                 catch (Exception ex)
                 {
                     Logger.LogWarning(ex, "Failed to retrieve player profile for GUID {Guid}", guid);
                 }
-
-                return null;
-            }).ConfigureAwait(false);
+            }
         }
 
-        // Get IP address enrichment data via V1.1 intelligence endpoint (cached — intelligence rarely changes per IP)
+        // Get IP address enrichment data via V1.1 intelligence endpoint (successful lookups cached — intelligence rarely changes per IP)
         string ipAddress = rconPlayer.IpAddress?.ToString() ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(ipAddress))
         {
-            var intelligence = await memoryCache.GetOrCreateAsync($"rcon-ip-intel:{ipAddress}", async entry =>
+            var intelCacheKey = $"rcon-ip-intel:{ipAddress}";
+            if (memoryCache.TryGetValue(intelCacheKey, out (string? CountryCode, int RiskScore, bool IsProxy, bool IsVpn, string ProxyType) cachedIntel))
             {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+                countryCode = cachedIntel.CountryCode;
+                proxyCheckRiskScore = cachedIntel.RiskScore;
+                isProxy = cachedIntel.IsProxy;
+                isVpn = cachedIntel.IsVpn;
+                proxyType = cachedIntel.ProxyType;
+            }
+            else
+            {
                 try
                 {
                     var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
                     if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
                     {
-                        return intelligenceResult.Result.Data;
+                        var intelligence = intelligenceResult.Result.Data;
+                        countryCode = intelligence.CountryCode;
+
+                        if (intelligence.ProxyCheck is not null)
+                        {
+                            proxyCheckRiskScore = intelligence.ProxyCheck.RiskScore;
+                            isProxy = intelligence.ProxyCheck.IsProxy;
+                            isVpn = intelligence.ProxyCheck.IsVpn;
+                            proxyType = intelligence.ProxyCheck.ProxyType;
+                        }
+
+                        // Only cache successful lookups so a transient failure isn't served as "clean / risk 0" for the full TTL.
+                        memoryCache.Set(intelCacheKey, (countryCode, proxyCheckRiskScore, isProxy, isVpn, proxyType), TimeSpan.FromMinutes(10));
                     }
                 }
                 catch (Exception ex)
                 {
                     Logger.LogDebug(ex, "Failed to retrieve intelligence data for IP {IpAddress}", ipAddress);
-                }
-
-                return null;
-            }).ConfigureAwait(false);
-
-            if (intelligence is not null)
-            {
-                countryCode = intelligence.CountryCode;
-
-                if (intelligence.ProxyCheck is not null)
-                {
-                    proxyCheckRiskScore = intelligence.ProxyCheck.RiskScore;
-                    isProxy = intelligence.ProxyCheck.IsProxy;
-                    isVpn = intelligence.ProxyCheck.IsVpn;
-                    proxyType = intelligence.ProxyCheck.ProxyType;
                 }
             }
         }
