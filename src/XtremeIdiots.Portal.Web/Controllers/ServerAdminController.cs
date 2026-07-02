@@ -4,6 +4,7 @@ using Azure.Storage.Blobs;
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
@@ -48,6 +49,7 @@ public class ServerAdminController(
     IGeoLocationApiClient geoLocationClient,
     IAdminActionTopics adminActionTopics,
     IAgentTelemetryService agentTelemetryService,
+    IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
     ILogger<ServerAdminController> logger,
     IConfiguration configuration,
@@ -370,13 +372,11 @@ public class ServerAdminController(
             }
 
             var rconPlayers = getServerStatusResult.Result.Data.Players;
-            List<object> enrichedPlayers = [];
 
-            foreach (var rconPlayer in rconPlayers)
-            {
-                var enrichedPlayer = await EnrichRconPlayerDataAsync(rconPlayer, gameServerData!.GameType, cancellationToken).ConfigureAwait(false);
-                enrichedPlayers.Add(enrichedPlayer);
-            }
+            // Enrich players in parallel; Task.WhenAll preserves input order in its result array.
+            var enrichedPlayers = await Task.WhenAll(
+                rconPlayers.Select(rconPlayer => EnrichRconPlayerDataAsync(rconPlayer, gameServerData!.GameType, cancellationToken)))
+                .ConfigureAwait(false);
 
             return Json(new { data = enrichedPlayers });
         }, nameof(GetRconPlayers)).ConfigureAwait(false);
@@ -398,51 +398,67 @@ public class ServerAdminController(
         var isVpn = false;
         var proxyType = string.Empty;
 
-        // Try to find existing player profile by GUID
+        // Try to find existing player profile by GUID (cached briefly to avoid repeated lookups across polls)
         string guid = rconPlayer.Guid?.ToString() ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(guid))
         {
-            try
+            playerProfile = await memoryCache.GetOrCreateAsync($"rcon-player-profile:{gameType}:{guid}", async entry =>
             {
-                // Search for player by GUID using GetPlayers with filter
-                var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                    gameType, PlayersFilter.UsernameAndGuid, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
-
-                if (playerResponse.IsSuccess && playerResponse.Result?.Data?.Items?.Any() == true)
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+                try
                 {
-                    playerProfile = playerResponse.Result.Data.Items.First();
+                    // Search for player by GUID using GetPlayers with filter
+                    var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
+                        gameType, PlayersFilter.UsernameAndGuid, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
+
+                    if (playerResponse.IsSuccess && playerResponse.Result?.Data?.Items?.Any() == true)
+                    {
+                        return playerResponse.Result.Data.Items.First();
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to retrieve player profile for GUID {Guid}", guid);
-            }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to retrieve player profile for GUID {Guid}", guid);
+                }
+
+                return null;
+            }).ConfigureAwait(false);
         }
 
-        // Get IP address enrichment data via V1.1 intelligence endpoint
+        // Get IP address enrichment data via V1.1 intelligence endpoint (cached — intelligence rarely changes per IP)
         string ipAddress = rconPlayer.IpAddress?.ToString() ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(ipAddress))
         {
-            try
+            var intelligence = await memoryCache.GetOrCreateAsync($"rcon-ip-intel:{ipAddress}", async entry =>
             {
-                var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
-                if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+                try
                 {
-                    var intelligence = intelligenceResult.Result.Data;
-                    countryCode = intelligence.CountryCode;
-
-                    if (intelligence.ProxyCheck is not null)
+                    var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
+                    if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
                     {
-                        proxyCheckRiskScore = intelligence.ProxyCheck.RiskScore;
-                        isProxy = intelligence.ProxyCheck.IsProxy;
-                        isVpn = intelligence.ProxyCheck.IsVpn;
-                        proxyType = intelligence.ProxyCheck.ProxyType;
+                        return intelligenceResult.Result.Data;
                     }
                 }
-            }
-            catch (Exception ex)
+                catch (Exception ex)
+                {
+                    Logger.LogDebug(ex, "Failed to retrieve intelligence data for IP {IpAddress}", ipAddress);
+                }
+
+                return null;
+            }).ConfigureAwait(false);
+
+            if (intelligence is not null)
             {
-                Logger.LogDebug(ex, "Failed to retrieve intelligence data for IP {IpAddress}", ipAddress);
+                countryCode = intelligence.CountryCode;
+
+                if (intelligence.ProxyCheck is not null)
+                {
+                    proxyCheckRiskScore = intelligence.ProxyCheck.RiskScore;
+                    isProxy = intelligence.ProxyCheck.IsProxy;
+                    isVpn = intelligence.ProxyCheck.IsVpn;
+                    proxyType = intelligence.ProxyCheck.ProxyType;
+                }
             }
         }
 
@@ -1050,6 +1066,7 @@ public class ServerAdminController(
                 ? null
                 : targetVersion.Trim();
             string? installArtifactPath = null;
+            var installArtifactPlatform = gameServerData.Platform;
 
             if (action == Cod4xPluginOperationAction.Install && string.IsNullOrWhiteSpace(normalizedTargetVersion))
             {
@@ -1078,7 +1095,8 @@ public class ServerAdminController(
                     return Json(new { success = false, message = artifactPlatformResolution.ErrorMessage ?? "Unable to resolve requested CoD4x plugin artifact." });
                 }
 
-                installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, artifactPlatformResolution.Platform);
+                installArtifactPlatform = artifactPlatformResolution.Platform;
+                installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, installArtifactPlatform);
             }
 
             if (action != Cod4xPluginOperationAction.Install)
@@ -1130,10 +1148,26 @@ public class ServerAdminController(
 
             if (action == Cod4xPluginOperationAction.Install && !string.IsNullOrWhiteSpace(installArtifactPath))
             {
-                cod4xPluginSettings.OperationRequest.ExtensionData = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+                var extensionData = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["artifactPath"] = SystemTextJsonSerializer.SerializeToElement(installArtifactPath)
+                    ["artifactPath"] = SystemTextJsonSerializer.SerializeToElement(installArtifactPath),
+                    ["artifactBlobPath"] = SystemTextJsonSerializer.SerializeToElement(
+                        BuildCod4xArtifactBlobPath(normalizedTargetVersion!, installArtifactPlatform))
                 };
+
+                var artifactsStorageAccountName = Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"];
+                if (!string.IsNullOrWhiteSpace(artifactsStorageAccountName))
+                {
+                    extensionData["artifactStorageAccountName"] = SystemTextJsonSerializer.SerializeToElement(artifactsStorageAccountName);
+                }
+
+                var artifactsContainerName = Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"];
+                if (!string.IsNullOrWhiteSpace(artifactsContainerName))
+                {
+                    extensionData["artifactContainerName"] = SystemTextJsonSerializer.SerializeToElement(artifactsContainerName);
+                }
+
+                cod4xPluginSettings.OperationRequest.ExtensionData = extensionData;
             }
 
             var serializedConfiguration = SystemTextJsonSerializer.Serialize(cod4xPluginSettings, cod4xPluginJsonOptions);
@@ -1365,6 +1399,29 @@ public class ServerAdminController(
             return false;
         }
 
+        storageAccountName = storageAccountName.Trim();
+        containerName = containerName.Trim();
+
+        if (!IsValidArtifactStorageAccountName(storageAccountName))
+        {
+            Logger.LogWarning(
+                "Invalid CoD4x artifacts storage account name configured: {StorageAccount}",
+                storageAccountName);
+
+            error = "Artifacts storage account name is invalid.";
+            return false;
+        }
+
+        if (!IsValidArtifactContainerName(containerName))
+        {
+            Logger.LogWarning(
+                "Invalid CoD4x artifacts container name configured: {Container}",
+                containerName);
+
+            error = "Artifacts container name is invalid.";
+            return false;
+        }
+
         try
         {
             var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
@@ -1387,6 +1444,44 @@ public class ServerAdminController(
             error = "Artifacts storage configuration is invalid.";
             return false;
         }
+    }
+
+    private static bool IsValidArtifactStorageAccountName(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+               && value.Length is >= 3 and <= 24
+               && value.All(static ch => ch is (>= 'a' and <= 'z') or (>= '0' and <= '9'));
+    }
+
+    private static bool IsValidArtifactContainerName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || value.Length is < 3 or > 63)
+        {
+            return false;
+        }
+
+        if (value.StartsWith('-') || value.EndsWith('-'))
+        {
+            return false;
+        }
+
+        if (value.Contains("--", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        foreach (var ch in value)
+        {
+            var isLowercaseLetter = ch is >= 'a' and <= 'z';
+            var isDigit = ch is >= '0' and <= '9';
+            if (!isLowercaseLetter && !isDigit && ch != '-')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private readonly record struct Cod4xArtifactPlatformResolution(
@@ -1517,11 +1612,19 @@ public class ServerAdminController(
             ? DefaultCod4xPluginArtifactRoot
             : configuredRootPath;
 
+        var artifactBlobPath = BuildCod4xArtifactBlobPath(targetVersion, platform)
+            .Replace('/', Path.DirectorySeparatorChar);
+
+        return Path.Combine(artifactRootPath, artifactBlobPath);
+    }
+
+    private static string BuildCod4xArtifactBlobPath(string targetVersion, GameServerPlatform platform)
+    {
         var platformFolder = platform == GameServerPlatform.Windows ? "windows" : "linux";
         var extension = platform == GameServerPlatform.Windows ? ".dll" : ".so";
 
-        return Path.Combine(
-            artifactRootPath,
+        return string.Join(
+            '/',
             Cod4xArtifactsPrefix.TrimEnd('/'),
             targetVersion,
             platformFolder,
@@ -1896,6 +1999,25 @@ public class ServerAdminController(
 
     private async Task<ApiResult<ServerRconStatusResponseDto>> GetServerStatusAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
     {
+        var cacheKey = $"rcon-status:{serverId}";
+        if (memoryCache.TryGetValue(cacheKey, out ApiResult<ServerRconStatusResponseDto>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var result = await GetServerStatusInternalAsync(serverId, gameType, cancellationToken).ConfigureAwait(false);
+
+        // Only cache successful snapshots; short TTL keeps the list fresh while deduping concurrent polls.
+        if (result.IsSuccess && result.Result?.Data is not null)
+        {
+            memoryCache.Set(cacheKey, result, TimeSpan.FromSeconds(4));
+        }
+
+        return result;
+    }
+
+    private async Task<ApiResult<ServerRconStatusResponseDto>> GetServerStatusInternalAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
 #pragma warning disable IDE0010 // Populate switch
 #pragma warning disable IDE0072 // Add missing cases
         return gameType switch
@@ -1913,9 +2035,31 @@ public class ServerAdminController(
 #pragma warning restore IDE0010 // Populate switch
     }
 
+    /// <summary>
+    /// Retrieves the raw CoD4x status, cached briefly so the players poll and current-map poll
+    /// (which both derive from the same underlying status call) share a single RCON round trip.
+    /// </summary>
+    private async Task<ApiResult<CoD4xStatusResponseDto>> GetCoD4xRawStatusAsync(Guid serverId, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"rcon-cod4x-raw:{serverId}";
+        if (memoryCache.TryGetValue(cacheKey, out ApiResult<CoD4xStatusResponseDto>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var result = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+
+        if (result.IsSuccess && result.Result?.Data is not null)
+        {
+            memoryCache.Set(cacheKey, result, TimeSpan.FromSeconds(4));
+        }
+
+        return result;
+    }
+
     private async Task<ApiResult<ServerRconStatusResponseDto>> GetCoD4xStatusAsync(Guid serverId, CancellationToken cancellationToken)
     {
-        var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+        var cod4xStatusResult = await GetCoD4xRawStatusAsync(serverId, cancellationToken).ConfigureAwait(false);
         if (!cod4xStatusResult.IsSuccess || cod4xStatusResult.Result?.Data is null)
         {
             return new ApiResult<ServerRconStatusResponseDto>(
@@ -1991,7 +2135,7 @@ public class ServerAdminController(
 
     private async Task<ApiResult<RconCurrentMapDto>> GetCoD4xCurrentMapAsync(Guid serverId, CancellationToken cancellationToken)
     {
-        var cod4xStatusResult = await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false);
+        var cod4xStatusResult = await GetCoD4xRawStatusAsync(serverId, cancellationToken).ConfigureAwait(false);
         return cod4xStatusResult.IsSuccess && !string.IsNullOrWhiteSpace(cod4xStatusResult.Result?.Data?.MapName)
             ? new ApiResult<RconCurrentMapDto>(
                 HttpStatusCode.OK,

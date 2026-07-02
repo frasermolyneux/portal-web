@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -48,6 +49,7 @@ public class ServerAdminControllerTests
     private readonly Mock<IGeoLocationApiClient> mockGeoLocationClient = new();
     private readonly Mock<IAdminActionTopics> mockAdminActionTopics = new();
     private readonly Mock<IAgentTelemetryService> mockAgentTelemetryService = new();
+    private readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<ServerAdminController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
@@ -62,6 +64,7 @@ public class ServerAdminControllerTests
             mockGeoLocationClient.Object,
             mockAdminActionTopics.Object,
             mockAgentTelemetryService.Object,
+            memoryCache,
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,
@@ -227,6 +230,14 @@ public class ServerAdminControllerTests
             .Callback<Guid, string, UpsertConfigurationDto, CancellationToken>((_, _, dto, _) => capturedUpsertDto = dto)
             .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
 
+        mockConfiguration
+            .Setup(x => x["CoD4xPluginLifecycle:ArtifactsStorageAccountName"])
+            .Returns("invalid account");
+
+        mockConfiguration
+            .Setup(x => x["CoD4xPluginLifecycle:ArtifactsContainerName"])
+            .Returns("invalid container");
+
         var sut = CreateSut();
 
         var result = await sut.RequestCod4xPluginOperation(
@@ -260,6 +271,16 @@ public class ServerAdminControllerTests
         Assert.Contains("/windows/", artifactPath, StringComparison.OrdinalIgnoreCase);
         Assert.EndsWith(".dll", artifactPath, StringComparison.OrdinalIgnoreCase);
         Assert.False(serializedDocument.OperationRequest.ExtensionData.ContainsKey("artifactPathFallback"));
+        Assert.True(serializedDocument.OperationRequest.ExtensionData.TryGetValue("artifactBlobPath", out var artifactBlobPathElement));
+        Assert.Equal(JsonValueKind.String, artifactBlobPathElement.ValueKind);
+        var artifactBlobPath = artifactBlobPathElement.GetString()!;
+        Assert.Contains("/releases/1.2.4/", $"/{artifactBlobPath}", StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/windows/", $"/{artifactBlobPath}", StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(".dll", artifactBlobPath, StringComparison.OrdinalIgnoreCase);
+        Assert.True(serializedDocument.OperationRequest.ExtensionData.TryGetValue("artifactStorageAccountName", out var artifactStorageAccountNameElement));
+        Assert.Equal(JsonValueKind.String, artifactStorageAccountNameElement.ValueKind);
+        Assert.True(serializedDocument.OperationRequest.ExtensionData.TryGetValue("artifactContainerName", out var artifactContainerNameElement));
+        Assert.Equal(JsonValueKind.String, artifactContainerNameElement.ValueKind);
 
         Assert.NotNull(serializedDocument.RuntimeState);
         Assert.Equal("1.2.3", serializedDocument.RuntimeState!.CurrentVersion);
