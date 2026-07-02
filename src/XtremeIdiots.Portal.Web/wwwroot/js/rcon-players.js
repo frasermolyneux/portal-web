@@ -32,9 +32,6 @@ var RconPlayers = (function () {
             info: false,
             searching: false,
             stateSave: true,
-            language: {
-                processing: '<i class="fa-solid fa-fw fa-spinner fa-spin"></i> Loading players...'
-            },
             responsive: {
                 details: { type: 'inline', target: 'tr' }
             },
