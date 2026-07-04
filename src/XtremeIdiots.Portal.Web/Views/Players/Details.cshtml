@@ -62,6 +62,14 @@
                                                 <span id="playerGuid" class="mx-1 font-weight-bold text-truncate"><guid-link guid="@player.Guid" game="@player.GameType.ToString()"></guid-link></span>
                                                 <i class="fa-solid fa-fw fa-copy cursor-pointer" data-copy-target="playerGuid" title="Copy GUID" aria-hidden="true"></i>
                                             </span>
+                                            @if (player.GameType == GameType.CallOfDuty4x && !string.IsNullOrWhiteSpace(player.SteamId))
+                                            {
+                                                <span class="d-flex align-items-center justify-content-center justify-content-md-start">
+                                                    <i class="fa-brands fa-fw fa-steam" aria-hidden="true"></i> Steam ID:
+                                                    <span id="playerSteamId" class="mx-1 font-weight-bold text-truncate">@player.SteamId</span>
+                                                    <i class="fa-solid fa-fw fa-copy cursor-pointer" data-copy-target="playerSteamId" title="Copy Steam ID" aria-hidden="true"></i>
+                                                </span>
+                                            }
                                             @if (player.Tags != null && player.Tags.Any())
                                             {
                                                 <span class="d-flex align-items-center justify-content-center justify-content-md-start">

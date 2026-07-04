@@ -86,6 +86,7 @@ public class PlayersController(
                     gameType = player.GameType.ToString(),
                     player.Username,
                     player.Guid,
+                    player.SteamId,
                     player.IpAddress,
                     tags = (player.Tags ?? []).Select(t => new
                     {

@@ -4,6 +4,7 @@ $(document).ready(function () {
     const dataUrl = tableEl.data('source');
     const playersFilterSel = document.getElementById('filterPlayersFilter');
     const playerTagSel = document.getElementById('filterPlayerTag');
+    const STEAM_COLUMN_INDEX = 4;
 
     const table = tableEl.DataTable({
         processing: true,
@@ -12,9 +13,9 @@ $(document).ready(function () {
         stateSave: true,
         responsive: { details: { type: 'inline', target: 'tr' } },
         autoWidth: false,
-        order: [[5, 'desc']], // Last Seen desc (index 5 after Name, Tags, IP, Guid, FirstSeen, LastSeen)
+        order: [[6, 'desc']], // Last Seen desc (index 6 after Name, Tags, IP, Guid, SteamId, FirstSeen, LastSeen)
         stateSaveParams: function (settings, data) {
-            data._playersStructureVersion = 5; // bump when changing column/filter persistence structure
+            data._playersStructureVersion = 6; // bump when changing column/filter persistence structure
             if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
             if (playersFilterSel) data.playersFilter = playersFilterSel.value || 'UsernameAndGuid';
             const gtSel = document.getElementById('filterGameType');
@@ -22,7 +23,7 @@ $(document).ready(function () {
             if (playerTagSel) data.playerTagId = playerTagSel.value || '';
         },
         stateLoadParams: function (settings, data) {
-            if (data._playersStructureVersion !== 5) {
+            if (data._playersStructureVersion !== 6) {
                 var key = 'DataTables_dataTable_' + window.location.pathname;
                 try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
                 return false;
@@ -38,8 +39,9 @@ $(document).ready(function () {
             { targets: 1, responsivePriority: 4, visible: true }, // Tags
             { targets: 2, responsivePriority: 2, visible: true }, // Player IP (force visible)
             { targets: 3, responsivePriority: 5 }, // Guid
-            { targets: 4, responsivePriority: 6 }, // First Seen
-            { targets: 5, responsivePriority: 3 }  // Last Seen
+            { targets: 4, responsivePriority: 6, visible: false }, // Steam ID (CoD4x only)
+            { targets: 5, responsivePriority: 7 }, // First Seen
+            { targets: 6, responsivePriority: 3 }  // Last Seen
         ],
         ajax: {
             url: dataUrl,
@@ -75,10 +77,35 @@ $(document).ready(function () {
                 }
             },
             { data: 'guid', name: 'guid', orderable: false, defaultContent: '' },
+            {
+                data: 'steamId',
+                name: 'steamId',
+                orderable: false,
+                defaultContent: '',
+                render: function (data, type, row) {
+                    if (row['gameType'] !== 'CallOfDuty4x') {
+                        return '';
+                    }
+
+                    if (type !== 'display') {
+                        return data || '';
+                    }
+
+                    return data ? escapeHtml(data) : '<span class="text-muted">-</span>';
+                }
+            },
             { data: 'firstSeen', name: 'firstSeen', orderable: true, render: function (data) { return data ? ('<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
             { data: 'lastSeen', name: 'lastSeen', orderable: true, render: function (data) { return data ? ('<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatRelativeTime(data) + '</span>') : ''; } }
         ]
     });
+
+    function applySteamIdColumnVisibility() {
+        const gameType = document.getElementById('filterGameType')?.value || '';
+        const showSteamId = gameType === 'CallOfDuty4x';
+        if (table.column(STEAM_COLUMN_INDEX).visible() !== showSteamId) {
+            table.column(STEAM_COLUMN_INDEX).visible(showSteamId, false);
+        }
+    }
 
     function escapeHtml(value) {
         return String(value)
@@ -148,6 +175,7 @@ $(document).ready(function () {
     }
 
     table.on('init.dt', function () {
+        applySteamIdColumnVisibility();
         relocateSearch();
         if (window.PortalDataTableUi && typeof window.PortalDataTableUi.attachPageJump === 'function') {
             window.PortalDataTableUi.attachPageJump(table, { label: 'Page' });
@@ -155,6 +183,7 @@ $(document).ready(function () {
         table.columns.adjust().responsive.recalc();
     });
     setTimeout(function () {
+        applySteamIdColumnVisibility();
         relocateSearch();
         if (window.PortalDataTableUi && typeof window.PortalDataTableUi.attachPageJump === 'function') {
             window.PortalDataTableUi.attachPageJump(table, { label: 'Page' });
@@ -162,7 +191,10 @@ $(document).ready(function () {
         if (table.responsive) table.columns.adjust().responsive.recalc();
     }, 1000);
 
-    function reloadTable() { table.ajax.reload(null, false); }
+    function reloadTable() {
+        applySteamIdColumnVisibility();
+        table.ajax.reload(null, false);
+    }
 
     document.getElementById('filterGameType')?.addEventListener('change', reloadTable);
     playersFilterSel?.addEventListener('change', reloadTable);
@@ -175,7 +207,12 @@ $(document).ready(function () {
         if (playersFilterSel && playersFilterSel.value !== 'UsernameAndGuid') { playersFilterSel.value = 'UsernameAndGuid'; changed = true; }
         if (playerTagSel && playerTagSel.value !== '') { playerTagSel.value = ''; changed = true; }
         if (table.search()) { table.search(''); changed = true; }
-        if (changed) table.page('first');
+        if (changed) {
+            table.page('first');
+            reloadTable();
+            return;
+        }
+        applySteamIdColumnVisibility();
         table.draw(false);
     });
 
