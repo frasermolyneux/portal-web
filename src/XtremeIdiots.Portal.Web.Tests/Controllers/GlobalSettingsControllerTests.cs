@@ -16,6 +16,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -509,6 +510,47 @@ public class GlobalSettingsControllerTests
         using var serverListDoc = System.Text.Json.JsonDocument.Parse(serverListJson);
         Assert.Equal(ServerListSettingsConstants.SchemaVersion, serverListDoc.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("<b>Global banner</b>", serverListDoc.RootElement.GetProperty("htmlBanner").GetString());
+    }
+
+    [Fact]
+    public async Task Index_Post_Cod4xCommands_UpsertsModifiedMinPowerValues()
+    {
+        var sut = CreateSut();
+        var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upsertPayloads[ns] = dto.Configuration;
+                var responseDto = JsonConvert.DeserializeObject<ConfigurationDto>("{}");
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(responseDto));
+            });
+
+        var model = new GlobalSettingsViewModel
+        {
+            Cod4xCommandsEnabled = true
+        };
+
+        var kickCommand = model.Cod4xCommands.Single(static command => string.Equals(command.Name, "kick", StringComparison.OrdinalIgnoreCase));
+        kickCommand.Enabled = false;
+        kickCommand.MinPower = 99;
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(upsertPayloads.TryGetValue(Cod4xCommandSettingsConstants.Namespace, out var cod4xCommandsJson));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(cod4xCommandsJson);
+        Assert.Equal(Cod4xCommandSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
+
+        var kickSettings = doc.RootElement.GetProperty("commands").GetProperty("kick");
+        Assert.False(kickSettings.GetProperty("enabled").GetBoolean());
+        Assert.Equal(99, kickSettings.GetProperty("minPower").GetInt32());
     }
 
     [Fact]

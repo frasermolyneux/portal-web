@@ -21,7 +21,7 @@
                 <input class="form-check-input" asp-for="Cod4xInheritPluginSettings" />
                 <label class="form-check-label" asp-for="Cod4xInheritPluginSettings"></label>
                 <small class="form-text text-muted d-block">Global value: <strong>@(Model.GlobalCod4xPluginEnabled ?
-                                                                                    "Enabled" : "Disabled")</strong></small>
+                                                                                                        "Enabled" : "Disabled")</strong></small>
                 </div>
 
                 <div id="cod4x-plugin-override-panel">
@@ -58,7 +58,8 @@
 
                         <p class="text-muted mb-0">
                             CoD4x plugin lifecycle status and version operations are managed from
-                            <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@Model.GameServer.GameServerId">Server Admin &gt; Server Detail</a>.
+                            <a asp-controller="ServerAdmin" asp-action="ServerDetail"
+                               asp-route-id="@Model.GameServer.GameServerId">Server Admin &gt; Server Detail</a>.
                         </p>
                     </div>
                 </div>
@@ -73,7 +74,7 @@
                         <input class="form-check-input" asp-for="Cod4xInheritPowerSettings" />
                         <label class="form-check-label" asp-for="Cod4xInheritPowerSettings"></label>
                         <small class="form-text text-muted d-block">Global enabled: <strong>@(Model.GlobalCod4xPowerEnabled ?
-                                                                                                        "Enabled" : "Disabled")</strong>, default power:
+                                                                                                                                    "Enabled" : "Disabled")</strong>, default power:
                             <strong>@Model.GlobalCod4xPowerDefaultPower</strong></small>
                         </div>
 
@@ -175,6 +176,7 @@
                                                     {
                                                         <tr>
                                                             <td>
+                                                                <input type="hidden" name="Cod4xCommands.Index" value="@i" />
                                                                 <input type="hidden" asp-for="Cod4xCommands[i].Name" />
                                                                 <strong>@Model.Cod4xCommands[i].Name</strong>
                                                             </td>

@@ -276,6 +276,16 @@ public class SettingsUiConsistencyTests
     }
 
     [Fact]
+    public void Cod4xCommandSections_IncludeCollectionIndexFieldsForStableModelBinding()
+    {
+        var globalCod4xMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_Cod4xConfiguration.cshtml");
+        var serverCod4xMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_Cod4xConfiguration.cshtml");
+
+        Assert.Contains("name=\"Cod4xCommands.Index\"", globalCod4xMarkup);
+        Assert.Contains("name=\"Cod4xCommands.Index\"", serverCod4xMarkup);
+    }
+
+    [Fact]
     public void MapRotationsIndex_UsesServerActivationColumnHeading()
     {
         var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/MapRotations/Index.cshtml");
