@@ -67,7 +67,7 @@ public class PlayersControllerTests
     {
         // Arrange
         var selectedTagId = Guid.NewGuid();
-        var player = CreatePlayerDtoWithTag();
+        var player = CreatePlayerDtoWithTag(GameType.CallOfDuty4x, "76561198000000001");
         var apiResponse = new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([player]))
         {
             Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 25)
@@ -75,7 +75,7 @@ public class PlayersControllerTests
 
         mockRepositoryApiClient
             .Setup(x => x.Players.V1.GetPlayers(
-                GameType.CallOfDuty4,
+                GameType.CallOfDuty4x,
                 PlayersFilter.Tag,
                 selectedTagId.ToString(),
                 0,
@@ -95,10 +95,11 @@ public class PlayersControllerTests
                 new { data = "tags", name = "tags", searchable = true, orderable = false, search = new { value = "", regex = false } },
                 new { data = "ipAddress", name = "ipAddress", searchable = true, orderable = false, search = new { value = "", regex = false } },
                 new { data = "guid", name = "guid", searchable = true, orderable = false, search = new { value = "", regex = false } },
+                new { data = "steamId", name = "steamId", searchable = true, orderable = false, search = new { value = "", regex = false } },
                 new { data = "firstSeen", name = "firstSeen", searchable = false, orderable = true, search = new { value = "", regex = false } },
                 new { data = "lastSeen", name = "lastSeen", searchable = false, orderable = true, search = new { value = "", regex = false } }
             },
-            order = new[] { new { column = 5, dir = "desc" } },
+            order = new[] { new { column = 6, dir = "desc" } },
             search = new { value = "", regex = false }
         };
 
@@ -107,7 +108,7 @@ public class PlayersControllerTests
         sut.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
 
         // Act
-        var result = await sut.GetPlayersAjax(GameType.CallOfDuty4, PlayersFilter.UsernameAndGuid, selectedTagId, CancellationToken.None);
+        var result = await sut.GetPlayersAjax(GameType.CallOfDuty4x, PlayersFilter.UsernameAndGuid, selectedTagId, CancellationToken.None);
 
         // Assert
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -117,9 +118,13 @@ public class PlayersControllerTests
         Assert.Single(data);
         Assert.Equal("Trusted", data[0]?["tags"]?[0]?["name"]?.Value<string>());
         Assert.Equal("<span class=\"badge bg-success\">Trusted</span>", data[0]?["tags"]?[0]?["tagHtml"]?.Value<string>());
+        var rowObject = Assert.IsType<JObject>(data[0]!);
+        var steamIdToken = rowObject.GetValue("SteamId", StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(steamIdToken);
+        Assert.Equal("76561198000000001", steamIdToken!.Value<string>());
 
         mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayers(
-            GameType.CallOfDuty4,
+            GameType.CallOfDuty4x,
             PlayersFilter.Tag,
             selectedTagId.ToString(),
             0,
@@ -184,14 +189,71 @@ public class PlayersControllerTests
             PlayerEntityOptions.Tags), Times.Once);
     }
 
-    private static PlayerDto CreatePlayerDtoWithTag()
+    [Fact]
+    public async Task GetPlayersAjax_WithOutOfRangeOrderColumn_DefaultsToLastSeenDesc()
+    {
+        // Arrange
+        var apiResponse = new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([]))
+        {
+            Pagination = new ApiPagination(totalCount: 0, filteredCount: 0, skip: 0, top: 25)
+        };
+
+        mockRepositoryApiClient
+            .Setup(x => x.Players.V1.GetPlayers(
+                null,
+                PlayersFilter.UsernameAndGuid,
+                string.Empty,
+                0,
+                25,
+                PlayersOrder.LastSeenDesc,
+                PlayerEntityOptions.Tags))
+            .ReturnsAsync(new ApiResult<CollectionModel<PlayerDto>>(HttpStatusCode.OK, apiResponse));
+
+        var request = new
+        {
+            draw = 3,
+            start = 0,
+            length = 25,
+            columns = new[]
+            {
+                new { data = "username", name = "username", searchable = true, orderable = true, search = new { value = "", regex = false } },
+                new { data = "tags", name = "tags", searchable = true, orderable = false, search = new { value = "", regex = false } },
+                new { data = "ipAddress", name = "ipAddress", searchable = true, orderable = false, search = new { value = "", regex = false } },
+                new { data = "guid", name = "guid", searchable = true, orderable = false, search = new { value = "", regex = false } },
+                new { data = "firstSeen", name = "firstSeen", searchable = false, orderable = true, search = new { value = "", regex = false } },
+                new { data = "lastSeen", name = "lastSeen", searchable = false, orderable = true, search = new { value = "", regex = false } }
+            },
+            order = new[] { new { column = 99, dir = "asc" } },
+            search = new { value = "", regex = false }
+        };
+
+        var sut = CreateSut();
+        sut.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request)));
+
+        // Act
+        var result = await sut.GetPlayersAjax(null, PlayersFilter.UsernameAndGuid, null, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result);
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayers(
+            null,
+            PlayersFilter.UsernameAndGuid,
+            string.Empty,
+            0,
+            25,
+            PlayersOrder.LastSeenDesc,
+            PlayerEntityOptions.Tags), Times.Once);
+    }
+
+    private static PlayerDto CreatePlayerDtoWithTag(GameType gameType = GameType.CallOfDuty4, string? steamId = null)
     {
         var json = JsonConvert.SerializeObject(new
         {
             PlayerId = Guid.NewGuid(),
-            GameType = "CallOfDuty4",
+            GameType = gameType.ToString(),
             Username = "TestPlayer",
             Guid = "ABC-123",
+            SteamId = steamId,
             IpAddress = "",
             FirstSeen = DateTime.UtcNow.AddDays(-2),
             LastSeen = DateTime.UtcNow,

@@ -4,6 +4,9 @@
 @{
     ViewData["Title"] = "Players Index";
     var dataUrl = "/Players/GetPlayersAjax";
+    var indexUrl = Url.Action("Index", "Players") ?? "/Players/Index";
+    var gameIndexUrlTemplate = Url.Action("GameIndex", "Players", new { id = "__GAME_TYPE__" }) ?? "/Players/GameIndex/__GAME_TYPE__";
+    var showSteamIdColumn = Model.SelectedGameType == GameType.CallOfDuty4x;
     if (Model.SelectedGameType is GameType gameType)
     {
         ViewData["Title"] = gameType.DisplayName() + " Players Index";
@@ -55,14 +58,22 @@
                     </div>
                     <div class="ibox-content">
                         <div class="table-responsive">
-                            <table id="dataTable" class="table table-striped table-hover w-100" data-source="@dataUrl">
+                            <table id="dataTable"
+                                class="table table-striped table-hover w-100"
+                                data-source="@dataUrl"
+                                data-index-url="@indexUrl"
+                                data-game-index-url-template="@gameIndexUrlTemplate"
+                                data-steam-column="@(showSteamIdColumn.ToString().ToLowerInvariant())">
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>
                                         <th scope="col">Tags</th>
                                         <th scope="col">Player IP</th>
                                         <th scope="col">Guid</th>
-                                        <th scope="col">Steam ID</th>
+                                        @if (showSteamIdColumn)
+                                        {
+                                            <th scope="col">Steam ID</th>
+                                        }
                                         <th scope="col">First Seen</th>
                                         <th scope="col">Last Seen</th>
                                     </tr>

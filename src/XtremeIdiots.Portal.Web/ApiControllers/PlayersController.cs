@@ -121,10 +121,19 @@ public class PlayersController(
     {
         var order = PlayersOrder.LastSeenDesc;
 
-        if (model.Order is not null && model.Order.Count != 0)
+        if (model.Order is not null
+            && model.Order.Count != 0
+            && model.Columns is not null
+            && model.Columns.Count != 0)
         {
-            var orderColumn = model.Columns[model.Order.First().Column].Name;
-            var searchOrder = model.Order.First().Dir;
+            var primaryOrder = model.Order.First();
+            if (primaryOrder.Column < 0 || primaryOrder.Column >= model.Columns.Count)
+            {
+                return order;
+            }
+
+            var orderColumn = model.Columns[primaryOrder.Column].Name;
+            var searchOrder = primaryOrder.Dir;
 
             order = orderColumn switch
             {
