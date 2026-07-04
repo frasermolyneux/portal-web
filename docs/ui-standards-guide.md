@@ -35,15 +35,15 @@ Every page follows this wrapper structure:
 
 ### Hierarchy
 
-| Role | Class | Icon | Size |
-|------|-------|------|------|
-| **Primary action** (Save, Create, Submit) | `btn btn-primary` | Optional FA icon + text | Default |
-| **Secondary action** (Cancel, Back) | `btn btn-outline-secondary` | No icon, or `fa-arrow-left` for back | Default |
-| **Destructive action** (Delete link in table) | `btn btn-outline-danger` | `fa-trash` | `btn-sm` |
-| **Destructive confirm** (Delete button on confirmation page) | `btn btn-danger` | `fa-trash` | Default |
-| **Cautionary action** (Lift ban) | `btn btn-warning` | `fa-unlock` | Default |
-| **Inline table actions** (Edit, Details) | `btn btn-outline-secondary` | Icon + text | `btn-sm` |
-| **Filter reset** | `btn btn-outline-secondary btn-sm` | No icon | `btn-sm` |
+| Role                                                         | Class                              | Icon                                 | Size     |
+| ------------------------------------------------------------ | ---------------------------------- | ------------------------------------ | -------- |
+| **Primary action** (Save, Create, Submit)                    | `btn btn-primary`                  | Optional FA icon + text              | Default  |
+| **Secondary action** (Cancel, Back)                          | `btn btn-outline-secondary`        | No icon, or `fa-arrow-left` for back | Default  |
+| **Destructive action** (Delete link in table)                | `btn btn-outline-danger`           | `fa-trash`                           | `btn-sm` |
+| **Destructive confirm** (Delete button on confirmation page) | `btn btn-danger`                   | `fa-trash`                           | Default  |
+| **Cautionary action** (Lift ban)                             | `btn btn-warning`                  | `fa-unlock`                          | Default  |
+| **Inline table actions** (Edit, Details)                     | `btn btn-outline-secondary`        | Icon + text                          | `btn-sm` |
+| **Filter reset**                                             | `btn btn-outline-secondary btn-sm` | No icon                              | `btn-sm` |
 
 ### Prohibited Button Classes for Actions
 
@@ -74,18 +74,18 @@ All icons use Font Awesome 6 solid style with fixed-width class: `fa-solid fa-fw
 
 ### Standard Action Icons
 
-| Action | Icon | Usage |
-|--------|------|-------|
-| Create / Add | `fa-plus` | Create buttons, add links |
-| Edit | `fa-pen-to-square` | Edit buttons and links |
-| Delete | `fa-trash` | Delete buttons and links |
-| View / Details | `fa-eye` | Details/view buttons |
-| Back | `fa-arrow-left` | Back navigation buttons |
-| Save | `fa-floppy-disk` | Save/submit buttons |
-| Clone | `fa-clone` | Clone/copy actions |
-| Import | `fa-file-import` | Import actions |
-| Refresh / Sync | `fa-rotate` | Sync/refresh actions |
-| Cancel (operation) | `fa-ban` | Cancel running operations |
+| Action             | Icon               | Usage                     |
+| ------------------ | ------------------ | ------------------------- |
+| Create / Add       | `fa-plus`          | Create buttons, add links |
+| Edit               | `fa-pen-to-square` | Edit buttons and links    |
+| Delete             | `fa-trash`         | Delete buttons and links  |
+| View / Details     | `fa-eye`           | Details/view buttons      |
+| Back               | `fa-arrow-left`    | Back navigation buttons   |
+| Save               | `fa-floppy-disk`   | Save/submit buttons       |
+| Clone              | `fa-clone`         | Clone/copy actions        |
+| Import             | `fa-file-import`   | Import actions            |
+| Refresh / Sync     | `fa-rotate`        | Sync/refresh actions      |
+| Cancel (operation) | `fa-ban`           | Cancel running operations |
 
 ### Rules
 
@@ -120,8 +120,10 @@ All icons use Font Awesome 6 solid style with fixed-width class: `fa-solid fa-fw
 
 ### Validation
 
-- Always include `<div asp-validation-summary="ModelOnly" class="text-danger"></div>` at the top of forms.
+- Include `<div asp-validation-summary="ModelOnly" class="text-danger"></div>` at the top of single-section forms.
+- **Multi-tab forms** (e.g. GlobalSettings/Index, GameServers/Edit) must use `asp-validation-summary="All"` in an always-visible spot **outside** the tab panes (e.g. an `ibox-content` above the sticky footer). With `ModelOnly`, a property-level error on an inactive tab is invisible, so the POST silently re-renders with no redirect and the user sees no reason the save failed. `All` surfaces those errors regardless of which tab is active.
 - Use `<span asp-validation-for="Field" class="text-danger"></span>` below inputs.
+- Beware validation that depends on server-applied state (e.g. a required-tags catalog) being evaluated **during model binding**, before the controller populates that state — default such availability flags to `false` so validation stays dormant until the real data is applied, otherwise every value is wrongly flagged and the save is blocked.
 
 ---
 
@@ -308,18 +310,18 @@ The click handler uses event delegation on `[data-copy-target]`, reads the `text
 
 These patterns are deprecated. The SCSS retains bridge definitions for backward compatibility, but new code must not use them:
 
-| Deprecated | Replacement |
-|-----------|-------------|
-| `control-label` | `form-label` |
-| `help-block` | `form-text` |
-| `float-e-margins` | Remove — no replacement needed |
-| `btn-xs` | `btn-sm` |
-| `dl-horizontal` | `detail-fields` with `detail-field` / `detail-label` / `detail-value` |
-| `admin-actions-filters` | `list-filters` |
-| `form-control` on `<select>` | `form-select` |
-| `fa-save` | `fa-floppy-disk` |
-| `fa-edit` | `fa-pen-to-square` |
-| `type="button"` on `<a>` | Remove — not valid HTML on anchors |
-| `onclick="copyToClipboard(...)"` | `data-copy-target` attribute |
-| `style="display:none"` on anti-forgery form | `af-hidden` CSS class |
-| Inline `style="height: ..."` on map divs | `player-location-map` CSS class |
+| Deprecated                                  | Replacement                                                           |
+| ------------------------------------------- | --------------------------------------------------------------------- |
+| `control-label`                             | `form-label`                                                          |
+| `help-block`                                | `form-text`                                                           |
+| `float-e-margins`                           | Remove — no replacement needed                                        |
+| `btn-xs`                                    | `btn-sm`                                                              |
+| `dl-horizontal`                             | `detail-fields` with `detail-field` / `detail-label` / `detail-value` |
+| `admin-actions-filters`                     | `list-filters`                                                        |
+| `form-control` on `<select>`                | `form-select`                                                         |
+| `fa-save`                                   | `fa-floppy-disk`                                                      |
+| `fa-edit`                                   | `fa-pen-to-square`                                                    |
+| `type="button"` on `<a>`                    | Remove — not valid HTML on anchors                                    |
+| `onclick="copyToClipboard(...)"`            | `data-copy-target` attribute                                          |
+| `style="display:none"` on anti-forgery form | `af-hidden` CSS class                                                 |
+| Inline `style="height: ..."` on map divs    | `player-location-map` CSS class                                       |

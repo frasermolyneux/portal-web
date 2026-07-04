@@ -108,7 +108,10 @@ public class WelcomeMessageGlobalSettingsViewModel : IValidatableObject
 
     public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
 
-    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+    // Defaults to false: the tags catalog is not loaded during model binding, so required-tag validation
+    // must stay dormant until ApplyAvailableRequiredTags supplies the real allow-list. A true default would
+    // flag every assigned tag as unavailable during binding and silently block the settings save.
+    public bool RequiredTagsCatalogAvailable { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -153,7 +156,8 @@ public class WelcomeMessageServerSettingsViewModel : IValidatableObject
 
     public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
 
-    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+    // Defaults to false: the tags catalog is not loaded during model binding (see the global variant).
+    public bool RequiredTagsCatalogAvailable { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

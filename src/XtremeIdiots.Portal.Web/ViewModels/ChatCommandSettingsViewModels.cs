@@ -38,7 +38,10 @@ public class ChatCommandGlobalSettingsViewModel : IValidatableObject
 
     public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
 
-    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+    // Defaults to false: the tags catalog is not loaded during model binding, so required-tag validation
+    // must stay dormant until ApplyAvailableRequiredTags supplies the real allow-list. A true default would
+    // flag every assigned tag as unavailable during binding and silently block the settings save.
+    public bool RequiredTagsCatalogAvailable { get; set; }
 
     public List<ChatCommandGlobalEntryViewModel> Commands { get; set; } =
         ChatCommandDescriptorCatalog.All
@@ -79,7 +82,8 @@ public class ChatCommandServerSettingsViewModel : IValidatableObject
 {
     public IReadOnlyList<string> AllowedRequiredTags { get; set; } = [];
 
-    public bool RequiredTagsCatalogAvailable { get; set; } = true;
+    // Defaults to false: the tags catalog is not loaded during model binding (see the global variant).
+    public bool RequiredTagsCatalogAvailable { get; set; }
 
     public List<ChatCommandServerEntryViewModel> Commands { get; set; } =
         ChatCommandDescriptorCatalog.All
@@ -143,15 +147,18 @@ public sealed class ChatCommandServerEntryViewModel : ChatCommandEntryViewModelB
     public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
     [DisplayName("Enabled Override")]
-    public bool OverrideEnabled {
+    public bool OverrideEnabled
+    {
         get => EnabledOverride?.Value is not null;
         set => Enabled = value ? Enabled ?? false : null;
     }
 
     [DisplayName("Enabled Override")]
-    public new bool? Enabled {
+    public new bool? Enabled
+    {
         get => EnabledOverride?.Value;
-        set {
+        set
+        {
             base.Enabled = value;
             EnabledOverride = TriStateOverrideValue.From(value);
         }
