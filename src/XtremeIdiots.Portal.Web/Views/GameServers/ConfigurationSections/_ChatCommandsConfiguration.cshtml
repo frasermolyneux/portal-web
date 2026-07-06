@@ -1,8 +1,20 @@
 @model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
 
 @{
-    var commands = Model.ChatCommands.Commands ?? [];
-    var globalCommands = Model.GlobalChatCommands.Commands ?? [];
+    var supportedCommandNames = XtremeIdiots.Portal.Web.ViewModels.ChatCommandDescriptorCatalog.All
+        .Where(descriptor => XtremeIdiots.Portal.Web.ViewModels.ChatCommandDescriptorCatalog.SupportsGameType(
+            descriptor,
+            Model.GameServer.GameType))
+        .Select(descriptor => descriptor.Name)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    var commands = (Model.ChatCommands.Commands ?? [])
+        .Where(command => supportedCommandNames.Contains(command.Name))
+        .ToList();
+
+    var globalCommands = (Model.GlobalChatCommands.Commands ?? [])
+        .Where(command => supportedCommandNames.Contains(command.Name))
+        .ToList();
 }
 
 <div class="ibox">

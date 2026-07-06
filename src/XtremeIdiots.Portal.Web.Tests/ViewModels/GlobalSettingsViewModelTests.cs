@@ -82,6 +82,18 @@ public class GlobalSettingsViewModelTests
     }
 
     [Fact]
+    public void GlobalSettings_DefaultCod4xCommandsIncludePortalPluginHealth()
+    {
+        var model = new GlobalSettingsViewModel();
+
+        var portalPluginHealth = model.Cod4xCommands.Single(static command =>
+            string.Equals(command.Name, "portalpluginhealth", StringComparison.OrdinalIgnoreCase));
+
+        Assert.True(portalPluginHealth.Enabled);
+        Assert.Equal(98, portalPluginHealth.MinPower);
+    }
+
+    [Fact]
     public void ApplyAvailableRequiredTags_Cod4xPowerMappings_NewTagsDefaultToZero()
     {
         var model = new GlobalSettingsViewModel

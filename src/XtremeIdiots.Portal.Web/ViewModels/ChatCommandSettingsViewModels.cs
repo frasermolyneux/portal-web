@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
@@ -677,10 +678,18 @@ internal sealed record ChatCommandDescriptor(
     string Usage,
     string Description,
     bool IsMutating,
-    IReadOnlyList<string>? Aliases = null);
+    IReadOnlyList<string>? Aliases = null,
+    IReadOnlyList<GameType>? SupportedGameTypes = null);
 
 internal static class ChatCommandDescriptorCatalog
 {
+    public static bool SupportsGameType(ChatCommandDescriptor descriptor, GameType gameType)
+    {
+        return descriptor.SupportedGameTypes is null
+            || descriptor.SupportedGameTypes.Count == 0
+            || descriptor.SupportedGameTypes.Contains(gameType);
+    }
+
     public static ChatCommandDescriptor Commands { get; } = new(
         "commands",
         "!commands",

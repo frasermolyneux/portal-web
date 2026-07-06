@@ -8,6 +8,12 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 
 public static class Cod4xSettingsViewModelHelpers
 {
+    private readonly static IReadOnlyDictionary<string, int> extendedManagedCommandMinPowerDefaults =
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["portalpluginhealth"] = 98
+        };
+
     private readonly static JsonSerializerOptions editorJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -22,9 +28,18 @@ public static class Cod4xSettingsViewModelHelpers
 
     public static List<Cod4xCommandViewModel> CreateDefaultCommands()
     {
+        var commandDefaults = new Dictionary<string, int>(
+            Cod4xCommandSettingsConstants.BuiltInCommandMinPowerDefaults,
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var extendedCommand in extendedManagedCommandMinPowerDefaults)
+        {
+            commandDefaults.TryAdd(extendedCommand.Key, extendedCommand.Value);
+        }
+
         return
         [
-            .. Cod4xCommandSettingsConstants.BuiltInCommandMinPowerDefaults.Select(static command => new Cod4xCommandViewModel
+            .. commandDefaults.Select(static command => new Cod4xCommandViewModel
             {
                 Name = command.Key,
                 Enabled = true,
