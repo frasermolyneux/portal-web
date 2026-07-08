@@ -2,6 +2,169 @@
 (function () {
     'use strict';
 
+    var TOKEN_REGEX = /\{([a-zA-Z0-9]+)\}/g;
+
+    function getTokenCatalog() {
+        if (window.__welcomeTokenCatalog) {
+            return window.__welcomeTokenCatalog;
+        }
+
+        var element = document.getElementById('welcome-token-catalog');
+        var catalog = [];
+        if (element) {
+            try {
+                catalog = JSON.parse(element.textContent || '[]') || [];
+            } catch (error) {
+                catalog = [];
+            }
+        }
+
+        window.__welcomeTokenCatalog = catalog;
+        return catalog;
+    }
+
+    function getSampleMap() {
+        if (window.__welcomeSampleMap) {
+            return window.__welcomeSampleMap;
+        }
+
+        var map = {};
+        getTokenCatalog().forEach(function (token) {
+            if (token && token.key) {
+                map[String(token.key).toLowerCase()] = token.sampleValue != null ? String(token.sampleValue) : '';
+            }
+        });
+
+        window.__welcomeSampleMap = map;
+        return map;
+    }
+
+    function fallbackEscape(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderPreviewHtml(template) {
+        var samples = getSampleMap();
+        // Single-pass replacement of known tokens with sample values; unknown tokens are left intact.
+        // Sample values are never re-scanned, mirroring the backend renderer.
+        var raw = String(template || '').replace(TOKEN_REGEX, function (match, key) {
+            var lower = String(key).toLowerCase();
+            return Object.prototype.hasOwnProperty.call(samples, lower) ? samples[lower] : match;
+        });
+
+        if (typeof CodColors !== 'undefined' && CodColors && typeof CodColors.renderSafe === 'function') {
+            return CodColors.renderSafe(raw);
+        }
+
+        return fallbackEscape(raw);
+    }
+
+    function updateRulePreview(row) {
+        var messageTemplate = row.querySelector('[data-field="message-template"]');
+        var preview = row.querySelector('[data-field="message-preview"]');
+        if (!messageTemplate || !preview) return;
+
+        var value = messageTemplate.value || '';
+        preview.innerHTML = renderPreviewHtml(value);
+        preview.classList.toggle('is-empty', value.trim().length === 0);
+    }
+
+    function insertTokenAtCursor(textarea, token) {
+        if (!textarea || !token) return;
+
+        var start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
+        var end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : textarea.value.length;
+        var before = textarea.value.substring(0, start);
+        var after = textarea.value.substring(end);
+
+        textarea.value = before + token + after;
+
+        var caret = start + token.length;
+        textarea.focus();
+        try {
+            textarea.setSelectionRange(caret, caret);
+        } catch (error) {
+            /* setSelectionRange unsupported — ignore */
+        }
+
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function buildComposer() {
+        var composer = document.createElement('div');
+        composer.className = 'welcome-composer mt-2';
+        composer.setAttribute('data-field', 'token-help');
+
+        var chips = document.createElement('div');
+        chips.className = 'welcome-token-chips';
+        chips.setAttribute('role', 'group');
+        chips.setAttribute('aria-label', 'Insert welcome message token');
+
+        var chipsLabel = document.createElement('span');
+        chipsLabel.className = 'form-text text-muted me-1 align-self-center';
+        chipsLabel.textContent = 'Insert token:';
+        chips.appendChild(chipsLabel);
+
+        getTokenCatalog().forEach(function (token) {
+            if (!token || !token.token) return;
+
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'btn btn-outline-secondary btn-sm welcome-token-chip';
+            chip.setAttribute('data-token-insert', token.token);
+            chip.textContent = token.token;
+
+            if (token.displayName || token.description) {
+                chip.title = (token.displayName || '') + (token.description ? ' — ' + token.description : '');
+            }
+
+            chips.appendChild(chip);
+        });
+
+        composer.appendChild(chips);
+
+        var previewWrapper = document.createElement('div');
+        previewWrapper.className = 'mt-2';
+
+        var previewLabel = document.createElement('span');
+        previewLabel.className = 'form-text text-muted d-block mb-1';
+        previewLabel.textContent = 'Preview';
+
+        var preview = document.createElement('div');
+        preview.className = 'welcome-message-preview';
+        preview.setAttribute('data-field', 'message-preview');
+        preview.setAttribute('aria-live', 'polite');
+
+        previewWrapper.appendChild(previewLabel);
+        previewWrapper.appendChild(preview);
+        composer.appendChild(previewWrapper);
+
+        return composer;
+    }
+
+    function ensureComposer(row) {
+        var messageTemplate = row.querySelector('[data-field="message-template"]');
+        if (!messageTemplate) return;
+        if (row.querySelector('[data-field="token-help"]')) return;
+
+        var container = messageTemplate.closest('.mb-3') || messageTemplate.parentElement;
+        if (!container) return;
+
+        var composer = buildComposer();
+        container.appendChild(composer);
+
+        composer.querySelectorAll('[data-token-insert]').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                insertTokenAtCursor(messageTemplate, chip.getAttribute('data-token-insert'));
+            });
+        });
+    }
+
     function generateGuid() {
         if (window.crypto && typeof window.crypto.randomUUID === 'function') {
             return window.crypto.randomUUID();
@@ -269,6 +432,7 @@
         if (messageTemplate) {
             messageTemplate.addEventListener('input', function () {
                 updateRuleCharCount(row);
+                updateRulePreview(row);
             });
         }
 
@@ -285,7 +449,9 @@
         }
 
         ensureRuleId(row, autoGenerateId);
+        ensureComposer(row);
         updateRuleCharCount(row);
+        updateRulePreview(row);
         updateRequiredTagsOverride(row);
         initializeRequiredTagsSelectors(row);
     }

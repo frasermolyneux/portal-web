@@ -1,4 +1,5 @@
 @model XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages
 
 @{
     var rules = Model.WelcomeMessages.Rules ?? [];
@@ -28,7 +29,7 @@
                     }
                     <input type="hidden" name="WelcomeMessages.Enabled" value="false" />
                     <label class="form-check-label" for="WelcomeMessages_Enabled">@Html.DisplayNameFor(m =>
-                                                                        m.WelcomeMessages.Enabled)</label>
+                                                                                                m.WelcomeMessages.Enabled)</label>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -286,6 +287,18 @@
                     </div>
                 </div>
             </template>
+
+            <script id="welcome-token-catalog" type="application/json">
+                            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                    WelcomeMessageTokens.Definitions.Select(token => new
+                                    {
+                                            token = token.Token,
+                                            key = token.Key,
+                                            displayName = token.DisplayName,
+                                            description = token.Description,
+                                            sampleValue = token.SampleValue
+                                    })))
+            </script>
 
             @section Scripts {
                 <script src="~/js/welcome-rules-manager.js"></script>

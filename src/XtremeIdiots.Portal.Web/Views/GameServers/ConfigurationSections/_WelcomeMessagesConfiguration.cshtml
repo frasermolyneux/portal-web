@@ -1,4 +1,5 @@
 @model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages
 
 @{
     var localRules = Model.WelcomeMessages.LocalRules ?? [];
@@ -43,7 +44,7 @@
                         }
                         <input type="hidden" name="WelcomeMessages.InheritGlobalRules" value="false" />
                         <label class="form-check-label" for="WelcomeMessages_InheritGlobalRules">@Html.DisplayNameFor(m
-                                                                                        => m.WelcomeMessages.InheritGlobalRules)</label>
+                                                                                                                    => m.WelcomeMessages.InheritGlobalRules)</label>
                         </div>
                         <small class="form-text text-muted d-block">When enabled, global rules run before any server-local
                             rules.</small>
@@ -635,6 +636,18 @@ RequiredTagsSelectorViewModel
                                 </div>
                             </div>
                         </template>
+
+                        <script id="welcome-token-catalog" type="application/json">
+                                                    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                                            WelcomeMessageTokens.Definitions.Select(token => new
+                                                            {
+                                                                    token = token.Token,
+                                                                    key = token.Key,
+                                                                    displayName = token.DisplayName,
+                                                                    description = token.Description,
+                                                                    sampleValue = token.SampleValue
+                                                            })))
+                        </script>
 
                         @section Scripts {
                             <script src="~/js/welcome-rules-manager.js"></script>
