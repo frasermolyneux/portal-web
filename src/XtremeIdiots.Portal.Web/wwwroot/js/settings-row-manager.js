@@ -14,6 +14,24 @@
         return (text || '').replace(/\^[0-9]/g, '');
     }
 
+    function setCodChipStyle(previewElement, enabled) {
+        if (enabled) {
+            // CoD colour codes (^7/^0 = white) are rendered on a dark chip so light
+            // colours remain visible against the light settings card background.
+            previewElement.style.backgroundColor = '#1b1b1b';
+            previewElement.style.color = '#f0f0f0';
+            previewElement.style.padding = '0.15rem 0.4rem';
+            previewElement.style.borderRadius = '0.2rem';
+            previewElement.style.display = 'inline-block';
+        } else {
+            previewElement.style.backgroundColor = '';
+            previewElement.style.color = '';
+            previewElement.style.padding = '';
+            previewElement.style.borderRadius = '';
+            previewElement.style.display = '';
+        }
+    }
+
     function renderCodPreview(previewElement, text) {
         var colors = {
             '1': '#ff4d4f',
@@ -29,6 +47,7 @@
         };
 
         previewElement.textContent = '';
+        setCodChipStyle(previewElement, true);
 
         var currentColor = colors['0'];
         var lastIndex = 0;
@@ -76,6 +95,7 @@
         }
 
         if (!previewText.length) {
+            setCodChipStyle(preview, false);
             preview.textContent = '(preview)';
             return;
         }
@@ -90,12 +110,14 @@
             if (shouldRenderCod) {
                 renderCodPreview(preview, previewText);
             } else {
+                setCodChipStyle(preview, false);
                 preview.textContent = stripCodColorCodes(previewText);
             }
 
             return;
         }
 
+        setCodChipStyle(preview, false);
         preview.textContent = previewText;
     }
 
