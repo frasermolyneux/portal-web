@@ -2201,7 +2201,7 @@ public class ServerAdminController(
             (int)GameType.Insurgency => serversApiClient.InsurgencyRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
             (int)GameType.Rust => serversApiClient.RustRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
             (int)GameType.Left4Dead2 => serversApiClient.L4d2Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
-            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.ConSay(
+            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.Say(
                 serverId,
                 new CoD4xMessageRequestDto { Message = message },
                 cancellationToken)),

@@ -100,7 +100,7 @@ public class ServerAdminControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
 
         mockServersApiClient
-            .Setup(x => x.CoD4xRcon.V1.ConSay(
+            .Setup(x => x.CoD4xRcon.V1.Say(
                 serverId,
                 It.Is<CoD4xMessageRequestDto>(r => r.Message == longMessage),
                 It.IsAny<CancellationToken>()))
@@ -114,7 +114,7 @@ public class ServerAdminControllerTests
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.True(payload.Value<bool>("success"));
 
-        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ConSay(
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.Say(
             serverId,
             It.Is<CoD4xMessageRequestDto>(r => r.Message == longMessage),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -146,7 +146,7 @@ public class ServerAdminControllerTests
         Assert.False(payload.Value<bool>("success"));
         Assert.Equal("Message cannot be empty", payload.Value<string>("message"));
 
-        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.ConSay(
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.Say(
             It.IsAny<Guid>(),
             It.IsAny<CoD4xMessageRequestDto>(),
             It.IsAny<CancellationToken>()), Times.Never);
