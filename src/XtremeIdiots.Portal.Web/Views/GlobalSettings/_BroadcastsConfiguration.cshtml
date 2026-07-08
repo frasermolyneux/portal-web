@@ -57,8 +57,8 @@
                                     <input class="form-check-input" data-field="enabled" type="checkbox"
                                            name="BroadcastMessages[@i].Enabled" value="true" id="BroadcastMessages_@(i)__Enabled" />
                                 }
-                                    <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled"
-                                        value="false" />
+                                <input type="hidden" data-field="enabled-hidden" name="BroadcastMessages[@i].Enabled"
+                                       value="false" />
                                 <label class="form-check-label" data-field="enabled-label"
                                        for="BroadcastMessages_@(i)__Enabled">Enabled</label>
                             </div>
@@ -77,40 +77,40 @@
                                 </button>
                             </div>
                         </div>
-                                     <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message" />
-                            <div class="small text-muted mt-1" data-field="preview">(preview)</div>
-                            <span class="text-danger" data-field="validation"
-                                  asp-validation-for="BroadcastMessages[i].Message"></span>
-                        </div>
-                    }
-                </div>
+                        <input class="form-control" data-field="message" asp-for="BroadcastMessages[i].Message" />
+                        <div class="cod-message-preview is-empty mt-1" data-field="preview" aria-live="polite"></div>
+                        <span class="text-danger" data-field="validation"
+                              asp-validation-for="BroadcastMessages[i].Message"></span>
+                    </div>
+                }
             </div>
         </div>
+    </div>
 
-        <template id="global-broadcast-message-template">
-            <div class="border rounded p-3 mb-3" data-message-row="broadcast">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
-                        <input type="hidden" data-field="enabled-hidden" value="false" />
-                        <label class="form-check-label" data-field="enabled-label">Enabled</label>
-                    </div>
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">
-                        <button type="button" class="btn btn-outline-secondary" data-action="move-up"
-                                aria-label="Move message up">
-                            <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" data-action="move-down"
-                                aria-label="Move message down">
-                            <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
-                            <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
-                        </button>
-                    </div>
+    <template id="global-broadcast-message-template">
+        <div class="border rounded p-3 mb-3" data-message-row="broadcast">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />
+                    <input type="hidden" data-field="enabled-hidden" value="false" />
+                    <label class="form-check-label" data-field="enabled-label">Enabled</label>
                 </div>
-                          <input class="form-control" data-field="message" />
-                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
-                    <span class="text-danger" data-field="validation"></span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Broadcast message ordering">
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-up"
+                            aria-label="Move message up">
+                        <i class="fa-solid fa-fw fa-arrow-up" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-down"
+                            aria-label="Move message down">
+                        <i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-action="remove" aria-label="Remove message">
+                        <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                    </button>
                 </div>
-            </template>
+            </div>
+            <input class="form-control" data-field="message" />
+            <div class="cod-message-preview is-empty mt-1" data-field="preview" aria-live="polite"></div>
+            <span class="text-danger" data-field="validation"></span>
+        </div>
+    </template>

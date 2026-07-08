@@ -10,19 +10,46 @@
 }
 
 // Individual color classes
-.cod-color-0 { color: var(--cod-color-0); }
-.cod-color-1 { color: var(--cod-color-1); }
-.cod-color-2 { color: var(--cod-color-2); }
-.cod-color-3 { color: var(--cod-color-3); }
-.cod-color-4 { color: var(--cod-color-4); }
-.cod-color-5 { color: var(--cod-color-5); }
-.cod-color-6 { color: var(--cod-color-6); }
+.cod-color-0 {
+    color: var(--cod-color-0);
+}
+
+.cod-color-1 {
+    color: var(--cod-color-1);
+}
+
+.cod-color-2 {
+    color: var(--cod-color-2);
+}
+
+.cod-color-3 {
+    color: var(--cod-color-3);
+}
+
+.cod-color-4 {
+    color: var(--cod-color-4);
+}
+
+.cod-color-5 {
+    color: var(--cod-color-5);
+}
+
+.cod-color-6 {
+    color: var(--cod-color-6);
+}
+
 .cod-color-7 {
     color: var(--cod-color-7);
     text-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
 }
-.cod-color-8 { color: var(--cod-color-8); }
-.cod-color-9 { color: var(--cod-color-9); }
+
+.cod-color-8 {
+    color: var(--cod-color-8);
+}
+
+.cod-color-9 {
+    color: var(--cod-color-9);
+}
 
 // Links wrapping colored content should not impose their own color;
 // the inner .cod-color-X spans already set the correct color via their own classes.
@@ -33,5 +60,27 @@ a:has(> span[class^="cod-color-"]) {
 
     &:hover {
         text-decoration: underline;
+    }
+}
+
+// Shared preview box for CoD colour-coded message previews. Single source of truth used by
+// welcome messages, broadcasts, and chat commands (global + game server settings) so every
+// location that previews Call of Duty messages renders identically.
+.cod-message-preview {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    background-color: $dark-bg;
+    color: $cod-color-7;
+    font-family: var(--bs-font-monospace, monospace);
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    &:empty::before,
+    &.is-empty::before {
+        content: "(nothing to preview)";
+        color: $xi-text-muted;
+        font-style: italic;
     }
 }

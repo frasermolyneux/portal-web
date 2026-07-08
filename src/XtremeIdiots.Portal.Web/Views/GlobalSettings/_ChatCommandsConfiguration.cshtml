@@ -29,7 +29,7 @@
                         }
                         <input type="hidden" name="ChatCommands.DefaultsEnabled" value="false" />
                         <label class="form-check-label" for="ChatCommands_DefaultsEnabled">@Html.DisplayNameFor(m =>
-                                                                                                                                                                        m.ChatCommands.DefaultsEnabled)</label>
+                                                                                                                                                                                                    m.ChatCommands.DefaultsEnabled)</label>
                         </div>
                         <span asp-validation-for="ChatCommands.DefaultsEnabled" class="text-danger"></span>
                     </div>
@@ -253,7 +253,7 @@
                                                 <small class="form-text text-muted"><span
                                                     data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
                                                     characters</small>
-                                                    <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                                                    <div class="cod-message-preview is-empty mt-1" data-field="preview" aria-live="polite"></div>
                                                     <span class="text-danger" data-field="validation"
                                                           data-valmsg-for="ChatCommands.Commands[@i].Messages[@j].Message"
                                                           data-valmsg-replace="true"></span>
@@ -293,7 +293,7 @@
                             <small class="form-text text-muted"><span
                                 data-field="char-count">0</span>/@XtremeIdiots.Portal.Web.ViewModels.ChatCommandSettingsViewModelConstants.MaxCommandMessageLength
                                 characters</small>
-                                <div class="small text-muted mt-1" data-field="preview">(preview)</div>
+                                <div class="cod-message-preview is-empty mt-1" data-field="preview" aria-live="polite"></div>
                                 <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
                             </div>
                         </template>

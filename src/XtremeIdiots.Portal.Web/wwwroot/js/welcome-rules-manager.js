@@ -136,7 +136,7 @@
         previewLabel.textContent = 'Preview';
 
         var preview = document.createElement('div');
-        preview.className = 'welcome-message-preview';
+        preview.className = 'cod-message-preview welcome-message-preview';
         preview.setAttribute('data-field', 'message-preview');
         preview.setAttribute('aria-live', 'polite');
 

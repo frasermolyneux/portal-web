@@ -14,76 +14,26 @@
         return (text || '').replace(/\^[0-9]/g, '');
     }
 
-    function setCodChipStyle(previewElement, enabled) {
-        if (enabled) {
-            // CoD colour codes (^7/^0 = white) are rendered on a dark chip so light
-            // colours remain visible against the light settings card background.
-            previewElement.style.backgroundColor = '#1b1b1b';
-            previewElement.style.color = '#f0f0f0';
-            previewElement.style.padding = '0.15rem 0.4rem';
-            previewElement.style.borderRadius = '0.2rem';
-            previewElement.style.display = 'inline-block';
-        } else {
-            previewElement.style.backgroundColor = '';
-            previewElement.style.color = '';
-            previewElement.style.padding = '';
-            previewElement.style.borderRadius = '';
-            previewElement.style.display = '';
-        }
-    }
-
     function renderCodPreview(previewElement, text) {
-        var colors = {
-            '1': '#ff4d4f',
-            '2': '#52c41a',
-            '3': '#ffd666',
-            '4': '#40a9ff',
-            '5': '#69c0ff',
-            '6': '#fa8c16',
-            '7': '#f0f0f0',
-            '8': '#000000',
-            '9': '#ff85c0',
-            '0': '#ffffff'
-        };
-
-        previewElement.textContent = '';
-        setCodChipStyle(previewElement, true);
-
-        var currentColor = colors['0'];
-        var lastIndex = 0;
-        var regex = /\^([0-9])/g;
-        var match;
-
-        while ((match = regex.exec(text)) !== null) {
-            var segment = text.substring(lastIndex, match.index);
-            if (segment.length) {
-                var span = document.createElement('span');
-                span.style.color = currentColor;
-                span.textContent = segment;
-                previewElement.appendChild(span);
-            }
-
-            currentColor = colors[match[1]] || currentColor;
-            lastIndex = regex.lastIndex;
-        }
-
-        var tail = text.substring(lastIndex);
-        if (tail.length) {
-            var tailSpan = document.createElement('span');
-            tailSpan.style.color = currentColor;
-            tailSpan.textContent = tail;
-            previewElement.appendChild(tailSpan);
+        // Delegate to the shared canonical CoD colour renderer (cod-colors.js) so broadcasts and
+        // chat commands preview using the exact same palette and markup as welcome messages.
+        if (typeof CodColors !== 'undefined' && CodColors && typeof CodColors.renderSafe === 'function') {
+            previewElement.innerHTML = CodColors.renderSafe(text);
+        } else {
+            previewElement.textContent = stripCodColorCodes(text);
         }
     }
 
     function updateRowPreview(row, options) {
         var input = row.querySelector('[data-field="message"]');
         var preview = row.querySelector('[data-field="preview"]');
-        var count = row.querySelector('[data-field="char-count"]');
-        if (!input || !preview || !count) return;
+        if (!input || !preview) return;
 
+        var count = row.querySelector('[data-field="char-count"]');
         var value = input.value || '';
-        count.textContent = value.length.toString();
+        if (count) {
+            count.textContent = value.length.toString();
+        }
 
         var previewText = options.replaceNameToken
             ? value.replaceAll('{name}', 'PlayerName')
@@ -95,10 +45,12 @@
         }
 
         if (!previewText.length) {
-            setCodChipStyle(preview, false);
-            preview.textContent = '(preview)';
+            preview.classList.add('is-empty');
+            preview.textContent = '';
             return;
         }
+
+        preview.classList.remove('is-empty');
 
         if (options.codPreviewMode === 'always') {
             renderCodPreview(preview, previewText);
@@ -110,14 +62,12 @@
             if (shouldRenderCod) {
                 renderCodPreview(preview, previewText);
             } else {
-                setCodChipStyle(preview, false);
                 preview.textContent = stripCodColorCodes(previewText);
             }
 
             return;
         }
 
-        setCodChipStyle(preview, false);
         preview.textContent = previewText;
     }
 
