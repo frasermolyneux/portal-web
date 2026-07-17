@@ -51,8 +51,8 @@
     <PackageReference Include="MX.Api.Client" Version="2.3.67" />
     <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="4.1.1" />
     <PackageReference Include="XtremeIdiots.Portal.Settings.Contracts.V1" Version="4.2.1" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="4.0.8" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="4.0.8" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="4.2.6" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="4.2.6" />
     <PackageReference Include="MX.GeoLocation.Api.Client.V1" Version="1.2.75" />
   </ItemGroup>
 

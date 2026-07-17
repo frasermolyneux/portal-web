@@ -25,11 +25,13 @@ $(document).ready(function () {
                 xhr.setRequestHeader('RequestVerificationToken', token);
                 const gt = $('#filterGameType').val();
                 const adminActionFilter = $('#filterAdminActionFilter').val();
+                const actionSource = $('#filterActionSource').val();
                 const adminId = $('#filterAdminUserId').val();
                 const baseUrl = '/AdminActions/GetAdminActionsAjax';
                 let qs = [];
                 if (gt) qs.push('gameType=' + encodeURIComponent(gt));
                 if (adminActionFilter) qs.push('adminActionFilter=' + encodeURIComponent(adminActionFilter));
+                if (actionSource) qs.push('actionSource=' + encodeURIComponent(actionSource));
                 if (adminId) qs.push('adminId=' + encodeURIComponent(adminId));
                 this.url = baseUrl + (qs.length ? ('?' + qs.join('&')) : '');
             }
@@ -37,9 +39,11 @@ $(document).ready(function () {
         columns: [
             { data: 'created', name: 'created', orderable: true, render: function (data) { return '<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatRelativeTime(data) + '</span>'; } },
             { data: 'type', name: 'type', orderable: false, render: function (data) { return adminActionTypeIcon(data); } },
-            { data: 'player', name: 'player', orderable: false, render: function (data, type, row) { 
-                return renderPlayerName(row.gameType, data, row.playerId) + '<br/><small class="text-muted">' + (row.guid || '') + '</small>'; 
-            } },
+            {
+                data: 'player', name: 'player', orderable: false, render: function (data, type, row) {
+                    return renderPlayerName(row.gameType, data, row.playerId) + '<br/><small class="text-muted">' + (row.guid || '') + '</small>';
+                }
+            },
             { data: 'admin', name: 'admin', orderable: false },
             { data: 'expiresUtc', name: 'expires', orderable: false, className: 'expires-cell', defaultContent: '', render: function (data, type, row) { return portalDate.formatExpiryBadge(row.expiresUtc, row.isExpired, row.isPermanent); } }
         ]
@@ -54,15 +58,16 @@ $(document).ready(function () {
 
     applyGameColumnVisibility();
 
-    $('#filterGameType,#filterAdminActionFilter').on('change', function () {
+    $('#filterGameType,#filterAdminActionFilter,#filterActionSource').on('change', function () {
         applyGameColumnVisibility();
         table.ajax.reload(null, false);
     });
 
     $('#resetFilters').on('click', function () {
-        const changed = $('#filterGameType').val() !== '' || $('#filterAdminActionFilter').val() !== '' || $('#filterAdminUserId').val() !== '';
+        const changed = $('#filterGameType').val() !== '' || $('#filterAdminActionFilter').val() !== '' || $('#filterActionSource').val() !== '' || $('#filterAdminUserId').val() !== '';
         $('#filterGameType').val('');
         $('#filterAdminActionFilter').val('');
+        $('#filterActionSource').val('');
         $('#filterAdminUser').val('');
         $('#filterAdminUserId').val('');
         applyGameColumnVisibility();

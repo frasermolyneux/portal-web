@@ -53,12 +53,15 @@ public class AdminActionsController(
             GameType? gameType = null;
             AdminActionFilter? apiFilter = null;
             string? adminId = null;
+            ActionSource? source = null;
             if (Request.Query.TryGetValue("gameType", out var gameTypeValues) && Enum.TryParse<GameType>(gameTypeValues.FirstOrDefault(), out var gt))
                 gameType = gt;
             if (Request.Query.TryGetValue("adminActionFilter", out var filterValues) && Enum.TryParse<AdminActionFilter>(filterValues.FirstOrDefault(), out var f))
                 apiFilter = f;
             if (Request.Query.TryGetValue("adminId", out var adminIdValues))
                 adminId = adminIdValues.FirstOrDefault();
+            if (Request.Query.TryGetValue("actionSource", out var sourceValues) && Enum.TryParse<ActionSource>(sourceValues.FirstOrDefault(), out var parsedSource))
+                source = parsedSource;
 
             var order = AdminActionOrder.CreatedDesc;
             if (model.Order?.Count > 0)
@@ -79,7 +82,7 @@ public class AdminActionsController(
             }
 
             var apiResponse = await repositoryApiClient.AdminActions.V1.GetAdminActions(
-                gameType, null, adminId, apiFilter, model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+                gameType, null, adminId, apiFilter, model.Start, model.Length, order, source, null, null, cancellationToken).ConfigureAwait(false);
 
             if (!apiResponse.IsSuccess || apiResponse.Result?.Data?.Items is null)
             {
@@ -107,6 +110,7 @@ public class AdminActionsController(
                     playerId = a.PlayerId,
                     guid = a.Player?.Guid,
                     admin = a.UserProfile?.DisplayName ?? "Unclaimed",
+                    source = a.Source.ToString(),
                     expiresUtc = a.Expires.HasValue ? DateTime.SpecifyKind(a.Expires.Value, DateTimeKind.Utc).ToString("o") : null,
                     isPermanent = !a.Expires.HasValue && a.Type == AdminActionType.Ban,
                     isExpired = a.Expires.HasValue && a.Expires.Value <= DateTime.UtcNow

@@ -113,13 +113,15 @@
                     class="btn btn-outline-info btn-sm"><i class="fa-solid fa-fw fa-user"></i> Claim</a>
             }
         }
-        @if (adminAction.ForumTopicId == 0)
+        @if (adminAction.Source != ActionSource.Automation && (adminAction.ForumTopicId is null or 0))
         {
             if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, gameType.Value,
             AuthPolicies.AdminActions_CreateTopic)).Succeeded)
             {
-                <a asp-controller="AdminActions" asp-action="CreateDiscussionTopic" asp-route-id="@adminAction.AdminActionId"
-                    class="btn btn-outline-success btn-sm"><i class="fa-solid fa-fw fa-plus"></i> Create Topic</a>
+                <form asp-controller="AdminActions" asp-action="CreateDiscussionTopic" asp-route-id="@adminAction.AdminActionId" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-fw fa-plus"></i> Create Topic</button>
+                </form>
             }
         }
         @if ((await AuthorizationService.AuthorizeAsync(User, AuthPolicies.AdminActions_Delete)).Succeeded)

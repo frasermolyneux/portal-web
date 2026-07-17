@@ -488,7 +488,8 @@ public class AdminActionsController(
     /// <param name="id">The admin action ID to create a topic for</param>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>Redirects to player details after creating the topic</returns>
-    [HttpGet]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateDiscussionTopic(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -503,6 +504,19 @@ public class AdminActionsController(
 
             var adminActionData = getAdminActionResult.Result.Data;
             var playerData = adminActionData.Player;
+
+            if (adminActionData.ForumTopicId is > 0)
+            {
+                Logger.LogWarning("Admin action {AdminActionId} already has forum topic {ForumTopicId}", id, adminActionData.ForumTopicId);
+                return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = adminActionData.PlayerId });
+            }
+
+            if (adminActionData.Source == ActionSource.Automation)
+            {
+                Logger.LogWarning("Automated admin action {AdminActionId} has no linked forum topic", id);
+                this.AddAlertDanger("The automated discussion topic could not be recovered.");
+                return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = adminActionData.PlayerId });
+            }
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -521,17 +535,30 @@ public class AdminActionsController(
                 playerData.GameType,
                 playerData.PlayerId,
                 playerData.Username,
-                DateTime.UtcNow,
+                adminActionData.Created,
                 adminActionData.Text,
                 adminActionData.UserProfile?.XtremeIdiotsForumId,
                 cancellationToken).ConfigureAwait(false);
+
+            if (forumTopicId <= 0)
+            {
+                Logger.LogWarning("Failed to create forum topic for admin action {AdminActionId}", id);
+                this.AddAlertDanger("The discussion topic could not be created.");
+                return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = adminActionData.PlayerId });
+            }
 
             var editAdminActionDto = new EditAdminActionDto(adminActionData.AdminActionId)
             {
                 ForumTopicId = forumTopicId
             };
 
-            await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
+            var updateResult = await repositoryApiClient.AdminActions.V1.UpdateAdminAction(editAdminActionDto, cancellationToken).ConfigureAwait(false);
+            if (!updateResult.IsSuccess)
+            {
+                Logger.LogWarning("Failed to link forum topic {ForumTopicId} to admin action {AdminActionId}", forumTopicId, id);
+                this.AddAlertDanger("The discussion topic was created but could not be linked to the admin action.");
+                return RedirectToAction(nameof(PlayersController.Details), "Players", new { id = adminActionData.PlayerId });
+            }
 
             TrackSuccessTelemetry("AdminActionTopicCreated", nameof(CreateDiscussionTopic), new Dictionary<string, string>
             {

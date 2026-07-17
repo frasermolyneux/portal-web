@@ -80,6 +80,10 @@
                                 <small class="text-white-75">
                                     <i class="fa-solid fa-fw fa-calendar"></i>
                                     <time time-ago utc="@item.Created" show-absolute="false"></time>
+                                    @if (item.Source == ActionSource.Automation)
+                                    {
+                                        <span class="badge bg-light text-dark ms-2">Automated</span>
+                                    }
                                 </small>
                             </div>
                         </div>
@@ -249,15 +253,17 @@
                                         }
                                     }
 
-                                    @if (item.ForumTopicId == 0)
+                                    @if (item.Source != ActionSource.Automation && (item.ForumTopicId is null or 0))
                                     {
                                         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User,
                                                                         gameType.Value, AuthPolicies.AdminActions_CreateTopic)).Succeeded)
                                         {
-                                            <a asp-controller="AdminActions" asp-action="CreateDiscussionTopic"
-                                                asp-route-id="@item.AdminActionId" class="btn btn-outline-success btn-sm">
-                                                <i class="fa-solid fa-fw fa-plus"></i> Create Discussion Topic
-                                            </a>
+                                            <form asp-controller="AdminActions" asp-action="CreateDiscussionTopic" asp-route-id="@item.AdminActionId" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="fa-solid fa-fw fa-plus"></i> Create Discussion Topic
+                                                </button>
+                                            </form>
                                         }
                                     }
 
