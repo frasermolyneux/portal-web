@@ -21,7 +21,7 @@
                 <input class="form-check-input" asp-for="Cod4xInheritPluginSettings" />
                 <label class="form-check-label" asp-for="Cod4xInheritPluginSettings"></label>
                 <small class="form-text text-muted d-block">Global value: <strong>@(Model.GlobalCod4xPluginEnabled ?
-                                                                                                        "Enabled" : "Disabled")</strong></small>
+                                                                                                                            "Enabled" : "Disabled")</strong></small>
                 </div>
 
                 <div id="cod4x-plugin-override-panel">
@@ -30,6 +30,15 @@
                         <label class="form-check-label" asp-for="Cod4xPluginEnabled"></label>
                     </div>
                     <span asp-validation-for="Cod4xPluginEnabled" class="text-danger"></span>
+
+                    <div class="form-check mt-3 mb-0">
+                        <input class="form-check-input" asp-for="Cod4xPluginVpnProtectionEnabled" />
+                        <label class="form-check-label" asp-for="Cod4xPluginVpnProtectionEnabled"></label>
+                        <small class="form-text text-muted d-block">Global value:
+                            <strong>@(Model.GlobalCod4xPluginVpnProtectionEnabled ? "Enabled" : "Disabled")</strong>
+                        </small>
+                    </div>
+                    <span asp-validation-for="Cod4xPluginVpnProtectionEnabled" class="text-danger"></span>
 
                     <div class="mt-3 mb-0">
                         <label asp-for="Cod4xPluginRootDirectory" class="form-label"></label>
@@ -74,7 +83,7 @@
                         <input class="form-check-input" asp-for="Cod4xInheritPowerSettings" />
                         <label class="form-check-label" asp-for="Cod4xInheritPowerSettings"></label>
                         <small class="form-text text-muted d-block">Global enabled: <strong>@(Model.GlobalCod4xPowerEnabled ?
-                                                                                                                                    "Enabled" : "Disabled")</strong>, default power:
+                                                                                                                                                                "Enabled" : "Disabled")</strong>, default power:
                             <strong>@Model.GlobalCod4xPowerDefaultPower</strong></small>
                         </div>
 

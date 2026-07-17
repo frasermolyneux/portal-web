@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
@@ -86,6 +87,10 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages)));
 
         configurations.Add((
+            VpnProtectionSettingsConstants.Namespace,
+            VpnProtectionSettingsJsonMapper.BuildGlobalConfigurationJson(model.VpnProtection)));
+
+        configurations.Add((
             BroadcastSettingsConstants.Namespace,
             JsonSerializer.Serialize(new BroadcastSettingsDocument
             {
@@ -115,6 +120,7 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
             {
                 Enabled = model.Cod4xPluginEnabled,
+                VpnProtectionEnabled = model.Cod4xPluginVpnProtectionEnabled,
                 PluginRootDirectory = string.IsNullOrWhiteSpace(model.Cod4xPluginRootDirectory)
                     ? null
                     : model.Cod4xPluginRootDirectory.Trim()
@@ -357,6 +363,17 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         // Agent acts as a runtime feature flag. When disabled, keep persisted
         // namespace settings intact so re-enabling restores prior configuration.
 
+        if (VpnProtectionSettingsJsonMapper.HasServerOverrides(model.VpnProtection))
+        {
+            configurations.Add((
+                VpnProtectionSettingsConstants.Namespace,
+                VpnProtectionSettingsJsonMapper.BuildServerConfigurationJson(model.VpnProtection)));
+        }
+        else
+        {
+            DeletedNamespaces.Add(VpnProtectionSettingsConstants.Namespace);
+        }
+
         if (model.GameServer.BanFileSyncEnabled)
         {
             configurations.Add((
@@ -399,6 +416,7 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                         JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
                         {
                             Enabled = null,
+                            VpnProtectionEnabled = null,
                             PluginRootDirectory = null,
                             RuntimeState = cod4xRuntimeState,
                             OperationRequest = cod4xOperationRequest
@@ -412,6 +430,7 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     JsonSerializer.Serialize(new Cod4xPluginSettingsDocument
                     {
                         Enabled = model.Cod4xPluginEnabled,
+                        VpnProtectionEnabled = model.Cod4xPluginVpnProtectionEnabled,
                         PluginRootDirectory = string.IsNullOrWhiteSpace(model.Cod4xPluginRootDirectory)
                             ? null
                             : model.Cod4xPluginRootDirectory.Trim(),

@@ -66,6 +66,18 @@ public class GlobalSettingsController(
         {
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
+            if (isRequiredTagsCatalogAvailable)
+            {
+                foreach (var validationResult in VpnProtectionSettingsViewModelValidation.ValidateExcludedTags(
+                    model.VpnProtection.ExcludedPlayerTagsCsv,
+                    model.VpnProtection.AllowedExcludedPlayerTags))
+                {
+                    ModelState.AddModelError(
+                        $"{nameof(GlobalSettingsViewModel.VpnProtection)}.{nameof(VpnProtectionGlobalSettingsViewModel.ExcludedPlayerTagsCsv)}",
+                        validationResult.ErrorMessage ?? "The excluded player tag is invalid.");
+                }
+            }
+
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;

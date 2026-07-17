@@ -15,6 +15,7 @@ using System.Reflection;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
@@ -22,6 +23,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -998,7 +1000,7 @@ public class GameServersControllerTests
         Assert.DoesNotContain(AgentSettingsConstants.Namespace, upsertedNamespaces);
         Assert.DoesNotContain(BanFileSettingsConstants.Namespace, upsertedNamespaces);
         Assert.DoesNotContain(ServerListSettingsConstants.Namespace, upsertedNamespaces);
-        Assert.Empty(deletedNamespaces);
+        Assert.Equal([VpnProtectionSettingsConstants.Namespace], deletedNamespaces);
     }
 
     [Fact]
@@ -1315,6 +1317,195 @@ public class GameServersControllerTests
         Assert.True(capturedUpdate.BanFileSyncEnabled);
         Assert.False(capturedUpdate.FileTransportEnabled);
         Assert.False(capturedUpdate.RconEnabled);
+    }
+
+    [Fact]
+    public async Task Edit_UnknownVpnExclusionTag_DoesNotUpdateServer()
+    {
+        var existingServer = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        var tags = new CollectionModel<TagDto>([new TagDto { TagId = Guid.NewGuid(), Name = "Trusted" }]);
+        mockRepositoryApiClient
+            .Setup(x => x.Tags.V1.GetTags(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<TagDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<TagDto>>(tags)
+                {
+                    Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 100)
+                }));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Platform = existingServer.Platform,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                FileTransportType = existingServer.FileTransportType
+            },
+            VpnProtection = new VpnProtectionServerSettingsViewModel
+            {
+                ExcludedPlayerTagsCsv = "Unknown"
+            }
+        };
+        var sut = CreateSut();
+
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(sut.ModelState.IsValid);
+        Assert.Contains(sut.ModelState, entry =>
+            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.ExcludedPlayerTagsCsv)}");
+        mockRepositoryApiClient.Verify(
+            client => client.GameServers.V1.UpdateGameServer(
+                It.IsAny<EditGameServerDto>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Edit_IncompatibleVpnOverride_ReloadsGlobalRulesAndDoesNotUpdateServer()
+    {
+        var existingServer = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        var globalConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = VpnProtectionSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                {
+                  "schemaVersion": 1,
+                  "enabled": true,
+                  "rules": [
+                    {
+                      "id": "proxy-type",
+                      "enabled": true,
+                      "signal": "ProxyCheckProxyType",
+                      "operator": "Contains",
+                      "expectedValue": "VPN",
+                      "action": "Observation"
+                    }
+                  ],
+                  "ruleOverrides": [],
+                  "excludedPlayerTags": []
+                }
+                """
+        }))!;
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([globalConfig]))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = existingServer.GameType,
+                Platform = existingServer.Platform,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                FileTransportType = existingServer.FileTransportType
+            },
+            VpnProtection = new VpnProtectionServerSettingsViewModel
+            {
+                RuleOverrides =
+                [
+                    new VpnProtectionRuleOverrideViewModel
+                    {
+                        Id = "proxy-type",
+                        Signal = VpnProtectionSignal.ProxyCheckIsVpn
+                    }
+                ]
+            }
+        };
+        var sut = CreateSut();
+
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var returnedModel = Assert.IsType<GameServerEditViewModel>(view.Model);
+        Assert.Single(returnedModel.GlobalVpnProtection.Rules);
+        Assert.Equal("proxy-type", returnedModel.GlobalVpnProtection.Rules[0].Id);
+        Assert.Contains(sut.ModelState, entry =>
+            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}");
+        mockRepositoryApiClient.Verify(
+            client => client.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Edit_PostedSupportedGameTypeForUnsupportedServer_RejectsDestructiveVpnAction()
+    {
+        var existingServer = CreateGameServerDto(
+            ftpEnabled: false,
+            fileTransportEnabled: false,
+            fileTransportType: "Ftp",
+            gameType: RepositoryGameType.Insurgency);
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = existingServer.GameServerId,
+                Title = existingServer.Title,
+                GameType = RepositoryGameType.CallOfDuty4,
+                Platform = existingServer.Platform,
+                Hostname = existingServer.Hostname,
+                QueryPort = existingServer.QueryPort,
+                FileTransportType = existingServer.FileTransportType
+            },
+            VpnProtection = new VpnProtectionServerSettingsViewModel
+            {
+                LocalRules =
+                [
+                    new VpnProtectionRuleViewModel
+                    {
+                        Id = "ban-vpn",
+                        Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                        Operator = VpnProtectionComparisonOperator.Equal,
+                        ExpectedValue = "true",
+                        Action = VpnProtectionAction.Ban
+                    }
+                ]
+            }
+        };
+        var sut = CreateSut();
+
+        var result = await sut.Edit(model, CancellationToken.None);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Equal(RepositoryGameType.Insurgency, model.GameServer.GameType);
+        Assert.Contains(sut.ModelState, entry =>
+            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.LocalRules)}[0].{nameof(VpnProtectionRuleViewModel.Action)}");
+        mockRepositoryApiClient.Verify(
+            client => client.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -1657,13 +1848,17 @@ public class GameServersControllerTests
         mockRepositoryApiClient.Verify(x => x.GameServers.V1.CreateGameServer(It.IsAny<CreateGameServerDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private static GameServerDto CreateGameServerDto(bool ftpEnabled, bool fileTransportEnabled, string fileTransportType)
+    private static GameServerDto CreateGameServerDto(
+        bool ftpEnabled,
+        bool fileTransportEnabled,
+        string fileTransportType,
+        RepositoryGameType gameType = RepositoryGameType.CallOfDuty4)
     {
         var json = JsonConvert.SerializeObject(new
         {
             GameServerId = Guid.NewGuid(),
             Title = "Test Server",
-            GameType = RepositoryGameType.CallOfDuty4,
+            GameType = gameType,
             Platform = "Windows",
             Hostname = "127.0.0.1",
             QueryPort = 28960,

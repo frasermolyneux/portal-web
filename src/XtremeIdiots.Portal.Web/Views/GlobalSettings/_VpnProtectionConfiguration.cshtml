@@ -1,0 +1,247 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection
+@using XtremeIdiots.Portal.Web.ViewModels
+
+<div class="ibox">
+    <div class="ibox-title">
+        <h5><i class="fa-solid fa-fw fa-shield-halved" aria-hidden="true"></i> VPN Protection</h5>
+    </div>
+    <div class="ibox-content">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="VpnProtection_Enabled" name="VpnProtection.Enabled"
+                   value="true" checked="@(Model.VpnProtection.Enabled ? "checked" : null)" />
+            <input type="hidden" name="VpnProtection.Enabled" value="false" />
+            <label class="form-check-label" for="VpnProtection_Enabled">Enabled by default</label>
+            <small class="form-text text-muted d-block">Rules run independently. If several rules match, Ban takes
+                priority over Kick, then Observation. Missing provider data does not match a rule.</small>
+            </div>
+
+            @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml",
+                new RequiredTagsSelectorViewModel
+                {
+                    FieldName = "VpnProtection.ExcludedPlayerTagsCsv",
+                    Label = "Excluded Player Tags",
+                    Value = Model.VpnProtection.ExcludedPlayerTagsCsv,
+                    Options = Model.AvailableRequiredTags,
+                    HelpText = "Players with any selected tag are excluded from event-side VPN Protection actions.",
+                    Placeholder = "No player tags excluded"
+                })
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Rules</h6>
+                <button type="button" class="btn btn-primary btn-sm" id="add-global-vpn-rule">
+                    <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Rule
+                </button>
+            </div>
+
+            <div id="global-vpn-rules" data-vpn-rules-container data-field-prefix="VpnProtection.Rules"
+                 data-template-id="global-vpn-rule-template" data-add-button-id="add-global-vpn-rule">
+                @for (var i = 0; i < Model.VpnProtection.Rules.Count; i++)
+                {
+                    var rule = Model.VpnProtection.Rules[i];
+                    <div class="border rounded p-3 mb-3" data-vpn-rule-row>
+                        <div class="row">
+                            <div class="col-lg-3">
+                                <div class="mb-3">
+                                    <label class="form-label" asp-for="VpnProtection.Rules[i].Id" data-label-for="Id"></label>
+                                    <input class="form-control" asp-for="VpnProtection.Rules[i].Id" data-property="Id"
+                                           maxlength="@VpnProtectionSettingsConstants.MaxRuleIdLength" />
+                                    <span class="text-danger" asp-validation-for="VpnProtection.Rules[i].Id"
+                                          data-validation-for="Id"></span>
+                                    <small class="form-text text-muted">Unique stable name used by server overrides, for example
+                                        <code>vpn-risk-high</code>.</small>
+                                    </div>
+                                </div>
+                                <div class="col-lg-2">
+                                    <div class="mb-3">
+                                        <label class="form-label" asp-for="VpnProtection.Rules[i].Signal"
+                                               data-label-for="Signal"></label>
+                                        <select class="form-select" asp-for="VpnProtection.Rules[i].Signal" data-property="Signal"
+                                                data-role="vpn-signal">
+                                            @foreach (var signal in Enum.GetValues<VpnProtectionSignal>().Where(static value =>
+                                        value != VpnProtectionSignal.Unknown))
+                                            {
+                                                <option value="@signal"
+                                                        data-value-kind="@VpnProtectionRuleEditorOptions.GetValueKind(signal)"
+                                                        data-signal-description="@VpnProtectionRuleEditorOptions.GetSignalDescription(signal)"
+                                                        data-value-hint="@VpnProtectionRuleEditorOptions.GetExpectedValueHint(signal)">
+                                                    @VpnProtectionRuleEditorOptions.GetSignalLabel(signal)
+                                                </option>
+                                            }
+                                        </select>
+                                        <small class="form-text text-muted"
+                                               data-role="vpn-signal-hint">@VpnProtectionRuleEditorOptions.GetSignalDescription(rule.Signal)</small>
+                                    </div>
+                                </div>
+                                <div class="col-lg-2">
+                                    <div class="mb-3">
+                                        <label class="form-label" asp-for="VpnProtection.Rules[i].Operator"
+                                               data-label-for="Operator"></label>
+                                        <select class="form-select" asp-for="VpnProtection.Rules[i].Operator"
+                                                data-property="Operator" data-role="vpn-operator">
+                                            @foreach (var comparison in
+                                        Enum.GetValues<VpnProtectionComparisonOperator>().Where(static value => value !=
+                                        VpnProtectionComparisonOperator.Unknown))
+                                            {
+                                                <option value="@comparison">@VpnProtectionRuleEditorOptions.GetOperatorLabel(comparison)
+                                                </option>
+                                            }
+                                        </select>
+                                        <small class="form-text text-muted" data-role="vpn-operator-hint">Available operators depend
+                                            on the selected signal.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-3">
+                                        <div class="mb-3">
+                                            <label class="form-label" asp-for="VpnProtection.Rules[i].ExpectedValue"
+                                                   data-label-for="ExpectedValue"></label>
+                                            <input class="form-control" asp-for="VpnProtection.Rules[i].ExpectedValue"
+                                                   data-property="ExpectedValue" data-role="vpn-expected-value"
+                                                   maxlength="@VpnProtectionSettingsConstants.MaxExpectedValueLength" />
+                                            <span class="text-danger" asp-validation-for="VpnProtection.Rules[i].ExpectedValue"
+                                                  data-validation-for="ExpectedValue"></span>
+                                            <small class="form-text text-muted"
+                                                   data-role="vpn-expected-hint">@VpnProtectionRuleEditorOptions.GetExpectedValueHint(rule.Signal)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-2">
+                                        <div class="mb-3">
+                                            <label class="form-label" asp-for="VpnProtection.Rules[i].Action"
+                                                   data-label-for="Action"></label>
+                                            <select class="form-select" asp-for="VpnProtection.Rules[i].Action" data-property="Action">
+                                                @foreach (var action in Enum.GetValues<VpnProtectionAction>().Where(static value =>
+                                            value != VpnProtectionAction.Unknown))
+                                                {
+                                                    <option value="@action">@VpnProtectionRuleEditorOptions.GetActionLabel(action)</option>
+                                                }
+                                            </select>
+                                            <small class="form-text text-muted">Observation records an admin action only. Kick and Ban
+                                                also remove the player from supported game servers.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-end">
+                                        <div class="col-lg-8">
+                                            <div class="mb-3">
+                                                <label class="form-label" asp-for="VpnProtection.Rules[i].ReasonTemplate"
+                                                       data-label-for="ReasonTemplate"></label>
+                                                <input class="form-control" asp-for="VpnProtection.Rules[i].ReasonTemplate"
+                                                       data-property="ReasonTemplate"
+                                                       placeholder="@VpnProtectionSettingsConstants.DefaultReasonTemplate"
+                                                       maxlength="@VpnProtectionSettingsConstants.MaxReasonTemplateLength" />
+                                                <span class="text-danger" asp-validation-for="VpnProtection.Rules[i].ReasonTemplate"
+                                                      data-validation-for="ReasonTemplate"></span>
+                                                <small class="form-text text-muted">Optional. Available placeholders: <code>{ruleId}</code>,
+                                                    <code>{signal}</code>, <code>{actualValue}</code>, and
+                                                    <code>{expectedValue}</code>.</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-2">
+                                                <div class="form-check mb-3">
+                                                    <input class="form-check-input" type="checkbox" value="true" data-property="Enabled"
+                                                           checked="@(rule.Enabled ? "checked" : null)" />
+                                                    <input type="hidden" value="false" data-property="Enabled" data-checkbox-hidden="Enabled" />
+                                                    <label class="form-check-label" data-label-for="Enabled">Enabled</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-2 text-end">
+                                                <button type="button" class="btn btn-outline-danger btn-sm mb-3" data-action="remove-vpn-rule">
+                                                    <i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <template id="global-vpn-rule-template">
+                                <div class="border rounded p-3 mb-3" data-vpn-rule-row>
+                                    <div class="row">
+                                        <div class="col-lg-3 mb-3">
+                                            <label class="form-label" data-label-for="Id">Rule Id</label>
+                                            <input class="form-control" data-property="Id"
+                                                   maxlength="@VpnProtectionSettingsConstants.MaxRuleIdLength" placeholder="vpn-risk-high"
+                                                   data-val="true" data-val-required="Rule Id is required."
+                                                   data-val-maxlength="Rule Id must be @VpnProtectionSettingsConstants.MaxRuleIdLength characters or fewer."
+                                                   data-val-maxlength-max="@VpnProtectionSettingsConstants.MaxRuleIdLength" />
+                                            <span class="text-danger" data-validation-for="Id"></span>
+                                            <small class="form-text text-muted">Unique stable name used by server overrides.</small>
+                                        </div>
+                                        <div class="col-lg-2 mb-3">
+                                            <label class="form-label" data-label-for="Signal">Signal</label>
+                                            <select class="form-select" data-property="Signal" data-role="vpn-signal">
+                                                @foreach (var signal in Enum.GetValues<VpnProtectionSignal>().Where(static value => value !=
+                                                VpnProtectionSignal.Unknown))
+                                                {
+                                                    <option value="@signal"
+                                                            selected="@(signal == VpnProtectionSignal.ProxyCheckIsVpn ? "selected" : null)"
+                                                            data-value-kind="@VpnProtectionRuleEditorOptions.GetValueKind(signal)"
+                                                            data-signal-description="@VpnProtectionRuleEditorOptions.GetSignalDescription(signal)"
+                                                            data-value-hint="@VpnProtectionRuleEditorOptions.GetExpectedValueHint(signal)">
+                                                        @VpnProtectionRuleEditorOptions.GetSignalLabel(signal)
+                                                    </option>
+                                                }
+                                            </select>
+                                            <small class="form-text text-muted" data-role="vpn-signal-hint"></small>
+                                        </div>
+                                        <div class="col-lg-2 mb-3">
+                                            <label class="form-label" data-label-for="Operator">Operator</label>
+                                            <select class="form-select" data-property="Operator" data-role="vpn-operator">
+                                                @foreach (var comparison in Enum.GetValues<VpnProtectionComparisonOperator>().Where(static
+                                                value => value != VpnProtectionComparisonOperator.Unknown))
+                                                {
+                                                    <option value="@comparison">@VpnProtectionRuleEditorOptions.GetOperatorLabel(comparison)
+                                                    </option>
+                                                }
+                                            </select>
+                                            <small class="form-text text-muted" data-role="vpn-operator-hint"></small>
+                                        </div>
+                                        <div class="col-lg-3 mb-3">
+                                            <label class="form-label" data-label-for="ExpectedValue">Expected Value</label>
+                                            <input class="form-control" data-property="ExpectedValue" data-role="vpn-expected-value"
+                                                   maxlength="@VpnProtectionSettingsConstants.MaxExpectedValueLength" value="true"
+                                                   data-val="true" data-val-required="Expected Value is required."
+                                                   data-val-maxlength="Expected Value must be @VpnProtectionSettingsConstants.MaxExpectedValueLength characters or fewer."
+                                                   data-val-maxlength-max="@VpnProtectionSettingsConstants.MaxExpectedValueLength" />
+                                            <span class="text-danger" data-validation-for="ExpectedValue"></span>
+                                            <small class="form-text text-muted" data-role="vpn-expected-hint"></small>
+                                        </div>
+                                        <div class="col-lg-2 mb-3">
+                                            <label class="form-label" data-label-for="Action">Action</label>
+                                            <select class="form-select" data-property="Action">
+                                                @foreach (var action in Enum.GetValues<VpnProtectionAction>().Where(static value => value !=
+                                                VpnProtectionAction.Unknown))
+                                                {
+                                                    <option value="@action">@VpnProtectionRuleEditorOptions.GetActionLabel(action)</option>
+                                                }
+                                            </select>
+                                            <small class="form-text text-muted">Observation records only; Kick and Ban also remove the
+                                                player.</small>
+                                            </div>
+                                        </div>
+                                        <div class="row align-items-end">
+                                            <div class="col-lg-8 mb-3">
+                                                <label class="form-label" data-label-for="ReasonTemplate">Reason Template</label>
+                                                <input class="form-control" data-property="ReasonTemplate"
+                                                       placeholder="@VpnProtectionSettingsConstants.DefaultReasonTemplate"
+                                                       maxlength="@VpnProtectionSettingsConstants.MaxReasonTemplateLength" data-val="true"
+                                                       data-val-maxlength="Reason Template must be @VpnProtectionSettingsConstants.MaxReasonTemplateLength characters or fewer."
+                                                       data-val-maxlength-max="@VpnProtectionSettingsConstants.MaxReasonTemplateLength" />
+                                                <span class="text-danger" data-validation-for="ReasonTemplate"></span>
+                                                <small class="form-text text-muted">Optional placeholders: <code>{ruleId}</code>,
+                                                    <code>{signal}</code>, <code>{actualValue}</code>, <code>{expectedValue}</code>.</small>
+                                                </div>
+                                                <div class="col-lg-2 mb-3">
+                                                    <div class="form-check"><input class="form-check-input" type="checkbox" value="true"
+                                                                                       data-property="Enabled" checked="checked" /><input type="hidden" value="false"
+                                                                                                           data-property="Enabled" data-checkbox-hidden="Enabled" /><label class="form-check-label"
+                                                                                                                        data-label-for="Enabled">Enabled</label></div>
+                                                    </div>
+                                                    <div class="col-lg-2 text-end mb-3"><button type="button" class="btn btn-outline-danger btn-sm"
+                                                                                                data-action="remove-vpn-rule"><i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i>
+                                                        Remove</button></div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>

@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
@@ -85,6 +86,77 @@ public class NamespaceSettingsSerializerTests
 
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
         Assert.DoesNotContain(ServerListSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void BuildGlobalSettingsConfigurations_IncludesVpnProtectionRulesAndExclusions()
+    {
+        var model = new GlobalSettingsViewModel
+        {
+            VpnProtection = new VpnProtectionGlobalSettingsViewModel
+            {
+                Enabled = true,
+                ExcludedPlayerTagsCsv = "Trusted VPN, SeniorAdmin",
+                Rules =
+                [
+                    new VpnProtectionRuleViewModel
+                    {
+                        Id = "vpn",
+                        Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                        Operator = VpnProtectionComparisonOperator.Equal,
+                        ExpectedValue = "true",
+                        Action = VpnProtectionAction.Ban
+                    }
+                ]
+            }
+        };
+
+        var configurations = serializer.BuildGlobalSettingsConfigurations(model);
+        var (_, json) = Assert.Single(
+            configurations,
+            static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal("vpn", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
+        Assert.Equal(2, document.RootElement.GetProperty("excludedPlayerTags").GetArrayLength());
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_VpnProtectionOverride_SerializesThenDeletesWhenInherited()
+    {
+        var model = BuildDefaultModel();
+        model.VpnProtection.Enabled = true;
+        model.VpnProtection.RuleOverrides =
+        [
+            new VpnProtectionRuleOverrideViewModel
+            {
+                Id = "vpn",
+                Action = VpnProtectionAction.Kick
+            }
+        ];
+
+        var configurations = serializer.BuildGameServerConfigurations(
+            model,
+            canEditFileTransport: false,
+            canEditRcon: false,
+            canConfigureScreenshots: false);
+        var (_, json) = Assert.Single(
+            configurations,
+            static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal("Kick", document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("action").GetString());
+
+        model.VpnProtection = new VpnProtectionServerSettingsViewModel();
+        configurations = serializer.BuildGameServerConfigurations(
+            model,
+            canEditFileTransport: false,
+            canEditRcon: false,
+            canConfigureScreenshots: false);
+
+        Assert.DoesNotContain(configurations, static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
+        Assert.Contains(VpnProtectionSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
@@ -465,6 +537,7 @@ public class NamespaceSettingsSerializerTests
         var model = new GlobalSettingsViewModel
         {
             Cod4xPluginEnabled = true,
+            Cod4xPluginVpnProtectionEnabled = true,
             Cod4xPluginRootDirectory = "/plugins",
             Cod4xPowerEnabled = true,
             Cod4xPowerDefaultPower = 44,
@@ -485,6 +558,7 @@ public class NamespaceSettingsSerializerTests
         var (_, pluginJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPluginSettingsConstants.Namespace);
         using var pluginDoc = JsonDocument.Parse(pluginJson);
         Assert.True(pluginDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.True(pluginDoc.RootElement.GetProperty("vpnProtectionEnabled").GetBoolean());
         Assert.Equal("/plugins", pluginDoc.RootElement.GetProperty("pluginRootDirectory").GetString());
 
         var (_, powerJson) = Assert.Single(configurations, static configuration => configuration.Namespace == Cod4xPowerSettingsConstants.Namespace);
@@ -527,6 +601,7 @@ public class NamespaceSettingsSerializerTests
         model.GameServer.GameType = GameType.CallOfDuty4x;
         model.Cod4xInheritPluginSettings = false;
         model.Cod4xPluginEnabled = true;
+        model.Cod4xPluginVpnProtectionEnabled = true;
         model.Cod4xPluginRootDirectory = "/servers/cod4x/plugins";
         model.Cod4xRuntimeCurrentVersion = "1.2.3";
         model.Cod4xRuntimePreviousKnownGoodVersion = "1.2.2";
@@ -545,6 +620,7 @@ public class NamespaceSettingsSerializerTests
 
         using var pluginDoc = JsonDocument.Parse(pluginJson);
         Assert.True(pluginDoc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.True(pluginDoc.RootElement.GetProperty("vpnProtectionEnabled").GetBoolean());
         Assert.Equal("/servers/cod4x/plugins", pluginDoc.RootElement.GetProperty("pluginRootDirectory").GetString());
         Assert.Equal("1.2.3", pluginDoc.RootElement.GetProperty("runtimeState").GetProperty("currentVersion").GetString());
         Assert.Equal("Succeeded", pluginDoc.RootElement.GetProperty("runtimeState").GetProperty("lastOperationStatus").GetString());
@@ -573,6 +649,8 @@ public class NamespaceSettingsSerializerTests
         using var pluginDoc = JsonDocument.Parse(pluginJson);
         Assert.True(pluginDoc.RootElement.TryGetProperty("enabled", out var enabledProperty));
         Assert.Equal(JsonValueKind.Null, enabledProperty.ValueKind);
+        Assert.True(pluginDoc.RootElement.TryGetProperty("vpnProtectionEnabled", out var vpnProtectionEnabledProperty));
+        Assert.Equal(JsonValueKind.Null, vpnProtectionEnabledProperty.ValueKind);
         Assert.True(pluginDoc.RootElement.TryGetProperty("pluginRootDirectory", out var pluginRootDirectoryProperty));
         Assert.Equal(JsonValueKind.Null, pluginRootDirectoryProperty.ValueKind);
         Assert.Equal("1.2.3", pluginDoc.RootElement.GetProperty("runtimeState").GetProperty("currentVersion").GetString());

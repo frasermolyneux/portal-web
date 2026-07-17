@@ -13,11 +13,13 @@ using System.Net;
 using System.Reflection;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -579,6 +581,43 @@ public class GlobalSettingsControllerTests
         mockRepositoryApiClient.Verify(
             client => client.GlobalConfigurations.V1.UpsertConfiguration(
                 It.IsAny<string>(),
+                It.IsAny<UpsertConfigurationDto>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Index_Post_UnknownVpnExclusionTag_DoesNotCallUpsert()
+    {
+        var tags = new CollectionModel<TagDto>([new TagDto { TagId = Guid.NewGuid(), Name = "Trusted" }]);
+        mockRepositoryApiClient
+            .Setup(x => x.Tags.V1.GetTags(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<TagDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<TagDto>>(tags)
+                {
+                    Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 100)
+                }));
+
+        var model = new GlobalSettingsViewModel
+        {
+            VpnProtection = new VpnProtectionGlobalSettingsViewModel
+            {
+                Enabled = true,
+                ExcludedPlayerTagsCsv = "Unknown"
+            }
+        };
+        var sut = CreateSut();
+
+        var result = await sut.Index(model);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(sut.ModelState.IsValid);
+        Assert.Contains(sut.ModelState, entry =>
+            entry.Key == $"{nameof(GlobalSettingsViewModel.VpnProtection)}.{nameof(VpnProtectionGlobalSettingsViewModel.ExcludedPlayerTagsCsv)}");
+        mockRepositoryApiClient.Verify(
+            client => client.GlobalConfigurations.V1.UpsertConfiguration(
+                VpnProtectionSettingsConstants.Namespace,
                 It.IsAny<UpsertConfigurationDto>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);

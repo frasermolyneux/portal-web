@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.ViewModels;
 using RepositoryFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
@@ -86,6 +87,13 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
+            case VpnProtectionSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out VpnProtectionSettingsDocument? vpnProtectionDocument) && vpnProtectionDocument is not null)
+                {
+                    VpnProtectionSettingsJsonMapper.PopulateGlobal(model.VpnProtection, vpnProtectionDocument);
+                }
+
+                break;
             case BroadcastSettingsConstants.Namespace:
                 if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
                 {
@@ -115,6 +123,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
                 {
                     model.Cod4xPluginEnabled = cod4xPluginDocument.Enabled ?? model.Cod4xPluginEnabled;
+                    model.Cod4xPluginVpnProtectionEnabled = cod4xPluginDocument.VpnProtectionEnabled ?? model.Cod4xPluginVpnProtectionEnabled;
                     model.Cod4xPluginRootDirectory = cod4xPluginDocument.PluginRootDirectory;
                 }
 
@@ -261,6 +270,13 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
+            case VpnProtectionSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out VpnProtectionSettingsDocument? vpnProtectionDocument) && vpnProtectionDocument is not null)
+                {
+                    VpnProtectionSettingsJsonMapper.PopulateServer(model.VpnProtection, vpnProtectionDocument);
+                }
+
+                break;
             case BroadcastSettingsConstants.Namespace:
                 if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
                 {
@@ -283,10 +299,12 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
                 {
                     var hasPluginOverrides = cod4xPluginDocument.Enabled.HasValue
+                        || cod4xPluginDocument.VpnProtectionEnabled.HasValue
                         || !string.IsNullOrWhiteSpace(cod4xPluginDocument.PluginRootDirectory);
 
                     model.Cod4xInheritPluginSettings = !hasPluginOverrides;
                     model.Cod4xPluginEnabled = cod4xPluginDocument.Enabled ?? false;
+                    model.Cod4xPluginVpnProtectionEnabled = cod4xPluginDocument.VpnProtectionEnabled ?? false;
                     model.Cod4xPluginRootDirectory = cod4xPluginDocument.PluginRootDirectory;
                     ApplyCod4xRuntimeState(model, cod4xPluginDocument.RuntimeState);
                     ApplyCod4xOperationRequest(model, cod4xPluginDocument.OperationRequest);
@@ -371,6 +389,13 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
+            case VpnProtectionSettingsConstants.Namespace:
+                if (TryDeserialize(config, logger, out VpnProtectionSettingsDocument? vpnProtectionDocument) && vpnProtectionDocument is not null)
+                {
+                    VpnProtectionSettingsJsonMapper.PopulateGlobal(model.GlobalVpnProtection, vpnProtectionDocument);
+                }
+
+                break;
             case BroadcastSettingsConstants.Namespace:
                 if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
                 {
@@ -400,6 +425,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 if (TryDeserialize(config, logger, out Cod4xPluginSettingsDocument? cod4xPluginDocument) && cod4xPluginDocument is not null)
                 {
                     model.GlobalCod4xPluginEnabled = cod4xPluginDocument.Enabled ?? model.GlobalCod4xPluginEnabled;
+                    model.GlobalCod4xPluginVpnProtectionEnabled = cod4xPluginDocument.VpnProtectionEnabled ?? model.GlobalCod4xPluginVpnProtectionEnabled;
                     model.GlobalCod4xPluginRootDirectory = cod4xPluginDocument.PluginRootDirectory;
                 }
 

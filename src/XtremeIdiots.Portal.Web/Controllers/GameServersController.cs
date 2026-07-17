@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -389,6 +390,8 @@ public class GameServersController(
             }
 
             var gameServerData = gameServerApiResponse.Result.Data;
+            model.GameServer.GameType = gameServerData.GameType;
+            ModelState.Remove($"{nameof(GameServerEditViewModel.GameServer)}.{nameof(GameServerViewModel.GameType)}");
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -421,6 +424,38 @@ public class GameServersController(
             var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
+            var globalDefaultsLoaded = await PopulateGlobalDefaultsAsync(model, cancellationToken).ConfigureAwait(false);
+            if (isRequiredTagsCatalogAvailable)
+            {
+                foreach (var validationResult in VpnProtectionSettingsViewModelValidation.ValidateExcludedTags(
+                    model.VpnProtection.ExcludedPlayerTagsCsv,
+                    model.VpnProtection.AllowedExcludedPlayerTags))
+                {
+                    ModelState.AddModelError(
+                        $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.ExcludedPlayerTagsCsv)}",
+                        validationResult.ErrorMessage ?? "The excluded player tag is invalid.");
+                }
+            }
+
+            ValidateVpnProtectionActions(model, gameServerData.GameType);
+            if (globalDefaultsLoaded)
+            {
+                var effectiveSettings = new VpnProtectionSettingsMerger().Merge(
+                    VpnProtectionSettingsJsonMapper.ToDocument(model.GlobalVpnProtection),
+                    VpnProtectionSettingsJsonMapper.ToDocument(model.VpnProtection));
+                if (effectiveSettings.ValidationFailed)
+                {
+                    ModelState.AddModelError(
+                        $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}",
+                        "The VPN Protection overrides produce an invalid effective rule. Override the signal, operator, and expected value together, or leave all three as Inherit.");
+                }
+            }
+            else if (model.VpnProtection.RuleOverrides.Count > 0)
+            {
+                ModelState.AddModelError(
+                    $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}",
+                    "Global VPN Protection rules could not be loaded. Retry before saving overrides.");
+            }
 
             if (gameServerData.GameType == GameType.CallOfDuty4x)
             {
@@ -702,6 +737,64 @@ public class GameServersController(
     private void PopulateGlobalDefaults(GameServerEditViewModel editModel, ConfigurationDto config)
     {
         gameServerSettingsService.PopulateGlobalDefaults(editModel, config, Logger);
+    }
+
+    private async Task<bool> PopulateGlobalDefaultsAsync(
+        GameServerEditViewModel model,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var globalConfigsResult = await repositoryApiClient.GlobalConfigurations.V1
+                .GetConfigurations(cancellationToken).ConfigureAwait(false);
+            if (!globalConfigsResult.IsSuccess || globalConfigsResult.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to retrieve global configurations for server settings validation");
+                return false;
+            }
+
+            foreach (var config in globalConfigsResult.Result.Data.Items)
+            {
+                PopulateGlobalDefaults(model, config);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to retrieve global configurations for server settings validation");
+            return false;
+        }
+    }
+
+    private void ValidateVpnProtectionActions(GameServerEditViewModel model, GameType gameType)
+    {
+        if (gameType is GameType.CallOfDuty2 or GameType.CallOfDuty4 or GameType.CallOfDuty5 or GameType.CallOfDuty4x)
+        {
+            return;
+        }
+
+        for (var index = 0; index < model.VpnProtection.LocalRules.Count; index++)
+        {
+            var action = model.VpnProtection.LocalRules[index].Action;
+            if (action is VpnProtectionAction.Kick or VpnProtectionAction.Ban)
+            {
+                ModelState.AddModelError(
+                    $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.LocalRules)}[{index}].{nameof(VpnProtectionRuleViewModel.Action)}",
+                    $"{action} VPN Protection actions are not supported for {gameType}.");
+            }
+        }
+
+        for (var index = 0; index < model.VpnProtection.RuleOverrides.Count; index++)
+        {
+            var action = model.VpnProtection.RuleOverrides[index].Action;
+            if (action is VpnProtectionAction.Kick or VpnProtectionAction.Ban)
+            {
+                ModelState.AddModelError(
+                    $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}[{index}].{nameof(VpnProtectionRuleOverrideViewModel.Action)}",
+                    $"{action} VPN Protection overrides are not supported for {gameType}.");
+            }
+        }
     }
 
     private async Task RepopulateAuthFlags(GameServerEditViewModel model, GameType gameType)

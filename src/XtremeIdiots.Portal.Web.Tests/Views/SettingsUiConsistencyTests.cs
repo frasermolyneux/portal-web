@@ -136,6 +136,52 @@ public class SettingsUiConsistencyTests
     }
 
     [Fact]
+    public void VpnProtectionCheckboxMarkupPlacesHiddenFallbackAfterCheckbox()
+    {
+        var globalMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_VpnProtectionConfiguration.cshtml");
+        var serverMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_VpnProtectionConfiguration.cshtml");
+
+        AssertCheckboxBeforeHidden(
+            globalMarkup,
+            "name=\"VpnProtection.Enabled\" value=\"true\"",
+            "name=\"VpnProtection.Enabled\" value=\"false\"",
+            "Global VPN Protection enabled");
+
+        AssertCheckboxBeforeHidden(
+            serverMarkup,
+            "name=\"VpnProtection.InheritGlobalRules\" value=\"true\"",
+            "name=\"VpnProtection.InheritGlobalRules\" value=\"false\"",
+            "Server VPN Protection inherit global rules");
+    }
+
+    [Fact]
+    public void VpnProtectionDynamicRows_IncludeClientValidationAttributes()
+    {
+        var globalMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_VpnProtectionConfiguration.cshtml");
+        var serverMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_VpnProtectionConfiguration.cshtml");
+        var script = ReadRepoFile("src/XtremeIdiots.Portal.Web/wwwroot/js/vpn-protection-rules.js");
+        var overrideTemplate = ExtractTemplate(serverMarkup, "server-vpn-override-template");
+
+        Assert.Contains("data-val-required=\"Rule Id is required.\"", globalMarkup);
+        Assert.Contains("data-val-required=\"Expected Value is required.\"", globalMarkup);
+        Assert.Contains("data-val-required=\"Rule Id is required.\"", serverMarkup);
+        Assert.Contains("data-val-required=\"Global Rule is required.\"", overrideTemplate);
+
+        var expectedValueInput = ExtractTag(overrideTemplate, "data-property=\"ExpectedValue\"");
+        Assert.Contains("data-val=\"true\"", expectedValueInput);
+        Assert.Contains("data-val-maxlength=\"Expected Value Override must be", expectedValueInput);
+        Assert.Contains("data-val-maxlength-max=", expectedValueInput);
+        Assert.Contains("data-validation-for=\"ExpectedValue\"", overrideTemplate);
+
+        var reasonTemplateInput = ExtractTag(overrideTemplate, "data-property=\"ReasonTemplate\"");
+        Assert.Contains("data-val=\"true\"", reasonTemplateInput);
+        Assert.Contains("data-val-maxlength=\"Reason Template Override must be", reasonTemplateInput);
+        Assert.Contains("data-val-maxlength-max=", reasonTemplateInput);
+        Assert.Contains("data-validation-for=\"ReasonTemplate\"", overrideTemplate);
+        Assert.Contains("window.jQuery.validator.unobtrusive.parse(row)", script);
+    }
+
+    [Fact]
     public void DynamicEnabledRows_PlaceHiddenFallbackAfterCheckboxInGlobalSettings()
     {
         var globalBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_BroadcastsConfiguration.cshtml");
@@ -310,6 +356,25 @@ public class SettingsUiConsistencyTests
         var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
         var absolutePath = Path.Combine(repoRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
         return File.ReadAllText(absolutePath);
+    }
+
+    private static string ExtractTemplate(string markup, string templateId)
+    {
+        var start = markup.IndexOf($"<template id=\"{templateId}\">", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Template '{templateId}' not found.");
+        var end = markup.IndexOf("</template>", start, StringComparison.Ordinal);
+        Assert.True(end > start, $"Template '{templateId}' closing tag not found.");
+        return markup[start..end];
+    }
+
+    private static string ExtractTag(string markup, string marker)
+    {
+        var markerIndex = markup.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(markerIndex >= 0, $"Markup marker '{marker}' not found.");
+        var tagStart = markup.LastIndexOf('<', markerIndex);
+        var tagEnd = markup.IndexOf('>', markerIndex);
+        Assert.True(tagStart >= 0 && tagEnd > markerIndex, $"Tag containing '{marker}' not found.");
+        return markup[tagStart..(tagEnd + 1)];
     }
 
     private static void AssertCheckboxBeforeHidden(string markup, string checkboxNeedle, string hiddenNeedle, string context)

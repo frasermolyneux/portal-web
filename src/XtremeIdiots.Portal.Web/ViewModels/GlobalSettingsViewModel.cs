@@ -86,6 +86,9 @@ public class GlobalSettingsViewModel : IValidatableObject
     [DisplayName("CoD4x Plugin Enabled")]
     public bool Cod4xPluginEnabled { get; set; }
 
+    [DisplayName("CoD4x VPN Protection Fast Path")]
+    public bool Cod4xPluginVpnProtectionEnabled { get; set; }
+
     [DisplayName("Plugin Root Directory")]
     [MaxLength(512, ErrorMessage = "Plugin root directory must be 512 characters or fewer.")]
     public string? Cod4xPluginRootDirectory { get; set; }
@@ -119,7 +122,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     // Legacy compatibility alias retained while the UI model is being normalized in later phases.
 
-    public List<BroadcastMessageViewModel> FunnyMessages {
+    public List<BroadcastMessageViewModel> FunnyMessages
+    {
         get => BroadcastMessages;
         set => BroadcastMessages = value ?? [];
     }
@@ -127,6 +131,8 @@ public class GlobalSettingsViewModel : IValidatableObject
     public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
 
     public WelcomeMessageGlobalSettingsViewModel WelcomeMessages { get; set; } = new();
+
+    public VpnProtectionGlobalSettingsViewModel VpnProtection { get; set; } = new();
 
     public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
@@ -154,6 +160,11 @@ public class GlobalSettingsViewModel : IValidatableObject
         }
 
         foreach (var validationResult in WelcomeMessages.Validate(validationContext))
+        {
+            yield return validationResult;
+        }
+
+        foreach (var validationResult in VpnProtection.Validate(validationContext))
         {
             yield return validationResult;
         }
@@ -202,6 +213,8 @@ public class GlobalSettingsViewModel : IValidatableObject
         ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        VpnProtection.AllowedExcludedPlayerTags = requiredTags.Select(static option => option.Name).ToArray();
+        VpnProtection.ExcludedPlayerTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public void SyncCod4xPowerTagMappings()

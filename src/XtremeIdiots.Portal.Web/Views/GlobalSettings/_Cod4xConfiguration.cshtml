@@ -11,6 +11,11 @@
             <label class="form-check-label" asp-for="Cod4xPluginEnabled"></label>
         </div>
         <span asp-validation-for="Cod4xPluginEnabled" class="text-danger"></span>
+        <div class="form-check mt-3 mb-2">
+            <input class="form-check-input" asp-for="Cod4xPluginVpnProtectionEnabled" />
+            <label class="form-check-label" asp-for="Cod4xPluginVpnProtectionEnabled"></label>
+        </div>
+        <span asp-validation-for="Cod4xPluginVpnProtectionEnabled" class="text-danger"></span>
         <div class="mt-3 mb-2">
             <label asp-for="Cod4xPluginRootDirectory" class="form-label"></label>
             <input asp-for="Cod4xPluginRootDirectory" class="form-control" type="text" placeholder="/plugins" />

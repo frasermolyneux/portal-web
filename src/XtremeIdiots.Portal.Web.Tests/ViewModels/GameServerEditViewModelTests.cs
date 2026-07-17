@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
@@ -156,6 +158,49 @@ public class GameServerEditViewModelTests
         var model = new GameServerEditViewModel();
 
         Assert.Equal(60, model.ScreenshotConfigPollIntervalSeconds);
+    }
+
+    [Fact]
+    public void Validate_UnsupportedGameWithDestructiveVpnRule_DefersGameSupportToController()
+    {
+        var model = CreateValidModel();
+        model.GameServer.GameType = GameType.Insurgency;
+        model.VpnProtection.LocalRules =
+        [
+            new VpnProtectionRuleViewModel
+            {
+                Id = "vpn",
+                Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                Operator = VpnProtectionComparisonOperator.Equal,
+                ExpectedValue = "true",
+                Action = VpnProtectionAction.Ban
+            }
+        ];
+        var validationResults = new List<ValidationResult>();
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
+
+        Assert.True(isValid);
+        Assert.DoesNotContain(validationResults, result =>
+            result.MemberNames.Contains("VpnProtection.LocalRules[0].Action"));
+    }
+
+    [Fact]
+    public void Validate_ExcludedVpnTagOutsideLoadedCatalog_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.ApplyAvailableRequiredTags(
+        [
+            new RequiredTagOptionViewModel { Name = "Trusted VPN", DisplayName = "Trusted VPN" }
+        ]);
+        model.VpnProtection.ExcludedPlayerTagsCsv = "Unknown Tag";
+        var validationResults = new List<ValidationResult>();
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
+
+        Assert.False(isValid);
+        Assert.Contains(validationResults, result =>
+            result.ErrorMessage?.Contains("Unknown Tag", StringComparison.Ordinal) == true);
     }
 
     [Fact]

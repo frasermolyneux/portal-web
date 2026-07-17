@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
@@ -150,7 +151,8 @@ public class GameServerEditViewModel : IValidatableObject
 
     public int GlobalBroadcastsIntervalSeconds { get; set; } = DefaultBroadcastIntervalSeconds;
 
-    public List<BroadcastMessageViewModel> GlobalBroadcastMessages {
+    public List<BroadcastMessageViewModel> GlobalBroadcastMessages
+    {
         get => GlobalFunnyMessages;
         set => GlobalFunnyMessages = value ?? [];
     }
@@ -164,6 +166,9 @@ public class GameServerEditViewModel : IValidatableObject
 
     [DisplayName("CoD4x Plugin Enabled")]
     public bool Cod4xPluginEnabled { get; set; }
+
+    [DisplayName("CoD4x VPN Protection Fast Path")]
+    public bool Cod4xPluginVpnProtectionEnabled { get; set; }
 
     [DisplayName("Plugin Root Directory")]
     [MaxLength(512, ErrorMessage = "Plugin root directory must be 512 characters or fewer.")]
@@ -223,6 +228,8 @@ public class GameServerEditViewModel : IValidatableObject
 
     public bool GlobalCod4xPluginEnabled { get; set; }
 
+    public bool GlobalCod4xPluginVpnProtectionEnabled { get; set; }
+
     public string? GlobalCod4xPluginRootDirectory { get; set; }
 
     public bool GlobalCod4xPowerEnabled { get; set; }
@@ -251,6 +258,10 @@ public class GameServerEditViewModel : IValidatableObject
     public WelcomeMessageServerSettingsViewModel WelcomeMessages { get; set; } = new();
 
     public WelcomeMessageGlobalSettingsViewModel GlobalWelcomeMessages { get; set; } = new();
+
+    public VpnProtectionServerSettingsViewModel VpnProtection { get; set; } = new();
+
+    public VpnProtectionGlobalSettingsViewModel GlobalVpnProtection { get; set; } = new();
 
     public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
@@ -338,6 +349,11 @@ public class GameServerEditViewModel : IValidatableObject
             yield return validationResult;
         }
 
+        foreach (var validationResult in VpnProtection.Validate(validationContext))
+        {
+            yield return validationResult;
+        }
+
         if (IsCod4xGameServer && !Cod4xInheritPowerSettings)
         {
             var seenTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -392,6 +408,10 @@ public class GameServerEditViewModel : IValidatableObject
         GlobalChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         GlobalWelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         GlobalWelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        VpnProtection.AllowedExcludedPlayerTags = requiredTags.Select(static option => option.Name).ToArray();
+        VpnProtection.ExcludedPlayerTagsCatalogAvailable = requiredTagsCatalogAvailable;
+        GlobalVpnProtection.AllowedExcludedPlayerTags = requiredTags.Select(static option => option.Name).ToArray();
+        GlobalVpnProtection.ExcludedPlayerTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public void SyncCod4xPowerTagMappings()
