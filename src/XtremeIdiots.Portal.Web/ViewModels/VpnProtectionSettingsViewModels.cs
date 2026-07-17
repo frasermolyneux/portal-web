@@ -94,8 +94,7 @@ public sealed class VpnProtectionServerSettingsViewModel : IValidatableObject
     public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
     [DisplayName("Enabled Override")]
-    public bool? Enabled
-    {
+    public bool? Enabled {
         get => EnabledOverride?.Value;
         set => EnabledOverride = TriStateOverrideValue.From(value);
     }
