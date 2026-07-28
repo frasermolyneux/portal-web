@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using GameServerPlatform = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameServerPlatform;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;

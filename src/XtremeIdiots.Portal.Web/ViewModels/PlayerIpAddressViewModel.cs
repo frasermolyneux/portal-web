@@ -1,4 +1,4 @@
-﻿using MX.GeoLocation.Abstractions.Models.V1_1;
+using MX.GeoLocation.Abstractions.Models.V1_1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Web.Extensions;
 

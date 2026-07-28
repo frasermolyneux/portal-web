@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 

@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Web.Models;
+namespace XtremeIdiots.Portal.Web.Models;
 
 /// <summary>
 /// Holds per-player intelligence enrichment data (proxy/VPN/geo) for a single request.

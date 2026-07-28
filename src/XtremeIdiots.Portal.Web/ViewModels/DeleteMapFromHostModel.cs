@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Web.ViewModels;
+namespace XtremeIdiots.Portal.Web.ViewModels;
 
 /// <summary>
 /// View model for deleting a map from a game server host

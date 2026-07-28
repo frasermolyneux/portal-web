@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

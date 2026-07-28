@@ -2,7 +2,7 @@
 # C# and .NET EditorConfig
 # =============================================================================
 
-[*.cs]
+[*.{cs,vb}]
 
 # =============================================================================
 # CORE EDITORCONFIG SETTINGS
@@ -12,7 +12,9 @@
 indent_style = space
 indent_size = 4
 tab_width = 4
-end_of_line = crlf
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
 
 # =============================================================================
 # SOLUTION-SPECIFIC OVERRIDES

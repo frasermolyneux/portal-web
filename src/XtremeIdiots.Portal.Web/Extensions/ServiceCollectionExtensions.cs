@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Web.Auth.Handlers;
 using XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
 

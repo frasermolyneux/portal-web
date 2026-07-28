@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;

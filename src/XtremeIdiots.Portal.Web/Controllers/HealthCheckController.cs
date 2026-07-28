@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace XtremeIdiots.Portal.Web.Controllers;

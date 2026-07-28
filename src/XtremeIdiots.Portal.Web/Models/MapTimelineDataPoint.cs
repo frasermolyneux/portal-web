@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Web.Models;
+namespace XtremeIdiots.Portal.Web.Models;
 
 /// <summary>
 /// Represents a data point for map timeline visualization showing when a specific map was active

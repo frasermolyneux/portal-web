@@ -1,2 +1,1 @@
-# Ensure C# files check out with CRLF to match src/.editorconfig end_of_line setting.
-*.cs text eol=crlf
+* text=auto eol=lf

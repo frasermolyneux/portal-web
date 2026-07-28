@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Web.ViewModels;
+namespace XtremeIdiots.Portal.Web.ViewModels;
 
 /// <summary>
 /// View model for pushing maps to remote game servers

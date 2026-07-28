@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Integrations.Forums.Models;
+namespace XtremeIdiots.Portal.Integrations.Forums.Models;
 
 /// <summary>
 /// Data transfer object containing information about the demo manager client

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;

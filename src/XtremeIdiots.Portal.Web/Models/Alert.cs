@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Web.Models;
+namespace XtremeIdiots.Portal.Web.Models;
 
 /// <summary>
 /// Represents an alert message to be displayed to users

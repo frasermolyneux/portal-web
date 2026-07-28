@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MX.InvisionCommunity.Api.Abstractions;
 using System.Globalization;

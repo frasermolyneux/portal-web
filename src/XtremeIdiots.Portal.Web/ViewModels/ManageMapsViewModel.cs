@@ -1,4 +1,4 @@
-﻿using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Maps;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;

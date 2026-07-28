@@ -1,4 +1,4 @@
-﻿namespace XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
+namespace XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
 
 /// <summary>
 /// Represents the result of an XtremeIdiots authentication attempt

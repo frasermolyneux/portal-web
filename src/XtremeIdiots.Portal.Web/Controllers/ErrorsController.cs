@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;

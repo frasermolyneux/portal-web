@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
 namespace XtremeIdiots.Portal.Web.Auth.XtremeIdiots;

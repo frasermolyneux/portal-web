@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Html;
 using MX.GeoLocation.Abstractions.Models.V1;
 
 namespace XtremeIdiots.Portal.Web.Extensions;

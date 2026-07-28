@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using MX.InvisionCommunity.Api.Abstractions;
 using MX.InvisionCommunity.Api.Abstractions.Models;

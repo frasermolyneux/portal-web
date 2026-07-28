@@ -1,4 +1,4 @@
-﻿using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 

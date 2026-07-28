@@ -1,4 +1,4 @@
-﻿using MX.InvisionCommunity.Api.Abstractions;
+using MX.InvisionCommunity.Api.Abstractions;
 using XtremeIdiots.Portal.Integrations.Forums.Models;
 
 namespace XtremeIdiots.Portal.Integrations.Forums;

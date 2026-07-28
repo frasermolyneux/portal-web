@@ -1,4 +1,4 @@
-﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.InvisionCommunity.Api.Abstractions;

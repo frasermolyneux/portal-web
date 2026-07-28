@@ -1,4 +1,4 @@
-﻿using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
