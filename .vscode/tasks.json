@@ -78,6 +78,19 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "dotnet: test-integration",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "${workspaceFolder}/scripts/run-ui-tests.ps1"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "dotnet: format",
             "command": "dotnet",
             "type": "process",
