@@ -18,7 +18,9 @@ Unit tests remain available through `dotnet: test` and exclude the integration p
 
 - `Hosting/` builds isolated TestServer and Kestrel application hosts from the production `PortalWebApplication` composition.
 - `Authentication/` defines named role profiles delivered through the test-only `X-Portal-Test-Profile` header.
+- `Authorization/` contains the executable policy matrix for all 53 policies and five baseline roles.
 - `Health/` verifies required liveness, readiness, and version endpoints.
+- `Manifest/` discovers and classifies every MVC/API action and enforces the approved application surface.
 - `Playwright/` verifies rendered pages, browser behavior, policy-controlled UI, and direct authorization enforcement.
 
 Browser tests reject unexpected external requests and fail on same-origin request failures, HTTP error responses, console errors, and page errors. Known cosmetic CDN styles are omitted in the isolated environment.
@@ -30,3 +32,17 @@ Use HTTP integration tests for broad routing, endpoint, and Razor rendering cove
 Prefer accessible selectors by role, label, and visible text. Add `data-testid` only when the control has no stable accessible selector. Razor changes must follow `docs/ui-standards-guide.md`.
 
 Authorization tests must keep real policies and handlers active. Add test identities or scenario data through the integration project rather than adding production test-login endpoints or credentials.
+
+## Authorization matrix
+
+`AuthorizationMatrix` is the executable authorization specification. Every policy is tested through the real `IAuthorizationService` for Anonymous, Moderator, GameAdmin, HeadAdmin, and SeniorAdmin. Resource-sensitive policies add scenarios for ownership, action type, game/server scope, direct permissions, COD4/COD4x equivalence, and `PotentialAccessProbe`.
+
+Adding an `AuthPolicies` constant without a registered policy and matrix entry fails the integration suite. System-only policies must be included in the explicit non-assignable list.
+
+## Action manifest
+
+`PortalActionManifest` reads ASP.NET Core's runtime `ControllerActionDescriptor` collection. The approved baseline currently contains 246 actions classified as browser pages, HTTP endpoints, state changes, downloads/streams, or external callbacks.
+
+Adding, removing, rerouting, or reclassifying an action changes the manifest fingerprint and fails the suite. The failure writes `portal-actions.actual.txt` beside the integration-test assembly. Review that file and the classification counts before updating `ApprovedFingerprint` and `ApprovedCounts`; never update the fingerprint without reviewing the generated action list.
+
+Browser pages that require seeded identifiers or domain-specific fake responses are implemented as Phase 3 workflow scenarios. Deterministic view-only pages remain in the fast `PageSmokeIntegrationTests` set.
