@@ -89,7 +89,7 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_Admin_Read];
+            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_Admin_Read];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -2149,7 +2149,7 @@ public class ServerAdminController(
         return cod4xStatusResult.IsSuccess && !string.IsNullOrWhiteSpace(cod4xStatusResult.Result?.Data?.MapName)
             ? new ApiResult<RconCurrentMapDto>(
                 HttpStatusCode.OK,
-                new ApiResponse<RconCurrentMapDto>(new RconCurrentMapDto(cod4xStatusResult.Result.Data.MapName!)))
+                new ApiResponse<RconCurrentMapDto>(new RconCurrentMapDto(cod4xStatusResult.Result.Data.MapName)))
             : new ApiResult<RconCurrentMapDto>(
                 cod4xStatusResult.StatusCode,
                 new ApiResponse<RconCurrentMapDto>());

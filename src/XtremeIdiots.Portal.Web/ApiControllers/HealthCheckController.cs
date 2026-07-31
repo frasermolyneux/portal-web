@@ -50,7 +50,7 @@ public class HealthCheckController : BaseApiController
                 }
                 catch (Exception ex)
                 {
-                    return User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin)
+                    return User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin || claim.Type == UserProfileClaimType.Webmaster)
                         ? new Tuple<bool, string>(false, ex.Message)
                         : new Tuple<bool, string>(false, "Failed to establish connection to the forums API");
                 }

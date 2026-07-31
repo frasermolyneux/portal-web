@@ -118,10 +118,10 @@ public class PlayersControllerTests
         Assert.Single(data);
         Assert.Equal("Trusted", data[0]?["tags"]?[0]?["name"]?.Value<string>());
         Assert.Equal("<span class=\"badge bg-success\">Trusted</span>", data[0]?["tags"]?[0]?["tagHtml"]?.Value<string>());
-        var rowObject = Assert.IsType<JObject>(data[0]!);
+        var rowObject = Assert.IsType<JObject>(data[0]);
         var steamIdToken = rowObject.GetValue("SteamId", StringComparison.OrdinalIgnoreCase);
         Assert.NotNull(steamIdToken);
-        Assert.Equal("76561198000000001", steamIdToken!.Value<string>());
+        Assert.Equal("76561198000000001", steamIdToken.Value<string>());
 
         mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayers(
             GameType.CallOfDuty4x,

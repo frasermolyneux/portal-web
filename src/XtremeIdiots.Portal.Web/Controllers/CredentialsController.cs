@@ -43,6 +43,7 @@ public class CredentialsController(
         {
             string[] requiredClaims =
             [
+                UserProfileClaimType.Webmaster,
                 UserProfileClaimType.SeniorAdmin,
                 UserProfileClaimType.HeadAdmin,
                 UserProfileClaimType.GameAdmin,

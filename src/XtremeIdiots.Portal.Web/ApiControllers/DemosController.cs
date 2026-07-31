@@ -46,7 +46,7 @@ public class DemosController(
                 return BadRequest();
             }
 
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
+            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
             var gameTypes = User.ClaimedGameTypesForViewing(requiredClaims);
 
             // With see-all model, admins can view demos across all game types.
@@ -137,7 +137,7 @@ public class DemosController(
 
             var claimsPrincipal = await signInManager.ClaimsFactory.CreateAsync(user).ConfigureAwait(false);
 
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
+            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, UserProfileClaimType.Moderator];
             var gameTypes = claimsPrincipal.ClaimedGameTypesForViewing(requiredClaims);
 
             string? filterUserId = null;

@@ -18,10 +18,11 @@ public static class BaseAuthorizationHelper
     /// </summary>
     public static class ClaimGroups
     {
-        public readonly static string[] SeniorAdminOnly = [UserProfileClaimType.SeniorAdmin];
+        public readonly static string[] SeniorAdminOnly = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin];
 
         public readonly static string[] AllAdminLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
@@ -30,6 +31,7 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] BanFileMonitorLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             AdditionalPermission.GameServers_BanFileMonitors_Read
@@ -37,6 +39,7 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] CredentialsAccessLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
@@ -46,6 +49,7 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] GameServerAccessLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             AdditionalPermission.GameServers_Read
@@ -53,6 +57,7 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] AdminLevelsExcludingModerators =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin
@@ -60,6 +65,7 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] ServerAdminAccessLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
@@ -69,6 +75,7 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] LiveRconAccessLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
@@ -77,12 +84,14 @@ public static class BaseAuthorizationHelper
 
         public readonly static string[] SeniorAndHeadAdminOnly =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin
         ];
 
         public readonly static string[] StatusAccessLevels =
         [
+            UserProfileClaimType.Webmaster,
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
@@ -95,13 +104,23 @@ public static class BaseAuthorizationHelper
     #region Core Authorization Checks
 
     /// <summary>
+    /// Determines whether the user holds a global-admin claim (SeniorAdmin or Webmaster).
+    /// Webmaster mirrors SeniorAdmin and therefore grants the same global access.
+    /// </summary>
+    /// <param name="user">The user to check.</param>
+    public static bool HasGlobalAdminClaim(ClaimsPrincipal user)
+    {
+        return user.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin || claim.Type == UserProfileClaimType.Webmaster);
+    }
+
+    /// <summary>
     /// Checks if the user has senior admin privileges (highest level access)
     /// </summary>
     /// <param name="context">The authorization context</param>
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
     public static void CheckSeniorAdminAccess(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        if (context.User.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (HasGlobalAdminClaim(context.User))
             context.Succeed(requirement);
     }
 
@@ -170,7 +189,7 @@ public static class BaseAuthorizationHelper
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
     public static void CheckSeniorOrGameAdminAccessWithResource(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        if (context.User.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (HasGlobalAdminClaim(context.User))
         {
             context.Succeed(requirement);
             return;
@@ -194,7 +213,7 @@ public static class BaseAuthorizationHelper
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
     public static void CheckSeniorOrHeadAdminAccessWithResource(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        if (context.User.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (HasGlobalAdminClaim(context.User))
         {
             context.Succeed(requirement);
             return;
@@ -218,7 +237,7 @@ public static class BaseAuthorizationHelper
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
     public static void CheckSeniorOrGameTypeServerAccessWithResource(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        if (context.User.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (HasGlobalAdminClaim(context.User))
         {
             context.Succeed(requirement);
             return;
@@ -250,7 +269,7 @@ public static class BaseAuthorizationHelper
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
     public static void CheckSeniorOrMultipleGameAccessWithResource(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        if (context.User.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (HasGlobalAdminClaim(context.User))
         {
             context.Succeed(requirement);
             return;
@@ -278,7 +297,7 @@ public static class BaseAuthorizationHelper
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
     public static void CheckSeniorOrLiveRconAccessWithResource(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        if (context.User.Claims.Any(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (HasGlobalAdminClaim(context.User))
         {
             context.Succeed(requirement);
             return;

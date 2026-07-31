@@ -45,7 +45,7 @@ public class BanFileMonitorsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
+            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_BanFileMonitors_Read];
             var (gameTypes, banFileMonitorIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             // Fetch monitor rows + live status + central status + active-ban counts in parallel.

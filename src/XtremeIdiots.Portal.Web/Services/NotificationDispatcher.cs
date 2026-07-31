@@ -12,6 +12,7 @@ public class NotificationDispatcher(
 {
     private readonly static string[] adminClaimTypes =
     [
+        UserProfileClaimType.Webmaster,
         UserProfileClaimType.SeniorAdmin,
         UserProfileClaimType.HeadAdmin,
         UserProfileClaimType.GameAdmin,
@@ -143,9 +144,9 @@ public class NotificationDispatcher(
 
         foreach (var userProfile in items)
         {
-            // SeniorAdmins get notifications for all game types
+            // SeniorAdmins and Webmasters get notifications for all game types
             var isSeniorAdmin = userProfile.UserProfileClaims
-                .Any(c => c.ClaimType == UserProfileClaimType.SeniorAdmin);
+                .Any(c => c.ClaimType == UserProfileClaimType.SeniorAdmin || c.ClaimType == UserProfileClaimType.Webmaster);
 
             if (isSeniorAdmin)
             {

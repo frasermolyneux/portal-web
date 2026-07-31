@@ -143,6 +143,27 @@ public class ClaimsPrincipalExtensionsTests
     }
 
     [Fact]
+    public void ClaimedGamesAndItems_WithWebmasterClaim_ReturnsAllGameTypes()
+    {
+        // Arrange — Webmaster mirrors SeniorAdmin, so it resolves to all game types
+        // even though the required-claims list does not contain Webmaster.
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.Webmaster, "true")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.HeadAdmin };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItems(requiredClaims);
+
+        // Assert
+        Assert.Equal(Enum.GetValues<GameType>().Length, gameTypes.Length);
+        Assert.Empty(itemIds);
+    }
+
+    [Fact]
     public void ClaimedGamesAndItems_WithGameTypeClaim_ReturnsSpecificGameType()
     {
         // Arrange
@@ -203,6 +224,25 @@ public class ClaimsPrincipalExtensionsTests
     }
 
     [Fact]
+    public void ClaimedGameTypes_WithWebmasterClaim_ReturnsAllGameTypes()
+    {
+        // Arrange — Webmaster mirrors SeniorAdmin's global game-type resolution
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.Webmaster, "true")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.HeadAdmin };
+
+        // Act
+        var result = principal.ClaimedGameTypes(requiredClaims);
+
+        // Assert
+        Assert.Equal(Enum.GetValues<GameType>().Length, result.Count);
+    }
+
+    [Fact]
     public void GetGameTypesForGameServers_WithHeadAdminClaim_ReturnsGameTypes()
     {
         // Arrange
@@ -255,6 +295,26 @@ public class ClaimsPrincipalExtensionsTests
         // Assert
         var allGameTypes = Enum.GetValues<GameType>();
         Assert.Equal(allGameTypes.Length, gameTypes.Length);
+        Assert.Empty(itemIds);
+    }
+
+    [Fact]
+    public void ClaimedGamesAndItemsForViewing_WithWebmaster_ReturnsAllGameTypes()
+    {
+        // Arrange — Webmaster mirrors SeniorAdmin for the see-all viewing model
+        var claims = new List<Claim>
+        {
+            new(UserProfileClaimType.Webmaster, "true")
+        };
+        var identity = new ClaimsIdentity(claims);
+        var principal = new ClaimsPrincipal(identity);
+        var requiredClaims = new[] { UserProfileClaimType.HeadAdmin };
+
+        // Act
+        var (gameTypes, itemIds) = principal.ClaimedGamesAndItemsForViewing(requiredClaims);
+
+        // Assert
+        Assert.Equal(Enum.GetValues<GameType>().Length, gameTypes.Length);
         Assert.Empty(itemIds);
     }
 

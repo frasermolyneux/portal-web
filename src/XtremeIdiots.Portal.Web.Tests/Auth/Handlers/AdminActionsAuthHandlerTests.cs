@@ -141,6 +141,33 @@ public class AdminActionsAuthHandlerTests
         Assert.False(context.HasSucceeded);
     }
 
+    [Fact]
+    public async Task HandleAsync_Delete_SucceedsForWebmaster()
+    {
+        // AdminActions.Delete is SeniorAdmin-only; Webmaster mirrors SeniorAdmin and must also succeed.
+        var requirement = new AdminActionsDelete();
+        var user = CreateUser(new Claim(UserProfileClaimType.Webmaster, GameType.Unknown.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4);
+
+        var sut = new AdminActionsAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Delete_DoesNotSucceedForGameAdmin()
+    {
+        var requirement = new AdminActionsDelete();
+        var user = CreateUser(new Claim(UserProfileClaimType.GameAdmin, GameType.CallOfDuty4.ToString()));
+        var context = new AuthorizationHandlerContext([requirement], user, GameType.CallOfDuty4);
+
+        var sut = new AdminActionsAuthHandler();
+        await sut.HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
+
     private static ClaimsPrincipal CreateUser(params Claim[] claims)
     {
         var identity = new ClaimsIdentity(claims, authenticationType: "TestAuthType");

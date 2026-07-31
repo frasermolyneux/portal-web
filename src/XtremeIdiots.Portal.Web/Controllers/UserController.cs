@@ -108,7 +108,7 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            string[] requiredClaims = [UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin];
+            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(

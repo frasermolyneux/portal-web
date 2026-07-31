@@ -60,6 +60,17 @@ public static class ClaimsPrincipalExtensions
     }
 
     /// <summary>
+    /// Determines whether the user holds a global-admin claim (SeniorAdmin or Webmaster).
+    /// Webmaster mirrors SeniorAdmin and therefore resolves to all game types.
+    /// </summary>
+    /// <param name="claimsPrincipal">The claims principal to check</param>
+    /// <returns>True if the user holds a SeniorAdmin or Webmaster claim</returns>
+    private static bool IsGlobalAdmin(this ClaimsPrincipal claimsPrincipal)
+    {
+        return claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin || claim.Type == UserProfileClaimType.Webmaster);
+    }
+
+    /// <summary>
     /// Extracts claimed game types and item IDs from the claims principal
     /// </summary>
     /// <param name="claimsPrincipal">The claims principal to extract from</param>
@@ -70,7 +81,7 @@ public static class ClaimsPrincipalExtensions
         List<GameType> gameTypes = [];
         List<Guid> servers = [];
 
-        if (claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (claimsPrincipal.IsGlobalAdmin())
             gameTypes = [.. Enum.GetValues<GameType>()];
 
         var claims = claimsPrincipal.Claims.Where(claim => requiredClaims.Contains(claim.Type));
@@ -102,7 +113,7 @@ public static class ClaimsPrincipalExtensions
     {
         List<GameType> gameTypes = [];
 
-        if (claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (claimsPrincipal.IsGlobalAdmin())
             gameTypes = [.. Enum.GetValues<GameType>()];
 
         var claims = claimsPrincipal.Claims.Where(claim => requiredClaims.Contains(claim.Type));
@@ -137,8 +148,8 @@ public static class ClaimsPrincipalExtensions
                 servers.Add(guid);
         }
 
-        // If the user has SeniorAdmin or any of the required claims, return all game types for viewing
-        var hasAnyClaim = hasClaim || claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin);
+        // If the user has SeniorAdmin/Webmaster or any of the required claims, return all game types for viewing
+        var hasAnyClaim = hasClaim || claimsPrincipal.IsGlobalAdmin();
         var gameTypes = hasAnyClaim ? Enum.GetValues<GameType>() : [];
 
         return ([.. gameTypes], [.. servers]);
@@ -153,7 +164,7 @@ public static class ClaimsPrincipalExtensions
     /// <returns>A list of all game types if the user has any matching claim</returns>
     public static List<GameType> ClaimedGameTypesForViewing(this ClaimsPrincipal claimsPrincipal, IEnumerable<string> requiredClaims)
     {
-        if (claimsPrincipal.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+        if (claimsPrincipal.IsGlobalAdmin())
             return [.. Enum.GetValues<GameType>()];
 
         var hasClaim = claimsPrincipal.Claims.Any(claim => requiredClaims.Contains(claim.Type));
@@ -170,7 +181,7 @@ public static class ClaimsPrincipalExtensions
     {
         string[] requiredClaims =
         [
-            UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin
+            UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin
         ];
 
         return claimsPrincipal.ClaimedGameTypes(requiredClaims);

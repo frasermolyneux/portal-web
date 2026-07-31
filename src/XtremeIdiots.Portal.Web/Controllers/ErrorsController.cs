@@ -40,7 +40,7 @@ public class ErrorsController(
 
             var context = HttpContext.Features.Get<IExceptionHandlerFeature>();
 
-            if (User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin))
+            if (User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin || claim.Type == UserProfileClaimType.Webmaster))
             {
                 Logger.LogInformation("Senior admin {UserId} viewing detailed error information for status code {StatusCode}",
                     User.XtremeIdiotsId(), id);

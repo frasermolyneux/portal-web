@@ -136,7 +136,7 @@ public class ConnectedPlayersController(
 
     private bool IsSeniorAdminUser()
     {
-        return User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin);
+        return User.HasClaim(claim => claim.Type == UserProfileClaimType.SeniorAdmin || claim.Type == UserProfileClaimType.Webmaster);
     }
 
     private Guid? TryGetCurrentUserProfileId()
