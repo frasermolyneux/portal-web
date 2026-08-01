@@ -60,6 +60,8 @@ Run a workflow pack independently through its feature tag:
 dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=admin-actions"
 dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=tags"
 dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=game-servers"
+dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=say-command"
+dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=map-control"
 ```
 
 When adding a workflow, place its feature, bindings, and scenario fake together under `Workflows/<Domain>/`. Use scenario outlines for behavior permutations, keep technical setup out of feature wording, and use domain-specific step phrases because bindings are global within the Reqnroll project.
@@ -74,5 +76,10 @@ Current Pack C coverage includes:
 - RCON credential rotation, password visibility, blank-password preservation, server-side validation, scoped write denial, exact namespace/password orchestration, and configuration failure feedback. Production RCON JSON shape is covered by `NamespaceSettingsSerializerTests`.
 - Game-server deletion success, SeniorAdmin-only direct access enforcement, exact delete commands, and repository failure feedback.
 - FTP/SFTP transport switching, complete SFTP credential rotation, blank-secret preservation, fingerprint/path validation, scoped credential denial, password visibility, exact namespace/value orchestration, and repository failure feedback. Production FTP/SFTP JSON shapes are covered by `NamespaceSettingsSerializerTests`.
+
+Current Pack D coverage includes:
+
+- Live Say broadcasts for direct permission and GameAdmin access, exact trimmed RCON payloads, server-side validation, Moderator UI and forged-request denial, and backend failure feedback.
+- Map loading, restart, fast restart, and next-map commands; the separate server-restart permission; direct-grant UI boundaries; forged restart denial; exact CoD4 RCON dispatch; and backend failure feedback.
 
 These workflows also guard degraded player-tag rendering, Development runtime compilation of the Admin Actions view component, and server-side validation of visible Summernote text. Other Phase 3 domain packs remain separate and can be added under `Workflows/<Domain>/` without changing the shared host.

@@ -28,6 +28,7 @@ var RconMapControl = (function () {
             nextMap: options.nextMapSelector || '#nextMap',
             restartServer: options.restartServerSelector || '#restartServer'
         };
+        bindActions();
     }
 
     function loadRotation() {
@@ -85,9 +86,13 @@ var RconMapControl = (function () {
             type: 'POST',
             url: '/ServerAdmin/' + action + '/' + _serverId,
             data: { __RequestVerificationToken: _antiForgeryToken },
-            success: function () {
-                RconUtils.showToast('success', successMsg);
-                if (_onMapChanged) setTimeout(_onMapChanged, 2000);
+            success: function (result) {
+                if (result.success) {
+                    RconUtils.showToast('success', result.message || successMsg);
+                    if (_onMapChanged) setTimeout(_onMapChanged, 2000);
+                } else {
+                    RconUtils.showToast('error', result.message || 'Command failed');
+                }
             },
             error: function (xhr) {
                 RconUtils.showToast('error', 'Failed: ' + (xhr.responseText || 'Unknown error'));
@@ -146,7 +151,6 @@ var RconMapControl = (function () {
 
     function start() {
         loadRotation();
-        bindActions();
     }
 
     function stop() {

@@ -9,6 +9,9 @@ internal static class TestPrincipalProfiles
     public const string GameAdmin = "game-admin";
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
+    public const string LiveServerMap = "live-server-map";
+    public const string LiveServerRestart = "live-server-restart";
+    public const string LiveServerSay = "live-server-say";
     public const string Moderator = "moderator";
     public const string SeniorAdmin = "senior-admin";
 
@@ -20,6 +23,20 @@ internal static class TestPrincipalProfiles
         {
             claims.Add(new Claim(AdditionalPermission.GameServers_Read, GameType.CallOfDuty4.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Write, GameType.CallOfDuty4.ToString()));
+        }
+        else if (profile is LiveServerMap or LiveServerRestart or LiveServerSay)
+        {
+            claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Rcon, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4.ToString()));
+
+            claims.Add(new Claim(profile switch
+            {
+                LiveServerMap => AdditionalPermission.GameServers_Admin_Rcon_Map,
+                LiveServerRestart => AdditionalPermission.GameServers_Admin_Rcon_Restart,
+                LiveServerSay => AdditionalPermission.GameServers_Admin_Rcon_Say,
+                _ => throw new InvalidOperationException($"Unsupported live server profile '{profile}'."),
+            }, GameType.CallOfDuty4.ToString()));
         }
         else
         {

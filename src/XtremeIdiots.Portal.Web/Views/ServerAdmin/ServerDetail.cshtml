@@ -3,6 +3,7 @@
 @using XtremeIdiots.Portal.Web.ViewModels
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin
+@inject IConfiguration Configuration
 @model ServerDetailViewModel
 
 @{
@@ -183,7 +184,7 @@
                             <div class="d-grid gap-2">
                                 @if (Model.CanRestartServer)
                                 {
-                                    <button id="sd-restartServer" class="btn btn-danger btn-sm" type="button">
+                                    <button id="sd-restartServer" class="btn btn-danger btn-sm" type="button" data-testid="server-restart">
                                         <i class="fa-solid fa-fw fa-arrows-rotate"></i> Restart Server
                                     </button>
                                 }
@@ -238,10 +239,10 @@
 
                                 @if (Model.CanSay)
                                 {
-                                    <form id="sd-sayForm" class="d-flex gap-2">
+                                     <form id="sd-sayForm" class="d-flex gap-2" data-testid="server-say-form">
                                         <input type="text" id="sd-sayMessage" class="form-control form-control-sm"
-                                               placeholder="Type a message to send to server...">
-                                        <button type="submit" class="btn btn-sm btn-primary">
+                                             placeholder="Type a message to send to server..." data-testid="server-say-message">
+                                         <button type="submit" class="btn btn-sm btn-primary" data-testid="server-say-submit">
                                             <i class="fa-solid fa-fw fa-paper-plane"></i> Send
                                         </button>
                                     </form>
@@ -348,13 +349,13 @@
                                 <div class="d-grid gap-2">
                                     @if (Model.CanChangeMap)
                                     {
-                                    <button id="sd-restartMap" class="btn btn-primary" type="button">
+                                    <button id="sd-restartMap" class="btn btn-primary" type="button" data-testid="map-restart">
                                         <i class="fa-solid fa-fw fa-arrows-rotate"></i> Restart Map
                                     </button>
-                                    <button id="sd-fastRestartMap" class="btn btn-primary" type="button">
+                                    <button id="sd-fastRestartMap" class="btn btn-primary" type="button" data-testid="map-fast-restart">
                                         <i class="fa-solid fa-fw fa-arrows-rotate"></i> Fast Restart
                                     </button>
-                                    <button id="sd-nextMap" class="btn btn-primary" type="button">
+                                    <button id="sd-nextMap" class="btn btn-primary" type="button" data-testid="map-next">
                                         <i class="fa-solid fa-fw fa-forward"></i> Next Map
                                     </button>
                                     }
@@ -625,8 +626,11 @@
 
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
 
-    @* Google Charts for timeline + player count *@
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    @if (Configuration.GetValue("ExternalAssets:Enabled", true))
+    {
+        @* Google Charts for timeline + player count *@
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    }
 
     <script type="text/javascript">
         var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
@@ -797,7 +801,7 @@
         });
 
         // Google Charts: Player Count
-        @if (Model.GameServerStats.Any())
+        @if (Configuration.GetValue("ExternalAssets:Enabled", true) && Model.GameServerStats.Any())
         {
             <text>
             google.charts.load('current', { 'packages': ['corechart', 'timeline'] });
@@ -823,7 +827,7 @@
         }
 
         // Google Charts: Map Timeline
-        @if (Model.MapTimelineDataPoints.Any())
+        @if (Configuration.GetValue("ExternalAssets:Enabled", true) && Model.MapTimelineDataPoints.Any())
         {
             <text>
             google.charts.setOnLoadCallback(function() {
