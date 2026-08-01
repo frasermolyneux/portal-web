@@ -252,7 +252,7 @@ public class GameServersAuthHandler : IAuthorizationHandler
 
     private static void HandleAdminRconKick(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
     {
-        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+        BaseAuthorizationHelper.CheckSeniorOrMultipleGameAccessWithResource(context, requirement);
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "GameServers.Admin.Rcon.Kick");
     }
 

@@ -9,6 +9,7 @@ var RconUtils = (function () {
         toastr.options = {
             closeButton: true,
             progressBar: true,
+            escapeHtml: true,
             positionClass: "toast-top-right",
             timeOut: 5000
         };

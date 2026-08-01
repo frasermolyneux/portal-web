@@ -79,6 +79,7 @@ public static class BaseAuthorizationHelper
             UserProfileClaimType.SeniorAdmin,
             UserProfileClaimType.HeadAdmin,
             UserProfileClaimType.GameAdmin,
+            UserProfileClaimType.Moderator,
             AdditionalPermission.GameServers_Admin_Rcon
         ];
 
@@ -306,12 +307,13 @@ public static class BaseAuthorizationHelper
         if (context.Resource is GameType gameType)
         {
             CheckGameAdminAccess(context, requirement, gameType);
+            CheckModeratorAccess(context, requirement, gameType);
             CheckLiveRconAccess(context, requirement, gameType);
         }
         else if (context.Resource is PotentialAccessProbe)
         {
             if (context.User.Claims.Any(c =>
-                (c.Type == UserProfileClaimType.HeadAdmin || c.Type == UserProfileClaimType.GameAdmin || c.Type == AdditionalPermission.GameServers_Admin_Rcon) &&
+                (c.Type == UserProfileClaimType.HeadAdmin || c.Type == UserProfileClaimType.GameAdmin || c.Type == UserProfileClaimType.Moderator || c.Type == AdditionalPermission.GameServers_Admin_Rcon) &&
                 Enum.TryParse<GameType>(c.Value, out _)))
                 context.Succeed(requirement);
         }

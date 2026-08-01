@@ -10,6 +10,9 @@ internal static class TestPrincipalProfiles
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
     public const string LiveServerMap = "live-server-map";
+    public const string LiveServerBan = "live-server-ban";
+    public const string LiveServerKick = "live-server-kick";
+    public const string LiveServerKickWithoutAdminActions = "live-server-kick-without-admin-actions";
     public const string LiveServerRestart = "live-server-restart";
     public const string LiveServerSay = "live-server-say";
     public const string Moderator = "moderator";
@@ -24,14 +27,20 @@ internal static class TestPrincipalProfiles
             claims.Add(new Claim(AdditionalPermission.GameServers_Read, GameType.CallOfDuty4.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Write, GameType.CallOfDuty4.ToString()));
         }
-        else if (profile is LiveServerMap or LiveServerRestart or LiveServerSay)
+        else if (profile is LiveServerBan or LiveServerKick or LiveServerKickWithoutAdminActions or LiveServerMap or LiveServerRestart or LiveServerSay)
         {
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Rcon, GameType.CallOfDuty4.ToString()));
             claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4.ToString()));
 
+            if (profile is LiveServerBan or LiveServerKick)
+                claims.Add(new Claim(AdditionalPermission.AdminActions_Create, GameType.CallOfDuty4.ToString()));
+
             claims.Add(new Claim(profile switch
             {
+                LiveServerBan => AdditionalPermission.GameServers_Admin_Rcon_Ban,
+                LiveServerKick => AdditionalPermission.GameServers_Admin_Rcon_Kick,
+                LiveServerKickWithoutAdminActions => AdditionalPermission.GameServers_Admin_Rcon_Kick,
                 LiveServerMap => AdditionalPermission.GameServers_Admin_Rcon_Map,
                 LiveServerRestart => AdditionalPermission.GameServers_Admin_Rcon_Restart,
                 LiveServerSay => AdditionalPermission.GameServers_Admin_Rcon_Say,

@@ -28,6 +28,9 @@ public class ServerDetailViewModel
     public bool CanSay { get; set; }
     public bool CanChangeMap { get; set; }
     public bool CanRestartServer { get; set; }
+    public bool CanKickPlayers { get; set; }
+    public bool CanTempBanPlayers { get; set; }
+    public bool CanBanPlayers { get; set; }
 
     // Overview tab data
     public AgentServerStatus? AgentStatus { get; set; }

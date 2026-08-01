@@ -198,8 +198,13 @@ public class ServerAdminController(
             var sayAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Say);
             var mapCmdAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Map);
             var restartSrvAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Restart);
+            var kickAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Kick);
+            var banAuth = authorizationService.AuthorizeAsync(User, gs.GameType, AuthPolicies.GameServers_Admin_Rcon_Ban);
+            var kickActionAuth = authorizationService.AuthorizeAsync(User, (gs.GameType, AdminActionType.Kick), AuthPolicies.AdminActions_Create);
+            var tempBanActionAuth = authorizationService.AuthorizeAsync(User, (gs.GameType, AdminActionType.TempBan), AuthPolicies.AdminActions_Create);
+            var banActionAuth = authorizationService.AuthorizeAsync(User, (gs.GameType, AdminActionType.Ban), AuthPolicies.AdminActions_Create);
 
-            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth, feedEventsAuth, cod4xLifecycleAuth).ConfigureAwait(false);
+            await Task.WhenAll(rconAuth, chatAuth, mapRotAuth, statusAuth, editAuth, sayAuth, mapCmdAuth, restartSrvAuth, kickAuth, banAuth, kickActionAuth, tempBanActionAuth, banActionAuth, feedEventsAuth, cod4xLifecycleAuth).ConfigureAwait(false);
 
             var viewModel = new ServerDetailViewModel
             {
@@ -214,7 +219,10 @@ public class ServerAdminController(
                 CanManageCoD4xPluginLifecycle = gs.GameType == GameType.CallOfDuty4x && (await cod4xLifecycleAuth.ConfigureAwait(false)).Succeeded,
                 CanSay = (await sayAuth.ConfigureAwait(false)).Succeeded,
                 CanChangeMap = (await mapCmdAuth.ConfigureAwait(false)).Succeeded,
-                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded
+                CanRestartServer = (await restartSrvAuth.ConfigureAwait(false)).Succeeded,
+                CanKickPlayers = (await kickAuth.ConfigureAwait(false)).Succeeded && (await kickActionAuth.ConfigureAwait(false)).Succeeded,
+                CanTempBanPlayers = (await banAuth.ConfigureAwait(false)).Succeeded && (await tempBanActionAuth.ConfigureAwait(false)).Succeeded,
+                CanBanPlayers = (await banAuth.ConfigureAwait(false)).Succeeded && (await banActionAuth.ConfigureAwait(false)).Succeeded
             };
 
             if (gs.GameType == GameType.CallOfDuty4x)
@@ -1661,6 +1669,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var kickAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Kick,
+                nameof(KickRconPlayer),
+                "RconPlayer",
+                $"GameType:{gameServerData.GameType},ServerId:{id}",
+                gameServerData).ConfigureAwait(false);
+
+            if (kickAuthResult is not null)
+                return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to kick players" });
+
             // Check authorization for creating kick admin actions
             var authorizationResource = (gameServerData!.GameType, AdminActionType.Kick);
             var authResult = await CheckAuthorizationAsync(
@@ -1675,31 +1695,23 @@ public class ServerAdminController(
             if (authResult is not null)
                 return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to kick players" });
 
-            if (string.IsNullOrWhiteSpace(playerName))
+            var moderationTarget = await ResolveModerationTargetAsync(id, gameServerData.GameType, playerSlot, cancellationToken).ConfigureAwait(false);
+            if (moderationTarget is null)
             {
-                Logger.LogWarning("Invalid player data provided by user {UserId} for kick action", User.XtremeIdiotsId());
-                return Json(new { success = false, error = "InvalidInput", message = "Invalid player data provided" });
+                Logger.LogWarning("Player slot {PlayerSlot} could not be resolved for kick by user {UserId}", playerSlot, User.XtremeIdiotsId());
+                return Json(new { success = false, error = "StalePlayer", message = "Player is no longer connected or cannot be recorded" });
             }
 
             try
             {
                 // Kick the player via RCON using slot number
-                var kickResult = await KickPlayerAsync(id, gameServerData.GameType, playerSlot, cancellationToken).ConfigureAwait(false);
+                var kickResult = await KickPlayerAsync(id, gameServerData.GameType, moderationTarget.PlayerSlot, cancellationToken).ConfigureAwait(false);
 
                 if (!kickResult.IsSuccess)
                 {
                     Logger.LogWarning("Failed to kick player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
-                        playerName, playerSlot, id);
+                        moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
                     return Json(new { success = false, error = "RconFailed", message = "Failed to kick player from server" });
-                }
-
-                // Create admin action record if we have a GUID
-                if (!string.IsNullOrWhiteSpace(playerGuid))
-                {
-                    await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, playerGuid, playerName, AdminActionType.Kick,
-                        $"Player kicked from {gameServerData.Title} via RCON by {User.Username()}",
-                        cancellationToken).ConfigureAwait(false);
                 }
 
                 TrackSuccessTelemetry("RconPlayerKicked", nameof(KickRconPlayer), new Dictionary<string, string>
@@ -1709,12 +1721,20 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
-                return Json(new { success = true, message = $"Player {playerName} has been kicked" });
+                var adminActionCreated = await CreateAdminActionForRconOperationAsync(
+                    gameServerData.GameType, moderationTarget, AdminActionType.Kick,
+                    $"Player kicked from {gameServerData.Title} via RCON by {User.Username()}",
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!adminActionCreated)
+                    return Json(new { success = false, error = "RecordFailed", message = $"Player {moderationTarget.PlayerName} was kicked, but the admin action could not be recorded" });
+
+                return Json(new { success = true, message = $"Player {moderationTarget.PlayerName} has been kicked" });
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error kicking player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
-                    playerName, playerSlot, id);
+                    moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
                 return Json(new { success = false, error = "Exception", message = "An error occurred while kicking the player" });
             }
         }, nameof(KickRconPlayer)).ConfigureAwait(false);
@@ -1739,6 +1759,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var banAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Ban,
+                nameof(TempBanRconPlayer),
+                "RconPlayer",
+                $"GameType:{gameServerData.GameType},ServerId:{id}",
+                gameServerData).ConfigureAwait(false);
+
+            if (banAuthResult is not null)
+                return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to temp ban players" });
+
             // Check authorization for creating temp ban admin actions
             var authorizationResource = (gameServerData!.GameType, AdminActionType.TempBan);
             var authResult = await CheckAuthorizationAsync(
@@ -1753,45 +1785,31 @@ public class ServerAdminController(
             if (authResult is not null)
                 return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to temp ban players" });
 
-            if (string.IsNullOrWhiteSpace(playerName))
+            var moderationTarget = await ResolveModerationTargetAsync(id, gameServerData.GameType, playerSlot, cancellationToken).ConfigureAwait(false);
+            if (moderationTarget is null)
             {
-                Logger.LogWarning("Invalid player data provided by user {UserId} for temp ban action", User.XtremeIdiotsId());
-                return Json(new { success = false, error = "InvalidInput", message = "Invalid player data provided" });
+                Logger.LogWarning("Player slot {PlayerSlot} could not be resolved for temp ban by user {UserId}", playerSlot, User.XtremeIdiotsId());
+                return Json(new { success = false, error = "StalePlayer", message = "Player is no longer connected or cannot be recorded" });
             }
 
             try
             {
-                var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
                 var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
                 var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
                 var rconSuccess = await TempBanPlayerAsync(
                     id,
                     gameServerData.GameType,
-                    playerSlot,
-                    normalizedPlayerGuid,
+                    moderationTarget.PlayerSlot,
+                    moderationTarget.PlayerGuid,
                     tempBanDurationMinutes,
                     cancellationToken).ConfigureAwait(false);
 
                 if (!rconSuccess)
                 {
                     Logger.LogWarning("Failed to temp ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
-                        playerName, playerSlot, id);
+                        moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
                     return Json(new { success = false, error = "RconFailed", message = "Failed to temp ban player from server" });
-                }
-
-                // Create admin action record with expiry if we have a GUID
-                if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
-                {
-                    DateTime? expiryDate = gameServerData.GameType == GameType.CallOfDuty4x
-                        ? DateTime.UtcNow.AddMinutes(tempBanDurationMinutes)
-                        : null;
-
-                    await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.TempBan,
-                        $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
-                        cancellationToken,
-                        expiryDate).ConfigureAwait(false);
                 }
 
                 TrackSuccessTelemetry("RconPlayerTempBanned", nameof(TempBanRconPlayer), new Dictionary<string, string>
@@ -1801,16 +1819,29 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
+                DateTime? expiryDate = gameServerData.GameType == GameType.CallOfDuty4x
+                    ? DateTime.UtcNow.AddMinutes(tempBanDurationMinutes)
+                    : null;
+
+                var adminActionCreated = await CreateAdminActionForRconOperationAsync(
+                    gameServerData.GameType, moderationTarget, AdminActionType.TempBan,
+                    $"Player temp banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
+                    cancellationToken,
+                    expiryDate).ConfigureAwait(false);
+
+                if (!adminActionCreated)
+                    return Json(new { success = false, error = "RecordFailed", message = $"Player {moderationTarget.PlayerName} was temp banned, but the admin action could not be recorded" });
+
                 var successMessage = gameServerData.GameType == GameType.CallOfDuty4x
-                    ? $"Player {playerName} has been temp banned for {tempBanDurationDays} days"
-                    : $"Player {playerName} has been temp banned using server default duration";
+                    ? $"Player {moderationTarget.PlayerName} has been temp banned for {tempBanDurationDays} days"
+                    : $"Player {moderationTarget.PlayerName} has been temp banned using server default duration";
 
                 return Json(new { success = true, message = successMessage });
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error temp banning player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
-                    playerName, playerSlot, id);
+                    moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
                 return Json(new { success = false, error = "Exception", message = "An error occurred while temp banning the player" });
             }
         }, nameof(TempBanRconPlayer)).ConfigureAwait(false);
@@ -1835,6 +1866,18 @@ public class ServerAdminController(
             if (actionResult is not null)
                 return actionResult;
 
+            var banAuthResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData!.GameType,
+                AuthPolicies.GameServers_Admin_Rcon_Ban,
+                nameof(BanRconPlayer),
+                "RconPlayer",
+                $"GameType:{gameServerData.GameType},ServerId:{id}",
+                gameServerData).ConfigureAwait(false);
+
+            if (banAuthResult is not null)
+                return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to ban players" });
+
             // Check authorization for creating ban admin actions
             var authorizationResource = (gameServerData!.GameType, AdminActionType.Ban);
             var authResult = await CheckAuthorizationAsync(
@@ -1849,37 +1892,27 @@ public class ServerAdminController(
             if (authResult is not null)
                 return Json(new { success = false, error = "Unauthorized", message = "You don't have permission to ban players" });
 
-            if (string.IsNullOrWhiteSpace(playerName))
+            var moderationTarget = await ResolveModerationTargetAsync(id, gameServerData.GameType, playerSlot, cancellationToken).ConfigureAwait(false);
+            if (moderationTarget is null)
             {
-                Logger.LogWarning("Invalid player data provided by user {UserId} for ban action", User.XtremeIdiotsId());
-                return Json(new { success = false, error = "InvalidInput", message = "Invalid player data provided" });
+                Logger.LogWarning("Player slot {PlayerSlot} could not be resolved for ban by user {UserId}", playerSlot, User.XtremeIdiotsId());
+                return Json(new { success = false, error = "StalePlayer", message = "Player is no longer connected or cannot be recorded" });
             }
 
             try
             {
-                var normalizedPlayerGuid = playerGuid?.Trim() ?? string.Empty;
-
                 var rconSuccess = await BanPlayerAsync(
                     id,
                     gameServerData.GameType,
-                    playerSlot,
-                    normalizedPlayerGuid,
+                    moderationTarget.PlayerSlot,
+                    moderationTarget.PlayerGuid,
                     cancellationToken).ConfigureAwait(false);
 
                 if (!rconSuccess)
                 {
                     Logger.LogWarning("Failed to ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
-                        playerName, playerSlot, id);
+                        moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
                     return Json(new { success = false, error = "RconFailed", message = "Failed to ban player from server" });
-                }
-
-                // Create admin action record if we have a GUID
-                if (!string.IsNullOrWhiteSpace(normalizedPlayerGuid))
-                {
-                    await CreateAdminActionForRconOperationAsync(
-                        gameServerData.GameType, normalizedPlayerGuid, playerName, AdminActionType.Ban,
-                        $"Player banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
-                        cancellationToken).ConfigureAwait(false);
                 }
 
                 TrackSuccessTelemetry("RconPlayerBanned", nameof(BanRconPlayer), new Dictionary<string, string>
@@ -1889,12 +1922,20 @@ public class ServerAdminController(
                     { "GameType", gameServerData.GameType.ToString() }
                 });
 
-                return Json(new { success = true, message = $"Player {playerName} has been permanently banned" });
+                var adminActionCreated = await CreateAdminActionForRconOperationAsync(
+                    gameServerData.GameType, moderationTarget, AdminActionType.Ban,
+                    $"Player banned from {gameServerData.Title} via RCON by {User.Username()}. Please update with proper reason.",
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!adminActionCreated)
+                    return Json(new { success = false, error = "RecordFailed", message = $"Player {moderationTarget.PlayerName} was banned, but the admin action could not be recorded" });
+
+                return Json(new { success = true, message = $"Player {moderationTarget.PlayerName} has been permanently banned" });
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error banning player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
-                    playerName, playerSlot, id);
+                    moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
                 return Json(new { success = false, error = "Exception", message = "An error occurred while banning the player" });
             }
         }, nameof(BanRconPlayer)).ConfigureAwait(false);
@@ -2045,6 +2086,26 @@ public class ServerAdminController(
 #pragma warning restore IDE0010 // Populate switch
     }
 
+    private async Task<ApiResult<ServerRconStatusResponseDto>> GetFreshServerStatusInternalAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+#pragma warning disable IDE0010 // Populate switch
+#pragma warning disable IDE0072 // Add missing cases
+        return gameType switch
+        {
+            GameType.CallOfDuty2 => MapGameScopedStatus(
+                await serversApiClient.Cod2Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty4 => MapGameScopedStatus(
+                await serversApiClient.Cod4Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty5 => MapGameScopedStatus(
+                await serversApiClient.Cod5Rcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            GameType.CallOfDuty4x => MapCoD4xStatus(
+                await serversApiClient.CoD4xRcon.V1.Status(serverId, cancellationToken).ConfigureAwait(false)),
+            _ => throw CreateUnsupportedGameTypeException(nameof(GetFreshServerStatusInternalAsync), gameType),
+        };
+#pragma warning restore IDE0072 // Add missing cases
+#pragma warning restore IDE0010 // Populate switch
+    }
+
     /// <summary>
     /// Retrieves the raw CoD4x status, cached briefly so the players poll and current-map poll
     /// (which both derive from the same underlying status call) share a single RCON round trip.
@@ -2070,6 +2131,11 @@ public class ServerAdminController(
     private async Task<ApiResult<ServerRconStatusResponseDto>> GetCoD4xStatusAsync(Guid serverId, CancellationToken cancellationToken)
     {
         var cod4xStatusResult = await GetCoD4xRawStatusAsync(serverId, cancellationToken).ConfigureAwait(false);
+        return MapCoD4xStatus(cod4xStatusResult);
+    }
+
+    private static ApiResult<ServerRconStatusResponseDto> MapCoD4xStatus(ApiResult<CoD4xStatusResponseDto> cod4xStatusResult)
+    {
         if (!cod4xStatusResult.IsSuccess || cod4xStatusResult.Result?.Data is null)
         {
             return new ApiResult<ServerRconStatusResponseDto>(
@@ -2343,6 +2409,37 @@ public class ServerAdminController(
         return new NotSupportedException($"{operationName} is not supported for game type '{gameType}'.");
     }
 
+    private async Task<ModerationTarget?> ResolveModerationTargetAsync(
+        Guid serverId,
+        GameType gameType,
+        int playerSlot,
+        CancellationToken cancellationToken)
+    {
+        var statusResult = await GetFreshServerStatusInternalAsync(serverId, gameType, cancellationToken).ConfigureAwait(false);
+        var livePlayer = statusResult.Result?.Data?.Players.SingleOrDefault(player => player.Num == playerSlot);
+        if (!statusResult.IsSuccess || livePlayer is null || string.IsNullOrWhiteSpace(livePlayer.Guid) || string.IsNullOrWhiteSpace(livePlayer.Name))
+            return null;
+
+        var playerGuid = livePlayer.Guid.Trim();
+        var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
+            gameType,
+            PlayersFilter.UsernameAndGuid,
+            playerGuid,
+            0,
+            100,
+            PlayersOrder.LastSeenDesc,
+            PlayerEntityOptions.None).ConfigureAwait(false);
+
+        var exactMatches = playerResponse.Result?.Data?.Items?
+            .Where(player => string.Equals(player.Guid?.Trim(), playerGuid, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray() ?? [];
+        var repositoryPlayer = exactMatches.Length == 1 ? exactMatches[0] : null;
+        return playerResponse.IsSuccess && repositoryPlayer is not null
+            ? new ModerationTarget(playerSlot, playerGuid, livePlayer.Name, repositoryPlayer.PlayerId)
+            : null;
+    }
+
     /// <summary>
     /// Creates an admin action record for an RCON operation (kick/ban)
     /// </summary>
@@ -2353,10 +2450,9 @@ public class ServerAdminController(
     /// <param name="text">Admin action description</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <param name="expires">Optional expiry date for temp bans</param>
-    private async Task CreateAdminActionForRconOperationAsync(
+    private async Task<bool> CreateAdminActionForRconOperationAsync(
         GameType gameType,
-        string playerGuidStr,
-        string playerName,
+        ModerationTarget moderationTarget,
         AdminActionType actionType,
         string text,
         CancellationToken cancellationToken,
@@ -2364,47 +2460,45 @@ public class ServerAdminController(
     {
         try
         {
-            // Try to find existing player profile by searching with GUID
-            var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                gameType, PlayersFilter.UsernameAndGuid, playerGuidStr, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
-
-            if (!playerResponse.IsSuccess || playerResponse.Result?.Data?.Items?.Any() != true)
-            {
-                Logger.LogWarning("Player with GUID {Guid} not found in database, cannot create admin action", playerGuidStr);
-                return;
-            }
-
-            var playerId = playerResponse.Result.Data.Items.First().PlayerId;
             var adminId = User.XtremeIdiotsId();
 
             var forumTopicId = await adminActionTopics.CreateTopicForAdminAction(
                 actionType,
                 gameType,
-                playerId,
-                playerName,
+                moderationTarget.PlayerId,
+                moderationTarget.PlayerName,
                 DateTime.UtcNow,
                 text,
                 adminId,
                 cancellationToken).ConfigureAwait(false);
 
-            var createAdminActionDto = new CreateAdminActionDto(playerId, actionType, text)
+            var createAdminActionDto = new CreateAdminActionDto(moderationTarget.PlayerId, actionType, text)
             {
                 AdminId = adminId,
                 Expires = expires,
                 ForumTopicId = forumTopicId
             };
 
-            await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
+            var createResult = await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
+            if (!createResult.IsSuccess)
+            {
+                Logger.LogError("Failed to persist {ActionType} admin action for player {PlayerName} ({Guid})", actionType, moderationTarget.PlayerName, moderationTarget.PlayerGuid);
+                return false;
+            }
 
             Logger.LogInformation("Created admin action {ActionType} for player {PlayerName} ({Guid}) by user {UserId}",
-                actionType, playerName, playerGuidStr, adminId);
+                actionType, moderationTarget.PlayerName, moderationTarget.PlayerGuid, adminId);
+            return true;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to create admin action for RCON operation on player {PlayerName} ({Guid})",
-                playerName, playerGuidStr);
+                moderationTarget.PlayerName, moderationTarget.PlayerGuid);
+            return false;
         }
     }
+
+    private sealed record ModerationTarget(int PlayerSlot, string PlayerGuid, string PlayerName, Guid PlayerId);
 
     /// <summary>
     /// Gets live chat log messages for a specific game server (used in RCON view)

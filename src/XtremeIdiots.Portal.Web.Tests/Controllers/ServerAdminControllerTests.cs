@@ -21,10 +21,12 @@ using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -717,6 +719,8 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 4, "guid-abc", "PlayerOne");
+
         mockServersApiClient
             .Setup(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
                 serverId,
@@ -764,6 +768,8 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 9, "guid-def", "PlayerTwo");
+
         mockServersApiClient
             .Setup(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
                 serverId,
@@ -793,6 +799,59 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
+    public async Task KickRconPlayer_CoD4x_IgnoresCachedOccupantAndUsesFreshStatus()
+    {
+        var serverId = Guid.NewGuid();
+        const int playerSlot = 9;
+        const string freshGuid = "fresh-guid";
+        const string freshName = "Fresh Player";
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, playerSlot, freshGuid, freshName);
+
+        var staleStatus = JsonConvert.DeserializeObject<CoD4xStatusResponseDto>(JsonConvert.SerializeObject(new
+        {
+            Players = new[]
+            {
+                new { Num = playerSlot, PlayerIdentifier = "stale-guid", Name = "Stale Player", IpAddress = string.Empty, Rate = 25000, Ping = 42 },
+            },
+        }))!;
+        memoryCache.Set(
+            $"rcon-cod4x-raw:{serverId}",
+            new ApiResult<CoD4xStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<CoD4xStatusResponseDto>(staleStatus)));
+
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.ClientKick(
+                serverId,
+                It.Is<CoD4xClientReasonRequestDto>(request => request.ClientId == playerSlot),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
+
+        var sut = CreateSut();
+        var result = await sut.KickRconPlayer(serverId, playerSlot, "stale-guid", "Stale Player", CancellationToken.None);
+
+        var jsonResult = Assert.IsType<JsonResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
+        Assert.True(payload.Value<bool>("success"));
+        Assert.Contains(freshName, payload.Value<string>("message"), StringComparison.Ordinal);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.Status(serverId, It.IsAny<CancellationToken>()), Times.Once);
+        mockAdminActionTopics.Verify(x => x.CreateTopicForAdminAction(
+            AdminActionType.Kick,
+            GameType.CallOfDuty4x,
+            It.IsAny<Guid>(),
+            freshName,
+            It.IsAny<DateTime>(),
+            It.IsAny<string>(),
+            It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task TempBanRconPlayer_CoD4xIdentifierFailure_ReturnsFailureWithoutGenericFallback()
     {
         var serverId = Guid.NewGuid();
@@ -804,6 +863,8 @@ public class ServerAdminControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
+
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 4, "guid-abc", "PlayerOne");
 
         mockServersApiClient
             .Setup(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
@@ -850,6 +911,8 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 9, "guid-def", "PlayerTwo");
+
         mockServersApiClient
             .Setup(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
                 serverId,
@@ -895,6 +958,8 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4, 2, "guid-player-three", "PlayerThree");
+
         mockServersApiClient
             .Setup(x => x.Cod4Rcon.V1.Kick(
                 serverId,
@@ -934,6 +999,8 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4, 2, "guid-player-three", "PlayerThree");
+
         mockServersApiClient
             .Setup(x => x.Cod4Rcon.V1.Kick(
                 serverId,
@@ -963,6 +1030,8 @@ public class ServerAdminControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
+
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty2, 4, "guid-player-four", "PlayerFour");
 
         mockServersApiClient
             .Setup(x => x.Cod2Rcon.V1.TempBan(
@@ -1004,6 +1073,8 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty2, 4, "guid-player-four", "PlayerFour");
+
         mockServersApiClient
             .Setup(x => x.Cod2Rcon.V1.TempBan(
                 serverId,
@@ -1033,6 +1104,8 @@ public class ServerAdminControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
+
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty5, 7, "guid-player-five", "PlayerFive");
 
         mockServersApiClient
             .Setup(x => x.Cod5Rcon.V1.Ban(
@@ -1076,6 +1149,8 @@ public class ServerAdminControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
+
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty5, 7, "guid-player-five", "PlayerFive");
 
         mockServersApiClient
             .Setup(x => x.Cod5Rcon.V1.Ban(
@@ -1194,6 +1269,133 @@ public class ServerAdminControllerTests
         });
 
         return JsonConvert.DeserializeObject<GameServerDto>(json)!;
+    }
+
+    private void ConfigureModerationTarget(Guid serverId, GameType gameType, int playerSlot, string playerGuid, string playerName)
+    {
+        var player = JsonConvert.DeserializeObject<PlayerDto>(JsonConvert.SerializeObject(new
+        {
+            PlayerId = Guid.Parse("99999999-9999-9999-9999-999999999999"),
+            GameType = gameType.ToString(),
+            Username = playerName,
+            Guid = playerGuid,
+            IpAddress = "127.0.0.9",
+            FirstSeen = DateTime.UtcNow.AddDays(-1),
+            LastSeen = DateTime.UtcNow,
+        }))!;
+
+        if (gameType == GameType.CallOfDuty4x)
+        {
+            var status = JsonConvert.DeserializeObject<CoD4xStatusResponseDto>(JsonConvert.SerializeObject(new
+            {
+                Players = new[]
+                {
+                    new { Num = playerSlot, PlayerIdentifier = playerGuid, Name = playerName, IpAddress = string.Empty, Rate = 25000, Ping = 42 },
+                },
+            }))!;
+            mockServersApiClient
+                .Setup(x => x.CoD4xRcon.V1.Status(serverId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ApiResult<CoD4xStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<CoD4xStatusResponseDto>(status)));
+        }
+        else
+        {
+            var status = JsonConvert.DeserializeObject<RconStatusResponseDto>(JsonConvert.SerializeObject(new
+            {
+                Players = new[]
+                {
+                    new { Num = playerSlot, Guid = playerGuid, Name = playerName, IpAddress = string.Empty, Rate = 25000, Ping = 42 },
+                },
+            }))!;
+
+            switch (gameType)
+            {
+                case GameType.CallOfDuty2:
+                    mockServersApiClient.Setup(x => x.Cod2Rcon.V1.Status(serverId, It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<RconStatusResponseDto>(status)));
+                    break;
+                case GameType.CallOfDuty4:
+                    mockServersApiClient.Setup(x => x.Cod4Rcon.V1.Status(serverId, It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<RconStatusResponseDto>(status)));
+                    break;
+                case GameType.CallOfDuty5:
+                    mockServersApiClient.Setup(x => x.Cod5Rcon.V1.Status(serverId, It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<RconStatusResponseDto>(status)));
+                    break;
+                case GameType.Unknown:
+                    break;
+                case GameType.Insurgency:
+                    break;
+                case GameType.ArkSurvivalEvolved:
+                    break;
+                case GameType.Battlefield1:
+                    break;
+                case GameType.Battlefield3:
+                    break;
+                case GameType.Battlefield4:
+                    break;
+                case GameType.Battlefield5:
+                    break;
+                case GameType.BattlefieldBadCompany2:
+                    break;
+                case GameType.CrysisWars:
+                    break;
+                case GameType.Left4Dead2:
+                    break;
+                case GameType.Minecraft:
+                    break;
+                case GameType.PlayerUnknownsBattleground:
+                    break;
+                case GameType.RisingStormVietnam:
+                    break;
+                case GameType.Rust:
+                    break;
+                case GameType.WarThunder:
+                    break;
+                case GameType.WorldOfWarships:
+                    break;
+                case GameType.WorldWar3:
+                    break;
+                case GameType.UnrealTournament2004:
+                    break;
+                case GameType.Arma:
+                    break;
+                case GameType.Arma2:
+                    break;
+                case GameType.Arma3:
+                    break;
+                case GameType.CallOfDuty4x:
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        mockRepositoryApiClient
+            .Setup(x => x.Players.V1.GetPlayers(
+                gameType,
+                PlayersFilter.UsernameAndGuid,
+                playerGuid,
+                0,
+                100,
+                PlayersOrder.LastSeenDesc,
+                PlayerEntityOptions.None))
+            .ReturnsAsync(new ApiResult<CollectionModel<PlayerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([player]))));
+        mockAdminActionTopics
+            .Setup(x => x.CreateTopicForAdminAction(
+                It.IsAny<AdminActionType>(),
+                gameType,
+                player.PlayerId,
+                playerName,
+                It.IsAny<DateTime>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(123456);
+        mockRepositoryApiClient
+            .Setup(x => x.AdminActions.V1.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.Created));
     }
 
     private static ChatMessageDto CreateChatMessageDto(Guid chatMessageId, Guid gameServerId, DateTime timestampUtc)

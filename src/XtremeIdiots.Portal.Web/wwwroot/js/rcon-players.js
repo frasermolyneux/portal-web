@@ -14,6 +14,9 @@ var RconPlayers = (function () {
     var _tableSelector = null;
     var _refreshBadgeId = null;
     var _playerCountSelector = null;
+    var _canKick = false;
+    var _canTempBan = false;
+    var _canBan = false;
 
     function init(options) {
         _serverId = options.serverId;
@@ -21,6 +24,9 @@ var RconPlayers = (function () {
         _tableSelector = options.tableSelector || '#dataTable';
         _refreshBadgeId = options.refreshBadgeId || 'playersTableRefresh';
         _playerCountSelector = options.playerCountSelector || '#playerCount';
+        _canKick = options.canKick === true;
+        _canTempBan = options.canTempBan === true;
+        _canBan = options.canBan === true;
     }
 
     function initTable() {
@@ -89,12 +95,18 @@ var RconPlayers = (function () {
                     data: null, sortable: false,
                     render: function (data, type, row) {
                         if (row.num == null) return '';
-                        var s = row.num, g = row.guid || '', n = escapeHtml(row.name || 'Unknown');
-                        return '<div class="btn-group btn-group-sm" role="group">' +
-                            '<button class="btn btn-sm btn-warning kick-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-user-xmark"></i> Kick</button> ' +
-                            '<button class="btn btn-sm btn-danger tempban-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-clock"></i> TempBan</button> ' +
-                            '<button class="btn btn-sm btn-danger ban-player" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-ban"></i> Ban</button>' +
-                            '</div>';
+                        var s = escapeHtml(String(row.num)), g = escapeHtml(String(row.guid || '')), n = escapeHtml(row.name || 'Unknown');
+                        var buttons = '';
+                        if (_canKick) {
+                            buttons += '<button class="btn btn-sm btn-warning kick-player" data-testid="player-kick" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-fw fa-user-xmark" aria-hidden="true"></i> Kick</button> ';
+                        }
+                        if (_canTempBan) {
+                            buttons += '<button class="btn btn-sm btn-danger tempban-player" data-testid="player-temp-ban" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-fw fa-clock" aria-hidden="true"></i> TempBan</button> ';
+                        }
+                        if (_canBan) {
+                            buttons += '<button class="btn btn-sm btn-danger ban-player" data-testid="player-ban" data-slot="' + s + '" data-guid="' + g + '" data-name="' + n + '"><i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban</button>';
+                        }
+                        return buttons ? '<div class="btn-group btn-group-sm" role="group">' + buttons + '</div>' : '';
                     }
                 }
             ]

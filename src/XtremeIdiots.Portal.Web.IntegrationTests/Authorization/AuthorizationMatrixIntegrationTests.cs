@@ -91,6 +91,24 @@ public class AuthorizationMatrixIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task KickPolicy_RejectsModeratorRoleFromDifferentGameWhenRconIsDirectlyGranted()
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty5.ToString()),
+            new Claim(AdditionalPermission.GameServers_Admin_Rcon, GameType.CallOfDuty4.ToString()),
+            new Claim(AdditionalPermission.AdminActions_Create, GameType.CallOfDuty4.ToString()),
+        ], "TestAuth"));
+
+        var result = await authorizationService.AuthorizeAsync(
+            principal,
+            GameType.CallOfDuty4,
+            AuthPolicies.GameServers_Admin_Rcon_Kick);
+
+        Assert.False(result.Succeeded);
+    }
+
+    [Fact]
     public async Task Cod4RoleClaims_AuthorizeEquivalentCod4xResourcesButNotOtherGames()
     {
         var gameAdmin = CreatePrincipal(PortalTestRole.GameAdmin);

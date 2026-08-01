@@ -654,7 +654,10 @@
             RconPlayers.init({
                 serverId: serverId,
                 antiForgeryToken: antiForgeryToken,
-                tableSelector: '#sd-playersTable'
+                tableSelector: '#sd-playersTable',
+                canKick: @Model.CanKickPlayers.ToString().ToLower(),
+                canTempBan: @Model.CanTempBanPlayers.ToString().ToLower(),
+                canBan: @Model.CanBanPlayers.ToString().ToLower()
             });
             RconMapControl.init({
                 serverId: serverId,
