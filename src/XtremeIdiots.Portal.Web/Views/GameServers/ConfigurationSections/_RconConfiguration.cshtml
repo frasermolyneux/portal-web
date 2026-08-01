@@ -9,8 +9,10 @@
         <div class="mb-3">
             <label asp-for="RconConfigPassword" class="form-label"></label>
             <div class="input-group">
-                <input name="RconConfigPassword" class="form-control" type="password" id="rconPasswordInput" value="@Model.RconConfigPassword" />
-                <button class="btn btn-outline-secondary" type="button" data-password-toggle="rconPasswordInput">
+                <input name="RconConfigPassword" class="form-control" type="password" id="rconPasswordInput"
+                       value="@Model.RconConfigPassword" data-testid="rcon-password-input" />
+                <button class="btn btn-outline-secondary" type="button" data-password-toggle="rconPasswordInput"
+                        data-testid="rcon-password-toggle" aria-label="Show or hide RCON password">
                     <i class="fa-solid fa-fw fa-eye"></i>
                 </button>
             </div>

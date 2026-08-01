@@ -7,6 +7,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 internal static class TestPrincipalProfiles
 {
     public const string GameAdmin = "game-admin";
+    public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
     public const string Moderator = "moderator";
     public const string SeniorAdmin = "senior-admin";
@@ -15,14 +16,22 @@ internal static class TestPrincipalProfiles
     {
         var claims = CreateIdentityClaims();
 
-        claims.Add(profile switch
+        if (profile == GameServerWriterWithoutRcon)
         {
-            GameAdmin => new Claim(UserProfileClaimType.GameAdmin, GameType.CallOfDuty4.ToString()),
-            HeadAdmin => new Claim(UserProfileClaimType.HeadAdmin, GameType.CallOfDuty4.ToString()),
-            Moderator => new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty4.ToString()),
-            SeniorAdmin => new Claim(UserProfileClaimType.SeniorAdmin, bool.TrueString),
-            _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown test principal profile."),
-        });
+            claims.Add(new Claim(AdditionalPermission.GameServers_Read, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AdditionalPermission.GameServers_Write, GameType.CallOfDuty4.ToString()));
+        }
+        else
+        {
+            claims.Add(profile switch
+            {
+                GameAdmin => new Claim(UserProfileClaimType.GameAdmin, GameType.CallOfDuty4.ToString()),
+                HeadAdmin => new Claim(UserProfileClaimType.HeadAdmin, GameType.CallOfDuty4.ToString()),
+                Moderator => new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty4.ToString()),
+                SeniorAdmin => new Claim(UserProfileClaimType.SeniorAdmin, bool.TrueString),
+                _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown test principal profile."),
+            });
+        }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, IdentityConstants.ApplicationScheme));
     }

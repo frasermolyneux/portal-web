@@ -117,10 +117,23 @@ internal sealed class BrowserFixture : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await browserContext.DisposeAsync().ConfigureAwait(false);
-        await browser.DisposeAsync().ConfigureAwait(false);
-        playwright.Dispose();
-        await Host.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            if (browser.IsConnected)
+            {
+                await browserContext.DisposeAsync().ConfigureAwait(false);
+                await browser.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        catch (PlaywrightException) when (!browser.IsConnected)
+        {
+            // The browser process can exit before teardown under resource pressure.
+        }
+        finally
+        {
+            playwright.Dispose();
+            await Host.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     private static bool IsCosmeticExternalAsset(string value)

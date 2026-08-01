@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -20,6 +21,28 @@ namespace XtremeIdiots.Portal.Web.Tests.Services.Settings;
 public class NamespaceSettingsSerializerTests
 {
     private readonly NamespaceSettingsSerializer serializer = new();
+
+    [Fact]
+    public void BuildGameServerConfigurations_RconCredential_SerializesExactContract()
+    {
+        var model = BuildDefaultModel();
+        model.RconConfigPassword = "RotatedPassword";
+
+        var configurations = serializer.BuildGameServerConfigurations(
+            model,
+            canEditFileTransport: false,
+            canEditRcon: true,
+            canConfigureScreenshots: false);
+
+        var (_, json) = Assert.Single(configurations, configuration => configuration.Namespace == RconSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(json);
+        var properties = document.RootElement.EnumerateObject().ToList();
+        Assert.Equal(4, properties.Count);
+        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("RotatedPassword", document.RootElement.GetProperty("password").GetString());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("maxMessageLength").ValueKind);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("messagePrefixLength").ValueKind);
+    }
 
     [Fact]
     public void AgentDisabled_DoesNotMarkAgentNamespaceForDeletion()
