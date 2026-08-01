@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
@@ -42,6 +43,34 @@ public class NamespaceSettingsSerializerTests
         Assert.Equal("RotatedPassword", document.RootElement.GetProperty("password").GetString());
         Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("maxMessageLength").ValueKind);
         Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("messagePrefixLength").ValueKind);
+    }
+
+    [Theory]
+    [InlineData(false, "ftp", 21, 6)]
+    [InlineData(true, "sftp", 22, 7)]
+    public void BuildGameServerConfigurations_FileTransport_SerializesExactContract(bool sftp, string expectedNamespace, int port, int propertyCount)
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.FileTransportType = sftp ? Repository.Abstractions.Constants.V1.FileTransportType.Sftp : Repository.Abstractions.Constants.V1.FileTransportType.Ftp;
+        model.FileTransportConfigHostname = "files.example.com";
+        model.FileTransportConfigPort = port;
+        model.FileTransportConfigUsername = "deploy-user";
+        model.FileTransportConfigPassword = "deploy-secret";
+        model.FileTransportConfigMapsRootPath = "/maps";
+        model.FileTransportConfigHostKeyFingerprint = sftp ? "aa:bb:cc" : null;
+
+        var configurations = serializer.BuildGameServerConfigurations(model, true, false, false);
+        var (_, json) = Assert.Single(configurations, configuration => configuration.Namespace == expectedNamespace);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(propertyCount, document.RootElement.EnumerateObject().Count());
+        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("files.example.com", document.RootElement.GetProperty("hostname").GetString());
+        Assert.Equal(port, document.RootElement.GetProperty("port").GetInt32());
+        Assert.Equal("deploy-user", document.RootElement.GetProperty("username").GetString());
+        Assert.Equal("deploy-secret", document.RootElement.GetProperty("password").GetString());
+        Assert.Equal("/maps", document.RootElement.GetProperty("mapsRootPath").GetString());
+        if (sftp)
+            Assert.Equal("aa:bb:cc", document.RootElement.GetProperty("hostKeyFingerprint").GetString());
     }
 
     [Fact]
