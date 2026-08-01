@@ -6,7 +6,9 @@ using Newtonsoft.Json;
 using System.Net;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Players;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Services;
@@ -34,6 +36,30 @@ internal sealed class AdminActionScenario
         Mock.Get(RepositoryClient.Object.Players.V1)
             .Setup(api => api.GetPlayer(PlayerId, It.IsAny<PlayerEntityOptions>()))
             .ReturnsAsync(new ApiResult<PlayerDto>(HttpStatusCode.OK, new ApiResponse<PlayerDto>(Player)));
+        Mock.Get(RepositoryClient.Object.PlayerAnalyticsV2.V1)
+            .Setup(api => api.GetPlayerDetail(
+                PlayerId,
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PlayerDetailDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<PlayerDetailDto>(CreatePlayerDetail(PlayerId, gameType, username))));
+        Mock.Get(RepositoryClient.Object.PlayerAnalyticsV2.V1)
+            .Setup(api => api.GetPlayerTimeseries(
+                PlayerId,
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<AnalyticsBucket>(),
+                It.IsAny<AnalyticsCompareMode>(),
+                It.IsAny<int>(),
+                It.IsAny<AnalyticsAlignMode>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PlayerTrendsDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<PlayerTrendsDto>(CreatePlayerTrends())));
         Mock.Get(RepositoryClient.Object.AdminActions.V1)
             .Setup(api => api.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()))
             .Callback<CreateAdminActionDto, CancellationToken>((dto, _) => CreatedAdminActions.Enqueue(dto))
@@ -96,5 +122,36 @@ internal sealed class AdminActionScenario
         });
 
         return JsonConvert.DeserializeObject<PlayerDto>(json)!;
+    }
+
+    private static PlayerDetailDto CreatePlayerDetail(Guid playerId, GameType gameType, string username)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            PlayerId = playerId,
+            Username = username,
+            GameType = gameType.ToString(),
+            FirstSeenUtc = DateTime.UtcNow.AddDays(-30),
+            LastSeenUtc = DateTime.UtcNow,
+            SessionsCount = 0,
+            TotalPlayTimeMinutes = 0,
+            Moderation = new
+            {
+                WarningsCount = 0,
+                KicksCount = 0,
+                BansCount = 0,
+            },
+            Related = new
+            {
+                RelatedPlayersCount = 0,
+            },
+        });
+
+        return JsonConvert.DeserializeObject<PlayerDetailDto>(json)!;
+    }
+
+    private static PlayerTrendsDto CreatePlayerTrends()
+    {
+        return JsonConvert.DeserializeObject<PlayerTrendsDto>("{}")!;
     }
 }

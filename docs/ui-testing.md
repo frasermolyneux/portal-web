@@ -22,7 +22,7 @@ Unit tests remain available through `dotnet: test` and exclude the integration p
 - `Health/` verifies required liveness, readiness, and version endpoints.
 - `Manifest/` discovers and classifies every MVC/API action and enforces the approved application surface.
 - `Playwright/` verifies rendered pages, browser behavior, policy-controlled UI, and direct authorization enforcement.
-- `Workflows/` contains domain scenarios and Playwright journeys for state-changing features.
+- `Workflows/` contains Reqnroll `.feature` specifications, domain scenarios, and Playwright step bindings for state-changing features.
 
 Browser tests reject unexpected external requests and fail on same-origin request failures, HTTP error responses, console errors, and page errors. Known cosmetic CDN styles are omitted in the isolated environment.
 
@@ -50,7 +50,18 @@ Browser pages that require seeded identifiers or domain-specific fake responses 
 
 ## Workflow packs
 
-Each workflow scenario replaces only the dependencies owned by that test host and records state-changing client calls in thread-safe queues. Tests assert the browser result and the exact downstream DTO rather than sharing mutable global mocks.
+Phase 3 browser workflows are executable Gherkin specifications powered by Reqnroll and xUnit. Each `.feature` file owns readable Given/When/Then scenarios, while its `*Steps.cs` binding class performs Playwright interactions and assertions. Generated feature code is written below `obj/` and is not committed.
+
+Each workflow scenario replaces only the dependencies owned by that test host and records state-changing client calls in thread-safe queues. Reqnroll creates binding instances per scenario, and an async `AfterScenario` hook disposes the browser fixture. Steps assert the browser result and exact downstream DTO rather than sharing mutable global mocks.
+
+Run a workflow pack independently through its feature tag:
+
+```powershell
+dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=admin-actions"
+dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=tags"
+```
+
+When adding a workflow, place its feature, bindings, and scenario fake together under `Workflows/<Domain>/`. Use scenario outlines for behavior permutations, keep technical setup out of feature wording, and use domain-specific step phrases because bindings are global within the Reqnroll project.
 
 Current Pack B coverage includes:
 
