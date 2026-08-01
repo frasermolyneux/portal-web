@@ -8,6 +8,7 @@ var ServerFeed = (function () {
     var _serverId = null;
     var _antiForgeryToken = null;
     var _intervalId = null;
+    var _activeRequest = null;
     var _refreshEnabled = true;
     var _isBackgrounded = false;
     var _items = [];
@@ -27,10 +28,12 @@ var ServerFeed = (function () {
     var _selectors = {};
 
     function init(options) {
+        stop();
         _serverId = options.serverId;
         _antiForgeryToken = options.antiForgeryToken;
         _refreshEnabled = true;
-        _isBackgrounded = false;
+        _isBackgrounded = document.hidden === true;
+        _activeRequest = null;
         _items = [];
         _pendingItems = [];
         _seenItemIds = new Set();
@@ -154,22 +157,22 @@ var ServerFeed = (function () {
     }
 
     function load() {
-        if (!_serverId || _isBackgrounded) {
+        if (!_serverId || _isBackgrounded || _activeRequest) {
             return;
         }
 
-        $.ajax({
+        var request = $.ajax({
             url: buildFeedUrl(),
             type: 'GET',
             success: function (result) {
                 var items = Array.isArray(result?.items) ? result.items : [];
 
                 if (result?.cursor) {
-                    _cursor.lastSeenTimestampUtc = result.cursor.lastSeenTimestampUtc;
-                    _cursor.lastSeenSourceType = result.cursor.lastSeenSourceType;
-                    _cursor.lastSeenItemId = result.cursor.lastSeenItemId;
-                    _cursor.lastChatMessageId = result.cursor.lastChatMessageId;
-                    _cursor.lastEventId = result.cursor.lastEventId;
+                    _cursor.lastSeenTimestampUtc = result.cursor.lastSeenTimestampUtc || _cursor.lastSeenTimestampUtc;
+                    _cursor.lastSeenSourceType = result.cursor.lastSeenSourceType || _cursor.lastSeenSourceType;
+                    _cursor.lastSeenItemId = result.cursor.lastSeenItemId || _cursor.lastSeenItemId;
+                    _cursor.lastChatMessageId = result.cursor.lastChatMessageId || _cursor.lastChatMessageId;
+                    _cursor.lastEventId = result.cursor.lastEventId || _cursor.lastEventId;
                 }
 
                 if (result?.diagnostics?.overrunDetected === true) {
@@ -220,9 +223,18 @@ var ServerFeed = (function () {
                 scrollToTop();
             },
             error: function (xhr) {
+                if (xhr?.statusText === 'abort') {
+                    return;
+                }
                 console.warn('Failed to load server feed:', xhr?.status, xhr?.responseText);
+            },
+            complete: function () {
+                if (_activeRequest === request) {
+                    _activeRequest = null;
+                }
             }
         });
+        _activeRequest = request;
     }
 
     function prependSystemNotice(message) {
@@ -262,6 +274,10 @@ var ServerFeed = (function () {
     }
 
     function forceReload(loadImmediately) {
+        if (_activeRequest) {
+            _activeRequest.abort();
+            _activeRequest = null;
+        }
         _cursor.lastSeenTimestampUtc = null;
         _cursor.lastSeenSourceType = null;
         _cursor.lastSeenItemId = null;
@@ -270,7 +286,13 @@ var ServerFeed = (function () {
         _items = [];
         _pendingItems = [];
         _seenItemIds = new Set();
+        _overrunCount = 0;
+        _overrunNoticeShown = false;
+        if (_selectors.overrunIndicator) {
+            $(_selectors.overrunIndicator).hide();
+        }
         updatePendingCount();
+        render();
         if (loadImmediately !== false) {
             load();
         }
@@ -284,6 +306,12 @@ var ServerFeed = (function () {
         var div = document.createElement('div');
         div.textContent = String(value);
         return div.innerHTML;
+    }
+
+    function escapeAttribute(value) {
+        return escapeHtml(value)
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function renderEventData(rawEventData) {
@@ -333,7 +361,7 @@ var ServerFeed = (function () {
             var eventType = item.eventType || item.displayText || 'Event';
             var serverName = item.username ? '<small class="text-muted ms-1">' + escapeHtml(item.username) + '</small>' : '';
             return '' +
-                '<div class="alert alert-secondary alert-sm mb-1" data-source="event" data-event-type="' + escapeHtml(eventType).toLowerCase() + '">' +
+                '<div class="alert alert-secondary alert-sm mb-1" data-source="event" data-event-type="' + escapeAttribute(eventType).toLowerCase() + '">' +
                 '<small class="text-muted" title="' + portalDate.formatDateTime(item.timestampUtc) + '">' + portalDate.formatDateTime(item.timestampUtc, { showRelative: true }) + '</small> ' +
                 '<span class="badge bg-secondary-subtle text-secondary-emphasis ms-1">Event</span> ' +
                 '<strong><code>' + escapeHtml(eventType) + '</code></strong>' +
@@ -424,6 +452,10 @@ var ServerFeed = (function () {
             clearInterval(_intervalId);
             _intervalId = null;
         }
+        if (_activeRequest) {
+            _activeRequest.abort();
+            _activeRequest = null;
+        }
     }
 
     function dispose() {
@@ -448,6 +480,7 @@ var ServerFeed = (function () {
     return {
         init: init,
         start: start,
+        refresh: load,
         stop: stop,
         setRefreshEnabled: setRefreshEnabled,
         dispose: dispose,

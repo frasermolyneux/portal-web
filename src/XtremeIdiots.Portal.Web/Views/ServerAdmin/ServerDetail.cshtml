@@ -209,7 +209,7 @@
                                 <h5>
                                     Server Feed
                                     <span class="badge bg-secondary ms-2" id="sd-feedPendingCount" style="display: none;">0 new</span>
-                                    <span class="badge bg-warning text-dark ms-1" id="sd-feedOverrunIndicator" style="display: none;" title="Feed volume is high — some items may be truncated"><i class="fa-solid fa-fw fa-triangle-exclamation"></i> High volume</span>
+                                    <span class="badge bg-warning text-dark ms-1" id="sd-feedOverrunIndicator" style="display: none;" title="Feed volume is high — some items may be truncated"><i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> High volume</span>
                                 </h5>
                                 <div class="ibox-tools d-flex align-items-center gap-2">
                                     <div class="form-check form-check-inline mb-0">
@@ -222,13 +222,13 @@
                                     </div>
                                     <input type="text" id="sd-feedEventFilter" class="form-control form-control-sm" placeholder="Filter event type" style="width: 180px;" @(Model.CanViewFeedEvents ? "" : "disabled") />
                                     <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info" type="button">
-                                        <i class="fa-solid fa-fw fa-pause"></i> Pause
+                                        <i class="fa-solid fa-fw fa-pause" aria-hidden="true"></i> Pause
                                     </button>
                                 </div>
                             </div>
                             <div class="ibox-content" style="max-height: 420px; overflow-y: auto;" id="sd-feedContainer" role="log">
                                 <div id="sd-feedItems">
-                                    <p class="text-muted text-center"><i class="fa-solid fa-fw fa-spinner fa-spin"></i> Loading server feed...</p>
+                                    <p class="text-muted text-center"><i class="fa-solid fa-fw fa-spinner fa-spin" aria-hidden="true"></i> Loading server feed...</p>
                                 </div>
                             </div>
                             <div class="ibox-footer">
@@ -243,7 +243,7 @@
                                         <input type="text" id="sd-sayMessage" class="form-control form-control-sm"
                                              placeholder="Type a message to send to server..." data-testid="server-say-message">
                                          <button type="submit" class="btn btn-sm btn-primary" data-testid="server-say-submit">
-                                            <i class="fa-solid fa-fw fa-paper-plane"></i> Send
+                                            <i class="fa-solid fa-fw fa-paper-plane" aria-hidden="true"></i> Send
                                         </button>
                                     </form>
                                 }
@@ -260,7 +260,7 @@
                                 {
                                     <div class="ibox-tools">
                                         <button id="sd-toggleRefresh" class="btn btn-sm btn-outline-info" type="button">
-                                            <i class="fa-solid fa-fw fa-pause"></i> Pause
+                                            <i class="fa-solid fa-fw fa-pause" aria-hidden="true"></i> Pause
                                         </button>
                                     </div>
                                 }
@@ -705,7 +705,7 @@
         // Toggle refresh
         $('#sd-toggleRefresh').click(function () {
             refreshEnabled = !refreshEnabled;
-            $(this).html(refreshEnabled ? '<i class="fa-solid fa-fw fa-pause"></i> Pause' : '<i class="fa-solid fa-fw fa-play"></i> Resume');
+            $(this).html(refreshEnabled ? '<i class="fa-solid fa-fw fa-pause" aria-hidden="true"></i> Pause' : '<i class="fa-solid fa-fw fa-play" aria-hidden="true"></i> Resume');
             if (typeof RconPlayers !== 'undefined' && modulesStarted.players) RconPlayers.setRefreshEnabled(refreshEnabled);
             if (typeof ServerFeed !== 'undefined' && modulesStarted.serverFeed) ServerFeed.setRefreshEnabled(refreshEnabled);
             if (typeof RconServerStatus !== 'undefined') RconServerStatus.setRefreshEnabled(refreshEnabled);

@@ -115,6 +115,17 @@ internal sealed class BrowserFixture : IAsyncDisposable
         Assert.Empty(pageErrors);
     }
 
+    public void AssertOnlyExpectedFailedRequest(string method, string absolutePath)
+    {
+        Assert.Empty(unexpectedExternalRequests);
+        var failure = Assert.Single(failedSameOriginRequests);
+        Assert.StartsWith($"{method} {new Uri(Host.BaseAddress, absolutePath).AbsoluteUri}?", failure, StringComparison.Ordinal);
+        Assert.EndsWith("net::ERR_ABORTED", failure, StringComparison.Ordinal);
+        Assert.Empty(failedSameOriginResponses);
+        Assert.Empty(consoleErrors);
+        Assert.Empty(pageErrors);
+    }
+
     public async ValueTask DisposeAsync()
     {
         try
