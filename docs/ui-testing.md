@@ -22,6 +22,7 @@ Unit tests remain available through `dotnet: test` and exclude the integration p
 - `Health/` verifies required liveness, readiness, and version endpoints.
 - `Manifest/` discovers and classifies every MVC/API action and enforces the approved application surface.
 - `Playwright/` verifies rendered pages, browser behavior, policy-controlled UI, and direct authorization enforcement.
+- `Workflows/` contains domain scenarios and Playwright journeys for state-changing features.
 
 Browser tests reject unexpected external requests and fail on same-origin request failures, HTTP error responses, console errors, and page errors. Known cosmetic CDN styles are omitted in the isolated environment.
 
@@ -46,3 +47,14 @@ Adding an `AuthPolicies` constant without a registered policy and matrix entry f
 Adding, removing, rerouting, or reclassifying an action changes the manifest fingerprint and fails the suite. The failure writes `portal-actions.actual.txt` beside the integration-test assembly. Review that file and the classification counts before updating `ApprovedFingerprint` and `ApprovedCounts`; never update the fingerprint without reviewing the generated action list.
 
 Browser pages that require seeded identifiers or domain-specific fake responses are implemented as Phase 3 workflow scenarios. Deterministic view-only pages remain in the fast `PageSmokeIntegrationTests` set.
+
+## Workflow packs
+
+Each workflow scenario replaces only the dependencies owned by that test host and records state-changing client calls in thread-safe queues. Tests assert the browser result and the exact downstream DTO rather than sharing mutable global mocks.
+
+Current Pack B coverage includes:
+
+- Admin Action creation for SeniorAdmin and Moderator roles, direct Ban denial, rich-text reason validation, repository command and notification payloads, success navigation, and repository failure behavior.
+- Tag definition create, edit, and user-defined delete workflows for GameAdmin, plus direct create denial for Moderator.
+
+These workflows also guard degraded player-tag rendering, Development runtime compilation of the Admin Actions view component, and server-side validation of visible Summernote text. Other Phase 3 domain packs remain separate and can be added under `Workflows/<Domain>/` without changing the shared host.

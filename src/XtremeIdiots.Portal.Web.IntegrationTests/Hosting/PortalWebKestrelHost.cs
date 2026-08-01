@@ -21,9 +21,11 @@ internal sealed class PortalWebKestrelHost : IAsyncDisposable
 
     public Uri BaseAddress { get; }
 
-    public async static Task<PortalWebKestrelHost> CreateAsync(CancellationToken cancellationToken = default)
+    public async static Task<PortalWebKestrelHost> CreateAsync(
+        Action<IServiceCollection>? configureServices = null,
+        CancellationToken cancellationToken = default)
     {
-        var applicationContext = await PortalTestApplicationContext.CreateAsync(cancellationToken).ConfigureAwait(false);
+        var applicationContext = await PortalTestApplicationContext.CreateAsync(configureServices, cancellationToken).ConfigureAwait(false);
         WebApplication? app = null;
 
         try

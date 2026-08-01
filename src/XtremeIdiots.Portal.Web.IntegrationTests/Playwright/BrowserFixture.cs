@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
@@ -56,9 +57,11 @@ internal sealed class BrowserFixture : IAsyncDisposable
 
     public IPage Page { get; }
 
-    public async static Task<BrowserFixture> CreateAsync(string? profile = null)
+    public async static Task<BrowserFixture> CreateAsync(
+        string? profile = null,
+        Action<IServiceCollection>? configureServices = null)
     {
-        var host = await PortalWebKestrelHost.CreateAsync();
+        var host = await PortalWebKestrelHost.CreateAsync(configureServices);
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
@@ -78,7 +81,13 @@ internal sealed class BrowserFixture : IAsyncDisposable
 
         await browserContext.RouteAsync("**/*", async route =>
         {
-            if (fixture.IsApplicationRequest(route.Request.Url) || IsBrowserLocalUrl(route.Request.Url))
+            if (fixture.IsApplicationRequest(route.Request.Url))
+            {
+                await route.ContinueAsync().ConfigureAwait(false);
+                return;
+            }
+
+            if (IsBrowserLocalUrl(route.Request.Url))
             {
                 await route.ContinueAsync().ConfigureAwait(false);
                 return;

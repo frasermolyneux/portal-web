@@ -54,7 +54,7 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card border-start border-@cardStyle border-4 shadow-lg admin-action-card"
-                    style="border-start-width: 6px !important;">
+                     style="border-start-width: 6px !important;">
                     <div
                         class="card-header bg-gradient-@cardStyle text-white d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
@@ -67,8 +67,9 @@
                                     {
                                         <text>@item.Type for
                                             <a asp-controller="Players" asp-action="Details" asp-route-id="@item.PlayerId"
-                                                class="btn btn-sm btn-outline-light ms-2 fw-bold">
-                                                <i class="fa-solid fa-fw fa-user"></i><player-name value="@item.Player.Username"></player-name>
+                                               class="btn btn-sm btn-outline-light ms-2 fw-bold">
+                                                <i class="fa-solid fa-fw fa-user"></i><player-name
+                                                value="@item.Player.Username"></player-name>
                                             </a>
                                         </text>
                                     }
@@ -179,7 +180,7 @@
                                             <small class="text-muted text-uppercase fw-bold">Discussion Topic</small>
                                             <div>
                                                 <a href="@((Configuration["XtremeIdiots:Forums:TopicBaseUrl"] ?? "https://www.xtremeidiots.com/forums/topic/").TrimEnd('/'))/@item.ForumTopicId-topic/"
-                                                    target="_blank" class="btn btn-sm btn-outline-@cardStyle">
+                                                   target="_blank" class="btn btn-sm btn-outline-@cardStyle">
                                                     <i class="fa-solid fa-fw fa-arrow-up-right-from-square"></i>
                                                     View Forum Topic
                                                 </a>
@@ -194,7 +195,7 @@
                         <div class="row mt-3">
                             <div class="col-12">
                                 <div class="bg-light border-start border-@cardStyle border-4 rounded p-4"
-                                    style="border-start-width: 4px !important;">
+                                     style="border-start-width: 4px !important;">
                                     <div class="d-flex align-items-center mb-3">
                                         <div class="me-3">
                                             <i class="@iconClass icon-@cardStyle" style="font-size: 1.25rem;"></i>
@@ -218,11 +219,11 @@
                                     }
 
                                     @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, new
-                                                                    Tuple<GameType, AdminActionType, string?>(gameType.Value, item.Type, userForumId),
+                                                                    Tuple<GameType, AdminActionType, string>(gameType.Value, item.Type, userForumId!),
                                                                     AuthPolicies.AdminActions_Edit)).Succeeded)
                                     {
                                         <a asp-controller="AdminActions" asp-action="Edit" asp-route-id="@item.AdminActionId"
-                                            class="btn btn-outline-@cardStyle btn-sm">
+                                           class="btn btn-outline-@cardStyle btn-sm">
                                             <i class="fa-solid fa-fw fa-pen-to-square"></i> Edit @item.Type
                                         </a>
                                     }
@@ -231,11 +232,11 @@
                                                                     AdminActionType.TempBan && item.Expires > DateTime.UtcNow))
                                     {
                                         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User, new
-                                                                        Tuple<GameType, string?>(gameType.Value, userForumId),
+                                                                        Tuple<GameType, string>(gameType.Value, userForumId!),
                                                                         AuthPolicies.AdminActions_Lift)).Succeeded)
                                         {
                                             <a asp-controller="AdminActions" asp-action="Lift" asp-route-id="@item.AdminActionId"
-                                                class="btn btn-outline-warning btn-sm">
+                                               class="btn btn-outline-warning btn-sm">
                                                 <i class="fa-solid fa-fw fa-unlock"></i> Lift Ban
                                             </a>
                                         }
@@ -247,7 +248,7 @@
                                                                         gameType.Value, AuthPolicies.AdminActions_Claim)).Succeeded)
                                         {
                                             <a asp-controller="AdminActions" asp-action="Claim" asp-route-id="@item.AdminActionId"
-                                                class="btn btn-outline-info btn-sm">
+                                               class="btn btn-outline-info btn-sm">
                                                 <i class="fa-solid fa-fw fa-user"></i> Claim Ban
                                             </a>
                                         }
@@ -258,7 +259,8 @@
                                         @if (gameType != null && (await AuthorizationService.AuthorizeAsync(User,
                                                                         gameType.Value, AuthPolicies.AdminActions_CreateTopic)).Succeeded)
                                         {
-                                            <form asp-controller="AdminActions" asp-action="CreateDiscussionTopic" asp-route-id="@item.AdminActionId" method="post">
+                                            <form asp-controller="AdminActions" asp-action="CreateDiscussionTopic"
+                                                  asp-route-id="@item.AdminActionId" method="post">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-outline-secondary btn-sm">
                                                     <i class="fa-solid fa-fw fa-plus"></i> Create Discussion Topic
@@ -271,7 +273,7 @@
                                                                     AuthPolicies.AdminActions_Delete)).Succeeded)
                                     {
                                         <a asp-controller="AdminActions" asp-action="Delete" asp-route-id="@item.AdminActionId"
-                                            class="btn btn-outline-danger btn-sm">
+                                           class="btn btn-outline-danger btn-sm">
                                             <i class="fa-solid fa-fw fa-trash"></i> Delete @item.Type
                                         </a>
                                     }

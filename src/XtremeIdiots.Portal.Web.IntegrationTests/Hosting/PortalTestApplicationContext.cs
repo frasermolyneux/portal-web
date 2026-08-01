@@ -34,7 +34,9 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
 
     public WebApplicationBuilder Builder { get; }
 
-    public async static Task<PortalTestApplicationContext> CreateAsync(CancellationToken cancellationToken = default)
+    public async static Task<PortalTestApplicationContext> CreateAsync(
+        Action<IServiceCollection>? configureServices = null,
+        CancellationToken cancellationToken = default)
     {
         var sqliteConnection = new SqliteConnection("Data Source=:memory:");
         await sqliteConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -54,6 +56,7 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
             ReplaceIdentityDatabase(builder.Services, sqliteConnection, sqliteServiceProvider);
             builder.Services.AddPortalTestAuthentication();
             ReplaceExternalApiClients(builder.Services);
+            configureServices?.Invoke(builder.Services);
             return new PortalTestApplicationContext(builder, sqliteConnection, sqliteServiceProvider);
         }
         catch

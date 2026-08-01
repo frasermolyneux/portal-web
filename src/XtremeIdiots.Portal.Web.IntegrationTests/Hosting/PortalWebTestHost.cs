@@ -22,7 +22,7 @@ internal sealed class PortalWebTestHost : IAsyncDisposable
 
     public async static Task<PortalWebTestHost> CreateAsync(CancellationToken cancellationToken = default)
     {
-        var applicationContext = await PortalTestApplicationContext.CreateAsync(cancellationToken).ConfigureAwait(false);
+        var applicationContext = await PortalTestApplicationContext.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         WebApplication? app = null;
 
         try

@@ -2,6 +2,8 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
+using System.Net;
+using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
@@ -18,7 +20,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// Controller for managing admin actions against players in the gaming portal
 /// </summary>
 [Authorize(Policy = AuthPolicies.AdminActions_Read)]
-public class AdminActionsController(
+public partial class AdminActionsController(
     IAuthorizationService authorizationService,
     IAdminActionTopics adminActionTopics,
     INotificationDispatcher notificationDispatcher,
@@ -89,6 +91,11 @@ public class AdminActionsController(
             if (playerData is null)
                 return NotFound();
 
+            model.Text ??= string.Empty;
+            var visibleReason = GetVisibleReason(model.Text);
+            if (visibleReason.Trim().Length < 3)
+                ModelState.AddModelError(nameof(model.Text), "You must enter a reason for the admin action");
+
             var modelValidationResult = CheckModelState(model, m => m.PlayerDto = playerData);
             if (modelValidationResult is not null)
                 return modelValidationResult;
@@ -122,7 +129,14 @@ public class AdminActionsController(
                     cancellationToken).ConfigureAwait(false)
             };
 
-            await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
+            var createResponse = await repositoryApiClient.AdminActions.V1.CreateAdminAction(createAdminActionDto, cancellationToken).ConfigureAwait(false);
+            if (!createResponse.IsSuccess)
+            {
+                Logger.LogWarning("Failed to create {AdminActionType} for player {PlayerId}", model.Type, model.PlayerId);
+                ModelState.AddModelError(string.Empty, "The discussion topic was created, but the admin action could not be saved. Remove the discussion topic before retrying.");
+                model.PlayerDto = playerData;
+                return View(model);
+            }
 
             await notificationDispatcher.DispatchAdminActionCreatedAsync(new AdminActionNotificationContext(
                 playerData.GameType,
@@ -143,6 +157,31 @@ public class AdminActionsController(
 
             return RedirectToAction("Details", "Players", new { id = model.PlayerId });
         }, $"CreateAdminAction-{model.Type}").ConfigureAwait(false);
+    }
+
+    [GeneratedRegex("<[^>]*>")]
+    private static partial Regex HtmlTagRegex();
+
+    [GeneratedRegex("<!--.*?-->", RegexOptions.Singleline)]
+    private static partial Regex HtmlCommentRegex();
+
+    [GeneratedRegex("<(script|style)\\b[^>]*>.*?</\\1\\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex NonVisibleElementRegex();
+
+    [GeneratedRegex("<(?<tag>[a-z][a-z0-9]*)\\b(?=[^>]*(?:\\shidden(?:\\s|=|>)|style\\s*=\\s*(?:['\"][^'\"]*(?:display\\s*:\\s*none|visibility\\s*:\\s*hidden)[^'\"]*['\"]|[^\\s>]*(?:display\\s*:\\s*none|visibility\\s*:\\s*hidden)[^\\s>]*)))[^>]*>.*?</\\k<tag>\\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex HiddenElementRegex();
+
+    private static string GetVisibleReason(string html)
+    {
+        var withoutComments = HtmlCommentRegex().Replace(html, string.Empty);
+        var withoutNonVisibleElements = NonVisibleElementRegex().Replace(withoutComments, string.Empty);
+        var withoutHiddenElements = HiddenElementRegex().Replace(withoutNonVisibleElements, string.Empty);
+        var decodedText = WebUtility.HtmlDecode(HtmlTagRegex().Replace(withoutHiddenElements, string.Empty))
+            .Replace('\u00a0', ' ');
+
+        return string.Concat(decodedText.Where(character =>
+            char.GetUnicodeCategory(character) is not System.Globalization.UnicodeCategory.Control and
+                not System.Globalization.UnicodeCategory.Format));
     }
 
     /// <summary>
