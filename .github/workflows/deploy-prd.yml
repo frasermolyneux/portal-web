@@ -70,6 +70,14 @@ jobs:
           src-folder: "src"
           skip-nuget-artifact-upload: "true"
 
+      - uses: frasermolyneux/actions/dotnet-playwright-tests@dotnet-playwright-tests/v1.1
+        with:
+          test-project: "XtremeIdiots.Portal.Web.IntegrationTests"
+          src-folder: "src"
+          target-framework: "net9.0"
+          perform-checkout: "false"
+          perform-build: "false"
+
   terraform-plan-and-apply-dev:
     if: github.event_name != 'schedule'
     permissions:
