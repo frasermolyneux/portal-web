@@ -210,6 +210,47 @@ public class ConnectedPlayersControllerTests
     }
 
     [Fact]
+    public async Task GetConnectedPlayersAjax_CapsPageLengthAt100()
+    {
+        // Arrange
+        var item = CreateConnectedPlayerDto();
+        var apiResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>([item]))
+        {
+            Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 100)
+        };
+
+        mockRepositoryApiClient
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(
+                null, null, null, null, 0, 100, null, ConnectedPlayersOrder.LinkedAtUtcDesc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, apiResponse))
+            .Verifiable();
+
+        var request = new
+        {
+            draw = 1,
+            start = 0,
+            length = 500,
+            columns = new[]
+            {
+                new { data = "gameType", name = "gameType", searchable = true, orderable = true, search = new { value = "", regex = false } }
+            },
+            order = Array.Empty<object>(),
+            search = new { value = "", regex = false }
+        };
+
+        var body = JsonConvert.SerializeObject(request);
+        var sut = CreateSut();
+        sut.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+
+        // Act
+        var result = await sut.GetConnectedPlayersAjax();
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result);
+        mockRepositoryApiClient.Verify();
+    }
+
+    [Fact]
     public async Task GetConnectedPlayersAjax_WithApiFailure_ReturnsInternalServerError()
     {
         // Arrange

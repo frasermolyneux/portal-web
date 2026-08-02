@@ -381,15 +381,24 @@ public class MapRotationsController(
 
                 if (gameServerIds.Length > 0)
                 {
-                    var serversResponse = await repositoryApiClient.GameServers.V1
-                        .GetGameServers(null, gameServerIds, null, 0, gameServerIds.Length, null, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (serversResponse.IsSuccess && serversResponse.Result?.Data?.Items is not null)
+                    const int gameServersPageSize = 100;
+                    for (var offset = 0; offset < gameServerIds.Length; offset += gameServersPageSize)
                     {
-                        foreach (var server in serversResponse.Result.Data.Items)
+                        var chunk = gameServerIds
+                            .Skip(offset)
+                            .Take(gameServersPageSize)
+                            .ToArray();
+
+                        var serversResponse = await repositoryApiClient.GameServers.V1
+                            .GetGameServers(null, chunk, null, 0, chunk.Length, null, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (serversResponse.IsSuccess && serversResponse.Result?.Data?.Items is not null)
                         {
-                            ViewData[$"Server_{server.GameServerId}"] = server;
+                            foreach (var server in serversResponse.Result.Data.Items)
+                            {
+                                ViewData[$"Server_{server.GameServerId}"] = server;
+                            }
                         }
                     }
                 }

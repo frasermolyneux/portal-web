@@ -318,7 +318,9 @@ public class ConnectedPlayersController(
             }
 
             var skip = Math.Max(0, model.Start);
-            var take = model.Length <= 0 ? 10 : model.Length;
+            const int maxTake = 100;
+            var requestedTake = model.Length <= 0 ? 10 : model.Length;
+            var take = Math.Min(requestedTake, maxTake);
 
             var response = await repositoryApiClient.ConnectedPlayers.V1
                 .GetConnectedPlayers(null, null, gameType, isActive, skip, take, searchTerm, order, cancellationToken)
