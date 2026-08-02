@@ -19,6 +19,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [Authorize(Policy = AuthPolicies.Players_Read)]
 [Route("Players")]
 public class PlayersController(
+    IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     IGeoLocationApiClient geoLocationClient,
     TelemetryClient telemetryClient,
@@ -41,6 +42,31 @@ public class PlayersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            if (id.HasValue)
+            {
+                var authResult = await CheckAuthorizationAsync(
+                    authorizationService,
+                    id.Value,
+                    AuthPolicies.Players_Read,
+                    "search",
+                    "Players",
+                    $"GameType:{id.Value}").ConfigureAwait(false);
+                if (authResult is not null)
+                    return authResult;
+            }
+            else
+            {
+                var allowedGameTypes = await authorizationService
+                    .GetAuthorizedGameTypesAsync(User, AuthPolicies.Players_Read)
+                    .ConfigureAwait(false);
+                if (allowedGameTypes.Count != GameTypeAuthorizationExtensions.DefinedGameTypes.Count)
+                {
+                    Logger.LogWarning("User {UserId} attempted an all-games player search without access to every game type",
+                        User.XtremeIdiotsId());
+                    return Forbid();
+                }
+            }
+
             var filter = playersFilter ?? PlayersFilter.UsernameAndGuid;
 
             var reader = new StreamReader(Request.Body);

@@ -14,7 +14,9 @@ using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
+using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -28,6 +30,16 @@ public class PlayersControllerTests
     private readonly Mock<ILogger<PlayersController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
     private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
+
+    public PlayersControllerTests()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object>(),
+                It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+    }
 
     private PlayersController CreateSut(ClaimsPrincipal? user = null)
     {
@@ -74,6 +86,8 @@ public class PlayersControllerTests
         var model = Assert.IsType<PlayersIndexViewModel>(viewResult.Model);
 
         Assert.Null(model.SelectedGameType);
+        Assert.True(model.CanViewAllGames);
+        Assert.Equal(GameTypeAuthorizationExtensions.DefinedGameTypes, model.AllowedGameTypes);
         Assert.Single(model.Tags);
         Assert.Equal("Trusted", model.Tags[0].Name);
 
@@ -81,21 +95,14 @@ public class PlayersControllerTests
     }
 
     [Fact]
-    public async Task GameIndex_WithNullGameType_ReturnsViewResult()
+    public async Task GameIndex_WithNullGameType_RedirectsToIndex()
     {
-        // Arrange
-        SetupTagsResponse();
         var sut = CreateSut();
 
-        // Act
         var result = await sut.GameIndex(null);
 
-        // Assert
-        var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<PlayersIndexViewModel>(viewResult.Model);
-
-        Assert.Equal("Index", viewResult.ViewName);
-        Assert.Null(model.SelectedGameType);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(PlayersController.Index), redirect.ActionName);
     }
 
     [Fact]
@@ -114,7 +121,27 @@ public class PlayersControllerTests
 
         Assert.Equal("Index", viewResult.ViewName);
         Assert.Equal(GameType.CallOfDuty2, model.SelectedGameType);
+        Assert.Contains(GameType.CallOfDuty2, model.AllowedGameTypes);
         Assert.Single(model.Tags);
+    }
+
+    [Fact]
+    public async Task GameIndex_OutsideGameScope_ReturnsUnauthorized()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                GameType.CallOfDuty2,
+                AuthPolicies.Players_Read))
+            .ReturnsAsync(AuthorizationResult.Failed());
+        var sut = CreateSut();
+
+        var result = await sut.GameIndex(GameType.CallOfDuty2);
+
+        Assert.IsType<UnauthorizedResult>(result);
+        mockRepositoryApiClient.Verify(
+            x => x.Tags.V1.GetTags(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private void SetupTagsResponse()

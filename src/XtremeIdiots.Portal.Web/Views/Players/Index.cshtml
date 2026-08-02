@@ -21,8 +21,11 @@
                 <div class="filter-group">
                     <label for="filterGameType" class="form-label">Game Type</label>
                     <select id="filterGameType" class="form-select">
-                        <option value="">All Games</option>
-                        @foreach (var gt in Enum.GetValues<GameType>())
+                        @if (Model.CanViewAllGames)
+                        {
+                            <option value="">All Games</option>
+                        }
+                        @foreach (var gt in Model.AllowedGameTypes)
                         {
                             var isSelected = Model.SelectedGameType == gt;
                             <option value="@gt" selected="@(isSelected ? "selected" : null)">@gt</option>
@@ -90,4 +93,3 @@
         <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
         <script src="~/js/players-index.js" asp-append-version="true"></script>
     }
-

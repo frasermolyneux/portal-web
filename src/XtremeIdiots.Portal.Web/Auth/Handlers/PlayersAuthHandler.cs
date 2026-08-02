@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
@@ -15,7 +16,11 @@ public class PlayersAuthHandler : IAuthorizationHandler
             switch (requirement)
             {
                 case PlayersRead:
-                    BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+                    if (context.Resource is GameType or PotentialAccessProbe)
+                        BaseAuthorizationHelper.CheckSeniorOrMultipleGameAccessWithResource(context, requirement);
+                    else
+                        BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.AllAdminLevels);
+
                     BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, "Players.Read");
                     break;
                 case PlayersDelete:

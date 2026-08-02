@@ -38,7 +38,17 @@ public class PlayersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var model = await BuildPlayersIndexViewModelAsync(null, cancellationToken).ConfigureAwait(false);
+            var allowedGameTypes = await authorizationService
+                .GetAuthorizedGameTypesAsync(User, AuthPolicies.Players_Read)
+                .ConfigureAwait(false);
+
+            if (allowedGameTypes.Count == 0)
+                return Forbid();
+
+            if (allowedGameTypes.Count != GameTypeAuthorizationExtensions.DefinedGameTypes.Count)
+                return RedirectToAction(nameof(GameIndex), new { id = allowedGameTypes[0] });
+
+            var model = await BuildPlayersIndexViewModelAsync(null, allowedGameTypes, cancellationToken).ConfigureAwait(false);
             return View(model);
         }, nameof(Index)).ConfigureAwait(false);
     }
@@ -53,7 +63,23 @@ public class PlayersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var model = await BuildPlayersIndexViewModelAsync(id, cancellationToken).ConfigureAwait(false);
+            if (!id.HasValue)
+                return RedirectToAction(nameof(Index));
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                id.Value,
+                AuthPolicies.Players_Read,
+                "view",
+                "Players Index",
+                $"GameType:{id.Value}").ConfigureAwait(false);
+            if (authResult is not null)
+                return authResult;
+
+            var allowedGameTypes = await authorizationService
+                .GetAuthorizedGameTypesAsync(User, AuthPolicies.Players_Read)
+                .ConfigureAwait(false);
+            var model = await BuildPlayersIndexViewModelAsync(id, allowedGameTypes, cancellationToken).ConfigureAwait(false);
             return View(nameof(Index), model);
         }, nameof(GameIndex)).ConfigureAwait(false);
     }
@@ -185,12 +211,17 @@ public class PlayersController(
         viewModel.EnrichedIpAddresses.AddRange(results);
     }
 
-    private async Task<PlayersIndexViewModel> BuildPlayersIndexViewModelAsync(GameType? selectedGameType, CancellationToken cancellationToken)
+    private async Task<PlayersIndexViewModel> BuildPlayersIndexViewModelAsync(
+        GameType? selectedGameType,
+        IReadOnlyList<GameType> allowedGameTypes,
+        CancellationToken cancellationToken)
     {
         var tags = await GetAllTagsAsync(cancellationToken).ConfigureAwait(false);
 
         return new PlayersIndexViewModel
         {
+            AllowedGameTypes = allowedGameTypes,
+            CanViewAllGames = allowedGameTypes.Count == GameTypeAuthorizationExtensions.DefinedGameTypes.Count,
             SelectedGameType = selectedGameType,
             Tags = tags
         };
