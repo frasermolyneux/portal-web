@@ -20,7 +20,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// This controller handles file transport and RCON credentials for game servers based on user authorization levels.
 /// Users can view credentials only for servers they have explicit permission to access.
 /// </remarks>
-[Authorize(Policy = AuthPolicies.GameServers_Read)]
+[Authorize(Policy = AuthPolicies.GameServers_Admin_Read)]
 public class CredentialsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -86,10 +86,13 @@ public class CredentialsController(
     {
         var aggregate = new Dictionary<Guid, GameServerDto>();
         var anySuccess = false;
+        var attempted = false;
 
         // Query by game types (HeadAdmin / GameAdmin breadth)
         if (gameTypes is not null && gameTypes.Length > 0)
         {
+            attempted = true;
+
             var byGameTypesResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 gameTypes, null, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
@@ -119,6 +122,8 @@ public class CredentialsController(
         // Query by explicit server IDs (per-server credential claims)
         if (gameServerIds is not null && gameServerIds.Length > 0)
         {
+            attempted = true;
+
             var byServerIdsResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 null, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
@@ -145,7 +150,11 @@ public class CredentialsController(
             }
         }
 
-        if (!anySuccess)
+        // A genuine API failure only occurs when we attempted at least one scoped
+        // query and none succeeded. A user with no credential scopes (e.g. a Moderator
+        // with no direct grants) attempts no queries and should see an empty list
+        // rather than a 500 error page.
+        if (attempted && !anySuccess)
             return null;
 
         // Preserve insertion order (game types first, then server IDs) by iterating dictionary values

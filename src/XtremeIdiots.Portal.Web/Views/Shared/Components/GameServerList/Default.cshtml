@@ -4,14 +4,13 @@
 
 @{
     Layout = null;
-    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>> ?? new Dictionary<Guid, Dictionary<string, JsonElement>>();
 }
 
 @functions {
-    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>> configs, Guid id, string ns, string prop)
     {
-        if (configs != null &&
-            configs.TryGetValue(id, out var nc) &&
+        if (configs.TryGetValue(id, out var nc) &&
             nc.TryGetValue(ns, out var r) &&
             r.TryGetProperty(prop, out var v) &&
             v.ValueKind == JsonValueKind.String)

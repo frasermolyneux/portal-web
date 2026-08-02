@@ -66,7 +66,7 @@ public class ProtectedNamesController(
                 if (!protectedNamesResponse.IsSuccess || protectedNamesResponse.Result?.Data?.Items is null)
                 {
                     Logger.LogWarning("Failed to retrieve protected names for user {UserId}", User.XtremeIdiotsId());
-                    return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                    return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
                 }
 
                 var page = protectedNamesResponse.Result.Data.Items.ToList();
@@ -123,7 +123,7 @@ public class ProtectedNamesController(
             if (!playerResponse.IsSuccess || playerResponse.Result?.Data is null)
             {
                 Logger.LogWarning("Failed to retrieve player {PlayerId} for protected name", id);
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
             var model = new CreateProtectedNameViewModel(id)
@@ -199,7 +199,7 @@ public class ProtectedNamesController(
 
                 Logger.LogWarning("Failed to create protected name for player {PlayerId} by user {UserId}",
                     model.PlayerId, User.XtremeIdiotsId());
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
             TrackSuccessTelemetry("ProtectedNameCreated", nameof(Add), new Dictionary<string, string>
@@ -248,7 +248,7 @@ public class ProtectedNamesController(
             else if (!protectedNameResponse.IsNotFound)
             {
                 Logger.LogWarning("Failed to retrieve protected name {ProtectedNameId} for deletion", id);
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
             var deleteProtectedNameDto = new DeleteProtectedNameDto(id);
@@ -258,7 +258,7 @@ public class ProtectedNamesController(
             {
                 Logger.LogWarning("Failed to delete protected name {ProtectedNameId} for user {UserId}",
                     id, User.XtremeIdiotsId());
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
             if (response.IsNotFound)
@@ -314,7 +314,7 @@ public class ProtectedNamesController(
             if (!reportResponse.IsSuccess || reportResponse.Result?.Data is null)
             {
                 Logger.LogWarning("Failed to retrieve protected name report {ProtectedNameId}", id);
-                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController), new { id = 500 });
+                return RedirectToAction(nameof(ErrorsController.Display), nameof(ErrorsController)[..^10], new { id = 500 });
             }
 
             var model = new ProtectedNameReportViewModel

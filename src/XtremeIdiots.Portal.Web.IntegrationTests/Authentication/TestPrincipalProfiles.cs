@@ -1,15 +1,25 @@
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 
 internal static class TestPrincipalProfiles
 {
+    /// <summary>
+    /// Well-known game server id used by credential coverage scenarios. Direct per-server credential
+    /// grants (see <see cref="CredentialFileTransportReader"/> and <see cref="CredentialRconReader"/>)
+    /// are keyed to this id, so the backing scenario must expose a server with the same id.
+    /// </summary>
+    public const string CredentialServerId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+
     public const string GameAdmin = "game-admin";
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
     public const string Cod4xLifecycleManager = "cod4x-lifecycle-manager";
+    public const string CredentialFileTransportReader = "credential-file-transport-reader";
+    public const string CredentialRconReader = "credential-rcon-reader";
     public const string LiveServerMap = "live-server-map";
     public const string LiveServerBan = "live-server-ban";
     public const string LiveServerKick = "live-server-kick";
@@ -28,6 +38,20 @@ internal static class TestPrincipalProfiles
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4x.ToString()));
+        }
+        else if (profile == CredentialFileTransportReader)
+        {
+            // A Moderator (no credential access by role) plus a direct per-server file transport grant.
+            // Exercises the "direct assignment" path: the server appears with file transport columns only.
+            claims.Add(new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AuthPolicies.GameServers_Credentials_FileTransport_Read, CredentialServerId));
+        }
+        else if (profile == CredentialRconReader)
+        {
+            // A Moderator (no credential access by role) plus a direct per-server RCON grant.
+            // Exercises the "direct assignment" path: the server appears with the RCON column only.
+            claims.Add(new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AdditionalPermission.GameServers_Credentials_Rcon_Read, CredentialServerId));
         }
         else if (profile == GameServerWriterWithoutRcon)
         {

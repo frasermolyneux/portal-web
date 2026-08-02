@@ -112,8 +112,7 @@
                            asp-action="Map" data-testid="nav-servers-playermap">
                             <i class="fa-solid fa-fw fa-location-dot" aria-hidden="true"></i> Player Map
                         </a>
-                        <a policy="@AuthPolicies.MapRotations_Read"
-                           class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" asp-controller="Maps"
+                        <a class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" asp-controller="Maps"
                            asp-action="Index" data-testid="nav-servers-maps">
                             <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
                         </a>
@@ -121,7 +120,7 @@
                 </div>
             </div>
 
-            <a policy="@AuthPolicies.GameServers_Credentials_FileTransport_Read"
+            <a policy="@AuthPolicies.GameServers_Admin_Read"
                class="nav-link text-white @Html.IsSelected("Credentials", "Index")" asp-controller="Credentials"
                asp-action="Index" data-testid="nav-credentials">
                 <i class="fa-solid fa-fw fa-key" aria-hidden="true"></i> Credentials
@@ -288,8 +287,7 @@
                 </a>
                 <div class="collapse @(IsAnyControllerSelected("User") ? "show" : "")" id="usersMenu">
                     <nav class="nav flex-column ms-3">
-                        <a policy="@AuthPolicies.Users_ManageClaims"
-                           class="nav-link text-white-50 @Html.IsSelected("User", "Index")" asp-controller="User"
+                        <a class="nav-link text-white-50 @Html.IsSelected("User", "Index")" asp-controller="User"
                            asp-action="Index">
                             <i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Manage Users
                         </a>

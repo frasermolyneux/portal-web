@@ -6,7 +6,7 @@
 
 @{
     ViewData["Title"] = "Ban File Monitor Details";
-    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>>;
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>> ?? new Dictionary<Guid, Dictionary<string, JsonElement>>();
     var liveStatus = ViewBag.LiveStatus as GameServerLiveStatusDto;
     var fileTransportEnabled = Model.GameServer.FileTransportEnabled;
     var fileTransportType = Model.GameServer.FileTransportType;
@@ -15,10 +15,9 @@ XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNames
 }
 
 @functions {
-    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>> configs, Guid id, string ns, string prop)
     {
-        if (configs is not null
-            && configs.TryGetValue(id, out var nc)
+        if (configs.TryGetValue(id, out var nc)
             && nc.TryGetValue(ns, out var r)
             && r.TryGetProperty(prop, out var v)
             && v.ValueKind == JsonValueKind.String)
@@ -26,11 +25,10 @@ XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetFileTransportNames
         return string.Empty;
     }
 
-    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int
+    static int GetCfgInt(Dictionary<Guid, Dictionary<string, JsonElement>> configs, Guid id, string ns, string prop, int
 def = 0)
     {
-        if (configs is not null
-            && configs.TryGetValue(id, out var nc)
+        if (configs.TryGetValue(id, out var nc)
             && nc.TryGetValue(ns, out var r)
             && r.TryGetProperty(prop, out var v)
             && v.ValueKind == JsonValueKind.Number)

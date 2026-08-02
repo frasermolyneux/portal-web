@@ -10,10 +10,9 @@
 }
 
 @functions {
-    static string GetCfg(IReadOnlyDictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop)
+    static string GetCfg(IReadOnlyDictionary<Guid, Dictionary<string, JsonElement>> configs, Guid id, string ns, string prop)
     {
-        if (configs is not null
-            && configs.TryGetValue(id, out var nc)
+        if (configs.TryGetValue(id, out var nc)
             && nc.TryGetValue(ns, out var r)
             && r.TryGetProperty(prop, out var v)
             && v.ValueKind == JsonValueKind.String)
@@ -21,10 +20,9 @@
         return string.Empty;
     }
 
-    static int GetCfgInt(IReadOnlyDictionary<Guid, Dictionary<string, JsonElement>>? configs, Guid id, string ns, string prop, int def = 0)
+    static int GetCfgInt(IReadOnlyDictionary<Guid, Dictionary<string, JsonElement>> configs, Guid id, string ns, string prop, int def = 0)
     {
-        if (configs is not null
-            && configs.TryGetValue(id, out var nc)
+        if (configs.TryGetValue(id, out var nc)
             && nc.TryGetValue(ns, out var r)
             && r.TryGetProperty(prop, out var v)
             && v.ValueKind == JsonValueKind.Number)
