@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Client;
 using MX.Observability.ApplicationInsights.AspNetCore;
@@ -15,9 +14,6 @@ using System.Text.Json.Serialization;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Forums.Extensions;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
-using XtremeIdiots.Portal.Repository.Abstractions.Interfaces.V1;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
@@ -110,28 +106,21 @@ public static class PortalWebApplication
 
         builder.Services.AddRepositoryApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))
-            .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "RepositoryApi:ApplicationAudience", "RepositoryApi:ApplicationAudience configuration is required"))
-            // Repository client 4.2.21 ships library defaults that cache game-server and map reads
-            // in the client's in-process L1 (60s for game servers, 10min for maps). portal-web
-            // mutates both entity families (game server Create/Update/Delete/UpdateOrder and map
-            // Create/Update/Delete/UpdateImage/ClearImage/UpsertVote), and server-side Tiered tag
-            // invalidation cannot evict this process's L1. To preserve read-after-write freshness
-            // we opt into the library defaults but explicitly disable the client-side L1 for the
-            // read operations we mutate — the Repository API's server-side Tiered cache still
-            // provides consistency across replicas. User-profile / claims / auth surfaces and
-            // health/info probes are NotCached by the library defaults.
-            .WithCaching(cache => cache
-                .UseLibraryDefaults()
-                .NotCached<IGameServersApi, Task<ApiResult<GameServerDto>>>(
-                    api => api.GetGameServer(default, default))
-                .NotCached<IGameServersApi, Task<ApiResult<CollectionModel<GameServerDto>>>>(
-                    api => api.GetGameServers(default!, default!, default, default, default, default, default))
-                .NotCached<IMapsApi, Task<ApiResult<MapDto>>>(
-                    api => api.GetMap(default, default))
-                .NotCached<IMapsApi, Task<ApiResult<MapDto>>>(
-                    api => api.GetMap(default, default!, default))
-                .NotCached<IMapsApi, Task<ApiResult<CollectionModel<MapDto>>>>(
-                    api => api.GetMaps(default, default!, default, default!, default, default, default, default))));
+            .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "RepositoryApi:ApplicationAudience", "RepositoryApi:ApplicationAudience configuration is required")));
+        // NOTE (Repository client 4.2.21): the client library ships in-process L1 defaults for
+        // game-server reads (60s) and single/collection map reads (10min) which are enabled via
+        // .WithCaching(c => c.UseLibraryDefaults()). portal-web mutates both entity families in
+        // the same process (game server Create/Update/Delete/UpdateOrder; map Create/Update/
+        // Delete/UpdateImage/ClearImage/UpsertVote), and the Repository API's server-side Tiered
+        // tag invalidation cannot evict this process's L1 — that would produce read-after-write
+        // staleness. MX.Api.Client 2.3.76's composite CacheBuilder cannot express per-sub-API
+        // overrides against the RepositoryApiClient because SetOperation validates the expression
+        // against the CacheBuilder's single _configuredClientType. Per the task guardrail
+        // ("prefer correctness over maximizing hit rate") we therefore do NOT opt into
+        // UseLibraryDefaults() at all and rely solely on the Repository API's server-side Tiered
+        // cache (game-server single/list, dashboard, configuration single/collection, single-map)
+        // which invalidates transparently on write. User profile/claims/auth surfaces and
+        // mutations remain uncached end-to-end.
 
         builder.Services.AddServersApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "ServersIntegrationApi:BaseUrl", "ServersIntegrationApi:BaseUrl configuration is required"))
