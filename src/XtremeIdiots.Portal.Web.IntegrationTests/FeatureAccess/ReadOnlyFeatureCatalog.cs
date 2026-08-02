@@ -19,12 +19,17 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 /// <see langword="false"/>; the access boundary is still validated for these, but the strict
 /// render assertion is skipped. This reflects the mocked test host, not production behaviour.
 /// </param>
+/// <param name="AuthorizedRedirectPath">
+/// Optional safe landing path for authorized roles whose requested route redirects based on scope.
+/// When set, the render test accepts either a 200 response or a redirect to this exact path.
+/// </param>
 internal sealed record ReadOnlyFeature(
     string Name,
     string Route,
     PortalRoleSet AllowedRoles,
     bool AllowAnonymous = false,
-    bool RendersUnderMock = true);
+    bool RendersUnderMock = true,
+    string? AuthorizedRedirectPath = null);
 
 /// <summary>
 /// Source-of-truth catalog of read-only web feature landing pages and their expected access.
@@ -85,7 +90,7 @@ internal static class ReadOnlyFeatureCatalog
         new("Credentials", "/Credentials", AllAdmins, RendersUnderMock: false),
 
         // Players_Read (Moderator and above).
-        new("Players - Global Index", "/Players", AllAdmins),
+        new("Players - Global Index", "/Players", AllAdmins, AuthorizedRedirectPath: "/Players/GameIndex/CallOfDuty4"),
         new("Protected Names", "/ProtectedNames", AllAdmins, RendersUnderMock: false),
 
         // Users_Read (HeadAdmin and above).
