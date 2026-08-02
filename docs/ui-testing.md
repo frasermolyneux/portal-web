@@ -89,3 +89,40 @@ Current Pack D coverage includes:
 - CoD4x plugin install, rollback, and unload request contracts; runtime-state preservation; Linux artifact metadata; direct and role authorization; client/server validation; malformed/unavailable settings; and repository queue failures.
 
 These workflows also guard degraded player-tag rendering, Development runtime compilation of the Admin Actions view component, and server-side validation of visible Summernote text. Other Phase 3 domain packs remain separate and can be added under `Workflows/<Domain>/` without changing the shared host.
+
+## Bug-hunting playbook
+
+Use the suite as an executable investigation tool rather than writing broad browser coverage first:
+
+1. Start from the owning controller, Razor view, JavaScript module, authorization handler, and typed-client call. State one falsifiable behavior hypothesis.
+2. Add the smallest Given/When/Then scenario that distinguishes the expected behavior from the suspected defect. Keep real application composition, middleware, antiforgery, model binding, policies, handlers, and serializers active.
+3. Replace only external dependencies owned by the scenario. Record exact downstream DTOs and operation ordering in thread-safe queues. Use Playwright routing only when the browser behavior itself needs a controlled response sequence, such as polling races.
+4. Cover both UI visibility and forged direct requests for authorization-sensitive actions. Role success alone is insufficient; include direct grants and mismatched game/server scopes where applicable.
+5. Start response waits before the triggering click, match the exact HTTP method and route path, and use retrying `Assertions.Expect` checks for asynchronous DOM state. Do not use arbitrary sleeps as the primary synchronization mechanism.
+6. Run the focused feature category while iterating. When a scenario exposes a production defect, fix the controlling path and retain the scenario as the regression specification.
+7. Before completion, run the complete isolated suite, CI-equivalent unit/build checks, format verification, and the required `code-review` agent.
+
+All `@workflow` scenarios remain serialized. A scenario owns one browser fixture and must not replace it without disposing the previous Kestrel host and browser context.
+
+## Lessons from discovered defects
+
+The current workflows have repeatedly found these defect classes:
+
+- HTTP 200 responses containing `{ success: false }` being displayed as success because JavaScript checked only transport success.
+- Buttons rendered on one tab but bound only after a different tab was opened.
+- UI authorization flags that did not include every policy enforced by the POST endpoint.
+- Role claims checked by type without validating their game-scoped value.
+- Client-posted slot, GUID, or display-name values being trusted for RCON targeting and audit records instead of resolving a fresh canonical server/repository identity.
+- Successful external side effects followed by failed persistence being reported as complete success or omitted from telemetry.
+- Polling modules overlapping requests, losing cursors on empty responses, polling while hidden, retaining stale rows after source changes, or mutating state after disposal.
+- Text escaping being reused in HTML attribute contexts where quotes also require encoding.
+- Server-originated names or messages reaching Toastr without `escapeHtml` enabled.
+- Whole-document settings updates overwriting independently owned runtime state.
+
+Strict browser diagnostics are intentional. Unexpected external requests, same-origin request failures, HTTP errors, console errors, and page errors should be treated as defects until disproved. If cancellation is expected behavior, assert exactly one expected method/path and the browser abort reason rather than adding a broad allowlist. A one-off static asset failure should be reproduced with the focused pack; do not suppress it merely because a rerun passes.
+
+## Known boundaries
+
+- CoD4x lifecycle requests currently use whole-document `UpsertConfiguration`. In-process locking and pending-request rejection prevent duplicate requests within one portal process, but safe cross-process/agent concurrency requires an atomic operation-request endpoint or ETag/conditional write in `portal-repository`. `portal-web` currently consumes Repository packages `4.2.16`; complete the owner change, publish new packages, then update the consumer. Do not bridge this boundary with copied contracts or direct HTTP calls.
+- Screenshot configuration is covered by existing parser, serializer, view-model, and controller tests. Runtime screenshot capture, gallery, and delete workflows were skipped because `portal-web` currently has policies but no product endpoints or views for those operations.
+- The current validated baseline is 109 isolated UI integration tests and 352 unit tests. The full browser suite remains below the ten-minute budget, but continue measuring runtime as new packs are added.
