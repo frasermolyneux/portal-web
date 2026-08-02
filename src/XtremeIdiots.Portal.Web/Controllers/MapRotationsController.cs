@@ -374,14 +374,28 @@ public class MapRotationsController(
             var assignmentOperations = new Dictionary<Guid, List<MapRotationAssignmentOperationDto>>();
             if (rotation.ServerAssignments?.Count > 0)
             {
+                var gameServerIds = rotation.ServerAssignments
+                    .Select(a => a.GameServerId)
+                    .Distinct()
+                    .ToArray();
+
+                if (gameServerIds.Length > 0)
+                {
+                    var serversResponse = await repositoryApiClient.GameServers.V1
+                        .GetGameServers(null, gameServerIds, null, 0, gameServerIds.Length, null, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (serversResponse.IsSuccess && serversResponse.Result?.Data?.Items is not null)
+                    {
+                        foreach (var server in serversResponse.Result.Data.Items)
+                        {
+                            ViewData[$"Server_{server.GameServerId}"] = server;
+                        }
+                    }
+                }
+
                 foreach (var assignment in rotation.ServerAssignments)
                 {
-                    var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
-                    if (serverResponse.IsSuccess && serverResponse.Result?.Data != null)
-                    {
-                        ViewData[$"Server_{assignment.GameServerId}"] = serverResponse.Result.Data;
-                    }
-
                     var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(assignment.MapRotationServerAssignmentId, 0, 10, cancellationToken).ConfigureAwait(false);
                     if (opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null)
                     {
