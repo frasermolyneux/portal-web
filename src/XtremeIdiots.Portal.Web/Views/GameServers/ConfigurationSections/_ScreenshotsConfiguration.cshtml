@@ -20,12 +20,9 @@
                            id="ScreenshotConfigDirectoryPath" />
                     @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
                     {
-                        <button class="btn btn-outline-secondary" type="button"
-                                data-file-browser
-                                data-server-id="@Model.GameServer.GameServerId"
-                                data-target-id="ScreenshotConfigDirectoryPath"
-                                data-selection-mode="directory"
-                                data-initial-path-source="ScreenshotConfigDirectoryPath">
+                        <button class="btn btn-outline-secondary" type="button" data-file-browser
+                                data-server-id="@Model.GameServer.GameServerId" data-target-id="ScreenshotConfigDirectoryPath"
+                                data-selection-mode="directory" data-initial-path-source="ScreenshotConfigDirectoryPath">
                             <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
                         </button>
                     }

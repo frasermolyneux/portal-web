@@ -64,6 +64,7 @@ dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web
 dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=map-control"
 dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=player-moderation"
 dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=server-feed"
+dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=cod4x-lifecycle"
 ```
 
 When adding a workflow, place its feature, bindings, and scenario fake together under `Workflows/<Domain>/`. Use scenario outlines for behavior permutations, keep technical setup out of feature wording, and use domain-specific step phrases because bindings are global within the Reqnroll project.
@@ -85,5 +86,6 @@ Current Pack D coverage includes:
 - Map loading, restart, fast restart, and next-map commands; the separate server-restart permission; direct-grant UI boundaries; forged restart denial; exact CoD4 RCON dispatch; and backend failure feedback.
 - Connected-player Kick, TempBan, and Ban actions; independent direct Kick/Ban grants; Moderator Kick access; canonical live slot/GUID/name binding; forged identity, stale-slot, mismatched-search, and HTML-bearing-name defenses; exact CoD4 commands; admin-action persistence; and explicit RCON-success/persistence-failure feedback.
 - Unified server feed rendering and HTML safety, event filtering, source-toggle cursor resets, pause/resume buffering, item deduplication, overrun notices, background-page suppression, overlap prevention, forced reload supersession, and disposal.
+- CoD4x plugin install, rollback, and unload request contracts; runtime-state preservation; Linux artifact metadata; direct and role authorization; client/server validation; malformed/unavailable settings; and repository queue failures.
 
 These workflows also guard degraded player-tag rendering, Development runtime compilation of the Admin Actions view component, and server-side validation of visible Summernote text. Other Phase 3 domain packs remain separate and can be added under `Workflows/<Domain>/` without changing the shared host.

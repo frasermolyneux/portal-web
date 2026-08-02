@@ -10,6 +10,7 @@ using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -67,6 +68,7 @@ public class ServerAdminController(
         "connectionstring",
         "connection_string"
     ];
+    private readonly static ConcurrentDictionary<Guid, SemaphoreSlim> cod4xLifecycleLocks = new();
 
     private readonly static JsonSerializerOptions cod4xPluginJsonOptions = new()
     {
@@ -1075,133 +1077,143 @@ public class ServerAdminController(
                 return lifecycleAuthResult;
             }
 
-            if (!Enum.IsDefined(action) || action == Cod4xPluginOperationAction.Unknown)
+            var lifecycleLock = cod4xLifecycleLocks.GetOrAdd(id, static _ => new SemaphoreSlim(1, 1));
+            await lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                return Json(new { success = false, message = "A valid CoD4x plugin operation is required." });
-            }
 
-            var normalizedTargetVersion = string.IsNullOrWhiteSpace(targetVersion)
-                ? null
-                : targetVersion.Trim();
-            string? installArtifactPath = null;
-            var installArtifactPlatform = gameServerData.Platform;
-
-            if (action == Cod4xPluginOperationAction.Install && string.IsNullOrWhiteSpace(normalizedTargetVersion))
-            {
-                return Json(new { success = false, message = "Target version is required for install operations." });
-            }
-
-            if (action == Cod4xPluginOperationAction.Install && normalizedTargetVersion is not null)
-            {
-                if (normalizedTargetVersion.Length > Cod4xPluginSettingsConstants.MaxVersionLength)
+                if (!Enum.IsDefined(action) || action == Cod4xPluginOperationAction.Unknown)
                 {
-                    return Json(new { success = false, message = $"Target version must be {Cod4xPluginSettingsConstants.MaxVersionLength} characters or fewer." });
+                    return Json(new { success = false, message = "A valid CoD4x plugin operation is required." });
                 }
 
-                if (!IsValidCod4xTargetVersion(normalizedTargetVersion))
+                var normalizedTargetVersion = string.IsNullOrWhiteSpace(targetVersion)
+                    ? null
+                    : targetVersion.Trim();
+                string? installArtifactPath = null;
+                var installArtifactPlatform = gameServerData.Platform;
+
+                if (action == Cod4xPluginOperationAction.Install && string.IsNullOrWhiteSpace(normalizedTargetVersion))
                 {
-                    return Json(new { success = false, message = "Target version contains invalid characters." });
+                    return Json(new { success = false, message = "Target version is required for install operations." });
                 }
 
-                var artifactPlatformResolution = await TryResolveCod4xInstallArtifactPlatformAsync(
-                    normalizedTargetVersion,
-                    gameServerData.Platform,
-                    cancellationToken).ConfigureAwait(false);
-
-                if (!artifactPlatformResolution.IsSuccess)
+                if (action == Cod4xPluginOperationAction.Install && normalizedTargetVersion is not null)
                 {
-                    return Json(new { success = false, message = artifactPlatformResolution.ErrorMessage ?? "Unable to resolve requested CoD4x plugin artifact." });
+                    if (normalizedTargetVersion.Length > Cod4xPluginSettingsConstants.MaxVersionLength)
+                    {
+                        return Json(new { success = false, message = $"Target version must be {Cod4xPluginSettingsConstants.MaxVersionLength} characters or fewer." });
+                    }
+
+                    if (!IsValidCod4xTargetVersion(normalizedTargetVersion))
+                    {
+                        return Json(new { success = false, message = "Target version contains invalid characters." });
+                    }
+
+                    var artifactPlatformResolution = await TryResolveCod4xInstallArtifactPlatformAsync(
+                        normalizedTargetVersion,
+                        gameServerData.Platform,
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (!artifactPlatformResolution.IsSuccess)
+                    {
+                        return Json(new { success = false, message = artifactPlatformResolution.ErrorMessage ?? "Unable to resolve requested CoD4x plugin artifact." });
+                    }
+
+                    installArtifactPlatform = artifactPlatformResolution.Platform;
+                    installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, installArtifactPlatform);
                 }
 
-                installArtifactPlatform = artifactPlatformResolution.Platform;
-                installArtifactPath = BuildCod4xArtifactPath(normalizedTargetVersion, installArtifactPlatform);
-            }
-
-            if (action != Cod4xPluginOperationAction.Install)
-            {
-                normalizedTargetVersion = null;
-            }
-
-            var configResult = await repositoryApiClient.GameServerConfigurations.V1.GetConfigurations(id, cancellationToken).ConfigureAwait(false);
-            if (!configResult.IsSuccess || configResult.Result?.Data?.Items is null)
-            {
-                Logger.LogWarning("Failed to load game server configurations for CoD4x operation request on server {ServerId}", id);
-                return Json(new { success = false, message = "Unable to load current CoD4x plugin settings." });
-            }
-
-            var existingCod4xPluginConfig = configResult.Result.Data.Items.FirstOrDefault(static config =>
-                string.Equals(config.Namespace, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase));
-
-            Cod4xPluginSettingsDocument cod4xPluginSettings;
-            if (existingCod4xPluginConfig is null || string.IsNullOrWhiteSpace(existingCod4xPluginConfig.Configuration))
-            {
-                cod4xPluginSettings = new Cod4xPluginSettingsDocument();
-            }
-            else if (!Cod4xPluginSettingsJsonHelper.TryDeserialize(
-                existingCod4xPluginConfig.Configuration,
-                cod4xPluginJsonOptions,
-                out var existingCod4xPluginSettings)
-                || existingCod4xPluginSettings is null)
-            {
-                Logger.LogWarning("Failed to parse existing CoD4x plugin configuration for server {ServerId}", id);
-                return Json(new { success = false, message = "Unable to parse current CoD4x plugin settings." });
-            }
-            else
-            {
-                cod4xPluginSettings = existingCod4xPluginSettings;
-            }
-
-            var requestedAtUtc = DateTimeOffset.UtcNow;
-            var operationId = Guid.NewGuid().ToString("N");
-            var requestedBy = User.Username() ?? "unknown";
-            cod4xPluginSettings.SchemaVersion = Cod4xPluginSettingsConstants.SchemaVersion;
-            cod4xPluginSettings.OperationRequest = new Cod4xPluginOperationRequest
-            {
-                OperationId = operationId,
-                Action = action,
-                TargetVersion = normalizedTargetVersion,
-                RequestedAtUtc = requestedAtUtc,
-                RequestedBy = requestedBy
-            };
-
-            if (action == Cod4xPluginOperationAction.Install && !string.IsNullOrWhiteSpace(installArtifactPath))
-            {
-                var extensionData = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+                if (action != Cod4xPluginOperationAction.Install)
                 {
-                    ["artifactPath"] = SystemTextJsonSerializer.SerializeToElement(installArtifactPath),
-                    ["artifactBlobPath"] = SystemTextJsonSerializer.SerializeToElement(
-                        BuildCod4xArtifactBlobPath(normalizedTargetVersion!, installArtifactPlatform))
+                    normalizedTargetVersion = null;
+                }
+
+                var configResult = await repositoryApiClient.GameServerConfigurations.V1.GetConfigurations(id, cancellationToken).ConfigureAwait(false);
+                if (!configResult.IsSuccess || configResult.Result?.Data?.Items is null)
+                {
+                    Logger.LogWarning("Failed to load game server configurations for CoD4x operation request on server {ServerId}", id);
+                    return Json(new { success = false, message = "Unable to load current CoD4x plugin settings." });
+                }
+
+                var existingCod4xPluginConfig = configResult.Result.Data.Items.FirstOrDefault(static config =>
+                    string.Equals(config.Namespace, Cod4xPluginSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase));
+
+                Cod4xPluginSettingsDocument cod4xPluginSettings;
+                if (existingCod4xPluginConfig is null || string.IsNullOrWhiteSpace(existingCod4xPluginConfig.Configuration))
+                {
+                    cod4xPluginSettings = new Cod4xPluginSettingsDocument();
+                }
+                else if (!Cod4xPluginSettingsJsonHelper.TryDeserialize(
+                    existingCod4xPluginConfig.Configuration,
+                    cod4xPluginJsonOptions,
+                    out var existingCod4xPluginSettings)
+                    || existingCod4xPluginSettings is null)
+                {
+                    Logger.LogWarning("Failed to parse existing CoD4x plugin configuration for server {ServerId}", id);
+                    return Json(new { success = false, message = "Unable to parse current CoD4x plugin settings." });
+                }
+                else
+                {
+                    cod4xPluginSettings = existingCod4xPluginSettings;
+                }
+
+                if (cod4xPluginSettings.OperationRequest is { Action: not Cod4xPluginOperationAction.Unknown })
+                {
+                    return Json(new { success = false, message = "A CoD4x plugin operation request is already pending." });
+                }
+
+                var requestedAtUtc = DateTimeOffset.UtcNow;
+                var operationId = Guid.NewGuid().ToString("N");
+                var requestedBy = User.Username() ?? "unknown";
+                cod4xPluginSettings.SchemaVersion = Cod4xPluginSettingsConstants.SchemaVersion;
+                cod4xPluginSettings.OperationRequest = new Cod4xPluginOperationRequest
+                {
+                    OperationId = operationId,
+                    Action = action,
+                    TargetVersion = normalizedTargetVersion,
+                    RequestedAtUtc = requestedAtUtc,
+                    RequestedBy = requestedBy
                 };
 
-                var artifactsStorageAccountName = Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"];
-                if (!string.IsNullOrWhiteSpace(artifactsStorageAccountName))
+                if (action == Cod4xPluginOperationAction.Install && !string.IsNullOrWhiteSpace(installArtifactPath))
                 {
-                    extensionData["artifactStorageAccountName"] = SystemTextJsonSerializer.SerializeToElement(artifactsStorageAccountName);
+                    var extensionData = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["artifactPath"] = SystemTextJsonSerializer.SerializeToElement(installArtifactPath),
+                        ["artifactBlobPath"] = SystemTextJsonSerializer.SerializeToElement(
+                            BuildCod4xArtifactBlobPath(normalizedTargetVersion!, installArtifactPlatform))
+                    };
+
+                    var artifactsStorageAccountName = Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"];
+                    if (!string.IsNullOrWhiteSpace(artifactsStorageAccountName))
+                    {
+                        extensionData["artifactStorageAccountName"] = SystemTextJsonSerializer.SerializeToElement(artifactsStorageAccountName.Trim());
+                    }
+
+                    var artifactsContainerName = Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"];
+                    if (!string.IsNullOrWhiteSpace(artifactsContainerName))
+                    {
+                        extensionData["artifactContainerName"] = SystemTextJsonSerializer.SerializeToElement(artifactsContainerName.Trim());
+                    }
+
+                    cod4xPluginSettings.OperationRequest.ExtensionData = extensionData;
                 }
 
-                var artifactsContainerName = Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"];
-                if (!string.IsNullOrWhiteSpace(artifactsContainerName))
+                var serializedConfiguration = SystemTextJsonSerializer.Serialize(cod4xPluginSettings, cod4xPluginJsonOptions);
+                var upsertResult = await repositoryApiClient.GameServerConfigurations.V1.UpsertConfiguration(
+                    id,
+                    Cod4xPluginSettingsConstants.Namespace,
+                    new UpsertConfigurationDto { Configuration = serializedConfiguration },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!upsertResult.IsSuccess)
                 {
-                    extensionData["artifactContainerName"] = SystemTextJsonSerializer.SerializeToElement(artifactsContainerName);
+                    Logger.LogWarning("Failed to persist CoD4x plugin lifecycle request for server {ServerId}", id);
+                    return Json(new { success = false, message = "Failed to queue CoD4x plugin operation request." });
                 }
 
-                cod4xPluginSettings.OperationRequest.ExtensionData = extensionData;
-            }
-
-            var serializedConfiguration = SystemTextJsonSerializer.Serialize(cod4xPluginSettings, cod4xPluginJsonOptions);
-            var upsertResult = await repositoryApiClient.GameServerConfigurations.V1.UpsertConfiguration(
-                id,
-                Cod4xPluginSettingsConstants.Namespace,
-                new UpsertConfigurationDto { Configuration = serializedConfiguration },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!upsertResult.IsSuccess)
-            {
-                Logger.LogWarning("Failed to persist CoD4x plugin lifecycle request for server {ServerId}", id);
-                return Json(new { success = false, message = "Failed to queue CoD4x plugin operation request." });
-            }
-
-            TrackSuccessTelemetry("CoD4xPluginOperationRequested", nameof(RequestCod4xPluginOperation), new Dictionary<string, string>
+                TrackSuccessTelemetry("CoD4xPluginOperationRequested", nameof(RequestCod4xPluginOperation), new Dictionary<string, string>
             {
                 { "ServerId", id.ToString() },
                 { "Action", action.ToString() },
@@ -1209,15 +1221,20 @@ public class ServerAdminController(
                 { "RequestedBy", requestedBy }
             });
 
-            return Json(new
+                return Json(new
+                {
+                    success = true,
+                    operationId,
+                    action = action.ToString(),
+                    targetVersion = normalizedTargetVersion,
+                    requestedAtUtc = requestedAtUtc,
+                    message = "CoD4x plugin operation request queued successfully."
+                });
+            }
+            finally
             {
-                success = true,
-                operationId,
-                action = action.ToString(),
-                targetVersion = normalizedTargetVersion,
-                requestedAtUtc = requestedAtUtc,
-                message = "CoD4x plugin operation request queued successfully."
-            });
+                lifecycleLock.Release();
+            }
         }, nameof(RequestCod4xPluginOperation)).ConfigureAwait(false);
     }
 
@@ -1285,6 +1302,13 @@ public class ServerAdminController(
     {
         if (!TryCreateCod4xArtifactContainerClient(out var containerClient, out var configurationError))
         {
+            var storageAccountConfigured = !string.IsNullOrWhiteSpace(Configuration["CoD4xPluginLifecycle:ArtifactsStorageAccountName"]);
+            var containerConfigured = !string.IsNullOrWhiteSpace(Configuration["CoD4xPluginLifecycle:ArtifactsContainerName"]);
+            if (storageAccountConfigured || containerConfigured)
+            {
+                return Cod4xArtifactPlatformResolution.Failure(configurationError);
+            }
+
             if (requestedPlatform is not (GameServerPlatform.Windows or GameServerPlatform.Linux))
             {
                 return Cod4xArtifactPlatformResolution.Failure(
@@ -1307,56 +1331,19 @@ public class ServerAdminController(
                     $"Game server platform '{requestedPlatform}' is not supported for CoD4x plugin installation.");
             }
 
-            var versionPrefix = $"{Cod4xArtifactsPrefix.TrimEnd('/')}/{targetVersion.Trim('/')}/";
-            var windowsPrefix = $"{versionPrefix}windows/";
-            var linuxPrefix = $"{versionPrefix}linux/";
-
-            var hasWindowsArtifacts = false;
-            var hasLinuxArtifacts = false;
-
-            await foreach (var blobItem in containerClient
-                               .GetBlobsByHierarchyAsync(
-                                   traits: Azure.Storage.Blobs.Models.BlobTraits.None,
-                                   states: Azure.Storage.Blobs.Models.BlobStates.None,
-                                   delimiter: "/",
-                                   prefix: versionPrefix,
-                                   cancellationToken: cancellationToken)
-                               .ConfigureAwait(false))
-            {
-                if (!blobItem.IsPrefix || string.IsNullOrWhiteSpace(blobItem.Prefix))
-                {
-                    continue;
-                }
-
-                if (blobItem.Prefix.Equals(windowsPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    hasWindowsArtifacts = true;
-                    continue;
-                }
-
-                if (blobItem.Prefix.Equals(linuxPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    hasLinuxArtifacts = true;
-                }
-            }
-
-            if (!hasWindowsArtifacts && !hasLinuxArtifacts)
-            {
-                return Cod4xArtifactPlatformResolution.Failure($"No published CoD4x plugin artifacts were found for version '{targetVersion}'.");
-            }
-
-            if (!TryResolveCod4xArtifactPlatform(
-                    requestedPlatform,
-                    hasWindowsArtifacts,
-                    hasLinuxArtifacts,
-                    out var resolvedPlatform))
+            var artifactBlobPath = BuildCod4xArtifactBlobPath(targetVersion, requestedPlatform);
+            var artifactExists = await containerClient
+                .GetBlobClient(artifactBlobPath)
+                .ExistsAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (!artifactExists.Value)
             {
                 var expectedPlatformFolder = requestedPlatform == GameServerPlatform.Windows ? "windows" : "linux";
                 return Cod4xArtifactPlatformResolution.Failure(
                     $"No published CoD4x plugin artifacts were found for version '{targetVersion}' and platform '{expectedPlatformFolder}'.");
             }
 
-            return Cod4xArtifactPlatformResolution.Success(resolvedPlatform);
+            return Cod4xArtifactPlatformResolution.Success(requestedPlatform);
         }
         catch (Exception ex) when (ex is RequestFailedException or CredentialUnavailableException or AuthenticationFailedException)
         {
@@ -1630,10 +1617,10 @@ public class ServerAdminController(
             ? DefaultCod4xPluginArtifactRoot
             : configuredRootPath;
 
-        var artifactBlobPath = BuildCod4xArtifactBlobPath(targetVersion, platform)
-            .Replace('/', Path.DirectorySeparatorChar);
-
-        return Path.Combine(artifactRootPath, artifactBlobPath);
+        var separator = platform == GameServerPlatform.Windows ? '\\' : '/';
+        var normalizedRoot = artifactRootPath.Replace('\\', separator).Replace('/', separator).TrimEnd(separator);
+        var artifactRelativePath = BuildCod4xArtifactBlobPath(targetVersion, platform).Replace('/', separator);
+        return $"{normalizedRoot}{separator}{artifactRelativePath}";
     }
 
     private static string BuildCod4xArtifactBlobPath(string targetVersion, GameServerPlatform platform)

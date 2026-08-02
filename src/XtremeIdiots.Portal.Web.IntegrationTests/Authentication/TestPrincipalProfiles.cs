@@ -9,6 +9,7 @@ internal static class TestPrincipalProfiles
     public const string GameAdmin = "game-admin";
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
+    public const string Cod4xLifecycleManager = "cod4x-lifecycle-manager";
     public const string LiveServerMap = "live-server-map";
     public const string LiveServerBan = "live-server-ban";
     public const string LiveServerKick = "live-server-kick";
@@ -22,7 +23,13 @@ internal static class TestPrincipalProfiles
     {
         var claims = CreateIdentityClaims();
 
-        if (profile == GameServerWriterWithoutRcon)
+        if (profile == Cod4xLifecycleManager)
+        {
+            claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4x.ToString()));
+            claims.Add(new Claim(AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x.ToString()));
+            claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4x.ToString()));
+        }
+        else if (profile == GameServerWriterWithoutRcon)
         {
             claims.Add(new Claim(AdditionalPermission.GameServers_Read, GameType.CallOfDuty4.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Write, GameType.CallOfDuty4.ToString()));

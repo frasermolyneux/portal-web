@@ -62,12 +62,12 @@
                 </button>
             </li>
         }
-        @if (Model.CanViewStatus)
+        @if (Model.CanViewStatus || Model.GameServer.GameType == GameType.CallOfDuty4x)
         {
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="agentstatus-tab" data-bs-toggle="tab" data-bs-target="#agentstatus"
                         type="button" role="tab" aria-controls="agentstatus" aria-selected="false">
-                    <i class="fa-solid fa-fw fa-robot"></i> Agent & Ban File
+                    <i class="fa-solid fa-fw fa-robot" aria-hidden="true"></i> Agent & Ban File
                 </button>
             </li>
         }
@@ -368,10 +368,12 @@
         }
 
         @* ═══ AGENT & BAN FILE TAB ═══ *@
-        @if (Model.CanViewStatus)
+        @if (Model.CanViewStatus || Model.GameServer.GameType == GameType.CallOfDuty4x)
         {
             <div class="tab-pane fade" id="agentstatus" role="tabpanel" aria-labelledby="agentstatus-tab">
                 <div class="row">
+                    @if (Model.CanViewStatus)
+                    {
                     <div class="col-md-6">
                         <div class="ibox">
                             <div class="ibox-title"><h5>Agent Telemetry</h5></div>
@@ -413,13 +415,16 @@
                                 else
                                 {
                                     <div class="alert alert-warning mb-0">
-                                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Agent telemetry is unavailable for this server.
+                                        <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Agent telemetry is unavailable for this server.
                                     </div>
                                 }
                             </div>
                         </div>
                     </div>
+                    }
                     <div class="col-md-6">
+                        @if (Model.CanViewStatus)
+                        {
                         <div class="ibox">
                             <div class="ibox-title"><h5>Ban File Monitors</h5></div>
                             <div class="ibox-content">
@@ -469,6 +474,7 @@
                                 }
                             </div>
                         </div>
+                        }
 
                         @if (Model.GameServer.GameType == GameType.CallOfDuty4x)
                         {
@@ -489,7 +495,7 @@
                                         <dd class="col-7">@(Model.Cod4xRuntimePreviousKnownGoodVersion ?? "-")</dd>
 
                                         <dt class="col-5">Last Status</dt>
-                                        <dd class="col-7" id="sd-cod4x-lastStatus">@Model.Cod4xRuntimeLastOperationStatus</dd>
+                                        <dd class="col-7" id="sd-cod4x-lastStatus" data-testid="cod4x-last-status">@Model.Cod4xRuntimeLastOperationStatus</dd>
 
                                         <dt class="col-5">Last Operation</dt>
                                         <dd class="col-7">@(Model.Cod4xRuntimeLastOperationId ?? "-")</dd>
@@ -501,7 +507,7 @@
                                         <dd class="col-7">
                                             @if (Model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown)
                                             {
-                                                <span>@Model.Cod4xOperationRequestAction</span>
+                                                <span data-testid="cod4x-pending-request">@Model.Cod4xOperationRequestAction</span>
                                                 @if (!string.IsNullOrWhiteSpace(Model.Cod4xOperationRequestTargetVersion))
                                                 {
                                                     <span> (@Model.Cod4xOperationRequestTargetVersion)</span>
@@ -509,7 +515,7 @@
                                             }
                                             else
                                             {
-                                                <span>-</span>
+                                                <span data-testid="cod4x-pending-request">-</span>
                                             }
                                         </dd>
                                     </dl>
@@ -547,19 +553,20 @@
                                                 <input id="sd-cod4x-targetVersion"
                                                        type="text"
                                                        class="form-control"
+                                                          data-testid="cod4x-target-version"
                                                        value="@selectedCod4xTargetVersion"
                                                        placeholder="e.g. v1.2.4" />
                                                 <small class="form-text text-muted">Published versions were not discovered, so enter the target version manually.</small>
                                             }
                                         </div>
                                         <div class="d-grid gap-2">
-                                            <button id="sd-cod4x-install" type="button" class="btn btn-primary btn-sm">
+                                            <button id="sd-cod4x-install" type="button" class="btn btn-primary btn-sm" data-testid="cod4x-install" disabled="@(Model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown ? "disabled" : null)">
                                                 <i class="fa-solid fa-fw fa-download" aria-hidden="true"></i> Request Install
                                             </button>
-                                            <button id="sd-cod4x-rollback" type="button" class="btn btn-outline-secondary btn-sm">
+                                            <button id="sd-cod4x-rollback" type="button" class="btn btn-outline-secondary btn-sm" data-testid="cod4x-rollback" disabled="@(Model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown ? "disabled" : null)">
                                                 <i class="fa-solid fa-fw fa-rotate-left" aria-hidden="true"></i> Request Rollback
                                             </button>
-                                            <button id="sd-cod4x-unload" type="button" class="btn btn-outline-danger btn-sm">
+                                            <button id="sd-cod4x-unload" type="button" class="btn btn-outline-danger btn-sm" data-testid="cod4x-unload" disabled="@(Model.Cod4xOperationRequestAction != Cod4xPluginOperationAction.Unknown ? "disabled" : null)">
                                                 <i class="fa-solid fa-fw fa-eject" aria-hidden="true"></i> Request Unload
                                             </button>
                                         </div>
@@ -718,6 +725,9 @@
                 return;
             }
 
+            var lifecycleButtons = $('#sd-cod4x-install, #sd-cod4x-rollback, #sd-cod4x-unload');
+            var lifecycleRequestQueued = false;
+            lifecycleButtons.prop('disabled', true);
             $.ajax({
                 url: '/ServerAdmin/RequestCod4xPluginOperation',
                 type: 'POST',
@@ -729,6 +739,7 @@
                 },
                 success: function(response) {
                     if (response && response.success) {
+                        lifecycleRequestQueued = true;
                         toastr.success(response.message || 'CoD4x plugin operation requested.');
                         setTimeout(function () { window.location.reload(); }, 1200);
                         return;
@@ -741,6 +752,11 @@
                         ? xhr.responseJSON.message
                         : 'Failed to request CoD4x plugin operation.';
                     toastr.error(responseMessage);
+                },
+                complete: function() {
+                    if (!lifecycleRequestQueued) {
+                        lifecycleButtons.prop('disabled', false);
+                    }
                 }
             });
         }

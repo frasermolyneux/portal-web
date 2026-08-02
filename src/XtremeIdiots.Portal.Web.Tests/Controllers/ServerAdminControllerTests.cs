@@ -232,14 +232,6 @@ public class ServerAdminControllerTests
             .Callback<Guid, string, UpsertConfigurationDto, CancellationToken>((_, _, dto, _) => capturedUpsertDto = dto)
             .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
 
-        mockConfiguration
-            .Setup(x => x["CoD4xPluginLifecycle:ArtifactsStorageAccountName"])
-            .Returns("invalid account");
-
-        mockConfiguration
-            .Setup(x => x["CoD4xPluginLifecycle:ArtifactsContainerName"])
-            .Returns("invalid container");
-
         var sut = CreateSut();
 
         var result = await sut.RequestCod4xPluginOperation(
@@ -279,10 +271,8 @@ public class ServerAdminControllerTests
         Assert.Contains("/releases/1.2.4/", $"/{artifactBlobPath}", StringComparison.OrdinalIgnoreCase);
         Assert.Contains("/windows/", $"/{artifactBlobPath}", StringComparison.OrdinalIgnoreCase);
         Assert.EndsWith(".dll", artifactBlobPath, StringComparison.OrdinalIgnoreCase);
-        Assert.True(serializedDocument.OperationRequest.ExtensionData.TryGetValue("artifactStorageAccountName", out var artifactStorageAccountNameElement));
-        Assert.Equal(JsonValueKind.String, artifactStorageAccountNameElement.ValueKind);
-        Assert.True(serializedDocument.OperationRequest.ExtensionData.TryGetValue("artifactContainerName", out var artifactContainerNameElement));
-        Assert.Equal(JsonValueKind.String, artifactContainerNameElement.ValueKind);
+        Assert.False(serializedDocument.OperationRequest.ExtensionData.ContainsKey("artifactStorageAccountName"));
+        Assert.False(serializedDocument.OperationRequest.ExtensionData.ContainsKey("artifactContainerName"));
 
         Assert.NotNull(serializedDocument.RuntimeState);
         Assert.Equal("1.2.3", serializedDocument.RuntimeState!.CurrentVersion);
@@ -376,6 +366,42 @@ public class ServerAdminControllerTests
         Assert.False(payload.Value<bool>("success"));
         Assert.Contains("not supported", payload.Value<string>("message"), StringComparison.OrdinalIgnoreCase);
 
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            It.IsAny<Guid>(),
+            It.IsAny<string>(),
+            It.IsAny<UpsertConfigurationDto>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RequestCod4xPluginOperation_Install_WithInvalidArtifactStorageConfiguration_ReturnsFailure()
+    {
+        var serverId = Guid.NewGuid();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(
+                CreateGameServerDto(serverId, GameType.CallOfDuty4x, GameServerPlatform.Linux))));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockConfiguration
+            .Setup(x => x["CoD4xPluginLifecycle:ArtifactsStorageAccountName"])
+            .Returns("INVALID ACCOUNT");
+        mockConfiguration
+            .Setup(x => x["CoD4xPluginLifecycle:ArtifactsContainerName"])
+            .Returns("valid-container");
+
+        var sut = CreateSut();
+        var result = await sut.RequestCod4xPluginOperation(
+            serverId,
+            Cod4xPluginOperationAction.Install,
+            "1.2.4",
+            CancellationToken.None);
+
+        var payload = JObject.Parse(JsonConvert.SerializeObject(Assert.IsType<JsonResult>(result).Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("Artifacts storage account name is invalid.", payload.Value<string>("message"));
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.UpsertConfiguration(
             It.IsAny<Guid>(),
             It.IsAny<string>(),
