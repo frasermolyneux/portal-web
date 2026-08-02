@@ -91,9 +91,12 @@ public sealed class ReadOnlyFeatureAccessTests : IAsyncLifetime
 
                 var response = await SendAsync(feature.Route, role);
 
-                if (response.StatusCode != HttpStatusCode.OK)
+                if (response.StatusCode != HttpStatusCode.OK && !IsAuthorizedRedirect(response, feature))
                 {
-                    failures.Add($"{feature.Name} ({feature.Route}) [{role}]: expected 200 OK, got {Describe(response)}.");
+                    var expected = feature.AuthorizedRedirectPath is null
+                        ? "200 OK"
+                        : $"200 OK or redirect to {feature.AuthorizedRedirectPath}";
+                    failures.Add($"{feature.Name} ({feature.Route}) [{role}]: expected {expected}, got {Describe(response)}.");
                 }
             }
         }
@@ -123,6 +126,16 @@ public sealed class ReadOnlyFeatureAccessTests : IAsyncLifetime
 
         var location = response.Headers.Location?.ToString();
         return location is not null && location.Contains("Login", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAuthorizedRedirect(HttpResponseMessage response, ReadOnlyFeature feature)
+    {
+        return feature.AuthorizedRedirectPath is not null
+            && response.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.Found
+            && string.Equals(
+                response.Headers.Location?.ToString(),
+                feature.AuthorizedRedirectPath,
+                StringComparison.Ordinal);
     }
 
     private static string Describe(HttpResponseMessage response)

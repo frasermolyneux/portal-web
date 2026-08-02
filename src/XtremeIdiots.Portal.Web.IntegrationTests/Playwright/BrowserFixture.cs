@@ -136,9 +136,10 @@ internal sealed class BrowserFixture : IAsyncDisposable
                 await browser.DisposeAsync().ConfigureAwait(false);
             }
         }
-        catch (PlaywrightException) when (!browser.IsConnected)
+        catch (PlaywrightException exception)
+            when (!browser.IsConnected || exception.GetType().Name == "TargetClosedException")
         {
-            // The browser process can exit before teardown under resource pressure.
+            // The browser process can exit between the connection check and context disposal.
         }
         finally
         {

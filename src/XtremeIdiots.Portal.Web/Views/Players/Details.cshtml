@@ -19,10 +19,10 @@
 {
     var player = Model.Player;
 
-    // Detect active ban
+    var utcNow = DateTime.UtcNow;
     var activeBan = player.AdminActions?.FirstOrDefault(a =>
-        (a.Type == AdminActionType.Ban && a.Expires is null) ||
-        (a.Type == AdminActionType.TempBan && a.Expires > DateTime.UtcNow));
+        (a.Type == AdminActionType.Ban && (a.Expires is null || a.Expires > utcNow)) ||
+        (a.Type == AdminActionType.TempBan && a.Expires > utcNow));
 
     // Admin action counts by type
     var adminActions = player.AdminActions ?? new List<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions.AdminActionDto>();

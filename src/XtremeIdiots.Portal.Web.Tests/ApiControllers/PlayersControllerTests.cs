@@ -1,5 +1,6 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -16,12 +17,14 @@ using System.Text;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Auth.Constants;
 using PlayersApiController = XtremeIdiots.Portal.Web.ApiControllers.PlayersController;
 
 namespace XtremeIdiots.Portal.Web.Tests.ApiControllers;
 
 public class PlayersControllerTests
 {
+    private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new();
     private readonly Mock<IGeoLocationApiClient> mockGeoLocationApiClient = new();
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
@@ -29,9 +32,20 @@ public class PlayersControllerTests
     private readonly Mock<IConfiguration> mockConfiguration = new();
     private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
+    public PlayersControllerTests()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object>(),
+                It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+    }
+
     private PlayersApiController CreateSut(ClaimsPrincipal? user = null)
     {
         var controller = new PlayersApiController(
+            mockAuthorizationService.Object,
             mockRepositoryApiClient.Object,
             mockGeoLocationApiClient.Object,
             telemetryClient,
@@ -46,6 +60,66 @@ public class PlayersControllerTests
 
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         return controller;
+    }
+
+    [Fact]
+    public async Task GetPlayersAjax_OutsideGameScope_ReturnsForbidden()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                GameType.CallOfDuty2,
+                AuthPolicies.Players_Read))
+            .ReturnsAsync(AuthorizationResult.Failed());
+        var sut = CreateSut();
+
+        var result = await sut.GetPlayersAjax(
+            GameType.CallOfDuty2,
+            PlayersFilter.UsernameAndGuid,
+            null,
+            CancellationToken.None);
+
+        Assert.IsType<ForbidResult>(result);
+        mockRepositoryApiClient.Verify(
+            x => x.Players.V1.GetPlayers(
+                It.IsAny<GameType?>(),
+                It.IsAny<PlayersFilter?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<PlayersOrder?>(),
+                It.IsAny<PlayerEntityOptions>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetPlayersAjax_AllGamesWithoutEveryGameScope_ReturnsForbidden()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                GameType.CallOfDuty2,
+                AuthPolicies.Players_Read))
+            .ReturnsAsync(AuthorizationResult.Failed());
+        var sut = CreateSut();
+
+        var result = await sut.GetPlayersAjax(
+            null,
+            PlayersFilter.UsernameAndGuid,
+            null,
+            CancellationToken.None);
+
+        Assert.IsType<ForbidResult>(result);
+        mockRepositoryApiClient.Verify(
+            x => x.Players.V1.GetPlayers(
+                It.IsAny<GameType?>(),
+                It.IsAny<PlayersFilter?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<PlayersOrder?>(),
+                It.IsAny<PlayerEntityOptions>()),
+            Times.Never);
     }
 
     [Fact]
