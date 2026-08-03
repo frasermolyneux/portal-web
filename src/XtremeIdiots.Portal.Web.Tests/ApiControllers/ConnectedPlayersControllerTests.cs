@@ -2,7 +2,6 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -24,7 +23,6 @@ namespace XtremeIdiots.Portal.Web.Tests.ApiControllers;
 public class ConnectedPlayersControllerTests
 {
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new();
-    private readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<ConnectedPlayersApiController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
@@ -34,7 +32,6 @@ public class ConnectedPlayersControllerTests
     {
         var controller = new ConnectedPlayersApiController(
             mockRepositoryApiClient.Object,
-            memoryCache,
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,
@@ -86,11 +83,11 @@ public class ConnectedPlayersControllerTests
         var item = CreateConnectedPlayerDto();
         var apiResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>([item]))
         {
-            Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 500)
+            Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 25)
         };
 
         mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 500, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(null, null, null, null, 0, 25, null, ConnectedPlayersOrder.LinkedAtUtcDesc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, apiResponse));
 
         var request = new
@@ -158,7 +155,134 @@ public class ConnectedPlayersControllerTests
             It.IsAny<bool?>(),
             It.IsAny<int>(),
             It.IsAny<int>(),
+            It.IsAny<string?>(),
+            It.IsAny<ConnectedPlayersOrder?>(),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetConnectedPlayersAjax_ForwardsPagingSearchAndOrderToRepositoryClient()
+    {
+        // Arrange
+        var item = CreateConnectedPlayerDto();
+        var apiResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>([item]))
+        {
+            Pagination = new ApiPagination(totalCount: 137, filteredCount: 42, skip: 25, top: 25)
+        };
+
+        mockRepositoryApiClient
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(
+                null, null, GameType.CallOfDuty4, true, 25, 25, "needle", ConnectedPlayersOrder.UsernameAsc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, apiResponse))
+            .Verifiable();
+
+        var request = new
+        {
+            draw = 7,
+            start = 25,
+            length = 25,
+            columns = new[]
+            {
+                new { data = "gameType", name = "gameType", searchable = true, orderable = true, search = new { value = "", regex = false } },
+                new { data = "username", name = "username", searchable = true, orderable = true, search = new { value = "", regex = false } }
+            },
+            order = new[] { new { column = 1, dir = "asc" } },
+            search = new { value = "  needle  ", regex = false }
+        };
+
+        var body = JsonConvert.SerializeObject(request);
+        var sut = CreateSut();
+        sut.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+
+        // Act
+        var result = await sut.GetConnectedPlayersAjax(GameType.CallOfDuty4, true);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(ok.Value));
+
+        Assert.Equal(7, (payload["draw"] ?? payload["Draw"])?.Value<int>());
+        Assert.Equal(137, payload["recordsTotal"]?.Value<int>());
+        Assert.Equal(42, payload["recordsFiltered"]?.Value<int>());
+        Assert.Equal(1, payload["data"]?.Count());
+
+        mockRepositoryApiClient.Verify();
+    }
+
+    [Fact]
+    public async Task GetConnectedPlayersAjax_CapsPageLengthAt100()
+    {
+        // Arrange
+        var item = CreateConnectedPlayerDto();
+        var apiResponse = new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>([item]))
+        {
+            Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 100)
+        };
+
+        mockRepositoryApiClient
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(
+                null, null, null, null, 0, 100, null, ConnectedPlayersOrder.LinkedAtUtcDesc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, apiResponse))
+            .Verifiable();
+
+        var request = new
+        {
+            draw = 1,
+            start = 0,
+            length = 500,
+            columns = new[]
+            {
+                new { data = "gameType", name = "gameType", searchable = true, orderable = true, search = new { value = "", regex = false } }
+            },
+            order = Array.Empty<object>(),
+            search = new { value = "", regex = false }
+        };
+
+        var body = JsonConvert.SerializeObject(request);
+        var sut = CreateSut();
+        sut.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+
+        // Act
+        var result = await sut.GetConnectedPlayersAjax();
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result);
+        mockRepositoryApiClient.Verify();
+    }
+
+    [Fact]
+    public async Task GetConnectedPlayersAjax_WithApiFailure_ReturnsInternalServerError()
+    {
+        // Arrange
+        mockRepositoryApiClient
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(
+                It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<GameType?>(), It.IsAny<bool?>(),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<ConnectedPlayersOrder?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.InternalServerError));
+
+        var request = new
+        {
+            draw = 1,
+            start = 0,
+            length = 25,
+            columns = new[]
+            {
+                new { data = "linkedAtUtc", name = "linkedAtUtc", searchable = false, orderable = true, search = new { value = "", regex = false } }
+            },
+            order = new[] { new { column = 0, dir = "desc" } },
+            search = new { value = "", regex = false }
+        };
+
+        var body = JsonConvert.SerializeObject(request);
+        var sut = CreateSut();
+        sut.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+
+        // Act
+        var result = await sut.GetConnectedPlayersAjax();
+
+        // Assert
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, status.StatusCode);
     }
 
     [Fact]
@@ -242,7 +366,7 @@ public class ConnectedPlayersControllerTests
             .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(selectedUserProfile)));
 
         mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(playerId, null, null, true, 0, 5, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayers(playerId, null, null, true, 0, 5, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, activeLinksResponse));
 
         var sut = CreateSut(CreateSeniorAdminUser(actorProfileId));
