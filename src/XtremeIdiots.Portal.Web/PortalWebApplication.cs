@@ -25,6 +25,18 @@ namespace XtremeIdiots.Portal.Web;
 
 public static class PortalWebApplication
 {
+    /// <summary>
+    /// Stable, non-secret cache partition applied to every API client that opts into
+    /// MX.Api.Client's L1 in-memory caching (currently GeoLocation and Invision;
+    /// Servers ships no cache defaults so opt-in would be a no-op, and Repository is
+    /// intentionally kept uncached — see the NOTE comments on each registration below).
+    /// The partition is part of every cache key so that cache entries produced by this
+    /// app are namespaced under a single, predictable prefix. It is not derived from
+    /// configuration to keep the value deterministic across processes/instances and
+    /// safe to log.
+    /// </summary>
+    internal const string ClientCachePartition = "portal-web";
+
     public static WebApplicationBuilder CreateBuilder(
         WebApplicationOptions options,
         Action<WebApplicationBuilder>? configureBuilder = null)
@@ -89,7 +101,17 @@ public static class PortalWebApplication
 
         builder.Services.AddInvisionApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "XtremeIdiots:Forums:BaseUrl", "XtremeIdiots:Forums:BaseUrl configuration is required"))
-            .WithApiKeyAuthentication(GetConfigValue(builder.Configuration, "XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required"), "key", MX.Api.Client.Configuration.ApiKeyLocation.QueryParameter));
+            .WithApiKeyAuthentication(GetConfigValue(builder.Configuration, "XtremeIdiots:Forums:ApiKey", "XtremeIdiots:Forums:ApiKey configuration is required"), "key", MX.Api.Client.Configuration.ApiKeyLocation.QueryParameter)
+            .WithCachePartition(ClientCachePartition)
+            .WithCaching(cache => cache.UseLibraryDefaults()));
+        // NOTE (Invision client 1.0.63 / MX.Api.Client 2.3.77): the library ships curated
+        // read-only cache defaults for ICoreApi.GetCoreHello (60s), ICoreApi.GetMember (30s)
+        // and IDownloadsApi.GetDownloadFile (30s). IForumsApi (topic post/update) is
+        // uncached by the library, so forum posting is unaffected. portal-web only READS
+        // members (during OIDC sign-in in XtremeIdiotsAuth.cs) and never mutates a member
+        // and re-reads it in the same request, so enabling defaults is read-after-write
+        // safe. Health-check calls to GetCoreHello may return the last successful response
+        // for up to 60s, which is an accepted trade-off for the shipped default.
 
         builder.Services.AddAdminActionTopics();
         builder.Services.AddScoped<IDemoManager, DemoManager>();
@@ -125,6 +147,11 @@ public static class PortalWebApplication
         builder.Services.AddServersApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "ServersIntegrationApi:BaseUrl", "ServersIntegrationApi:BaseUrl configuration is required"))
             .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "ServersIntegrationApi:ApplicationAudience", "ServersIntegrationApi:ApplicationAudience configuration is required")));
+        // NOTE (Servers client 4.1.14 / MX.Api.Client 2.3.77): the servers client ships
+        // NO cache defaults (WithCaching(c => c.UseLibraryDefaults()) is a no-op for it)
+        // so we deliberately do not enable client caching here. The bump to 4.1.14
+        // provides crash-safe SharedCacheConfiguration scoping across sub-APIs alongside
+        // GeoLocation/Invision, which now opt into caching above.
 
         if (!string.IsNullOrWhiteSpace(builder.Configuration["SyncApi:BaseUrl"]) &&
             !string.IsNullOrWhiteSpace(builder.Configuration["SyncApi:ApplicationAudience"]))
@@ -139,7 +166,16 @@ public static class PortalWebApplication
         builder.Services.AddGeoLocationApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "GeoLocationApi:BaseUrl", "GeoLocationApi:BaseUrl configuration is required"))
             .WithApiKeyAuthentication(GetConfigValue(builder.Configuration, "GeoLocationApi:ApiKey", "GeoLocationApi:ApiKey configuration is required"))
-            .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "GeoLocationApi:ApplicationAudience", "GeoLocationApi:ApplicationAudience configuration is required")));
+            .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "GeoLocationApi:ApplicationAudience", "GeoLocationApi:ApplicationAudience configuration is required"))
+            .WithCachePartition(ClientCachePartition)
+            .WithCaching(cache => cache.UseLibraryDefaults()));
+        // NOTE (GeoLocation client 1.2.98 / MX.Api.Client 2.3.77): the library ships
+        // curated read-only cache defaults for IGeoLookupApi single-hostname lookups
+        // (GetGeoLocation 60m; V1.1 GetCityGeoLocation 60m, GetInsightsGeoLocation 30m,
+        // GetProxyCheck 15m, GetIpIntelligence 15m). Batch POST and DeleteMetadata are
+        // NOT cached by the library. Enabling defaults here is unconditionally safe:
+        // portal-web treats geolocation as pure read-only lookups and has no in-process
+        // mutation-then-re-read flow for a hostname. Cache is L1 in-memory only.
 
         builder.Services.AddXtremeIdiotsAuth();
         builder.Services.AddAuthorization(authorizationOptions => authorizationOptions.AddXtremeIdiotsPolicies());
