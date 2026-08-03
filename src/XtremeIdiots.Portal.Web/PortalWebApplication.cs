@@ -107,19 +107,19 @@ public static class PortalWebApplication
         builder.Services.AddRepositoryApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))
             .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "RepositoryApi:ApplicationAudience", "RepositoryApi:ApplicationAudience configuration is required")));
-        // NOTE (Repository client 4.2.21): the client library ships in-process L1 defaults for
-        // game-server reads (60s) and single/collection map reads (10min) which are enabled via
-        // .WithCaching(c => c.UseLibraryDefaults()). portal-web mutates both entity families in
-        // the same process (game server Create/Update/Delete/UpdateOrder; map Create/Update/
-        // Delete/UpdateImage/ClearImage/UpsertVote), and the Repository API's server-side Tiered
-        // tag invalidation cannot evict this process's L1 — that would produce read-after-write
-        // staleness. MX.Api.Client 2.3.76's composite CacheBuilder cannot express per-sub-API
-        // overrides against the RepositoryApiClient because SetOperation validates the expression
-        // against the CacheBuilder's single _configuredClientType. Per the task guardrail
-        // ("prefer correctness over maximizing hit rate") we therefore do NOT opt into
-        // UseLibraryDefaults() at all and rely solely on the Repository API's server-side Tiered
-        // cache (game-server single/list, dashboard, configuration single/collection, single-map)
-        // which invalidates transparently on write. User profile/claims/auth surfaces and
+        // NOTE (Repository client 4.2.22 / MX.Api.Client 2.3.77): client 4.2.22 fixed the
+        // cross-sub-API cache-scoping crash at the source via a reflection-free
+        // SharedCacheConfiguration, so opting into .WithCaching(c => c.UseLibraryDefaults())
+        // would now build and run. We DELIBERATELY do NOT opt in. portal-web mutates game
+        // servers (Create/Update/Delete/UpdateOrder) and maps (Create/Update/Delete/
+        // UpdateImage/ClearImage/UpsertVote) in the same process; the client library's shipped
+        // in-process L1 defaults (60s game-server reads, 10min single/collection map reads)
+        // cannot see the Repository API's server-side Tiered tag invalidations, so enabling
+        // them would produce read-after-write staleness. Per the task guardrail ("prefer
+        // correctness over maximizing hit rate") portal-web keeps client L1 permanently off
+        // and relies solely on the Repository API's server-side Tiered cache (game-server
+        // single/list, dashboard, configuration single/collection, single-map) which
+        // invalidates transparently on write. User profile/claims/auth surfaces and
         // mutations remain uncached end-to-end.
 
         builder.Services.AddServersApiClient(clientOptions => clientOptions
