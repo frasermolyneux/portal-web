@@ -27,9 +27,11 @@ public static class PortalWebApplication
 {
     /// <summary>
     /// Stable, non-secret cache partition applied to every API client that opts into
-    /// MX.Api.Client's L1 in-memory caching (GeoLocation, Invision, Servers). The
-    /// partition is part of every cache key so that cache entries produced by this app
-    /// are namespaced under a single, predictable prefix. It is not derived from
+    /// MX.Api.Client's L1 in-memory caching (currently GeoLocation and Invision;
+    /// Servers ships no cache defaults so opt-in would be a no-op, and Repository is
+    /// intentionally kept uncached — see the NOTE comments on each registration below).
+    /// The partition is part of every cache key so that cache entries produced by this
+    /// app are namespaced under a single, predictable prefix. It is not derived from
     /// configuration to keep the value deterministic across processes/instances and
     /// safe to log.
     /// </summary>
