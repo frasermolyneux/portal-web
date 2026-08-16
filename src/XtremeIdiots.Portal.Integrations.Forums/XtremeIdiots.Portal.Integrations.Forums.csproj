@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.11" />
     <PackageReference Include="MX.Api.Abstractions" Version="2.3.77" />
     <PackageReference Include="MX.Api.Client" Version="2.3.77" />
     <PackageReference Include="MX.InvisionCommunity.Api.Client" Version="1.0.63" />
