@@ -15,6 +15,7 @@ Target: Senior engineers working on portal-web. Covers branch strategy, CI/CD tr
   - Build and test
   - Terraform plan for dev (skips for dependabot and copilot/* branches unless labeled)
   - Terraform plan for prd (requires `run-prd-plan` label)
+  - Terraform plan+apply and app deploy to dev (requires `deploy-dev` label; skipped for dependabot-authored PRs)
   - Concurrency groups prevent parallel dev/prd operations
   - Copilot branches: Terraform plans skipped by default; add `run-dev-plan` label to enable
 
