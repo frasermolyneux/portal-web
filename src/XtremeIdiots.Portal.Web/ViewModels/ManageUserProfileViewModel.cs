@@ -70,6 +70,11 @@ public class ManageUserProfileViewModel
     /// Visible error message shown when notification history could not be loaded for the otherwise successful profile page.
     /// </summary>
     public string? NotificationHistoryErrorMessage { get; set; }
+
+    /// <summary>
+    /// Visible error message shown when permission-management data could not be fully loaded for the otherwise successful profile page.
+    /// </summary>
+    public string? PermissionsErrorMessage { get; set; }
 }
 
 /// <summary>

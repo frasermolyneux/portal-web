@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -84,6 +85,7 @@ public class UserControllerTests
         SetupNotificationTypes();
         SetupNotificationPreferences();
         SetupNotificationHistory();
+        SetupNotificationPreferenceUpdateSuccess();
     }
 
     [Fact]
@@ -300,6 +302,47 @@ public class UserControllerTests
         Assert.Single(model.NotificationTypes);
         Assert.Single(model.NotificationPreferences);
         Assert.Empty(model.RecentNotifications);
+    }
+
+    [Fact]
+    public async Task ManageProfile_WhenGameServerListFails_ProfileAndNotificationsRemainAvailableAndPermissionControlsAreDisabled()
+    {
+        var profileId = Guid.NewGuid();
+        var notificationTypeId = Guid.NewGuid();
+        var claimId = Guid.NewGuid();
+        var serverId = Guid.NewGuid();
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+
+        SetupUserProfile(profileId,
+        [
+            CreateClaim(claimId, AdditionalPermission.GameServers_Credentials_Rcon_Read, serverId.ToString())
+        ]);
+        SetupGameServersListFailure();
+        SetupGameServer(serverId, GameType.CallOfDuty5);
+        SetupNotificationPreferencesAuthorizationFailure();
+        SetupNotificationTypes(CreateNotificationType(notificationTypeId));
+        SetupNotificationPreferences(CreateNotificationPreference(notificationTypeId, inSiteEnabled: true, emailEnabled: false));
+        SetupNotificationHistory(CreateNotification(Guid.NewGuid(), notificationTypeId));
+        SetupAuthorizationSuccess(GameType.CallOfDuty5, AuthPolicies.Users_ManageClaims);
+
+        var result = await sut.ManageProfile(profileId);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<ManageUserProfileViewModel>(view.Model);
+        Assert.Equal("Target User", model.Profile.DisplayName);
+        Assert.Null(model.NotificationPreferencesErrorMessage);
+        Assert.Single(model.NotificationTypes);
+        Assert.Single(model.NotificationPreferences);
+        Assert.Single(model.RecentNotifications);
+        Assert.Equal("Additional permission management is currently unavailable. Please try again later.", model.PermissionsErrorMessage);
+        Assert.Empty(model.AssignableGameTypes);
+        Assert.All(model.Claims, claim => Assert.False(claim.CanRemove));
+        var assignableServers = Assert.IsAssignableFrom<SelectList>(view.ViewData["AssignableGameServersSelect"]);
+        Assert.Empty(assignableServers.Items);
+        mockAuthorizationService.Verify(x => x.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(),
+            It.Is<object>(resource => resource is GameType),
+            AuthPolicies.Users_ManageClaims), Times.Never);
     }
 
     [Fact]
@@ -668,6 +711,100 @@ public class UserControllerTests
         mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Once);
     }
 
+    [Fact]
+    public async Task UpdateUserNotificationPreferences_UnchangedInheritedDefaults_AreOmittedFromUpdates()
+    {
+        var profileId = Guid.NewGuid();
+        var inheritedTypeId = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        SetupNotificationPreferencesAuthorizationSuccess();
+        SetupUserProfile(profileId);
+        SetupGameServersList();
+        SetupNotificationTypes(CreateNotificationType(inheritedTypeId, defaultChannels: "Email"));
+        SetupNotificationPreferences();
+        SetupNotificationHistory(CreateNotification(Guid.NewGuid(), inheritedTypeId));
+
+        var result = await sut.UpdateUserNotificationPreferences(new ManageUserNotificationPreferencesUpdateModel
+        {
+            Id = profileId,
+            Preferences =
+            [
+                new() { NotificationTypeId = inheritedTypeId.ToString(), InAppEnabled = false, EmailEnabled = true }
+            ]
+        });
+
+        AssertRedirectsToManageProfileNotifications(result, profileId);
+        mockRepositoryApiClient.Verify(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+            profileId,
+            It.Is<List<EditNotificationPreferenceDto>>(preferences => preferences.Count == 0),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateUserNotificationPreferences_ChangedInheritedDefaults_AreSentAsExplicitOverrides()
+    {
+        var profileId = Guid.NewGuid();
+        var inheritedTypeId = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        SetupNotificationPreferencesAuthorizationSuccess();
+        SetupUserProfile(profileId);
+        SetupGameServersList();
+        SetupNotificationTypes(CreateNotificationType(inheritedTypeId, defaultChannels: "Email"));
+        SetupNotificationPreferences();
+        SetupNotificationHistory(CreateNotification(Guid.NewGuid(), inheritedTypeId));
+
+        var result = await sut.UpdateUserNotificationPreferences(new ManageUserNotificationPreferencesUpdateModel
+        {
+            Id = profileId,
+            Preferences =
+            [
+                new() { NotificationTypeId = inheritedTypeId.ToString(), InAppEnabled = true, EmailEnabled = false }
+            ]
+        });
+
+        AssertRedirectsToManageProfileNotifications(result, profileId);
+        mockRepositoryApiClient.Verify(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+            profileId,
+            It.Is<List<EditNotificationPreferenceDto>>(preferences =>
+                preferences.Count == 1 &&
+                HasNotificationPreference(preferences, inheritedTypeId, true, false)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateUserNotificationPreferences_ExistingExplicitPreferences_RemainExplicitAndUpdateable()
+    {
+        var profileId = Guid.NewGuid();
+        var explicitTypeId = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        SetupNotificationPreferencesAuthorizationSuccess();
+        SetupUserProfile(profileId);
+        SetupGameServersList();
+        SetupNotificationTypes(CreateNotificationType(explicitTypeId, defaultChannels: "Email"));
+        SetupNotificationPreferences(CreateNotificationPreference(explicitTypeId, inSiteEnabled: false, emailEnabled: true));
+        SetupNotificationHistory(CreateNotification(Guid.NewGuid(), explicitTypeId));
+
+        var result = await sut.UpdateUserNotificationPreferences(new ManageUserNotificationPreferencesUpdateModel
+        {
+            Id = profileId,
+            Preferences =
+            [
+                new() { NotificationTypeId = explicitTypeId.ToString(), InAppEnabled = true, EmailEnabled = true }
+            ]
+        });
+
+        AssertRedirectsToManageProfileNotifications(result, profileId);
+        mockRepositoryApiClient.Verify(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+            profileId,
+            It.Is<List<EditNotificationPreferenceDto>>(preferences =>
+                preferences.Count == 1 &&
+                HasNotificationPreference(preferences, explicitTypeId, true, true)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Theory]
     [MemberData(nameof(GlobalAdminClaimTypes))]
     public async Task UpdateUserNotificationPreferences_GlobalAdmins_AuditChangedPreferenceContext(string actorClaimType)
@@ -767,6 +904,36 @@ public class UserControllerTests
             It.IsAny<List<EditNotificationPreferenceDto>>(),
             It.IsAny<CancellationToken>()), Times.Never);
         AssertNoNotificationStateMutation();
+    }
+
+    [Fact]
+    public async Task UpdateUserNotificationPreferences_WhenUpdateFails_DoesNotReportSuccess()
+    {
+        var profileId = Guid.NewGuid();
+        var notificationTypeId = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        SetupNotificationPreferencesAuthorizationSuccess();
+        SetupUserProfile(profileId);
+        SetupGameServersList();
+        SetupNotificationTypes(CreateNotificationType(notificationTypeId));
+        SetupNotificationPreferences(CreateNotificationPreference(notificationTypeId, inSiteEnabled: false, emailEnabled: false));
+        SetupNotificationHistory(CreateNotification(Guid.NewGuid(), notificationTypeId));
+        SetupNotificationPreferenceUpdateFailure();
+
+        var result = await sut.UpdateUserNotificationPreferences(new ManageUserNotificationPreferencesUpdateModel
+        {
+            Id = profileId,
+            Preferences =
+            [
+                new() { NotificationTypeId = notificationTypeId.ToString(), InAppEnabled = true, EmailEnabled = true }
+            ]
+        });
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal(nameof(UserController.ManageProfile), view.ViewName);
+        Assert.Contains("Failed to update notification preferences. Please try again.", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Never);
     }
 
     [Fact]
@@ -897,6 +1064,20 @@ public class UserControllerTests
                 new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>(gameServers))));
     }
 
+    private void SetupGameServersListFailure()
+    {
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]?>(),
+                It.IsAny<Guid[]?>(),
+                It.IsAny<GameServerFilter?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<GameServerOrder>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.InternalServerError));
+    }
+
     private void SetupNotificationTypes(params NotificationTypeDto[] notificationTypes)
     {
         mockRepositoryApiClient
@@ -935,6 +1116,26 @@ public class UserControllerTests
             .ReturnsAsync(new ApiResult<CollectionModel<NotificationDto>>(
                 HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<NotificationDto>>(new CollectionModel<NotificationDto>(notifications))));
+    }
+
+    private void SetupNotificationPreferenceUpdateSuccess()
+    {
+        mockRepositoryApiClient
+            .Setup(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+                It.IsAny<Guid>(),
+                It.IsAny<List<EditNotificationPreferenceDto>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+    }
+
+    private void SetupNotificationPreferenceUpdateFailure()
+    {
+        mockRepositoryApiClient
+            .Setup(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+                It.IsAny<Guid>(),
+                It.IsAny<List<EditNotificationPreferenceDto>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.InternalServerError));
     }
 
     private void SetupNotificationHistoryFailure()

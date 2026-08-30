@@ -40,6 +40,26 @@ public sealed partial class UserManageProfileAccessTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ManageProfile_route_still_renders_notifications_when_game_server_list_fails()
+    {
+        var degradedScenario = new UserManageProfileScenario(failGameServersList: true);
+        await using var degradedHost = await PortalWebTestHost.CreateAsync(degradedScenario.ConfigureServices);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/User/ManageProfile/{degradedScenario.UserProfileId}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdminCod5);
+
+        var response = await degradedHost.Client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Manage User Profile - Route Test User", content, StringComparison.Ordinal);
+        Assert.Contains("Route Notification", content, StringComparison.Ordinal);
+        Assert.Contains("Route notification message", content, StringComparison.Ordinal);
+        Assert.Contains("Additional permission management is currently unavailable. Please try again later.", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("id=\"createClaimForm\"", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ManageProfile_route_remains_forbidden_for_game_admin()
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/User/ManageProfile/{scenario.UserProfileId}");

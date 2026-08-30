@@ -45,6 +45,8 @@ public class UserController(
     private const int ManageProfileRecentNotificationLimit = 50;
     private const string NotificationPreferencesUnavailableMessage = "Notification preferences are currently unavailable. Please try again later.";
     private const string NotificationHistoryUnavailableMessage = "Notification history is currently unavailable. Please try again later.";
+    private const string PermissionManagementUnavailableMessage = "Additional permission management is currently unavailable. Please try again later.";
+    private const string NotificationPreferencesSaveFailedMessage = "Failed to update notification preferences. Please try again.";
 
     /// <summary>
     /// Displays the user management index page
@@ -601,22 +603,30 @@ public class UserController(
             var currentEffectivePreferences = BuildEffectiveNotificationPreferences(
                 notificationTypes,
                 [.. explicitPreferencesResponse.Result.Data.Items]);
+            var explicitPreferences = explicitPreferencesResponse.Result.Data.Items.ToList();
 
-            var editDtos = notificationTypes
-                .Select(notificationType =>
-                {
-                    var postedPreference = postedPreferencesByType[notificationType.NotificationTypeId];
+            var editDtos = BuildNotificationPreferenceUpdateDtos(
+                notificationTypes,
+                currentEffectivePreferences,
+                explicitPreferences,
+                postedPreferencesByType);
 
-                    return new EditNotificationPreferenceDto(notificationType.NotificationTypeId)
-                    {
-                        InSiteEnabled = notificationType.SupportsInSite && postedPreference.InAppEnabled,
-                        EmailEnabled = notificationType.SupportsEmail && postedPreference.EmailEnabled
-                    };
-                })
-                .ToList();
-
-            await repositoryApiClient.NotificationPreferences.V1
+            var updateResult = await repositoryApiClient.NotificationPreferences.V1
                 .UpdateNotificationPreferences(model.Id, editDtos, cancellationToken).ConfigureAwait(false);
+
+            if (!updateResult.IsSuccess)
+            {
+                Logger.LogWarning("Failed to update notification preferences for profile {ProfileId}", model.Id);
+                this.AddAlertDanger(NotificationPreferencesSaveFailedMessage);
+
+                var (failedModel, errorResult) = await BuildManageUserProfileViewModelAsync(
+                    model.Id,
+                    ManageUserProfileViewModel.NotificationsTabName,
+                    postedPreferencesByType,
+                    cancellationToken).ConfigureAwait(false);
+
+                return errorResult ?? View(nameof(ManageProfile), failedModel);
+            }
 
             this.AddAlertSuccess($"Notification preferences for {userProfileResponse.Result.Data.DisplayName} have been updated");
 
@@ -660,10 +670,6 @@ public class UserController(
         string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin];
         var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
         var assignableGameTypes = User.GetGameTypesForGameServers();
-
-        var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-            gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
-
         var userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
 
         if (userProfileDtoApiResponse.IsNotFound)
@@ -672,17 +678,35 @@ public class UserController(
             return (null, NotFound());
         }
 
-        if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null || userProfileDtoApiResponse.Result?.Data is null)
+        if (userProfileDtoApiResponse.Result?.Data is null)
         {
             Logger.LogWarning("Invalid API response when managing profile {ProfileId}", id);
             return (null, BadRequest());
+        }
+
+        var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+            gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+
+        string? permissionsErrorMessage = null;
+        List<GameServerDto> visibleGameServers = [];
+        List<GameType> assignableGameTypesForView = [.. assignableGameTypes];
+
+        if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
+        {
+            Logger.LogWarning("Assignable game server list unavailable when managing profile {ProfileId}", id);
+            permissionsErrorMessage = PermissionManagementUnavailableMessage;
+            assignableGameTypesForView = [];
+        }
+        else
+        {
+            visibleGameServers = [.. gameServersApiResponse.Result.Data.Items];
         }
 
         var (notificationTypes, notificationPreferences, recentNotifications, notificationPreferencesErrorMessage, notificationHistoryErrorMessage) =
             await BuildManageUserNotificationDataAsync(id, cancellationToken).ConfigureAwait(false);
 
         ViewData["AssignableGameServersSelect"] = new SelectList(
-            gameServersApiResponse.Result.Data.Items.Where(server => assignableGameTypes.Contains(server.GameType)),
+            visibleGameServers.Where(server => assignableGameTypes.Contains(server.GameType)),
             "GameServerId",
             "Title");
 
@@ -701,10 +725,11 @@ public class UserController(
         {
             Profile = profileData,
             Identity = identitySummary,
-            AssignableGameTypes = assignableGameTypes,
+            AssignableGameTypes = assignableGameTypesForView,
             Claims = await BuildManageUserProfileClaimEntriesAsync(
                 profileData,
-                [.. gameServersApiResponse.Result.Data.Items],
+                visibleGameServers,
+                allowMutationAffordances: permissionsErrorMessage is null,
                 cancellationToken).ConfigureAwait(false),
             NotificationTypes = notificationTypes,
             NotificationPreferences = notificationPreferenceEntries,
@@ -712,7 +737,8 @@ public class UserController(
             CanUpdateNotificationPreferences = canUpdateNotificationPreferences,
             ActiveTab = activeTab,
             NotificationPreferencesErrorMessage = notificationPreferencesErrorMessage,
-            NotificationHistoryErrorMessage = notificationHistoryErrorMessage
+            NotificationHistoryErrorMessage = notificationHistoryErrorMessage,
+            PermissionsErrorMessage = permissionsErrorMessage
         }, null);
     }
 
@@ -868,6 +894,54 @@ public class UserController(
         return notificationPreferences;
     }
 
+    private static List<EditNotificationPreferenceDto> BuildNotificationPreferenceUpdateDtos(
+        IReadOnlyCollection<NotificationTypeViewModel> notificationTypes,
+        IReadOnlyCollection<ManageUserNotificationPreferenceEntry> currentEffectivePreferences,
+        IReadOnlyCollection<NotificationPreferenceDto> explicitPreferences,
+        Dictionary<string, ManageUserNotificationPreferenceUpdateEntry> postedPreferencesByType)
+    {
+        var currentEffectiveByType = currentEffectivePreferences.ToDictionary(
+            preference => preference.NotificationTypeId,
+            StringComparer.OrdinalIgnoreCase);
+        var explicitPreferencesByType = explicitPreferences
+            .GroupBy(preference => preference.NotificationTypeId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var updateDtos = new List<EditNotificationPreferenceDto>();
+
+        foreach (var notificationType in notificationTypes)
+        {
+            var postedPreference = postedPreferencesByType[notificationType.NotificationTypeId];
+            var desiredInAppEnabled = notificationType.SupportsInSite && postedPreference.InAppEnabled;
+            var desiredEmailEnabled = notificationType.SupportsEmail && postedPreference.EmailEnabled;
+
+            if (explicitPreferencesByType.ContainsKey(notificationType.NotificationTypeId))
+            {
+                updateDtos.Add(new EditNotificationPreferenceDto(notificationType.NotificationTypeId)
+                {
+                    InSiteEnabled = desiredInAppEnabled,
+                    EmailEnabled = desiredEmailEnabled
+                });
+
+                continue;
+            }
+
+            var currentEffectivePreference = currentEffectiveByType[notificationType.NotificationTypeId];
+            if (currentEffectivePreference.InAppEnabled == desiredInAppEnabled &&
+                currentEffectivePreference.EmailEnabled == desiredEmailEnabled)
+            {
+                continue;
+            }
+
+            updateDtos.Add(new EditNotificationPreferenceDto(notificationType.NotificationTypeId)
+            {
+                InSiteEnabled = desiredInAppEnabled,
+                EmailEnabled = desiredEmailEnabled
+            });
+        }
+
+        return updateDtos;
+    }
+
     private static void NormalizePostedNotificationPreferenceBooleans(
         ManageUserNotificationPreferencesUpdateModel model,
         IFormCollection? form)
@@ -976,6 +1050,7 @@ public class UserController(
     private async Task<List<ManageUserProfileClaimEntry>> BuildManageUserProfileClaimEntriesAsync(
         UserProfileDto profile,
         IReadOnlyCollection<GameServerDto> visibleGameServers,
+        bool allowMutationAffordances,
         CancellationToken cancellationToken)
     {
         var isGlobalAdmin = BaseAuthorizationHelper.HasGlobalAdminClaim(User);
@@ -988,6 +1063,7 @@ public class UserController(
                 claim,
                 isGlobalAdmin,
                 serverCache,
+                allowMutationAffordances,
                 cancellationToken).ConfigureAwait(false));
         }
 
@@ -998,13 +1074,14 @@ public class UserController(
         UserProfileClaimDto claim,
         bool isGlobalAdmin,
         IDictionary<Guid, GameServerDto?> serverCache,
+        bool allowMutationAffordances,
         CancellationToken cancellationToken)
     {
         var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
         var server = await ResolveGameServerForClaimAsync(claim.ClaimValue, serverCache, cancellationToken).ConfigureAwait(false);
         var canRemove = false;
 
-        if (!claim.SystemGenerated)
+        if (allowMutationAffordances && !claim.SystemGenerated)
         {
             if (isGlobalAdmin)
             {

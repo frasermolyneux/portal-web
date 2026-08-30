@@ -14,7 +14,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 
 internal sealed class UserManageProfileScenario
 {
-    public UserManageProfileScenario()
+    public UserManageProfileScenario(bool failGameServersList = false)
     {
         UserProfileId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         NotificationTypeId = Guid.Parse("44444444-4444-4444-4444-444444444444");
@@ -41,9 +41,11 @@ internal sealed class UserManageProfileScenario
                 It.IsAny<int>(),
                 It.IsAny<GameServerOrder>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
-                HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([gameServer]))));
+            .ReturnsAsync(failGameServersList
+                ? new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.InternalServerError)
+                : new ApiResult<CollectionModel<GameServerDto>>(
+                    HttpStatusCode.OK,
+                    new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([gameServer]))));
 
         Mock.Get(RepositoryClient.Object.GameServers.V1)
             .Setup(api => api.GetGameServer(gameServer.GameServerId, It.IsAny<CancellationToken>()))
