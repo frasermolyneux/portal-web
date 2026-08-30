@@ -1,14 +1,10 @@
 @using XtremeIdiots.Portal.Web.ViewModels
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1;
-@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
-@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @model XtremeIdiots.Portal.Web.ViewModels.ManageUserProfileViewModel
 
 @{
     ViewData["Title"] = "Manage User Profile - " + Model.Profile.DisplayName;
-
-    var gameServers = (List<GameServerDto>?)ViewData["VisibleGameServers"] ?? new List<GameServerDto>();
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -177,37 +173,15 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var claim in Model.Profile.UserProfileClaims)
+                                    @foreach (var claim in Model.Claims)
                                     {
                                         <tr>
-                                            @{
-                                                var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
-                                                Guid.TryParse(claim.ClaimValue, out var gameServerId);
-                                                var server = gameServers?.FirstOrDefault(s => s.GameServerId == gameServerId);
-                                                object? removeClaimResource = server?.GameType;
-
-                                                if (removeClaimResource is null &&
-                                                    Enum.TryParse<GameType>(claim.ClaimValue, out var claimGameType))
-                                                {
-                                                    removeClaimResource = claimGameType;
-                                                }
-                                            }
-
-                                            <td>@(definition?.DisplayName ?? claim.ClaimType)</td>
+                                            <td>@claim.DisplayName</td>
+                                            <td>@claim.ScopeDisplayValue</td>
                                             <td>
-                                                @if (server is not null)
+                                                @if (claim.CanRemove)
                                                 {
-                                                    @server.Title
-                                                }
-                                                else
-                                                {
-                                                    @claim.ClaimValue
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (!claim.SystemGenerated)
-                                                {
-                                                    <form policy="@AuthPolicies.Users_ManageClaims" policy-resource="@removeClaimResource" class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
+                                                    <form class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
                                                         method="post">
                                                         <input id="id" name="id" type="hidden"
                                                             value="@Model.Profile.UserProfileId" />
