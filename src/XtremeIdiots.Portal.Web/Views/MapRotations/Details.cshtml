@@ -202,7 +202,6 @@
                                             var isStale = assignment.DeployedVersion.HasValue && assignment.DeployedVersion < Model.Rotation.Version;
                                             var isActivationStale = assignment.ActivatedVersion.HasValue && assignment.ActivatedVersion < Model.Rotation.Version;
                                             var latestOp = Model.AssignmentOperations.GetValueOrDefault(assignment.MapRotationServerAssignmentId)?.FirstOrDefault();
-                                            var isAuthorizedForServer = Model.AuthorizedServerIds.Contains(assignment.GameServerId);
                                             var deployResource = (Model.Rotation.GameType, assignment.GameServerId);
                                             <tr class="@(assignment.DeploymentState == DeploymentState.Removed ? "table-secondary opacity-75" : "")">
                                                 <td>
