@@ -2,11 +2,13 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using Moq;
 using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
@@ -16,10 +18,12 @@ using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
+using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
@@ -56,6 +60,12 @@ public class UserControllerTests
         { UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin },
         { UserProfileClaimType.Webmaster, UserProfileClaimType.Webmaster }
     };
+
+    public static TheoryData<string> GlobalAdminClaimTypes => new()
+    {
+        UserProfileClaimType.SeniorAdmin,
+        UserProfileClaimType.Webmaster
+    };
 #pragma warning restore IDE0028
 
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
@@ -71,6 +81,86 @@ public class UserControllerTests
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
         mockUserManager = new Mock<UserManager<IdentityUser>>(
             mockUserStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+    }
+
+    [Fact]
+    public async Task ManageProfile_HeadAdminOnlyGetsRemovalControlsForOwnedResolvableClaims()
+    {
+        var profileId = Guid.NewGuid();
+        var cod5GameClaimId = Guid.NewGuid();
+        var cod5ServerClaimId = Guid.NewGuid();
+        var cod4GameClaimId = Guid.NewGuid();
+        var cod4ServerClaimId = Guid.NewGuid();
+        var deletedServerClaimId = Guid.NewGuid();
+        var unknownScopeClaimId = Guid.NewGuid();
+        var systemGeneratedClaimId = Guid.NewGuid();
+        var cod5ServerId = Guid.NewGuid();
+        var cod4ServerId = Guid.NewGuid();
+        var deletedServerId = Guid.NewGuid();
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+
+        SetupUserProfile(profileId,
+        [
+            CreateClaim(cod5GameClaimId, AdditionalPermission.GameServers_Write, GameType.CallOfDuty5.ToString()),
+            CreateClaim(cod5ServerClaimId, AdditionalPermission.GameServers_Credentials_Rcon_Read, cod5ServerId.ToString()),
+            CreateClaim(cod4GameClaimId, AdditionalPermission.GameServers_Write, GameType.CallOfDuty4.ToString()),
+            CreateClaim(cod4ServerClaimId, AdditionalPermission.GameServers_Credentials_Rcon_Read, cod4ServerId.ToString()),
+            CreateClaim(deletedServerClaimId, AdditionalPermission.GameServers_Credentials_Rcon_Read, deletedServerId.ToString()),
+            CreateClaim(unknownScopeClaimId, AdditionalPermission.GameServers_Write, "legacy-scope"),
+            CreateClaim(systemGeneratedClaimId, AdditionalPermission.GameServers_Write, GameType.CallOfDuty5.ToString(), systemGenerated: true)
+        ]);
+        SetupGameServersList(CreateGameServerDto(cod5ServerId, GameType.CallOfDuty5));
+        SetupGameServer(cod5ServerId, GameType.CallOfDuty5);
+        SetupGameServer(cod4ServerId, GameType.CallOfDuty4);
+        SetupGameServerNotFound(deletedServerId);
+        SetupAuthorizationSuccess(GameType.CallOfDuty5, AuthPolicies.Users_ManageClaims);
+        SetupAuthorizationFailure(GameType.CallOfDuty4, AuthPolicies.Users_ManageClaims);
+
+        var result = await sut.ManageProfile(profileId);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<ManageUserProfileViewModel>(view.Model);
+        var claimRows = model.Claims.ToDictionary(claim => claim.UserProfileClaimId);
+
+        Assert.True(claimRows[cod5GameClaimId].CanRemove);
+        Assert.True(claimRows[cod5ServerClaimId].CanRemove);
+        Assert.Equal("Test Server", claimRows[cod5ServerClaimId].ScopeDisplayValue);
+        Assert.False(claimRows[cod4GameClaimId].CanRemove);
+        Assert.False(claimRows[cod4ServerClaimId].CanRemove);
+        Assert.False(claimRows[deletedServerClaimId].CanRemove);
+        Assert.False(claimRows[unknownScopeClaimId].CanRemove);
+        Assert.False(claimRows[systemGeneratedClaimId].CanRemove);
+    }
+
+    [Theory]
+    [MemberData(nameof(GlobalAdminClaimTypes))]
+    public async Task ManageProfile_GlobalAdminsGetCleanupControlsForAllNonSystemClaims(string actorClaimType)
+    {
+        var profileId = Guid.NewGuid();
+        var legacyClaimId = Guid.NewGuid();
+        var deletedServerClaimId = Guid.NewGuid();
+        var systemGeneratedClaimId = Guid.NewGuid();
+        var deletedServerId = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(actorClaimType));
+
+        SetupUserProfile(profileId,
+        [
+            CreateClaim(legacyClaimId, AdditionalPermission.GameServers_Write, "legacy-scope"),
+            CreateClaim(deletedServerClaimId, AdditionalPermission.GameServers_Credentials_Rcon_Read, deletedServerId.ToString()),
+            CreateClaim(systemGeneratedClaimId, AdditionalPermission.GameServers_Write, GameType.CallOfDuty5.ToString(), systemGenerated: true)
+        ]);
+        SetupGameServersList();
+        SetupGameServerNotFound(deletedServerId);
+
+        var result = await sut.ManageProfile(profileId);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<ManageUserProfileViewModel>(view.Model);
+        var claimRows = model.Claims.ToDictionary(claim => claim.UserProfileClaimId);
+
+        Assert.True(claimRows[legacyClaimId].CanRemove);
+        Assert.True(claimRows[deletedServerClaimId].CanRemove);
+        Assert.False(claimRows[systemGeneratedClaimId].CanRemove);
     }
 
     [Fact]
@@ -353,6 +443,79 @@ public class UserControllerTests
         mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Once);
     }
 
+    [Fact]
+    public async Task LogUserOut_WhenAuthorizationDenied_SanitizesTargetIdInAuditContext()
+    {
+        const string rawTargetId = "99999\r\nInjected";
+        AuditEvent? capturedAuditEvent = null;
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+        SetupUsersLogOutAuthorizationFailure();
+        mockAuditLogger
+            .Setup(x => x.LogAudit(It.IsAny<AuditEvent>()))
+            .Callback<AuditEvent>(auditEvent => capturedAuditEvent = auditEvent);
+
+        var result = await sut.LogUserOut(rawTargetId);
+
+        Assert.IsType<UnauthorizedResult>(result);
+        Assert.NotNull(capturedAuditEvent);
+        Assert.Equal("TargetUserId:99999Injected", capturedAuditEvent!.Properties["Context"]);
+        Assert.DoesNotContain('\r', capturedAuditEvent.Properties["Context"]);
+        Assert.DoesNotContain('\n', capturedAuditEvent.Properties["Context"]);
+    }
+
+    [Fact]
+    public async Task UpdateUserNotificationPreferences_HeadAdminDenied_DoesNotMutate()
+    {
+        var profileId = Guid.NewGuid();
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+        SetupNotificationPreferencesAuthorizationFailure();
+
+        var result = await sut.UpdateUserNotificationPreferences(profileId);
+
+        Assert.IsType<UnauthorizedResult>(result);
+        mockRepositoryApiClient.Verify(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+            It.IsAny<Guid>(),
+            It.IsAny<List<EditNotificationPreferenceDto>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Once);
+    }
+
+    [Theory]
+    [MemberData(nameof(GlobalAdminClaimTypes))]
+    public async Task UpdateUserNotificationPreferences_GlobalAdmins_MapCheckedAndUncheckedPreferences(string actorClaimType)
+    {
+        var profileId = Guid.NewGuid();
+        var notificationTypeOne = Guid.NewGuid();
+        var notificationTypeTwo = Guid.NewGuid();
+        var notificationTypeThree = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(actorClaimType));
+        SetupNotificationPreferencesAuthorizationSuccess();
+        SetupUserProfile(profileId);
+        SetupNotificationTypes(
+            CreateNotificationType(notificationTypeOne),
+            CreateNotificationType(notificationTypeTwo),
+            CreateNotificationType(notificationTypeThree));
+        SetRequestForm(sut, new Dictionary<string, StringValues>
+        {
+            [$"insite_{notificationTypeOne}"] = "true",
+            [$"email_{notificationTypeOne}"] = "true",
+            [$"email_{notificationTypeTwo}"] = "true"
+        });
+
+        var result = await sut.UpdateUserNotificationPreferences(profileId);
+
+        AssertRedirectsToManageNotifications(result, profileId);
+        mockRepositoryApiClient.Verify(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
+            profileId,
+            It.Is<List<EditNotificationPreferenceDto>>(preferences =>
+                preferences.Count == 3 &&
+                HasNotificationPreference(preferences, notificationTypeOne, true, true) &&
+                HasNotificationPreference(preferences, notificationTypeTwo, false, true) &&
+                HasNotificationPreference(preferences, notificationTypeThree, false, false)),
+            It.IsAny<CancellationToken>()), Times.Once);
+        mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Once);
+    }
+
     private UserController CreateSut(ClaimsPrincipal? user = null)
     {
         var controller = new UserController(
@@ -402,9 +565,30 @@ public class UserControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
     }
 
+    private void SetupUsersLogOutAuthorizationFailure()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Users_LogOut))
+            .ReturnsAsync(AuthorizationResult.Failed());
+    }
+
+    private void SetupNotificationPreferencesAuthorizationSuccess()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Users_ManageNotificationPreferences))
+            .ReturnsAsync(AuthorizationResult.Success());
+    }
+
+    private void SetupNotificationPreferencesAuthorizationFailure()
+    {
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Users_ManageNotificationPreferences))
+            .ReturnsAsync(AuthorizationResult.Failed());
+    }
+
     private void SetupUserProfile(Guid profileId, IEnumerable<object>? claims = null, string forumId = "12345", string displayName = "Target User")
     {
-        var userProfile = CreateUserProfileDto(profileId, forumId, claims ?? []);
+        var userProfile = CreateUserProfileDto(profileId, forumId, claims ?? [], displayName);
         mockRepositoryApiClient
             .Setup(x => x.UserProfiles.V1.GetUserProfile(profileId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(userProfile)));
@@ -424,6 +608,38 @@ public class UserControllerTests
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(gameServer)));
+    }
+
+    private void SetupGameServerNotFound(Guid serverId)
+    {
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.NotFound));
+    }
+
+    private void SetupGameServersList(params GameServerDto[] gameServers)
+    {
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]?>(),
+                It.IsAny<Guid[]?>(),
+                It.IsAny<GameServerFilter?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<GameServerOrder>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>(gameServers))));
+    }
+
+    private void SetupNotificationTypes(params NotificationTypeDto[] notificationTypes)
+    {
+        mockRepositoryApiClient
+            .Setup(x => x.NotificationTypes.V1.GetNotificationTypes(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<NotificationTypeDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<NotificationTypeDto>>(new CollectionModel<NotificationTypeDto>(notificationTypes))));
     }
 
     private void SetupIdentityUser(IdentityUser user)
@@ -448,6 +664,13 @@ public class UserControllerTests
     {
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(UserController.ManageProfile), redirect.ActionName);
+        Assert.Equal(profileId, redirect.RouteValues?["id"]);
+    }
+
+    private static void AssertRedirectsToManageNotifications(IActionResult result, Guid profileId)
+    {
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(UserController.ManageNotifications), redirect.ActionName);
         Assert.Equal(profileId, redirect.RouteValues?["id"]);
     }
 
@@ -484,13 +707,30 @@ public class UserControllerTests
         };
     }
 
-    private static UserProfileDto CreateUserProfileDto(Guid userProfileId, string forumId, IEnumerable<object> claims)
+    private static void SetRequestForm(Controller controller, Dictionary<string, StringValues> values)
+    {
+        controller.ControllerContext.HttpContext.Features.Set<IFormFeature>(new FormFeature(new FormCollection(values)));
+    }
+
+    private static bool HasNotificationPreference(
+        IEnumerable<EditNotificationPreferenceDto> preferences,
+        Guid notificationTypeId,
+        bool inSiteEnabled,
+        bool emailEnabled)
+    {
+        return preferences.Any(preference =>
+            string.Equals(preference.NotificationTypeId, notificationTypeId.ToString(), StringComparison.OrdinalIgnoreCase) &&
+            preference.InSiteEnabled == inSiteEnabled &&
+            preference.EmailEnabled == emailEnabled);
+    }
+
+    private static UserProfileDto CreateUserProfileDto(Guid userProfileId, string forumId, IEnumerable<object> claims, string displayName = "Target User")
     {
         var json = JsonConvert.SerializeObject(new
         {
             UserProfileId = userProfileId,
             XtremeIdiotsForumId = forumId,
-            DisplayName = "Target User",
+            DisplayName = displayName,
             Email = "target@example.invalid",
             UserProfileClaims = claims
         });
@@ -519,5 +759,19 @@ public class UserControllerTests
         });
 
         return JsonConvert.DeserializeObject<GameServerDto>(json)!;
+    }
+
+    private static NotificationTypeDto CreateNotificationType(Guid notificationTypeId)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            NotificationTypeId = notificationTypeId.ToString(),
+            DisplayName = $"Notification {notificationTypeId}",
+            Description = "Route test notification",
+            SupportsEmail = true,
+            SupportsInSite = true
+        });
+
+        return JsonConvert.DeserializeObject<NotificationTypeDto>(json)!;
     }
 }
