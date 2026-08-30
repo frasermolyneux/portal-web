@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Auth.Handlers;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services;
@@ -550,7 +551,7 @@ public class MapRotationsController(
 
             var server = serverResponse.Result.Data;
 
-            if (server.GameType != rotation.GameType)
+            if (!BaseAuthorizationHelper.AreGameTypesEquivalent(server.GameType, rotation.GameType))
             {
                 ModelState.AddModelError(nameof(model.GameServerId), "The selected server does not match the rotation's game type.");
                 await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
@@ -1669,13 +1670,14 @@ public class MapRotationsController(
         GameType gameType,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var equivalentGameTypes = BaseAuthorizationHelper.GetEquivalentGameTypes(gameType).ToArray();
         const int pageSize = 100;
         var offset = 0;
 
         while (true)
         {
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                [gameType], null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
+                equivalentGameTypes, null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
 
             // Surface repository failures — including a successful-but-malformed response with no
             // Data/Items payload — as errors rather than silently treating them as "no servers"

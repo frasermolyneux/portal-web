@@ -14,11 +14,19 @@ internal static class TestPrincipalProfiles
     /// </summary>
     public const string CredentialServerId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 
+    /// <summary>
+    /// Well-known game server id used by map rotation deployment scenarios. The
+    /// <see cref="MapRotationDeployer"/> profile has a <c>MapRotations.Deploy</c> grant scoped
+    /// to this exact server, so the backing scenario must expose a server with the same id.
+    /// </summary>
+    public const string MapRotationDeployServerId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+
     public const string GameAdmin = "game-admin";
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
     public const string HeadAdminCod5 = "head-admin-cod5";
     public const string Cod4xLifecycleManager = "cod4x-lifecycle-manager";
+    public const string MapRotationDeployer = "map-rotation-deployer";
     public const string CredentialFileTransportReader = "credential-file-transport-reader";
     public const string CredentialRconReader = "credential-rcon-reader";
     public const string LiveServerMap = "live-server-map";
@@ -39,6 +47,16 @@ internal static class TestPrincipalProfiles
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4x.ToString()));
+        }
+        else if (profile == MapRotationDeployer)
+        {
+            // COD5 HeadAdmin with direct COD4 map rotation permissions and server-scoped deploy grant.
+            // Exercises the COD4/COD4x equivalence path: the permitted server is COD4x but the
+            // rotation is COD4 — the equivalence logic must include the server.
+            claims.Add(new Claim(UserProfileClaimType.HeadAdmin, GameType.CallOfDuty5.ToString()));
+            claims.Add(new Claim(AuthPolicies.MapRotations_Read, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AuthPolicies.MapRotations_Write, GameType.CallOfDuty4.ToString()));
+            claims.Add(new Claim(AuthPolicies.MapRotations_Deploy, MapRotationDeployServerId));
         }
         else if (profile == CredentialFileTransportReader)
         {

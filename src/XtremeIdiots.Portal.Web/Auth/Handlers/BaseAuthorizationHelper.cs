@@ -494,7 +494,20 @@ public static class BaseAuthorizationHelper
             .Any(equivalentGameType => user.HasClaim(claimType, equivalentGameType.ToString()));
     }
 
-    private static IReadOnlyList<GameType> GetEquivalentGameTypes(GameType gameType)
+    /// <summary>
+    /// Returns true when two game types are considered equivalent for cross-assignment purposes
+    /// (e.g. COD4 and COD4x are interchangeable).
+    /// </summary>
+    public static bool AreGameTypesEquivalent(GameType a, GameType b)
+    {
+        return a == b || GetEquivalentGameTypes(a).Contains(b);
+    }
+
+    /// <summary>
+    /// Returns the set of game types that are considered equivalent (including the input itself).
+    /// COD4 and COD4x are treated as equivalent; all other game types map only to themselves.
+    /// </summary>
+    public static IReadOnlyList<GameType> GetEquivalentGameTypes(GameType gameType)
     {
         return gameType == GameType.CallOfDuty4
             ? [GameType.CallOfDuty4, GameType.CallOfDuty4x]

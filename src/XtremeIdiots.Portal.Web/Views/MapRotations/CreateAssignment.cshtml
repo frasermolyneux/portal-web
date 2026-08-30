@@ -20,7 +20,7 @@ ViewData["RotationTitle"] : "");
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
                                 <label asp-for="@Model.GameServerId" class="form-label"></label>
-                                <select asp-for="@Model.GameServerId" class="form-select" id="GameServerIdSelect">
+                                <select asp-for="@Model.GameServerId" class="form-select" id="GameServerIdSelect" data-testid="server-select">
                                     <option value="">-- Select Server --</option>
                                     @foreach (var server in Model.AvailableServers)
                                     {
@@ -93,7 +93,7 @@ ViewData["RotationTitle"] : "");
                                                     </div>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <button type="submit" class="btn btn-primary">
+                                                    <button type="submit" class="btn btn-primary" data-testid="assign-server-submit">
                                                         <i class="fa-solid fa-fw fa-link" aria-hidden="true"></i> Assign Server
                                                     </button>
                                                     <a asp-action="Details" asp-route-id="@Model.MapRotationId"
