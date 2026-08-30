@@ -17,6 +17,7 @@ internal static class TestPrincipalProfiles
     public const string GameAdmin = "game-admin";
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
+    public const string HeadAdminCod5 = "head-admin-cod5";
     public const string Cod4xLifecycleManager = "cod4x-lifecycle-manager";
     public const string CredentialFileTransportReader = "credential-file-transport-reader";
     public const string CredentialRconReader = "credential-rcon-reader";
@@ -84,6 +85,7 @@ internal static class TestPrincipalProfiles
             {
                 GameAdmin => new Claim(UserProfileClaimType.GameAdmin, GameType.CallOfDuty4.ToString()),
                 HeadAdmin => new Claim(UserProfileClaimType.HeadAdmin, GameType.CallOfDuty4.ToString()),
+                HeadAdminCod5 => new Claim(UserProfileClaimType.HeadAdmin, GameType.CallOfDuty5.ToString()),
                 Moderator => new Claim(UserProfileClaimType.Moderator, GameType.CallOfDuty4.ToString()),
                 SeniorAdmin => new Claim(UserProfileClaimType.SeniorAdmin, bool.TrueString),
                 _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown test principal profile."),

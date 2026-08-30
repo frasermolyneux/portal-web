@@ -89,6 +89,8 @@ public static class PolicyExtensions
         // Users
         options.AddPolicy(AuthPolicies.Users_Read, policy => policy.Requirements.Add(new UsersRead()));
         options.AddPolicy(AuthPolicies.Users_ManageClaims, policy => policy.Requirements.Add(new UsersManageClaims()));
+        options.AddPolicy(AuthPolicies.Users_LogOut, policy => policy.Requirements.Add(new UsersLogOut()));
+        options.AddPolicy(AuthPolicies.Users_ManageNotificationPreferences, policy => policy.Requirements.Add(new UsersManageNotificationPreferences()));
         options.AddPolicy(AuthPolicies.Users_Search, policy => policy.Requirements.Add(new UsersSearch()));
         options.AddPolicy(AuthPolicies.Users_ActivityLog, policy => policy.Requirements.Add(new UsersActivityLog()));
     }
