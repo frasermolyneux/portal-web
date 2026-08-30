@@ -1,5 +1,6 @@
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
+using XtremeIdiots.Portal.Web.Models;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -8,6 +9,8 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// </summary>
 public class ManageUserProfileViewModel
 {
+    public const string NotificationsTabName = "notifications";
+
     /// <summary>
     /// The repository user profile DTO.
     /// </summary>
@@ -32,6 +35,46 @@ public class ManageUserProfileViewModel
     /// Claim rows projected for display, including whether the current actor may remove each claim.
     /// </summary>
     public List<ManageUserProfileClaimEntry> Claims { get; set; } = [];
+
+    /// <summary>
+    /// All notification types available for preference management, including supported channels and defaults.
+    /// </summary>
+    public List<NotificationTypeViewModel> NotificationTypes { get; set; } = [];
+
+    /// <summary>
+    /// Effective notification preferences to display for each notification type, preserving explicit values when present.
+    /// </summary>
+    public List<ManageUserNotificationPreferenceEntry> NotificationPreferences { get; set; } = [];
+
+    /// <summary>
+    /// Recent notification history for the managed user.
+    /// </summary>
+    public List<ManageUserNotificationHistoryEntry> RecentNotifications { get; set; } = [];
+
+    /// <summary>
+    /// Indicates whether the current actor may update notification preferences for the managed user.
+    /// </summary>
+    public bool CanUpdateNotificationPreferences { get; set; }
+
+    /// <summary>
+    /// Stable tab key preserved through redirects so a future tabbed UI can restore the notifications section.
+    /// </summary>
+    public string ActiveTab { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Visible error message shown when notification preferences could not be loaded for the otherwise successful profile page.
+    /// </summary>
+    public string? NotificationPreferencesErrorMessage { get; set; }
+
+    /// <summary>
+    /// Visible error message shown when notification history could not be loaded for the otherwise successful profile page.
+    /// </summary>
+    public string? NotificationHistoryErrorMessage { get; set; }
+
+    /// <summary>
+    /// Visible error message shown when permission-management data could not be fully loaded for the otherwise successful profile page.
+    /// </summary>
+    public string? PermissionsErrorMessage { get; set; }
 }
 
 /// <summary>
@@ -59,4 +102,49 @@ public class ManageUserProfileClaimEntry
     public string ScopeDisplayValue { get; set; } = string.Empty;
     public bool SystemGenerated { get; set; }
     public bool CanRemove { get; set; }
+}
+
+/// <summary>
+/// Effective notification preference values for a specific notification type, with explicit overrides retained when present.
+/// </summary>
+public class ManageUserNotificationPreferenceEntry
+{
+    public string NotificationTypeId { get; set; } = string.Empty;
+    public bool InAppEnabled { get; set; }
+    public bool EmailEnabled { get; set; }
+    public bool? ExplicitInAppEnabled { get; set; }
+    public bool? ExplicitEmailEnabled { get; set; }
+}
+
+/// <summary>
+/// Read-only notification history row for the admin manage profile page.
+/// </summary>
+public class ManageUserNotificationHistoryEntry
+{
+    public Guid NotificationId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Message { get; set; }
+    public string NotificationType { get; set; } = string.Empty;
+    public DateTime SentAt { get; set; }
+    public bool IsRead { get; set; }
+    public bool EmailSent { get; set; }
+}
+
+/// <summary>
+/// Typed payload for updating notification preferences from the manage profile page.
+/// </summary>
+public class ManageUserNotificationPreferencesUpdateModel
+{
+    public Guid Id { get; set; }
+    public List<ManageUserNotificationPreferenceUpdateEntry> Preferences { get; set; } = [];
+}
+
+/// <summary>
+/// Posted channel values for a single notification type.
+/// </summary>
+public class ManageUserNotificationPreferenceUpdateEntry
+{
+    public string NotificationTypeId { get; set; } = string.Empty;
+    public bool InAppEnabled { get; set; }
+    public bool EmailEnabled { get; set; }
 }

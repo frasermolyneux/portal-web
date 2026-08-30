@@ -159,7 +159,7 @@
                         <div class="ibox-tools">
                             @if (Model.CanAssignServer)
                             {
-                                <a asp-action="CreateAssignment" asp-route-mapRotationId="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm">
+                                <a asp-action="CreateAssignment" asp-route-mapRotationId="@Model.Rotation.MapRotationId" class="btn btn-outline-primary btn-sm" data-testid="assign-to-server-link">
                                     <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Assign to Server
                                 </a>
                             }
