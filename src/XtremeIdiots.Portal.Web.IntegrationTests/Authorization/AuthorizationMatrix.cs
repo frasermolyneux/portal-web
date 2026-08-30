@@ -50,6 +50,7 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.MapRotations_Read, null, GameAdminAndAbove),
         Entry(AuthPolicies.MapRotations_Write, GameType.CallOfDuty4, GameAdminAndAbove),
         Entry(AuthPolicies.MapRotations_Deploy, GameType.CallOfDuty4, GameAdminAndAbove),
+        Entry(AuthPolicies.MapRotations_Deploy, (GameType.CallOfDuty4, serverId), GameAdminAndAbove, "server-scoped"),
         Entry(AuthPolicies.Maps_Read, null, GameAdminAndAbove),
 
         Entry(AuthPolicies.GameServers_Read, null, HeadAdminAndAbove),
