@@ -124,6 +124,8 @@
                                                 {
                                                     var notificationType = Model.NotificationTypes[i];
                                                     var preference = Model.NotificationPreferences.First(p => p.NotificationTypeId == notificationType.NotificationTypeId);
+                                                    var emailInputId = $"notification-pref-{i}-email";
+                                                    var inAppInputId = $"notification-pref-{i}-inapp";
 
                                                     <tr>
                                                         <td>@notificationType.DisplayName</td>
@@ -135,9 +137,11 @@
                                                                 <div class="form-check d-flex justify-content-center">
                                                                     <input type="checkbox"
                                                                            class="form-check-input"
+                                                                           id="@emailInputId"
                                                                            name="Preferences[@i].EmailEnabled"
                                                                            value="true"
                                                                            @(preference.EmailEnabled ? "checked" : null) />
+                                                                    <label class="visually-hidden" for="@emailInputId">Email notifications for @notificationType.DisplayName</label>
                                                                 </div>
                                                             }
                                                             else
@@ -152,9 +156,11 @@
                                                                 <div class="form-check d-flex justify-content-center">
                                                                     <input type="checkbox"
                                                                            class="form-check-input"
+                                                                           id="@inAppInputId"
                                                                            name="Preferences[@i].InAppEnabled"
                                                                            value="true"
                                                                            @(preference.InAppEnabled ? "checked" : null) />
+                                                                    <label class="visually-hidden" for="@inAppInputId">In-app notifications for @notificationType.DisplayName</label>
                                                                 </div>
                                                             }
                                                             else
