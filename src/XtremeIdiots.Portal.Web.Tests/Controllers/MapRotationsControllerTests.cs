@@ -1057,6 +1057,37 @@ public class MapRotationsControllerTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
     }
 
+    [Fact]
+    public async Task Details_WhenServerResponseSuccessfulButMalformed_SurfacesError()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        // A 2xx response with no Data/Items payload is malformed and must not be treated as "no servers"
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK));
+
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
+    }
+
     #region Helpers
 
     private static bool IsServerTuple(object? resource, Guid expectedServerId)

@@ -1677,9 +1677,11 @@ public class MapRotationsController(
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 [gameType], null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
 
-            // Surface repository failures as errors rather than silently treating them
-            // as "no authorized servers" (which would misclassify as a Forbid / hidden UI).
-            if (!serversResponse.IsSuccess)
+            // Surface repository failures — including a successful-but-malformed response with no
+            // Data/Items payload — as errors rather than silently treating them as "no servers"
+            // (which would misclassify an infrastructure failure as a Forbid / hidden UI).
+            // A genuine empty result returns a non-null, empty Items collection and is handled below.
+            if (!serversResponse.IsSuccess || serversResponse.Result?.Data?.Items is null)
             {
                 Logger.LogError(
                     "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
@@ -1687,11 +1689,7 @@ public class MapRotationsController(
                 throw new InvalidOperationException($"Failed to load game servers for game type {gameType}.");
             }
 
-            var items = serversResponse.Result?.Data?.Items;
-            if (items == null)
-                yield break;
-
-            var serverBatch = items.ToList();
+            var serverBatch = serversResponse.Result.Data.Items.ToList();
 
             foreach (var server in serverBatch)
                 yield return server;
