@@ -27,6 +27,11 @@ public class ManageUserProfileViewModel
     /// Game types the current admin user has authority to assign permissions for.
     /// </summary>
     public List<GameType> AssignableGameTypes { get; set; } = [];
+
+    /// <summary>
+    /// Claim rows projected for display, including whether the current actor may remove each claim.
+    /// </summary>
+    public List<ManageUserProfileClaimEntry> Claims { get; set; } = [];
 }
 
 /// <summary>
@@ -42,4 +47,16 @@ public class IdentityUserSummary
     public bool TwoFactorEnabled { get; set; }
     public string? PhoneNumber { get; set; }
     public bool PhoneNumberConfirmed { get; set; }
+}
+
+/// <summary>
+/// Claim row data for the Manage User Profile screen.
+/// </summary>
+public class ManageUserProfileClaimEntry
+{
+    public Guid UserProfileClaimId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string ScopeDisplayValue { get; set; } = string.Empty;
+    public bool SystemGenerated { get; set; }
+    public bool CanRemove { get; set; }
 }
