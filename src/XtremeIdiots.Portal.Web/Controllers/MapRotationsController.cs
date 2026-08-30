@@ -523,6 +523,15 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            // Validate the submitted form before hitting the repository or authorization so that a
+            // missing/invalid GameServerId redisplays the form with validation errors rather than a 404.
+            var modelValidationResult = await CheckModelStateAsync(model, m => RepopulateAuthorizedServersAsync(m, rotation.GameType, cancellationToken)).ConfigureAwait(false);
+            if (modelValidationResult != null)
+            {
+                ViewData["RotationTitle"] = rotation.Title;
+                return modelValidationResult;
+            }
+
             // Validate the posted server exists and belongs to the same game type
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken).ConfigureAwait(false);
 
@@ -559,13 +568,6 @@ public class MapRotationsController(
 
             if (authResult != null)
                 return authResult;
-
-            var modelValidationResult = await CheckModelStateAsync(model, m => RepopulateAuthorizedServersAsync(m, rotation.GameType, cancellationToken)).ConfigureAwait(false);
-            if (modelValidationResult != null)
-            {
-                ViewData["RotationTitle"] = rotation.Title;
-                return modelValidationResult;
-            }
 
             var normalizedConfigVariableName = model.ConfigVariableName?.ToLowerInvariant();
 

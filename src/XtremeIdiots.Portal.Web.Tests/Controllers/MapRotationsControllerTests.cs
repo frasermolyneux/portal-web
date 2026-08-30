@@ -791,6 +791,56 @@ public class MapRotationsControllerTests
     }
 
     [Fact]
+    public async Task CreateAssignment_Post_WhenModelStateInvalid_RedisplaysFormWithoutServerLookup()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // Servers for repopulation on validation failure
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+        // Simulate a model-binding error (e.g. empty <select> for GameServerId)
+        sut.ModelState.AddModelError(nameof(CreateMapRotationAssignmentViewModel.GameServerId), "The Game Server field is required.");
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = Guid.Empty
+        };
+
+        // Act
+        var result = await sut.CreateAssignment(model);
+
+        // Assert — form is redisplayed and no repository server lookup / mutation occurred
+        Assert.IsType<ViewResult>(result);
+        mockRepositoryApiClient.Verify(
+            x => x.GameServers.V1.GetGameServer(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        mockRepositoryApiClient.Verify(
+            x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task CreateAssignment_Post_CrossGameSubmission_ReturnsValidationError()
     {
         // Arrange
