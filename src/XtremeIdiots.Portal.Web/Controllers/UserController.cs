@@ -41,6 +41,9 @@ public class UserController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
+    private const int ManageProfileRecentNotificationLimit = 50;
+    private const string NotificationPreferencesUnavailableMessage = "Notification preferences are currently unavailable. Please try again later.";
+    private const string NotificationHistoryUnavailableMessage = "Notification history is currently unavailable. Please try again later.";
 
     /// <summary>
     /// Displays the user management index page
@@ -106,70 +109,17 @@ public class UserController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>The manage profile view with user data and available game servers</returns>
     [HttpGet]
-    public async Task<IActionResult> ManageProfile(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> ManageProfile(Guid id, string? tab = null, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin];
-            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
-            var assignableGameTypes = User.GetGameTypesForGameServers();
+            var (model, errorResult) = await BuildManageUserProfileViewModelAsync(
+                id,
+                NormalizeManageProfileTab(tab),
+                postedPreferencesOverride: null,
+                cancellationToken).ConfigureAwait(false);
 
-            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
-
-            var userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
-
-            if (userProfileDtoApiResponse.IsNotFound)
-            {
-                Logger.LogWarning("User profile {ProfileId} not found when managing profile", id);
-                return NotFound();
-            }
-
-            if (gameServersApiResponse.Result?.Data?.Items is null || userProfileDtoApiResponse.Result?.Data is null)
-            {
-                Logger.LogWarning("Invalid API response when managing profile {ProfileId}", id);
-                return BadRequest();
-            }
-
-            ViewData["AssignableGameServersSelect"] = new SelectList(
-                gameServersApiResponse.Result.Data.Items.Where(server => assignableGameTypes.Contains(server.GameType)),
-                "GameServerId",
-                "Title");
-
-            // Identity user ID in this system corresponds to the forum id (string). Fallback to profile guid if needed.
-            var profileData = userProfileDtoApiResponse.Result.Data;
-            IdentityUser? identityUser = null;
-            if (profileData.XtremeIdiotsForumId is not null)
-            {
-                identityUser = await userManager.FindByIdAsync(profileData.XtremeIdiotsForumId.ToString()).ConfigureAwait(false);
-            }
-
-            identityUser ??= await userManager.FindByIdAsync(profileData.UserProfileId.ToString()).ConfigureAwait(false);
-
-            var identitySummary = identityUser is null ? null : new IdentityUserSummary
-            {
-                Id = identityUser.Id,
-                EmailConfirmed = identityUser.EmailConfirmed,
-                LockoutEnabled = identityUser.LockoutEnabled,
-                LockoutEnd = identityUser.LockoutEnd,
-                AccessFailedCount = identityUser.AccessFailedCount,
-                TwoFactorEnabled = identityUser.TwoFactorEnabled,
-                PhoneNumber = identityUser.PhoneNumber,
-                PhoneNumberConfirmed = identityUser.PhoneNumberConfirmed
-            };
-
-            var vm = new ManageUserProfileViewModel
-            {
-                Profile = userProfileDtoApiResponse.Result.Data,
-                Identity = identitySummary,
-                AssignableGameTypes = assignableGameTypes,
-                Claims = await BuildManageUserProfileClaimEntriesAsync(
-                    userProfileDtoApiResponse.Result.Data,
-                    [.. gameServersApiResponse.Result.Data.Items],
-                    cancellationToken).ConfigureAwait(false)
-            };
-
-            return View(vm);
+            return errorResult ?? View(model);
         }, nameof(ManageProfile)).ConfigureAwait(false);
     }
 
@@ -517,78 +467,18 @@ public class UserController(
     }
 
     /// <summary>
-    /// Displays notification management for a specific user (admin view).
-    /// Shows notification preferences and recent notification history.
+    /// Redirects legacy notification management routes to the consolidated manage profile experience.
     /// </summary>
     /// <param name="id">The user profile ID to manage notifications for</param>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>The manage notifications view with preferences and history</returns>
+    /// <returns>Redirects to ManageProfile with the notifications tab route value.</returns>
     [HttpGet]
     public async Task<IActionResult> ManageNotifications(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                new object(),
-                AuthPolicies.Users_ManageNotificationPreferences,
-                nameof(ManageNotifications),
-                "UserNotifications").ConfigureAwait(false);
-
-            if (authResult is not null)
-                return authResult;
-
-            var userProfileResponse = await repositoryApiClient.UserProfiles.V1
-                .GetUserProfile(id, cancellationToken).ConfigureAwait(false);
-
-            if (userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null)
-            {
-                Logger.LogWarning("User profile {ProfileId} not found when managing notifications", id);
-                return NotFound();
-            }
-
-            var userProfile = userProfileResponse.Result.Data;
-
-            var typesResponse = await repositoryApiClient.NotificationTypes.V1
-                .GetNotificationTypes(cancellationToken).ConfigureAwait(false);
-
-            var prefsResponse = await repositoryApiClient.NotificationPreferences.V1
-                .GetNotificationPreferences(id, cancellationToken).ConfigureAwait(false);
-
-            var notificationsResponse = await repositoryApiClient.Notifications.V1
-                .GetNotifications(id, null, 0, 50, null, cancellationToken).ConfigureAwait(false);
-
-            var vm = new ManageUserNotificationsViewModel
-            {
-                UserProfileId = userProfile.UserProfileId,
-                DisplayName = userProfile.DisplayName ?? "Unknown",
-                NotificationTypes = [.. (typesResponse.Result?.Data?.Items ?? []).Select(t => new NotificationTypeEntry
-                {
-                    NotificationTypeId = Guid.TryParse(t.NotificationTypeId, out var tid) ? tid : Guid.Empty,
-                    Name = t.DisplayName,
-                    Description = t.Description,
-                    SupportsEmail = t.SupportsEmail,
-                    SupportsInApp = t.SupportsInSite
-                })],
-                Preferences = [.. (prefsResponse.Result?.Data?.Items ?? []).Select(p => new NotificationPreferenceEntry
-                {
-                    NotificationTypeId = Guid.TryParse(p.NotificationTypeId, out var pid) ? pid : Guid.Empty,
-                    EmailEnabled = p.EmailEnabled,
-                    InAppEnabled = p.InSiteEnabled
-                })],
-                Notifications = [.. (notificationsResponse.Result?.Data?.Items ?? []).Select(n => new NotificationEntry
-                {
-                    NotificationId = n.NotificationId,
-                    Title = n.Title,
-                    Message = n.Message,
-                    NotificationType = n.NotificationTypeId,
-                    SentAt = n.CreatedAt,
-                    IsRead = n.IsRead,
-                    EmailSent = n.EmailSent
-                })]
-            };
-
-            return View(vm);
+            await Task.CompletedTask.ConfigureAwait(false);
+            return RedirectToManageProfileNotifications(id);
         }, nameof(ManageNotifications)).ConfigureAwait(false);
     }
 
@@ -596,12 +486,14 @@ public class UserController(
     /// Saves notification preferences for a specific user (admin action).
     /// Processes the submitted notification preference form and updates via the API.
     /// </summary>
-    /// <param name="id">The user profile ID to update preferences for</param>
+    /// <param name="model">The typed preference update payload.</param>
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
-    /// <returns>Redirects to ManageNotifications on success</returns>
+    /// <returns>Redirects back to ManageProfile on success or returns the manage profile view on validation failure.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateUserNotificationPreferences(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> UpdateUserNotificationPreferences(
+        ManageUserNotificationPreferencesUpdateModel model,
+        CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -616,59 +508,422 @@ public class UserController(
                 return authResult;
 
             var userProfileResponse = await repositoryApiClient.UserProfiles.V1
-                .GetUserProfile(id, cancellationToken).ConfigureAwait(false);
+                .GetUserProfile(model.Id, cancellationToken).ConfigureAwait(false);
 
             if (userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null)
             {
-                Logger.LogWarning("User profile {ProfileId} not found when updating notification preferences", id);
+                Logger.LogWarning("User profile {ProfileId} not found when updating notification preferences", model.Id);
                 return NotFound();
             }
 
-            // Build preferences from form data
-            var form = await Request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
-            var typeIds = form.Keys
-                .Where(k => k.StartsWith("insite_", StringComparison.Ordinal) || k.StartsWith("email_", StringComparison.Ordinal))
-                .Select(k => k.Split('_', 2)[1])
-                .Distinct()
-                .ToList();
-
-            var editDtos = new List<EditNotificationPreferenceDto>();
-            foreach (var typeId in typeIds)
-            {
-                editDtos.Add(new EditNotificationPreferenceDto(typeId)
-                {
-                    InSiteEnabled = form.ContainsKey($"insite_{typeId}"),
-                    EmailEnabled = form.ContainsKey($"email_{typeId}")
-                });
-            }
-
-            // Handle types where both checkboxes are unchecked
             var allTypesResponse = await repositoryApiClient.NotificationTypes.V1
                 .GetNotificationTypes(cancellationToken).ConfigureAwait(false);
-            foreach (var t in allTypesResponse.Result?.Data?.Items ?? [])
+
+            if (!allTypesResponse.IsSuccess || allTypesResponse.Result?.Data?.Items is null)
             {
-                if (!typeIds.Contains(t.NotificationTypeId))
+                Logger.LogWarning("Invalid notification type response when updating notification preferences for profile {ProfileId}", model.Id);
+                return BadRequest();
+            }
+
+            var explicitPreferencesResponse = await repositoryApiClient.NotificationPreferences.V1
+                .GetNotificationPreferences(model.Id, cancellationToken).ConfigureAwait(false);
+
+            if (!explicitPreferencesResponse.IsSuccess || explicitPreferencesResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Invalid notification preference response when updating notification preferences for profile {ProfileId}", model.Id);
+                return BadRequest();
+            }
+
+            var notificationTypes = allTypesResponse.Result.Data.Items
+                .Select(MapNotificationType)
+                .ToList();
+            var notificationTypeLookup = notificationTypes.ToDictionary(
+                notificationType => notificationType.NotificationTypeId,
+                StringComparer.OrdinalIgnoreCase);
+
+            var postedPreferencesByType = new Dictionary<string, ManageUserNotificationPreferenceUpdateEntry>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var postedPreference in model.Preferences)
+            {
+                if (string.IsNullOrWhiteSpace(postedPreference.NotificationTypeId))
                 {
-                    editDtos.Add(new EditNotificationPreferenceDto(t.NotificationTypeId)
-                    {
-                        InSiteEnabled = false,
-                        EmailEnabled = false
-                    });
+                    ModelState.AddModelError(nameof(model.Preferences), "Each notification preference entry must include a notification type.");
+                    continue;
+                }
+
+                if (!postedPreferencesByType.TryAdd(postedPreference.NotificationTypeId, postedPreference))
+                {
+                    ModelState.AddModelError(nameof(model.Preferences), $"Duplicate notification preference entry '{SanitizeForLog(postedPreference.NotificationTypeId)}' was submitted.");
                 }
             }
 
+            foreach (var postedNotificationTypeId in postedPreferencesByType.Keys)
+            {
+                if (!notificationTypeLookup.ContainsKey(postedNotificationTypeId))
+                {
+                    ModelState.AddModelError(nameof(model.Preferences), $"Unknown notification type '{SanitizeForLog(postedNotificationTypeId)}' was submitted.");
+                }
+            }
+
+            foreach (var notificationType in notificationTypes)
+            {
+                if (!postedPreferencesByType.TryGetValue(notificationType.NotificationTypeId, out var postedPreference))
+                {
+                    ModelState.AddModelError(nameof(model.Preferences), "Notification preference submission is incomplete. Refresh the page and try again.");
+                    continue;
+                }
+
+                if (postedPreference.InAppEnabled && !notificationType.SupportsInSite)
+                {
+                    ModelState.AddModelError(nameof(model.Preferences), $"Notification type '{SanitizeForLog(notificationType.DisplayName)}' does not support in-app delivery.");
+                }
+
+                if (postedPreference.EmailEnabled && !notificationType.SupportsEmail)
+                {
+                    ModelState.AddModelError(nameof(model.Preferences), $"Notification type '{SanitizeForLog(notificationType.DisplayName)}' does not support email delivery.");
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var (invalidModel, errorResult) = await BuildManageUserProfileViewModelAsync(
+                    model.Id,
+                    ManageUserProfileViewModel.NotificationsTabName,
+                    postedPreferencesByType,
+                    cancellationToken).ConfigureAwait(false);
+
+                return errorResult ?? View(nameof(ManageProfile), invalidModel);
+            }
+
+            var currentEffectivePreferences = BuildEffectiveNotificationPreferences(
+                notificationTypes,
+                [.. explicitPreferencesResponse.Result.Data.Items]);
+
+            var editDtos = notificationTypes
+                .Select(notificationType =>
+                {
+                    var postedPreference = postedPreferencesByType[notificationType.NotificationTypeId];
+
+                    return new EditNotificationPreferenceDto(notificationType.NotificationTypeId)
+                    {
+                        InSiteEnabled = notificationType.SupportsInSite && postedPreference.InAppEnabled,
+                        EmailEnabled = notificationType.SupportsEmail && postedPreference.EmailEnabled
+                    };
+                })
+                .ToList();
+
             await repositoryApiClient.NotificationPreferences.V1
-                .UpdateNotificationPreferences(id, editDtos, cancellationToken).ConfigureAwait(false);
+                .UpdateNotificationPreferences(model.Id, editDtos, cancellationToken).ConfigureAwait(false);
 
             this.AddAlertSuccess($"Notification preferences for {userProfileResponse.Result.Data.DisplayName} have been updated");
 
+            var changedPreferences = BuildNotificationPreferenceChangeContext(currentEffectivePreferences, editDtos);
+
             TrackSuccessTelemetry("UserNotificationPreferencesUpdated", nameof(UpdateUserNotificationPreferences), new Dictionary<string, string>
             {
-                { "ProfileId", id.ToString() }
+                { "ProfileId", model.Id.ToString() },
+                { "TargetUser", SanitizeForLog(userProfileResponse.Result.Data.DisplayName) },
+                { "ChangedPreferences", SanitizeForLog(changedPreferences) }
             });
 
-            return RedirectToAction(nameof(ManageNotifications), new { id });
-        }, nameof(UpdateUserNotificationPreferences), id.ToString());
+            return RedirectToManageProfileNotifications(model.Id);
+        }, nameof(UpdateUserNotificationPreferences), model.Id.ToString());
+    }
+
+    private IActionResult RedirectToManageProfileNotifications(Guid id)
+    {
+        if (Url is null)
+        {
+            return RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName })!;
+        }
+
+        var manageProfileUrl = Url.Action(nameof(ManageProfile), new
+        {
+            id,
+            tab = ManageUserProfileViewModel.NotificationsTabName
+        });
+
+        return string.IsNullOrWhiteSpace(manageProfileUrl)
+            ? RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName })!
+            : Redirect($"{manageProfileUrl}#notifications");
+    }
+
+    private async Task<(ManageUserProfileViewModel? Model, IActionResult? ErrorResult)> BuildManageUserProfileViewModelAsync(
+        Guid id,
+        string activeTab,
+        IReadOnlyDictionary<string, ManageUserNotificationPreferenceUpdateEntry>? postedPreferencesOverride,
+        CancellationToken cancellationToken)
+    {
+        string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin];
+        var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
+        var assignableGameTypes = User.GetGameTypesForGameServers();
+
+        var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+            gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+
+        var userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
+
+        if (userProfileDtoApiResponse.IsNotFound)
+        {
+            Logger.LogWarning("User profile {ProfileId} not found when managing profile", id);
+            return (null, NotFound());
+        }
+
+        if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null || userProfileDtoApiResponse.Result?.Data is null)
+        {
+            Logger.LogWarning("Invalid API response when managing profile {ProfileId}", id);
+            return (null, BadRequest());
+        }
+
+        var (notificationTypes, notificationPreferences, recentNotifications, notificationPreferencesErrorMessage, notificationHistoryErrorMessage) =
+            await BuildManageUserNotificationDataAsync(id, cancellationToken).ConfigureAwait(false);
+
+        ViewData["AssignableGameServersSelect"] = new SelectList(
+            gameServersApiResponse.Result.Data.Items.Where(server => assignableGameTypes.Contains(server.GameType)),
+            "GameServerId",
+            "Title");
+
+        var profileData = userProfileDtoApiResponse.Result.Data;
+        var identitySummary = await BuildIdentitySummaryAsync(profileData).ConfigureAwait(false);
+        var canUpdateNotificationPreferences = (await authorizationService.AuthorizeAsync(
+            User,
+            new object(),
+            AuthPolicies.Users_ManageNotificationPreferences).ConfigureAwait(false)).Succeeded;
+
+        var notificationPreferenceEntries = ApplyNotificationPreferenceOverrides(
+            notificationPreferences,
+            postedPreferencesOverride);
+
+        return (new ManageUserProfileViewModel
+        {
+            Profile = profileData,
+            Identity = identitySummary,
+            AssignableGameTypes = assignableGameTypes,
+            Claims = await BuildManageUserProfileClaimEntriesAsync(
+                profileData,
+                [.. gameServersApiResponse.Result.Data.Items],
+                cancellationToken).ConfigureAwait(false),
+            NotificationTypes = notificationTypes,
+            NotificationPreferences = notificationPreferenceEntries,
+            RecentNotifications = recentNotifications,
+            CanUpdateNotificationPreferences = canUpdateNotificationPreferences,
+            ActiveTab = activeTab,
+            NotificationPreferencesErrorMessage = notificationPreferencesErrorMessage,
+            NotificationHistoryErrorMessage = notificationHistoryErrorMessage
+        }, null);
+    }
+
+    private async Task<IdentityUserSummary?> BuildIdentitySummaryAsync(UserProfileDto profileData)
+    {
+        IdentityUser? identityUser = null;
+        if (profileData.XtremeIdiotsForumId is not null)
+        {
+            identityUser = await userManager.FindByIdAsync(profileData.XtremeIdiotsForumId.ToString()).ConfigureAwait(false);
+        }
+
+        identityUser ??= await userManager.FindByIdAsync(profileData.UserProfileId.ToString()).ConfigureAwait(false);
+
+        return identityUser is null
+            ? null
+            : new IdentityUserSummary
+            {
+                Id = identityUser.Id,
+                EmailConfirmed = identityUser.EmailConfirmed,
+                LockoutEnabled = identityUser.LockoutEnabled,
+                LockoutEnd = identityUser.LockoutEnd,
+                AccessFailedCount = identityUser.AccessFailedCount,
+                TwoFactorEnabled = identityUser.TwoFactorEnabled,
+                PhoneNumber = identityUser.PhoneNumber,
+                PhoneNumberConfirmed = identityUser.PhoneNumberConfirmed
+            };
+    }
+
+    private async Task<(
+        List<NotificationTypeViewModel> NotificationTypes,
+        List<ManageUserNotificationPreferenceEntry> NotificationPreferences,
+        List<ManageUserNotificationHistoryEntry> RecentNotifications,
+        string? NotificationPreferencesErrorMessage,
+        string? NotificationHistoryErrorMessage)> BuildManageUserNotificationDataAsync(
+            Guid userProfileId,
+            CancellationToken cancellationToken)
+    {
+        var notificationTypes = new List<NotificationTypeViewModel>();
+        var notificationTypeLookup = new Dictionary<string, NotificationTypeViewModel>(StringComparer.OrdinalIgnoreCase);
+        var notificationPreferences = new List<ManageUserNotificationPreferenceEntry>();
+        var recentNotifications = new List<ManageUserNotificationHistoryEntry>();
+        string? notificationPreferencesErrorMessage = null;
+        string? notificationHistoryErrorMessage = null;
+
+        var typesResponse = await repositoryApiClient.NotificationTypes.V1
+            .GetNotificationTypes(cancellationToken).ConfigureAwait(false);
+
+        if (!typesResponse.IsSuccess || typesResponse.Result?.Data?.Items is null)
+        {
+            Logger.LogWarning("Invalid notification type response when managing profile {ProfileId}", userProfileId);
+            notificationPreferencesErrorMessage = NotificationPreferencesUnavailableMessage;
+        }
+        else
+        {
+            notificationTypes =
+            [
+                .. typesResponse.Result.Data.Items.Select(MapNotificationType)
+            ];
+            notificationTypeLookup = notificationTypes.ToDictionary(
+                notificationType => notificationType.NotificationTypeId,
+                StringComparer.OrdinalIgnoreCase);
+
+            var preferencesResponse = await repositoryApiClient.NotificationPreferences.V1
+                .GetNotificationPreferences(userProfileId, cancellationToken).ConfigureAwait(false);
+
+            if (!preferencesResponse.IsSuccess || preferencesResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Invalid notification preference response when managing profile {ProfileId}", userProfileId);
+                notificationPreferencesErrorMessage = NotificationPreferencesUnavailableMessage;
+            }
+            else
+            {
+                notificationPreferences = BuildEffectiveNotificationPreferences(
+                    notificationTypes,
+                    [.. preferencesResponse.Result.Data.Items]);
+            }
+        }
+
+        var notificationsResponse = await repositoryApiClient.Notifications.V1
+            .GetNotifications(userProfileId, null, 0, ManageProfileRecentNotificationLimit, NotificationOrder.CreatedAtDesc, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!notificationsResponse.IsSuccess || notificationsResponse.Result?.Data?.Items is null)
+        {
+            Logger.LogWarning("Invalid notification history response when managing profile {ProfileId}", userProfileId);
+            notificationHistoryErrorMessage = NotificationHistoryUnavailableMessage;
+        }
+        else
+        {
+            recentNotifications =
+            [
+                .. notificationsResponse.Result.Data.Items.Select(
+                    notification => MapNotificationHistory(notification, notificationTypeLookup))
+            ];
+        }
+
+        return (notificationTypes, notificationPreferences, recentNotifications, notificationPreferencesErrorMessage, notificationHistoryErrorMessage);
+    }
+
+    private static NotificationTypeViewModel MapNotificationType(NotificationTypeDto notificationType)
+    {
+        return new NotificationTypeViewModel(
+            notificationType.NotificationTypeId,
+            notificationType.DisplayName,
+            notificationType.Description,
+            notificationType.SupportsInSite,
+            notificationType.SupportsEmail,
+            SupportsDefaultChannel(notificationType.DefaultChannels, "InSite"),
+            SupportsDefaultChannel(notificationType.DefaultChannels, "Email"));
+    }
+
+    private static List<ManageUserNotificationPreferenceEntry> BuildEffectiveNotificationPreferences(
+        IReadOnlyCollection<NotificationTypeViewModel> notificationTypes,
+        IReadOnlyCollection<NotificationPreferenceDto> explicitPreferences)
+    {
+        var explicitPreferencesByType = explicitPreferences
+            .GroupBy(preference => preference.NotificationTypeId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+        return [.. notificationTypes.Select(notificationType =>
+        {
+            explicitPreferencesByType.TryGetValue(notificationType.NotificationTypeId, out var explicitPreference);
+
+            return new ManageUserNotificationPreferenceEntry
+            {
+                NotificationTypeId = notificationType.NotificationTypeId,
+                InAppEnabled = explicitPreference?.InSiteEnabled ?? notificationType.DefaultInSiteEnabled,
+                EmailEnabled = explicitPreference?.EmailEnabled ?? notificationType.DefaultEmailEnabled,
+                ExplicitInAppEnabled = explicitPreference?.InSiteEnabled,
+                ExplicitEmailEnabled = explicitPreference?.EmailEnabled
+            };
+        })];
+    }
+
+    private static List<ManageUserNotificationPreferenceEntry> ApplyNotificationPreferenceOverrides(
+        List<ManageUserNotificationPreferenceEntry> notificationPreferences,
+        IReadOnlyDictionary<string, ManageUserNotificationPreferenceUpdateEntry>? postedPreferencesOverride)
+    {
+        if (postedPreferencesOverride is null || postedPreferencesOverride.Count == 0)
+        {
+            return notificationPreferences;
+        }
+
+        foreach (var notificationPreference in notificationPreferences)
+        {
+            if (postedPreferencesOverride.TryGetValue(notificationPreference.NotificationTypeId, out var postedPreference))
+            {
+                notificationPreference.InAppEnabled = postedPreference.InAppEnabled;
+                notificationPreference.EmailEnabled = postedPreference.EmailEnabled;
+            }
+        }
+
+        return notificationPreferences;
+    }
+
+    private static ManageUserNotificationHistoryEntry MapNotificationHistory(
+        NotificationDto notification,
+        Dictionary<string, NotificationTypeViewModel> notificationTypeLookup)
+    {
+        return new ManageUserNotificationHistoryEntry
+        {
+            NotificationId = notification.NotificationId,
+            Title = notification.Title,
+            Message = notification.Message,
+            NotificationType = notificationTypeLookup.TryGetValue(notification.NotificationTypeId, out var notificationType)
+                ? notificationType.DisplayName
+                : notification.NotificationTypeId,
+            SentAt = notification.CreatedAt,
+            IsRead = notification.IsRead,
+            EmailSent = notification.EmailSent
+        };
+    }
+
+    private static bool SupportsDefaultChannel(string? defaultChannels, string channelName)
+    {
+        return !string.IsNullOrWhiteSpace(defaultChannels) &&
+               defaultChannels.Contains(channelName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildNotificationPreferenceChangeContext(
+        IReadOnlyCollection<ManageUserNotificationPreferenceEntry> currentPreferences,
+        IReadOnlyCollection<EditNotificationPreferenceDto> updatedPreferences)
+    {
+        var currentPreferencesByType = currentPreferences.ToDictionary(
+            preference => preference.NotificationTypeId,
+            StringComparer.OrdinalIgnoreCase);
+        var changes = new List<string>();
+
+        foreach (var updatedPreference in updatedPreferences)
+        {
+            if (!currentPreferencesByType.TryGetValue(updatedPreference.NotificationTypeId, out var currentPreference))
+            {
+                continue;
+            }
+
+            if (currentPreference.InAppEnabled == updatedPreference.InSiteEnabled &&
+                currentPreference.EmailEnabled == updatedPreference.EmailEnabled)
+            {
+                continue;
+            }
+
+            changes.Add($"{updatedPreference.NotificationTypeId}:InApp={updatedPreference.InSiteEnabled},Email={updatedPreference.EmailEnabled}");
+        }
+
+        return changes.Count == 0
+            ? "None"
+            : string.Join(";", changes);
+    }
+
+    private static string NormalizeManageProfileTab(string? tab)
+    {
+        return string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase)
+            ? ManageUserProfileViewModel.NotificationsTabName
+            : string.Empty;
     }
 
     private static bool HasProtectedLogoutRole(IEnumerable<UserProfileClaimDto> claims)
