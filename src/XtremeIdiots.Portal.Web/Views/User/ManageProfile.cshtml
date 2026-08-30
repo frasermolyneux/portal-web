@@ -132,6 +132,7 @@
                                                         <td>@notificationType.Description</td>
                                                         <td class="text-center">
                                                             <input type="hidden" name="Preferences[@i].NotificationTypeId" value="@notificationType.NotificationTypeId" />
+                                                            <input type="hidden" name="Preferences[@i].EmailEnabled" value="false" />
                                                             @if (notificationType.SupportsEmail)
                                                             {
                                                                 <div class="form-check d-flex justify-content-center">
@@ -148,9 +149,9 @@
                                                             {
                                                                 <span class="text-muted">N/A</span>
                                                             }
-                                                            <input type="hidden" name="Preferences[@i].EmailEnabled" value="false" />
                                                         </td>
                                                         <td class="text-center">
+                                                            <input type="hidden" name="Preferences[@i].InAppEnabled" value="false" />
                                                             @if (notificationType.SupportsInSite)
                                                             {
                                                                 <div class="form-check d-flex justify-content-center">
@@ -167,7 +168,6 @@
                                                             {
                                                                 <span class="text-muted">N/A</span>
                                                             }
-                                                            <input type="hidden" name="Preferences[@i].InAppEnabled" value="false" />
                                                         </td>
                                                     </tr>
                                                 }
@@ -220,8 +220,8 @@
                                                 <tr>
                                                     <td>@notificationType.DisplayName</td>
                                                     <td>@notificationType.Description</td>
-                                                    <td class="text-center">@(preference.EmailEnabled ? "Enabled" : "Disabled")</td>
-                                                    <td class="text-center">@(preference.InAppEnabled ? "Enabled" : "Disabled")</td>
+                                                    <td class="text-center">@(notificationType.SupportsEmail ? (preference.EmailEnabled ? "Enabled" : "Disabled") : "N/A")</td>
+                                                    <td class="text-center">@(notificationType.SupportsInSite ? (preference.InAppEnabled ? "Enabled" : "Disabled") : "N/A")</td>
                                                 </tr>
                                             }
                                         </tbody>

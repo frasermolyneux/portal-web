@@ -1,5 +1,6 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -475,11 +476,12 @@ public class UserController(
     [HttpGet]
     public async Task<IActionResult> ManageNotifications(Guid id, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            await Task.CompletedTask.ConfigureAwait(false);
-            return RedirectToManageProfileNotifications(id);
-        }, nameof(ManageNotifications)).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var redirect = RedirectToManageProfileNotifications(id);
+
+        return await ExecuteWithErrorHandlingAsync(
+            () => Task.FromResult(redirect),
+            nameof(ManageNotifications)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -537,6 +539,7 @@ public class UserController(
             var notificationTypes = allTypesResponse.Result.Data.Items
                 .Select(MapNotificationType)
                 .ToList();
+            NormalizePostedNotificationPreferenceBooleans(model, Request.HasFormContentType ? Request.Form : null);
             var notificationTypeLookup = notificationTypes.ToDictionary(
                 notificationType => notificationType.NotificationTypeId,
                 StringComparer.OrdinalIgnoreCase);
@@ -863,6 +866,41 @@ public class UserController(
         }
 
         return notificationPreferences;
+    }
+
+    private static void NormalizePostedNotificationPreferenceBooleans(
+        ManageUserNotificationPreferencesUpdateModel model,
+        IFormCollection? form)
+    {
+        if (form is null)
+        {
+            return;
+        }
+
+        for (var index = 0; index < model.Preferences.Count; index++)
+        {
+            var preference = model.Preferences[index];
+            preference.EmailEnabled = GetPostedCheckboxValue(form, $"Preferences[{index}].EmailEnabled");
+            preference.InAppEnabled = GetPostedCheckboxValue(form, $"Preferences[{index}].InAppEnabled");
+        }
+    }
+
+    private static bool GetPostedCheckboxValue(IFormCollection form, string key)
+    {
+        if (!form.TryGetValue(key, out var values))
+        {
+            return false;
+        }
+
+        foreach (var value in values)
+        {
+            if (string.Equals(value, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static ManageUserNotificationHistoryEntry MapNotificationHistory(

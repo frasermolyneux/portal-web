@@ -35,6 +35,8 @@ public sealed partial class UserManageProfileAccessTests : IAsyncLifetime
         Assert.Contains("route-test@example.invalid", content, StringComparison.Ordinal);
         Assert.Contains("Route Notification", content, StringComparison.Ordinal);
         Assert.Contains("Route notification message", content, StringComparison.Ordinal);
+        Assert.Contains("Unsupported Notification", content, StringComparison.Ordinal);
+        Assert.Contains(">N/A<", content, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,9 +97,13 @@ public sealed partial class UserManageProfileAccessTests : IAsyncLifetime
             [
                 new KeyValuePair<string, string>("Id", scenario.UserProfileId.ToString()),
                 new KeyValuePair<string, string>("Preferences[0].NotificationTypeId", scenario.NotificationTypeId.ToString()),
-                new KeyValuePair<string, string>("Preferences[0].EmailEnabled", "true"),
                 new KeyValuePair<string, string>("Preferences[0].EmailEnabled", "false"),
+                new KeyValuePair<string, string>("Preferences[0].EmailEnabled", "true"),
                 new KeyValuePair<string, string>("Preferences[0].InAppEnabled", "false"),
+                new KeyValuePair<string, string>("Preferences[0].InAppEnabled", "true"),
+                new KeyValuePair<string, string>("Preferences[1].NotificationTypeId", scenario.UnsupportedNotificationTypeId.ToString()),
+                new KeyValuePair<string, string>("Preferences[1].EmailEnabled", "false"),
+                new KeyValuePair<string, string>("Preferences[1].InAppEnabled", "false"),
                 new KeyValuePair<string, string>("__RequestVerificationToken", tokenMatch.Groups[1].Value)
             ])
         };
@@ -110,10 +116,19 @@ public sealed partial class UserManageProfileAccessTests : IAsyncLifetime
         Assert.Equal($"/User/ManageProfile/{scenario.UserProfileId}?tab=notifications#notifications", postResponse.Headers.Location?.ToString());
         Assert.Equal(1, scenario.UpdateNotificationPreferencesCallCount);
 
-        var updatedPreference = Assert.Single(scenario.UpdatedPreferences);
-        Assert.Equal(scenario.NotificationTypeId.ToString(), updatedPreference.NotificationTypeId);
+        Assert.Equal(2, scenario.UpdatedPreferences.Count);
+
+        var updatedPreference = Assert.Single(
+            scenario.UpdatedPreferences,
+            preference => preference.NotificationTypeId == scenario.NotificationTypeId.ToString());
         Assert.True(updatedPreference.EmailEnabled);
-        Assert.False(updatedPreference.InSiteEnabled);
+        Assert.True(updatedPreference.InSiteEnabled);
+
+        var unsupportedPreference = Assert.Single(
+            scenario.UpdatedPreferences,
+            preference => preference.NotificationTypeId == scenario.UnsupportedNotificationTypeId.ToString());
+        Assert.False(unsupportedPreference.EmailEnabled);
+        Assert.False(unsupportedPreference.InSiteEnabled);
     }
 
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.CultureInvariant)]

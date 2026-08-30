@@ -18,10 +18,13 @@ internal sealed class UserManageProfileScenario
     {
         UserProfileId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         NotificationTypeId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        UnsupportedNotificationTypeId = Guid.Parse("66666666-6666-6666-6666-666666666666");
         var gameServer = CreateGameServer(Guid.Parse("22222222-2222-2222-2222-222222222222"), GameType.CallOfDuty5, "Route Test CoD5 Server");
         var userProfile = CreateUserProfile(UserProfileId, gameServer.GameServerId);
         var notificationType = CreateNotificationType(NotificationTypeId);
+        var unsupportedNotificationType = CreateNotificationType(UnsupportedNotificationTypeId, "Unsupported Notification", supportsInSite: false, supportsEmail: false, defaultChannels: null);
         var notificationPreference = CreateNotificationPreference(NotificationTypeId);
+        var unsupportedNotificationPreference = CreateNotificationPreference(UnsupportedNotificationTypeId);
         var notification = CreateNotification(NotificationTypeId);
 
         RepositoryClient = new Mock<IRepositoryApiClient>(MockBehavior.Default)
@@ -54,13 +57,13 @@ internal sealed class UserManageProfileScenario
             .Setup(api => api.GetNotificationTypes(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<NotificationTypeDto>>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<NotificationTypeDto>>(new CollectionModel<NotificationTypeDto>([notificationType]))));
+                new ApiResponse<CollectionModel<NotificationTypeDto>>(new CollectionModel<NotificationTypeDto>([notificationType, unsupportedNotificationType]))));
 
         Mock.Get(RepositoryClient.Object.NotificationPreferences.V1)
             .Setup(api => api.GetNotificationPreferences(UserProfileId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<NotificationPreferenceDto>>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<NotificationPreferenceDto>>(new CollectionModel<NotificationPreferenceDto>([notificationPreference]))));
+                new ApiResponse<CollectionModel<NotificationPreferenceDto>>(new CollectionModel<NotificationPreferenceDto>([notificationPreference, unsupportedNotificationPreference]))));
 
         Mock.Get(RepositoryClient.Object.Notifications.V1)
             .Setup(api => api.GetNotifications(
@@ -92,6 +95,8 @@ internal sealed class UserManageProfileScenario
     public Guid UserProfileId { get; }
 
     public Guid NotificationTypeId { get; }
+
+    public Guid UnsupportedNotificationTypeId { get; }
 
     public IReadOnlyList<EditNotificationPreferenceDto> UpdatedPreferences { get; private set; } = [];
 
@@ -145,16 +150,21 @@ internal sealed class UserManageProfileScenario
         }))!;
     }
 
-    private static NotificationTypeDto CreateNotificationType(Guid notificationTypeId)
+    private static NotificationTypeDto CreateNotificationType(
+        Guid notificationTypeId,
+        string displayName = "Route Notification",
+        bool supportsInSite = true,
+        bool supportsEmail = true,
+        string? defaultChannels = "InSite,Email")
     {
         return JsonConvert.DeserializeObject<NotificationTypeDto>(JsonConvert.SerializeObject(new
         {
             NotificationTypeId = notificationTypeId.ToString(),
-            DisplayName = "Route Notification",
+            DisplayName = displayName,
             Description = "Shows route-level notification data.",
-            SupportsInSite = true,
-            SupportsEmail = true,
-            DefaultChannels = "InSite,Email",
+            SupportsInSite = supportsInSite,
+            SupportsEmail = supportsEmail,
+            DefaultChannels = defaultChannels,
         }))!;
     }
 
