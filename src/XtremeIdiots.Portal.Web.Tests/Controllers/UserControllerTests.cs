@@ -736,9 +736,11 @@ public class UserControllerTests
 
         AssertRedirectsToManageProfileNotifications(result, profileId);
         mockRepositoryApiClient.Verify(x => x.NotificationPreferences.V1.UpdateNotificationPreferences(
-            profileId,
-            It.Is<List<EditNotificationPreferenceDto>>(preferences => preferences.Count == 0),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Guid>(),
+            It.IsAny<List<EditNotificationPreferenceDto>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Contains("Notification preferences are already up to date.", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Never);
     }
 
     [Fact]
@@ -934,6 +936,33 @@ public class UserControllerTests
         Assert.Equal(nameof(UserController.ManageProfile), view.ViewName);
         Assert.Contains("Failed to update notification preferences. Please try again.", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
         mockAuditLogger.Verify(x => x.LogAudit(It.IsAny<AuditEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateUserNotificationPreferences_SuccessAlert_EncodesTargetDisplayName()
+    {
+        var profileId = Guid.NewGuid();
+        var notificationTypeId = Guid.NewGuid();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        SetupNotificationPreferencesAuthorizationSuccess();
+        SetupUserProfile(profileId, displayName: "<img src=x onerror=alert(1)>");
+        SetupGameServersList();
+        SetupNotificationTypes(CreateNotificationType(notificationTypeId));
+        SetupNotificationPreferences(CreateNotificationPreference(notificationTypeId, inSiteEnabled: false, emailEnabled: false));
+        SetupNotificationHistory(CreateNotification(Guid.NewGuid(), notificationTypeId));
+
+        var result = await sut.UpdateUserNotificationPreferences(new ManageUserNotificationPreferencesUpdateModel
+        {
+            Id = profileId,
+            Preferences =
+            [
+                new() { NotificationTypeId = notificationTypeId.ToString(), InAppEnabled = true, EmailEnabled = true }
+            ]
+        });
+
+        AssertRedirectsToManageProfileNotifications(result, profileId);
+        Assert.Contains("&lt;img src=x onerror=alert(1)&gt;", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

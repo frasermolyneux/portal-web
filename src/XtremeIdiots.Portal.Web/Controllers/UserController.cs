@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
@@ -610,6 +611,13 @@ public class UserController(
                 currentEffectivePreferences,
                 explicitPreferences,
                 postedPreferencesByType);
+            var changedPreferences = BuildNotificationPreferenceChangeContext(currentEffectivePreferences, editDtos);
+
+            if (changedPreferences == "None")
+            {
+                this.AddAlertInfo("Notification preferences are already up to date.");
+                return RedirectToManageProfileNotifications(model.Id);
+            }
 
             var updateResult = await repositoryApiClient.NotificationPreferences.V1
                 .UpdateNotificationPreferences(model.Id, editDtos, cancellationToken).ConfigureAwait(false);
@@ -628,9 +636,7 @@ public class UserController(
                 return errorResult ?? View(nameof(ManageProfile), failedModel);
             }
 
-            this.AddAlertSuccess($"Notification preferences for {userProfileResponse.Result.Data.DisplayName} have been updated");
-
-            var changedPreferences = BuildNotificationPreferenceChangeContext(currentEffectivePreferences, editDtos);
+            this.AddAlertSuccess($"Notification preferences for {WebUtility.HtmlEncode(userProfileResponse.Result.Data.DisplayName)} have been updated");
 
             TrackSuccessTelemetry("UserNotificationPreferencesUpdated", nameof(UpdateUserNotificationPreferences), new Dictionary<string, string>
             {
