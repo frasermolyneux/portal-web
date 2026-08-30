@@ -21,7 +21,7 @@ internal sealed record PortalActionManifestEntry(string Key, PortalActionKind Ki
 
 internal static class PortalActionManifest
 {
-    public const string ApprovedFingerprint = "dbbbbd37f8df42f06dcd3f5b499c37bbc424290bbf991e18456e9739b1209205";
+    public const string ApprovedFingerprint = "0047c245aa78e2dc60beab5cb69b280b23f4fa8ee35aec571cf161a7cb3fcaa5";
 
     public static IReadOnlyDictionary<PortalActionKind, int> ApprovedCounts { get; } =
         new Dictionary<PortalActionKind, int>

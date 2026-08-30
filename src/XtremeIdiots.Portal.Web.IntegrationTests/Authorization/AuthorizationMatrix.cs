@@ -50,6 +50,7 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.MapRotations_Read, null, GameAdminAndAbove),
         Entry(AuthPolicies.MapRotations_Write, GameType.CallOfDuty4, GameAdminAndAbove),
         Entry(AuthPolicies.MapRotations_Deploy, GameType.CallOfDuty4, GameAdminAndAbove),
+        Entry(AuthPolicies.MapRotations_Deploy, (GameType.CallOfDuty4, serverId), GameAdminAndAbove, "server-scoped"),
         Entry(AuthPolicies.Maps_Read, null, GameAdminAndAbove),
 
         Entry(AuthPolicies.GameServers_Read, null, HeadAdminAndAbove),
@@ -112,6 +113,8 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.Users_Read, null, HeadAdminAndAbove, directPermissionAssignable: false),
         Entry(AuthPolicies.Users_ManageClaims, GameType.CallOfDuty4, HeadAdminAndAbove, "with game resource", directPermissionAssignable: false),
         Entry(AuthPolicies.Users_ManageClaims, null, SeniorAdminOnly, "without resource", directPermissionAssignable: false),
+        Entry(AuthPolicies.Users_LogOut, null, HeadAdminAndAbove, directPermissionAssignable: false),
+        Entry(AuthPolicies.Users_ManageNotificationPreferences, null, SeniorAdminOnly, directPermissionAssignable: false),
         Entry(AuthPolicies.Users_Search, null, AllAdmins, directPermissionAssignable: false),
         Entry(AuthPolicies.Users_ActivityLog, null, SeniorAdminOnly, directPermissionAssignable: false),
     ];
@@ -121,6 +124,8 @@ internal static class AuthorizationMatrix
         AuthPolicies.GlobalSettings_Admin,
         AuthPolicies.Users_Read,
         AuthPolicies.Users_ManageClaims,
+        AuthPolicies.Users_LogOut,
+        AuthPolicies.Users_ManageNotificationPreferences,
         AuthPolicies.Users_Search,
         AuthPolicies.Users_ActivityLog,
     ];
@@ -147,6 +152,7 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Configure, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),
         Entry(AuthPolicies.AdminActions_Claim, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),
         Entry(AuthPolicies.AdminActions_CreateTopic, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),
+        Entry(AuthPolicies.Users_ManageClaims, PotentialAccessProbe.Instance, HeadAdminAndAbove, "potential access", directPermissionAssignable: false),
     ];
 
     public static bool IsAllowed(AuthorizationMatrixEntry entry, PortalTestRole role)

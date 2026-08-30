@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using XtremeIdiots.Portal.Web;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
@@ -20,9 +21,11 @@ internal sealed class PortalWebTestHost : IAsyncDisposable
 
     public IServiceProvider Services => app.Services;
 
-    public async static Task<PortalWebTestHost> CreateAsync(CancellationToken cancellationToken = default)
+    public async static Task<PortalWebTestHost> CreateAsync(
+        Action<IServiceCollection>? configureServices = null,
+        CancellationToken cancellationToken = default)
     {
-        var applicationContext = await PortalTestApplicationContext.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var applicationContext = await PortalTestApplicationContext.CreateAsync(configureServices, cancellationToken).ConfigureAwait(false);
         WebApplication? app = null;
 
         try

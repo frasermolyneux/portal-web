@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Auth.Handlers;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Services;
@@ -413,11 +414,15 @@ public class MapRotationsController(
                 }
             }
 
+            // Determine if the user can assign to at least one compatible server (short-circuits on first match)
+            var canAssignServer = await AnyAuthorizedServerAsync(rotation.GameType, cancellationToken).ConfigureAwait(false);
+
             return View(new MapRotationDetailsViewModel
             {
                 Rotation = rotation,
                 Maps = maps,
-                AssignmentOperations = assignmentOperations
+                AssignmentOperations = assignmentOperations,
+                CanAssignServer = canAssignServer
             });
         }, nameof(Details)).ConfigureAwait(false);
     }
@@ -488,22 +493,10 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
-            var authResult = await CheckAuthorizationAsync(
-                authorizationService,
-                rotation.GameType,
-                AuthPolicies.MapRotations_Deploy,
-                nameof(CreateAssignment),
-                "MapRotation").ConfigureAwait(false);
+            var authorizedServers = await GetAuthorizedServersAsync(rotation.GameType, cancellationToken).ConfigureAwait(false);
 
-            if (authResult != null)
-                return authResult;
-
-            var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                [rotation.GameType], null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
-
-            List<Repository.Abstractions.Models.V1.GameServers.GameServerDto> servers = serversResponse.IsSuccess && serversResponse.Result?.Data?.Items != null
-                ? [.. serversResponse.Result.Data.Items]
-                : [];
+            if (authorizedServers.Count == 0)
+                return Forbid();
 
             ViewData["RotationTitle"] = rotation.Title;
 
@@ -512,7 +505,7 @@ public class MapRotationsController(
             return View(new CreateMapRotationAssignmentViewModel
             {
                 MapRotationId = mapRotationId,
-                AvailableServers = servers,
+                AvailableServers = authorizedServers,
                 CanBrowseFileTransport = canBrowseFileTransport.Succeeded
             });
         }, nameof(CreateAssignment)).ConfigureAwait(false);
@@ -531,36 +524,51 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            // Validate the submitted form before hitting the repository or authorization so that a
+            // missing/invalid GameServerId redisplays the form with validation errors rather than a 404.
+            var modelValidationResult = await CheckModelStateAsync(model, m => RepopulateAuthorizedServersAsync(m, rotation.GameType, cancellationToken)).ConfigureAwait(false);
+            if (modelValidationResult != null)
+            {
+                ViewData["RotationTitle"] = rotation.Title;
+                return modelValidationResult;
+            }
+
+            // Validate the posted server exists and belongs to the same game type
+            var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken).ConfigureAwait(false);
+
+            if (serverResponse.IsNotFound)
+                return NotFound();
+
+            // Distinguish a genuine 404 from an infrastructure/API failure: surface the latter as an
+            // error rather than misclassifying it as NotFound (consistent with EnumerateCompatibleServersAsync).
+            if (!serverResponse.IsSuccess || serverResponse.Result?.Data is null)
+            {
+                Logger.LogError(
+                    "Failed to load game server {GameServerId} while creating a map rotation assignment for MapRotationId {MapRotationId}.",
+                    model.GameServerId, model.MapRotationId);
+                throw new InvalidOperationException($"Failed to load game server {model.GameServerId}.");
+            }
+
+            var server = serverResponse.Result.Data;
+
+            if (!BaseAuthorizationHelper.AreGameTypesEquivalent(server.GameType, rotation.GameType))
+            {
+                ModelState.AddModelError(nameof(model.GameServerId), "The selected server does not match the rotation's game type.");
+                await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
+            }
+
+            // Authorize against the exact (GameType, ServerId) tuple
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, model.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(CreateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
-
-            // Re-populate servers for validation failure
-            async Task RepopulateServers(CreateMapRotationAssignmentViewModel m)
-            {
-                var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                    [rotation.GameType], null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
-                List<Repository.Abstractions.Models.V1.GameServers.GameServerDto> serverList = serversResponse.IsSuccess && serversResponse.Result?.Data?.Items != null
-                    ? [.. serversResponse.Result.Data.Items]
-                    : [];
-                m.AvailableServers = serverList;
-
-                var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
-                m.CanBrowseFileTransport = canBrowseFileTransport.Succeeded;
-            }
-
-            var modelValidationResult = await CheckModelStateAsync(model, RepopulateServers).ConfigureAwait(false);
-            if (modelValidationResult != null)
-            {
-                ViewData["RotationTitle"] = rotation.Title;
-                return modelValidationResult;
-            }
 
             var normalizedConfigVariableName = model.ConfigVariableName?.ToLowerInvariant();
 
@@ -576,7 +584,7 @@ public class MapRotationsController(
             if (hasExactDuplicateAssignment)
             {
                 ModelState.AddModelError(string.Empty, "An assignment already exists for this rotation and server with the same config file path and variable name.");
-                await RepopulateServers(model).ConfigureAwait(false);
+                await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
                 return View(model);
             }
@@ -603,7 +611,7 @@ public class MapRotationsController(
                     model.GameServerId);
 
                 ModelState.AddModelError(string.Empty, "Unable to create server assignment. Please review the values and try again.");
-                await RepopulateServers(model).ConfigureAwait(false);
+                await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
                 return View(model);
             }
@@ -622,7 +630,7 @@ public class MapRotationsController(
                     ModelState.AddModelError(string.Empty, "An error occurred while creating the server assignment.");
                 }
 
-                await RepopulateServers(model).ConfigureAwait(false);
+                await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
                 return View(model);
             }
@@ -660,7 +668,7 @@ public class MapRotationsController(
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(EditAssignment),
                 "MapRotation").ConfigureAwait(false);
@@ -716,7 +724,7 @@ public class MapRotationsController(
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(EditAssignment),
                 "MapRotation").ConfigureAwait(false);
@@ -810,20 +818,20 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(DeleteAssignment),
                 "MapRotation").ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
-
-            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
-                return BadRequest("The specified assignment does not belong to this rotation.");
-
-            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
 
             if (assignment.DeploymentState == DeploymentState.Removed)
             {
@@ -949,18 +957,20 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(SyncAssignment),
                 "MapRotation").ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
-
-            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
-                return BadRequest("The specified assignment does not belong to this rotation.");
 
             var result = await syncApiClient.TriggerSync(assignmentId, cancellationToken).ConfigureAwait(false);
 
@@ -992,18 +1002,20 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(ActivateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
-
-            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
-                return BadRequest("The specified assignment does not belong to this rotation.");
 
             var result = await syncApiClient.TriggerActivate(assignmentId, cancellationToken).ConfigureAwait(false);
 
@@ -1073,18 +1085,20 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(DeactivateAssignment),
                 "MapRotation").ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
-
-            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
-                return BadRequest("The specified assignment does not belong to this rotation.");
 
             var result = await syncApiClient.TriggerDeactivate(assignmentId, cancellationToken).ConfigureAwait(false);
 
@@ -1116,18 +1130,20 @@ public class MapRotationsController(
 
             var rotation = rotationResponse.Result.Data;
 
+            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(VerifyAssignment),
                 "MapRotation").ConfigureAwait(false);
 
             if (authResult != null)
                 return authResult;
-
-            if (rotation.ServerAssignments == null || !rotation.ServerAssignments.Any(a => a.MapRotationServerAssignmentId == assignmentId))
-                return BadRequest("The specified assignment does not belong to this rotation.");
 
             var result = await syncApiClient.TriggerVerify(assignmentId, cancellationToken).ConfigureAwait(false);
 
@@ -1189,7 +1205,7 @@ public class MapRotationsController(
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotation.GameType,
+                (rotation.GameType, assignment.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(CancelOperation),
                 "MapRotation").ConfigureAwait(false);
@@ -1286,7 +1302,7 @@ public class MapRotationsController(
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                rotationResponse.Result.Data.GameType,
+                (rotationResponse.Result.Data.GameType, assignmentResponse.Result.Data.GameServerId),
                 AuthPolicies.MapRotations_Deploy,
                 nameof(TerminateOrchestration),
                 "MapRotation").ConfigureAwait(false);
@@ -1642,5 +1658,100 @@ public class MapRotationsController(
                 Results = results
             });
         }, nameof(ImportConfirm)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Pages through all game servers compatible with the specified game type, yielding each server.
+    /// Surfaces repository failures as an exception rather than silently ending the sequence, so that
+    /// callers do not misclassify an infrastructure failure as "no servers". Enumeration is lazy, so
+    /// callers that stop early (e.g. after the first authorized server) avoid fetching later pages.
+    /// </summary>
+    private async IAsyncEnumerable<Repository.Abstractions.Models.V1.GameServers.GameServerDto> EnumerateCompatibleServersAsync(
+        GameType gameType,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var equivalentGameTypes = BaseAuthorizationHelper.GetEquivalentGameTypes(gameType).ToArray();
+        const int pageSize = 100;
+        var offset = 0;
+
+        while (true)
+        {
+            var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                equivalentGameTypes, null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
+
+            // Surface repository failures — including a successful-but-malformed response with no
+            // Data/Items payload — as errors rather than silently treating them as "no servers"
+            // (which would misclassify an infrastructure failure as a Forbid / hidden UI).
+            // A genuine empty result returns a non-null, empty Items collection and is handled below.
+            if (!serversResponse.IsSuccess || serversResponse.Result?.Data?.Items is null)
+            {
+                Logger.LogError(
+                    "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
+                    gameType, offset);
+                throw new InvalidOperationException($"Failed to load game servers for game type {gameType}.");
+            }
+
+            var serverBatch = serversResponse.Result.Data.Items.ToList();
+
+            foreach (var server in serverBatch)
+                yield return server;
+
+            if (serverBatch.Count < pageSize)
+                yield break;
+
+            offset += pageSize;
+        }
+    }
+
+    /// <summary>
+    /// Loads all compatible game servers and filters to only those the current user is authorized to deploy to.
+    /// </summary>
+    private async Task<List<Repository.Abstractions.Models.V1.GameServers.GameServerDto>> GetAuthorizedServersAsync(
+        GameType gameType, CancellationToken cancellationToken)
+    {
+        var authorizedServers = new List<Repository.Abstractions.Models.V1.GameServers.GameServerDto>();
+
+        await foreach (var server in EnumerateCompatibleServersAsync(gameType, cancellationToken).ConfigureAwait(false))
+        {
+            var deployAuth = await authorizationService.AuthorizeAsync(
+                User, (gameType, server.GameServerId), AuthPolicies.MapRotations_Deploy).ConfigureAwait(false);
+
+            if (deployAuth.Succeeded)
+                authorizedServers.Add(server);
+        }
+
+        return authorizedServers;
+    }
+
+    /// <summary>
+    /// Determines whether the current user is authorized to deploy to at least one compatible server.
+    /// Short-circuits on the first authorized server, avoiding a full-fleet authorization sweep (and any
+    /// later page fetches). Repository failures surface as an exception rather than "no access".
+    /// </summary>
+    private async Task<bool> AnyAuthorizedServerAsync(GameType gameType, CancellationToken cancellationToken)
+    {
+        await foreach (var server in EnumerateCompatibleServersAsync(gameType, cancellationToken).ConfigureAwait(false))
+        {
+            var deployAuth = await authorizationService.AuthorizeAsync(
+                User, (gameType, server.GameServerId), AuthPolicies.MapRotations_Deploy).ConfigureAwait(false);
+
+            if (deployAuth.Succeeded)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Repopulates the AvailableServers on a CreateMapRotationAssignmentViewModel with only authorized servers.
+    /// </summary>
+    private async Task RepopulateAuthorizedServersAsync(
+        CreateMapRotationAssignmentViewModel model, GameType gameType, CancellationToken cancellationToken)
+    {
+        model.AvailableServers = await GetAuthorizedServersAsync(gameType, cancellationToken).ConfigureAwait(false);
+
+        var canBrowseFileTransport = await authorizationService.AuthorizeAsync(
+            User, gameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
+        model.CanBrowseFileTransport = canBrowseFileTransport.Succeeded;
     }
 }
