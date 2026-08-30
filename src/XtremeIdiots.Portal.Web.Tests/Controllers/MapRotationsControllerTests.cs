@@ -227,6 +227,10 @@ public class MapRotationsControllerTests
             .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
 
         mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServer(gameServerId, GameType.CallOfDuty5))));
+
+        mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServers(
                 It.IsAny<GameType[]>(),
                 null,
@@ -300,6 +304,10 @@ public class MapRotationsControllerTests
         mockRepositoryApiClient
             .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServer(gameServerId, GameType.CallOfDuty5))));
 
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServers(
@@ -543,4 +551,364 @@ public class MapRotationsControllerTests
             sut.ModelState[string.Empty]!.Errors,
             e => e.ErrorMessage.Contains("Unable to update server assignment. Please review the values and try again.", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public async Task CreateAssignment_Get_WhenNoAuthorizedServers_ReturnsForbid()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        var server = CreateGameServer(gameServerId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([server]))));
+
+        // Deny deploy for all servers
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CreateAssignment(mapRotationId);
+
+        // Assert
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Fact]
+    public async Task CreateAssignment_Get_FiltersToAuthorizedServersOnly()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var allowedServerId = Guid.NewGuid();
+        var deniedServerId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        var allowedServer = CreateGameServer(allowedServerId, GameType.CallOfDuty4, "Allowed Server");
+        var deniedServer = CreateGameServer(deniedServerId, GameType.CallOfDuty4, "Denied Server");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([allowedServer, deniedServer]))));
+
+        // Allow deploy only for the allowed server tuple
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, allowedServerId)),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, deniedServerId)),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CreateAssignment(mapRotationId);
+
+        // Assert
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<CreateMapRotationAssignmentViewModel>(view.Model);
+        Assert.Single(model.AvailableServers);
+        Assert.Equal(allowedServerId, model.AvailableServers[0].GameServerId);
+    }
+
+    [Fact]
+    public async Task CreateAssignment_Post_ForgedServer_ReturnsUnauthorized()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var allowedServerId = Guid.NewGuid();
+        var forgedServerId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        var forgedServer = CreateGameServer(forgedServerId, GameType.CallOfDuty4, "Forged Server");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(forgedServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(forgedServer)));
+
+        // Deny deploy for forged server
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, forgedServerId)),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = forgedServerId
+        };
+
+        // Act
+        var result = await sut.CreateAssignment(model);
+
+        // Assert
+        Assert.IsType<UnauthorizedResult>(result);
+
+        // Verify no mutation occurred
+        mockRepositoryApiClient.Verify(
+            x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAssignment_Post_MissingServer_ReturnsNotFound()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var missingServerId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(missingServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.NotFound));
+
+        var sut = CreateSut();
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = missingServerId
+        };
+
+        // Act
+        var result = await sut.CreateAssignment(model);
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task CreateAssignment_Post_CrossGameSubmission_ReturnsValidationError()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var serverId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // Server is COD5 but rotation is COD4
+        var server = CreateGameServer(serverId, GameType.CallOfDuty5, "COD5 Server");
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+
+        // Set up servers response for repopulation
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+
+        // Need deploy auth setup for repopulation (no servers will match)
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.GameServers_Credentials_FileTransport_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = serverId
+        };
+
+        // Act
+        var result = await sut.CreateAssignment(model);
+
+        // Assert
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.True(sut.ModelState.ContainsKey(nameof(CreateMapRotationAssignmentViewModel.GameServerId)));
+    }
+
+    [Fact]
+    public async Task SyncAssignment_AuthorizesWithServerTuple()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var assignmentId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var assignment = CreateAssignment(assignmentId, mapRotationId, gameServerId);
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4, serverAssignments: [assignment]);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // Only allow deploy for the exact server tuple
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, gameServerId)),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        mockSyncApiClient
+            .Setup(x => x.TriggerSync(assignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true, $"maprot-sync-{assignmentId}"));
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.SyncAssignment(assignmentId, mapRotationId);
+
+        // Assert
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(MapRotationsController.AssignmentStatus), redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task DeleteAssignment_AuthorizesWithServerTuple_DeniedForOtherServer()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var assignmentId = Guid.NewGuid();
+        var gameServerId = Guid.NewGuid();
+
+        var assignment = CreateAssignment(assignmentId, mapRotationId, gameServerId);
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4, serverAssignments: [assignment]);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // Deny deploy for this server
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, gameServerId)),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.DeleteAssignment(assignmentId, mapRotationId);
+
+        // Assert
+        Assert.IsType<UnauthorizedResult>(result);
+
+        // Verify no mutation occurred
+        mockSyncApiClient.Verify(
+            x => x.TriggerRemove(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    #region Helpers
+
+    private static bool IsServerTuple(object? resource, Guid expectedServerId)
+    {
+        return resource is ValueTuple<GameType, Guid> tuple && tuple.Item2 == expectedServerId;
+    }
+
+    private static MapRotationDto CreateRotation(
+        Guid id,
+        GameType gameType,
+        string title = "Test Rotation",
+        List<MapRotationServerAssignmentDto>? serverAssignments = null)
+    {
+        return new MapRotationDto(
+            id, gameType, title, "desc", "tdm",
+            version: 1, contentHash: null,
+            createdAt: DateTime.UtcNow.AddDays(-1),
+            updatedAt: DateTime.UtcNow.AddHours(-1),
+            mapRotationMaps: [],
+            serverAssignments: serverAssignments ?? []);
+    }
+
+    private static MapRotationServerAssignmentDto CreateAssignment(
+        Guid assignmentId,
+        Guid mapRotationId,
+        Guid gameServerId,
+        DeploymentState deploymentState = DeploymentState.Synced)
+    {
+        return new MapRotationServerAssignmentDto(
+            assignmentId, mapRotationId, gameServerId,
+            deploymentState, ActivationState.Inactive,
+            deployedVersion: 1, activatedVersion: null,
+            configFilePath: "server.cfg",
+            configVariableName: "sv_maprotation",
+            lastError: null, lastErrorAt: null,
+            createdAt: DateTime.UtcNow.AddDays(-1),
+            updatedAt: DateTime.UtcNow.AddHours(-1),
+            unassignedAt: null);
+    }
+
+    private static GameServerDto CreateGameServer(Guid id, GameType gameType, string title = "Test Server")
+    {
+        var dto = new GameServerDto();
+        SetDtoProperty(dto, nameof(GameServerDto.GameServerId), id);
+        SetDtoProperty(dto, nameof(GameServerDto.GameType), gameType);
+        SetDtoProperty(dto, nameof(GameServerDto.Title), title);
+        return dto;
+    }
+
+    private static void SetDtoProperty<T>(object target, string propertyName, T value)
+    {
+        var property = target.GetType().GetProperty(propertyName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        property?.SetValue(target, value);
+    }
+
+    #endregion
 }
