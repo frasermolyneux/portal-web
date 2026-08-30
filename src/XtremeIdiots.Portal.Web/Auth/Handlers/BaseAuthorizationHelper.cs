@@ -184,7 +184,8 @@ public static class BaseAuthorizationHelper
     #region Composite Authorization Checks
 
     /// <summary>
-    /// Checks senior admin access first, then game admin access based on resource context
+    /// Checks senior admin access first, then game admin access based on resource context.
+    /// Supports bare GameType, (GameType, Guid) tuples, and PotentialAccessProbe resources.
     /// </summary>
     /// <param name="context">The authorization context</param>
     /// <param name="requirement">The authorization requirement to succeed if access is granted</param>
@@ -196,8 +197,9 @@ public static class BaseAuthorizationHelper
             return;
         }
 
-        if (context.Resource is GameType gameType)
-            CheckGameAdminAccess(context, requirement, gameType);
+        var extracted = ExtractGameTypeFromResource(context.Resource);
+        if (extracted.HasValue)
+            CheckGameAdminAccess(context, requirement, extracted.Value);
         else if (context.Resource is PotentialAccessProbe)
         {
             if (context.User.Claims.Any(c =>
@@ -419,16 +421,12 @@ public static class BaseAuthorizationHelper
     #region Direct Permission Grant
 
     /// <summary>
-    /// Checks if the user has a direct additional permission grant matching the policy and resource.
-    /// Extracts the GameType from the resource (regardless of tuple shape) and checks for a matching claim.
+    /// Extracts the GameType from a resource, handling bare GameType and all known tuple patterns.
+    /// Returns null for unrecognised resource types (including null), preserving fail-closed semantics.
     /// </summary>
-    public static void CheckDirectPermissionGrant(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, string permissionClaimType)
+    public static GameType? ExtractGameTypeFromResource(object? resource)
     {
-        if (context.HasSucceeded)
-            return;
-
-        // Extract GameType from resource — handles all tuple patterns used across handlers
-        var resourceGameType = context.Resource switch
+        return resource switch
         {
             GameType gt => gt,
             Tuple<GameType, Guid> t => t.Item1,
@@ -439,16 +437,34 @@ public static class BaseAuthorizationHelper
             (GameType gt, string) => gt,
             (GameType gt, AdminActionType) => gt,
             (GameType gt, AdminActionType, string) => gt,
-            _ => (GameType?)null
+            _ => null
         };
+    }
 
-        // Extract server GUID if present (for server-scoped permissions)
-        var resourceServerId = context.Resource switch
+    /// <summary>
+    /// Extracts the server GUID from a resource tuple, if present.
+    /// </summary>
+    public static Guid? ExtractServerIdFromResource(object? resource)
+    {
+        return resource switch
         {
             Tuple<GameType, Guid> t => t.Item2,
             (GameType, Guid id) => id,
-            _ => (Guid?)null
+            _ => null
         };
+    }
+
+    /// <summary>
+    /// Checks if the user has a direct additional permission grant matching the policy and resource.
+    /// Extracts the GameType from the resource (regardless of tuple shape) and checks for a matching claim.
+    /// </summary>
+    public static void CheckDirectPermissionGrant(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, string permissionClaimType)
+    {
+        if (context.HasSucceeded)
+            return;
+
+        var resourceGameType = ExtractGameTypeFromResource(context.Resource);
+        var resourceServerId = ExtractServerIdFromResource(context.Resource);
 
         if (resourceGameType.HasValue)
         {
@@ -478,7 +494,20 @@ public static class BaseAuthorizationHelper
             .Any(equivalentGameType => user.HasClaim(claimType, equivalentGameType.ToString()));
     }
 
-    private static IReadOnlyList<GameType> GetEquivalentGameTypes(GameType gameType)
+    /// <summary>
+    /// Returns true when two game types are considered equivalent for cross-assignment purposes
+    /// (e.g. COD4 and COD4x are interchangeable).
+    /// </summary>
+    public static bool AreGameTypesEquivalent(GameType a, GameType b)
+    {
+        return a == b || GetEquivalentGameTypes(a).Contains(b);
+    }
+
+    /// <summary>
+    /// Returns the set of game types that are considered equivalent (including the input itself).
+    /// COD4 and COD4x are treated as equivalent; all other game types map only to themselves.
+    /// </summary>
+    public static IReadOnlyList<GameType> GetEquivalentGameTypes(GameType gameType)
     {
         return gameType == GameType.CallOfDuty4
             ? [GameType.CallOfDuty4, GameType.CallOfDuty4x]

@@ -89,6 +89,8 @@ public static class AuthPolicies
     // Users (not assignable as additional permissions)
     public const string Users_Read = "Users.Read";
     public const string Users_ManageClaims = "Users.ManageClaims";
+    public const string Users_LogOut = "Users.LogOut";
+    public const string Users_ManageNotificationPreferences = "Users.ManageNotificationPreferences";
     public const string Users_Search = "Users.Search";
     public const string Users_ActivityLog = "Users.ActivityLog";
 }
