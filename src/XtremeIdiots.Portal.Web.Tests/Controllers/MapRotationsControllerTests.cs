@@ -751,6 +751,43 @@ public class MapRotationsControllerTests
 
         // Assert
         Assert.IsType<NotFoundResult>(result);
+        mockRepositoryApiClient.Verify(
+            x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAssignment_Post_WhenServerLookupFails_SurfacesErrorAndDoesNotCreate()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var serverId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // A non-404 failure (e.g. 500) must not be misclassified as NotFound
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = mapRotationId,
+            GameServerId = serverId
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CreateAssignment(model));
+
+        mockRepositoryApiClient.Verify(
+            x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

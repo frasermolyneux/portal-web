@@ -526,8 +526,18 @@ public class MapRotationsController(
             // Validate the posted server exists and belongs to the same game type
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(model.GameServerId, cancellationToken).ConfigureAwait(false);
 
-            if (serverResponse.IsNotFound || serverResponse.Result?.Data is null)
+            if (serverResponse.IsNotFound)
                 return NotFound();
+
+            // Distinguish a genuine 404 from an infrastructure/API failure: surface the latter as an
+            // error rather than misclassifying it as NotFound (consistent with EnumerateCompatibleServersAsync).
+            if (!serverResponse.IsSuccess || serverResponse.Result?.Data is null)
+            {
+                Logger.LogError(
+                    "Failed to load game server {GameServerId} while creating a map rotation assignment for MapRotationId {MapRotationId}.",
+                    model.GameServerId, model.MapRotationId);
+                throw new InvalidOperationException($"Failed to load game server {model.GameServerId}.");
+            }
 
             var server = serverResponse.Result.Data;
 
