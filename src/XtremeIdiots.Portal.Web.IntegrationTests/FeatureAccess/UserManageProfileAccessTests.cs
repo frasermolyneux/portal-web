@@ -7,10 +7,12 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 public sealed class UserManageProfileAccessTests : IAsyncLifetime
 {
     private PortalWebTestHost host = null!;
+    private UserManageProfileScenario scenario = null!;
 
     public async Task InitializeAsync()
     {
-        host = await PortalWebTestHost.CreateAsync();
+        scenario = new UserManageProfileScenario();
+        host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
     }
 
     public async Task DisposeAsync()
@@ -21,23 +23,25 @@ public sealed class UserManageProfileAccessTests : IAsyncLifetime
     [Fact]
     public async Task ManageProfile_route_is_reachable_for_cod5_head_admin()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/User/ManageProfile/11111111-1111-1111-1111-111111111111");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/User/ManageProfile/{scenario.UserProfileId}");
         request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdminCod5);
 
         var response = await host.Client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
 
-        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.False(IsLoginRedirect(response));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Manage User Profile - Route Test User", content, StringComparison.Ordinal);
+        Assert.Contains("route-test@example.invalid", content, StringComparison.Ordinal);
     }
 
-    private static bool IsLoginRedirect(HttpResponseMessage response)
+    [Fact]
+    public async Task ManageProfile_route_remains_forbidden_for_game_admin()
     {
-        if (response.StatusCode is not (HttpStatusCode.Redirect or HttpStatusCode.Found or HttpStatusCode.MovedPermanently))
-        {
-            return false;
-        }
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/User/ManageProfile/{scenario.UserProfileId}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameAdmin);
 
-        var location = response.Headers.Location?.ToString();
-        return location is not null && location.Contains("Login", StringComparison.OrdinalIgnoreCase);
+        var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

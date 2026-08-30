@@ -7,6 +7,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -130,7 +131,6 @@ public class UserController(
                 return BadRequest();
             }
 
-            ViewData["VisibleGameServers"] = gameServersApiResponse.Result.Data.Items;
             ViewData["AssignableGameServersSelect"] = new SelectList(
                 gameServersApiResponse.Result.Data.Items.Where(server => assignableGameTypes.Contains(server.GameType)),
                 "GameServerId",
@@ -162,7 +162,11 @@ public class UserController(
             {
                 Profile = userProfileDtoApiResponse.Result.Data,
                 Identity = identitySummary,
-                AssignableGameTypes = assignableGameTypes
+                AssignableGameTypes = assignableGameTypes,
+                Claims = await BuildManageUserProfileClaimEntriesAsync(
+                    userProfileDtoApiResponse.Result.Data,
+                    [.. gameServersApiResponse.Result.Data.Items],
+                    cancellationToken).ConfigureAwait(false)
             };
 
             return View(vm);
@@ -187,13 +191,14 @@ public class UserController(
                 return RedirectToAction(nameof(Index));
             }
 
+            var safeRequestedTargetUserId = SanitizeForLog(id);
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
                 AuthPolicies.Users_LogOut,
                 nameof(LogUserOut),
                 "User",
-                $"TargetUserId:{id}").ConfigureAwait(false);
+                $"TargetUserId:{safeRequestedTargetUserId}").ConfigureAwait(false);
 
             if (authResult is not null)
                 return authResult;
@@ -238,7 +243,7 @@ public class UserController(
             TrackSuccessTelemetry("UserForceLoggedOut", nameof(LogUserOut), new Dictionary<string, string>
             {
                 { "TargetUser", user.UserName ?? "" },
-                { "TargetUserId", id }
+                { "TargetUserId", safeRequestedTargetUserId }
             });
 
             return RedirectToAction(nameof(Index));
@@ -673,6 +678,92 @@ public class UserController(
             authenticationType: "TargetProfileClaims"));
 
         return BaseAuthorizationHelper.HasGlobalAdminClaim(principal);
+    }
+
+    private async Task<List<ManageUserProfileClaimEntry>> BuildManageUserProfileClaimEntriesAsync(
+        UserProfileDto profile,
+        IReadOnlyCollection<GameServerDto> visibleGameServers,
+        CancellationToken cancellationToken)
+    {
+        var isGlobalAdmin = BaseAuthorizationHelper.HasGlobalAdminClaim(User);
+        var serverCache = visibleGameServers.ToDictionary(server => server.GameServerId, server => (GameServerDto?)server);
+        var claimEntries = new List<ManageUserProfileClaimEntry>(profile.UserProfileClaims.Count);
+
+        foreach (var claim in profile.UserProfileClaims)
+        {
+            claimEntries.Add(await BuildManageUserProfileClaimEntryAsync(
+                claim,
+                isGlobalAdmin,
+                serverCache,
+                cancellationToken).ConfigureAwait(false));
+        }
+
+        return claimEntries;
+    }
+
+    private async Task<ManageUserProfileClaimEntry> BuildManageUserProfileClaimEntryAsync(
+        UserProfileClaimDto claim,
+        bool isGlobalAdmin,
+        IDictionary<Guid, GameServerDto?> serverCache,
+        CancellationToken cancellationToken)
+    {
+        var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
+        var server = await ResolveGameServerForClaimAsync(claim.ClaimValue, serverCache, cancellationToken).ConfigureAwait(false);
+        var canRemove = false;
+
+        if (!claim.SystemGenerated)
+        {
+            if (isGlobalAdmin)
+            {
+                canRemove = true;
+            }
+            else if (server is not null)
+            {
+                canRemove = (await authorizationService.AuthorizeAsync(
+                    User,
+                    server.GameType,
+                    AuthPolicies.Users_ManageClaims).ConfigureAwait(false)).Succeeded;
+            }
+            else if (Enum.TryParse<GameType>(claim.ClaimValue, out var gameType))
+            {
+                canRemove = (await authorizationService.AuthorizeAsync(
+                    User,
+                    gameType,
+                    AuthPolicies.Users_ManageClaims).ConfigureAwait(false)).Succeeded;
+            }
+        }
+
+        return new ManageUserProfileClaimEntry
+        {
+            UserProfileClaimId = claim.UserProfileClaimId,
+            DisplayName = definition?.DisplayName ?? claim.ClaimType,
+            ScopeDisplayValue = server?.Title ?? claim.ClaimValue,
+            SystemGenerated = claim.SystemGenerated,
+            CanRemove = canRemove
+        };
+    }
+
+    private async Task<GameServerDto?> ResolveGameServerForClaimAsync(
+        string claimValue,
+        IDictionary<Guid, GameServerDto?> serverCache,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(claimValue, out var gameServerId))
+        {
+            return null;
+        }
+
+        if (serverCache.TryGetValue(gameServerId, out var cachedServer))
+        {
+            return cachedServer;
+        }
+
+        var gameServerResponse = await repositoryApiClient.GameServers.V1
+            .GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
+        var resolvedServer = gameServerResponse.Result?.Data;
+
+        serverCache[gameServerId] = resolvedServer;
+        return resolvedServer;
     }
 
     private static string SanitizeForLog(string? value)
