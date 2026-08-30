@@ -1113,7 +1113,7 @@ public class MapRotationsControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(
                 It.IsAny<ClaimsPrincipal>(),
-                It.Is<object?>(r => IsServerTuple(r, serverId)),
+                It.Is<object?>(r => IsServerTuple(r, serverId, rotationGameType)),
                 AuthPolicies.MapRotations_Deploy))
             .ReturnsAsync(AuthorizationResult.Success());
 
@@ -1236,7 +1236,7 @@ public class MapRotationsControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(
                 It.IsAny<ClaimsPrincipal>(),
-                It.Is<object?>(r => IsServerTuple(r, serverId)),
+                It.Is<object?>(r => IsServerTuple(r, serverId, rotationGameType)),
                 AuthPolicies.MapRotations_Deploy))
             .ReturnsAsync(AuthorizationResult.Success());
 
@@ -1258,6 +1258,13 @@ public class MapRotationsControllerTests
     private static bool IsServerTuple(object? resource, Guid expectedServerId)
     {
         return resource is ValueTuple<GameType, Guid> tuple && tuple.Item2 == expectedServerId;
+    }
+
+    private static bool IsServerTuple(object? resource, Guid expectedServerId, GameType expectedGameType)
+    {
+        return resource is ValueTuple<GameType, Guid> tuple
+            && tuple.Item2 == expectedServerId
+            && tuple.Item1 == expectedGameType;
     }
 
     private static MapRotationDto CreateRotation(
