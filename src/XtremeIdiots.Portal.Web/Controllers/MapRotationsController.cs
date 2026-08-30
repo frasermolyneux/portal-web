@@ -415,15 +415,13 @@ public class MapRotationsController(
 
             // Determine if the user can assign to at least one compatible server
             var authorizedServers = await GetAuthorizedServersAsync(rotation.GameType, cancellationToken).ConfigureAwait(false);
-            var authorizedServerIds = new HashSet<Guid>(authorizedServers.Select(s => s.GameServerId));
 
             return View(new MapRotationDetailsViewModel
             {
                 Rotation = rotation,
                 Maps = maps,
                 AssignmentOperations = assignmentOperations,
-                CanAssignServer = authorizedServerIds.Count > 0,
-                AuthorizedServerIds = authorizedServerIds
+                CanAssignServer = authorizedServers.Count > 0
             });
         }, nameof(Details)).ConfigureAwait(false);
     }
@@ -1665,12 +1663,24 @@ public class MapRotationsController(
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 [gameType], null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
 
-            if (!serversResponse.IsSuccess || serversResponse.Result?.Data?.Items == null)
+            // Surface repository failures as errors rather than silently treating them
+            // as "no authorized servers" (which would misclassify as a Forbid / hidden UI).
+            if (!serversResponse.IsSuccess)
+            {
+                Logger.LogError(
+                    "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
+                    gameType, offset);
+                throw new InvalidOperationException($"Failed to load game servers for game type {gameType}.");
+            }
+
+            var items = serversResponse.Result?.Data?.Items;
+            if (items == null)
                 break;
 
-            allServers.AddRange(serversResponse.Result.Data.Items);
+            var serverBatch = items.ToList();
+            allServers.AddRange(serverBatch);
 
-            if (serversResponse.Result.Data.Items.Count() < pageSize)
+            if (serverBatch.Count < pageSize)
                 break;
 
             offset += pageSize;

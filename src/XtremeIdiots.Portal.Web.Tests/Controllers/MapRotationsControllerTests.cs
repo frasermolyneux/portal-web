@@ -592,6 +592,30 @@ public class MapRotationsControllerTests
     }
 
     [Fact]
+    public async Task CreateAssignment_Get_WhenServerLookupFails_SurfacesErrorInsteadOfForbid()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // Repository API failure loading servers must not be misclassified as "no authorized servers"
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CreateAssignment(mapRotationId));
+    }
+
+    [Fact]
     public async Task CreateAssignment_Get_FiltersToAuthorizedServersOnly()
     {
         // Arrange
