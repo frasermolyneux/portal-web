@@ -214,17 +214,20 @@ public class UserController(
                 string.IsNullOrWhiteSpace(targetUserProfileResponse.Result.Data.XtremeIdiotsForumId) ||
                 !string.Equals(targetUserProfileResponse.Result.Data.XtremeIdiotsForumId, id, StringComparison.Ordinal))
             {
-                Logger.LogWarning("Could not authoritatively resolve target roles for logout of user {UserId}", id);
-                TrackUnauthorizedAccessAttempt(nameof(LogUserOut), "User", $"TargetUserId:{id},Reason:TargetRolesUnavailable");
+                var safeTargetUserId = SanitizeForLog(id);
+                Logger.LogWarning("Could not authoritatively resolve target roles for logout of user {UserId}", safeTargetUserId);
+                TrackUnauthorizedAccessAttempt(nameof(LogUserOut), "User", $"TargetUserId:{safeTargetUserId},Reason:TargetRolesUnavailable");
                 return Unauthorized();
             }
 
             if (!BaseAuthorizationHelper.HasGlobalAdminClaim(User) &&
                 HasProtectedLogoutRole(targetUserProfileResponse.Result.Data.UserProfileClaims))
             {
+                var safeActorUserId = SanitizeForLog(User.XtremeIdiotsId());
+                var safeTargetUserId = SanitizeForLog(id);
                 Logger.LogWarning("User {ActorUserId} denied force logout against protected target {TargetUserId}",
-                    User.XtremeIdiotsId(), id);
-                TrackUnauthorizedAccessAttempt(nameof(LogUserOut), "User", $"TargetUserId:{id},Reason:ProtectedRoleTarget");
+                    safeActorUserId, safeTargetUserId);
+                TrackUnauthorizedAccessAttempt(nameof(LogUserOut), "User", $"TargetUserId:{safeTargetUserId},Reason:ProtectedRoleTarget");
                 return Unauthorized();
             }
 
@@ -256,22 +259,25 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var safeClaimType = SanitizeForLog(claimType);
+            var safeClaimValue = SanitizeForLog(claimValue);
+
             if (!AdditionalPermission.IsAllowed(claimType))
             {
-                Logger.LogWarning("Invalid claim type '{ClaimType}' attempted for profile {ProfileId}", claimType, id);
+                Logger.LogWarning("Invalid claim type '{ClaimType}' attempted for profile {ProfileId}", safeClaimType, id);
                 return BadRequest($"Invalid permission type: {claimType}");
             }
 
             if (string.IsNullOrWhiteSpace(claimValue))
             {
-                Logger.LogWarning("Empty claim value for claim type '{ClaimType}' on profile {ProfileId}", claimType, id);
+                Logger.LogWarning("Empty claim value for claim type '{ClaimType}' on profile {ProfileId}", safeClaimType, id);
                 return BadRequest("A scope value must be provided.");
             }
 
             var definition = AdditionalPermission.GetDefinition(claimType);
             if (definition is null)
             {
-                Logger.LogWarning("Permission definition missing for claim type '{ClaimType}' on profile {ProfileId}", claimType, id);
+                Logger.LogWarning("Permission definition missing for claim type '{ClaimType}' on profile {ProfileId}", safeClaimType, id);
                 return BadRequest($"Invalid permission type: {claimType}");
             }
 
@@ -299,7 +305,7 @@ public class UserController(
             {
                 if (definition.Scope == PermissionScope.Game)
                 {
-                    Logger.LogWarning("Game-only claim type '{ClaimType}' was posted with server scope '{ClaimValue}' for profile {ProfileId}", claimType, claimValue, id);
+                    Logger.LogWarning("Game-only claim type '{ClaimType}' was posted with server scope '{ClaimValue}' for profile {ProfileId}", safeClaimType, safeClaimValue, id);
                     return BadRequest("This permission must be scoped to a game type.");
                 }
 
@@ -319,7 +325,7 @@ public class UserController(
             {
                 if (definition.Scope == PermissionScope.Server)
                 {
-                    Logger.LogWarning("Server-only claim type '{ClaimType}' was posted with game scope '{ClaimValue}' for profile {ProfileId}", claimType, claimValue, id);
+                    Logger.LogWarning("Server-only claim type '{ClaimType}' was posted with game scope '{ClaimValue}' for profile {ProfileId}", safeClaimType, safeClaimValue, id);
                     return BadRequest("This permission must be scoped to a server.");
                 }
 
@@ -329,7 +335,7 @@ public class UserController(
             }
             else
             {
-                Logger.LogWarning("Invalid claim value '{ClaimValue}' — not a valid GameType or server GUID", claimValue);
+                Logger.LogWarning("Invalid claim value '{ClaimValue}' — not a valid GameType or server GUID", safeClaimValue);
                 return BadRequest("Claim value must be a valid game type or server ID.");
             }
 
@@ -667,5 +673,13 @@ public class UserController(
             authenticationType: "TargetProfileClaims"));
 
         return BaseAuthorizationHelper.HasGlobalAdminClaim(principal);
+    }
+
+    private static string SanitizeForLog(string? value)
+    {
+        return string.IsNullOrEmpty(value)
+            ? string.Empty
+            : value.Replace("\r", string.Empty, StringComparison.Ordinal)
+                .Replace("\n", string.Empty, StringComparison.Ordinal);
     }
 }

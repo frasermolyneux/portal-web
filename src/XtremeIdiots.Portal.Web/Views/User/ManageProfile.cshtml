@@ -23,7 +23,7 @@
            asp-action="ManageNotifications"
            asp-route-id="@Model.Profile.UserProfileId"
            class="btn btn-outline-primary">
-            <i class="fa-solid fa-fw fa-bell"></i> Manage Notifications
+            <i class="fa-solid fa-fw fa-bell" aria-hidden="true"></i> Manage Notifications
         </a>
     </div>
 
@@ -184,6 +184,13 @@
                                                 var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
                                                 Guid.TryParse(claim.ClaimValue, out var gameServerId);
                                                 var server = gameServers?.FirstOrDefault(s => s.GameServerId == gameServerId);
+                                                object? removeClaimResource = server?.GameType;
+
+                                                if (removeClaimResource is null &&
+                                                    Enum.TryParse<GameType>(claim.ClaimValue, out var claimGameType))
+                                                {
+                                                    removeClaimResource = claimGameType;
+                                                }
                                             }
 
                                             <td>@(definition?.DisplayName ?? claim.ClaimType)</td>
@@ -200,7 +207,7 @@
                                             <td>
                                                 @if (!claim.SystemGenerated)
                                                 {
-                                                    <form policy="@AuthPolicies.Users_ManageClaims" policy-resource="@PotentialAccessProbe.Instance" class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
+                                                    <form policy="@AuthPolicies.Users_ManageClaims" policy-resource="@removeClaimResource" class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
                                                         method="post">
                                                         <input id="id" name="id" type="hidden"
                                                             value="@Model.Profile.UserProfileId" />
