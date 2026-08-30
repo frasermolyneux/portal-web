@@ -16,7 +16,7 @@ public class MapRotationsAuthHandlerTests
     [Fact]
     public async Task Deploy_ServerScopedGrant_MatchingServer_Succeeds()
     {
-        var user = CreateUser(new Claim("MapRotations.Deploy", allowedServerId.ToString()));
+        var user = CreateUser(new Claim(AuthPolicies.MapRotations_Deploy, allowedServerId.ToString()));
         var context = new AuthorizationHandlerContext(
             [new MapRotationsDeploy()], user, (GameType.CallOfDuty4, allowedServerId));
 
@@ -28,7 +28,7 @@ public class MapRotationsAuthHandlerTests
     [Fact]
     public async Task Deploy_ServerScopedGrant_DifferentServer_Fails()
     {
-        var user = CreateUser(new Claim("MapRotations.Deploy", allowedServerId.ToString()));
+        var user = CreateUser(new Claim(AuthPolicies.MapRotations_Deploy, allowedServerId.ToString()));
         var context = new AuthorizationHandlerContext(
             [new MapRotationsDeploy()], user, (GameType.CallOfDuty4, deniedServerId));
 
@@ -40,7 +40,7 @@ public class MapRotationsAuthHandlerTests
     [Fact]
     public async Task Deploy_BareGameType_DoesNotSatisfyServerGuidGrant()
     {
-        var user = CreateUser(new Claim("MapRotations.Deploy", allowedServerId.ToString()));
+        var user = CreateUser(new Claim(AuthPolicies.MapRotations_Deploy, allowedServerId.ToString()));
         var context = new AuthorizationHandlerContext(
             [new MapRotationsDeploy()], user, GameType.CallOfDuty4);
 
@@ -52,7 +52,7 @@ public class MapRotationsAuthHandlerTests
     [Fact]
     public async Task Deploy_GameScopedGrant_MatchesTuple()
     {
-        var user = CreateUser(new Claim("MapRotations.Deploy", GameType.CallOfDuty4.ToString()));
+        var user = CreateUser(new Claim(AuthPolicies.MapRotations_Deploy, GameType.CallOfDuty4.ToString()));
         var context = new AuthorizationHandlerContext(
             [new MapRotationsDeploy()], user, (GameType.CallOfDuty4, allowedServerId));
 

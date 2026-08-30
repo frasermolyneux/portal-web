@@ -413,15 +413,15 @@ public class MapRotationsController(
                 }
             }
 
-            // Determine if the user can assign to at least one compatible server
-            var authorizedServers = await GetAuthorizedServersAsync(rotation.GameType, cancellationToken).ConfigureAwait(false);
+            // Determine if the user can assign to at least one compatible server (short-circuits on first match)
+            var canAssignServer = await AnyAuthorizedServerAsync(rotation.GameType, cancellationToken).ConfigureAwait(false);
 
             return View(new MapRotationDetailsViewModel
             {
                 Rotation = rotation,
                 Maps = maps,
                 AssignmentOperations = assignmentOperations,
-                CanAssignServer = authorizedServers.Count > 0
+                CanAssignServer = canAssignServer
             });
         }, nameof(Details)).ConfigureAwait(false);
     }
@@ -1648,16 +1648,18 @@ public class MapRotationsController(
     }
 
     /// <summary>
-    /// Loads all compatible game servers and filters to only those the current user is authorized to deploy to.
+    /// Pages through all game servers compatible with the specified game type, yielding each server.
+    /// Surfaces repository failures as an exception rather than silently ending the sequence, so that
+    /// callers do not misclassify an infrastructure failure as "no servers". Enumeration is lazy, so
+    /// callers that stop early (e.g. after the first authorized server) avoid fetching later pages.
     /// </summary>
-    private async Task<List<Repository.Abstractions.Models.V1.GameServers.GameServerDto>> GetAuthorizedServersAsync(
-        GameType gameType, CancellationToken cancellationToken)
+    private async IAsyncEnumerable<Repository.Abstractions.Models.V1.GameServers.GameServerDto> EnumerateCompatibleServersAsync(
+        GameType gameType,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var allServers = new List<Repository.Abstractions.Models.V1.GameServers.GameServerDto>();
         const int pageSize = 100;
         var offset = 0;
 
-        // Page through all compatible servers
         while (true)
         {
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -1675,20 +1677,29 @@ public class MapRotationsController(
 
             var items = serversResponse.Result?.Data?.Items;
             if (items == null)
-                break;
+                yield break;
 
             var serverBatch = items.ToList();
-            allServers.AddRange(serverBatch);
+
+            foreach (var server in serverBatch)
+                yield return server;
 
             if (serverBatch.Count < pageSize)
-                break;
+                yield break;
 
             offset += pageSize;
         }
+    }
 
+    /// <summary>
+    /// Loads all compatible game servers and filters to only those the current user is authorized to deploy to.
+    /// </summary>
+    private async Task<List<Repository.Abstractions.Models.V1.GameServers.GameServerDto>> GetAuthorizedServersAsync(
+        GameType gameType, CancellationToken cancellationToken)
+    {
         var authorizedServers = new List<Repository.Abstractions.Models.V1.GameServers.GameServerDto>();
 
-        foreach (var server in allServers)
+        await foreach (var server in EnumerateCompatibleServersAsync(gameType, cancellationToken).ConfigureAwait(false))
         {
             var deployAuth = await authorizationService.AuthorizeAsync(
                 User, (gameType, server.GameServerId), AuthPolicies.MapRotations_Deploy).ConfigureAwait(false);
@@ -1698,6 +1709,25 @@ public class MapRotationsController(
         }
 
         return authorizedServers;
+    }
+
+    /// <summary>
+    /// Determines whether the current user is authorized to deploy to at least one compatible server.
+    /// Short-circuits on the first authorized server, avoiding a full-fleet authorization sweep (and any
+    /// later page fetches). Repository failures surface as an exception rather than "no access".
+    /// </summary>
+    private async Task<bool> AnyAuthorizedServerAsync(GameType gameType, CancellationToken cancellationToken)
+    {
+        await foreach (var server in EnumerateCompatibleServersAsync(gameType, cancellationToken).ConfigureAwait(false))
+        {
+            var deployAuth = await authorizationService.AuthorizeAsync(
+                User, (gameType, server.GameServerId), AuthPolicies.MapRotations_Deploy).ConfigureAwait(false);
+
+            if (deployAuth.Succeeded)
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>

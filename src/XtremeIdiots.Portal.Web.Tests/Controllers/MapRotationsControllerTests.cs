@@ -879,6 +879,97 @@ public class MapRotationsControllerTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task Details_CanAssignServer_ShortCircuitsOnFirstAuthorizedServer()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+        var allowedServerId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        // A full first page (100 servers) — without short-circuit this would trigger a second page fetch.
+        var firstPage = new List<GameServerDto> { CreateGameServer(allowedServerId, GameType.CallOfDuty4) };
+        firstPage.AddRange(Enumerable.Range(0, 99).Select(_ => CreateGameServer(Guid.NewGuid(), GameType.CallOfDuty4)));
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>(firstPage))));
+
+        // Read authorization for the Details page
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        // The first server in the page is authorized for deploy
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, allowedServerId)),
+                AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Details(mapRotationId);
+
+        // Assert
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<MapRotationDetailsViewModel>(view.Model);
+        Assert.True(model.CanAssignServer);
+
+        // Short-circuit: only the first server was authorization-checked, and no second page was fetched.
+        mockAuthorizationService.Verify(
+            x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), AuthPolicies.MapRotations_Deploy),
+            Times.Once);
+        mockRepositoryApiClient.Verify(
+            x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Details_WhenServerLookupFails_SurfacesErrorInsteadOfHidingUi()
+    {
+        // Arrange
+        var mapRotationId = Guid.NewGuid();
+
+        var rotation = CreateRotation(mapRotationId, GameType.CallOfDuty4);
+
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(),
+                It.IsAny<object?>(),
+                AuthPolicies.MapRotations_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        // Repository API failure loading servers must not be misclassified as "cannot assign"
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.InternalServerError));
+
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
+    }
+
     #region Helpers
 
     private static bool IsServerTuple(object? resource, Guid expectedServerId)
