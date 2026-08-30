@@ -19,30 +19,30 @@
 
                 <div class="mb-3">
                     <a asp-action="Details" asp-route-id="@Model.Rotation.MapRotationId" class="btn btn-outline-secondary btn-sm">
-                        <i class="fa-solid fa-fw fa-arrow-left"></i> Back to @Model.Rotation.Title
+                        <i class="fa-solid fa-fw fa-arrow-left" aria-hidden="true"></i> Back to @Model.Rotation.Title
                     </a>
                     <a policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId" class="btn btn-outline-primary btn-sm">
                         <i class="fa-solid fa-fw fa-pen-to-square" aria-hidden="true"></i> Edit Assignment
                     </a>
                     <a policy="@AuthPolicies.GameServers_Maps_Read" policy-resource="@Model.Rotation.GameType" asp-controller="MapManager" asp-action="Manage" asp-route-id="@Model.Assignment.GameServerId" class="btn btn-outline-secondary btn-sm">
-                        <i class="fa-solid fa-fw fa-hard-drive"></i> Manage Server Maps
+                        <i class="fa-solid fa-fw fa-hard-drive" aria-hidden="true"></i> Manage Server Maps
                     </a>
                 </div>
 
                 @if (showRestartReminder)
                 {
                     <div class="alert alert-info mb-3">
-                        <i class="fa-solid fa-fw fa-circle-info"></i>
+                        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
                         <strong>Activation handover started.</strong> The selected assignment is now becoming active and any previous active assignment on the same target is deactivated automatically.
                         The server still needs a restart for the map rotation change to take effect.
                         <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@Model.Assignment.GameServerId" class="alert-link">
-                            Go to Server Admin <i class="fa-solid fa-fw fa-arrow-right"></i>
+                            Go to Server Admin <i class="fa-solid fa-fw fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </div>
                 }
 
                 <div class="alert alert-secondary mb-3">
-                    <i class="fa-solid fa-fw fa-list-check"></i>
+                    <i class="fa-solid fa-fw fa-list-check" aria-hidden="true"></i>
                     <strong>Workflow:</strong> 1) Sync files 2) Activate handover 3) Restart server 4) Unassign old assignment.
                     Removed assignments stay visible for 48 hours before automatic cleanup.
                 </div>
@@ -50,7 +50,7 @@
                 @if (isAacpAssignment)
                 {
                     <div class="alert alert-info mb-3">
-                        <i class="fa-solid fa-fw fa-circle-info"></i>
+                        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
                         <strong>AACP Assignment:</strong> Maps for AACP assignments are shared with the main <code>sv_maprotation</code> assignment. If maps are already deployed via the main rotation, use <strong>Activate</strong> instead of Sync to update the config variable.
                     </div>
                 }
@@ -118,7 +118,7 @@
                         @if (!string.IsNullOrEmpty(Model.Assignment.LastError) && Model.Assignment.DeploymentState == DeploymentState.Failed)
                         {
                             <div class="alert alert-danger mt-3 mb-0">
-                                <i class="fa-solid fa-fw fa-exclamation-triangle"></i> <strong>Last Error</strong>
+                                <i class="fa-solid fa-fw fa-exclamation-triangle" aria-hidden="true"></i> <strong>Last Error</strong>
                                 @if (Model.Assignment.LastErrorAt.HasValue)
                                 {
                                     <small class="text-muted">(<time user-time utc="@Model.Assignment.LastErrorAt.Value"></time>)</small>
@@ -135,7 +135,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-success btn-sm me-1">
-                                        <i class="fa-solid fa-fw fa-sync"></i> Sync
+                                        <i class="fa-solid fa-fw fa-sync" aria-hidden="true"></i> Sync
                                     </button>
                                 </form>
                             }
@@ -146,7 +146,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-warning btn-sm me-1">
-                                        <i class="fa-solid fa-fw fa-sync"></i> Re-sync
+                                        <i class="fa-solid fa-fw fa-sync" aria-hidden="true"></i> Re-sync
                                     </button>
                                 </form>
                             }
@@ -157,7 +157,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-primary btn-sm me-1" title="Activating this assignment automatically deactivates any currently active assignment on the same target.">
-                                        <i class="fa-solid fa-fw fa-play"></i> Activate (Handover)
+                                        <i class="fa-solid fa-fw fa-play" aria-hidden="true"></i> Activate (Handover)
                                     </button>
                                 </form>
                             }
@@ -168,7 +168,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
-                                        <i class="fa-solid fa-fw fa-stop"></i> Deactivate
+                                        <i class="fa-solid fa-fw fa-stop" aria-hidden="true"></i> Deactivate
                                     </button>
                                 </form>
                             }
@@ -179,7 +179,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-info btn-sm me-1">
-                                        <i class="fa-solid fa-fw fa-clipboard-check"></i> Verify Maps
+                                        <i class="fa-solid fa-fw fa-clipboard-check" aria-hidden="true"></i> Verify Maps
                                     </button>
                                 </form>
                             }
@@ -190,7 +190,7 @@
                                     <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <button type="submit" class="btn btn-outline-danger btn-sm me-1" data-confirm="Are you sure you want to unassign this server? Maps will be removed from the server.">
-                                        <i class="fa-solid fa-fw fa-unlink"></i> Unassign
+                                        <i class="fa-solid fa-fw fa-unlink" aria-hidden="true"></i> Unassign
                                     </button>
                                 </form>
 
@@ -200,7 +200,7 @@
                                     <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
                                     <input type="hidden" name="force" value="true" />
                                     <button type="submit" class="btn btn-outline-warning btn-sm me-1" data-confirm="Force unassign skips map cleanup. Use only if normal unassign is blocked. Continue?">
-                                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i> Force Unassign
+                                        <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Force Unassign
                                     </button>
                                 </form>
                             }
@@ -243,7 +243,7 @@
                                         {
                                             <tr class="table-info pending-bootstrap-row" data-instance-id="@pendingInstanceId">
                                                 <td>—</td>
-                                                <td><span class="badge bg-info"><i class="fa-solid fa-fw fa-spinner fa-spin"></i> Starting...</span></td>
+                                                <td><span class="badge bg-info"><i class="fa-solid fa-fw fa-spinner fa-spin" aria-hidden="true"></i> Starting...</span></td>
                                                 <td colspan="3"><span class="text-muted">Operation is being initialized...</span></td>
                                                 <td><code class="small" title="@pendingInstanceId">@(pendingInstanceId!.Length > 20 ? pendingInstanceId[..20] + "…" : pendingInstanceId)</code></td>
                                                 <td></td>
@@ -280,7 +280,7 @@
                                                     @switch (op.Status)
                                                     {
                                                         case AssignmentOperationStatus.InProgress:
-                                                            <span class="badge bg-info"><i class="fa-solid fa-fw fa-spinner fa-spin"></i> In Progress</span>
+                                                            <span class="badge bg-info"><i class="fa-solid fa-fw fa-spinner fa-spin" aria-hidden="true"></i> In Progress</span>
                                                             if (elapsedMinutes > 15)
                                                             {
                                                                 <span class="badge bg-warning text-dark stale-badge" title="This operation has been running for over 15 minutes and may be stuck">⚠️ Stale</span>
@@ -335,7 +335,7 @@
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Are you sure you want to cancel this operation? The assignment state will be reset.">
-                                                                <i class="fa-solid fa-fw fa-ban"></i> Cancel
+                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Cancel
                                                             </button>
                                                         </form>
                                                     }
@@ -346,7 +346,7 @@
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Are you sure you want to terminate this operation? The underlying process will be cleared so you can retry.">
-                                                                <i class="fa-solid fa-fw fa-skull-crossbones"></i> Terminate
+                                                                <i class="fa-solid fa-fw fa-skull-crossbones" aria-hidden="true"></i> Terminate
                                                             </button>
                                                         </form>
                                                     }
@@ -359,7 +359,7 @@
                                                         <div class="px-3 py-2 bg-light">
                                                             @if (string.IsNullOrEmpty(op.DurableFunctionInstanceId))
                                                             {
-                                                                <p class="text-muted mb-0"><i class="fa-solid fa-fw fa-info-circle"></i> Live progress details are unavailable — no orchestration tracking ID recorded for this operation.</p>
+                                                                <p class="text-muted mb-0"><i class="fa-solid fa-fw fa-info-circle" aria-hidden="true"></i> Live progress details are unavailable — no orchestration tracking ID recorded for this operation.</p>
                                                             }
                                                             else
                                                             {
