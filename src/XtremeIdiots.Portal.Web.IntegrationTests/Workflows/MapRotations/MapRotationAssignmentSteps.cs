@@ -47,11 +47,13 @@ public sealed class MapRotationAssignmentSteps
         var options = await select.Locator("option").AllAsync();
 
         // Filter out the placeholder "-- Select Server --" option
-        var serverOptions = options.Where(o =>
+        var serverOptions = new List<Microsoft.Playwright.ILocator>();
+        foreach (var option in options)
         {
-            var value = o.GetAttributeAsync("value").GetAwaiter().GetResult();
-            return !string.IsNullOrEmpty(value);
-        }).ToList();
+            var value = await option.GetAttributeAsync("value");
+            if (!string.IsNullOrEmpty(value))
+                serverOptions.Add(option);
+        }
 
         Assert.Single(serverOptions);
         var optionValue = await serverOptions[0].GetAttributeAsync("value");
