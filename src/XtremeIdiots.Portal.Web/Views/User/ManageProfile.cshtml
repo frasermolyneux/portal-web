@@ -1,14 +1,10 @@
 @using XtremeIdiots.Portal.Web.ViewModels
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1;
-@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
-@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @model XtremeIdiots.Portal.Web.ViewModels.ManageUserProfileViewModel
 
 @{
     ViewData["Title"] = "Manage User Profile - " + Model.Profile.DisplayName;
-
-    var gameServers = (List<GameServerDto>?)ViewData["GameServers"] ?? new List<GameServerDto>();
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -19,8 +15,11 @@
     </div>
 
     <div class="mb-3">
-        <a asp-action="ManageNotifications" asp-route-id="@Model.Profile.UserProfileId" class="btn btn-outline-primary">
-            <i class="fa-solid fa-fw fa-bell"></i> Manage Notifications
+        <a policy="@AuthPolicies.Users_ManageNotificationPreferences"
+           asp-action="ManageNotifications"
+           asp-route-id="@Model.Profile.UserProfileId"
+           class="btn btn-outline-primary">
+            <i class="fa-solid fa-fw fa-bell" aria-hidden="true"></i> Manage Notifications
         </a>
     </div>
 
@@ -92,7 +91,7 @@
             <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title"><h5>Add Additional Portal Permission</h5></div>
-                    <div policy="@AuthPolicies.Users_ManageClaims" class="ibox-content">
+                    <div policy="@AuthPolicies.Users_ManageClaims" policy-resource="@PotentialAccessProbe.Instance" class="ibox-content">
                         <form asp-action="CreateUserClaim" id="createClaimForm">
                             <input id="id" name="id" type="hidden" value="@Model.Profile.UserProfileId" />
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -134,7 +133,7 @@
                                 </div>
                                 <div id="serverScopeGroup" class="mt-2" style="display:none;">
                                     <select id="serverSelect" class="form-select"
-                                            asp-items="ViewBag.GameServersSelect">
+                                            asp-items="ViewBag.AssignableGameServersSelect">
                                         <option value="">Select server...</option>
                                     </select>
                                 </div>
@@ -174,30 +173,15 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var claim in Model.Profile.UserProfileClaims)
+                                    @foreach (var claim in Model.Claims)
                                     {
                                         <tr>
-                                            @{
-                                                var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
-                                                Guid.TryParse(claim.ClaimValue, out var gameServerId);
-                                                var server = gameServers?.FirstOrDefault(s => s.GameServerId == gameServerId);
-                                            }
-
-                                            <td>@(definition?.DisplayName ?? claim.ClaimType)</td>
+                                            <td>@claim.DisplayName</td>
+                                            <td>@claim.ScopeDisplayValue</td>
                                             <td>
-                                                @if (server is not null)
+                                                @if (claim.CanRemove)
                                                 {
-                                                    @server.Title
-                                                }
-                                                else
-                                                {
-                                                    @claim.ClaimValue
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (!claim.SystemGenerated)
-                                                {
-                                                    <form policy="@AuthPolicies.Users_ManageClaims" class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
+                                                    <form class="d-inline-flex" asp-controller="User" asp-action="RemoveUserClaim"
                                                         method="post">
                                                         <input id="id" name="id" type="hidden"
                                                             value="@Model.Profile.UserProfileId" />

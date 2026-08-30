@@ -82,5 +82,7 @@ public class GlobalSettingsAdmin : IAuthorizationRequirement { }
 // Users
 public class UsersRead : IAuthorizationRequirement { }
 public class UsersManageClaims : IAuthorizationRequirement { }
+public class UsersLogOut : IAuthorizationRequirement { }
+public class UsersManageNotificationPreferences : IAuthorizationRequirement { }
 public class UsersSearch : IAuthorizationRequirement { }
 public class UsersActivityLog : IAuthorizationRequirement { }

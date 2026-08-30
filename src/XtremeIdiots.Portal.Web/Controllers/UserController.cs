@@ -5,11 +5,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Notifications;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Auth.Handlers;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.ViewModels;
@@ -103,13 +106,13 @@ public class UserController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>The manage profile view with user data and available game servers</returns>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> ManageProfile(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin];
             var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
+            var assignableGameTypes = User.GetGameTypesForGameServers();
 
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
                 gameTypes, gameServerIds, null, 0, 50, GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
@@ -128,8 +131,10 @@ public class UserController(
                 return BadRequest();
             }
 
-            ViewData["GameServers"] = gameServersApiResponse.Result.Data.Items;
-            ViewData["GameServersSelect"] = new SelectList(gameServersApiResponse.Result.Data.Items, "GameServerId", "Title");
+            ViewData["AssignableGameServersSelect"] = new SelectList(
+                gameServersApiResponse.Result.Data.Items.Where(server => assignableGameTypes.Contains(server.GameType)),
+                "GameServerId",
+                "Title");
 
             // Identity user ID in this system corresponds to the forum id (string). Fallback to profile guid if needed.
             var profileData = userProfileDtoApiResponse.Result.Data;
@@ -157,7 +162,11 @@ public class UserController(
             {
                 Profile = userProfileDtoApiResponse.Result.Data,
                 Identity = identitySummary,
-                AssignableGameTypes = User.GetGameTypesForGameServers()
+                AssignableGameTypes = assignableGameTypes,
+                Claims = await BuildManageUserProfileClaimEntriesAsync(
+                    userProfileDtoApiResponse.Result.Data,
+                    [.. gameServersApiResponse.Result.Data.Items],
+                    cancellationToken).ConfigureAwait(false)
             };
 
             return View(vm);
@@ -172,7 +181,6 @@ public class UserController(
     /// <returns>Redirects to Index with success/warning message</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> LogUserOut(string id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -183,6 +191,18 @@ public class UserController(
                 return RedirectToAction(nameof(Index));
             }
 
+            var safeRequestedTargetUserId = SanitizeForLog(id);
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                new object(),
+                AuthPolicies.Users_LogOut,
+                nameof(LogUserOut),
+                "User",
+                $"TargetUserId:{safeRequestedTargetUserId}").ConfigureAwait(false);
+
+            if (authResult is not null)
+                return authResult;
+
             var user = await userManager.FindByIdAsync(id).ConfigureAwait(false);
 
             if (user is null)
@@ -192,6 +212,30 @@ public class UserController(
                 return RedirectToAction(nameof(Index));
             }
 
+            var targetUserProfileResponse = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfileByXtremeIdiotsId(id, cancellationToken).ConfigureAwait(false);
+
+            if (targetUserProfileResponse.Result?.Data?.UserProfileClaims is null ||
+                string.IsNullOrWhiteSpace(targetUserProfileResponse.Result.Data.XtremeIdiotsForumId) ||
+                !string.Equals(targetUserProfileResponse.Result.Data.XtremeIdiotsForumId, id, StringComparison.Ordinal))
+            {
+                var safeTargetUserId = SanitizeForLog(id);
+                Logger.LogWarning("Could not authoritatively resolve target roles for logout of user {UserId}", safeTargetUserId);
+                TrackUnauthorizedAccessAttempt(nameof(LogUserOut), "User", $"TargetUserId:{safeTargetUserId},Reason:TargetRolesUnavailable");
+                return Unauthorized();
+            }
+
+            if (!BaseAuthorizationHelper.HasGlobalAdminClaim(User) &&
+                HasProtectedLogoutRole(targetUserProfileResponse.Result.Data.UserProfileClaims))
+            {
+                var safeActorUserId = SanitizeForLog(User.XtremeIdiotsId());
+                var safeTargetUserId = SanitizeForLog(id);
+                Logger.LogWarning("User {ActorUserId} denied force logout against protected target {TargetUserId}",
+                    safeActorUserId, safeTargetUserId);
+                TrackUnauthorizedAccessAttempt(nameof(LogUserOut), "User", $"TargetUserId:{safeTargetUserId},Reason:ProtectedRoleTarget");
+                return Unauthorized();
+            }
+
             await userManager.UpdateSecurityStampAsync(user).ConfigureAwait(false);
 
             this.AddAlertSuccess($"User {user.UserName} has been force logged out (this may take up to 15 minutes)");
@@ -199,7 +243,7 @@ public class UserController(
             TrackSuccessTelemetry("UserForceLoggedOut", nameof(LogUserOut), new Dictionary<string, string>
             {
                 { "TargetUser", user.UserName ?? "" },
-                { "TargetUserId", id }
+                { "TargetUserId", safeRequestedTargetUserId }
             });
 
             return RedirectToAction(nameof(Index));
@@ -216,21 +260,30 @@ public class UserController(
     /// <returns>Redirects to ManageProfile with success message</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> CreateUserClaim(Guid id, string claimType, string claimValue, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var safeClaimType = SanitizeForLog(claimType);
+            var safeClaimValue = SanitizeForLog(claimValue);
+
             if (!AdditionalPermission.IsAllowed(claimType))
             {
-                Logger.LogWarning("Invalid claim type '{ClaimType}' attempted for profile {ProfileId}", claimType, id);
+                Logger.LogWarning("Invalid claim type '{ClaimType}' attempted for profile {ProfileId}", safeClaimType, id);
                 return BadRequest($"Invalid permission type: {claimType}");
             }
 
             if (string.IsNullOrWhiteSpace(claimValue))
             {
-                Logger.LogWarning("Empty claim value for claim type '{ClaimType}' on profile {ProfileId}", claimType, id);
+                Logger.LogWarning("Empty claim value for claim type '{ClaimType}' on profile {ProfileId}", safeClaimType, id);
                 return BadRequest("A scope value must be provided.");
+            }
+
+            var definition = AdditionalPermission.GetDefinition(claimType);
+            if (definition is null)
+            {
+                Logger.LogWarning("Permission definition missing for claim type '{ClaimType}' on profile {ProfileId}", safeClaimType, id);
+                return BadRequest($"Invalid permission type: {claimType}");
             }
 
             var userProfileResponseDto = await repositoryApiClient.UserProfiles.V1.GetUserProfile(id, cancellationToken).ConfigureAwait(false);
@@ -255,6 +308,12 @@ public class UserController(
 
             if (Guid.TryParse(claimValue, out var gameServerId))
             {
+                if (definition.Scope == PermissionScope.Game)
+                {
+                    Logger.LogWarning("Game-only claim type '{ClaimType}' was posted with server scope '{ClaimValue}' for profile {ProfileId}", safeClaimType, safeClaimValue, id);
+                    return BadRequest("This permission must be scoped to a game type.");
+                }
+
                 // Server-scoped claim — look up the server to get the GameType for auth
                 var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
 
@@ -269,13 +328,19 @@ public class UserController(
             }
             else if (Enum.TryParse<GameType>(claimValue, out var gameType))
             {
+                if (definition.Scope == PermissionScope.Server)
+                {
+                    Logger.LogWarning("Server-only claim type '{ClaimType}' was posted with game scope '{ClaimValue}' for profile {ProfileId}", safeClaimType, safeClaimValue, id);
+                    return BadRequest("This permission must be scoped to a server.");
+                }
+
                 // Game-scoped claim — use the GameType directly for auth
                 authResource = gameType;
                 gameTypeForTelemetry = gameType.ToString();
             }
             else
             {
-                Logger.LogWarning("Invalid claim value '{ClaimValue}' — not a valid GameType or server GUID", claimValue);
+                Logger.LogWarning("Invalid claim value '{ClaimValue}' — not a valid GameType or server GUID", safeClaimValue);
                 return BadRequest("Claim value must be a valid game type or server ID.");
             }
 
@@ -301,7 +366,6 @@ public class UserController(
                     ? await userManager.FindByIdAsync(userProfileData.XtremeIdiotsForumId)
                     : null;
 
-                var definition = AdditionalPermission.GetDefinition(claimType);
                 var displayName = definition?.DisplayName ?? claimType;
                 this.AddAlertSuccess($"The '{displayName}' permission has been added to {user?.UserName ?? userProfileData.DisplayName}");
 
@@ -319,7 +383,6 @@ public class UserController(
                     ? await userManager.FindByIdAsync(userProfileData.XtremeIdiotsForumId)
                     : null;
 
-                var definition = AdditionalPermission.GetDefinition(claimType);
                 var displayName = definition?.DisplayName ?? claimType;
                 this.AddAlertSuccess($"Nothing to do - {user?.UserName ?? userProfileData.DisplayName} already has the '{displayName}' permission");
             }
@@ -337,7 +400,6 @@ public class UserController(
     /// <returns>Redirects to ManageProfile with success message</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = AuthPolicies.Users_ManageClaims)]
     public async Task<IActionResult> RemoveUserClaim(Guid id, Guid claimId, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -365,23 +427,41 @@ public class UserController(
                 return NotFound();
             }
 
-            var canDeleteUserClaim = false;
+            if (claim.SystemGenerated)
+            {
+                Logger.LogWarning("Attempt to remove system-generated claim {ClaimId} from user profile {ProfileId}", claimId, id);
+                TrackUnauthorizedAccessAttempt(nameof(RemoveUserClaim), "UserClaim",
+                    $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType},Reason:SystemGenerated");
+                return Unauthorized();
+            }
 
             if (Guid.TryParse(claim.ClaimValue, out var serverGuid))
             {
                 // Server-scoped claim — look up the server for auth
                 var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(serverGuid, cancellationToken).ConfigureAwait(false);
+                var gameServer = gameServerApiResponse.Result?.Data;
 
                 if (gameServerApiResponse.IsNotFound)
                 {
-                    Logger.LogInformation("Legacy claim detected for user profile {ProfileId}, allowing deletion", id);
-                    canDeleteUserClaim = true;
+                    if (!BaseAuthorizationHelper.HasGlobalAdminClaim(User))
+                    {
+                        Logger.LogWarning("Head-admin-scoped cleanup denied for deleted server claim {ClaimId} on profile {ProfileId}", claimId, id);
+                        TrackUnauthorizedAccessAttempt(nameof(RemoveUserClaim), "UserClaim",
+                            $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType},Reason:DeletedServerScope");
+                        return Unauthorized();
+                    }
                 }
-                else if (gameServerApiResponse.Result?.Data is not null)
+                else
                 {
+                    if (gameServer is null)
+                    {
+                        Logger.LogWarning("Game server data is null for claim {ClaimId} on profile {ProfileId}", claimId, id);
+                        return BadRequest();
+                    }
+
                     var authResult = await CheckAuthorizationAsync(
                         authorizationService,
-                        gameServerApiResponse.Result.Data.GameType,
+                        gameServer.GameType,
                         AuthPolicies.Users_ManageClaims,
                         nameof(RemoveUserClaim),
                         "UserClaim",
@@ -389,7 +469,6 @@ public class UserController(
 
                     if (authResult is not null)
                         return authResult;
-                    canDeleteUserClaim = true;
                 }
             }
             else if (Enum.TryParse<GameType>(claim.ClaimValue, out var gameType))
@@ -405,19 +484,12 @@ public class UserController(
 
                 if (authResult is not null)
                     return authResult;
-                canDeleteUserClaim = true;
             }
-            else
+            else if (!BaseAuthorizationHelper.HasGlobalAdminClaim(User))
             {
-                // Unknown claim value format — treat as legacy, allow deletion
-                Logger.LogInformation("Unrecognised claim value format for profile {ProfileId}, allowing deletion", id);
-                canDeleteUserClaim = true;
-            }
-
-            if (!canDeleteUserClaim)
-            {
+                Logger.LogWarning("Head-admin-scoped cleanup denied for unrecognised claim value on claim {ClaimId} for profile {ProfileId}", claimId, id);
                 TrackUnauthorizedAccessAttempt(nameof(RemoveUserClaim), "UserClaim",
-                    $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType}");
+                    $"ProfileId:{id},ClaimId:{claimId},ClaimType:{claim.ClaimType},Reason:UnknownScopeValue");
                 return Unauthorized();
             }
 
@@ -459,7 +531,7 @@ public class UserController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.Users_Read,
+                AuthPolicies.Users_ManageNotificationPreferences,
                 nameof(ManageNotifications),
                 "UserNotifications").ConfigureAwait(false);
 
@@ -536,7 +608,7 @@ public class UserController(
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
                 new object(),
-                AuthPolicies.Users_Read,
+                AuthPolicies.Users_ManageNotificationPreferences,
                 nameof(UpdateUserNotificationPreferences),
                 "UserNotifications").ConfigureAwait(false);
 
@@ -597,5 +669,108 @@ public class UserController(
 
             return RedirectToAction(nameof(ManageNotifications), new { id });
         }, nameof(UpdateUserNotificationPreferences), id.ToString());
+    }
+
+    private static bool HasProtectedLogoutRole(IEnumerable<UserProfileClaimDto> claims)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            claims.Select(claim => new Claim(claim.ClaimType, claim.ClaimValue)),
+            authenticationType: "TargetProfileClaims"));
+
+        return BaseAuthorizationHelper.HasGlobalAdminClaim(principal);
+    }
+
+    private async Task<List<ManageUserProfileClaimEntry>> BuildManageUserProfileClaimEntriesAsync(
+        UserProfileDto profile,
+        IReadOnlyCollection<GameServerDto> visibleGameServers,
+        CancellationToken cancellationToken)
+    {
+        var isGlobalAdmin = BaseAuthorizationHelper.HasGlobalAdminClaim(User);
+        var serverCache = visibleGameServers.ToDictionary(server => server.GameServerId, server => (GameServerDto?)server);
+        var claimEntries = new List<ManageUserProfileClaimEntry>(profile.UserProfileClaims.Count);
+
+        foreach (var claim in profile.UserProfileClaims)
+        {
+            claimEntries.Add(await BuildManageUserProfileClaimEntryAsync(
+                claim,
+                isGlobalAdmin,
+                serverCache,
+                cancellationToken).ConfigureAwait(false));
+        }
+
+        return claimEntries;
+    }
+
+    private async Task<ManageUserProfileClaimEntry> BuildManageUserProfileClaimEntryAsync(
+        UserProfileClaimDto claim,
+        bool isGlobalAdmin,
+        IDictionary<Guid, GameServerDto?> serverCache,
+        CancellationToken cancellationToken)
+    {
+        var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
+        var server = await ResolveGameServerForClaimAsync(claim.ClaimValue, serverCache, cancellationToken).ConfigureAwait(false);
+        var canRemove = false;
+
+        if (!claim.SystemGenerated)
+        {
+            if (isGlobalAdmin)
+            {
+                canRemove = true;
+            }
+            else if (server is not null)
+            {
+                canRemove = (await authorizationService.AuthorizeAsync(
+                    User,
+                    server.GameType,
+                    AuthPolicies.Users_ManageClaims).ConfigureAwait(false)).Succeeded;
+            }
+            else if (Enum.TryParse<GameType>(claim.ClaimValue, out var gameType))
+            {
+                canRemove = (await authorizationService.AuthorizeAsync(
+                    User,
+                    gameType,
+                    AuthPolicies.Users_ManageClaims).ConfigureAwait(false)).Succeeded;
+            }
+        }
+
+        return new ManageUserProfileClaimEntry
+        {
+            UserProfileClaimId = claim.UserProfileClaimId,
+            DisplayName = definition?.DisplayName ?? claim.ClaimType,
+            ScopeDisplayValue = server?.Title ?? claim.ClaimValue,
+            SystemGenerated = claim.SystemGenerated,
+            CanRemove = canRemove
+        };
+    }
+
+    private async Task<GameServerDto?> ResolveGameServerForClaimAsync(
+        string claimValue,
+        IDictionary<Guid, GameServerDto?> serverCache,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(claimValue, out var gameServerId))
+        {
+            return null;
+        }
+
+        if (serverCache.TryGetValue(gameServerId, out var cachedServer))
+        {
+            return cachedServer;
+        }
+
+        var gameServerResponse = await repositoryApiClient.GameServers.V1
+            .GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
+        var resolvedServer = gameServerResponse.Result?.Data;
+
+        serverCache[gameServerId] = resolvedServer;
+        return resolvedServer;
+    }
+
+    private static string SanitizeForLog(string? value)
+    {
+        return string.IsNullOrEmpty(value)
+            ? string.Empty
+            : value.Replace("\r", string.Empty, StringComparison.Ordinal)
+                .Replace("\n", string.Empty, StringComparison.Ordinal);
     }
 }
