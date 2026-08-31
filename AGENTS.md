@@ -1,149 +1,67 @@
-# AGENTS.md — portal-web
+# portal-web agent brief
 
-ASP.NET Core 9 web application — the XtremeIdiots Portal front-end. Razor views (runtime compile in Debug, build-time precompile in Release), SCSS via npm, Application Insights, Azure App Configuration, EF Core for identity / data-protection, and typed API clients for the Portal Repository, Servers Integration, and GeoLocation APIs.
+`portal-web` is the ASP.NET Core 9 front end for the XtremeIdiots Portal. It uses
+server-rendered Razor views, SCSS compiled with Sass, Entity Framework Core,
+Application Insights, Azure App Configuration, typed portal API clients, and
+Terraform for Azure infrastructure.
 
-This file is the brief for the **GitHub Copilot coding agent** (and any other agent that follows the [agents.md](https://agents.md) convention) when it runs in a cloud runner without the local VS Code multi-root workspace context.
+## Repository map
 
-> If you are a human reading this in VS Code, prefer `.github/copilot-instructions.md` for project orientation. `AGENTS.md` is the agent execution brief.
+- `src/XtremeIdiots.Portal.Web/` - web application, Razor views, services, and SCSS.
+- `src/XtremeIdiots.Portal.Web.Tests/` - unit and controller tests.
+- `src/XtremeIdiots.Portal.Web.IntegrationTests/` - Playwright/Reqnroll integration tests.
+- `src/XtremeIdiots.Portal.Integrations.Forums/` - forum integration library.
+- `terraform/` - workload infrastructure and environment configuration.
+- `docs/` - architecture, UI, authorization, settings, and operational guidance.
 
----
+## Bootstrap and validation
 
-## Required reading (read these BEFORE doing any work)
-
-The `copilot-setup-steps.yml` workflow checks out `frasermolyneux/.github-copilot` at `./.github-copilot/` in the runner, so the paths below resolve.
-
-1. `.github/copilot-instructions.md` — repo-specific orientation, build commands, conventions
-2. `.github-copilot/.github/instructions/personal.working-preferences.instructions.md`
-3. `.github-copilot/.github/copilot-instructions.md` — org-wide catalog
-4. Stack-specific files — see **Stack guardrails** below
-5. `docs/ui-standards-guide.md` — **mandatory for any Razor view change** (buttons, icons, forms, destructive operations, legacy patterns to avoid)
-6. `docs/authorization-model.md` — how roles, policies, and `PotentialAccessProbe` work
-7. `docs/css-architecture-guide.md` — SCSS structure, tokens, components
-8. `docs/DATATABLE-IMPLEMENTATION-GUIDE.md` — server-backed data table patterns
-
----
-
-## Org conventions via MCP (when available)
-
-If a `frasermolyneux-copilot` MCP server is configured in your client (`~/.copilot/mcp-config.json`, VS Code user `mcp.json`, or an equivalent stdio MCP wire-up), **prefer its catalog tools** over your own assumptions when answering questions about org standards, branching, workflows, Terraform, .NET projects, Azure patterns, or shared library / platform consumption contracts. The catalog source-of-truth lives in `frasermolyneux/.github-copilot` — see `mcp-server/README.md` there for the tool contract.
-
-This is **complementary** to the file-load model: if `./.github-copilot/` is checked out in the runner (per `copilot-setup-steps.yml`), continue to read those files directly. If both are available, prefer MCP for freshness. If no MCP server is configured in your client, treat this section as a no-op and fall back to the file paths above.
-
----
-
-## Stack guardrails
-
-### Tenant facts (always-on)
-- `tenant.subscriptions`, `tenant.regions`, `tenant.identity`, `tenant.dns`
-
-### Enforceable standards
-- `standards.oidc-and-secrets` — **no client secrets**
-- `standards.dotnet-project`
-- `standards.azure-naming`, `standards.azure-tagging`, `standards.terraform-style`
-- `standards.branching-and-prs`
-
-### Patterns
-- `patterns.api-client` — consumes Portal Repository + Servers Integration + GeoLocation clients
-- `patterns.scss-build` — SCSS build pattern
-- `patterns.nbgv-versioning`
-- `patterns.terraform-remote-state`
-
-### Platform settings contracts
-- Follow `docs/platform-settings-contracts.md` for migration and troubleshooting steps.
-### Platform consumption contracts
-- `platform.workloads`, `platform.monitoring`, `platform.hosting`, `platform.connectivity`
-### Shared
-- `shared.api-client-abstractions`
-- `shared.observability-appinsights`
-- `shared.portal-core` — App Insights / ASP / SQL consumed from `portal-core`
-
----
-
-## Build, test, format
+The required SDK is pinned by `global.json` to .NET SDK `9.0.315`. NuGet packages
+come from nuget.org. The web project runs `npm install` automatically when
+`node_modules` is absent and compiles SCSS during `dotnet build`.
 
 ```pwsh
-# .NET
+dotnet restore src/XtremeIdiots.Portal.Web.sln
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
 dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
-dotnet format src/XtremeIdiots.Portal.Web.sln --verify-no-changes
-
-# SCSS (npm install runs automatically on first build via MSBuild target)
-cd src/XtremeIdiots.Portal.Web
-npm install
-npm run build:css:dev
-cd ../..
-
-# Terraform
-terraform -chdir=terraform fmt -check -recursive
-terraform -chdir=terraform init -backend-config=backends/dev.backend.hcl
-terraform -chdir=terraform validate
-terraform -chdir=terraform plan -var-file=tfvars/dev.tfvars
+dotnet format src/XtremeIdiots.Portal.Web.sln --verify-no-changes --severity warn
 ```
 
-Release builds treat warnings as errors and precompile Razor views — check `ValidateRazor=true` Razor compilation succeeds before declaring done.
+For Razor changes, compile views explicitly:
 
----
+```pwsh
+dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj -p:ValidateRazor=true
+```
 
-## Do NOT
+For SCSS-only work, run from `src/XtremeIdiots.Portal.Web`:
 
-- ❌ Do not `git commit`, `git push`, force-push, rebase, or branch-mutate. Work on the assigned branch only.
-- ❌ Do not introduce client secrets. App Configuration + Key Vault + managed identity only.
-- ❌ Do not bypass `dotnet format`, `dotnet test`, `terraform fmt`, `terraform validate`, or the SCSS build.
-- ❌ Do not use legacy Razor / Bootstrap classes: `control-label`, `help-block`, `float-e-margins`, `btn-xs`, `dl-horizontal`, `admin-actions-filters`, `fa-save`, `fa-edit`, `type="button"` on `<a>` tags. See `docs/ui-standards-guide.md`.
-- ❌ Do not use inline `onclick` / `onsubmit` confirm handlers — use Tier 1 (confirmation page) or Tier 2 (`data-confirm` attribute) per the UI standards guide.
-- ❌ Do not use `ClaimedGamesAndItems` or direct claim checks as authorization gates — use `PotentialAccessProbe` instead. The handler is the single source of truth.
-- ❌ Do not bypass the `{Domain}.{Action}` policy convention — register new policies via `PolicyExtensions.AddXtremeIdiotsPolicies()`.
-- ❌ Do not modify `.github/workflows/`, `.github/dependabot.yml`, or `version.json` unless that is the explicit task.
+```pwsh
+npm install
+npm run build:css:dev
+```
 
-- ❌ Do not pull context from sibling workspace folders. Only what is inside this repo and `./.github-copilot/` is in scope.
-- ❌ Do not assume tools/SDKs are installed beyond what `.github/workflows/copilot-setup-steps.yml` provisions. If you need more, add the step and explain why.
+For Terraform-only work, start with:
 
----
+```pwsh
+terraform -chdir=terraform fmt -check -recursive
+```
 
-## Opening the PR
+Terraform initialization, validation, and plans require the environment-specific
+backend and Azure OIDC context used by the repository workflows.
 
-You MUST use `.github/PULL_REQUEST_TEMPLATE.md` as your PR body — do **not** write a freeform body. The org template is inherited from `frasermolyneux/.github` and GitHub pre-populates it when you open the PR. Concretely:
+## Material risks
 
-1. Fill `## Summary` (one line) and `Closes #<issue>`.
-2. Tick the relevant `## Type of change` box.
-3. Paste the **actual command output** from your Build, Tests, and Format check runs into `## Validation evidence`. Show the real summary line, not "tests passed".
-4. Fill `## Risk and rollout` — blast radius, auto-deploy?, manual steps post-merge, rollback plan.
-5. Tick **every** box in `## Agent attestation`.
-6. Delete `## Consumer impact` only if no published contract (Abstractions / Client NuGet / Service Bus DTO / Terraform output) changed.
+- Release builds precompile Razor views; Debug builds normally use runtime compilation.
+- The .NET build invokes npm and can modify generated CSS under `wwwroot/css`.
+- Authorization is resource-scoped; handlers are authoritative and missing resources fail closed.
+- Settings JSON is persisted dynamically, but runtime mapping must use the typed settings contracts.
+- Terraform consumes several platform remote states and must continue to use OIDC rather than secrets.
 
-Complete the `## Agent attestation` section before requesting review; reviewers use it as a readiness checklist.
+Use the focused guidance in:
 
----
-
-## Pre-PR checks (run before you open the PR)
-
-- [ ] `dotnet build` succeeds (clean) — Release config catches warning-as-error and Razor precompile issues
-- [ ] `dotnet test --filter "FullyQualifiedName!~IntegrationTests"` passes
-- [ ] `dotnet format --verify-no-changes` passes
-- [ ] `npm run build:css:dev` succeeds
-- [ ] `terraform fmt -check -recursive` passes
-- [ ] `terraform validate` + `terraform plan -var-file=tfvars/dev.tfvars` succeed
-- [ ] All Razor view changes follow `docs/ui-standards-guide.md` (buttons, icons, forms, destructive gating)
-- [ ] New authorization checks use `PotentialAccessProbe` for "can user potentially..." gates
-- [ ] No new secrets / GUIDs / connection strings
-- [ ] PR body cites each acceptance criterion
-- [ ] Risk/rollout section filled in
-
-- [ ] `code-review` sub-agent run; High/Medium findings resolved or justified in the PR body
-
----
-
-## Escalation
-
-If you hit any of the conditions below, **open the PR as draft** and **apply the `needs-decision` label** instead of pushing forward to ready-for-review. Post a comment on the originating issue summarising what's blocking you and what decision is needed.
-
-Stop and escalate when:
-
-- The change requires modifying `AdditionalPermission` constants in the `portal-repository` abstractions package (coordinate there first).
-- A new authorization policy crosses domain boundaries and would need cross-repo coordination.
-- A `code-review` finding is **High** and cannot be resolved in-scope.
-- The SCSS build fails and `npm install` + `npm run build:css:dev` does not resolve it.
-
-
-
-
+- [UI standards](docs/ui-standards-guide.md)
+- [Authorization model](docs/authorization-model.md)
+- [CSS architecture](docs/css-architecture-guide.md)
+- [Platform settings contracts](docs/platform-settings-contracts.md)
+- [DataTables implementation](docs/DATATABLE-IMPLEMENTATION-GUIDE.md)
+- [Development workflows](docs/development-workflows.md)

@@ -12,23 +12,14 @@ on:
 permissions: {}
 
 jobs:
-  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
   copilot-setup-steps:
     runs-on: ubuntu-latest
-
-    # Set the permissions to the lowest permissions possible needed for your steps.
-    # Copilot will be given its own token for its operations.
-    permissions:
-      # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission. If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
-      contents: read
+    permissions: {}
 
     steps:
-      - name: Shared Copilot setup
-        uses: frasermolyneux/actions/copilot-setup@copilot-setup/v1
+      - name: Set up Copilot prerequisites
+        uses: frasermolyneux/actions/copilot-setup@copilot-setup/v2
         with:
-          checkout-repo: 'true'
-          checkout-shared-copilot: 'true'
+          checkout-repo: 'false'
           setup-dotnet: 'true'
-          dotnet-version: |
-            9.0.x
-            10.0.x
+          dotnet-version: '9.0.315'
