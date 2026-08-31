@@ -1,5 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Auth.Handlers;
+using XtremeIdiots.Portal.Web.Auth.Requirements;
 
 namespace XtremeIdiots.Portal.Web.Tests.Auth.Handlers;
 
@@ -36,5 +40,19 @@ public class BaseAuthorizationHelperEquivalenceTests
 
         Assert.Single(equivalents);
         Assert.Contains(GameType.CallOfDuty5, equivalents);
+    }
+
+    [Fact]
+    public void CheckSeniorOrGameAdminAccessWithResource_NullResource_DoesNotSucceed()
+    {
+        var requirement = new PlayersRead();
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(UserProfileClaimType.GameAdmin, GameType.CallOfDuty4.ToString())],
+            authenticationType: "TestAuthType"));
+        var context = new AuthorizationHandlerContext([requirement], user, resource: null);
+
+        BaseAuthorizationHelper.CheckSeniorOrGameAdminAccessWithResource(context, requirement);
+
+        Assert.False(context.HasSucceeded);
     }
 }
