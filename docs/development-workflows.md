@@ -94,7 +94,7 @@ graph TD
 
 ### Agent Setup
 - **copilot-setup-steps.yml** defines pre-requisites
-  - Checkout code, setup .NET 9.0.x
+  - Checkout code, setup .NET 10.0.x
   - Runs automatically when workflow file changes
   - Manual dispatch available for testing
 

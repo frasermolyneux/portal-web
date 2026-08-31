@@ -64,7 +64,7 @@
             "type": "process",
             "args": [
                 "test",
-                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.sln",
+                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.slnx",
                 "--filter",
                 "FullyQualifiedName!~IntegrationTests",
                 "/property:GenerateFullPaths=true",
@@ -96,7 +96,7 @@
             "type": "process",
             "args": [
                 "format",
-                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.sln",
+                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.slnx",
                 "--verify-no-changes"
             ],
             "problemMatcher": "$msCompile"

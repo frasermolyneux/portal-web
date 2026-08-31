@@ -90,6 +90,6 @@ This test project establishes the infrastructure for expanding test coverage as 
 ## Notes
 
 - These tests are designed to catch breaking changes from package updates
-- Tests use the same .NET version (net9.0) as the main application
+- Tests use the same .NET version (net10.0) as the main application
 - Code coverage data is collected using coverlet
 - All tests are compatible with CI/CD pipelines

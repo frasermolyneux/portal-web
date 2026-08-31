@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $testProject = Join-Path $repositoryRoot 'src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj'
-$playwrightScript = Join-Path $repositoryRoot 'src/XtremeIdiots.Portal.Web.IntegrationTests/bin/Release/net9.0/playwright.ps1'
+$playwrightScript = Join-Path $repositoryRoot 'src/XtremeIdiots.Portal.Web.IntegrationTests/bin/Release/net10.0/playwright.ps1'
 $resultsDirectory = Join-Path $repositoryRoot 'src/TestResults'
 
 Push-Location $repositoryRoot

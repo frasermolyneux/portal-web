@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "dotnet: build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/src/XtremeIdiots.Portal.Web/bin/Debug/net9.0/XtremeIdiots.Portal.Web.dll",
+            "program": "${workspaceFolder}/src/XtremeIdiots.Portal.Web/bin/Debug/net10.0/XtremeIdiots.Portal.Web.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/XtremeIdiots.Portal.Web",
             "stopAtEntry": false,
