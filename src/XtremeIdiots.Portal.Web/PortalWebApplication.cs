@@ -209,7 +209,7 @@ public static class PortalWebApplication
         builder.Services.Configure<ForwardedHeadersOptions>(forwardedHeadersOptions =>
         {
             forwardedHeadersOptions.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-            forwardedHeadersOptions.KnownNetworks.Clear();
+            forwardedHeadersOptions.KnownIPNetworks.Clear();
             forwardedHeadersOptions.KnownProxies.Clear();
         });
 

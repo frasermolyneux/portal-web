@@ -640,7 +640,7 @@ public class UserControllerTests
 
         Assert.IsType<UnauthorizedResult>(result);
         Assert.NotNull(capturedAuditEvent);
-        Assert.Equal("TargetUserId:99999Injected", capturedAuditEvent!.Properties["Context"]);
+        Assert.Equal("TargetUserId:99999Injected", capturedAuditEvent.Properties["Context"]);
         Assert.DoesNotContain('\r', capturedAuditEvent.Properties["Context"]);
         Assert.DoesNotContain('\n', capturedAuditEvent.Properties["Context"]);
     }
@@ -835,7 +835,7 @@ public class UserControllerTests
 
         AssertRedirectsToManageProfileNotifications(result, profileId);
         Assert.NotNull(capturedAuditEvent);
-        Assert.Equal(profileId.ToString(), capturedAuditEvent!.Properties["ProfileId"]);
+        Assert.Equal(profileId.ToString(), capturedAuditEvent.Properties["ProfileId"]);
         Assert.Equal("TargetUser", capturedAuditEvent.Properties["TargetUser"]);
         Assert.Equal($"{notificationTypeId}:InApp=True,Email=False", capturedAuditEvent.Properties["ChangedPreferences"]);
     }

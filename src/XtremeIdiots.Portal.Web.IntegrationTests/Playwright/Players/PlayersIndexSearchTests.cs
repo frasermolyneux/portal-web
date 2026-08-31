@@ -40,7 +40,7 @@ public sealed class PlayersIndexSearchTests
                 });
 
                 Assert.NotNull(response);
-                Assert.True(response!.Ok, $"{relativePath} returned {response.Status}.");
+                Assert.True(response.Ok, $"{relativePath} returned {response.Status}.");
             },
             resp => resp.Url.Contains("GetPlayersAjax", StringComparison.OrdinalIgnoreCase));
 

@@ -13,7 +13,6 @@ public sealed class FileTransportCredentialsSteps
     private bool formAvailableWithoutCredentials;
     private string? profile;
     private Microsoft.Playwright.IResponse? response;
-    private FileTransportScenario? scenario;
 
     [Given("a successful file transport scenario for a head admin")]
     public void GivenASuccessfulFileTransportScenarioForAHeadAdmin()
@@ -37,7 +36,7 @@ public sealed class FileTransportCredentialsSteps
     public void GivenAFileTransportScenarioWithNoExistingSftpFingerprint()
     {
         profile = TestPrincipalProfiles.HeadAdmin;
-        scenario = new FileTransportScenario(existingFingerprint: false);
+        Scenario = new FileTransportScenario(existingFingerprint: false);
     }
 
     [When("the head admin updates all SFTP connection fields")]
@@ -232,7 +231,7 @@ public sealed class FileTransportCredentialsSteps
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
     private string EditUrl => new Uri(Browser.Host.BaseAddress, $"/GameServers/Edit/{Scenario.GameServerId}").AbsoluteUri;
-    private FileTransportScenario Scenario => scenario ?? throw new InvalidOperationException("Scenario not configured.");
+    private FileTransportScenario Scenario { get => field ?? throw new InvalidOperationException("Scenario not configured."); set; }
 
     private void AssertTransport(string ns, string host, int port, string user, string password, string mapsRoot, string? fingerprint)
     {
@@ -252,7 +251,7 @@ public sealed class FileTransportCredentialsSteps
     private void Configure(string authenticationProfile, bool succeeds)
     {
         profile = authenticationProfile;
-        scenario = new FileTransportScenario(succeeds);
+        Scenario = new FileTransportScenario(succeeds);
     }
 
     private async Task FillConnectionAsync(string host, string port, string user, string password, string fingerprint, string mapsRoot)

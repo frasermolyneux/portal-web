@@ -29,7 +29,7 @@ public sealed class PlayersDetailsVisibilityTests
         });
 
         Assert.NotNull(response);
-        Assert.True(response!.Ok, $"/Players/Details returned {response.Status}.");
+        Assert.True(response.Ok, $"/Players/Details returned {response.Status}.");
         return response;
     }
 

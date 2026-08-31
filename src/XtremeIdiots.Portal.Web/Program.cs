@@ -8,7 +8,3 @@ var app = PortalWebApplication.Build(builder);
 
 await PortalWebApplication.InitializeAsync(app);
 await app.RunAsync();
-
-public partial class Program
-{
-}

@@ -653,7 +653,7 @@ public class UserController(
     {
         if (Url is null)
         {
-            return RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName })!;
+            return RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName });
         }
 
         var manageProfileUrl = Url.Action(nameof(ManageProfile), new
@@ -663,7 +663,7 @@ public class UserController(
         });
 
         return string.IsNullOrWhiteSpace(manageProfileUrl)
-            ? RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName })!
+            ? RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName })
             : Redirect($"{manageProfileUrl}#notifications");
     }
 

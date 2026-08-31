@@ -11,12 +11,11 @@ public sealed class TagManagementSteps
     private BrowserFixture? browser;
     private string? profile;
     private IResponse? response;
-    private TagScenario? scenario;
 
     [Given("an isolated tag scenario")]
     public void GivenAnIsolatedTagScenario()
     {
-        scenario = new TagScenario();
+        Scenario = new TagScenario();
     }
 
     [Given("I am authenticated as a game admin")]
@@ -147,7 +146,7 @@ public sealed class TagManagementSteps
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("The browser has not been started.");
 
-    private TagScenario Scenario => scenario ?? throw new InvalidOperationException("The tag scenario has not been configured.");
+    private TagScenario Scenario { get => field ?? throw new InvalidOperationException("The tag scenario has not been configured."); set; }
 
     private async Task StartBrowserAsync()
     {

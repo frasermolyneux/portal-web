@@ -8,12 +8,11 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 public sealed class MapRotationAssignmentSteps
 {
     private BrowserFixture? browser;
-    private MapRotationAssignmentScenario? scenario;
 
     [Given("a map rotation assignment scenario for a map rotation deployer")]
     public void GivenAMapRotationAssignmentScenarioForAMapRotationDeployer()
     {
-        scenario = new MapRotationAssignmentScenario();
+        Scenario = new MapRotationAssignmentScenario();
     }
 
     [When("the deployer views the rotation details")]
@@ -113,7 +112,7 @@ public sealed class MapRotationAssignmentSteps
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("The browser has not been started.");
 
-    private MapRotationAssignmentScenario Scenario => scenario ?? throw new InvalidOperationException("The scenario has not been configured.");
+    private MapRotationAssignmentScenario Scenario { get => field ?? throw new InvalidOperationException("The scenario has not been configured."); set; }
 
     private string DetailsUrl => new Uri(Browser.Host.BaseAddress, $"/MapRotations/Details/{MapRotationAssignmentScenario.RotationId}").AbsoluteUri;
 

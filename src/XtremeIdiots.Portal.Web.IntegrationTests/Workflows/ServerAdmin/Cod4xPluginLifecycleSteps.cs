@@ -14,7 +14,6 @@ public sealed class Cod4xPluginLifecycleSteps
     private string? directResponseBody;
     private Task<IResponse>? pendingResponse;
     private string? profile;
-    private Cod4xPluginLifecycleScenario? scenario;
 
     [Given("a successful CoD4x lifecycle scenario for a direct lifecycle user")]
     public void GivenSuccessfulDirectLifecycleScenario()
@@ -38,35 +37,35 @@ public sealed class Cod4xPluginLifecycleSteps
     public void GivenMalformedSettingsScenario()
     {
         profile = TestPrincipalProfiles.Cod4xLifecycleManager;
-        scenario = new Cod4xPluginLifecycleScenario(malformedConfiguration: true);
+        Scenario = new Cod4xPluginLifecycleScenario(malformedConfiguration: true);
     }
 
     [Given("a CoD4x lifecycle scenario with unavailable current settings")]
     public void GivenUnavailableSettingsScenario()
     {
         profile = TestPrincipalProfiles.Cod4xLifecycleManager;
-        scenario = new Cod4xPluginLifecycleScenario(configurationLoadSucceeds: false);
+        Scenario = new Cod4xPluginLifecycleScenario(configurationLoadSucceeds: false);
     }
 
     [Given("a failing CoD4x lifecycle repository scenario")]
     public void GivenFailingRepositoryScenario()
     {
         profile = TestPrincipalProfiles.Cod4xLifecycleManager;
-        scenario = new Cod4xPluginLifecycleScenario(upsertSucceeds: false);
+        Scenario = new Cod4xPluginLifecycleScenario(upsertSucceeds: false);
     }
 
     [Given("a CoD4x lifecycle scenario with an existing pending request")]
     public void GivenExistingPendingRequestScenario()
     {
         profile = TestPrincipalProfiles.Cod4xLifecycleManager;
-        scenario = new Cod4xPluginLifecycleScenario(pendingRequest: true);
+        Scenario = new Cod4xPluginLifecycleScenario(pendingRequest: true);
     }
 
     [Given("a delayed CoD4x lifecycle repository scenario")]
     public void GivenDelayedRepositoryScenario()
     {
         profile = TestPrincipalProfiles.Cod4xLifecycleManager;
-        scenario = new Cod4xPluginLifecycleScenario(upsertDelayMilliseconds: 500);
+        Scenario = new Cod4xPluginLifecycleScenario(upsertDelayMilliseconds: 500);
     }
 
     [When("the user requests install of version {string}")]
@@ -280,13 +279,13 @@ public sealed class Cod4xPluginLifecycleSteps
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
-    private Cod4xPluginLifecycleScenario Scenario => scenario ?? throw new InvalidOperationException("Scenario not configured.");
+    private Cod4xPluginLifecycleScenario Scenario { get => field ?? throw new InvalidOperationException("Scenario not configured."); set; }
     private string ServerDetailUrl => new Uri(Browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{Scenario.GameServerId}").AbsoluteUri;
 
     private void Configure(string authenticationProfile)
     {
         profile = authenticationProfile;
-        scenario = new Cod4xPluginLifecycleScenario();
+        Scenario = new Cod4xPluginLifecycleScenario();
     }
 
     private async Task OpenLifecyclePanelAsync()

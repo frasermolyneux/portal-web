@@ -10,7 +10,6 @@ public sealed class GameServerDeletionSteps
     private BrowserFixture? browser;
     private string? profile;
     private Microsoft.Playwright.IResponse? response;
-    private GameServerDeletionScenario? scenario;
 
     [Given("a successful game server deletion scenario for a senior admin")]
     public void GivenASuccessfulGameServerDeletionScenarioForASeniorAdmin()
@@ -101,12 +100,12 @@ public sealed class GameServerDeletionSteps
 
     private string DeleteUrl => new Uri(Browser.Host.BaseAddress, $"/GameServers/Delete/{Scenario.GameServerId}").AbsoluteUri;
 
-    private GameServerDeletionScenario Scenario => scenario ?? throw new InvalidOperationException("The game server deletion scenario has not been configured.");
+    private GameServerDeletionScenario Scenario { get => field ?? throw new InvalidOperationException("The game server deletion scenario has not been configured."); set; }
 
     private void ConfigureScenario(string authenticationProfile, bool deleteSucceeds)
     {
         profile = authenticationProfile;
-        scenario = new GameServerDeletionScenario(deleteSucceeds);
+        Scenario = new GameServerDeletionScenario(deleteSucceeds);
     }
 
     private async Task OpenDeleteFormAsync()
