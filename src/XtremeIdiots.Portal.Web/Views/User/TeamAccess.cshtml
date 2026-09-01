@@ -1,0 +1,33 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GameTeamAccessViewModel
+@using XtremeIdiots.Portal.Repository.Abstractions.Extensions.V1
+@{
+    ViewData["Title"] = $"{Model.GameType.DisplayName()} Team Access";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="ibox">
+        <div class="ibox-title">
+            <h5>@ViewData["Title"]</h5>
+        </div>
+        <div class="ibox-content">
+            <p class="text-muted">Moderator access inherited from the Moderator role is shown separately from explicit additional permissions.</p>
+            <div class="table-responsive">
+                <table id="teamAccessTable" class="table table-striped table-hover w-100" data-game-type="@Model.GameType">
+                    <thead>
+                        <tr>
+                            <th>Moderator</th>
+                            <th>Moderator role</th>
+                            <th>Additional permissions</th>
+                            <th class="table-action-col"></th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <form id="__af" method="post" class="d-none">@Html.AntiForgeryToken()</form>
+    <script src="~/js/team-access.js" asp-append-version="true"></script>
+}

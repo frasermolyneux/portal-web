@@ -18,6 +18,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [Authorize(Policy = AuthPolicies.Users_Read)]
 [Route("User")]
 public class UsersController(
+    IAuthorizationService authorizationService,
     UserManager<IdentityUser> userManager,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
@@ -113,6 +114,65 @@ public class UsersController(
                 data = enriched
             });
         }, nameof(GetUsersAjax)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Provides the moderators assigned to one authorized game.
+    /// </summary>
+    [HttpPost("GetGameModeratorsAjax")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GetGameModeratorsAjax(GameType? gameType, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!gameType.HasValue ||
+                !GameTypeAuthorizationExtensions.DefinedGameTypes.Contains(gameType.Value))
+            {
+                return BadRequest("A valid game type is required.");
+            }
+
+            var authorizationResult = await authorizationService.AuthorizeAsync(
+                User, gameType.Value, AuthPolicies.Users_ManageClaims).ConfigureAwait(false);
+            if (!authorizationResult.Succeeded)
+                return Forbid();
+
+            var requestBody = await new StreamReader(Request.Body).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
+            if (model is null)
+                return BadRequest("Invalid request data");
+
+            var order = UserProfilesOrder.DisplayNameAsc;
+            if (model.Order?.Count > 0 && model.Columns.Count > model.Order[0].Column &&
+                model.Columns[model.Order[0].Column].Name.Equals("displayName", StringComparison.OrdinalIgnoreCase) &&
+                model.Order[0].Dir.Equals("desc", StringComparison.OrdinalIgnoreCase))
+            {
+                order = UserProfilesOrder.DisplayNameDesc;
+            }
+
+            var response = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
+                model.Search?.Value, UserProfileFilter.Moderators, gameType.Value,
+                model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+
+            if (response.Result?.Data is null)
+                return StatusCode(500, "Failed to retrieve moderator data");
+
+            return Ok(new
+            {
+                model.Draw,
+                recordsTotal = response.Result.Pagination?.TotalCount,
+                recordsFiltered = response.Result.Pagination?.FilteredCount,
+                data = response.Result.Data.Items?.Select(profile => new
+                {
+                    profile.UserProfileId,
+                    profile.DisplayName,
+                    profile.XtremeIdiotsForumId,
+                    claims = profile.UserProfileClaims
+                        .Where(claim => claim.SystemGenerated ||
+                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))
+                        .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
+                })
+            });
+        }, nameof(GetGameModeratorsAjax)).ConfigureAwait(false);
     }
 
     /// <summary>

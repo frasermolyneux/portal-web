@@ -291,6 +291,17 @@
                            asp-action="Index">
                             <i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Manage Users
                         </a>
+                        @foreach (var game in GameTypeAuthorizationExtensions.DefinedGameTypes)
+                        {
+                            @if ((await AuthorizationService.AuthorizeAsync(User, game, AuthPolicies.Users_ManageClaims)).Succeeded)
+                            {
+                                <a class="nav-link text-white-50 @Html.IsSelected("User", "TeamAccess", gameType: game.ToString())"
+                                   asp-controller="User" asp-action="TeamAccess" asp-route-gameType="@game"
+                                   data-testid="nav-users-team-access-@game">
+                                    <game-type-icon game="@game" class="me-1"></game-type-icon> @game.DisplayName() Team Access
+                                </a>
+                            }
+                        }
                         <a class="nav-link text-white-50 @Html.IsSelected("User", "Permissions")" asp-controller="User"
                            asp-action="Permissions">
                             <i class="fa-solid fa-fw fa-lock" aria-hidden="true"></i> Permissions
