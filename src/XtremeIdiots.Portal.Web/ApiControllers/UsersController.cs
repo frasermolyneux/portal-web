@@ -136,7 +136,8 @@ public class UsersController(
             if (!authorizationResult.Succeeded)
                 return Forbid();
 
-            var requestBody = await new StreamReader(Request.Body).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            using var reader = new StreamReader(Request.Body);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
             if (model is null)
                 return BadRequest("Invalid request data");
@@ -153,25 +154,26 @@ public class UsersController(
                 model.Search?.Value, UserProfileFilter.Moderators, gameType.Value,
                 model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
-            if (response.Result?.Data is null)
-                return StatusCode(500, "Failed to retrieve moderator data");
-
-            return Ok(new
-            {
-                model.Draw,
-                recordsTotal = response.Result.Pagination?.TotalCount,
-                recordsFiltered = response.Result.Pagination?.FilteredCount,
-                data = response.Result.Data.Items?.Select(profile => new
+            var result = response.Result;
+            var data = result?.Data;
+            return data is null
+                ? StatusCode(500, "Failed to retrieve moderator data")
+                : Ok(new
                 {
-                    profile.UserProfileId,
-                    profile.DisplayName,
-                    profile.XtremeIdiotsForumId,
-                    claims = profile.UserProfileClaims
-                        .Where(claim => claim.SystemGenerated ||
-                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))
-                        .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
-                })
-            });
+                    model.Draw,
+                    recordsTotal = result!.Pagination?.TotalCount,
+                    recordsFiltered = result.Pagination?.FilteredCount,
+                    data = data.Items?.Select(profile => new
+                    {
+                        profile.UserProfileId,
+                        profile.DisplayName,
+                        profile.XtremeIdiotsForumId,
+                        claims = profile.UserProfileClaims
+                            .Where(claim => claim.SystemGenerated ||
+                                string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))
+                            .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
+                    })
+                });
         }, nameof(GetGameModeratorsAjax)).ConfigureAwait(false);
     }
 
