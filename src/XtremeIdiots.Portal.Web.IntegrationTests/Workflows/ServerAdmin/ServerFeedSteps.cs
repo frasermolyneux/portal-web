@@ -18,7 +18,6 @@ public sealed class ServerFeedSteps
     private BrowserFixture? browser;
     private bool initiallyBackgrounded;
     private int requestCountBeforeAction;
-    private ServerFeedScenario? scenario;
 
     [Given("a server feed with chat and event items")]
     public void GivenChatAndEventItems()
@@ -336,12 +335,12 @@ public sealed class ServerFeedSteps
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
-    private ServerFeedScenario Scenario => scenario ?? throw new InvalidOperationException("Scenario not configured.");
+    private ServerFeedScenario Scenario { get => field ?? throw new InvalidOperationException("Scenario not configured."); set; }
     private string ServerDetailUrl => new Uri(Browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{Scenario.GameServerId}").AbsoluteUri;
 
     private void Configure()
     {
-        scenario = new ServerFeedScenario();
+        Scenario = new ServerFeedScenario();
     }
 
     private async Task OpenFeedAsync()

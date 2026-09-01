@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="nuget.config" />
+  </Folder>
+  <Project Path="XtremeIdiots.Portal.Integrations.Forums/XtremeIdiots.Portal.Integrations.Forums.csproj" />
+  <Project Path="XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj" />
+  <Project Path="XtremeIdiots.Portal.Web.Tests/XtremeIdiots.Portal.Web.Tests.csproj" />
+  <Project Path="XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj" />
+</Solution>

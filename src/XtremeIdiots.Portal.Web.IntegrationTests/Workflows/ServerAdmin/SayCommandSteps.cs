@@ -12,7 +12,6 @@ public sealed class SayCommandSteps
     private string? profile;
     private string? responseBody;
     private int? responseStatus;
-    private SayCommandScenario? scenario;
 
     [Given("a successful Say command scenario for a direct-permission user")]
     public void GivenASuccessfulSayScenarioForDirectUser()
@@ -149,13 +148,13 @@ public sealed class SayCommandSteps
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
-    private SayCommandScenario Scenario => scenario ?? throw new InvalidOperationException("Scenario not configured.");
+    private SayCommandScenario Scenario { get => field ?? throw new InvalidOperationException("Scenario not configured."); set; }
     private string ServerDetailUrl => new Uri(Browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{Scenario.GameServerId}").AbsoluteUri;
 
     private void Configure(string authenticationProfile, bool saySucceeds)
     {
         profile = authenticationProfile;
-        scenario = new SayCommandScenario(saySucceeds);
+        Scenario = new SayCommandScenario(saySucceeds);
     }
 
     private async Task OpenServerDetailAsync()

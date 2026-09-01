@@ -1,6 +1,6 @@
 # portal-web agent brief
 
-`portal-web` is the ASP.NET Core 9 front end for the XtremeIdiots Portal. It uses
+`portal-web` is the ASP.NET Core 10 front end for the XtremeIdiots Portal. It uses
 server-rendered Razor views, SCSS compiled with Sass, Entity Framework Core,
 Application Insights, Azure App Configuration, typed portal API clients, and
 Terraform for Azure infrastructure.
@@ -16,15 +16,15 @@ Terraform for Azure infrastructure.
 
 ## Bootstrap and validation
 
-The required SDK is pinned by `global.json` to .NET SDK `9.0.315`. NuGet packages
+The required SDK is pinned by `global.json` to .NET SDK `10.0.400`. NuGet packages
 come from nuget.org. The web project runs `npm install` automatically when
 `node_modules` is absent and compiles SCSS during `dotnet build`.
 
 ```pwsh
-dotnet restore src/XtremeIdiots.Portal.Web.sln
+dotnet restore src/XtremeIdiots.Portal.Web.slnx
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
 dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
-dotnet format src/XtremeIdiots.Portal.Web.sln --verify-no-changes --severity warn
+dotnet format src/XtremeIdiots.Portal.Web.slnx --verify-no-changes --severity warn
 ```
 
 For Razor changes, compile views explicitly:

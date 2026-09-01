@@ -53,7 +53,7 @@ public sealed class CredentialsContentVisibilityTests
         });
 
         Assert.NotNull(response);
-        Assert.True(response!.Ok, $"[{profile}] /Credentials returned {response.Status}.");
+        Assert.True(response.Ok, $"[{profile}] /Credentials returned {response.Status}.");
 
         var serverId = scenario.GameServerId;
 

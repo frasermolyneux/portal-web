@@ -13,7 +13,6 @@ public sealed class RconCredentialsSteps
     private bool editFormAvailableWithoutRconControls;
     private string? profile;
     private Microsoft.Playwright.IResponse? response;
-    private GameServerRconScenario? scenario;
 
     [Given("a successful RCON credential scenario for a head admin")]
     public void GivenASuccessfulRconCredentialScenarioForAHeadAdmin()
@@ -223,7 +222,7 @@ public sealed class RconCredentialsSteps
 
     private string EditUrl => new Uri(Browser.Host.BaseAddress, $"/GameServers/Edit/{Scenario.GameServerId}").AbsoluteUri;
 
-    private GameServerRconScenario Scenario => scenario ?? throw new InvalidOperationException("The RCON scenario has not been configured.");
+    private GameServerRconScenario Scenario { get => field ?? throw new InvalidOperationException("The RCON scenario has not been configured."); set; }
 
     private void AssertRconPassword(string password)
     {
@@ -236,7 +235,7 @@ public sealed class RconCredentialsSteps
     private void ConfigureScenario(string authenticationProfile, bool rconUpsertSucceeds)
     {
         profile = authenticationProfile;
-        scenario = new GameServerRconScenario(rconUpsertSucceeds);
+        Scenario = new GameServerRconScenario(rconUpsertSucceeds);
     }
 
     private async Task OpenEditFormAsync()

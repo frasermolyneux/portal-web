@@ -15,7 +15,6 @@ public sealed class PlayerModerationSteps
     private BrowserFixture? browser;
     private string? profile;
     private string? responseBody;
-    private PlayerModerationScenario? scenario;
 
     [Given("a successful player moderation scenario for a direct Kick user")]
     public void GivenSuccessfulDirectKickScenario()
@@ -229,7 +228,7 @@ public sealed class PlayerModerationSteps
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
-    private PlayerModerationScenario Scenario => scenario ?? throw new InvalidOperationException("Scenario not configured.");
+    private PlayerModerationScenario Scenario { get => field ?? throw new InvalidOperationException("Scenario not configured."); set; }
     private string ServerDetailUrl => new Uri(Browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{Scenario.GameServerId}").AbsoluteUri;
 
     private void Configure(
@@ -240,7 +239,7 @@ public sealed class PlayerModerationSteps
         string playerName = PlayerModerationScenario.PlayerName)
     {
         profile = authenticationProfile;
-        scenario = new PlayerModerationScenario(rconSucceeds, persistenceSucceeds, repositoryPlayerMatches, playerName);
+        Scenario = new PlayerModerationScenario(rconSucceeds, persistenceSucceeds, repositoryPlayerMatches, playerName);
     }
 
     private async Task OpenPlayerTableAsync()

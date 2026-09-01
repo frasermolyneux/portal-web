@@ -22,7 +22,7 @@
 
 ## Overview
 
-Web front end for the XtremeIdiots Portal providing player and game server management for community admins. Built on ASP.NET Core 9 with server-rendered Razor views, shared UI components, and API integrations to enforce bans, manage servers, and surface telemetry. Uses Application Insights, AuthZ/role checks, and the GeoLocation V1.1 intelligence API for IP risk assessment and geolocation. CI/CD runs via GitHub Actions with OIDC deployments to Azure App Service and supporting resources provisioned by Terraform.
+Web front end for the XtremeIdiots Portal providing player and game server management for community admins. Built on ASP.NET Core 10 with server-rendered Razor views, shared UI components, and API integrations to enforce bans, manage servers, and surface telemetry. Uses Application Insights, AuthZ/role checks, and the GeoLocation V1.1 intelligence API for IP risk assessment and geolocation. CI/CD runs via GitHub Actions with OIDC deployments to Azure App Service and supporting resources provisioned by Terraform.
 
 ## Authorization
 

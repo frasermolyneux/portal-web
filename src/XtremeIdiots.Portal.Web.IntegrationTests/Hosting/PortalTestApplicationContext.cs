@@ -77,7 +77,7 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "XtremeIdiots.Portal.Web.sln")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "XtremeIdiots.Portal.Web.slnx")))
         {
             directory = directory.Parent;
         }

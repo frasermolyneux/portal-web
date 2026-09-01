@@ -13,7 +13,6 @@ public sealed class MapControlSteps
     private string? profile;
     private string? responseBody;
     private int? responseStatus;
-    private MapControlScenario? scenario;
 
     [Given("a successful map control scenario for a direct map user")]
     public void GivenSuccessfulDirectMapScenario()
@@ -186,13 +185,13 @@ public sealed class MapControlSteps
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
-    private MapControlScenario Scenario => scenario ?? throw new InvalidOperationException("Scenario not configured.");
+    private MapControlScenario Scenario { get => field ?? throw new InvalidOperationException("Scenario not configured."); set; }
     private string ServerDetailUrl => new Uri(Browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{Scenario.GameServerId}").AbsoluteUri;
 
     private void Configure(string authenticationProfile, bool commandsSucceed)
     {
         profile = authenticationProfile;
-        scenario = new MapControlScenario(commandsSucceed);
+        Scenario = new MapControlScenario(commandsSucceed);
     }
 
     private async Task OpenServerDetailAsync()

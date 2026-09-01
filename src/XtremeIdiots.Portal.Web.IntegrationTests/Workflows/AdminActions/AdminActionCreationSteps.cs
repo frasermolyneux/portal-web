@@ -12,7 +12,6 @@ public sealed class AdminActionCreationSteps
     private BrowserFixture? browser;
     private string? profile;
     private Microsoft.Playwright.IResponse? response;
-    private AdminActionScenario? scenario;
 
     [Given("a successful admin action scenario for a senior admin")]
     public void GivenASuccessfulAdminActionScenarioForASeniorAdmin()
@@ -193,12 +192,12 @@ public sealed class AdminActionCreationSteps
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("The browser has not been started.");
 
-    private AdminActionScenario Scenario => scenario ?? throw new InvalidOperationException("The admin action scenario has not been configured.");
+    private AdminActionScenario Scenario { get => field ?? throw new InvalidOperationException("The admin action scenario has not been configured."); set; }
 
     private void ConfigureScenario(string authenticationProfile, bool createSucceeds)
     {
         profile = authenticationProfile;
-        scenario = new AdminActionScenario(createSucceeds: createSucceeds);
+        Scenario = new AdminActionScenario(createSucceeds: createSucceeds);
     }
 
     private string CreateUrl(AdminActionType actionType)

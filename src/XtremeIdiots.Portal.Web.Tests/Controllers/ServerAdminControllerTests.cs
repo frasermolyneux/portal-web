@@ -846,7 +846,7 @@ public class ServerAdminControllerTests
             {
                 new { Num = playerSlot, PlayerIdentifier = "stale-guid", Name = "Stale Player", IpAddress = string.Empty, Rate = 25000, Ping = 42 },
             },
-        }))!;
+        }));
         memoryCache.Set(
             $"rcon-cod4x-raw:{serverId}",
             new ApiResult<CoD4xStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<CoD4xStatusResponseDto>(staleStatus)));

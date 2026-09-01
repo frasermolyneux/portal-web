@@ -31,7 +31,7 @@ public sealed class NavigationVisibilityTests(PortalPlaywrightServerFixture fixt
             });
 
             Assert.NotNull(response);
-            Assert.True(response!.Ok, $"[{role}] navigation harness page returned {response.Status}.");
+            Assert.True(response.Ok, $"[{role}] navigation harness page returned {response.Status}.");
 
             foreach (var item in NavigationItemCatalog.Items)
             {

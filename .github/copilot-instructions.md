@@ -3,12 +3,12 @@
 ## Repository
 
 This repository contains the XtremeIdiots Portal web front end for player and
-game-server administration. The main application is ASP.NET Core 9 with
+game-server administration. The main application is ASP.NET Core 10 with
 server-rendered Razor views, EF Core, Application Insights, Azure App
 Configuration, typed API clients, and SCSS compiled with Sass. Azure
 infrastructure is defined with Terraform.
 
-`global.json` pins .NET SDK `9.0.315`. Projects target `net9.0`; Terraform requires
+`global.json` pins .NET SDK `10.0.400`. Projects target `net10.0`; Terraform requires
 version `1.15.6` or later.
 
 ## Layout
@@ -25,7 +25,7 @@ version `1.15.6` or later.
 ```pwsh
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
 dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
-dotnet format src/XtremeIdiots.Portal.Web.sln --verify-no-changes --severity warn
+dotnet format src/XtremeIdiots.Portal.Web.slnx --verify-no-changes --severity warn
 ```
 
 Use targeted validation appropriate to the changed files. Razor compilation can
