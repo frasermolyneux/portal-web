@@ -976,6 +976,32 @@ public class UserControllerTests
         AssertRedirectsToManageProfileNotifications(result, profileId);
     }
 
+    [Fact]
+    public async Task TeamAccess_HeadAdminForSelectedGame_ReturnsGameScopedView()
+    {
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+        SetupAuthorizationSuccess(GameType.CallOfDuty5, AuthPolicies.Users_ManageClaims);
+
+        var result = await sut.TeamAccess(GameType.CallOfDuty5);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<GameTeamAccessViewModel>(view.Model);
+        Assert.Equal(GameType.CallOfDuty5, model.GameType);
+    }
+
+    [Fact]
+    public async Task TeamAccess_InvalidGame_FailsWithoutAuthorizationOrRepositoryCall()
+    {
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+
+        var result = await sut.TeamAccess(GameType.Unknown);
+
+        Assert.IsType<NotFoundResult>(result);
+        mockAuthorizationService.Verify(x => x.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Users_ManageClaims), Times.Never);
+        mockRepositoryApiClient.VerifyNoOtherCalls();
+    }
+
     private UserController CreateSut(ClaimsPrincipal? user = null)
     {
         var controller = new UserController(
