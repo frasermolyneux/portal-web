@@ -30,7 +30,8 @@ $(function () {
             {
                 data: 'claims', orderable: false,
                 render: claims => claims.filter(claim => !claim.systemGenerated)
-                    .map(claim => $('<div>').text(claim.claimType + ' (' + claim.claimValue + ')').html()).join('<br>') || 'None'
+                    .map(claim => $('<span>').text(claim.claimType).html() + ' (' + $('<span>').text(claim.claimValue).html() + ')')
+                    .join('<br>') || 'None'
             },
             {
                 data: 'userProfileId', orderable: false,

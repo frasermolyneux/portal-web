@@ -184,7 +184,7 @@ public class UsersController(
                     claims = profile.UserProfileClaims
                         .Where(claim =>
                             string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                            gameServerIds.Contains(claim.ClaimValue) ||
+                            (Guid.TryParse(claim.ClaimValue, out _) && gameServerIds.Contains(claim.ClaimValue)) ||
                             (claim.SystemGenerated && string.IsNullOrEmpty(claim.ClaimValue)))
                         .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
                 })
