@@ -185,7 +185,8 @@ public class UsersController(
                         .Where(claim =>
                             string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
                             (Guid.TryParse(claim.ClaimValue, out _) && gameServerIds.Contains(claim.ClaimValue)) ||
-                            (claim.SystemGenerated && string.IsNullOrEmpty(claim.ClaimValue)))
+                            (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
+                                string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))))
                         .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
                 })
             });
