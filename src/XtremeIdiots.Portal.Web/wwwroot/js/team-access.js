@@ -13,12 +13,14 @@ $(function () {
             contentType: 'application/json',
             type: 'POST',
             data: data => JSON.stringify(data),
-            beforeSend: xhr => xhr.setRequestHeader('RequestVerificationToken', token)
+            beforeSend: xhr => {
+                if (token) xhr.setRequestHeader('RequestVerificationToken', token);
+            }
         },
         columns: [
             {
                 data: 'displayName', name: 'displayName',
-                render: (data, type, row) => '<a href="/User/ManageProfile/' + row.userProfileId + '">' + $('<div>').text(data || '—').html() + '</a>'
+                render: (data, type, row) => '<a href="/User/ManageProfile/' + encodeURIComponent(row.userProfileId) + '">' + $('<div>').text(data || '—').html() + '</a>'
             },
             {
                 data: 'claims', orderable: false,
@@ -32,7 +34,7 @@ $(function () {
             },
             {
                 data: 'userProfileId', orderable: false,
-                render: id => '<a class="btn btn-outline-secondary btn-sm" href="/User/ManageProfile/' + id + '" aria-label="Manage profile">Manage Profile</a>'
+                render: id => '<a class="btn btn-outline-secondary btn-sm" href="/User/ManageProfile/' + encodeURIComponent(id) + '" aria-label="Manage profile">Manage Profile</a>'
             }
         ]
     });

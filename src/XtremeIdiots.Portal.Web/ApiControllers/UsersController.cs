@@ -156,24 +156,34 @@ public class UsersController(
 
             var result = response.Result;
             var data = result?.Data;
-            return data is null
-                ? StatusCode(500, "Failed to retrieve moderator data")
-                : Ok(new
+            if (data is null)
+                return StatusCode(500, "Failed to retrieve moderator data");
+
+            // Get all servers for the selected game to identify server-scoped claims
+            var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                [gameType.Value], null, null, 0, 1000, null, cancellationToken).ConfigureAwait(false);
+
+            var gameServerIds = serversResponse.Result?.Data?.Items
+                ?.Select(s => s.GameServerId.ToString())
+                .ToHashSet() ?? [];
+
+            return Ok(new
+            {
+                model.Draw,
+                recordsTotal = result!.Pagination?.TotalCount,
+                recordsFiltered = result.Pagination?.FilteredCount,
+                data = data.Items?.Select(profile => new
                 {
-                    model.Draw,
-                    recordsTotal = result!.Pagination?.TotalCount,
-                    recordsFiltered = result.Pagination?.FilteredCount,
-                    data = data.Items?.Select(profile => new
-                    {
-                        profile.UserProfileId,
-                        profile.DisplayName,
-                        profile.XtremeIdiotsForumId,
-                        claims = profile.UserProfileClaims
-                            .Where(claim => claim.SystemGenerated ||
-                                string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))
-                            .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
-                    })
-                });
+                    profile.UserProfileId,
+                    profile.DisplayName,
+                    profile.XtremeIdiotsForumId,
+                    claims = profile.UserProfileClaims
+                        .Where(claim => claim.SystemGenerated ||
+                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                            gameServerIds.Contains(claim.ClaimValue))
+                        .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
+                })
+            });
         }, nameof(GetGameModeratorsAjax)).ConfigureAwait(false);
     }
 
