@@ -168,7 +168,7 @@ public class UsersController(
                 [gameType.Value], null, null, 0, MaxGameServersPerPage, null, cancellationToken).ConfigureAwait(false);
 
             var gameServerIds = serversResponse.Result?.Data?.Items
-                ?.Select(s => s.GameServerId.ToString())
+                ?.Select(s => s.GameServerId)
                 .ToHashSet() ?? [];
 
             return Ok(new
@@ -184,7 +184,7 @@ public class UsersController(
                     claims = profile.UserProfileClaims
                         .Where(claim =>
                             string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                            (Guid.TryParse(claim.ClaimValue, out _) && gameServerIds.Contains(claim.ClaimValue)) ||
+                            (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
                             (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
                                 string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))))
                         .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
