@@ -28,6 +28,6 @@
 </div>
 
 @section Scripts {
-    <form id="__af" method="post" class="d-none">@Html.AntiForgeryToken()</form>
+    @Html.AntiForgeryToken()
     <script src="~/js/team-access.js" asp-append-version="true"></script>
 }

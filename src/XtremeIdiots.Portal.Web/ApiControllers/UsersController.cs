@@ -26,6 +26,7 @@ public class UsersController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
+    private const int MaxGameServersPerPage = 1000;
 
     /// <summary>
     /// Provides AJAX endpoint for retrieving paginated user data for DataTables
@@ -159,9 +160,12 @@ public class UsersController(
             if (data is null)
                 return StatusCode(500, "Failed to retrieve moderator data");
 
-            // Get all servers for the selected game to identify server-scoped claims
+            // Get all servers for the selected game to identify server-scoped claims.
+            // Note: This fetches up to MaxGameServersPerPage servers. If a game has more
+            // servers than this limit, some server-scoped permissions may not be included.
+            // TODO: Implement pagination if needed for games with >1000 servers.
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                [gameType.Value], null, null, 0, 1000, null, cancellationToken).ConfigureAwait(false);
+                [gameType.Value], null, null, 0, MaxGameServersPerPage, null, cancellationToken).ConfigureAwait(false);
 
             var gameServerIds = serversResponse.Result?.Data?.Items
                 ?.Select(s => s.GameServerId.ToString())
