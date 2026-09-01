@@ -992,6 +992,8 @@ public class UserControllerTests
     [Fact]
     public async Task TeamAccess_InvalidGame_FailsWithoutAuthorizationOrRepositoryCall()
     {
+        // GameType.Unknown is explicitly excluded from DefinedGameTypes, making it a reliable
+        // choice to test the invalid-game rejection path without triggering authorization checks.
         var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
 
         var result = await sut.TeamAccess(GameType.Unknown);

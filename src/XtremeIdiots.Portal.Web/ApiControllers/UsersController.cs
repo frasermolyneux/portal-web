@@ -182,9 +182,10 @@ public class UsersController(
                     profile.DisplayName,
                     profile.XtremeIdiotsForumId,
                     claims = profile.UserProfileClaims
-                        .Where(claim => claim.SystemGenerated ||
+                        .Where(claim =>
                             string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                            gameServerIds.Contains(claim.ClaimValue))
+                            gameServerIds.Contains(claim.ClaimValue) ||
+                            (claim.SystemGenerated && string.IsNullOrEmpty(claim.ClaimValue)))
                         .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
                 })
             });
