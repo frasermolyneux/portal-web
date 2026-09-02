@@ -182,16 +182,16 @@ public class UsersController(
                         string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
                         (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
                         (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
-                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))));
+                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))))
+                        .ToList();
 
                     return new
                     {
                         profile.UserProfileId,
                         profile.DisplayName,
-                        profile.XtremeIdiotsForumId,
                         claims = claims.Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
                     };
-                })
+                }).ToList()
             });
         }, nameof(GetGameModeratorsAjax)).ConfigureAwait(false);
     }
