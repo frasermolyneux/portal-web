@@ -42,8 +42,6 @@ public class FileBrowseApiController(
                 return Forbid();
 
             var gameServer = gameServerResponse.Result.Data;
-            if (!gameServer.FileTransportEnabled || gameServer.FileTransportType == FileTransportType.Unknown)
-                return BadRequest("File transport is not available for this server.");
 
             foreach (var (resource, policy) in GetRequiredPolicies(browsePurpose, gameServer.GameType, gameServerId))
             {
@@ -51,6 +49,9 @@ public class FileBrowseApiController(
                 if (!authResult.Succeeded)
                     return Forbid();
             }
+
+            if (!gameServer.FileTransportEnabled || gameServer.FileTransportType == FileTransportType.Unknown)
+                return BadRequest("File transport is not available for this server.");
 
             var result = await serversApiClient.FileBrowse.V1.BrowseDirectory(gameServerId, path).ConfigureAwait(false);
 

@@ -215,11 +215,32 @@ public class FileBrowseApiControllerTests
         repositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(gameServer)));
+        authorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
 
         var result = await CreateSut().Browse(gameServerId, "game-server-configuration");
 
         Assert.IsType<BadRequestObjectResult>(result);
-        authorizationService.Verify(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()), Times.Never);
+        fileBrowseApi.Verify(x => x.BrowseDirectory(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Browse_WhenUnauthorized_DoesNotRevealTransportAvailability()
+    {
+        var gameServerId = Guid.NewGuid();
+        var gameServer = CreateGameServer(gameServerId, GameType.CallOfDuty4, "Server Alpha");
+        SetProperty(gameServer, nameof(GameServerDto.FileTransportEnabled), false);
+        repositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(gameServer)));
+        authorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var result = await CreateSut().Browse(gameServerId, "game-server-configuration");
+
+        Assert.IsType<ForbidResult>(result);
         fileBrowseApi.Verify(x => x.BrowseDirectory(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
