@@ -176,18 +176,21 @@ public class UsersController(
                 model.Draw,
                 recordsTotal = result!.Pagination?.TotalCount,
                 recordsFiltered = result.Pagination?.FilteredCount,
-                data = data.Items?.Select(profile => new
+                data = data.Items?.Select(profile =>
                 {
-                    profile.UserProfileId,
-                    profile.DisplayName,
-                    profile.XtremeIdiotsForumId,
-                    claims = profile.UserProfileClaims
-                        .Where(claim =>
-                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                            (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
-                            (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
-                                string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))))
-                        .Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
+                    var claims = (profile.UserProfileClaims ?? []).Where(claim =>
+                        string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                        (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
+                        (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
+                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))));
+
+                    return new
+                    {
+                        profile.UserProfileId,
+                        profile.DisplayName,
+                        profile.XtremeIdiotsForumId,
+                        claims = claims.Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
+                    };
                 })
             });
         }, nameof(GetGameModeratorsAjax)).ConfigureAwait(false);

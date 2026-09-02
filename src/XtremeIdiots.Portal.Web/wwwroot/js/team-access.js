@@ -24,14 +24,20 @@ $(function () {
             },
             {
                 data: 'claims', orderable: false,
-                render: claims => claims.some(claim => claim.systemGenerated && claim.claimType === 'Moderator')
-                    ? '<span class="badge bg-info">Inherited Moderator role</span>' : 'Moderator'
+                render: claims => {
+                    const safeClaims = Array.isArray(claims) ? claims : [];
+                    return safeClaims.some(claim => claim.systemGenerated && claim.claimType === 'Moderator')
+                        ? '<span class="badge bg-info">Inherited Moderator role</span>' : 'Moderator';
+                }
             },
             {
                 data: 'claims', orderable: false,
-                render: claims => claims.filter(claim => !claim.systemGenerated)
-                    .map(claim => $('<span>').text(claim.claimType).html() + ' (' + $('<span>').text(claim.claimValue).html() + ')')
-                    .join('<br>') || 'None'
+                render: claims => {
+                    const safeClaims = Array.isArray(claims) ? claims : [];
+                    return safeClaims.filter(claim => !claim.systemGenerated)
+                        .map(claim => $('<span>').text(claim.claimType).html() + ' (' + $('<span>').text(claim.claimValue).html() + ')')
+                        .join('<br>') || 'None';
+                }
             },
             {
                 data: 'userProfileId', orderable: false,
