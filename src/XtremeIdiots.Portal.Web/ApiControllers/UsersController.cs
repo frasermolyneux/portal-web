@@ -170,26 +170,53 @@ public class UsersController(
             var gameServerIds = serversResponse.Result?.Data?.Items
                 ?.Select(s => s.GameServerId)
                 .ToHashSet() ?? [];
+            var serverDisplayNames = serversResponse.Result?.Data?.Items?
+                .ToDictionary(server => server.GameServerId, server => server.Title ?? server.GameServerId.ToString()) ?? [];
 
             return Ok(new
             {
                 model.Draw,
-                recordsTotal = result!.Pagination?.TotalCount,
-                recordsFiltered = result.Pagination?.FilteredCount,
+                recordsTotal = result!.Pagination?.TotalCount ?? 0,
+                recordsFiltered = result.Pagination?.FilteredCount ?? 0,
                 data = (data.Items ?? []).Select(profile =>
                 {
                     var claims = (profile.UserProfileClaims ?? []).Where(claim =>
                         string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
                         (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
                         (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
-                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase))))
+                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                            (Guid.TryParse(claim.ClaimValue, out var systemGeneratedServerGuid) && gameServerIds.Contains(systemGeneratedServerGuid)))))
                         .ToList();
 
                     return new
                     {
                         profile.UserProfileId,
                         profile.DisplayName,
-                        claims = claims.Select(claim => new { claim.ClaimType, claim.ClaimValue, claim.SystemGenerated })
+                        claims = claims.Select(claim =>
+                        {
+                            var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
+                            var valueDisplayName = claim.ClaimValue;
+
+                            if (Guid.TryParse(claim.ClaimValue, out var claimGuid) &&
+                                serverDisplayNames.TryGetValue(claimGuid, out var serverTitle))
+                            {
+                                valueDisplayName = serverTitle;
+                            }
+                            else if (!string.IsNullOrWhiteSpace(claim.ClaimValue) &&
+                                     Enum.TryParse<GameType>(claim.ClaimValue, true, out var claimGameType))
+                            {
+                                valueDisplayName = claimGameType.ToDisplayName();
+                            }
+
+                            return new
+                            {
+                                claim.ClaimType,
+                                claim.ClaimValue,
+                                claim.SystemGenerated,
+                                claimTypeDisplayName = definition?.DisplayName ?? claim.ClaimType,
+                                claimValueDisplayName = valueDisplayName
+                            };
+                        })
                     };
                 }).ToList()
             });

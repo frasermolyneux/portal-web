@@ -35,7 +35,11 @@ $(function () {
                 render: claims => {
                     const safeClaims = Array.isArray(claims) ? claims : [];
                     return safeClaims.filter(claim => !claim.systemGenerated)
-                        .map(claim => $('<span>').text(claim.claimType).html() + ' (' + $('<span>').text(claim.claimValue).html() + ')')
+                        .map(claim => {
+                            const claimType = claim.claimTypeDisplayName ?? claim.claimType ?? 'Unknown permission';
+                            const claimValue = claim.claimValueDisplayName ?? claim.claimValue ?? '—';
+                            return $('<span>').text(claimType).html() + ' (' + $('<span>').text(String(claimValue)).html() + ')';
+                        })
                         .join('<br>') || 'None';
                 }
             },
