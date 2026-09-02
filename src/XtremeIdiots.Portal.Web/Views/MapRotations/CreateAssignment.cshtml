@@ -40,13 +40,13 @@ ViewData["RotationTitle"] : "");
                                         @if (Model.CanBrowseServerFiles)
                                         {
                                             <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
-                                                    style="display: none;" title="Browse server files via file transport">
+                                                    style="display: none;" title="Browse server files">
                                                 <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                                             </button>
                                         }
                                     </div>
                                     <small class="form-text text-muted">Path to the config file on the game server. Use
-                                        Browse to select via file transport.</small>
+                                        Browse to select a file via the Server File Browser.</small>
                                         <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                                     </div>
                                     <div class="mb-3">
