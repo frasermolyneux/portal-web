@@ -18,6 +18,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [Authorize(Policy = AuthPolicies.Users_Read)]
 [Route("User")]
 public class UsersController(
+    IAuthorizationService authorizationService,
     UserManager<IdentityUser> userManager,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
@@ -25,6 +26,7 @@ public class UsersController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
+    private const int MaxGameServersPerPage = 1000;
 
     /// <summary>
     /// Provides AJAX endpoint for retrieving paginated user data for DataTables
@@ -113,6 +115,112 @@ public class UsersController(
                 data = enriched
             });
         }, nameof(GetUsersAjax)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Provides the moderators assigned to one authorized game.
+    /// </summary>
+    [HttpPost("GetGameModeratorsAjax")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GetGameModeratorsAjax(GameType? gameType, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!gameType.HasValue ||
+                !GameTypeAuthorizationExtensions.DefinedGameTypes.Contains(gameType.Value))
+            {
+                return BadRequest("A valid game type is required.");
+            }
+
+            var authorizationResult = await authorizationService.AuthorizeAsync(
+                User, gameType.Value, AuthPolicies.Users_ManageClaims).ConfigureAwait(false);
+            if (!authorizationResult.Succeeded)
+                return Forbid();
+
+            using var reader = new StreamReader(Request.Body);
+            var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var model = JsonConvert.DeserializeObject<DataTableAjaxPostModel>(requestBody);
+            if (model is null)
+                return BadRequest("Invalid request data");
+
+            var order = UserProfilesOrder.DisplayNameAsc;
+            if (model.Order?.Count > 0 && model.Columns.Count > model.Order[0].Column &&
+                model.Columns[model.Order[0].Column].Name.Equals("displayName", StringComparison.OrdinalIgnoreCase) &&
+                model.Order[0].Dir.Equals("desc", StringComparison.OrdinalIgnoreCase))
+            {
+                order = UserProfilesOrder.DisplayNameDesc;
+            }
+
+            var response = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
+                model.Search?.Value, UserProfileFilter.Moderators, gameType.Value,
+                model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+
+            var result = response.Result;
+            var data = result?.Data;
+            if (data is null)
+                return StatusCode(500, "Failed to retrieve moderator data");
+
+            // Get all servers for the selected game to identify server-scoped claims.
+            // Note: This fetches up to MaxGameServersPerPage servers. If a game has more
+            // servers than this limit, some server-scoped permissions may not be included.
+            // TODO: Implement pagination if needed for games with >1000 servers.
+            var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                [gameType.Value], null, null, 0, MaxGameServersPerPage, null, cancellationToken).ConfigureAwait(false);
+
+            var gameServerIds = serversResponse.Result?.Data?.Items
+                ?.Select(s => s.GameServerId)
+                .ToHashSet() ?? [];
+            var serverDisplayNames = serversResponse.Result?.Data?.Items?
+                .ToDictionary(server => server.GameServerId, server => server.Title ?? server.GameServerId.ToString()) ?? [];
+
+            return Ok(new
+            {
+                model.Draw,
+                recordsTotal = result!.Pagination?.TotalCount ?? 0,
+                recordsFiltered = result.Pagination?.FilteredCount ?? 0,
+                data = (data.Items ?? []).Select(profile =>
+                {
+                    var claims = (profile.UserProfileClaims ?? []).Where(claim =>
+                        string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                        (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
+                        (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
+                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                            (Guid.TryParse(claim.ClaimValue, out var systemGeneratedServerGuid) && gameServerIds.Contains(systemGeneratedServerGuid)))))
+                        .ToList();
+
+                    return new
+                    {
+                        profile.UserProfileId,
+                        profile.DisplayName,
+                        claims = claims.Select(claim =>
+                        {
+                            var definition = AdditionalPermission.GetDefinition(claim.ClaimType);
+                            var valueDisplayName = claim.ClaimValue;
+
+                            if (Guid.TryParse(claim.ClaimValue, out var claimGuid) &&
+                                serverDisplayNames.TryGetValue(claimGuid, out var serverTitle))
+                            {
+                                valueDisplayName = serverTitle;
+                            }
+                            else if (!string.IsNullOrWhiteSpace(claim.ClaimValue) &&
+                                     Enum.TryParse<GameType>(claim.ClaimValue, true, out var claimGameType))
+                            {
+                                valueDisplayName = claimGameType.ToDisplayName();
+                            }
+
+                            return new
+                            {
+                                claim.ClaimType,
+                                claim.ClaimValue,
+                                claim.SystemGenerated,
+                                claimTypeDisplayName = definition?.DisplayName ?? claim.ClaimType,
+                                claimValueDisplayName = valueDisplayName
+                            };
+                        })
+                    };
+                }).ToList()
+            });
+        }, nameof(GetGameModeratorsAjax)).ConfigureAwait(false);
     }
 
     /// <summary>

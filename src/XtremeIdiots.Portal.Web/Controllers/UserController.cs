@@ -92,6 +92,32 @@ public class UserController(
     }
 
     /// <summary>
+    /// Displays moderator access for one game that the current user may administer.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> TeamAccess(GameType? gameType)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            if (!gameType.HasValue ||
+                !GameTypeAuthorizationExtensions.DefinedGameTypes.Contains(gameType.Value))
+            {
+                return NotFound();
+            }
+
+            var authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameType.Value,
+                AuthPolicies.Users_ManageClaims,
+                nameof(TeamAccess),
+                "GameTeamAccess",
+                $"GameType:{gameType.Value}").ConfigureAwait(false);
+
+            return authResult ?? View(new GameTeamAccessViewModel { GameType = gameType.Value });
+        }, nameof(TeamAccess)).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Displays the activity log page showing Application Insights custom events
     /// </summary>
     /// <returns>The activity log view</returns>
