@@ -1,5 +1,5 @@
-// File Transport Browser Component
-// Usage: openFileTransportBrowser(gameServerId, targetInputId, fileFilterOrOptions?)
+// Server File Browser Component
+// Usage: openServerFileBrowser(gameServerId, targetInputId, purpose, fileFilterOrOptions?)
 //   gameServerId: GUID of the game server
 //   targetInputId: ID of the input element to populate with selected path
 //   fileFilterOrOptions: optional file extension filter (e.g. '.log') or options object
@@ -9,6 +9,7 @@
 (function () {
     var _gameServerId = null;
     var _targetInputId = null;
+    var _purpose = null;
     var _fileFilter = null;
     var _selectionMode = 'file';
     var _apiBasePath = '/api/file-browse';
@@ -16,11 +17,12 @@
     var _selectedPath = null;
     var _modal = null;
 
-    function openBrowser(gameServerId, targetInputId, fileFilterOrOptions) {
+    function openBrowser(gameServerId, targetInputId, purpose, fileFilterOrOptions) {
         var options = normalizeOptions(fileFilterOrOptions);
 
         _gameServerId = gameServerId;
         _targetInputId = targetInputId;
+        _purpose = purpose;
         _fileFilter = options.fileFilter;
         _selectionMode = options.selectionMode;
         _currentPath = options.initialPath;
@@ -44,7 +46,7 @@
         navigateTo(_currentPath);
     }
 
-    window.openFileTransportBrowser = openBrowser;
+    window.openServerFileBrowser = openBrowser;
 
     function normalizeOptions(fileFilterOrOptions) {
         var defaultOptions = {
@@ -136,12 +138,12 @@
             .catch(function (err) {
                 loading.style.display = 'none';
                 error.style.display = '';
-                error.textContent = err.message || 'Failed to connect to the file transport server.';
+                error.textContent = err.message || 'Failed to connect to the server file browser.';
             });
     }
 
     function loadDirectory(path, allowRootFallback) {
-        return fetch(_apiBasePath + '/' + _gameServerId + '/browse?path=' + encodeURIComponent(path))
+        return fetch(_apiBasePath + '/' + _gameServerId + '/browse?purpose=' + encodeURIComponent(_purpose) + '&path=' + encodeURIComponent(path))
             .then(function (response) {
                 if (response.status === 404 && allowRootFallback && path !== '/') {
                     return loadDirectory('/', false);

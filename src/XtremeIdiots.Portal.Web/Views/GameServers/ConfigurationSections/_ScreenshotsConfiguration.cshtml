@@ -18,11 +18,12 @@
                 <div class="input-group">
                     <input asp-for="ScreenshotConfigDirectoryPath" class="form-control"
                            id="ScreenshotConfigDirectoryPath" />
-                    @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
+                    @if (Model.GameServer.FileTransportEnabled && Model.CanConfigureScreenshots)
                     {
                         <button class="btn btn-outline-secondary" type="button" data-file-browser
                                 data-server-id="@Model.GameServer.GameServerId" data-target-id="ScreenshotConfigDirectoryPath"
-                                data-selection-mode="directory" data-initial-path-source="ScreenshotConfigDirectoryPath">
+                                data-selection-mode="directory" data-initial-path-source="ScreenshotConfigDirectoryPath"
+                                data-file-browse-purpose="screenshot-configuration">
                             <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
                         </button>
                     }

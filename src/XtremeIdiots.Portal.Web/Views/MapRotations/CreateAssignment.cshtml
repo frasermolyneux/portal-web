@@ -37,7 +37,7 @@ ViewData["RotationTitle"] : "");
                                     <div class="input-group">
                                         <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                                placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
-                                        @if (Model.CanBrowseFileTransport)
+                                        @if (Model.CanBrowseServerFiles)
                                         {
                                             <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
                                                     style="display: none;" title="Browse server files via file transport">
@@ -107,13 +107,13 @@ ViewData["RotationTitle"] : "");
                         </form>
                     </div>
 
-                    @if (Model.CanBrowseFileTransport)
+                    @if (Model.CanBrowseServerFiles)
                     {
                         @await Html.PartialAsync("_FileBrowserModal")
                     }
 
                     @section Scripts {
-                        @if (Model.CanBrowseFileTransport)
+                        @if (Model.CanBrowseServerFiles)
                         {
                             <script src="~/js/file-browse.js" asp-append-version="true"></script>
                         }
@@ -135,7 +135,7 @@ ViewData["RotationTitle"] : "");
                             browseBtn.addEventListener('click', function () {
                             var gameServerId = serverSelect.value;
                             if (gameServerId) {
-                            openFileTransportBrowser(gameServerId, 'ConfigFilePathInput', '.cfg');
+                            openServerFileBrowser(gameServerId, 'ConfigFilePathInput', 'map-rotation-assignment', '.cfg');
                             }
                             });
                             }

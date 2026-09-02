@@ -46,11 +46,12 @@
                             <input asp-for="Cod4xPluginRootDirectory" class="form-control" type="text"
                                    id="Cod4xPluginRootDirectory"
                                    placeholder="@(string.IsNullOrWhiteSpace(Model.GlobalCod4xPluginRootDirectory) ? "/plugins" : Model.GlobalCod4xPluginRootDirectory)" />
-                            @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
+                            @if (Model.GameServer.FileTransportEnabled)
                             {
                                 <button class="btn btn-outline-secondary" type="button" data-file-browser
                                         data-server-id="@Model.GameServer.GameServerId" data-target-id="Cod4xPluginRootDirectory"
-                                        data-selection-mode="directory" data-initial-path-source="Cod4xPluginRootDirectory">
+                                        data-selection-mode="directory" data-initial-path-source="Cod4xPluginRootDirectory"
+                                        data-file-browse-purpose="game-server-configuration">
                                     <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
                                 </button>
                             }

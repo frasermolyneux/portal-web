@@ -17,14 +17,15 @@
             <div class="input-group">
                 <input asp-for="GameServer.BanFileRootPath" class="form-control" type="text" maxlength="255"
                        placeholder="/" />
-                @if (Model.GameServer.FileTransportEnabled && Model.CanEditFileTransport)
+                @if (Model.GameServer.FileTransportEnabled)
                 {
                     <button class="btn btn-outline-secondary" type="button"
                             data-file-browser
                             data-server-id="@Model.GameServer.GameServerId"
                             data-target-id="GameServer_BanFileRootPath"
                             data-selection-mode="directory"
-                            data-initial-path-source="GameServer_BanFileRootPath">
+                            data-initial-path-source="GameServer_BanFileRootPath"
+                            data-file-browse-purpose="game-server-configuration">
                         <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                     </button>
                 }
@@ -49,5 +50,4 @@
             </div>
         </div>
     </div>
-
 
