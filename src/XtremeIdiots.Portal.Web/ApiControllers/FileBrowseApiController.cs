@@ -20,6 +20,15 @@ public class FileBrowseApiController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
+    private readonly static Dictionary<string, FileBrowsePurpose> browsePurposes =
+        new(StringComparer.Ordinal)
+        {
+            ["game-server-configuration"] = FileBrowsePurpose.GameServerConfiguration,
+            ["file-transport-configuration"] = FileBrowsePurpose.FileTransportConfiguration,
+            ["screenshot-configuration"] = FileBrowsePurpose.ScreenshotConfiguration,
+            ["map-rotation-assignment"] = FileBrowsePurpose.MapRotationAssignment
+        };
+
     [HttpGet("{gameServerId:guid}/browse")]
     public async Task<IActionResult> Browse(Guid gameServerId, [FromQuery] string? purpose, [FromQuery] string? path = null)
     {
@@ -51,17 +60,8 @@ public class FileBrowseApiController(
 
     private static bool TryParsePurpose(string? value, out FileBrowsePurpose purpose)
     {
-        purpose = value switch
-        {
-            "game-server-configuration" => FileBrowsePurpose.GameServerConfiguration,
-            "file-transport-configuration" => FileBrowsePurpose.FileTransportConfiguration,
-            "screenshot-configuration" => FileBrowsePurpose.ScreenshotConfiguration,
-            "map-rotation-assignment" => FileBrowsePurpose.MapRotationAssignment,
-            _ => default
-        };
-
-        return value is "game-server-configuration" or "file-transport-configuration" or
-            "screenshot-configuration" or "map-rotation-assignment";
+        purpose = default;
+        return value is not null && browsePurposes.TryGetValue(value, out purpose);
     }
 
     private static IEnumerable<(object Resource, string Policy)> GetRequiredPolicies(
