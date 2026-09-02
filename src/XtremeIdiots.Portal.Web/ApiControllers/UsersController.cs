@@ -176,7 +176,7 @@ public class UsersController(
                 model.Draw,
                 recordsTotal = result!.Pagination?.TotalCount,
                 recordsFiltered = result.Pagination?.FilteredCount,
-                data = data.Items?.Select(profile =>
+                data = (data.Items ?? []).Select(profile =>
                 {
                     var claims = (profile.UserProfileClaims ?? []).Where(claim =>
                         string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
