@@ -5,23 +5,62 @@
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
-    <div class="ibox">
-        <div class="ibox-title">
-            <h5>@ViewData["Title"]</h5>
-        </div>
-        <div class="ibox-content">
-            <p class="text-muted">Moderator access inherited from the Moderator role is shown separately from explicit additional permissions.</p>
-            <div class="table-responsive">
-                <table id="teamAccessTable" class="table table-striped table-hover w-100" data-game-type="@Model.GameType.ToString()" data-testid="team-access-table">
-                    <thead>
-                        <tr>
-                            <th>Moderator</th>
-                            <th>Moderator role</th>
-                            <th>Additional permissions</th>
-                            <th class="table-action-col"></th>
-                        </tr>
-                    </thead>
-                </table>
+    <div class="row">
+        <div class="col-12">
+            <div class="container-fluid">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5><game-type-icon game="@Model.GameType"></game-type-icon> @ViewData["Title"]</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="alert alert-primary" role="alert">
+                            <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
+                            Moderators have deliberately limited permissions by default. If a moderator needs RCON,
+                            map rotation or deployment access, or FTP/file-transfer access, grant the relevant additional
+                            permissions from their Manage Profile page. See the
+                            <a asp-controller="User" asp-action="Permissions">Permissions Overview</a> for details.
+                        </div>
+
+                        <div class="list-filters mb-2" id="teamAccessFilters">
+                            <div class="filter-group">
+                                <label for="filterGameType" class="form-label">Game Type</label>
+                                <select id="filterGameType" class="form-select">
+                                    @foreach (var gameType in Model.AvailableGameTypes)
+                                    {
+                                        <option value="@gameType" selected="@(gameType == Model.GameType ? "selected" : null)">
+                                            @gameType.DisplayName()
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label" for="resetFilters">Reset</label>
+                                <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset Filters</button>
+                            </div>
+                        </div>
+
+                        <p class="text-muted">
+                            Moderator access inherited from the Moderator role is shown separately from explicit additional permissions.
+                            COD4 includes COD4x permissions and game servers.
+                        </p>
+
+                        <div class="table-responsive">
+                            <table id="teamAccessTable" class="table table-striped table-hover w-100"
+                                   data-game-type="@Model.GameType"
+                                   data-team-access-url-template="@Url.Action("TeamAccess", "User", new { gameType = "__GAME_TYPE__" })"
+                                   data-testid="team-access-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Moderator</th>
+                                        <th scope="col">Moderator role</th>
+                                        <th scope="col">Additional permissions</th>
+                                        <th scope="col" class="table-action-col"></th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

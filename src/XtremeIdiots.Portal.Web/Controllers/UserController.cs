@@ -99,21 +99,44 @@ public class UserController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            if (!gameType.HasValue ||
-                !GameTypeAuthorizationExtensions.DefinedGameTypes.Contains(gameType.Value))
+            if (!gameType.HasValue)
             {
                 return NotFound();
             }
 
+            var normalizedGameType = GameTypeAuthorizationExtensions.NormalizeTeamAccessGameType(gameType.Value);
+            if (!GameTypeAuthorizationExtensions.TeamAccessGameTypes.Contains(normalizedGameType))
+            {
+                return NotFound();
+            }
+
+            if (normalizedGameType != gameType.Value)
+            {
+                return RedirectToAction(nameof(TeamAccess), new { gameType = normalizedGameType });
+            }
+
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
-                gameType.Value,
+                normalizedGameType,
                 AuthPolicies.Users_ManageClaims,
                 nameof(TeamAccess),
                 "GameTeamAccess",
-                $"GameType:{gameType.Value}").ConfigureAwait(false);
+                $"GameType:{normalizedGameType}").ConfigureAwait(false);
 
-            return authResult ?? View(new GameTeamAccessViewModel { GameType = gameType.Value });
+            if (authResult is not null)
+            {
+                return authResult;
+            }
+
+            var availableGameTypes = await authorizationService
+                .GetAuthorizedTeamAccessGameTypesAsync(User, AuthPolicies.Users_ManageClaims)
+                .ConfigureAwait(false);
+
+            return View(new GameTeamAccessViewModel
+            {
+                GameType = normalizedGameType,
+                AvailableGameTypes = availableGameTypes
+            });
         }, nameof(TeamAccess)).ConfigureAwait(false);
     }
 
@@ -367,7 +390,7 @@ public class UserController(
                 this.AddAlertSuccess($"Nothing to do - {user?.UserName ?? userProfileData.DisplayName} already has the '{displayName}' permission");
             }
 
-            return RedirectToAction(nameof(ManageProfile), new { id });
+            return RedirectToManageProfileTab(id, ManageUserProfileViewModel.PermissionsTabName);
         }, nameof(CreateUserClaim), id.ToString());
     }
 
@@ -492,7 +515,7 @@ public class UserController(
                 { "ClaimValue", claim.ClaimValue }
             });
 
-            return RedirectToAction(nameof(ManageProfile), new { id });
+            return RedirectToManageProfileTab(id, ManageUserProfileViewModel.PermissionsTabName);
         }, nameof(RemoveUserClaim), id.ToString());
     }
 
@@ -677,20 +700,25 @@ public class UserController(
 
     private IActionResult RedirectToManageProfileNotifications(Guid id)
     {
+        return RedirectToManageProfileTab(id, ManageUserProfileViewModel.NotificationsTabName);
+    }
+
+    private IActionResult RedirectToManageProfileTab(Guid id, string tab)
+    {
         if (Url is null)
         {
-            return RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName });
+            return RedirectToAction(nameof(ManageProfile), new { id, tab });
         }
 
         var manageProfileUrl = Url.Action(nameof(ManageProfile), new
         {
             id,
-            tab = ManageUserProfileViewModel.NotificationsTabName
+            tab
         });
 
         return string.IsNullOrWhiteSpace(manageProfileUrl)
-            ? RedirectToAction(nameof(ManageProfile), new { id, tab = ManageUserProfileViewModel.NotificationsTabName })
-            : Redirect($"{manageProfileUrl}#notifications");
+            ? RedirectToAction(nameof(ManageProfile), new { id, tab })
+            : Redirect($"{manageProfileUrl}#{tab}");
     }
 
     private async Task<(ManageUserProfileViewModel? Model, IActionResult? ErrorResult)> BuildManageUserProfileViewModelAsync(
@@ -1065,9 +1093,17 @@ public class UserController(
 
     private static string NormalizeManageProfileTab(string? tab)
     {
-        return string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase)
-            ? ManageUserProfileViewModel.NotificationsTabName
-            : string.Empty;
+        if (string.Equals(tab, ManageUserProfileViewModel.PermissionsTabName, StringComparison.OrdinalIgnoreCase))
+        {
+            return ManageUserProfileViewModel.PermissionsTabName;
+        }
+
+        if (string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase))
+        {
+            return ManageUserProfileViewModel.NotificationsTabName;
+        }
+
+        return ManageUserProfileViewModel.OverviewTabName;
     }
 
     private static bool HasProtectedLogoutRole(IEnumerable<UserProfileClaimDto> claims)

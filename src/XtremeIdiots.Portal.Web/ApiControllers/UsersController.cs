@@ -126,14 +126,19 @@ public class UsersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            if (!gameType.HasValue ||
-                !GameTypeAuthorizationExtensions.DefinedGameTypes.Contains(gameType.Value))
+            if (!gameType.HasValue)
             {
                 return BadRequest("A valid game type is required.");
             }
 
+            var normalizedGameType = GameTypeAuthorizationExtensions.NormalizeTeamAccessGameType(gameType.Value);
+            if (!GameTypeAuthorizationExtensions.TeamAccessGameTypes.Contains(normalizedGameType))
+            {
+                return BadRequest("A supported team access game type is required.");
+            }
+
             var authorizationResult = await authorizationService.AuthorizeAsync(
-                User, gameType.Value, AuthPolicies.Users_ManageClaims).ConfigureAwait(false);
+                User, normalizedGameType, AuthPolicies.Users_ManageClaims).ConfigureAwait(false);
             if (!authorizationResult.Succeeded)
                 return Forbid();
 
@@ -152,7 +157,7 @@ public class UsersController(
             }
 
             var response = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
-                model.Search?.Value, UserProfileFilter.Moderators, gameType.Value,
+                model.Search?.Value, UserProfileFilter.Moderators, normalizedGameType,
                 model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
 
             var result = response.Result;
@@ -160,12 +165,14 @@ public class UsersController(
             if (data is null)
                 return StatusCode(500, "Failed to retrieve moderator data");
 
-            // Get all servers for the selected game to identify server-scoped claims.
+            var includedGameTypes = GameTypeAuthorizationExtensions.GetTeamAccessIncludedGameTypes(normalizedGameType);
+
+            // Get all servers for the selected game group to identify server-scoped claims.
             // Note: This fetches up to MaxGameServersPerPage servers. If a game has more
             // servers than this limit, some server-scoped permissions may not be included.
             // TODO: Implement pagination if needed for games with >1000 servers.
             var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                [gameType.Value], null, null, 0, MaxGameServersPerPage, null, cancellationToken).ConfigureAwait(false);
+                [.. includedGameTypes], null, null, 0, MaxGameServersPerPage, null, cancellationToken).ConfigureAwait(false);
 
             var gameServerIds = serversResponse.Result?.Data?.Items
                 ?.Select(s => s.GameServerId)
@@ -181,10 +188,12 @@ public class UsersController(
                 data = (data.Items ?? []).Select(profile =>
                 {
                     var claims = (profile.UserProfileClaims ?? []).Where(claim =>
-                        string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                        includedGameTypes.Any(includedGameType =>
+                            string.Equals(claim.ClaimValue, includedGameType.ToString(), StringComparison.OrdinalIgnoreCase)) ||
                         (Guid.TryParse(claim.ClaimValue, out var claimGuid) && gameServerIds.Contains(claimGuid)) ||
                         (claim.SystemGenerated && (string.IsNullOrEmpty(claim.ClaimValue) ||
-                            string.Equals(claim.ClaimValue, gameType.Value.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                            includedGameTypes.Any(includedGameType =>
+                                string.Equals(claim.ClaimValue, includedGameType.ToString(), StringComparison.OrdinalIgnoreCase)) ||
                             (Guid.TryParse(claim.ClaimValue, out var systemGeneratedServerGuid) && gameServerIds.Contains(systemGeneratedServerGuid)))))
                         .ToList();
 

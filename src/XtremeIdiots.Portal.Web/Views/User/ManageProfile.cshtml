@@ -11,77 +11,121 @@
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
-
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-fw fa-circle-info"></i> To understand how the permissions work and what the additional permissions
+        <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i> To understand how the permissions work and what the additional permissions
         mean please see the <a href="@Url.ActionLink("Permissions", "User")">Permissions Overview</a>
     </div>
 
-    <div class="row">
-        <div class="col-12 col-lg-6">
+    <div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title"><h5>@ViewData["Title"]</h5></div>
+            <div class="ibox-content">
+                <ul class="nav nav-tabs nav-tabs-responsive" id="manageProfileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(Model.ActiveTab == ManageUserProfileViewModel.OverviewTabName ? "active" : null)"
+                                id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button"
+                                role="tab" aria-controls="overview"
+                                aria-selected="@(Model.ActiveTab == ManageUserProfileViewModel.OverviewTabName ? "true" : "false")">
+                            Overview
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(Model.ActiveTab == ManageUserProfileViewModel.PermissionsTabName ? "active" : null)"
+                                id="permissions-tab" data-bs-toggle="tab" data-bs-target="#permissions" type="button"
+                                role="tab" aria-controls="permissions"
+                                aria-selected="@(Model.ActiveTab == ManageUserProfileViewModel.PermissionsTabName ? "true" : "false")">
+                            Permissions <span class="badge bg-secondary ms-1">@Model.Claims.Count</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(Model.ActiveTab == ManageUserProfileViewModel.NotificationsTabName ? "active" : null)"
+                                id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button"
+                                role="tab" aria-controls="notifications"
+                                aria-selected="@(Model.ActiveTab == ManageUserProfileViewModel.NotificationsTabName ? "true" : "false")">
+                            Notifications <span class="badge bg-secondary ms-1">@Model.RecentNotifications.Count</span>
+                        </button>
+                    </li>
+                </ul>
 
-            <div class="container-fluid">
-                <div class="ibox">
-                    <div class="ibox-title">
-                        @ViewData["Title"]
+                <div class="tab-content pt-3" id="manageProfileTabContent">
+                    <div class="tab-pane fade @(Model.ActiveTab == ManageUserProfileViewModel.OverviewTabName ? "show active" : null)"
+                         id="overview" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
+                        <div class="row">
+                            <div class="col-12 col-lg-6">
+                                <div class="ibox">
+                                    <div class="ibox-title"><h5>Profile Details</h5></div>
+                                    <div class="ibox-content">
+                                        <dl class="detail-fields row mb-0">
+                                            <div class="detail-field col-sm-6">
+                                                <dt class="detail-label">Display Name</dt>
+                                                <dd class="detail-value">@Model.Profile.DisplayName</dd>
+                                            </div>
+                                            <div class="detail-field col-sm-6">
+                                                <dt class="detail-label">Email</dt>
+                                                <dd class="detail-value">@Model.Profile.Email</dd>
+                                            </div>
+                                            <div class="detail-field col-sm-6">
+                                                <dt class="detail-label">Forum Id</dt>
+                                                <dd class="detail-value">@Model.Profile.XtremeIdiotsForumId</dd>
+                                            </div>
+                                            <div class="detail-field col-sm-6">
+                                                <dt class="detail-label">Profile Id</dt>
+                                                <dd class="detail-value">@Model.Profile.UserProfileId</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <div class="ibox">
+                                    <div class="ibox-title"><h5>Identity Details</h5></div>
+                                    <div class="ibox-content">
+                                        @if (Model.Identity is null)
+                                        {
+                                            <div class="alert alert-warning mb-0">No linked Identity user found.</div>
+                                        }
+                                        else
+                                        {
+                                            <dl class="detail-fields row mb-0">
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Email Confirmed</dt>
+                                                    <dd class="detail-value">@(Model.Identity.EmailConfirmed ? "Yes" : "No")</dd>
+                                                </div>
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Two Factor</dt>
+                                                    <dd class="detail-value">@(Model.Identity.TwoFactorEnabled ? "Enabled" : "Disabled")</dd>
+                                                </div>
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Lockout Enabled</dt>
+                                                    <dd class="detail-value">@(Model.Identity.LockoutEnabled ? "Yes" : "No")</dd>
+                                                </div>
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Lockout End</dt>
+                                                    <dd class="detail-value">@if (Model.Identity.LockoutEnd.HasValue) { <time user-time utc="@Model.Identity.LockoutEnd.Value.UtcDateTime"></time> } else { <text>-</text> }</dd>
+                                                </div>
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Access Failed Count</dt>
+                                                    <dd class="detail-value">@Model.Identity.AccessFailedCount</dd>
+                                                </div>
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Phone</dt>
+                                                    <dd class="detail-value">@Model.Identity.PhoneNumber</dd>
+                                                </div>
+                                                <div class="detail-field col-sm-6">
+                                                    <dt class="detail-label">Phone Confirmed</dt>
+                                                    <dd class="detail-value">@(Model.Identity.PhoneNumberConfirmed ? "Yes" : "No")</dd>
+                                                </div>
+                                            </dl>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="ibox-content">
-                        <dl class="row">
-                            <dt class="col-sm-3">Display Name</dt>
-                            <dd class="col-sm-9">@Model.Profile.DisplayName</dd>
-                            <dt class="col-sm-3">Email</dt>
-                            <dd class="col-sm-9">@Model.Profile.Email</dd>
-                            <dt class="col-sm-3">Forum Id</dt>
-                            <dd class="col-sm-9">@Model.Profile.XtremeIdiotsForumId</dd>
-                            <dt class="col-sm-3">Profile Id</dt>
-                            <dd class="col-sm-9">@Model.Profile.UserProfileId</dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
 
-        </div>
-
-        <div class="col-12 col-lg-6">
-
-            <div class="container-fluid">
-                <div class="ibox">
-                    <div class="ibox-title"><h5>Identity Details</h5></div>
-                    <div class="ibox-content">
-                        @if (Model.Identity is null)
-                        {
-                            <div class="alert alert-warning mb-0">No linked Identity user found.</div>
-                        }
-                        else
-                        {
-                            <dl class="row mb-0">
-                                <dt class="col-sm-4">Email Confirmed</dt>
-                                <dd class="col-sm-8">@(Model.Identity.EmailConfirmed ? "Yes" : "No")</dd>
-                                <dt class="col-sm-4">Two Factor</dt>
-                                <dd class="col-sm-8">@(Model.Identity.TwoFactorEnabled ? "Enabled" : "Disabled")</dd>
-                                <dt class="col-sm-4">Lockout Enabled</dt>
-                                <dd class="col-sm-8">@(Model.Identity.LockoutEnabled ? "Yes" : "No")</dd>
-                                <dt class="col-sm-4">Lockout End</dt>
-                                <dd class="col-sm-8">@if (Model.Identity.LockoutEnd.HasValue) { <time user-time utc="@Model.Identity.LockoutEnd.Value.UtcDateTime"></time> } else { <text>-</text> }</dd>
-                                <dt class="col-sm-4">Access Failed Count</dt>
-                                <dd class="col-sm-8">@Model.Identity.AccessFailedCount</dd>
-                                <dt class="col-sm-4">Phone</dt>
-                                <dd class="col-sm-8">@Model.Identity.PhoneNumber</dd>
-                                <dt class="col-sm-4">Phone Confirmed</dt>
-                                <dd class="col-sm-8">@(Model.Identity.PhoneNumberConfirmed ? "Yes" : "No")</dd>
-                            </dl>
-                        }
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="container-fluid" id="notifications">
+                    <div class="tab-pane fade @(Model.ActiveTab == ManageUserProfileViewModel.NotificationsTabName ? "show active" : null)"
+                         id="notifications" role="tabpanel" aria-labelledby="notifications-tab" tabindex="0">
                 <div class="ibox">
                     <div class="ibox-title"><h5>Notification Preferences</h5></div>
                     @if (!string.IsNullOrWhiteSpace(Model.NotificationPreferencesErrorMessage))
@@ -238,13 +282,6 @@
                         </div>
                     }
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="container-fluid">
                 <div class="ibox">
                     <div class="ibox-title"><h5>Notification History</h5></div>
                     <div class="ibox-content">
@@ -319,14 +356,10 @@
                         }
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
+                    </div>
 
-    <div class="row">
-        <div class="col-12">
-
-            <div class="container-fluid">
+                    <div class="tab-pane fade @(Model.ActiveTab == ManageUserProfileViewModel.PermissionsTabName ? "show active" : null)"
+                         id="permissions" role="tabpanel" aria-labelledby="permissions-tab" tabindex="0">
                 <div class="ibox">
                     <div class="ibox-title"><h5>Add Additional Portal Permission</h5></div>
                     <div class="ibox-content">
@@ -339,7 +372,7 @@
                         else
                         {
                             <div policy="@AuthPolicies.Users_ManageClaims" policy-resource="@PotentialAccessProbe.Instance">
-                                <form asp-action="CreateUserClaim" id="createClaimForm">
+                                <form asp-action="CreateUserClaim" id="createClaimForm" method="post">
                                     <input id="id" name="id" type="hidden" value="@Model.Profile.UserProfileId" />
                                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -367,7 +400,7 @@
                                         <small class="form-text text-muted" id="permissionDescription"></small>
                                     </div>
 
-                                    <div id="scopeSelector" class="mb-3" style="display:none;">
+                                    <div id="scopeSelector" class="mb-3 d-none">
                                         <label class="form-label">Scope</label>
                                         <div id="gameScopeGroup">
                                             <select id="gameTypeSelect" class="form-select">
@@ -378,7 +411,7 @@
                                                 }
                                             </select>
                                         </div>
-                                        <div id="serverScopeGroup" class="mt-2" style="display:none;">
+                                        <div id="serverScopeGroup" class="mt-2 d-none">
                                             <select id="serverSelect" class="form-select"
                                                     asp-items="ViewBag.AssignableGameServersSelect">
                                                 <option value="">Select server...</option>
@@ -388,29 +421,16 @@
 
                                     <input type="hidden" name="claimValue" id="claimValueInput" />
 
-                                    <div class="mb-3">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Additional Permission
-                                        </button>
-                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Additional Permission
+                                    </button>
                                 </form>
                             </div>
                         }
                     </div>
                 </div>
-            </div>
-
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-
-            <div class="container-fluid">
                 <div class="ibox">
-                    <div class="ibox-title">
-                        Additional Portal Permission
-                    </div>
+                    <div class="ibox-title"><h5>Additional Portal Permissions</h5></div>
                     <div class="ibox-content">
                         @if (!string.IsNullOrWhiteSpace(Model.PermissionsErrorMessage))
                         {
@@ -457,11 +477,11 @@
                         </div>
                     </div>
                 </div>
+                    </div>
+                </div>
             </div>
-
         </div>
     </div>
-
 </div>
 
 @* ReSharper disable once Razor.SectionNotResolved *@
@@ -473,13 +493,19 @@
 
     <script>
         (function () {
-            var activeTab = '@Model.ActiveTab';
-            if (activeTab === '@ManageUserProfileViewModel.NotificationsTabName') {
-                var notificationsSection = document.getElementById('notifications');
-                if (notificationsSection) {
-                    notificationsSection.scrollIntoView({ block: 'start' });
-                }
-            }
+            document.querySelectorAll('#manageProfileTabs button[data-bs-toggle="tab"]').forEach(function (tabButton) {
+                tabButton.addEventListener('shown.bs.tab', function (event) {
+                    var tab = event.target.getAttribute('data-bs-target')?.replace('#', '');
+                    if (!tab) {
+                        return;
+                    }
+
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('tab', tab);
+                    url.hash = tab;
+                    window.history.replaceState({}, '', url);
+                });
+            });
 
             var claimTypeSelect = document.getElementById('claimType');
             var descriptionEl = document.getElementById('permissionDescription');
@@ -503,26 +529,25 @@
                 descriptionEl.textContent = desc;
 
                 if (!scope || this.value === '') {
-                    scopeSelector.style.display = 'none';
+                    scopeSelector.classList.add('d-none');
                     gameTypeSelect.value = '';
                     serverSelect.value = '';
                     return;
                 }
 
-                scopeSelector.style.display = '';
+                scopeSelector.classList.remove('d-none');
 
                 if (scope === 'Game') {
-                    gameGroup.style.display = '';
-                    serverGroup.style.display = 'none';
+                    gameGroup.classList.remove('d-none');
+                    serverGroup.classList.add('d-none');
                     serverSelect.value = '';
                 } else if (scope === 'Server') {
-                    gameGroup.style.display = 'none';
-                    serverGroup.style.display = '';
+                    gameGroup.classList.add('d-none');
+                    serverGroup.classList.remove('d-none');
                     gameTypeSelect.value = '';
                 } else {
-                    // GameOrServer — show both
-                    gameGroup.style.display = '';
-                    serverGroup.style.display = '';
+                    gameGroup.classList.remove('d-none');
+                    serverGroup.classList.remove('d-none');
                 }
             });
 
@@ -543,7 +568,6 @@
                 } else if (scope === 'Game') {
                     claimValueInput.value = gameVal;
                 } else {
-                    // GameOrServer: prefer game if set, else server
                     claimValueInput.value = gameVal || serverVal;
                 }
 

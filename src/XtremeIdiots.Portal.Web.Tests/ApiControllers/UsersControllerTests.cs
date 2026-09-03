@@ -55,16 +55,36 @@ public class UsersControllerTests
         return controller;
     }
 
-    [Fact]
-    public async Task GetGameModeratorsAjax_InvalidGame_ReturnsBadRequestWithoutRepositoryCalls()
+    [Theory]
+    [InlineData(GameType.Unknown)]
+    [InlineData(GameType.Insurgency)]
+    public async Task GetGameModeratorsAjax_UnsupportedGame_ReturnsBadRequestWithoutRepositoryCalls(GameType gameType)
     {
         var sut = CreateSut();
 
-        var result = await sut.GetGameModeratorsAjax(GameType.Unknown);
+        var result = await sut.GetGameModeratorsAjax(gameType);
 
         Assert.IsType<BadRequestObjectResult>(result);
         mockRepositoryApiClient.VerifyNoOtherCalls();
         mockAuthorizationService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GetGameModeratorsAjax_Cod4x_AuthorizesAgainstCanonicalCod4Scope()
+    {
+        var sut = CreateSut();
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.Users_ManageClaims))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var result = await sut.GetGameModeratorsAjax(GameType.CallOfDuty4x);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        mockAuthorizationService.Verify(x => x.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(),
+            GameType.CallOfDuty4,
+            AuthPolicies.Users_ManageClaims), Times.Once);
+        mockRepositoryApiClient.VerifyNoOtherCalls();
     }
 
     [Fact]

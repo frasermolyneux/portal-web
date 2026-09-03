@@ -9,6 +9,8 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// </summary>
 public class ManageUserProfileViewModel
 {
+    public const string OverviewTabName = "overview";
+    public const string PermissionsTabName = "permissions";
     public const string NotificationsTabName = "notifications";
 
     /// <summary>
@@ -59,7 +61,7 @@ public class ManageUserProfileViewModel
     /// <summary>
     /// Stable tab key preserved through redirects so a future tabbed UI can restore the notifications section.
     /// </summary>
-    public string ActiveTab { get; set; } = string.Empty;
+    public string ActiveTab { get; set; } = OverviewTabName;
 
     /// <summary>
     /// Visible error message shown when notification preferences could not be loaded for the otherwise successful profile page.

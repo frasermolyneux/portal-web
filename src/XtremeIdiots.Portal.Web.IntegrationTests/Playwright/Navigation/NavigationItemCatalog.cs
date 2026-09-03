@@ -102,6 +102,9 @@ internal static class NavigationItemCatalog
 
         // FIXED: nav link now inherits the parent Users_Read gate (HeadAdmin+) to match UserController.Index.
         new("Users - Manage Users", "a[href='/User']", HeadAdminAndAbove),
+        new("Users - COD2 Team Access", "[data-testid='nav-users-team-access-CallOfDuty2']", SeniorAdminOnly),
+        new("Users - COD4 Team Access", "[data-testid='nav-users-team-access-CallOfDuty4']", HeadAdminAndAbove),
+        new("Users - COD5 Team Access", "[data-testid='nav-users-team-access-CallOfDuty5']", SeniorAdminOnly),
 
         // Users_ActivityLog (SeniorAdmin only).
         new("Users - Activity Log", "a[href='/User/ActivityLog']", SeniorAdminOnly),

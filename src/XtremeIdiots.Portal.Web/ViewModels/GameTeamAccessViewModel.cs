@@ -5,4 +5,6 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 public sealed class GameTeamAccessViewModel
 {
     public required GameType GameType { get; init; }
+
+    public IReadOnlyList<GameType> AvailableGameTypes { get; init; } = [];
 }

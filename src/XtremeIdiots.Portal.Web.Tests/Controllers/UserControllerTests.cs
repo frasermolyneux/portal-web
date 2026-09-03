@@ -127,6 +127,7 @@ public class UserControllerTests
         var model = Assert.IsType<ManageUserProfileViewModel>(view.Model);
         var claimRows = model.Claims.ToDictionary(claim => claim.UserProfileClaimId);
 
+        Assert.Equal(ManageUserProfileViewModel.OverviewTabName, model.ActiveTab);
         Assert.True(claimRows[cod5GameClaimId].CanRemove);
         Assert.True(claimRows[cod5ServerClaimId].CanRemove);
         Assert.Equal("Test Server", claimRows[cod5ServerClaimId].ScopeDisplayValue);
@@ -188,11 +189,12 @@ public class UserControllerTests
         SetupNotificationHistory(
             CreateNotification(notificationId, explicitTypeId, title: "Dispatch ready", message: "Full notification message content"));
 
-        var result = await sut.ManageProfile(profileId);
+        var result = await sut.ManageProfile(profileId, ManageUserProfileViewModel.NotificationsTabName);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<ManageUserProfileViewModel>(view.Model);
 
+        Assert.Equal(ManageUserProfileViewModel.NotificationsTabName, model.ActiveTab);
         Assert.False(model.CanUpdateNotificationPreferences);
         Assert.Equal(2, model.NotificationTypes.Count);
         Assert.Equal(2, model.NotificationPreferences.Count);
@@ -987,16 +989,30 @@ public class UserControllerTests
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<GameTeamAccessViewModel>(view.Model);
         Assert.Equal(GameType.CallOfDuty5, model.GameType);
+        Assert.Equal([GameType.CallOfDuty5], model.AvailableGameTypes);
     }
 
     [Fact]
-    public async Task TeamAccess_InvalidGame_FailsWithoutAuthorizationOrRepositoryCall()
+    public async Task TeamAccess_Cod4x_RedirectsToCanonicalCod4Page()
     {
-        // GameType.Unknown is explicitly excluded from DefinedGameTypes, making it a reliable
-        // choice to test the invalid-game rejection path without triggering authorization checks.
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty4));
+
+        var result = await sut.TeamAccess(GameType.CallOfDuty4x);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(UserController.TeamAccess), redirect.ActionName);
+        Assert.Equal(GameType.CallOfDuty4, redirect.RouteValues?["gameType"]);
+        mockAuthorizationService.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(GameType.Unknown)]
+    [InlineData(GameType.Insurgency)]
+    public async Task TeamAccess_UnsupportedGame_FailsWithoutAuthorizationOrRepositoryCall(GameType gameType)
+    {
         var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
 
-        var result = await sut.TeamAccess(GameType.Unknown);
+        var result = await sut.TeamAccess(gameType);
 
         Assert.IsType<NotFoundResult>(result);
         mockAuthorizationService.Verify(x => x.AuthorizeAsync(
@@ -1228,9 +1244,19 @@ public class UserControllerTests
 
     private static void AssertRedirectsToManageProfile(IActionResult result, Guid profileId)
     {
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(UserController.ManageProfile), redirect.ActionName);
-        Assert.Equal(profileId, redirect.RouteValues?["id"]);
+        switch (result)
+        {
+            case RedirectToActionResult redirectToAction:
+                Assert.Equal(nameof(UserController.ManageProfile), redirectToAction.ActionName);
+                Assert.Equal(profileId, redirectToAction.RouteValues?["id"]);
+                Assert.Equal(ManageUserProfileViewModel.PermissionsTabName, redirectToAction.RouteValues?["tab"]);
+                break;
+            case RedirectResult redirect:
+                Assert.Equal($"/User/ManageProfile/{profileId}?tab=permissions#permissions", redirect.Url);
+                break;
+            default:
+                throw new InvalidOperationException($"Expected a redirect result but got {result.GetType().Name}.");
+        }
     }
 
     private void AssertNoNotificationStateMutation()

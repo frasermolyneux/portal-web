@@ -55,6 +55,18 @@ internal sealed class UserManageProfileScenario
             .Setup(api => api.GetUserProfile(UserProfileId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(userProfile)));
 
+        Mock.Get(RepositoryClient.Object.UserProfiles.V1)
+            .Setup(api => api.CreateUserProfileClaim(
+                UserProfileId,
+                It.IsAny<List<CreateUserProfileClaimDto>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Guid, List<CreateUserProfileClaimDto>, CancellationToken>((_, claims, _) =>
+            {
+                CreatedClaims = [.. claims];
+                CreateUserProfileClaimCallCount++;
+            })
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+
         Mock.Get(RepositoryClient.Object.NotificationTypes.V1)
             .Setup(api => api.GetNotificationTypes(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<NotificationTypeDto>>(
@@ -103,6 +115,10 @@ internal sealed class UserManageProfileScenario
     public IReadOnlyList<EditNotificationPreferenceDto> UpdatedPreferences { get; private set; } = [];
 
     public int UpdateNotificationPreferencesCallCount { get; private set; }
+
+    public IReadOnlyList<CreateUserProfileClaimDto> CreatedClaims { get; private set; } = [];
+
+    public int CreateUserProfileClaimCallCount { get; private set; }
 
     public void ConfigureServices(IServiceCollection services)
     {
