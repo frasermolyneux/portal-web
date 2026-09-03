@@ -1098,12 +1098,9 @@ public class UserController(
             return ManageUserProfileViewModel.PermissionsTabName;
         }
 
-        if (string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase))
-        {
-            return ManageUserProfileViewModel.NotificationsTabName;
-        }
-
-        return ManageUserProfileViewModel.OverviewTabName;
+        return string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase)
+            ? ManageUserProfileViewModel.NotificationsTabName
+            : ManageUserProfileViewModel.OverviewTabName;
     }
 
     private static bool HasProtectedLogoutRole(IEnumerable<UserProfileClaimDto> claims)
