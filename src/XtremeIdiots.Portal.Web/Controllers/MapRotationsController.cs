@@ -500,13 +500,11 @@ public class MapRotationsController(
 
             ViewData["RotationTitle"] = rotation.Title;
 
-            var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
-
             return View(new CreateMapRotationAssignmentViewModel
             {
                 MapRotationId = mapRotationId,
                 AvailableServers = authorizedServers,
-                CanBrowseFileTransport = canBrowseFileTransport.Succeeded
+                CanBrowseServerFiles = authorizedServers.Any(server => server.FileTransportEnabled)
             });
         }, nameof(CreateAssignment)).ConfigureAwait(false);
     }
@@ -679,9 +677,6 @@ public class MapRotationsController(
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
             var server = serverResponse.IsSuccess ? serverResponse.Result?.Data : null;
 
-            var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
-
-            var fileTransportEnabled = server?.FileTransportEnabled ?? false;
             var fileTransportType = server?.FileTransportType ?? FileTransportType.Unknown;
 
             ViewData["RotationTitle"] = rotation.Title;
@@ -696,7 +691,7 @@ public class MapRotationsController(
                 ConfigVariableName = assignment.ConfigVariableName,
                 PlayerCountMin = assignment.PlayerCountMin,
                 PlayerCountMax = assignment.PlayerCountMax,
-                CanBrowseFileTransport = canBrowseFileTransport.Succeeded,
+                CanBrowseServerFiles = server?.FileTransportEnabled == true,
                 FileTransportType = fileTransportType
             });
         }, nameof(EditAssignment)).ConfigureAwait(false);
@@ -739,8 +734,7 @@ public class MapRotationsController(
 
                 m.GameServerTitle = server?.Title ?? assignment.GameServerId.ToString();
 
-                var canBrowseFileTransport = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
-                m.CanBrowseFileTransport = canBrowseFileTransport.Succeeded;
+                m.CanBrowseServerFiles = server?.FileTransportEnabled == true;
                 m.FileTransportType = server?.FileTransportType ?? FileTransportType.Unknown;
             }
 
@@ -1750,8 +1744,6 @@ public class MapRotationsController(
     {
         model.AvailableServers = await GetAuthorizedServersAsync(gameType, cancellationToken).ConfigureAwait(false);
 
-        var canBrowseFileTransport = await authorizationService.AuthorizeAsync(
-            User, gameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
-        model.CanBrowseFileTransport = canBrowseFileTransport.Succeeded;
+        model.CanBrowseServerFiles = model.AvailableServers.Any(server => server.FileTransportEnabled);
     }
 }

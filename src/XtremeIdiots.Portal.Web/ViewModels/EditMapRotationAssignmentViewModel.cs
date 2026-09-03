@@ -27,6 +27,6 @@ public class EditMapRotationAssignmentViewModel
     [DisplayName("Max Players")]
     public int? PlayerCountMax { get; set; }
 
-    public bool CanBrowseFileTransport { get; set; }
+    public bool CanBrowseServerFiles { get; set; }
     public RepoFileTransportType FileTransportType { get; set; } = RepoFileTransportType.Unknown;
 }

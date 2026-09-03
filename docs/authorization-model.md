@@ -54,6 +54,28 @@ Handlers often combine multiple checks. For example, `AdminActions.Edit` checks:
 3. GameAdmin/Moderator for the game type **and** ownership of the specific action, then
 4. Direct permission grant as a fallback
 
+## Server File Browser
+
+The server file browser is authorized according to the feature configuration being
+updated, not by access to file-transport credentials. Its API accepts only these
+allow-listed purposes:
+
+| Purpose | Required authorization resource and policy |
+| --- | --- |
+| `game-server-configuration` | Resolved server `GameType`: `GameServers.Write` |
+| `file-transport-configuration` | Resolved server `GameType`: `GameServers.Write` and `GameServers.Credentials.FileTransport.Write` |
+| `screenshot-configuration` | Resolved server `GameType`: `GameServers.Write` and `GameServers.Admin.Screenshots.Configure` |
+| `map-rotation-assignment` | Resolved `(GameType, GameServerId)`: `MapRotations.Deploy` |
+
+The server and its game type are resolved server-side; clients cannot provide a
+policy name or game type. File transport must be enabled with a supported
+transport type before browsing.
+
+Credential configuration remains protected by the file-transport credential
+policies. Browser access exposes remote directory metadata (names, paths, sizes,
+and modified timestamps) for an authorized server, but never stored credentials
+or file contents.
+
 ## PolicyTagHelper
 
 The `PolicyTagHelper` enables policy-based conditional rendering in Razor views:

@@ -267,7 +267,7 @@
         initialPath = document.getElementById(initialPathSource)?.value || '/';
         }
 
-        openFileTransportBrowser(serverId, targetId, {
+        openServerFileBrowser(serverId, targetId, button.dataset.fileBrowsePurpose, {
         selectionMode: 'directory',
         initialPath: initialPath
         });
@@ -275,11 +275,11 @@
         }
 
         if (extensionFilter) {
-        openFileTransportBrowser(serverId, targetId, extensionFilter);
+        openServerFileBrowser(serverId, targetId, button.dataset.fileBrowsePurpose, extensionFilter);
         return;
         }
 
-        openFileTransportBrowser(serverId, targetId);
+        openServerFileBrowser(serverId, targetId, button.dataset.fileBrowsePurpose);
         });
         });
 

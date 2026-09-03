@@ -30,12 +30,12 @@
                                 <div class="input-group">
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                            placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
-                                    @if (Model.CanBrowseFileTransport && Model.FileTransportType !=
+                                    @if (Model.CanBrowseServerFiles && Model.FileTransportType !=
                                     FileTransportType.Unknown)
                                     {
                                         <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
-                                                title="Browse server files via file transport"
-                                                onclick="openFileTransportBrowser('@Model.GameServerId', 'ConfigFilePathInput', '.cfg')">
+                                                title="Browse server files"
+                                                onclick="openServerFileBrowser('@Model.GameServerId', 'ConfigFilePathInput', 'map-rotation-assignment', '.cfg')">
                                             <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
                                         </button>
                                     }
@@ -89,13 +89,13 @@
         </form>
     </div>
 
-    @if (Model.CanBrowseFileTransport && Model.FileTransportType != FileTransportType.Unknown)
+    @if (Model.CanBrowseServerFiles && Model.FileTransportType != FileTransportType.Unknown)
     {
         @await Html.PartialAsync("_FileBrowserModal")
     }
 
     @section Scripts {
-        @if (Model.CanBrowseFileTransport && Model.FileTransportType != FileTransportType.Unknown)
+        @if (Model.CanBrowseServerFiles && Model.FileTransportType != FileTransportType.Unknown)
         {
             <script src="~/js/file-browse.js" asp-append-version="true"></script>
         }

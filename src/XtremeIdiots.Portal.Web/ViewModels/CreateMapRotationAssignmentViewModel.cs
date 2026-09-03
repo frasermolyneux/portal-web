@@ -26,5 +26,5 @@ public class CreateMapRotationAssignmentViewModel
 
     public List<GameServerDto> AvailableServers { get; set; } = [];
 
-    public bool CanBrowseFileTransport { get; set; }
+    public bool CanBrowseServerFiles { get; set; }
 }
