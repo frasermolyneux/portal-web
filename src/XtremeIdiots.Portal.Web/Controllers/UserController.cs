@@ -1093,14 +1093,11 @@ public class UserController(
 
     private static string NormalizeManageProfileTab(string? tab)
     {
-        if (string.Equals(tab, ManageUserProfileViewModel.PermissionsTabName, StringComparison.OrdinalIgnoreCase))
-        {
-            return ManageUserProfileViewModel.PermissionsTabName;
-        }
-
-        return string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase)
-            ? ManageUserProfileViewModel.NotificationsTabName
-            : ManageUserProfileViewModel.OverviewTabName;
+        return string.Equals(tab, ManageUserProfileViewModel.PermissionsTabName, StringComparison.OrdinalIgnoreCase)
+            ? ManageUserProfileViewModel.PermissionsTabName
+            : string.Equals(tab, ManageUserProfileViewModel.NotificationsTabName, StringComparison.OrdinalIgnoreCase)
+                ? ManageUserProfileViewModel.NotificationsTabName
+                : ManageUserProfileViewModel.OverviewTabName;
     }
 
     private static bool HasProtectedLogoutRole(IEnumerable<UserProfileClaimDto> claims)
