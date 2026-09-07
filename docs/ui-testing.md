@@ -4,15 +4,84 @@ The portal integration suite runs the ASP.NET Core application locally with dete
 
 ## Run locally
 
-Run the `dotnet: test-integration` VS Code task. The first run restores packages and downloads the pinned Chromium build; later runs reuse local caches.
+### Prerequisites and bootstrap
+
+Install:
+
+- The .NET SDK required by [global.json](../global.json), currently 10.0.400. Its
+  `latestPatch` policy permits servicing patches within that feature band, not
+  older SDKs such as 10.0.303.
+- Node.js 22.x, selected by [.node-version](../.node-version), and npm >=10.
+  Servicing updates within Node.js 22 are supported; npm package versions are
+  fixed by the committed lockfile.
+- PowerShell >=7.2 (`pwsh`), including on Linux.
+
+Run the `dotnet: setup-tests` VS Code task, or:
+
+```powershell
+pwsh -NoProfile -File scripts/setup-test-environment.ps1
+```
+
+The bootstrap validates tools before installation, runs `npm ci --include=dev`,
+builds the solution in Release, and installs Chromium using the generated
+`playwright.ps1` from the .NET integration-test package. On Linux it includes
+`--with-deps`; system dependency installation requires root or sudo. It then
+runs the existing login-page test and requires a TRX containing exactly one
+passing test. A zero-test or skipped result is a setup failure.
+
+No global SDK, Node.js, or PowerShell installation is attempted by this script.
+It can be called from outside the repository, restores the caller's directory,
+and can be rerun after changing branches or dependencies. NuGet and Playwright
+reuse their normal user caches; npm reconstructs `node_modules` from the lockfile.
+Do not run two builds/bootstrap processes in the same checkout concurrently.
+
+### Full integration suite
+
+Run the `dotnet: test-integration` VS Code task. It uses the same bootstrap before
+running the unchanged HTTP, Playwright, and Reqnroll integration suite.
 
 The equivalent command is:
 
 ```powershell
-pwsh ./scripts/run-ui-tests.ps1
+pwsh -NoProfile -File scripts/run-ui-tests.ps1
 ```
 
 Unit tests remain available through `dotnet: test` and exclude the integration project by the existing `FullyQualifiedName!~IntegrationTests` filter.
+
+### CI and remote environments
+
+- CI browser jobs run the bootstrap's `-Phase Dependencies` before the existing
+  Release build, then `run-ui-tests.ps1 -SkipBuild`. This runs `-Phase Browser`
+  (install and smoke check) before the complete integration suite. Only use
+  `-SkipBuild` with an up-to-date Release build; it does not validate build freshness.
+- Copilot setup checks out the repository, installs the declared runtimes, and
+  completes these same steps through the smoke check before the agent starts.
+  It does not run the full integration suite on startup.
+- The Ubuntu 24.04 devcontainer installs the pinned SDK, Node.js 22, and
+  PowerShell, then runs the full bootstrap in `postCreateCommand`. Rebuild an
+  existing container to pick up the new toolchain. Keep its SDK/Node feature
+  versions aligned when updating `global.json` or `.node-version`.
+- Bootstrap results use fresh directories under `src/TestResults/bootstrap/`.
+  CI uploads these with the existing integration results; Copilot setup uploads
+  them separately. Retention is seven days.
+
+### Troubleshooting setup
+
+- **SDK not found:** install the version requested by `global.json`, reopen the
+  terminal, and check `dotnet --version` from the repository root. Do not edit the
+  pin to bypass the failure.
+- **Node/npm mismatch:** select Node.js 22 and its bundled npm, then rerun setup.
+- **npm lock mismatch:** use `npm install` in the web project only for an
+  intentional dependency update and commit both manifests. Routine setup must
+  use `npm ci`, not silently rewrite the lock.
+- **Missing Release outputs:** run the default bootstrap, not `-Phase Browser`.
+- **Browser download or Linux library failure:** check network/proxy access to
+  NuGet, npm, the Playwright download hosts, and Ubuntu package repositories;
+  allow sudo for Linux dependencies. Prepare these before the coding-agent
+  firewall is applied. Never disable network controls to hide setup failures.
+- **Chromium smoke failure:** inspect the console output and
+  `src/TestResults/bootstrap/<run-id>/bootstrap.trx`. Installing binaries alone
+  does not prove the browser can launch and load the application.
 
 ## Test structure
 

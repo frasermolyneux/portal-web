@@ -10,6 +10,6 @@ Follow the repository [CSS architecture guide](../../docs/css-architecture-guide
   and `vendor` layering imported by `Styles/app.scss`.
 - Put reusable rules in the appropriate shared layer and page-specific rules in
   `features`; do not edit generated `wwwroot/css/app.css` directly.
-- Run `npm install` when dependencies are absent, then `npm run build:css:dev`
-  from `src/XtremeIdiots.Portal.Web`. There is no npm lockfile, so do not use
-  `npm ci`.
+- Run `npm ci` when dependencies are absent, then `npm run build:css:dev`
+  from `src/XtremeIdiots.Portal.Web`. Commit `package-lock.json` alongside any
+  dependency changes; use `npm install` only when intentionally updating dependencies.

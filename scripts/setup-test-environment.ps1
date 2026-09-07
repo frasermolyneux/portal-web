@@ -1,0 +1,112 @@
+#requires -Version 7.2
+
+[CmdletBinding()]
+param(
+    [ValidateSet('All', 'Dependencies', 'Browser')]
+    [string]$Phase = 'All'
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+function Invoke-SetupCommand {
+    param(
+        [string]$Command,
+        [string[]]$Arguments,
+        [string]$FailureMessage
+    )
+
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$FailureMessage (exit code $LASTEXITCODE)."
+    }
+}
+
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$solution = Join-Path $repositoryRoot 'src\XtremeIdiots.Portal.Web.slnx'
+$webProjectDirectory = Join-Path $repositoryRoot 'src\XtremeIdiots.Portal.Web'
+$testProjectDirectory = Join-Path $repositoryRoot 'src\XtremeIdiots.Portal.Web.IntegrationTests'
+$testProject = Join-Path $testProjectDirectory 'XtremeIdiots.Portal.Web.IntegrationTests.csproj'
+$requiredSdk = (Get-Content (Join-Path $repositoryRoot 'global.json') -Raw | ConvertFrom-Json).sdk.version
+$requiredNodeMajor = [int](Get-Content (Join-Path $repositoryRoot '.node-version') -Raw).Trim()
+
+Push-Location $repositoryRoot
+try {
+    foreach ($command in @('dotnet', 'node', 'npm', 'pwsh')) {
+        if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
+            throw "Required command '$command' was not found. Install .NET SDK $requiredSdk, Node.js $requiredNodeMajor.x (with npm >=10), and PowerShell >=7.2, then reopen your terminal. See docs/ui-testing.md."
+        }
+    }
+
+    $sdkVersion = Invoke-SetupCommand 'dotnet' @('--version') "Install the .NET SDK required by global.json ($requiredSdk); SDK resolution failed"
+    $nodeVersion = Invoke-SetupCommand 'node' @('--version') 'Could not determine the Node.js version'
+    if (([version]$nodeVersion.TrimStart('v')).Major -ne $requiredNodeMajor) {
+        throw "Node.js $requiredNodeMajor.x is required by .node-version; found $nodeVersion. Switch Node.js versions and rerun setup."
+    }
+
+    $npmVersion = Invoke-SetupCommand 'npm' @('--version') 'Could not determine the npm version'
+    if (([version]$npmVersion).Major -lt 10) {
+        throw "npm >=10 is required for the committed lockfile; found $npmVersion. Install the npm bundled with Node.js $requiredNodeMajor.x."
+    }
+
+    Write-Host "Test prerequisites: .NET $sdkVersion; Node.js $nodeVersion; npm $npmVersion; PowerShell $($PSVersionTable.PSVersion)."
+
+    if ($Phase -in @('All', 'Dependencies')) {
+        Push-Location $webProjectDirectory
+        try {
+            Invoke-SetupCommand 'npm' @('ci', '--include=dev', '--no-audit', '--no-fund') 'Locked npm installation failed; check package.json/package-lock.json consistency and registry access'
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    if ($Phase -eq 'All') {
+        Invoke-SetupCommand 'dotnet' @('build', $solution, '--configuration', 'Release') 'Release solution build failed; fix restore/build errors before installing browsers'
+    }
+
+    if ($Phase -in @('All', 'Browser')) {
+        $targetFramework = ([xml](Get-Content $testProject -Raw)).Project.PropertyGroup.TargetFramework
+        $outputDirectory = Join-Path $testProjectDirectory "bin\Release\$targetFramework"
+        $playwrightScript = Join-Path $outputDirectory 'playwright.ps1'
+        $testAssembly = Join-Path $outputDirectory 'XtremeIdiots.Portal.Web.IntegrationTests.dll'
+        if (-not (Test-Path $playwrightScript) -or -not (Test-Path $testAssembly)) {
+            throw "Release integration-test outputs are missing. Run 'pwsh -NoProfile -File scripts/setup-test-environment.ps1' without -Phase Browser to build them."
+        }
+
+        $installArguments = @('-NoProfile', '-File', $playwrightScript, 'install', 'chromium')
+        if ($IsLinux) {
+            $installArguments += '--with-deps'
+        }
+
+        Invoke-SetupCommand 'pwsh' $installArguments 'Chromium installation failed; on Linux allow sudo for system dependencies, and check access to the Playwright download hosts'
+
+        # A fresh result path prevents a stale TRX from making an empty test selection look successful.
+        $resultsDirectory = Join-Path $repositoryRoot "src\TestResults\bootstrap\$([guid]::NewGuid().ToString('N'))"
+        $smokeTest = 'XtremeIdiots.Portal.Web.IntegrationTests.Playwright.LoginPageIntegrationTests.LoginPage_RendersInChromium'
+        Invoke-SetupCommand 'dotnet' @(
+            'test', $testProject, '--configuration', 'Release', '--no-build',
+            '--filter', "FullyQualifiedName=$smokeTest",
+            '--logger', 'trx;LogFileName=bootstrap.trx',
+            '--results-directory', $resultsDirectory
+        ) "Chromium smoke test failed; inspect $resultsDirectory and the test output"
+
+        $resultsFile = Join-Path $resultsDirectory 'bootstrap.trx'
+        if (-not (Test-Path $resultsFile)) {
+            throw "The Chromium smoke test did not produce $resultsFile. Check test discovery and the test runner."
+        }
+
+        $results = [xml](Get-Content $resultsFile -Raw)
+        $counters = $results.SelectSingleNode("/*[local-name()='TestRun']/*[local-name()='ResultSummary']/*[local-name()='Counters']")
+        if ($null -eq $counters -or $counters.GetAttribute('total') -ne '1' -or $counters.GetAttribute('passed') -ne '1') {
+            throw "Expected exactly one passing Chromium smoke test. Inspect $resultsFile; zero tests or skipped tests do not validate the environment."
+        }
+
+        Write-Host "Chromium smoke test passed. Results: $resultsFile"
+    }
+
+    Write-Host "Test environment setup completed ($Phase)."
+}
+finally {
+    Pop-Location
+}

@@ -63,6 +63,11 @@ Styles/
 
 The SCSS files are automatically compiled during `dotnet build`:
 
+Use Node.js 22.x (see `../.node-version`) and npm >=10. The build installs dependencies
+with `npm ci` when the committed package manifests are newer than the installed
+dependency lock. Commit `package-lock.json` with intentional dependency updates;
+do not regenerate it as part of routine setup.
+
 ```bash
 dotnet build                    # Compiles SCSS with source maps
 ```
@@ -247,7 +252,7 @@ If SCSS doesn't compile on build:
 
 ```bash
 # Install/reinstall npm dependencies
-npm install
+npm ci
 
 # Manually compile to check for errors
 npm run build:css:dev

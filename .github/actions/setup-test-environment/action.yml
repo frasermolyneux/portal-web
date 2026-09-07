@@ -1,0 +1,29 @@
+name: Set up portal test dependencies
+description: Resolve repository runtimes and install locked frontend dependencies before the CI build.
+
+outputs:
+  dotnet-version:
+    description: SDK selected by global.json.
+    value: ${{ steps.setup.outputs.dotnet-version }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2
+      with:
+        global-json-file: global.json
+
+    - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+      with:
+        node-version-file: .node-version
+        cache: npm
+        cache-dependency-path: src/XtremeIdiots.Portal.Web/package-lock.json
+
+    - name: Prepare test dependencies
+      id: setup
+      shell: pwsh
+      run: |
+        & ./scripts/setup-test-environment.ps1 -Phase Dependencies
+        $version = dotnet --version
+        if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the SDK after setup.' }
+        "dotnet-version=$version" >> $env:GITHUB_OUTPUT

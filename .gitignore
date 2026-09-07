@@ -274,7 +274,6 @@ FakesAssemblies/
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
 node_modules/
-package-lock.json
 
 # SCSS generated files
 **/wwwroot/css/app.css

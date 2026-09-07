@@ -78,9 +78,9 @@
   </Target>
 
   <!-- Integrate npm/SCSS build into dotnet build pipeline -->
-  <Target Name="NpmInstall" BeforeTargets="PreBuildEvent" Condition="!Exists('node_modules')">
-    <Message Text="Running npm install..." Importance="high" />
-    <Exec Command="npm install" />
+  <Target Name="NpmInstall" BeforeTargets="PreBuildEvent" Inputs="package.json;package-lock.json" Outputs="node_modules/.package-lock.json">
+    <Message Text="Installing locked npm dependencies..." Importance="high" />
+    <Exec Command="npm ci --include=dev --no-audit --no-fund" />
   </Target>
 
   <Target Name="BuildCss" BeforeTargets="PreBuildEvent" DependsOnTargets="NpmInstall" Condition="Exists('Styles/app.scss')">
@@ -90,6 +90,5 @@
   </Target>
 
 </Project>
-
 
 

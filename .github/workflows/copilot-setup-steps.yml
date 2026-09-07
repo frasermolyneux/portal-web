@@ -5,21 +5,54 @@ on:
   push:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+      - .github/actions/setup-test-environment/**
+      - scripts/setup-test-environment.ps1
+      - global.json
+      - .node-version
+      - src/**/*.csproj
+      - src/XtremeIdiots.Portal.Web/package.json
+      - src/XtremeIdiots.Portal.Web/package-lock.json
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+      - .github/actions/setup-test-environment/**
+      - scripts/setup-test-environment.ps1
+      - global.json
+      - .node-version
+      - src/**/*.csproj
+      - src/XtremeIdiots.Portal.Web/package.json
+      - src/XtremeIdiots.Portal.Web/package-lock.json
 
 permissions: {}
 
 jobs:
   copilot-setup-steps:
     runs-on: ubuntu-latest
-    permissions: {}
+    timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
-      - name: Set up Copilot prerequisites
-        uses: frasermolyneux/actions/copilot-setup@copilot-setup/v2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          checkout-repo: 'false'
-          setup-dotnet: 'true'
-          dotnet-version: '10.0.400'
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-test-environment
+
+      - name: Build the solution
+        shell: pwsh
+        run: |
+          dotnet build src/XtremeIdiots.Portal.Web.slnx --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw 'Release solution build failed.' }
+
+      - name: Install Chromium and verify the environment
+        shell: pwsh
+        run: ./scripts/setup-test-environment.ps1 -Phase Browser
+
+      - name: Upload bootstrap test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: copilot-bootstrap-results
+          path: src/TestResults/bootstrap/**/*.trx
+          retention-days: 7

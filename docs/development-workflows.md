@@ -36,6 +36,11 @@ Target: Senior engineers working on portal-web. Covers branch strategy, CI/CD tr
 ## Standard Developer Flow
 
 ### Local Development
+
+On a fresh checkout, run `pwsh -NoProfile -File scripts/setup-test-environment.ps1`
+before the normal edit/test loop. The [UI testing guide](ui-testing.md) documents
+the shared bootstrap, supported runtimes, and Linux browser dependencies.
+
 ```bash
 # Standard validation sequence (from dotnet-commands.instructions.md)
 dotnet clean src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
@@ -94,9 +99,16 @@ graph TD
 
 ### Agent Setup
 - **copilot-setup-steps.yml** defines pre-requisites
-  - Checkout code, setup .NET 10.0.x
-  - Runs automatically when workflow file changes
+  - Checks out code and resolves .NET from `global.json` and Node.js from `.node-version`
+  - Runs the shared dependency bootstrap, builds Release, installs Chromium with Linux dependencies, and runs one browser smoke test
+  - Runs automatically when setup scripts, runtime versions, or dependency manifests change
   - Manual dispatch available for testing
+  - A failed setup is not a ready environment: inspect the failing step and bootstrap TRX before running more tests
+
+The devcontainer installs the same SDK and Node.js line and runs the full bootstrap
+on creation. CI browser jobs use its `Dependencies` and `Browser` phases around
+the existing Release build so it is not rebuilt just to prepare Chromium. Unit
+tests, publishing, deployment gates, and test-result retention remain in place.
 
 ### Typical Copilot Session Flow
 

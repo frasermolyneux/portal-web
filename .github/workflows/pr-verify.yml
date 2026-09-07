@@ -24,21 +24,23 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - id: test-setup
+        uses: ./.github/actions/setup-test-environment
+
       - id: web-ci
         uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v2
         with:
+          perform-checkout: "false"
           dotnet-project: "XtremeIdiots.Portal.Web"
-          dotnet-version: 10.0.x
+          dotnet-version: ${{ steps.test-setup.outputs.dotnet-version }}
           src-folder: "src"
           skip-nuget-artifact-upload: "true"
 
-      - uses: frasermolyneux/actions/dotnet-playwright-tests@dotnet-playwright-tests/v1.1
-        with:
-          test-project: "XtremeIdiots.Portal.Web.IntegrationTests"
-          src-folder: "src"
-          target-framework: "net10.0"
-          perform-checkout: "false"
-          perform-build: "false"
+      - uses: ./.github/actions/run-ui-tests
 
     outputs:
       build_version: ${{ steps.web-ci.outputs.build_version }}

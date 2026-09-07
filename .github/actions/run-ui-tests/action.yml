@@ -1,0 +1,19 @@
+name: Run portal integration tests
+description: Verify the Chromium environment and run the existing integration suite using the CI Release build.
+
+runs:
+  using: composite
+  steps:
+    - name: Verify environment and run integration tests
+      shell: pwsh
+      run: ./scripts/run-ui-tests.ps1 -SkipBuild
+
+    - name: Upload integration and bootstrap results
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: test-results-XtremeIdiots.Portal.Web.IntegrationTests
+        path: |
+          src/TestResults/integration-tests.trx
+          src/TestResults/bootstrap/**/*.trx
+        retention-days: 7
