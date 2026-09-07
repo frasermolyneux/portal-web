@@ -16,13 +16,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  test-suites:
     permissions:
       contents: read
     uses: ./.github/workflows/test-and-publish.yml
     with:
       run-browser: ${{ github.event.pull_request.draft == false }}
       publish: ${{ github.event.pull_request.draft == false }}
+
+  build-and-test:
+    if: always()
+    needs: test-suites
+    permissions: {}
+    runs-on: ubuntu-latest
+    outputs:
+      build_version: ${{ needs.test-suites.outputs.build_version }}
+    steps:
+      - name: Preserve required build-and-test check
+        shell: pwsh
+        env:
+          TEST_SUITES_RESULT: ${{ needs.test-suites.result }}
+        run: |
+          if ($env:TEST_SUITES_RESULT -ne 'success') {
+            throw "Test suites or publishing did not succeed: $env:TEST_SUITES_RESULT."
+          }
 
   terraform-plan-dev:
     permissions:

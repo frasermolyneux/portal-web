@@ -96,6 +96,10 @@ entry points for both integration suites; `-SkipBuild` maps to `-NoBuild`.
   and publishing run when ready for review; deployment conditions still exclude
   drafts. Full runs must pass all three suites and the aggregate test gate before
   publishing the deployable web artifact.
+- PR verification retains the required `build-and-test` status as an aggregate
+  over the reusable workflow, including publishing when enabled. It fails if the
+  workflow fails, is cancelled, or is skipped, and forwards the published version
+  to existing deployment jobs. Repository rules do not need to be relaxed.
 - The separate Code Quality workflow retains its existing shared analysis build
   and unit-test invocation. It is not the browser/HTTP execution gate.
 - Copilot setup checks out the repository, installs the declared runtimes, and
