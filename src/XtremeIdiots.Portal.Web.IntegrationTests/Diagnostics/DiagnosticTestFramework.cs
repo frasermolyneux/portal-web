@@ -45,6 +45,7 @@ internal sealed class DiagnosticMessageBus(IMessageBus inner, string? root = nul
 {
     private readonly ConcurrentDictionary<ITest, RunningTest> running = new();
     private readonly ConcurrentDictionary<Guid, IDisposable> collections = new();
+    private int disposed;
 
     public bool QueueMessage(IMessageSinkMessage message)
     {
@@ -119,18 +120,37 @@ internal sealed class DiagnosticMessageBus(IMessageBus inner, string? root = nul
 
     public void Dispose()
     {
-        foreach (var test in running.Values)
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
         {
-            test.Scope.Complete("Incomplete", test.Failure);
-            Console.Error.WriteLine(test.Scope.ArtifactOutput);
+            return;
         }
 
-        foreach (var activation in collections.Values)
+        try
         {
-            activation.Dispose();
+            foreach (var test in running.Values)
+            {
+                try
+                {
+                    test.Scope.Complete("Incomplete", test.Failure);
+                    Console.Error.WriteLine(test.Scope.ArtifactOutput);
+                }
+                finally
+                {
+                    test.Activation.Dispose();
+                }
+            }
         }
+        finally
+        {
+            running.Clear();
+            foreach (var activation in collections.Values)
+            {
+                activation.Dispose();
+            }
 
-        inner.Dispose();
+            collections.Clear();
+            inner.Dispose();
+        }
     }
 
     private sealed class RunningTest(TestDiagnosticScope scope, IDisposable activation)

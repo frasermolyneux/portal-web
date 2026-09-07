@@ -91,6 +91,27 @@ public sealed class DiagnosticInfrastructureTests
     }
 
     [Fact]
+    public void MessageBus_DisposalRestoresInterruptedTestScopeAndRetainsEvidence()
+    {
+        var outer = TestDiagnosticScope.Current!;
+        using var bus = new DiagnosticMessageBus(new RecordingMessageBus(), Path.Combine(outer.DirectoryPath, "interrupted"));
+        bus.QueueMessage(new TestStarting(CreateTest("Interrupted test")));
+        var interrupted = TestDiagnosticScope.Current!;
+        interrupted.Log("test interrupted before result");
+
+        bus.Dispose();
+
+        Assert.Same(outer, TestDiagnosticScope.Current);
+        Assert.Null(TestDiagnosticScope.Find(interrupted.Id));
+        using var metadata = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(interrupted.DirectoryPath, "metadata.json")));
+        Assert.Equal("Incomplete", metadata.RootElement.GetProperty("outcome").GetString());
+        Assert.Contains("test interrupted before result", File.ReadAllText(Path.Combine(interrupted.DirectoryPath, "application.log")));
+
+        bus.Dispose();
+        Assert.Same(outer, TestDiagnosticScope.Current);
+    }
+
+    [Fact]
     public async Task Scopes_IsolateConcurrentTestsWithIdenticalDisplayNamesAndApplicationLogs()
     {
         var outer = TestDiagnosticScope.Current!;
