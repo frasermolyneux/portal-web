@@ -26,6 +26,7 @@ $suites = switch ($Suite) {
 $unitProject = Join-Path $repositoryRoot 'src\XtremeIdiots.Portal.Web.Tests\XtremeIdiots.Portal.Web.Tests.csproj'
 $integrationProject = Join-Path $repositoryRoot 'src\XtremeIdiots.Portal.Web.IntegrationTests\XtremeIdiots.Portal.Web.IntegrationTests.csproj'
 $builtProjects = [System.Collections.Generic.HashSet[string]]::new()
+$originalDiagnosticsDirectory = $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY
 
 Push-Location $repositoryRoot
 try {
@@ -54,6 +55,7 @@ try {
         }
 
         $resultsDirectory = Join-Path $repositoryRoot "src\TestResults\$selectedSuite\$([guid]::NewGuid().ToString('N'))"
+        $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY = Join-Path $resultsDirectory 'diagnostics'
         Write-Host "Running $selectedSuite ($Configuration): $selection"
         Invoke-TestCommand 'dotnet' @(
             'test', $project, '--configuration', $Configuration, '--no-build',
@@ -67,5 +69,6 @@ try {
     }
 }
 finally {
+    $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY = $originalDiagnosticsDirectory
     Pop-Location
 }

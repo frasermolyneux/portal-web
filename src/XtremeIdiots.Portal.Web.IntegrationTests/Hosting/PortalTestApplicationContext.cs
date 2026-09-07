@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Moq;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Abstractions;
@@ -14,6 +16,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
+using XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
@@ -54,6 +57,8 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
                 webApplicationBuilder => webApplicationBuilder.Configuration.AddInMemoryCollection(PortalTestConfiguration.Values));
 
             ReplaceIdentityDatabase(builder.Services, sqliteConnection, sqliteServiceProvider);
+            builder.Logging.AddProvider(new DiagnosticLoggerProvider());
+            builder.Services.AddTransient<IStartupFilter, DiagnosticRequestStartupFilter>();
             builder.Services.AddPortalTestAuthentication();
             ReplaceExternalApiClients(builder.Services);
             configureServices?.Invoke(builder.Services);

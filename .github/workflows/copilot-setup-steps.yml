@@ -8,6 +8,7 @@ on:
       - .github/actions/setup-test-environment/**
       - scripts/setup-test-environment.ps1
       - scripts/test-support.ps1
+      - scripts/report-test-results.ps1
       - global.json
       - .node-version
       - src/**/*.csproj
@@ -19,6 +20,7 @@ on:
       - .github/actions/setup-test-environment/**
       - scripts/setup-test-environment.ps1
       - scripts/test-support.ps1
+      - scripts/report-test-results.ps1
       - global.json
       - .node-version
       - src/**/*.csproj
@@ -48,13 +50,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Release solution build failed.' }
 
       - name: Install Chromium and verify the environment
+        id: bootstrap
         shell: pwsh
         run: ./scripts/setup-test-environment.ps1 -Phase Browser
 
       - name: Upload bootstrap test results
+        id: bootstrap-artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: copilot-bootstrap-results
-          path: src/TestResults/bootstrap/**/*.trx
+          path: |
+            src/TestResults/bootstrap/**/*.trx
+            src/TestResults/bootstrap/**/diagnostics/**
           retention-days: 7
+          if-no-files-found: warn
+
+      - name: Summarize bootstrap environment verification
+        if: always()
+        shell: pwsh
+        env:
+          TEST_OUTCOME: ${{ steps.bootstrap.outcome }}
+          ARTIFACT_ID: ${{ steps.bootstrap-artifacts.outputs.artifact-id }}
+        run: ./scripts/report-test-results.ps1 -Suite bootstrap -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID

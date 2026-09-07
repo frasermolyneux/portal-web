@@ -1,5 +1,7 @@
+using Microsoft.Playwright;
 using Moq;
 using Reqnroll;
+using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -11,7 +13,7 @@ public sealed class AdminActionCreationSteps
 {
     private BrowserFixture? browser;
     private string? profile;
-    private Microsoft.Playwright.IResponse? response;
+    private IResponse? response;
 
     [Given("a successful admin action scenario for a senior admin")]
     public void GivenASuccessfulAdminActionScenarioForASeniorAdmin()
@@ -65,7 +67,7 @@ public sealed class AdminActionCreationSteps
         await StartBrowserAsync();
         await Browser.Page.GotoAsync(CreateUrl(AdminActionType.Observation));
         await Browser.Page.Locator("input[name='Type']").EvaluateAsync("element => element.value = 'Ban'");
-        await Browser.Page.Locator(".note-editable").FillAsync("Forged ban reason");
+        await FillReasonAsync("Forged ban reason");
         response = await SubmitAndCaptureResponseAsync();
     }
 
@@ -74,7 +76,7 @@ public sealed class AdminActionCreationSteps
     {
         await StartBrowserAsync();
         await Browser.Page.GotoAsync(CreateUrl(AdminActionType.Ban));
-        await Browser.Page.Locator(".note-editable").FillAsync("Valid reason that cannot be saved");
+        await FillReasonAsync("Valid reason that cannot be saved");
         response = await SubmitAndCaptureResponseAsync();
     }
 
@@ -221,9 +223,7 @@ public sealed class AdminActionCreationSteps
         Assert.NotNull(formResponse);
         Assert.True(formResponse.Ok);
         Assert.True(await Browser.Page.GetByTestId("admin-action-create-form").IsVisibleAsync());
-        var editor = Browser.Page.Locator(".note-editable");
-        Assert.True(await editor.IsVisibleAsync());
-        await editor.FillAsync(reason);
+        await FillReasonAsync(reason);
         var analyticsResponseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
             browserResponse.Request.Method == "GET" &&
             new Uri(browserResponse.Url).AbsolutePath == $"/api/Analytics/player/{Scenario.PlayerId}/timeseries");
@@ -234,7 +234,15 @@ public sealed class AdminActionCreationSteps
         Assert.True(analyticsResponse.Ok);
     }
 
-    private async Task<Microsoft.Playwright.IResponse> SubmitAndCaptureResponseAsync()
+    private async Task FillReasonAsync(string reason)
+    {
+        await Browser.Page.Locator(".note-editable").FillAsync(reason);
+        // Summernote updates the submitted textarea asynchronously after editing.
+        await Assertions.Expect(Browser.Page.GetByTestId("admin-action-create-reason"))
+            .ToHaveValueAsync(new Regex(Regex.Escape(reason)));
+    }
+
+    private async Task<IResponse> SubmitAndCaptureResponseAsync()
     {
         var responseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
             browserResponse.Request.Method == "POST" &&

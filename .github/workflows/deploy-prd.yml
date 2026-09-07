@@ -26,7 +26,7 @@ jobs:
         uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
         with:
           filters: |
-            src:src/**,scripts/**,.github/actions/**,.github/workflows/deploy-prd.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
+            src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/deploy-prd.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
             terraform:terraform/**
 
   terraform-state-check-dev:

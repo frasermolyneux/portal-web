@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
-using System.Security.Cryptography;
-using System.Text;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Manifest;
@@ -28,16 +26,30 @@ public class PortalActionManifestCoverageTests : IAsyncLifetime
     {
         var discovered = PortalActionManifest.Discover(host.Services);
         var actualLines = discovered.Select(entry => entry.SnapshotLine).ToArray();
-        var actualPath = Path.Combine(AppContext.BaseDirectory, "portal-actions.actual.txt");
-        var normalizedManifest = string.Join('\n', actualLines) + '\n';
-        var fingerprint = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedManifest)));
+        var approvedLines = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Manifest", "portal-actions.approved.txt"));
+        var difference = ManifestSnapshotDiff.Compare(approvedLines, actualLines);
+        if (difference.Length == 0)
+            return;
 
-        if (!string.Equals(fingerprint, PortalActionManifest.ApprovedFingerprint, StringComparison.Ordinal))
+        var root = Environment.GetEnvironmentVariable("PORTAL_TEST_DIAGNOSTICS_DIRECTORY");
+        var artifactDirectory = Path.Combine(
+            string.IsNullOrWhiteSpace(root) ? Path.Combine(AppContext.BaseDirectory, "TestResults", "diagnostics") : root,
+            $"manifest-{Guid.NewGuid():N}");
+        string artifactMessage;
+        try
         {
-            File.WriteAllLines(actualPath, actualLines);
+            Directory.CreateDirectory(artifactDirectory);
+            File.WriteAllLines(Path.Combine(artifactDirectory, "portal-actions.approved.txt"), approvedLines);
+            File.WriteAllLines(Path.Combine(artifactDirectory, "portal-actions.actual.txt"), actualLines);
+            File.WriteAllText(Path.Combine(artifactDirectory, "portal-actions.diff.txt"), difference);
+            artifactMessage = $"Manifest artifacts: {artifactDirectory}";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            artifactMessage = $"Could not write manifest artifacts to {artifactDirectory}: {exception.Message}";
         }
 
-        Assert.Equal(PortalActionManifest.ApprovedFingerprint, fingerprint);
+        Assert.Fail($"{difference}{Environment.NewLine}{artifactMessage}");
     }
 
     [Fact]

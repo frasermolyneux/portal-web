@@ -5,17 +5,45 @@ runs:
   using: composite
   steps:
     - name: Run HTTP integration and browser tests
+      id: tests
       shell: pwsh
       run: pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Integration -Configuration Release
 
     - name: Upload integration and bootstrap results
+      id: artifacts
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: test-results-XtremeIdiots.Portal.Web.IntegrationTests
         path: |
           src/TestResults/HttpIntegration/**/*.trx
+          src/TestResults/HttpIntegration/**/diagnostics/**
           src/TestResults/Browser/**/*.trx
+          src/TestResults/Browser/**/diagnostics/**
           src/TestResults/bootstrap/**/*.trx
+          src/TestResults/bootstrap/**/diagnostics/**
         retention-days: 7
         if-no-files-found: error
+
+    - name: Summarize HTTP integration tests
+      if: always()
+      shell: pwsh
+      env:
+        TEST_OUTCOME: ${{ steps.tests.outcome }}
+        ARTIFACT_ID: ${{ steps.artifacts.outputs.artifact-id }}
+      run: ./scripts/report-test-results.ps1 -Suite HttpIntegration -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID
+
+    - name: Summarize browser tests
+      if: always()
+      shell: pwsh
+      env:
+        TEST_OUTCOME: ${{ steps.tests.outcome }}
+        ARTIFACT_ID: ${{ steps.artifacts.outputs.artifact-id }}
+      run: ./scripts/report-test-results.ps1 -Suite Browser -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID
+
+    - name: Summarize bootstrap smoke separately
+      if: always()
+      shell: pwsh
+      env:
+        ARTIFACT_ID: ${{ steps.artifacts.outputs.artifact-id }}
+      run: ./scripts/report-test-results.ps1 -Suite bootstrap -ArtifactId $env:ARTIFACT_ID

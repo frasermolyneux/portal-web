@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
+using XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -10,162 +11,135 @@ internal sealed class BrowserFixture : IAsyncDisposable
     private readonly IBrowser browser;
     private readonly IBrowserContext browserContext;
     private readonly IPlaywright playwright;
-    private readonly List<string> consoleErrors = [];
-    private readonly List<string> failedSameOriginRequests = [];
-    private readonly List<string> failedSameOriginResponses = [];
-    private readonly List<string> pageErrors = [];
-    private readonly List<string> unexpectedExternalRequests = [];
+    private readonly BrowserDiagnosticCapture capture;
+    private readonly TestDiagnosticScope diagnostics;
+    private readonly bool ownsDiagnostics;
+    private int disposed;
 
     private BrowserFixture(
         PortalWebKestrelHost host,
         IPlaywright playwright,
         IBrowser browser,
         IBrowserContext browserContext,
-        IPage page)
+        BrowserDiagnosticCapture capture,
+        TestDiagnosticScope diagnostics,
+        bool ownsDiagnostics)
     {
         Host = host;
         this.playwright = playwright;
         this.browser = browser;
         this.browserContext = browserContext;
-        Page = page;
-
-        Page.Console += (_, message) =>
-        {
-            if (string.Equals(message.Type, "error", StringComparison.OrdinalIgnoreCase))
-            {
-                consoleErrors.Add($"{message.Text} ({message.Location})");
-            }
-        };
-        Page.PageError += (_, error) => pageErrors.Add(error);
-        Page.RequestFailed += (_, request) =>
-        {
-            if (IsApplicationRequest(request.Url))
-            {
-                failedSameOriginRequests.Add($"{request.Method} {request.Url}: {request.Failure}");
-            }
-        };
-        Page.Response += (_, response) =>
-        {
-            if (response.Status >= 400 && IsApplicationRequest(response.Url))
-            {
-                failedSameOriginResponses.Add($"{response.Status} {response.Request.Method} {response.Url}");
-            }
-        };
+        this.capture = capture;
+        this.diagnostics = diagnostics;
+        this.ownsDiagnostics = ownsDiagnostics;
     }
 
     public PortalWebKestrelHost Host { get; }
-
-    public IPage Page { get; }
+    public IPage Page => capture.Page;
 
     public async static Task<BrowserFixture> CreateAsync(
         string? profile = null,
         Action<IServiceCollection>? configureServices = null)
     {
-        var host = await PortalWebKestrelHost.CreateAsync(configureServices);
-        var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
-        var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        var ownsDiagnostics = TestDiagnosticScope.Current is null;
+        var diagnostics = TestDiagnosticScope.Current ?? new TestDiagnosticScope("BrowserFixture initialization", typeof(BrowserFixture).FullName!, nameof(CreateAsync));
+        using var activation = TestDiagnosticScope.Activate(diagnostics);
+        PortalWebKestrelHost? host = null;
+        IPlaywright? playwright = null;
+        IBrowser? browser = null;
+        IBrowserContext? browserContext = null;
+        BrowserDiagnosticCapture? capture = null;
+        try
         {
-            Headless = true,
-        });
-        var browserContext = await browser.NewContextAsync(profile is null
-            ? null
-            : new BrowserNewContextOptions
+            host = await PortalWebKestrelHost.CreateAsync(configureServices).ConfigureAwait(false);
+            playwright = await Microsoft.Playwright.Playwright.CreateAsync().ConfigureAwait(false);
+            browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true }).ConfigureAwait(false);
+            var headers = new Dictionary<string, string> { [TestDiagnosticScope.HeaderName] = diagnostics.Id };
+            if (profile is not null)
             {
-                ExtraHTTPHeaders = new Dictionary<string, string>
-                {
-                    [TestAuthenticationDefaults.HeaderName] = profile,
-                },
-            });
-        var page = await browserContext.NewPageAsync();
-        var fixture = new BrowserFixture(host, playwright, browser, browserContext, page);
+                headers[TestAuthenticationDefaults.HeaderName] = profile;
+            }
 
-        await browserContext.RouteAsync("**/*", async route =>
+            browserContext = await browser.NewContextAsync(new BrowserNewContextOptions { ExtraHTTPHeaders = headers }).ConfigureAwait(false);
+            capture = new BrowserDiagnosticCapture(browserContext, host.BaseAddress, diagnostics, profile ?? "anonymous");
+            await capture.InitializeAsync().ConfigureAwait(false);
+            return new BrowserFixture(host, playwright, browser, browserContext, capture, diagnostics, ownsDiagnostics);
+        }
+        catch (Exception exception)
         {
-            if (fixture.IsApplicationRequest(route.Request.Url))
+            diagnostics.RecordError("BrowserFixture initialization", exception);
+            var cleanup = new DiagnosticResourceCleanup(diagnostics);
+            if (capture is not null)
             {
-                await route.ContinueAsync().ConfigureAwait(false);
-                return;
+                await cleanup.RunAsync("Capturing failed browser initialization", capture.CaptureAsync).ConfigureAwait(false);
             }
 
-            if (IsBrowserLocalUrl(route.Request.Url))
+            if (browserContext is not null)
             {
-                await route.ContinueAsync().ConfigureAwait(false);
-                return;
+                await cleanup.RunAsync("Closing failed browser context", () => browserContext.DisposeAsync().AsTask()).ConfigureAwait(false);
             }
 
-            if (IsCosmeticExternalAsset(route.Request.Url))
+            if (browser is not null)
             {
-                await route.FulfillAsync(new RouteFulfillOptions { Status = 204 }).ConfigureAwait(false);
-                return;
+                await cleanup.RunAsync("Closing failed browser", () => browser.DisposeAsync().AsTask()).ConfigureAwait(false);
             }
 
-            fixture.unexpectedExternalRequests.Add($"{route.Request.Method} {route.Request.Url}");
-            await route.AbortAsync().ConfigureAwait(false);
-        }).ConfigureAwait(false);
+            if (playwright is not null)
+            {
+                cleanup.Run("Disposing failed Playwright", playwright.Dispose);
+            }
 
-        return fixture;
+            if (host is not null)
+            {
+                await cleanup.RunAsync("Disposing failed application host", () => host.DisposeAsync().AsTask()).ConfigureAwait(false);
+            }
+
+            cleanup.AttachToPrimaryException(exception);
+            if (ownsDiagnostics)
+            {
+                diagnostics.Complete("InitializationFailed", exception.ToString());
+                await Console.Error.WriteLineAsync(diagnostics.ArtifactOutput).ConfigureAwait(false);
+            }
+
+            throw;
+        }
     }
 
     public void AssertNoBrowserErrors()
     {
-        Assert.Empty(unexpectedExternalRequests);
-        Assert.Empty(failedSameOriginRequests);
-        Assert.Empty(failedSameOriginResponses);
-        Assert.Empty(consoleErrors);
-        Assert.Empty(pageErrors);
+        capture.AssertNoBrowserErrors();
     }
 
     public void AssertOnlyExpectedFailedRequest(string method, string absolutePath)
     {
-        Assert.Empty(unexpectedExternalRequests);
-        var failure = Assert.Single(failedSameOriginRequests);
-        Assert.StartsWith($"{method} {new Uri(Host.BaseAddress, absolutePath).AbsoluteUri}?", failure, StringComparison.Ordinal);
-        Assert.EndsWith("net::ERR_ABORTED", failure, StringComparison.Ordinal);
-        Assert.Empty(failedSameOriginResponses);
-        Assert.Empty(consoleErrors);
-        Assert.Empty(pageErrors);
+        capture.AssertOnlyExpectedFailedRequest(method, absolutePath);
     }
 
     public async ValueTask DisposeAsync()
     {
-        try
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
         {
-            if (browser.IsConnected)
-            {
-                await browserContext.DisposeAsync().ConfigureAwait(false);
-                await browser.DisposeAsync().ConfigureAwait(false);
-            }
+            return;
         }
-        catch (PlaywrightException exception)
-            when (!browser.IsConnected || exception.GetType().Name == "TargetClosedException")
+
+        using var activation = TestDiagnosticScope.Activate(diagnostics);
+        var cleanup = new DiagnosticResourceCleanup(diagnostics);
+        await cleanup.RunAsync("Capturing browser diagnostics", capture.CaptureAsync).ConfigureAwait(false);
+        await cleanup.RunAsync("Closing browser context", () => browserContext.DisposeAsync().AsTask(), IsExpectedDisconnect).ConfigureAwait(false);
+        await cleanup.RunAsync("Closing browser", () => browser.DisposeAsync().AsTask(), IsExpectedDisconnect).ConfigureAwait(false);
+        cleanup.Run("Disposing Playwright", playwright.Dispose);
+        await cleanup.RunAsync("Disposing application host", () => Host.DisposeAsync().AsTask()).ConfigureAwait(false);
+        if (ownsDiagnostics)
         {
-            // The browser process can exit between the connection check and context disposal.
+            diagnostics.Complete("Unattributed");
+            await Console.Error.WriteLineAsync(diagnostics.ArtifactOutput).ConfigureAwait(false);
         }
-        finally
-        {
-            playwright.Dispose();
-            await Host.DisposeAsync().ConfigureAwait(false);
-        }
+
+        cleanup.ThrowIfFailed();
     }
 
-    private static bool IsCosmeticExternalAsset(string value)
+    private bool IsExpectedDisconnect(PlaywrightException exception)
     {
-        return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-            uri.Host is "cdnjs.cloudflare.com" or "fonts.googleapis.com" or "fonts.gstatic.com";
-    }
-
-    private static bool IsBrowserLocalUrl(string value)
-    {
-        return value.StartsWith("about:", StringComparison.OrdinalIgnoreCase) ||
-            value.StartsWith("blob:", StringComparison.OrdinalIgnoreCase) ||
-            value.StartsWith("data:", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool IsApplicationRequest(string value)
-    {
-        return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-            uri.Scheme == Host.BaseAddress.Scheme &&
-            uri.Host == Host.BaseAddress.Host &&
-            uri.Port == Host.BaseAddress.Port;
+        return !browser.IsConnected || exception.GetType().Name == "TargetClosedException";
     }
 }
