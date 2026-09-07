@@ -1,4 +1,4 @@
-@workflow @tags
+@Browser @workflow @tags
 Feature: Tag management
   Portal administrators manage the tag definitions that can be assigned to players.
 

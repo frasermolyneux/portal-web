@@ -4,6 +4,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Health;
 
+[Trait("Category", "HttpIntegration")]
 public class InfoAndHealthIntegrationTests
 {
     [Fact]

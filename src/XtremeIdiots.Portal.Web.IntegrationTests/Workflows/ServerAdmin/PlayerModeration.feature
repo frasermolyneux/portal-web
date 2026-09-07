@@ -1,4 +1,4 @@
-@workflow @server-admin @player-moderation
+@Browser @workflow @server-admin @player-moderation
 Feature: Live player moderation
   Connected-player moderation respects separate Kick and Ban permissions and records successful RCON actions.
 

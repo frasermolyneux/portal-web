@@ -5,6 +5,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 
+[Trait("Category", "HttpIntegration")]
 public sealed partial class UserManageProfileAccessTests : IAsyncLifetime
 {
     private PortalWebTestHost host = null!;

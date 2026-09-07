@@ -7,6 +7,7 @@ on:
       - .github/workflows/copilot-setup-steps.yml
       - .github/actions/setup-test-environment/**
       - scripts/setup-test-environment.ps1
+      - scripts/test-support.ps1
       - global.json
       - .node-version
       - src/**/*.csproj
@@ -17,6 +18,7 @@ on:
       - .github/workflows/copilot-setup-steps.yml
       - .github/actions/setup-test-environment/**
       - scripts/setup-test-environment.ps1
+      - scripts/test-support.ps1
       - global.json
       - .node-version
       - src/**/*.csproj

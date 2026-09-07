@@ -1,5 +1,5 @@
 name: Set up portal test dependencies
-description: Resolve repository runtimes and install locked frontend dependencies before the CI build.
+description: Resolve repository runtimes, cache dependencies and install locked frontend packages before the CI build.
 
 outputs:
   dotnet-version:
@@ -18,6 +18,15 @@ runs:
         node-version-file: .node-version
         cache: npm
         cache-dependency-path: src/XtremeIdiots.Portal.Web/package-lock.json
+
+    - name: Cache NuGet packages
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ github.repository_id }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.sln', '**/*.slnx', '**/Directory.Packages.props', '**/nuget.config', '**/NuGet.config', '**/global.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-${{ github.repository_id }}-
+          ${{ runner.os }}-nuget-
 
     - name: Prepare test dependencies
       id: setup

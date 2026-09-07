@@ -1,0 +1,27 @@
+name: Run portal test suite
+description: Build and run one validated test suite using the repository test runner.
+
+inputs:
+  suite:
+    description: Test suite to run (Unit, HttpIntegration, or Browser).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run ${{ inputs.suite }} tests
+      shell: pwsh
+      env:
+        TEST_SUITE: ${{ inputs.suite }}
+      run: pwsh -NoProfile -File scripts/run-tests.ps1 -Suite $env:TEST_SUITE -Configuration Release
+
+    - name: Upload ${{ inputs.suite }} results
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: test-results-${{ inputs.suite }}
+        path: |
+          src/TestResults/${{ inputs.suite }}/**/*.trx
+          ${{ inputs.suite == 'Browser' && 'src/TestResults/bootstrap/**/*.trx' || '' }}
+        retention-days: 7
+        if-no-files-found: error

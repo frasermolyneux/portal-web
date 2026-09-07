@@ -71,21 +71,47 @@
         },
         {
             "label": "dotnet: test",
-            "command": "dotnet",
+            "command": "pwsh",
             "type": "process",
             "args": [
-                "test",
-                "${workspaceFolder}/src/XtremeIdiots.Portal.Web.slnx",
-                "--filter",
-                "FullyQualifiedName!~IntegrationTests",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/run-tests.ps1",
+                "-Suite",
+                "Unit"
             ],
-            "dependsOn": "libman restore",
             "group": {
                 "kind": "test",
                 "isDefault": true
             },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: test-http",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/run-tests.ps1",
+                "-Suite",
+                "HttpIntegration"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: test-browser",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/run-tests.ps1",
+                "-Suite",
+                "Browser"
+            ],
+            "group": "test",
             "problemMatcher": "$msCompile"
         },
         {

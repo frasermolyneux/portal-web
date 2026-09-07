@@ -4,6 +4,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Manifest;
 
+[Trait("Category", "HttpIntegration")]
 public class PageSmokeIntegrationTests
 {
     private readonly static string[] deterministicPageRoutes =

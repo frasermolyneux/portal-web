@@ -11,6 +11,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Navigation;
 /// presence because the policy tag helper removes unauthorized entries from the output.
 /// </summary>
 [Collection(PortalPlaywrightTestGroup.Name)]
+[Trait("Category", "Browser")]
 public sealed class NavigationVisibilityTests(PortalPlaywrightServerFixture fixture)
 {
     private readonly PortalPlaywrightServerFixture fixture = fixture;

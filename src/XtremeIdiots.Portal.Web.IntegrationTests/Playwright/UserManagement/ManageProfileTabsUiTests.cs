@@ -5,6 +5,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.UserManagement;
 
+[Trait("Category", "Browser")]
 public sealed class ManageProfileTabsUiTests
 {
     [Fact]

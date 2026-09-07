@@ -22,7 +22,7 @@ jobs:
         uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
         with:
           filters: |
-            src:src/**,scripts/**,.github/actions/**,.github/workflows/build-and-test.yml,global.json,.node-version,Directory.Build.props
+            src:src/**,scripts/**,.github/actions/**,.github/workflows/build-and-test.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
             terraform:terraform/**
 
   build-and-test:
@@ -30,24 +30,7 @@ jobs:
     if: needs.detect-changes.outputs.src == 'true'
     permissions:
       contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          fetch-depth: 0
-
-      - id: test-setup
-        uses: ./.github/actions/setup-test-environment
-
-      - uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v2
-        with:
-          perform-checkout: "false"
-          dotnet-project: "XtremeIdiots.Portal.Web"
-          dotnet-version: ${{ steps.test-setup.outputs.dotnet-version }}
-          src-folder: "src"
-          skip-nuget-artifact-upload: "true"
-
-      - uses: ./.github/actions/run-ui-tests
+    uses: ./.github/workflows/test-and-publish.yml
 
   terraform-plan-dev:
     needs: detect-changes

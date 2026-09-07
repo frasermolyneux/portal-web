@@ -31,9 +31,17 @@ installation; the browser version must match the .NET test package.
 
 ```pwsh
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
-dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Unit
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser
 dotnet format src/XtremeIdiots.Portal.Web.slnx --verify-no-changes --severity warn
 ```
+
+Choose the smallest relevant suite and `-Filter`; use `-NoBuild` only for current
+outputs in the selected `-Configuration` (Release by default). Unit and HTTP
+commands never install or launch browsers. Integration test classes need an
+explicit `HttpIntegration` or `Browser` category; browser-backed Reqnroll features
+need `@Browser`. Empty and all-skipped selections fail.
 
 Use targeted validation appropriate to the changed files. Razor compilation can
 be checked with `-p:ValidateRazor=true`; SCSS and Terraform commands are documented

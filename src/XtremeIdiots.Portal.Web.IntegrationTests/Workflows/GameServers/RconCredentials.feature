@@ -1,4 +1,4 @@
-@workflow @game-servers @credentials
+@Browser @workflow @game-servers @credentials
 Feature: RCON credentials
   Head administrators rotate game-server RCON credentials while unauthorized users and invalid edits remain blocked.
 

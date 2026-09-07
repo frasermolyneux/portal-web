@@ -21,6 +21,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Credentials;
 /// </list>
 /// Each principal is exercised against its own host because the repository mock is shaped per test.
 /// </remarks>
+[Trait("Category", "Browser")]
 public sealed class CredentialsContentVisibilityTests
 {
     public static TheoryData<string, bool, bool, bool> Principals => new()

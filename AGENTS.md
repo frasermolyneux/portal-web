@@ -36,9 +36,18 @@ See [UI testing](docs/ui-testing.md) for prerequisites and troubleshooting.
 ```pwsh
 dotnet restore src/XtremeIdiots.Portal.Web.slnx
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
-dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Unit
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser
 dotnet format src/XtremeIdiots.Portal.Web.slnx --verify-no-changes --severity warn
 ```
+
+Unit and HTTP execution do not install or launch Chromium. Use `-Filter` for a
+focused test/category and `-Configuration Debug` when checking runtime-compiled
+Razor. Only use `-NoBuild` when the selected configuration's outputs are current.
+The runner rejects zero-test and all-skipped selections. Integration tests must
+declare an explicit `HttpIntegration` or `Browser` category; browser-backed
+Reqnroll features require `@Browser`.
 
 For Razor changes, compile views explicitly:
 

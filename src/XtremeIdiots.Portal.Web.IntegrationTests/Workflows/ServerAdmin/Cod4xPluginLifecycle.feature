@@ -1,4 +1,4 @@
-@workflow @server-admin @cod4x-lifecycle
+@Browser @workflow @server-admin @cod4x-lifecycle
 Feature: CoD4x plugin lifecycle requests
   Authorized operators queue auditable plugin lifecycle requests without mutating agent-owned runtime state.
 

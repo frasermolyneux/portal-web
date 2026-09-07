@@ -6,13 +6,13 @@ Target: Senior engineers working on portal-web. Covers branch strategy, CI/CD tr
 
 ### Feature Development (feature/*, bugfix/*, hotfix/*)
 - **build-and-test.yml**: Runs on push to feature branches
-  - Build and test via `dotnet-web-ci` composite action
+  - Separate unit, HTTP integration, and browser checks via `test-and-publish.yml`
   - No deployments
   - Purpose: Fast feedback loop for WIP changes
 
 ### Pull Requests → main
 - **pr-verify.yml**: Full validation pipeline (runs on PR open, updates, reopen, and ready for review)
-  - Build and test
+  - Unit and HTTP tests on every PR, including drafts; browser tests and publishing on ready PRs
   - Terraform plan for dev (skips for dependabot and copilot/* branches unless labeled)
   - Terraform plan for prd (requires `run-prd-plan` label)
   - Terraform plan+apply and app deploy to dev (requires `deploy-dev` label; skipped for draft PRs and dependabot-authored PRs)
@@ -45,7 +45,8 @@ the shared bootstrap, supported runtimes, and Linux browser dependencies.
 # Standard validation sequence (from dotnet-commands.instructions.md)
 dotnet clean src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
-dotnet test src --filter "FullyQualifiedName!~IntegrationTests"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Unit
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration
 ```
 
 ### Feature Branch → PR → Merge Flow
@@ -106,9 +107,12 @@ graph TD
   - A failed setup is not a ready environment: inspect the failing step and bootstrap TRX before running more tests
 
 The devcontainer installs the same SDK and Node.js line and runs the full bootstrap
-on creation. CI browser jobs use its `Dependencies` and `Browser` phases around
-the existing Release build so it is not rebuilt just to prepare Chromium. Unit
-tests, publishing, deployment gates, and test-result retention remain in place.
+on creation. CI uses separate Unit, HTTP integration, and Browser jobs, each
+building its own selected project on an isolated runner. Only the browser job
+installs Chromium. A test gate requires every mandatory suite to pass before
+publishing; deployable artifact names, build-version output, deployment conditions,
+and seven-day test-result retention remain in place. Draft PRs run Unit and HTTP
+only and cannot publish or deploy.
 
 ### Typical Copilot Session Flow
 
