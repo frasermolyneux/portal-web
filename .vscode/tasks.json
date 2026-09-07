@@ -2,6 +2,17 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "dotnet: setup-tests",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/setup-test-environment.ps1"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "libman restore",
             "type": "process",
             "command": "libman",
@@ -82,6 +93,8 @@
             "command": "pwsh",
             "type": "process",
             "args": [
+                "-NoProfile",
+                "-File",
                 "${workspaceFolder}/scripts/run-ui-tests.ps1"
             ],
             "group": {

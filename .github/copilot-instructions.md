@@ -22,6 +22,13 @@ version `1.15.6` or later.
 
 ## Default commands
 
+For a fresh checkout, run `pwsh -NoProfile -File scripts/setup-test-environment.ps1`.
+It validates the SDK from `global.json`, Node.js 22.x from `.node-version`, npm
+>=10, and PowerShell >=7.2, installs locked dependencies, builds Release, installs
+Chromium and verifies an existing browser smoke test. See
+[UI testing](../docs/ui-testing.md). Do not replace this with an npm Playwright
+installation; the browser version must match the .NET test package.
+
 ```pwsh
 dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj
 dotnet test src --filter "FullyQualifiedName!~IntegrationTests"

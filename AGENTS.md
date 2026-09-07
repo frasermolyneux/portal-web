@@ -16,9 +16,22 @@ Terraform for Azure infrastructure.
 
 ## Bootstrap and validation
 
-The required SDK is pinned by `global.json` to .NET SDK `10.0.400`. NuGet packages
-come from nuget.org. The web project runs `npm install` automatically when
-`node_modules` is absent and compiles SCSS during `dotnet build`.
+The required SDK is pinned by `global.json` to .NET SDK `10.0.400`. Test setup also
+requires Node.js 22.x (`.node-version`), npm >=10, and PowerShell >=7.2. NuGet
+packages come from nuget.org. The web project runs `npm ci` when its locked
+dependencies need installing and compiles SCSS during `dotnet build`.
+
+Prepare a fresh checkout with the same bootstrap used by CI, devcontainers, and
+Copilot setup:
+
+```pwsh
+pwsh -NoProfile -File scripts/setup-test-environment.ps1
+```
+
+This installs locked frontend dependencies, builds the solution in Release,
+installs matching Chromium (including Linux system dependencies), and runs one
+existing browser smoke test. It needs no Azure credentials or external services.
+See [UI testing](docs/ui-testing.md) for prerequisites and troubleshooting.
 
 ```pwsh
 dotnet restore src/XtremeIdiots.Portal.Web.slnx
@@ -36,7 +49,7 @@ dotnet build src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj -p:Valid
 For SCSS-only work, run from `src/XtremeIdiots.Portal.Web`:
 
 ```pwsh
-npm install
+npm ci
 npm run build:css:dev
 ```
 

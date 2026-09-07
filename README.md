@@ -15,6 +15,7 @@
 * [CSS Architecture Guide](/docs/css-architecture-guide.md) - Styling conventions, structure, and tooling for the web UI.
 * [Datatable Implementation Guide](/docs/DATATABLE-IMPLEMENTATION-GUIDE.md) - Patterns for server-backed data tables and pagination.
 * [Development Workflows](/docs/development-workflows.md) - Branch strategy, CI/CD triggers, and development flows.
+* [UI Testing](/docs/ui-testing.md) - Shared test bootstrap, local/remote prerequisites, and browser troubleshooting.
 * [Identity Manual Run](/docs/identity-manual-run.sql) - Manual SQL to validate or repair identity artifacts.
 * [Manual Steps](/docs/manual-steps.md) - Post-deployment configuration steps.
 * [Mobile Table Improvements](/docs/mobile-table-improvements.md) - Responsive table patterns and UX notes.
@@ -31,6 +32,17 @@ The portal uses a structured `{Domain}.{Action}` permissions model. Role claims 
 For details on how the authorization model works, see the [Authorization Model](/docs/authorization-model.md) documentation. For exact role-to-permission mappings, the authorization handlers in `src/XtremeIdiots.Portal.Web/Auth/Handlers/` are the source of truth.
 
 ## Contributing
+
+Install the SDK required by [global.json](global.json), Node.js 22.x, npm >=10,
+and PowerShell >=7.2, then prepare the test environment:
+
+```powershell
+pwsh -NoProfile -File scripts/setup-test-environment.ps1
+```
+
+This builds the solution, installs the matching Chromium browser, and verifies
+one existing login-page smoke test. See [UI Testing](docs/ui-testing.md) for the
+full suite and remote setup.
 
 Please read the [contributing](CONTRIBUTING.md) guidance; this is a learning and development project.
 

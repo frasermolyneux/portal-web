@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "XtremeIdiots Portal - Game server management portal",
   "private": true,
+  "engines": {
+    "node": "22.x",
+    "npm": ">=10"
+  },
   "scripts": {
     "build:css": "sass Styles/app.scss:wwwroot/css/app.css --no-source-map --style=compressed",
     "build:css:dev": "sass Styles/app.scss:wwwroot/css/app.css --source-map",
