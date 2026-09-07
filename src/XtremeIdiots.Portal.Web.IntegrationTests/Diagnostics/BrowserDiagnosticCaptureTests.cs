@@ -26,10 +26,12 @@ public sealed class BrowserDiagnosticCaptureTests
             fixture.Page.PageError += (_, error) => pageError.TrySetResult(error);
             await fixture.Page.EvaluateAsync("() => { console.error('diagnostic console marker'); setTimeout(() => { throw new Error('diagnostic page marker'); }, 0); }");
             await pageError.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.ThrowsAny<XunitException>(fixture.AssertNoBrowserErrors);
             await fixture.Page.RouteAsync("**/diagnostic-abort", route => route.AbortAsync());
             await fixture.Page.EvaluateAsync("() => fetch('/diagnostic-abort').catch(() => {})");
             await fixture.Page.RouteAsync("**/diagnostic-response", route => route.FulfillAsync(new RouteFulfillOptions { Status = 503, Body = "diagnostic response" }));
             await fixture.Page.EvaluateAsync("() => fetch('/diagnostic-response')");
+            Assert.ThrowsAny<XunitException>(fixture.AssertNoBrowserErrors);
         }
 
         var browserDirectory = Assert.Single(Directory.GetDirectories(scope.DirectoryPath));
