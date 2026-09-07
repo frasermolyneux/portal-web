@@ -49,6 +49,12 @@ The runner rejects zero-test and all-skipped selections. Integration tests must
 declare an explicit `HttpIntegration` or `Browser` category; browser-backed
 Reqnroll features require `@Browser`.
 
+Failure evidence is stored with the suite TRX under
+`src/TestResults/<Suite>/<run-id>/diagnostics/`. Check the Actions test summary,
+failure annotations, and linked suite artifact before rerunning a failure.
+Keep synthetic credentials in tests: browser traces may include rendered data.
+See [UI testing diagnostics](docs/ui-testing.md#diagnosing-failures).
+
 For Razor changes, compile views explicitly:
 
 ```pwsh

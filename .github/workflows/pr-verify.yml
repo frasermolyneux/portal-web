@@ -41,6 +41,33 @@ jobs:
             throw "Test suites or publishing did not succeed: $env:TEST_SUITES_RESULT."
           }
 
+  test-results-comment:
+    name: Update PR test results
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]'
+    needs: test-suites
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    concurrency:
+      group: portal-test-results-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Create or update the owned test-results comment
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          TEST_REPORT: ${{ needs.test-suites.outputs.test_report }}
+          TEST_WORKFLOW_RESULT: ${{ needs.test-suites.result }}
+        with:
+          script: |
+            const reporting = require('./.github/scripts/test-reporting.js');
+            await reporting.publish({ github, core, context, publishComment: true });
+
   terraform-plan-dev:
     permissions:
       contents: read

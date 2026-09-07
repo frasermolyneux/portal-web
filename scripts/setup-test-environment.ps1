@@ -21,6 +21,7 @@ $testProjectDirectory = Join-Path $repositoryRoot 'src\XtremeIdiots.Portal.Web.I
 $testProject = Join-Path $testProjectDirectory 'XtremeIdiots.Portal.Web.IntegrationTests.csproj'
 $requiredSdk = (Get-Content (Join-Path $repositoryRoot 'global.json') -Raw | ConvertFrom-Json).sdk.version
 $requiredNodeMajor = [int](Get-Content (Join-Path $repositoryRoot '.node-version') -Raw).Trim()
+$originalDiagnosticsDirectory = $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY
 
 Push-Location $repositoryRoot
 try {
@@ -76,6 +77,7 @@ try {
 
         # A fresh result path prevents a stale TRX from making an empty test selection look successful.
         $resultsDirectory = Join-Path $repositoryRoot "src\TestResults\bootstrap\$([guid]::NewGuid().ToString('N'))"
+        $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY = Join-Path $resultsDirectory 'diagnostics'
         $smokeTest = 'XtremeIdiots.Portal.Web.IntegrationTests.Playwright.LoginPageIntegrationTests.LoginPage_RendersInChromium'
         Invoke-TestCommand 'dotnet' @(
             'test', $testProject, '--configuration', $Configuration, '--no-build',
@@ -93,5 +95,6 @@ try {
     Write-Host "Test environment setup completed ($Phase)."
 }
 finally {
+    $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY = $originalDiagnosticsDirectory
     Pop-Location
 }

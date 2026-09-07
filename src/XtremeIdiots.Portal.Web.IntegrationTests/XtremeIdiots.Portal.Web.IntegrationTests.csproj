@@ -8,6 +8,7 @@
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);CA1707</NoWarn>
     <ReqnrollUseIntermediateOutputPathForCodeBehind>true</ReqnrollUseIntermediateOutputPathForCodeBehind>
+    <GenerateReqnrollAssemblyHooksFile>false</GenerateReqnrollAssemblyHooksFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +33,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\XtremeIdiots.Portal.Web\XtremeIdiots.Portal.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Manifest\portal-actions.approved.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

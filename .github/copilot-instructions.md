@@ -43,6 +43,11 @@ commands never install or launch browsers. Integration test classes need an
 explicit `HttpIntegration` or `Browser` category; browser-backed Reqnroll features
 need `@Browser`. Empty and all-skipped selections fail.
 
+Use the Actions/PR test summaries and the existing suite artifact to investigate
+failures. Traces, screenshots, browser errors, application logs and manifest diffs
+are retained under the invocation's `diagnostics/` directory. Do not suppress a
+failure or approve a changed action manifest without reviewing that evidence.
+
 Use targeted validation appropriate to the changed files. Razor compilation can
 be checked with `-p:ValidateRazor=true`; SCSS and Terraform commands are documented
 in `AGENTS.md` and their focused guides.

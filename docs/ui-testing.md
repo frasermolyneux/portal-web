@@ -164,6 +164,80 @@ Prefer accessible selectors by role, label, and visible text. Add `data-testid` 
 
 Authorization tests must keep real policies and handlers active. Add test identities or scenario data through the integration project rather than adding production test-login endpoints or credentials.
 
+## Diagnosing failures
+
+### GitHub Actions and pull requests
+
+Each suite writes a native Actions job summary with counts, duration, and bounded
+failure details. Where the TRX supplies an existing repository-local test source
+and line number, failures also appear as workflow error annotations. The
+**Test results summary** job combines Unit, HTTP integration, and Browser results
+in one table with links to the workflow run and existing suite artifacts.
+Bootstrap smoke results are shown separately, never added to browser coverage.
+
+Same-repository PRs receive one **Portal test results** comment from
+`github-actions[bot]`. Later runs update that owned comment rather than creating
+a stream of comments. It identifies the head/tested commits, run attempt, suite
+outcomes and artifact links. A closed PR, changed head, or newer reported
+run/attempt prevents a stale update. Fork and Dependabot PRs retain workflow
+summaries and artifacts but do not receive a write-token comment from this
+workflow.
+
+Test jobs remain read-only. PR-comment permission is isolated in the
+`Update PR test results` job; it does not run tests or download/execute artifacts.
+The existing test checks and required `build-and-test` aggregate remain
+authoritative. Missing, malformed, zero-test and all-skipped reports cannot turn
+a failed or unstarted job green. A failing build/setup/upload is reported as a
+job failure even when some test results are available.
+
+The existing per-suite TRX artifacts now include their nested diagnostics with
+the same seven-day retention. There is no second copy of the test-result upload
+or competing test-check system. Reporting contracts can be checked locally with
+`node --test .github/scripts/test-reporting.test.js`; this uses Node's built-in
+test runner and the installed PowerShell, without another test dependency.
+
+### Local evidence and traces
+
+The TRX files remain the source of test results. Diagnostic files are kept beside
+them under `src/TestResults/<Suite>/<run-id>/diagnostics/`; bootstrap smoke
+diagnostics are isolated under the corresponding `bootstrap/<run-id>` directory.
+Raw `dotnet test` execution uses the integration assembly's
+`TestResults/diagnostics` directory unless `PORTAL_TEST_DIAGNOSTICS_DIRECTORY` is
+set explicitly.
+
+Browser failures retain a Playwright trace, a final screenshot when the page is
+still available, browser console/page/network errors, and application log output.
+The per-test metadata identifies the original test or scenario, including theory
+arguments; unique directories prevent parallel tests from overwriting evidence.
+Capture happens before browser disposal, and successful test evidence is
+discarded. A browser that fails to launch or has already crashed may not produce
+a screenshot or complete trace: the setup/capture error and available logs are
+the evidence in that case, not a fabricated successful capture.
+
+Download the existing suite artifact from the workflow run, extract it locally,
+and open a retained trace with the generated Playwright CLI:
+
+```powershell
+pwsh src/XtremeIdiots.Portal.Web.IntegrationTests/bin/Release/net10.0/playwright.ps1 show-trace <path-to-trace.zip>
+```
+
+Keep traces and logs within the repository's artifact access boundary. They can
+contain rendered form values, request data, and application messages. The normal
+suite uses synthetic identities and fake backends; do not point this harness at
+production services or put real credentials in test fixtures. Diagnostic capture
+does not weaken existing browser-error assertions or turn failing tests into
+successful runs.
+
+To render a local summary from a single invocation:
+
+```powershell
+pwsh -NoProfile -File scripts/report-test-results.ps1 -Suite Browser -ResultsDirectory src/TestResults/Browser/<run-id> -RunOutcome failure
+```
+
+Point the reporter at one invocation, not a directory containing several old
+runs: it deliberately refuses ambiguous results rather than combining stale
+test counts.
+
 ## Authorization matrix
 
 `AuthorizationMatrix` is the executable authorization specification. Every policy is tested through the real `IAuthorizationService` for Anonymous, Moderator, GameAdmin, HeadAdmin, and SeniorAdmin. Resource-sensitive policies add scenarios for ownership, action type, game/server scope, direct permissions, COD4/COD4x equivalence, and `PotentialAccessProbe`.
@@ -172,9 +246,21 @@ Adding an `AuthPolicies` constant without a registered policy and matrix entry f
 
 ## Action manifest
 
-`PortalActionManifest` reads ASP.NET Core's runtime `ControllerActionDescriptor` collection. The approved baseline currently contains 246 actions classified as browser pages, HTTP endpoints, state changes, downloads/streams, or external callbacks.
+`PortalActionManifest` reads ASP.NET Core's runtime `ControllerActionDescriptor` collection. The approved baseline currently contains 248 actions classified as browser pages, HTTP endpoints, state changes, downloads/streams, or external callbacks.
 
-Adding, removing, rerouting, or reclassifying an action changes the manifest fingerprint and fails the suite. The failure writes `portal-actions.actual.txt` beside the integration-test assembly. Review that file and the classification counts before updating `ApprovedFingerprint` and `ApprovedCounts`; never update the fingerprint without reviewing the generated action list.
+The readable baseline is committed as
+`src/XtremeIdiots.Portal.Web.IntegrationTests/Manifest/portal-actions.approved.txt`.
+Adding, removing, rerouting, or reclassifying an action fails the suite with the
+actual removed (`-`) and added (`+`) entries, not just an opaque hash mismatch.
+The failure retains approved, actual, and diff files under the run's diagnostics
+directory. Reclassification appears as removal of the old classification and
+addition of the new one.
+
+Review the diff before updating the committed baseline and `ApprovedCounts`.
+Never copy an actual snapshot over the approved file without checking that each
+changed action and authorization boundary is intentional. The initial readable
+snapshot was generated from and verified against the previously approved hash;
+this reporting change does not approve new application endpoints.
 
 Browser pages that require seeded identifiers or domain-specific fake responses are implemented as Phase 3 workflow scenarios. Deterministic view-only pages remain in the fast `PageSmokeIntegrationTests` set.
 
@@ -255,8 +341,7 @@ Strict browser diagnostics are intentional. Unexpected external requests, same-o
 
 - CoD4x lifecycle requests currently use whole-document `UpsertConfiguration`. In-process locking and pending-request rejection prevent duplicate requests within one portal process, but safe cross-process/agent concurrency requires an atomic operation-request endpoint or ETag/conditional write in `portal-repository`. `portal-web` currently consumes Repository packages `4.2.16`; complete the owner change, publish new packages, then update the consumer. Do not bridge this boundary with copied contracts or direct HTTP calls.
 - Screenshot configuration is covered by existing parser, serializer, view-model, and controller tests. Runtime screenshot capture, gallery, and delete workflows were skipped because `portal-web` currently has policies but no product endpoints or views for those operations.
-- The validated execution split is 495 unit tests, 25 HTTP integration tests
-  (including the category contract), and 147 browser tests. Discovery confirms the
-  HTTP/browser categories are disjoint and cover all 172 integration cases,
-  including every generated Reqnroll feature. Continue measuring runtime as new
-  packs are added.
+- Current suite counts and durations are published from TRX in each workflow/PR
+  summary rather than maintained as a second, stale baseline here. The category
+  contract guards the HTTP/browser partition, including generated Reqnroll
+  features. Continue measuring runtime as new packs are added.

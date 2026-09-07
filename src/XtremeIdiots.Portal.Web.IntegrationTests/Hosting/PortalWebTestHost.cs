@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using XtremeIdiots.Portal.Web;
+using XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
@@ -15,6 +16,10 @@ internal sealed class PortalWebTestHost : IAsyncDisposable
         this.app = app;
         this.applicationContext = applicationContext;
         Client = app.GetTestClient();
+        if (TestDiagnosticScope.Current is { } diagnostics)
+        {
+            Client.DefaultRequestHeaders.Add(TestDiagnosticScope.HeaderName, diagnostics.Id);
+        }
     }
 
     public HttpClient Client { get; }

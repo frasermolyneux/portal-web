@@ -15,6 +15,9 @@ on:
       build_version:
         description: NuGet package version of the published web application.
         value: ${{ jobs.publish.outputs.build_version }}
+      test_report:
+        description: Bounded aggregate test report JSON, including job outcomes and separate bootstrap context.
+        value: ${{ jobs.test-summary.outputs.report }}
 
 permissions:
   contents: read
@@ -23,6 +26,8 @@ jobs:
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
+    outputs:
+      report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -36,13 +41,25 @@ jobs:
       - name: Verify solution formatting
         run: dotnet format src/XtremeIdiots.Portal.Web.slnx --no-restore --verify-no-changes
 
-      - uses: ./.github/actions/run-test-suite
+      - name: Verify test reporting contracts
+        run: node --test .github/scripts/test-reporting.test.js
+
+      - id: tests
+        uses: ./.github/actions/run-test-suite
         with:
           suite: Unit
+
+      - name: Summarize Unit tests not started
+        id: not-run
+        if: always() && steps.tests.outcome == 'skipped'
+        shell: pwsh
+        run: ./scripts/report-test-results.ps1 -Suite Unit -RunOutcome skipped
 
   http-integration-tests:
     name: HTTP integration tests
     runs-on: ubuntu-latest
+    outputs:
+      report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -50,14 +67,24 @@ jobs:
 
       - uses: ./.github/actions/setup-test-environment
 
-      - uses: ./.github/actions/run-test-suite
+      - id: tests
+        uses: ./.github/actions/run-test-suite
         with:
           suite: HttpIntegration
+
+      - name: Summarize HTTP integration tests not started
+        id: not-run
+        if: always() && steps.tests.outcome == 'skipped'
+        shell: pwsh
+        run: ./scripts/report-test-results.ps1 -Suite HttpIntegration -RunOutcome skipped
 
   browser-tests:
     name: Browser tests
     if: inputs.run-browser
     runs-on: ubuntu-latest
+    outputs:
+      report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
+      bootstrap: ${{ steps.tests.outputs.bootstrap }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -65,14 +92,45 @@ jobs:
 
       - uses: ./.github/actions/setup-test-environment
 
-      - uses: ./.github/actions/run-test-suite
+      - id: tests
+        uses: ./.github/actions/run-test-suite
         with:
           suite: Browser
+
+      - name: Summarize Browser tests not started
+        id: not-run
+        if: always() && steps.tests.outcome == 'skipped'
+        shell: pwsh
+        run: ./scripts/report-test-results.ps1 -Suite Browser -RunOutcome skipped
+
+  test-summary:
+    name: Test results summary
+    if: always()
+    needs: [unit-tests, http-integration-tests, browser-tests]
+    runs-on: ubuntu-latest
+    outputs:
+      report: ${{ steps.summary.outputs.report }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Aggregate suite results
+        id: summary
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          SUITE_JOBS: ${{ toJSON(needs) }}
+          RUN_BROWSER: ${{ inputs.run-browser }}
+        with:
+          script: |
+            const reporting = require('./.github/scripts/test-reporting.js');
+            await reporting.aggregate({ core, context });
 
   test-suite-gate:
     name: Test suite gate
     if: always()
-    needs: [unit-tests, http-integration-tests, browser-tests]
+    needs: [unit-tests, http-integration-tests, browser-tests, test-summary]
     runs-on: ubuntu-latest
     steps:
       - name: Require successful mandatory test suites
@@ -83,6 +141,7 @@ jobs:
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           RUN_BROWSER: ${{ inputs.run-browser }}
           PUBLISH: ${{ inputs.publish }}
+          TEST_REPORT: ${{ needs.test-summary.outputs.report }}
         run: |
           if ($env:UNIT_RESULT -ne 'success' -or $env:HTTP_RESULT -ne 'success') {
             throw "Mandatory test suites did not pass: Unit=$env:UNIT_RESULT, HttpIntegration=$env:HTTP_RESULT."
@@ -93,6 +152,20 @@ jobs:
             }
           } elseif ($env:BROWSER_RESULT -ne 'skipped' -or $env:PUBLISH -eq 'true') {
             throw 'Browser tests may be skipped only when browser validation and publishing are disabled.'
+          }
+          if (-not $env:TEST_REPORT -or $env:TEST_REPORT.Length -gt 8192) {
+            throw 'The aggregate test report is missing or oversized.'
+          }
+          $report = $env:TEST_REPORT | ConvertFrom-Json
+          if ($report.schema -ne 1 -or @($report.suites).Count -ne 3) {
+            throw 'The aggregate test report is invalid.'
+          }
+          foreach ($suite in @('Unit', 'HttpIntegration', 'Browser')) {
+            $result = @($report.suites | Where-Object suite -EQ $suite)
+            $expected = if ($suite -eq 'Browser' -and $env:RUN_BROWSER -ne 'true') { 'skipped' } else { 'passed' }
+            if ($result.Count -ne 1 -or $result[0].status -ne $expected) {
+              throw "The aggregate report does not confirm the required outcome for $suite."
+            }
           }
 
   publish:
