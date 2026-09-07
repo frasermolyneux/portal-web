@@ -8,6 +8,10 @@ The portal integration suite runs the ASP.NET Core application locally with dete
 
 Install:
 
+- Git and a clone of this repository. Setup fetches complete history from
+  `origin` when the checkout is shallow, because Nerdbank.GitVersioning needs
+  earlier commits. This also handles coding-agent checkouts that override
+  `fetch-depth: 0`; a fetch failure stops setup with an actionable error.
 - The .NET SDK required by [global.json](../global.json), currently 10.0.400. Its
   `latestPatch` policy permits servicing patches within that feature band, not
   older SDKs such as 10.0.303.
@@ -110,6 +114,10 @@ entry points for both integration suites; `-SkipBuild` maps to `-NoBuild`.
 - **SDK not found:** install the version requested by `global.json`, reopen the
   terminal, and check `dotnet --version` from the repository root. Do not edit the
   pin to bypass the failure.
+- **Shallow versioning history:** allow read access to `origin` so setup can
+  fetch the missing commits and tags. An offline shallow clone cannot calculate
+  the application's version; use a full clone rather than overriding version
+  metadata or ignoring the build failure.
 - **Node/npm mismatch:** select Node.js 22 and its bundled npm, then rerun setup.
 - **npm lock mismatch:** use `npm install` in the web project only for an
   intentional dependency update and commit both manifests. Routine setup must

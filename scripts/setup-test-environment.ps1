@@ -24,9 +24,9 @@ $requiredNodeMajor = [int](Get-Content (Join-Path $repositoryRoot '.node-version
 
 Push-Location $repositoryRoot
 try {
-    foreach ($command in @('dotnet', 'node', 'npm', 'pwsh')) {
+    foreach ($command in @('git', 'dotnet', 'node', 'npm', 'pwsh')) {
         if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
-            throw "Required command '$command' was not found. Install .NET SDK $requiredSdk, Node.js $requiredNodeMajor.x (with npm >=10), and PowerShell >=7.2, then reopen your terminal. See docs/ui-testing.md."
+            throw "Required command '$command' was not found. Install Git, .NET SDK $requiredSdk, Node.js $requiredNodeMajor.x (with npm >=10), and PowerShell >=7.2, then reopen your terminal. See docs/ui-testing.md."
         }
     }
 
@@ -42,6 +42,7 @@ try {
     }
 
     Write-Host "Test prerequisites: .NET $sdkVersion; Node.js $nodeVersion; npm $npmVersion; PowerShell $($PSVersionTable.PSVersion)."
+    Initialize-TestRepositoryHistory -RepositoryRoot $repositoryRoot
 
     if ($Phase -in @('All', 'Dependencies')) {
         Push-Location $webProjectDirectory

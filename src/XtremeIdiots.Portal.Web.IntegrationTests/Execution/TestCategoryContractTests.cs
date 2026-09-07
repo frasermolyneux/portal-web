@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Execution;
 
 [Trait("Category", "HttpIntegration")]
