@@ -2,6 +2,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
+[Trait("Category", "Browser")]
 public class AuthorizationNavigationIntegrationTests
 {
     [Fact]

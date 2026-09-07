@@ -14,6 +14,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Players;
 /// client-side data-table / analytics AJAX is required and browser-error assertions are intentionally
 /// avoided (the map and analytics widgets fire best-effort async requests).
 /// </summary>
+[Trait("Category", "Browser")]
 public sealed class PlayersDetailsVisibilityTests
 {
     private static Uri DetailsUrl(BrowserFixture fixture, Guid playerId)

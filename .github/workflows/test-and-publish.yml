@@ -1,0 +1,131 @@
+name: Test and publish
+
+on:
+  workflow_call:
+    inputs:
+      run-browser:
+        description: Run browser tests; disable only for draft PR validation.
+        type: boolean
+        default: true
+      publish:
+        description: Publish the web application after all test suites pass.
+        type: boolean
+        default: true
+    outputs:
+      build_version:
+        description: NuGet package version of the published web application.
+        value: ${{ jobs.publish.outputs.build_version }}
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-test-environment
+
+      - name: Restore solution for formatting
+        run: dotnet restore src/XtremeIdiots.Portal.Web.slnx
+
+      - name: Verify solution formatting
+        run: dotnet format src/XtremeIdiots.Portal.Web.slnx --no-restore --verify-no-changes
+
+      - uses: ./.github/actions/run-test-suite
+        with:
+          suite: Unit
+
+  http-integration-tests:
+    name: HTTP integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-test-environment
+
+      - uses: ./.github/actions/run-test-suite
+        with:
+          suite: HttpIntegration
+
+  browser-tests:
+    name: Browser tests
+    if: inputs.run-browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-test-environment
+
+      - uses: ./.github/actions/run-test-suite
+        with:
+          suite: Browser
+
+  test-suite-gate:
+    name: Test suite gate
+    if: always()
+    needs: [unit-tests, http-integration-tests, browser-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful mandatory test suites
+        shell: pwsh
+        env:
+          UNIT_RESULT: ${{ needs.unit-tests.result }}
+          HTTP_RESULT: ${{ needs.http-integration-tests.result }}
+          BROWSER_RESULT: ${{ needs.browser-tests.result }}
+          RUN_BROWSER: ${{ inputs.run-browser }}
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          if ($env:UNIT_RESULT -ne 'success' -or $env:HTTP_RESULT -ne 'success') {
+            throw "Mandatory test suites did not pass: Unit=$env:UNIT_RESULT, HttpIntegration=$env:HTTP_RESULT."
+          }
+          if ($env:RUN_BROWSER -eq 'true') {
+            if ($env:BROWSER_RESULT -ne 'success') {
+              throw "Browser tests did not pass: $env:BROWSER_RESULT."
+            }
+          } elseif ($env:BROWSER_RESULT -ne 'skipped' -or $env:PUBLISH -eq 'true') {
+            throw 'Browser tests may be skipped only when browser validation and publishing are disabled.'
+          }
+
+  publish:
+    name: Publish web application
+    needs: [unit-tests, http-integration-tests, browser-tests, test-suite-gate]
+    if: inputs.publish && needs.unit-tests.result == 'success' && needs.http-integration-tests.result == 'success' && needs.browser-tests.result == 'success' && needs.test-suite-gate.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      build_version: ${{ steps.nbgv-metadata.outputs.build_version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-test-environment
+
+      - name: Resolve build version
+        id: nbgv-metadata
+        uses: frasermolyneux/actions/nbgv-metadata@nbgv-metadata/v1
+        with:
+          perform-checkout: "false"
+
+      - name: Publish web application
+        shell: pwsh
+        run: |
+          $publishDirectory = Join-Path $env:RUNNER_TEMP 'dotnet-publish/XtremeIdiots.Portal.Web'
+          dotnet publish src/XtremeIdiots.Portal.Web/XtremeIdiots.Portal.Web.csproj --configuration Release -p:ContinuousIntegrationBuild=true --output $publishDirectory
+          if ($LASTEXITCODE -ne 0) { throw 'Publishing the validated web application failed.' }
+
+      - name: Upload web application
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: XtremeIdiots.Portal.Web
+          path: ${{ runner.temp }}/dotnet-publish/XtremeIdiots.Portal.Web
+          include-hidden-files: true
+          if-no-files-found: error

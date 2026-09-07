@@ -1,4 +1,4 @@
-@workflow @map-rotations
+@Browser @workflow @map-rotations
 Feature: Map rotation server assignment with COD4/COD4x equivalence
   A COD5 HeadAdmin with direct COD4 map rotation permissions and a server-scoped
   deploy grant assigns a COD4x server to a COD4 rotation. The equivalence logic

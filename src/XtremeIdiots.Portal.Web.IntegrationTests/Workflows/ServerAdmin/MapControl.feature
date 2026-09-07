@@ -1,4 +1,4 @@
-@workflow @server-admin @map-control
+@Browser @workflow @server-admin @map-control
 Feature: Live server map and restart commands
   Map operations and full server restarts use separate scoped permissions and game-specific RCON calls.
 

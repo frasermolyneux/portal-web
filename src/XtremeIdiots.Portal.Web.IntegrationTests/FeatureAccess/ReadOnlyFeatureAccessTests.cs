@@ -17,6 +17,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 /// This complements <see cref="AuthorizationMatrixIntegrationTests"/> (handler level) by validating
 /// the endpoint-to-policy wiring over real HTTP.
 /// </summary>
+[Trait("Category", "HttpIntegration")]
 public sealed class ReadOnlyFeatureAccessTests : IAsyncLifetime
 {
     private PortalWebTestHost host = null!;

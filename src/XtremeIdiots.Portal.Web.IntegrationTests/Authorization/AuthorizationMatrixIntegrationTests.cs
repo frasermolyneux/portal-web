@@ -10,6 +10,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Authorization;
 
+[Trait("Category", "HttpIntegration")]
 public class AuthorizationMatrixIntegrationTests : IAsyncLifetime
 {
     private PortalWebTestHost host = null!;

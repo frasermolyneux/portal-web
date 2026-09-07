@@ -4,6 +4,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.UserManagement;
 
+[Trait("Category", "Browser")]
 public sealed class TeamAccessUiTests
 {
     private async static Task GotoTeamAccessAndWaitAsync(BrowserFixture fixture, string relativePath)

@@ -1,4 +1,4 @@
-@workflow @server-admin @server-feed
+@Browser @workflow @server-admin @server-feed
 Feature: Live server feed lifecycle
   The unified feed merges authorized sources and owns polling, pause, filtering, and disposal behavior.
 

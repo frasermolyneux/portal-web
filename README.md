@@ -44,6 +44,11 @@ This builds the solution, installs the matching Chromium browser, and verifies
 one existing login-page smoke test. See [UI Testing](docs/ui-testing.md) for the
 full suite and remote setup.
 
+Run the layers independently with `scripts/run-tests.ps1 -Suite Unit`,
+`-Suite HttpIntegration`, or `-Suite Browser` through PowerShell. Unit and HTTP
+commands do not install Chromium. `-Filter`, `-Configuration`, and `-NoBuild`
+support focused iteration; empty test selections fail explicitly.
+
 Please read the [contributing](CONTRIBUTING.md) guidance; this is a learning and development project.
 
 ## Security

@@ -1,4 +1,4 @@
-@workflow @server-admin @say-command
+@Browser @workflow @server-admin @say-command
 Feature: Live server Say command
   Authorized administrators broadcast messages to connected players through the game-specific RCON client.
 

@@ -1,4 +1,4 @@
-@workflow @admin-actions
+@Browser @workflow @admin-actions
 Feature: Admin action creation
   Portal administrators create auditable actions against players while role restrictions and downstream side effects remain enforced.
 

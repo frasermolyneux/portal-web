@@ -35,34 +35,74 @@ and can be rerun after changing branches or dependencies. NuGet and Playwright
 reuse their normal user caches; npm reconstructs `node_modules` from the lockfile.
 Do not run two builds/bootstrap processes in the same checkout concurrently.
 
-### Full integration suite
+### Separate test suites
 
-Run the `dotnet: test-integration` VS Code task. It uses the same bootstrap before
-running the unchanged HTTP, Playwright, and Reqnroll integration suite.
-
-The equivalent command is:
+Use the same runner locally and in CI:
 
 ```powershell
-pwsh -NoProfile -File scripts/run-ui-tests.ps1
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Unit
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser
 ```
 
-Unit tests remain available through `dotnet: test` and exclude the integration project by the existing `FullyQualifiedName!~IntegrationTests` filter.
+| Suite | VS Code task | Includes | Browser installation |
+| --- | --- | --- | --- |
+| `Unit` | `dotnet: test` | Unit/controller tests in the unit project | Never |
+| `HttpIntegration` | `dotnet: test-http` | TestServer, authorization matrix, manifest, health and endpoint tests | Never |
+| `Browser` | `dotnet: test-browser` | All Playwright tests and browser-backed Reqnroll workflows | Matching Chromium and smoke check |
+
+Commands default to Release and build only the selected test project and its
+dependencies. The shared prerequisite check runs for every suite, but unit and
+HTTP tests do not require installed browsers or execute the browser smoke test.
+Use the full bootstrap only when you want to prepare the browser environment too.
+
+```powershell
+# Focus an existing workflow category without leaving the browser suite.
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=server-feed" -NoBuild
+
+# Validate runtime-compiled Razor locally, or select a single HTTP test.
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration -Configuration Debug -Filter "FullyQualifiedName~PageSmoke"
+```
+
+`-Filter` is ANDed with the suite category, including when it contains OR
+expressions; it cannot pull tests from another suite. `-NoBuild` explicitly
+reuses the chosen configuration's outputs and fails if they are missing. It does
+not detect stale builds: omit it after changing code or categories.
+
+Each selection must produce a fresh TRX with at least one executed, passing test.
+A typo yielding zero tests, an all-skipped selection, missing report, or failed
+test returns a failure, not a successful empty run. The console reports total,
+executed, passed and skipped counts. Results are kept in
+`src/TestResults/<Suite>/<run-id>/<Suite>.trx`.
+
+`-Suite Integration` runs HTTP then browser suites; `-Suite All` also runs unit
+tests. Every selected suite must match tests. For domain-specific filters, select
+the owning suite instead of `All` or `Integration`. The existing
+`dotnet: test-integration` task and `run-ui-tests.ps1` remain compatibility
+entry points for both integration suites; `-SkipBuild` maps to `-NoBuild`.
 
 ### CI and remote environments
 
-- CI browser jobs run the bootstrap's `-Phase Dependencies` before the existing
-  Release build, then `run-ui-tests.ps1 -SkipBuild`. This runs `-Phase Browser`
-  (install and smoke check) before the complete integration suite. Only use
-  `-SkipBuild` with an up-to-date Release build; it does not validate build freshness.
+- PR and deployment verification use separate **Unit tests**, **HTTP integration
+  tests**, and **Browser tests** jobs in the reusable `test-and-publish.yml`.
+  Each has its own results artifact and builds on an isolated runner, avoiding
+  cross-job build paths and browser executable permissions. Shared npm/NuGet
+  caches remain enabled.
+- Draft PRs, including coding-agent PRs, run unit and HTTP checks. Browser tests
+  and publishing run when ready for review; deployment conditions still exclude
+  drafts. Full runs must pass all three suites and the aggregate test gate before
+  publishing the deployable web artifact.
+- The separate Code Quality workflow retains its existing shared analysis build
+  and unit-test invocation. It is not the browser/HTTP execution gate.
 - Copilot setup checks out the repository, installs the declared runtimes, and
-  completes these same steps through the smoke check before the agent starts.
+  completes the full bootstrap through the smoke check before the agent starts.
   It does not run the full integration suite on startup.
 - The Ubuntu 24.04 devcontainer installs the pinned SDK, Node.js 22, and
   PowerShell, then runs the full bootstrap in `postCreateCommand`. Rebuild an
   existing container to pick up the new toolchain. Keep its SDK/Node feature
   versions aligned when updating `global.json` or `.node-version`.
 - Bootstrap results use fresh directories under `src/TestResults/bootstrap/`.
-  CI uploads these with the existing integration results; Copilot setup uploads
+  CI uploads these with the browser results; Copilot setup uploads
   them separately. Retention is seven days.
 
 ### Troubleshooting setup
@@ -99,6 +139,15 @@ Browser tests reject unexpected external requests and fail on same-origin reques
 
 Use HTTP integration tests for broad routing, endpoint, and Razor rendering coverage. Use Playwright when the behavior depends on browser rendering, JavaScript, navigation visibility, or a complete user workflow.
 
+Unit tests inherit `[assembly: AssemblyTrait("Category", "Unit")]`. Handwritten
+integration classes must declare exactly one `[Trait("Category", "HttpIntegration")]`
+or `[Trait("Category", "Browser")]`. Browser-backed `.feature` files must carry
+`@Browser` as well as their existing domain/workflow tags; their generated classes
+are not located in the Playwright namespace. Never classify by namespace alone.
+`TestCategoryContractTests` checks the compiled handwritten and generated tests
+for missing or conflicting suite categories so new tests cannot silently fall
+between the HTTP and browser selections.
+
 Prefer accessible selectors by role, label, and visible text. Add `data-testid` only when the control has no stable accessible selector. Razor changes must follow `docs/ui-standards-guide.md`.
 
 Authorization tests must keep real policies and handlers active. Add test identities or scenario data through the integration project rather than adding production test-login endpoints or credentials.
@@ -126,14 +175,14 @@ Each workflow scenario replaces only the dependencies owned by that test host an
 Run a workflow pack independently through its feature tag:
 
 ```powershell
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=admin-actions"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=tags"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=game-servers"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=say-command"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=map-control"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=player-moderation"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=server-feed"
-dotnet test src/XtremeIdiots.Portal.Web.IntegrationTests/XtremeIdiots.Portal.Web.IntegrationTests.csproj --filter "Category=cod4x-lifecycle"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=admin-actions"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=tags"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=game-servers"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=say-command"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=map-control"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=player-moderation"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=server-feed"
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Filter "Category=cod4x-lifecycle"
 ```
 
 When adding a workflow, place its feature, bindings, and scenario fake together under `Workflows/<Domain>/`. Use scenario outlines for behavior permutations, keep technical setup out of feature wording, and use domain-specific step phrases because bindings are global within the Reqnroll project.
@@ -194,4 +243,8 @@ Strict browser diagnostics are intentional. Unexpected external requests, same-o
 
 - CoD4x lifecycle requests currently use whole-document `UpsertConfiguration`. In-process locking and pending-request rejection prevent duplicate requests within one portal process, but safe cross-process/agent concurrency requires an atomic operation-request endpoint or ETag/conditional write in `portal-repository`. `portal-web` currently consumes Repository packages `4.2.16`; complete the owner change, publish new packages, then update the consumer. Do not bridge this boundary with copied contracts or direct HTTP calls.
 - Screenshot configuration is covered by existing parser, serializer, view-model, and controller tests. Runtime screenshot capture, gallery, and delete workflows were skipped because `portal-web` currently has policies but no product endpoints or views for those operations.
-- The current validated baseline is 109 isolated UI integration tests and 352 unit tests. The full browser suite remains below the ten-minute budget, but continue measuring runtime as new packs are added.
+- The validated execution split is 495 unit tests, 25 HTTP integration tests
+  (including the category contract), and 147 browser tests. Discovery confirms the
+  HTTP/browser categories are disjoint and cover all 172 integration cases,
+  including every generated Reqnroll feature. Continue measuring runtime as new
+  packs are added.

@@ -19,31 +19,10 @@ jobs:
   build-and-test:
     permissions:
       contents: read
-      id-token: write
-      pull-requests: write
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          fetch-depth: 0
-
-      - id: test-setup
-        uses: ./.github/actions/setup-test-environment
-
-      - id: web-ci
-        uses: frasermolyneux/actions/dotnet-web-ci@dotnet-web-ci/v2
-        with:
-          perform-checkout: "false"
-          dotnet-project: "XtremeIdiots.Portal.Web"
-          dotnet-version: ${{ steps.test-setup.outputs.dotnet-version }}
-          src-folder: "src"
-          skip-nuget-artifact-upload: "true"
-
-      - uses: ./.github/actions/run-ui-tests
-
-    outputs:
-      build_version: ${{ steps.web-ci.outputs.build_version }}
+    uses: ./.github/workflows/test-and-publish.yml
+    with:
+      run-browser: ${{ github.event.pull_request.draft == false }}
+      publish: ${{ github.event.pull_request.draft == false }}
 
   terraform-plan-dev:
     permissions:

@@ -8,6 +8,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Manifest;
 
+[Trait("Category", "HttpIntegration")]
 public class PortalActionManifestCoverageTests : IAsyncLifetime
 {
     private PortalWebTestHost host = null!;

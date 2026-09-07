@@ -2,6 +2,7 @@ using Microsoft.Playwright;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
+[Trait("Category", "Browser")]
 public class LoginPageIntegrationTests
 {
     [Fact]

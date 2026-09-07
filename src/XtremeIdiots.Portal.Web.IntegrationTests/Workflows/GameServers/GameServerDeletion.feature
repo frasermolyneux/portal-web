@@ -1,4 +1,4 @@
-@workflow @game-servers @destructive
+@Browser @workflow @game-servers @destructive
 Feature: Game server deletion
   Senior administrators remove retired game servers through an explicit destructive confirmation.
 

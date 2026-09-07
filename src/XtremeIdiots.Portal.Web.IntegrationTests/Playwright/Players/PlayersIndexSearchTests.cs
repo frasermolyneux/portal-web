@@ -15,6 +15,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Players;
 /// and tag controls actually forward their values to the repository query (captured by
 /// <see cref="PlayersIndexScenario"/>).
 /// </summary>
+[Trait("Category", "Browser")]
 public sealed class PlayersIndexSearchTests
 {
     private static TagDto Tag(string name, string? tagHtml = null)

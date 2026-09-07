@@ -1,4 +1,4 @@
-@workflow @game-servers @credentials @file-transport
+@Browser @workflow @game-servers @credentials @file-transport
 Feature: File transport credentials
   Head administrators manage FTP and SFTP connectivity without exposing credentials to unauthorized server editors.
 
