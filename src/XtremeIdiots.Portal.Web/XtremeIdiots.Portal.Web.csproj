@@ -46,14 +46,14 @@
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
     <PackageReference Include="NuGet.Protocol" Version="7.9.0" PrivateAssets="all" />
-    <PackageReference Include="MX.Observability.ApplicationInsights.AspNetCore" Version="1.1.28" />
-    <PackageReference Include="MX.Api.Abstractions" Version="2.3.77" />
-    <PackageReference Include="MX.Api.Client" Version="2.3.77" />
-    <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="4.1.14" />
-    <PackageReference Include="XtremeIdiots.Portal.Settings.Contracts.V1" Version="4.2.22" />
+    <PackageReference Include="MX.Observability.ApplicationInsights.AspNetCore" Version="1.1.31" />
+    <PackageReference Include="MX.Api.Abstractions" Version="2.3.80" />
+    <PackageReference Include="MX.Api.Client" Version="2.3.80" />
+    <PackageReference Include="XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1" Version="4.1.21" />
+    <PackageReference Include="XtremeIdiots.Portal.Settings.Contracts.V1" Version="4.2.34" />
     <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="4.2.34" />
     <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="4.2.34" />
-    <PackageReference Include="MX.GeoLocation.Api.Client.V1" Version="1.2.98" />
+    <PackageReference Include="MX.GeoLocation.Api.Client.V1" Version="1.2.108" />
   </ItemGroup>
 
   <ItemGroup>
