@@ -130,6 +130,51 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "dotnet: coverage-unit",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/run-tests.ps1",
+                "-Suite",
+                "Unit",
+                "-Coverage"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: coverage-http",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/run-tests.ps1",
+                "-Suite",
+                "HttpIntegration",
+                "-Coverage"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: measure-browser",
+            "command": "pwsh",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "${workspaceFolder}/scripts/run-tests.ps1",
+                "-Suite",
+                "Browser",
+                "-Measure"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "dotnet: format",
             "command": "dotnet",
             "type": "process",

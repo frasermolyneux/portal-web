@@ -7,8 +7,12 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
 
-    [string]$Filter
+    [string]$Filter,
+
+    [switch]$Measure,
+
+    [switch]$Coverage
 )
 
 $ErrorActionPreference = 'Stop'
-& (Join-Path $PSScriptRoot 'run-tests.ps1') -Suite Integration -Configuration $Configuration -Filter $Filter -NoBuild:$SkipBuild
+& (Join-Path $PSScriptRoot 'run-tests.ps1') -Suite Integration -Configuration $Configuration -Filter $Filter -NoBuild:$SkipBuild -Measure:$Measure -Coverage:$Coverage

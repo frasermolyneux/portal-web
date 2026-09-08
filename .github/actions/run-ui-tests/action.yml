@@ -7,7 +7,7 @@ runs:
     - name: Run HTTP integration and browser tests
       id: tests
       shell: pwsh
-      run: pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Integration -Configuration Release
+      run: pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Integration -Configuration Release -Measure -Coverage
 
     - name: Upload integration and bootstrap results
       id: artifacts
@@ -17,8 +17,13 @@ runs:
         name: test-results-XtremeIdiots.Portal.Web.IntegrationTests
         path: |
           src/TestResults/HttpIntegration/**/*.trx
+          src/TestResults/HttpIntegration/**/measurement.json
+          src/TestResults/HttpIntegration/**/discovery.txt
+          src/TestResults/HttpIntegration/**/coverage.cobertura.xml
           src/TestResults/HttpIntegration/**/diagnostics/**
           src/TestResults/Browser/**/*.trx
+          src/TestResults/Browser/**/measurement.json
+          src/TestResults/Browser/**/discovery.txt
           src/TestResults/Browser/**/Sequence*.xml
           src/TestResults/Browser/**/diagnostics/**
           src/TestResults/bootstrap/**/*.trx
@@ -33,7 +38,7 @@ runs:
       env:
         TEST_OUTCOME: ${{ steps.tests.outcome }}
         ARTIFACT_ID: ${{ steps.artifacts.outputs.artifact-id }}
-      run: ./scripts/report-test-results.ps1 -Suite HttpIntegration -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID
+      run: ./scripts/report-test-results.ps1 -Suite HttpIntegration -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID -RequireMeasurements:($env:TEST_OUTCOME -ne 'skipped')
 
     - name: Summarize browser tests
       if: always()
@@ -41,7 +46,7 @@ runs:
       env:
         TEST_OUTCOME: ${{ steps.tests.outcome }}
         ARTIFACT_ID: ${{ steps.artifacts.outputs.artifact-id }}
-      run: ./scripts/report-test-results.ps1 -Suite Browser -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID
+      run: ./scripts/report-test-results.ps1 -Suite Browser -RunOutcome $env:TEST_OUTCOME -ArtifactId $env:ARTIFACT_ID -RequireMeasurements:($env:TEST_OUTCOME -ne 'skipped')
 
     - name: Summarize bootstrap smoke separately
       if: always()

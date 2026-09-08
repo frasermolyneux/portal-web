@@ -62,6 +62,13 @@ failure annotations, and linked suite artifact before rerunning a failure.
 Keep synthetic credentials in tests: browser traces may include rendered data.
 See [UI testing diagnostics](docs/ui-testing.md#diagnosing-failures).
 
+Use `scripts/run-tests.ps1 -Coverage` with `-Suite Unit` or
+`-Suite HttpIntegration` for .NET coverage; use `-Suite Browser -Measure` for uninstrumented
+browser discovery/timing evidence. Normal local test commands stay fast. Coverage
+is per-suite, with a fixed module/exclusion profile and raw provenance in the
+existing artifact; never average overlapping suite percentages or infer flakiness
+from one run. No coverage targets are enforced yet.
+
 For Razor changes, compile views explicitly:
 
 ```pwsh

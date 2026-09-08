@@ -118,6 +118,87 @@ serialization remains in place. Use the repository commands/VS Code tasks for
 the complete configuration; a raw `dotnet test` invocation must explicitly pass
 `--settings scripts/browser.runsettings` to get the runner watchdog.
 
+### Measurement baseline, before targets
+
+The normal local test commands remain uninstrumented for quick iteration. Opt
+into reproducible evidence with:
+
+```powershell
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Unit -Coverage
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration -Coverage
+pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Browser -Measure
+```
+
+The matching VS Code tasks are `dotnet: coverage-unit`, `dotnet: coverage-http`,
+and `dotnet: measure-browser`. `-Coverage` implies `-Measure`; with `-Suite All`
+or `Integration`, coverage applies only to the Unit/HTTP portions. Explicit
+`-Suite Browser -Coverage` is rejected rather than pretending UI coverage was
+collected. Bootstrap smoke is not included in the measurement baseline.
+
+CI enables measurement for all three suites and coverage for Unit/HTTP. The
+existing Actions summaries and single PR comment show the measurements beside
+the test results; there are no new coverage-status checks or percentage gates.
+Raw Cobertura, discovery output, and `measurement.json` are included in the
+existing suite artifact, not uploaded through a competing reporting system.
+
+#### What the coverage numbers mean
+
+`scripts/coverage.runsettings` defines the denominator:
+
+- Instrument only `XtremeIdiots.Portal.Web` and
+  `XtremeIdiots.Portal.Integrations.Forums`.
+- Exclude test assemblies, third-party assemblies, `**/obj/**` source paths,
+  and code marked `GeneratedCodeAttribute` or `ExcludeFromCodeCoverageAttribute`.
+- Do not blanket-exclude `CompilerGeneratedAttribute`: doing so would discard
+  real asynchronous application execution. Auto-properties remain included.
+
+Reports show covered/coverable lines and branches, with percentages calculated
+from those counts. Unit and HTTP coverage overlap and are reported separately:
+**do not add or average the two percentages**. No combined coverage is claimed.
+A zero branch denominator means not applicable, not 0% or 100%.
+
+Headline branch coverage uses the collector's all-branch totals. Coverlet can
+include branches without source-line sequence points in those totals; the
+expandable module breakdown is explicitly labeled **source-mapped branches**.
+Those module branch counts need not sum to the all-branch denominator. Do not
+derive missing module counts from rounded percentages.
+
+These are .NET instrumentation measurements, including coverable Razor/.NET code
+that is not excluded by the profile. They are not JavaScript coverage, visual
+coverage, or proof that an endpoint works in a browser. Browser tests deliberately
+remain uninstrumented. Missing or malformed evidence is unavailable/invalid,
+never silently reported as zero coverage.
+
+#### Provenance and timing
+
+Each measured invocation retains its selection, configuration, framework, SDK,
+OS/architecture, source revision, working-tree status, test/production assembly
+hashes, collector version and coverage-profile hash. The metadata distinguishes
+a full suite from a filtered run and a fresh build from `-NoBuild`/reused output.
+Dirty, filtered, or reused-build measurements are useful for investigation but
+must not be mistaken for a clean, comparable full-suite baseline.
+
+Discovery runs through VSTest in a controlled English CLI locale and retains the
+raw list. Discovered cases and execution results are distinct observations:
+dynamic theories can expand differently during execution. Zero discoveries fail
+explicitly; an unfamiliar discovery-output format fails rather than inventing
+a count.
+
+Discovery time, test-process time, and the existing TRX time window are labeled
+separately. Process time includes collector/test-host overhead, not the earlier
+build, npm/bootstrap, or complete CI job. Coverage instrumentation changes timing,
+and parallel suite durations must not be added as if they were wall-clock runtime.
+
+This establishes current-run baseline evidence. It does not infer a flaky-test
+rate from one run, classify a rerun as a flake, or invent a historical/base-branch
+delta. Repeatability and performance comparisons need the same suite, selection,
+binaries/profile and runtime conditions. For future coverage comparisons across
+revisions, review changes in scope and denominators; hashes identify the different
+inputs rather than proving that different revisions are equivalent. Coverage
+records execution, not assertion quality. The existing
+Code Quality workflow is independent; these measurements do not add a SonarCloud
+coverage gate.
+
 ### CI and remote environments
 
 - PR and deployment verification use separate **Unit tests**, **HTTP integration
@@ -246,7 +327,7 @@ job failure even when some test results are available.
 The existing per-suite TRX artifacts now include their nested diagnostics with
 the same seven-day retention. There is no second copy of the test-result upload
 or competing test-check system. Reporting contracts can be checked locally with
-`node --test .github/scripts/test-reporting.test.js`; this uses Node's built-in
+`node --test .github/scripts/*.test.js`; this uses Node's built-in
 test runner and the installed PowerShell, without another test dependency.
 
 ### Local evidence and traces
