@@ -49,6 +49,13 @@ The runner rejects zero-test and all-skipped selections. Integration tests must
 declare an explicit `HttpIntegration` or `Browser` category; browser-backed
 Reqnroll features require `@Browser`.
 
+Browser tests share a lazy assembly-owned Chromium process, not application data.
+Always dispose the per-test fixture/context lease; never close the shared browser.
+The Browser runner uses two workers and a no-dump hang watchdog. Use
+`Assertions.Expect`, exact response matching plus DOM readiness, and explicit
+request gates instead of sleeps or automatic retries. See
+[browser ownership and synchronization](docs/ui-testing.md#browser-ownership-and-execution-limits).
+
 Failure evidence is stored with the suite TRX under
 `src/TestResults/<Suite>/<run-id>/diagnostics/`. Check the Actions test summary,
 failure annotations, and linked suite artifact before rerunning a failure.

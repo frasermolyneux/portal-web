@@ -19,8 +19,10 @@ runs:
           src/TestResults/HttpIntegration/**/*.trx
           src/TestResults/HttpIntegration/**/diagnostics/**
           src/TestResults/Browser/**/*.trx
+          src/TestResults/Browser/**/Sequence*.xml
           src/TestResults/Browser/**/diagnostics/**
           src/TestResults/bootstrap/**/*.trx
+          src/TestResults/bootstrap/**/Sequence*.xml
           src/TestResults/bootstrap/**/diagnostics/**
         retention-days: 7
         if-no-files-found: error

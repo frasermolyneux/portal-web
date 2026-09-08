@@ -125,10 +125,10 @@ public sealed class AdminActionCreationSteps
     {
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
-        Assert.True(await Browser.Page.GetByText("You must enter a reason for the admin action", new()
+        await Assertions.Expect(Browser.Page.GetByText("You must enter a reason for the admin action", new()
         {
             Exact = true,
-        }).IsVisibleAsync());
+        })).ToBeVisibleAsync();
     }
 
     [Then("the ban form should be denied")]
@@ -136,7 +136,7 @@ public sealed class AdminActionCreationSteps
     {
         Assert.NotNull(response);
         Assert.EndsWith("/Errors/Display/401", Browser.Page.Url, StringComparison.Ordinal);
-        Assert.False(await Browser.Page.GetByTestId("admin-action-create-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("admin-action-create-form")).ToHaveCountAsync(0);
     }
 
     [Then("the forged ban submission should be denied")]
@@ -162,9 +162,9 @@ public sealed class AdminActionCreationSteps
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
         Assert.Single(Scenario.CreatedAdminActions);
-        Assert.True(await Browser.Page.GetByText(
+        await Assertions.Expect(Browser.Page.GetByText(
             "The discussion topic was created, but the admin action could not be saved. Remove the discussion topic before retrying.",
-            new() { Exact = true }).IsVisibleAsync());
+            new() { Exact = true })).ToBeVisibleAsync();
     }
 
     [Then("the discussion topic should have been created once")]
@@ -222,16 +222,19 @@ public sealed class AdminActionCreationSteps
         var formResponse = await Browser.Page.GotoAsync(CreateUrl(actionType));
         Assert.NotNull(formResponse);
         Assert.True(formResponse.Ok);
-        Assert.True(await Browser.Page.GetByTestId("admin-action-create-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("admin-action-create-form")).ToBeVisibleAsync();
         await FillReasonAsync(reason);
-        var analyticsResponseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
-            browserResponse.Request.Method == "GET" &&
-            new Uri(browserResponse.Url).AbsolutePath == $"/api/Analytics/player/{Scenario.PlayerId}/timeseries");
-        var commandResponse = await SubmitAndCaptureResponseAsync();
-        Assert.Equal(302, commandResponse.Status);
-        await Browser.Page.WaitForURLAsync("**/Players/Details**");
-        var analyticsResponse = await analyticsResponseTask;
+        var analyticsResponse = await Browser.Page.RunAndWaitForResponseAsync(
+            async () =>
+            {
+                var commandResponse = await SubmitAndCaptureResponseAsync();
+                Assert.Equal(302, commandResponse.Status);
+                await Browser.Page.WaitForURLAsync(new Uri(Browser.Host.BaseAddress, $"/Players/Details/{Scenario.PlayerId}").AbsoluteUri);
+            },
+            browserResponse => browserResponse.Request.Method == "GET" &&
+                new Uri(browserResponse.Url).AbsolutePath == $"/api/Analytics/player/{Scenario.PlayerId}/timeseries");
         Assert.True(analyticsResponse.Ok);
+        await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-summary")).Not.ToBeEmptyAsync();
     }
 
     private async Task FillReasonAsync(string reason)
@@ -244,11 +247,10 @@ public sealed class AdminActionCreationSteps
 
     private async Task<IResponse> SubmitAndCaptureResponseAsync()
     {
-        var responseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
-            browserResponse.Request.Method == "POST" &&
-            new Uri(browserResponse.Url).AbsolutePath == "/AdminActions/Create");
-        await Browser.Page.GetByTestId("admin-action-create-submit").ClickAsync();
-        return await responseTask;
+        return await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.GetByTestId("admin-action-create-submit").ClickAsync(),
+            browserResponse => browserResponse.Request.Method == "POST" &&
+                new Uri(browserResponse.Url).AbsolutePath == "/AdminActions/Create");
     }
 
     private void VerifyTopicCreation(Times times)

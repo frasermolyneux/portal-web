@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using Reqnroll;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -27,7 +28,7 @@ public sealed class MapRotationAssignmentSteps
     [Then("the assign to server link should be visible")]
     public async Task ThenTheAssignToServerLinkShouldBeVisible()
     {
-        Assert.True(await Browser.Page.GetByTestId("assign-to-server-link").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("assign-to-server-link")).ToBeVisibleAsync();
     }
 
     [When("the deployer navigates to the create assignment page")]
@@ -43,32 +44,19 @@ public sealed class MapRotationAssignmentSteps
     public async Task ThenOnlyThePermittedServerShouldAppearInTheServerSelector()
     {
         var select = Browser.Page.GetByTestId("server-select");
-        var options = await select.Locator("option").AllAsync();
-
-        // Filter out the placeholder "-- Select Server --" option
-        var serverOptions = new List<Microsoft.Playwright.ILocator>();
-        foreach (var option in options)
-        {
-            var value = await option.GetAttributeAsync("value");
-            if (!string.IsNullOrEmpty(value))
-                serverOptions.Add(option);
-        }
-
-        Assert.Single(serverOptions);
-        var optionValue = await serverOptions[0].GetAttributeAsync("value");
-        Assert.Equal(MapRotationAssignmentScenario.PermittedServerId.ToString(), optionValue);
-
-        var optionText = await serverOptions[0].InnerTextAsync();
-        Assert.Contains("COD4x Permitted Server", optionText);
+        var serverOptions = select.Locator("option[value]:not([value=''])");
+        await Assertions.Expect(serverOptions).ToHaveCountAsync(1);
+        await Assertions.Expect(serverOptions).ToHaveAttributeAsync("value", MapRotationAssignmentScenario.PermittedServerId.ToString());
+        await Assertions.Expect(serverOptions).ToContainTextAsync("COD4x Permitted Server");
     }
 
     [Then("the non-permitted server should not appear in the server selector")]
     public async Task ThenTheNonPermittedServerShouldNotAppearInTheServerSelector()
     {
         var select = Browser.Page.GetByTestId("server-select");
-        var html = await select.InnerHTMLAsync();
-        Assert.DoesNotContain(MapRotationAssignmentScenario.NonPermittedServerId.ToString(), html);
-        Assert.DoesNotContain("COD4x Non-Permitted Server", html);
+        await Assertions.Expect(select.Locator($"option[value='{MapRotationAssignmentScenario.NonPermittedServerId}']")).ToHaveCountAsync(0);
+        await Assertions.Expect(select).Not.ToContainTextAsync(MapRotationAssignmentScenario.NonPermittedServerId.ToString());
+        await Assertions.Expect(select).Not.ToContainTextAsync("COD4x Non-Permitted Server");
     }
 
     [When("the deployer submits the assignment for the permitted server")]
@@ -77,16 +65,15 @@ public sealed class MapRotationAssignmentSteps
         var select = Browser.Page.GetByTestId("server-select");
         await select.SelectOptionAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
 
-        var responseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
-            browserResponse.Request.Method == "POST" &&
-            new Uri(browserResponse.Url).AbsolutePath.StartsWith("/MapRotations/CreateAssignment", StringComparison.Ordinal));
-
-        await Browser.Page.GetByTestId("assign-server-submit").ClickAsync();
-        var response = await responseTask;
+        var response = await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.GetByTestId("assign-server-submit").ClickAsync(),
+            browserResponse => browserResponse.Request.Method == "POST" &&
+                new Uri(browserResponse.Url).AbsolutePath == "/MapRotations/CreateAssignment");
         Assert.Equal(302, response.Status);
 
         // Follow the redirect to the Details page
-        await Browser.Page.WaitForURLAsync("**/MapRotations/Details/**");
+        await Browser.Page.WaitForURLAsync(DetailsUrl);
+        await Assertions.Expect(Browser.Page.GetByTestId("assign-to-server-link")).ToBeVisibleAsync();
     }
 
     [Then("the assignment should be created with the correct server")]

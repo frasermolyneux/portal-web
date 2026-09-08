@@ -24,15 +24,19 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
 {
     private readonly SqliteConnection sqliteConnection;
     private readonly ServiceProvider sqliteServiceProvider;
+    private readonly TestDiagnosticScope diagnostics;
+    private int disposed;
 
     private PortalTestApplicationContext(
         WebApplicationBuilder builder,
         SqliteConnection sqliteConnection,
-        ServiceProvider sqliteServiceProvider)
+        ServiceProvider sqliteServiceProvider,
+        TestDiagnosticScope diagnostics)
     {
         Builder = builder;
         this.sqliteConnection = sqliteConnection;
         this.sqliteServiceProvider = sqliteServiceProvider;
+        this.diagnostics = diagnostics;
     }
 
     public WebApplicationBuilder Builder { get; }
@@ -41,12 +45,15 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
         Action<IServiceCollection>? configureServices = null,
         CancellationToken cancellationToken = default)
     {
+        var diagnostics = TestDiagnosticScope.Current
+            ?? throw new InvalidOperationException("Test application contexts require a host diagnostic scope.");
         var sqliteConnection = new SqliteConnection("Data Source=:memory:");
-        await sqliteConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        var sqliteServiceProvider = new ServiceCollection().AddEntityFrameworkSqlite().BuildServiceProvider();
+        ServiceProvider? sqliteServiceProvider = null;
 
         try
         {
+            await sqliteConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            sqliteServiceProvider = new ServiceCollection().AddEntityFrameworkSqlite().BuildServiceProvider();
             var builder = PortalWebApplication.CreateBuilder(
                 new WebApplicationOptions
                 {
@@ -62,20 +69,34 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
             builder.Services.AddPortalTestAuthentication();
             ReplaceExternalApiClients(builder.Services);
             configureServices?.Invoke(builder.Services);
-            return new PortalTestApplicationContext(builder, sqliteConnection, sqliteServiceProvider);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new PortalTestApplicationContext(builder, sqliteConnection, sqliteServiceProvider, diagnostics);
         }
-        catch
+        catch (Exception exception)
         {
-            await sqliteServiceProvider.DisposeAsync().ConfigureAwait(false);
-            await sqliteConnection.DisposeAsync().ConfigureAwait(false);
+            var cleanup = new DiagnosticResourceCleanup(diagnostics);
+            if (sqliteServiceProvider is not null)
+            {
+                await cleanup.RunAsync("Disposing failed SQLite services", () => sqliteServiceProvider.DisposeAsync().AsTask()).ConfigureAwait(false);
+            }
+
+            await cleanup.RunAsync("Closing failed SQLite connection", () => sqliteConnection.DisposeAsync().AsTask()).ConfigureAwait(false);
+            cleanup.AttachToPrimaryException(exception);
             throw;
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        await sqliteServiceProvider.DisposeAsync().ConfigureAwait(false);
-        await sqliteConnection.DisposeAsync().ConfigureAwait(false);
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
+        var cleanup = new DiagnosticResourceCleanup(diagnostics);
+        await cleanup.RunAsync("Disposing SQLite services", () => sqliteServiceProvider.DisposeAsync().AsTask()).ConfigureAwait(false);
+        await cleanup.RunAsync("Closing SQLite connection", () => sqliteConnection.DisposeAsync().AsTask()).ConfigureAwait(false);
+        cleanup.ThrowIfFailed();
     }
 
     private static string FindWebContentRoot()

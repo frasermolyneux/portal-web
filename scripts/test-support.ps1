@@ -28,6 +28,17 @@ function Initialize-TestRepositoryHistory {
     }
 }
 
+function Get-BrowserTestArguments {
+    param([string]$RepositoryRoot)
+
+    $settings = Join-Path $RepositoryRoot 'scripts\browser.runsettings'
+    if (-not (Test-Path -LiteralPath $settings)) {
+        throw "Browser execution settings are missing: $settings"
+    }
+
+    @('--settings', $settings)
+}
+
 function Read-TestRunSummary {
     param(
         [string]$ResultsFile,

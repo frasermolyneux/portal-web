@@ -1,11 +1,14 @@
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Playwright;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.UserManagement;
 
 [Trait("Category", "Browser")]
-public sealed class TeamAccessUiTests
+public sealed partial class TeamAccessUiTests
 {
     private async static Task GotoTeamAccessAndWaitAsync(BrowserFixture fixture, string relativePath)
     {
@@ -19,9 +22,26 @@ public sealed class TeamAccessUiTests
                 Assert.NotNull(response);
                 Assert.True(response.Ok, $"{relativePath} returned {response.Status}.");
             },
-            response => response.Url.Contains("GetGameModeratorsAjax", StringComparison.OrdinalIgnoreCase));
+            response => IsTeamAccessResponse(response, string.Empty));
 
         Assert.Equal(200, ajaxResponse.Status);
+        await Assertions.Expect(fixture.Page.GetByText("Alpha Moderator", new() { Exact = true })).ToBeVisibleAsync();
+        await Assertions.Expect(fixture.Page.Locator("#teamAccessSearch")).ToBeVisibleAsync();
+    }
+
+    private static bool IsTeamAccessResponse(IResponse response, string search)
+    {
+        var uri = new Uri(response.Url);
+        if (response.Request.Method != "POST" || uri.AbsolutePath != "/User/GetGameModeratorsAjax")
+            return false;
+
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (!query.TryGetValue("gameType", out var gameType) || gameType != GameType.CallOfDuty4.ToString() ||
+            response.Request.PostData is not { } postData)
+            return false;
+
+        using var json = JsonDocument.Parse(postData);
+        return json.RootElement.GetProperty("search").GetProperty("value").GetString() == search;
     }
 
     [Fact]
@@ -36,18 +56,16 @@ public sealed class TeamAccessUiTests
         await Assertions.Expect(fixture.Page.GetByText("Moderators have deliberately limited permissions by default.")).ToBeVisibleAsync();
         await Assertions.Expect(fixture.Page.Locator("#teamAccessSearch")).ToBeVisibleAsync();
         await Assertions.Expect(fixture.Page.Locator("#filterGameType")).ToHaveValueAsync(GameType.CallOfDuty4.ToString());
-        Assert.Equal(
-            ["Call of Duty 4"],
-            (await fixture.Page.Locator("#filterGameType option").AllInnerTextsAsync()).Select(value => value.Trim()));
+        await Assertions.Expect(fixture.Page.Locator("#filterGameType option")).ToHaveTextAsync(["Call of Duty 4"]);
         var navigationLink = fixture.Page.GetByTestId("nav-users-team-access-CallOfDuty4");
         await Assertions.Expect(navigationLink).ToContainTextAsync("Call of Duty 4 Team Access");
-        Assert.Equal(1, await navigationLink.Locator("img").CountAsync());
+        await Assertions.Expect(navigationLink.Locator("img")).ToHaveCountAsync(1);
 
-        var tableText = await fixture.Page.Locator("#teamAccessTable tbody").InnerTextAsync();
-        Assert.Contains("Inherited Moderator role", tableText, StringComparison.Ordinal);
-        Assert.Contains("Map Rotations", tableText, StringComparison.Ordinal);
-        Assert.Contains("Call of Duty 4x", tableText, StringComparison.Ordinal);
-        Assert.Contains("COD4x Match Server", tableText, StringComparison.Ordinal);
+        var table = fixture.Page.Locator("#teamAccessTable tbody");
+        await Assertions.Expect(table).ToContainTextAsync("Inherited Moderator role", new() { UseInnerText = true });
+        await Assertions.Expect(table).ToContainTextAsync("Map Rotations", new() { UseInnerText = true });
+        await Assertions.Expect(table).ToContainTextAsync("Call of Duty 4x", new() { UseInnerText = true });
+        await Assertions.Expect(table).ToContainTextAsync("COD4x Match Server", new() { UseInnerText = true });
         Assert.Equal(
             [GameType.CallOfDuty4, GameType.CallOfDuty4x],
             scenario.LastRequestedServerGameTypes);
@@ -63,7 +81,7 @@ public sealed class TeamAccessUiTests
 
         var response = await fixture.Page.RunAndWaitForResponseAsync(
             async () => await fixture.Page.Locator("#teamAccessSearch").FillAsync("Bravo"),
-            candidate => candidate.Url.Contains("GetGameModeratorsAjax", StringComparison.OrdinalIgnoreCase));
+            candidate => IsTeamAccessResponse(candidate, "Bravo"));
 
         Assert.Equal(200, response.Status);
         await Assertions.Expect(fixture.Page.GetByText("Bravo Moderator", new() { Exact = true })).ToBeVisibleAsync();
@@ -80,7 +98,7 @@ public sealed class TeamAccessUiTests
 
         await GotoTeamAccessAndWaitAsync(fixture, "/User/TeamAccess?gameType=CallOfDuty4x");
 
-        Assert.Equal("/User/TeamAccess?gameType=CallOfDuty4", new Uri(fixture.Page.Url).PathAndQuery);
+        await Assertions.Expect(fixture.Page).ToHaveURLAsync(new Uri(fixture.Host.BaseAddress, "/User/TeamAccess?gameType=CallOfDuty4").AbsoluteUri);
         Assert.Equal(GameType.CallOfDuty4, scenario.LastGameType);
         fixture.AssertNoBrowserErrors();
     }
@@ -93,7 +111,10 @@ public sealed class TeamAccessUiTests
 
         await GotoTeamAccessAndWaitAsync(fixture, "/User/TeamAccess?gameType=CallOfDuty4");
 
-        var href = await fixture.Page.Locator("#teamAccessTable tbody a", new() { HasTextString = "Manage Profile" }).First.GetAttributeAsync("href");
-        Assert.EndsWith("?tab=permissions#permissions", href, StringComparison.Ordinal);
+        await Assertions.Expect(fixture.Page.Locator("#teamAccessTable tbody a", new() { HasTextString = "Manage Profile" }).First)
+            .ToHaveAttributeAsync("href", PermissionsTabLinkRegex());
     }
+
+    [GeneratedRegex(@"\?tab=permissions#permissions$")]
+    private static partial Regex PermissionsTabLinkRegex();
 }

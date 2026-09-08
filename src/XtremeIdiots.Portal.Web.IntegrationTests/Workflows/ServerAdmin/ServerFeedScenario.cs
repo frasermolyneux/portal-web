@@ -9,6 +9,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
 using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
@@ -16,6 +17,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 internal sealed class ServerFeedScenario
 {
     private readonly static JsonSerializerOptions jsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly List<FeedResponsePlan> responses = [];
 
     public ServerFeedScenario()
     {
@@ -47,7 +49,7 @@ internal sealed class ServerFeedScenario
         services.AddSingleton(AgentTelemetry.Object);
     }
 
-    public void QueueResponse(int delayMilliseconds = 0, bool overrun = false, params FeedItem[] items)
+    public FeedResponsePlan QueueResponse(bool hold = false, bool overrun = false, bool allowAbort = false, params FeedItem[] items)
     {
         items = [.. items.OrderByDescending(item => item.TimestampUtc).ThenBy(item => item.SourceType, StringComparer.Ordinal).ThenBy(item => item.ItemId, StringComparer.Ordinal)];
         var latest = items.FirstOrDefault();
@@ -74,7 +76,19 @@ internal sealed class ServerFeedScenario
             serverTimeUtc = DateTime.UtcNow.ToString("O"),
         };
 
-        Plans.Enqueue(new FeedResponsePlan(System.Text.Json.JsonSerializer.Serialize(response, jsonOptions), delayMilliseconds));
+        var plan = new FeedResponsePlan(System.Text.Json.JsonSerializer.Serialize(response, jsonOptions), new RequestGate(hold), allowAbort);
+        responses.Add(plan);
+        Plans.Enqueue(plan);
+        return plan;
+    }
+
+    public async Task ReleaseResponsesAsync()
+    {
+        foreach (var response in responses)
+            response.Gate.Release();
+
+        await Task.WhenAll(responses.Where(response => response.Gate.Entered.IsCompleted)
+            .Select(response => response.Handled.Task)).WaitAsync(TimeSpan.FromSeconds(10));
     }
 
     public static FeedItem Chat(string itemId, string message, string username = "FeedPlayer")
@@ -113,7 +127,10 @@ internal sealed class ServerFeedScenario
         }))!;
     }
 
-    internal sealed record FeedResponsePlan(string Json, int DelayMilliseconds);
+    internal sealed record FeedResponsePlan(string Json, RequestGate Gate, bool AllowAbort)
+    {
+        internal TaskCompletionSource Handled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
 
     internal sealed record FeedItem(
         string ItemId,

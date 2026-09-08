@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using Reqnroll;
 using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -10,9 +11,9 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 public sealed class FileTransportCredentialsSteps
 {
     private BrowserFixture? browser;
-    private bool formAvailableWithoutCredentials;
+    private bool formWithoutCredentialsVerified;
     private string? profile;
-    private Microsoft.Playwright.IResponse? response;
+    private IResponse? response;
 
     [Given("a successful file transport scenario for a head admin")]
     public void GivenASuccessfulFileTransportScenarioForAHeadAdmin()
@@ -87,9 +88,11 @@ public sealed class FileTransportCredentialsSteps
         var formResponse = await Browser.Page.GotoAsync(EditUrl);
         Assert.NotNull(formResponse);
         Assert.True(formResponse.Ok);
-        formAvailableWithoutCredentials = await Browser.Page.Locator("#game-server-edit-form").IsVisibleAsync()
-            && !await Browser.Page.Locator("#filetransfer-tab-btn").IsVisibleAsync()
-            && !await Browser.Page.GetByTestId("file-transport-password").IsVisibleAsync();
+        // Verify before submitting: the successful POST navigates away from this form.
+        await Assertions.Expect(Browser.Page.Locator("#game-server-edit-form")).ToBeVisibleAsync();
+        await Assertions.Expect(Browser.Page.Locator("#filetransfer-tab-btn")).ToHaveCountAsync(0);
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveCountAsync(0);
+        formWithoutCredentialsVerified = true;
         await Browser.Page.Locator("#game-server-edit-form").EvaluateAsync(
             "form => { const values = { 'FtpConfigPassword': 'ForgedPassword', 'GameServer.FileTransportEnabled': 'false', 'GameServer.FileTransportType': 'Ftp' }; Object.entries(values).forEach(([name, value]) => { const input = document.createElement('input'); input.name = name; input.value = value; form.appendChild(input); }); }");
         await SubmitAndFollowAsync();
@@ -121,14 +124,14 @@ public sealed class FileTransportCredentialsSteps
     [Then("the file transport label and default port should show FTP values")]
     public async Task ThenFtpUiValuesAreDisplayed()
     {
-        Assert.Equal("21", await Browser.Page.GetByTestId("file-transport-port").InputValueAsync());
-        Assert.All(await Browser.Page.Locator(".js-file-transport-label").AllTextContentsAsync(), value => Assert.Equal("FTP", value));
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-port")).ToHaveValueAsync("21");
+        await Assertions.Expect(Browser.Page.Locator(".js-file-transport-label")).ToHaveTextAsync(["FTP", "FTP", "FTP", "FTP"]);
     }
 
     [Then("the SFTP fingerprint control should be hidden")]
     public async Task ThenFingerprintIsHidden()
     {
-        Assert.False(await Browser.Page.GetByTestId("sftp-host-key-fingerprint").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-host-key-fingerprint")).ToBeHiddenAsync();
     }
 
     [Then("the SFTP configuration should preserve the current password and fingerprint")]
@@ -142,7 +145,7 @@ public sealed class FileTransportCredentialsSteps
     {
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
-        Assert.Contains("SFTP host key fingerprint is required", await Browser.Page.Locator("body").TextContentAsync());
+        await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("SFTP host key fingerprint is required");
     }
 
     [Then("the maps root validation should be displayed")]
@@ -150,7 +153,7 @@ public sealed class FileTransportCredentialsSteps
     {
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
-        Assert.Contains("Maps root path cannot contain path traversal segments", await Browser.Page.Locator("body").TextContentAsync());
+        await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("Maps root path cannot contain path traversal segments");
     }
 
     [Then("no file transport writes should be recorded")]
@@ -163,7 +166,7 @@ public sealed class FileTransportCredentialsSteps
     [Then("the edit form should remain available without file transport controls")]
     public void ThenFormIsAvailableWithoutCredentials()
     {
-        Assert.True(formAvailableWithoutCredentials);
+        Assert.True(formWithoutCredentialsVerified);
     }
 
     [Then("the core update should be recorded without a file transport write")]
@@ -195,25 +198,25 @@ public sealed class FileTransportCredentialsSteps
     [Then("the file transport password should be visible")]
     public async Task ThenPasswordIsVisible()
     {
-        Assert.Equal("text", await Browser.Page.GetByTestId("file-transport-password").GetAttributeAsync("type"));
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveAttributeAsync("type", "text");
     }
 
     [Then("the file transport password should be hidden")]
     public async Task ThenPasswordIsHidden()
     {
-        Assert.Equal("password", await Browser.Page.GetByTestId("file-transport-password").GetAttributeAsync("type"));
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveAttributeAsync("type", "password");
     }
 
     [Then("successful file transport update feedback should be displayed")]
     public async Task ThenSuccessFeedback()
     {
-        Assert.True(await Browser.Page.GetByText("The game server SFTP CoD4 Server has been updated for CallOfDuty4").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("The game server SFTP CoD4 Server has been updated for CallOfDuty4")).ToBeVisibleAsync();
     }
 
     [Then("the file transport configuration failure warning should be displayed")]
     public async Task ThenFailureFeedback()
     {
-        Assert.True(await Browser.Page.GetByText("The game server SFTP CoD4 Server has been updated but some configuration sections failed to save: sftp").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("The game server SFTP CoD4 Server has been updated but some configuration sections failed to save: sftp")).ToBeVisibleAsync();
     }
 
     [Then("the file transport browser should report no errors")]
@@ -278,24 +281,24 @@ public sealed class FileTransportCredentialsSteps
         browser = await BrowserFixture.CreateAsync(profile ?? throw new InvalidOperationException("Profile missing."), Scenario.ConfigureServices);
     }
 
-    private async Task<Microsoft.Playwright.IResponse> NativeSubmitAsync()
+    private async Task<IResponse> NativeSubmitAsync()
     {
-        var task = WaitForPostAsync();
-        await Browser.Page.Locator("#game-server-edit-form").EvaluateAsync("form => form.submit()");
-        return await task;
+        return await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.Locator("#game-server-edit-form").EvaluateAsync("form => form.submit()"),
+            IsEditResponse);
     }
 
     private async Task SubmitAndFollowAsync()
     {
-        var task = WaitForPostAsync();
-        await Browser.Page.GetByTestId("game-server-save").ClickAsync();
-        response = await task;
+        response = await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.GetByTestId("game-server-save").ClickAsync(),
+            IsEditResponse);
         Assert.Equal(302, response.Status);
         await Browser.Page.WaitForURLAsync("**/GameServers");
     }
 
-    private Task<Microsoft.Playwright.IResponse> WaitForPostAsync()
+    private bool IsEditResponse(IResponse candidate)
     {
-        return Browser.Page.WaitForResponseAsync(r => r.Request.Method == "POST" && new Uri(r.Url).AbsolutePath.StartsWith("/GameServers/Edit", StringComparison.Ordinal));
+        return candidate.Request.Method == "POST" && new Uri(candidate.Url).AbsolutePath == new Uri(EditUrl).AbsolutePath;
     }
 }

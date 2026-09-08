@@ -32,8 +32,10 @@ runs:
         name: test-results-${{ inputs.suite }}
         path: |
           src/TestResults/${{ inputs.suite }}/**/*.trx
+          src/TestResults/${{ inputs.suite }}/**/Sequence*.xml
           src/TestResults/${{ inputs.suite }}/**/diagnostics/**
           ${{ inputs.suite == 'Browser' && 'src/TestResults/bootstrap/**/*.trx' || '' }}
+          ${{ inputs.suite == 'Browser' && 'src/TestResults/bootstrap/**/Sequence*.xml' || '' }}
           ${{ inputs.suite == 'Browser' && 'src/TestResults/bootstrap/**/diagnostics/**' || '' }}
         retention-days: 7
         if-no-files-found: error
