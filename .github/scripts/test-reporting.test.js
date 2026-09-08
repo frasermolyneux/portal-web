@@ -100,6 +100,17 @@ test('structured report validation rejects injected values and impossible counts
   assert.equal(reporting.validateReport({ ...passed('Unit'), artifactId: '123)\n@everyone' }, 'Unit').artifactId, null);
 });
 
+test('a passing suite cannot contain a non-passing TRX status', () => {
+  for (const testStatus of ['failed', 'invalid', 'not-run', 'skipped', 'cancelled']) {
+    assert.equal(reporting.validateReport({ ...passed('Unit'), testStatus }, 'Unit'), null);
+  }
+  const failedJob = reporting.validateReport({
+    ...passed('Unit'), status: 'failed', reason: 'job-failed', testStatus: 'passed',
+  }, 'Unit');
+  assert.equal(failedJob.status, 'failed');
+  assert.equal(failedJob.testStatus, 'passed', 'a job/reporting failure must preserve successful TRX evidence');
+});
+
 test('unexpected JavaScript parser faults propagate instead of becoming invalid input', () => {
   const original = JSON.parse;
   JSON.parse = () => { throw new TypeError('unexpected parser fault'); };

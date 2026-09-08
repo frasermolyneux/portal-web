@@ -161,6 +161,7 @@ function validateReport(value, suite) {
       (value.total === 0 || value.executed === 0 || value.failed !== 0 || value.reason !== 'completed')) return null;
   const testStatus = Object.hasOwn(value, 'testStatus') ? value.testStatus : value.status;
   if (!statuses.has(testStatus) || (testStatus === 'passed' && (value.executed === 0 || value.failed !== 0))) return null;
+  if (value.status === 'passed' && testStatus !== 'passed') return null;
   const report = emptyReport(suite);
   for (const key of Object.keys(report)) {
     if (key !== 'artifactId') report[key] = value[key];
