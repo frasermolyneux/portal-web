@@ -10,7 +10,7 @@ const helper = path.join(root, 'scripts', 'test-measurement.ps1');
 
 function discovery(lines) {
   return spawnSync('pwsh', ['-NoProfile', '-Command',
-    "$ErrorActionPreference='Stop'; . $env:MEASUREMENT_HELPER; Get-TestDiscoveryCount -Lines ($env:DISCOVERY_LINES | ConvertFrom-Json)"],
+    "$ErrorActionPreference='Stop'; . $env:MEASUREMENT_HELPER; try { Get-TestDiscoveryCount -Lines ($env:DISCOVERY_LINES | ConvertFrom-Json) } catch [IO.InvalidDataException] { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }"],
   { cwd: root, env: { ...process.env, MEASUREMENT_HELPER: helper, DISCOVERY_LINES: JSON.stringify(lines) }, encoding: 'utf8' });
 }
 
