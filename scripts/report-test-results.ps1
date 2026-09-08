@@ -13,12 +13,16 @@ param(
 
     [string]$ArtifactId,
 
+    [switch]$RequireMeasurements,
+
     [ValidatePattern('^[a-zA-Z][a-zA-Z0-9_-]*$')]
     [string]$OutputName = 'report'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+$Suite = @{ Unit = 'Unit'; HttpIntegration = 'HttpIntegration'; Browser = 'Browser'; bootstrap = 'bootstrap' }[$Suite]
+. (Join-Path $PSScriptRoot 'measurement-report.ps1')
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 if (-not $ResultsDirectory) {
     $ResultsDirectory = Join-Path $repositoryRoot "src\TestResults\$Suite"
@@ -94,6 +98,7 @@ $report = [ordered]@{
 }
 $failures = @()
 $document = $null
+$trxPath = $null
 if ($RunOutcome -eq 'skipped') {
     $report.status = 'not-run'
     $report.reason = 'not-started'
@@ -108,6 +113,7 @@ else {
             throw [IO.InvalidDataException]::new('Expected exactly one TRX for this invocation.')
         }
         $report.reason = 'report-invalid'
+        $trxPath = $files[0].FullName
         if ($files[0].Length -gt 32MB -or $files[0].Length -eq 0 -or
             ($files[0].Attributes -band [IO.FileAttributes]::ReparsePoint)) {
             throw [IO.InvalidDataException]::new('TRX is empty, oversized, or a symbolic link.')
@@ -176,6 +182,24 @@ else {
     }
 }
 if ($RunOutcome -eq 'cancelled') { $report.status = 'cancelled'; $report.reason = 'cancelled' }
+$measurementFailed = $false
+if ($Suite -ne 'bootstrap' -and $RunOutcome -ne 'skipped') {
+    $report.measurement = Read-TestMeasurement $ResultsDirectory $Suite $report $trxPath ([bool]$RequireMeasurements)
+    if ($report.measurement.ContainsKey('sourceRevision')) {
+        $report.measurement.revisionStatus = 'unverified'
+        if ($env:GITHUB_SHA) {
+            $report.measurement.revisionStatus = 'matched'
+            if ($env:GITHUB_SHA -cnotmatch '^[a-f0-9]{40}$' -or $report.measurement.sourceRevision -cne $env:GITHUB_SHA) {
+                $report.measurement.revisionStatus = 'mismatched'
+                $report.measurement.status = 'invalid'
+                $report.measurement.baselineEligible = $false
+            }
+        }
+    }
+    if ($RunOutcome -ne 'success') { $report.measurement.baselineEligible = $false }
+    $measurementFailed = $RequireMeasurements -and ($report.measurement.status -ne 'collected' -or
+        ($Suite -ne 'Browser' -and $report.measurement.coverage.status -ne 'collected'))
+}
 
 $reasons = @{
     completed = 'Tests completed.'
@@ -195,9 +219,13 @@ $summary = [System.Text.StringBuilder]::new()
 [void]$summary.AppendLine()
 [void]$summary.AppendLine("**$($report.status)** - $($reasons[$report.reason])")
 [void]$summary.AppendLine()
-[void]$summary.AppendLine('| Total | Executed | Passed | Failed | Skipped | Duration |')
+[void]$summary.AppendLine('| Total | Executed | Passed | Failed | Skipped | TRX window |')
 [void]$summary.AppendLine('| ---: | ---: | ---: | ---: | ---: | ---: |')
 [void]$summary.AppendLine("| $($report.total) | $($report.executed) | $($report.passed) | $($report.failed) | $($report.skipped) | $($report.durationSeconds.ToString([cultureinfo]::InvariantCulture)) s |")
+if ($report.Contains('measurement')) { Add-MeasurementSummary $summary $report.measurement $Suite }
+if ($measurementFailed) {
+    [void]$summary.AppendLine('**Required measurement reporting failed.** Test counts/status above are preserved; this reporting failure rejects the successful-command gate.')
+}
 
 $runUrl = $null
 if ($env:GITHUB_SERVER_URL -match '^https://[a-zA-Z0-9.-]+(?::[0-9]+)?$' -and
@@ -231,9 +259,11 @@ foreach ($failure in ($failures | Select-Object -First 8)) {
 if ($failures.Count -gt 8) { [void]$summary.AppendLine("Only the first 8 of $($failures.Count) failures are shown; see the artifact for complete results.") }
 if ($env:GITHUB_STEP_SUMMARY) { [IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, $summary.ToString(), [System.Text.UTF8Encoding]::new($false)) }
 else { Write-Host $summary.ToString() }
-$json = $report | ConvertTo-Json -Compress
+$json = $report | ConvertTo-Json -Compress -Depth 12
+if ([Text.Encoding]::UTF8.GetByteCount($json) -gt 8192) { throw 'Suite report exceeds its output limit.' }
 if ($env:GITHUB_OUTPUT) { [IO.File]::AppendAllText($env:GITHUB_OUTPUT, "$OutputName=$json`n", [System.Text.UTF8Encoding]::new($false)) }
 Write-Host "$Suite report: $json"
 if ($RunOutcome -eq 'success' -and $report.status -ne 'passed') {
     throw "$Suite did not produce a valid passing test report ($($report.reason))."
 }
+if ($RunOutcome -eq 'success' -and $measurementFailed) { throw "$Suite required measurements are unavailable or invalid." }

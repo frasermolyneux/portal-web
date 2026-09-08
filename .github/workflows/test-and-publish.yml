@@ -42,7 +42,7 @@ jobs:
         run: dotnet format src/XtremeIdiots.Portal.Web.slnx --no-restore --verify-no-changes
 
       - name: Verify test reporting contracts
-        run: node --test .github/scripts/test-reporting.test.js
+        run: node --test .github/scripts/*.test.js
 
       - id: tests
         uses: ./.github/actions/run-test-suite
@@ -154,7 +154,7 @@ jobs:
           } elseif ($env:BROWSER_RESULT -ne 'skipped' -or $env:PUBLISH -eq 'true') {
             throw 'Browser tests may be skipped only when browser validation and publishing are disabled.'
           }
-          if (-not $env:TEST_REPORT -or $env:TEST_REPORT.Length -gt 8192) {
+          if (-not $env:TEST_REPORT -or [Text.Encoding]::UTF8.GetByteCount($env:TEST_REPORT) -gt 32768) {
             throw 'The aggregate test report is missing or oversized.'
           }
           $report = $env:TEST_REPORT | ConvertFrom-Json

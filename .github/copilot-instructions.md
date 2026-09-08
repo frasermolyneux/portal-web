@@ -53,6 +53,13 @@ failures. Traces, screenshots, browser errors, application logs and manifest dif
 are retained under the invocation's `diagnostics/` directory. Do not suppress a
 failure or approve a changed action manifest without reviewing that evidence.
 
+Use `-Coverage` with the Unit or HttpIntegration runner for per-suite .NET line
+and branch coverage, or `-Measure` for discovery/timing provenance without
+instrumentation. Browser coverage is intentionally not collected. Read the scope,
+profile/binary hashes, build mode and working-tree flags before comparing results;
+do not average overlapping suite coverage or infer flakiness from a single run.
+Measurements surface in the existing Actions/PR summary, without percentage gates.
+
 Use targeted validation appropriate to the changed files. Razor compilation can
 be checked with `-p:ValidateRazor=true`; SCSS and Terraform commands are documented
 in `AGENTS.md` and their focused guides.
