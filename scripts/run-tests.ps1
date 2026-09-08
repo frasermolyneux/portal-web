@@ -57,12 +57,16 @@ try {
         $resultsDirectory = Join-Path $repositoryRoot "src\TestResults\$selectedSuite\$([guid]::NewGuid().ToString('N'))"
         $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY = Join-Path $resultsDirectory 'diagnostics'
         Write-Host "Running $selectedSuite ($Configuration): $selection"
-        Invoke-TestCommand 'dotnet' @(
+        $testArguments = @(
             'test', $project, '--configuration', $Configuration, '--no-build',
             '--filter', $selection,
             '--logger', "trx;LogFileName=$selectedSuite.trx",
             '--results-directory', $resultsDirectory
-        ) "$selectedSuite tests failed; inspect $resultsDirectory"
+        )
+        if ($selectedSuite -eq 'Browser') {
+            $testArguments += Get-BrowserTestArguments -RepositoryRoot $repositoryRoot
+        }
+        Invoke-TestCommand 'dotnet' $testArguments "$selectedSuite tests failed; inspect $resultsDirectory"
 
         $summary = Read-TestRunSummary -ResultsFile (Join-Path $resultsDirectory "$selectedSuite.trx") -Selection $selection
         Write-Host "$selectedSuite results: total=$($summary.Total), executed=$($summary.Executed), passed=$($summary.Passed), skipped=$($summary.Skipped)."

@@ -43,6 +43,11 @@ commands never install or launch browsers. Integration test classes need an
 explicit `HttpIntegration` or `Browser` category; browser-backed Reqnroll features
 need `@Browser`. Empty and all-skipped selections fail.
 
+Browser ownership is assembly-scoped and lazy with at most two leased contexts.
+Keep per-test hosts, data, authentication, and browser storage isolated, and
+dispose leases rather than the shared browser. Use retrying Playwright assertions
+and explicit request gates, not sleeps, `NetworkIdle`, or blanket test retries.
+
 Use the Actions/PR test summaries and the existing suite artifact to investigate
 failures. Traces, screenshots, browser errors, application logs and manifest diffs
 are retained under the invocation's `diagnostics/` directory. Do not suppress a

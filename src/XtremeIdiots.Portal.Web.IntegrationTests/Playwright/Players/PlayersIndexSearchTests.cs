@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Playwright;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
@@ -16,7 +17,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Players;
 /// <see cref="PlayersIndexScenario"/>).
 /// </summary>
 [Trait("Category", "Browser")]
-public sealed class PlayersIndexSearchTests
+public sealed partial class PlayersIndexSearchTests
 {
     private static TagDto Tag(string name, string? tagHtml = null)
     {
@@ -28,7 +29,7 @@ public sealed class PlayersIndexSearchTests
         };
     }
 
-    private async static Task<IResponse> GotoIndexAndWaitAsync(BrowserFixture fixture, string relativePath)
+    private async static Task<IResponse> GotoIndexAndWaitAsync(BrowserFixture fixture, string relativePath, GameType? gameType = null)
     {
         var url = new Uri(fixture.Host.BaseAddress, relativePath).ToString();
 
@@ -43,10 +44,57 @@ public sealed class PlayersIndexSearchTests
                 Assert.NotNull(response);
                 Assert.True(response.Ok, $"{relativePath} returned {response.Status}.");
             },
-            resp => resp.Url.Contains("GetPlayersAjax", StringComparison.OrdinalIgnoreCase));
+            response => IsPlayersResponse(response, gameType, PlayersFilter.UsernameAndGuid));
 
         Assert.True(ajaxResponse.Status == 200, $"GetPlayersAjax for {relativePath} returned {ajaxResponse.Status}.");
+        await Assertions.Expect(fixture.Page.Locator("#dataTable tbody a[href^='/Players/Details/']").First).ToBeVisibleAsync();
         return ajaxResponse;
+    }
+
+    private static bool IsPlayersResponse(IResponse response, GameType? gameType, PlayersFilter filter, Guid? tagId = null)
+    {
+        var uri = new Uri(response.Url);
+        var expectedPath = gameType is null ? "/Players/GetPlayersAjax" : $"/Players/GetPlayersAjax/{gameType}";
+        if (response.Request.Method != "POST" || uri.AbsolutePath != expectedPath)
+            return false;
+
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        return query.TryGetValue("playersFilter", out var playersFilter) && playersFilter == filter.ToString() &&
+            (tagId is null ? !query.ContainsKey("selectedTagId") :
+                query.TryGetValue("selectedTagId", out var selectedTagId) && selectedTagId == tagId.ToString());
+    }
+
+    private async static Task ReloadAndWaitForDrawAsync(BrowserFixture fixture, Func<Task> action, PlayersFilter filter, Guid? tagId = null)
+    {
+        var table = fixture.Page.Locator("#dataTable");
+        // The mock returns identical rows for each filter; wait for the matching draw, not stale row content.
+        await table.EvaluateAsync("""
+            table => {
+                delete table.dataset.testDraw;
+                $(table).on('draw.dt.testSync', (event, settings) => {
+                    table.dataset.testDraw = String(settings.json.draw);
+                });
+            }
+            """);
+        try
+        {
+            var response = await fixture.Page.RunAndWaitForResponseAsync(
+                action, candidate => IsPlayersResponse(candidate, null, filter, tagId));
+            Assert.Equal(200, response.Status);
+            var json = await response.JsonAsync();
+            Assert.NotNull(json);
+            await Assertions.Expect(table).ToHaveAttributeAsync("data-test-draw", json.Value.GetProperty("draw").ToString());
+            await Assertions.Expect(table.Locator("tbody a[href^='/Players/Details/']").First).ToBeVisibleAsync();
+        }
+        finally
+        {
+            await table.EvaluateAsync("""
+                table => {
+                    $(table).off('draw.dt.testSync');
+                    delete table.dataset.testDraw;
+                }
+                """);
+        }
     }
 
     [Fact]
@@ -59,10 +107,8 @@ public sealed class PlayersIndexSearchTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
-        await fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{playerOne.PlayerId}']").WaitForAsync();
-
-        Assert.Equal(1, await fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{playerOne.PlayerId}']").CountAsync());
-        Assert.Equal(1, await fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{playerTwo.PlayerId}']").CountAsync());
+        await Assertions.Expect(fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{playerOne.PlayerId}']")).ToHaveCountAsync(1);
+        await Assertions.Expect(fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{playerTwo.PlayerId}']")).ToHaveCountAsync(1);
     }
 
     public static TheoryData<GameType, bool> SteamColumnCases => new()
@@ -85,22 +131,14 @@ public sealed class PlayersIndexSearchTests
         var scenario = new PlayersIndexScenario([player]);
 
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
-        await GotoIndexAndWaitAsync(fixture, $"/Players/GameIndex/{gameType}");
-
-        await fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{player.PlayerId}']").WaitForAsync();
-
-        var steamHeaderCount = await fixture.Page
-            .GetByRole(AriaRole.Columnheader, new PageGetByRoleOptions { Name = "Steam ID", Exact = true })
-            .CountAsync();
+        await GotoIndexAndWaitAsync(fixture, $"/Players/GameIndex/{gameType}", gameType);
+        await Assertions.Expect(fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{player.PlayerId}']")).ToBeVisibleAsync();
+        await Assertions.Expect(fixture.Page.GetByRole(AriaRole.Columnheader, new() { Name = "Steam ID", Exact = true }))
+            .ToHaveCountAsync(expectSteamColumn ? 1 : 0);
 
         if (expectSteamColumn)
         {
-            Assert.True(steamHeaderCount == 1, $"[{gameType}] expected the Steam ID column header, saw {steamHeaderCount}.");
-            Assert.Equal(1, await fixture.Page.Locator("#dataTable tbody").GetByText("76561198000000001").CountAsync());
-        }
-        else
-        {
-            Assert.True(steamHeaderCount == 0, $"[{gameType}] did not expect the Steam ID column header, saw {steamHeaderCount}.");
+            await Assertions.Expect(fixture.Page.Locator("#dataTable tbody").GetByText("76561198000000001")).ToHaveCountAsync(1);
         }
     }
 
@@ -116,13 +154,10 @@ public sealed class PlayersIndexSearchTests
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
         var ipCell = fixture.Page.Locator("#dataTable tbody tr").First.Locator("td").Nth(2);
-        await ipCell.Locator(".badge").First.WaitForAsync();
-
-        var cellText = await ipCell.InnerTextAsync();
-        Assert.Contains("Risk: 90", cellText, StringComparison.Ordinal);
-        Assert.Contains("Proxy", cellText, StringComparison.Ordinal);
-        Assert.Contains("VPN", cellText, StringComparison.Ordinal);
-        Assert.Equal(1, await ipCell.Locator(".badge.text-bg-danger", new() { HasTextString = "Risk: 90" }).CountAsync());
+        await Assertions.Expect(ipCell).ToContainTextAsync("Risk: 90", new() { UseInnerText = true });
+        await Assertions.Expect(ipCell).ToContainTextAsync("Proxy", new() { UseInnerText = true });
+        await Assertions.Expect(ipCell).ToContainTextAsync("VPN", new() { UseInnerText = true });
+        await Assertions.Expect(ipCell.Locator(".badge.text-bg-danger", new() { HasTextString = "Risk: 90" })).ToHaveCountAsync(1);
     }
 
     [Fact]
@@ -137,12 +172,10 @@ public sealed class PlayersIndexSearchTests
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
         var ipCell = fixture.Page.Locator("#dataTable tbody tr").First.Locator("td").Nth(2);
-        await ipCell.GetByRole(AriaRole.Link).First.WaitForAsync();
-
-        var cellText = await ipCell.InnerTextAsync();
-        Assert.DoesNotContain("Risk:", cellText, StringComparison.Ordinal);
-        Assert.DoesNotContain("Proxy", cellText, StringComparison.Ordinal);
-        Assert.DoesNotContain("VPN", cellText, StringComparison.Ordinal);
+        await Assertions.Expect(ipCell.GetByRole(AriaRole.Link).First).ToBeVisibleAsync();
+        await Assertions.Expect(ipCell).Not.ToContainTextAsync("Risk:", new() { UseInnerText = true });
+        await Assertions.Expect(ipCell).Not.ToContainTextAsync("Proxy", new() { UseInnerText = true });
+        await Assertions.Expect(ipCell).Not.ToContainTextAsync("VPN", new() { UseInnerText = true });
     }
 
     [Fact]
@@ -156,10 +189,10 @@ public sealed class PlayersIndexSearchTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
-        var optionTexts = await fixture.Page.Locator("#filterPlayerTag option").AllInnerTextsAsync();
-        Assert.Contains("All Tags", optionTexts);
-        Assert.Contains("VIP", optionTexts);
-        Assert.Contains("Watchlist", optionTexts);
+        var options = fixture.Page.Locator("#filterPlayerTag option");
+        await Assertions.Expect(options.Filter(new() { HasTextRegex = AllTagsOptionRegex() })).Not.ToHaveCountAsync(0);
+        await Assertions.Expect(options.Filter(new() { HasTextRegex = VipOptionRegex() })).Not.ToHaveCountAsync(0);
+        await Assertions.Expect(options.Filter(new() { HasTextRegex = WatchlistOptionRegex() })).Not.ToHaveCountAsync(0);
     }
 
     [Fact]
@@ -177,15 +210,12 @@ public sealed class PlayersIndexSearchTests
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
         var tagsCell = fixture.Page.Locator("#dataTable tbody tr").First.Locator("td").Nth(1);
-        await tagsCell.Locator(".badge").First.WaitForAsync();
-
-        var cellText = await tagsCell.InnerTextAsync();
-        Assert.Contains("Alpha", cellText, StringComparison.Ordinal);
-        Assert.Contains("Bravo", cellText, StringComparison.Ordinal);
-        Assert.Contains("Charlie", cellText, StringComparison.Ordinal);
+        await Assertions.Expect(tagsCell).ToContainTextAsync("Alpha", new() { UseInnerText = true });
+        await Assertions.Expect(tagsCell).ToContainTextAsync("Bravo", new() { UseInnerText = true });
+        await Assertions.Expect(tagsCell).ToContainTextAsync("Charlie", new() { UseInnerText = true });
         // Only the first three tags render as chips; the fourth collapses into a "+1" overflow badge.
-        Assert.DoesNotContain("Delta", cellText, StringComparison.Ordinal);
-        Assert.Contains("+1", cellText, StringComparison.Ordinal);
+        await Assertions.Expect(tagsCell).Not.ToContainTextAsync("Delta", new() { UseInnerText = true });
+        await Assertions.Expect(tagsCell).ToContainTextAsync("+1", new() { UseInnerText = true });
     }
 
     [Fact]
@@ -197,11 +227,9 @@ public sealed class PlayersIndexSearchTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
-        var reload = await fixture.Page.RunAndWaitForResponseAsync(
+        await ReloadAndWaitForDrawAsync(fixture,
             async () => await fixture.Page.Locator("#filterPlayersFilter").SelectOptionAsync([new SelectOptionValue { Value = "IpAddress" }]),
-            resp => resp.Url.Contains("GetPlayersAjax", StringComparison.OrdinalIgnoreCase));
-
-        Assert.True(reload.Status == 200, $"GetPlayersAjax reload returned {reload.Status}.");
+            PlayersFilter.IpAddress);
         Assert.Equal(PlayersFilter.IpAddress, scenario.LastFilter);
     }
 
@@ -215,11 +243,9 @@ public sealed class PlayersIndexSearchTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoIndexAndWaitAsync(fixture, "/Players");
 
-        var reload = await fixture.Page.RunAndWaitForResponseAsync(
+        await ReloadAndWaitForDrawAsync(fixture,
             async () => await fixture.Page.Locator("#filterPlayerTag").SelectOptionAsync([new SelectOptionValue { Value = tag.TagId.ToString() }]),
-            resp => resp.Url.Contains("GetPlayersAjax", StringComparison.OrdinalIgnoreCase));
-
-        Assert.True(reload.Status == 200, $"GetPlayersAjax reload returned {reload.Status}.");
+            PlayersFilter.UsernameAndGuid, tag.TagId);
         Assert.Equal(PlayersFilter.Tag, scenario.LastFilter);
         Assert.Equal(tag.TagId.ToString(), scenario.LastFilterString);
     }
@@ -247,14 +273,23 @@ public sealed class PlayersIndexSearchTests
         var scenario = new PlayersIndexScenario([player]);
 
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.Moderator, scenario.ConfigureServices);
-        await GotoIndexAndWaitAsync(fixture, "/Players");
+        await GotoIndexAndWaitAsync(fixture, "/Players", GameType.CallOfDuty4);
 
         Assert.EndsWith("/Players/GameIndex/CallOfDuty4", fixture.Page.Url, StringComparison.Ordinal);
         Assert.Equal(GameType.CallOfDuty4, scenario.LastGameType);
-        Assert.Equal(1, await fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{player.PlayerId}']").CountAsync());
-        Assert.Equal(0, await fixture.Page.Locator("#filterGameType option[value='']").CountAsync());
-        Assert.Equal(0, await fixture.Page.Locator("#filterGameType option[value='CallOfDuty2']").CountAsync());
-        Assert.Equal(1, await fixture.Page.Locator("#filterGameType option[value='CallOfDuty4']").CountAsync());
-        Assert.Equal(1, await fixture.Page.Locator("#filterGameType option[value='CallOfDuty4x']").CountAsync());
+        await Assertions.Expect(fixture.Page.Locator($"#dataTable tbody a[href='/Players/Details/{player.PlayerId}']")).ToHaveCountAsync(1);
+        await Assertions.Expect(fixture.Page.Locator("#filterGameType option[value='']")).ToHaveCountAsync(0);
+        await Assertions.Expect(fixture.Page.Locator("#filterGameType option[value='CallOfDuty2']")).ToHaveCountAsync(0);
+        await Assertions.Expect(fixture.Page.Locator("#filterGameType option[value='CallOfDuty4']")).ToHaveCountAsync(1);
+        await Assertions.Expect(fixture.Page.Locator("#filterGameType option[value='CallOfDuty4x']")).ToHaveCountAsync(1);
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex("^All Tags$")]
+    private static partial System.Text.RegularExpressions.Regex AllTagsOptionRegex();
+
+    [System.Text.RegularExpressions.GeneratedRegex("^VIP$")]
+    private static partial System.Text.RegularExpressions.Regex VipOptionRegex();
+
+    [System.Text.RegularExpressions.GeneratedRegex("^Watchlist$")]
+    private static partial System.Text.RegularExpressions.Regex WatchlistOptionRegex();
 }

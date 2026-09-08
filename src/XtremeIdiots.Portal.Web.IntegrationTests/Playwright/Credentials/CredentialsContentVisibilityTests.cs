@@ -58,48 +58,13 @@ public sealed class CredentialsContentVisibilityTests
 
         var serverId = scenario.GameServerId;
 
-        var rowCount = await fixture.Page.Locator("table.w-100 tbody tr").CountAsync();
-        var rconHeaderCount = await fixture.Page
-            .GetByRole(AriaRole.Columnheader, new PageGetByRoleOptions { Name = "RCON Password", Exact = true })
-            .CountAsync();
-        var fileTransportHeaderCount = await fixture.Page
-            .GetByRole(AriaRole.Columnheader, new PageGetByRoleOptions { Name = "File Transport Username", Exact = true })
-            .CountAsync();
-        var rconValueCount = await fixture.Page.Locator($"#rconPassword-{serverId}").CountAsync();
-        var ftpUsernameValueCount = await fixture.Page.Locator($"#ftpUsername-{serverId}").CountAsync();
-        var ftpPasswordValueCount = await fixture.Page.Locator($"#ftpPassword-{serverId}").CountAsync();
-
-        if (expectServerRow)
-        {
-            Assert.True(rowCount == 1, $"[{profile}] expected exactly one credential row, saw {rowCount}.");
-        }
-        else
-        {
-            Assert.True(rowCount == 0, $"[{profile}] expected an empty credentials table, saw {rowCount} row(s).");
-        }
-
-        if (expectRconVisible)
-        {
-            Assert.True(rconHeaderCount == 1, $"[{profile}] expected the RCON column header, saw {rconHeaderCount}.");
-            Assert.True(rconValueCount == 1, $"[{profile}] expected the RCON password value, saw {rconValueCount}.");
-        }
-        else
-        {
-            Assert.True(rconHeaderCount == 0, $"[{profile}] did not expect the RCON column header, saw {rconHeaderCount}.");
-            Assert.True(rconValueCount == 0, $"[{profile}] did not expect an RCON password value, saw {rconValueCount}.");
-        }
-
-        if (expectFileTransportVisible)
-        {
-            Assert.True(fileTransportHeaderCount == 1, $"[{profile}] expected the file transport column header, saw {fileTransportHeaderCount}.");
-            Assert.True(ftpUsernameValueCount == 1, $"[{profile}] expected the file transport username value, saw {ftpUsernameValueCount}.");
-            Assert.True(ftpPasswordValueCount == 1, $"[{profile}] expected the file transport password value, saw {ftpPasswordValueCount}.");
-        }
-        else
-        {
-            Assert.True(fileTransportHeaderCount == 0, $"[{profile}] did not expect the file transport column header, saw {fileTransportHeaderCount}.");
-            Assert.True(ftpUsernameValueCount == 0, $"[{profile}] did not expect a file transport username value, saw {ftpUsernameValueCount}.");
-            Assert.True(ftpPasswordValueCount == 0, $"[{profile}] did not expect a file transport password value, saw {ftpPasswordValueCount}.");
-        }
+        await Assertions.Expect(fixture.Page.Locator("table.w-100 tbody tr")).ToHaveCountAsync(expectServerRow ? 1 : 0);
+        await Assertions.Expect(fixture.Page.GetByRole(AriaRole.Columnheader, new() { Name = "RCON Password", Exact = true }))
+            .ToHaveCountAsync(expectRconVisible ? 1 : 0);
+        await Assertions.Expect(fixture.Page.GetByRole(AriaRole.Columnheader, new() { Name = "File Transport Username", Exact = true }))
+            .ToHaveCountAsync(expectFileTransportVisible ? 1 : 0);
+        await Assertions.Expect(fixture.Page.Locator($"#rconPassword-{serverId}")).ToHaveCountAsync(expectRconVisible ? 1 : 0);
+        await Assertions.Expect(fixture.Page.Locator($"#ftpUsername-{serverId}")).ToHaveCountAsync(expectFileTransportVisible ? 1 : 0);
+        await Assertions.Expect(fixture.Page.Locator($"#ftpPassword-{serverId}")).ToHaveCountAsync(expectFileTransportVisible ? 1 : 0);
     }
 }

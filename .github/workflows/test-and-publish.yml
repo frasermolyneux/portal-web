@@ -82,6 +82,7 @@ jobs:
     name: Browser tests
     if: inputs.run-browser
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
       bootstrap: ${{ steps.tests.outputs.bootstrap }}

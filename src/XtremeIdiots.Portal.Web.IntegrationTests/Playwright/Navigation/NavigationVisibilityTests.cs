@@ -36,14 +36,19 @@ public sealed class NavigationVisibilityTests(PortalPlaywrightServerFixture fixt
 
             foreach (var item in NavigationItemCatalog.Items)
             {
-                var count = await session.Page.Locator(item.Selector).CountAsync();
-                var rendered = count > 0;
                 var expected = NavigationItemCatalog.IsVisible(item, role);
-
-                if (rendered != expected)
+                try
+                {
+                    var assertion = Assertions.Expect(session.Page.Locator(item.Selector));
+                    if (expected)
+                        await assertion.Not.ToHaveCountAsync(0);
+                    else
+                        await assertion.ToHaveCountAsync(0);
+                }
+                catch (PlaywrightException exception)
                 {
                     var note = item.Note is null ? string.Empty : $" (note: {item.Note})";
-                    mismatches.Add($"{item.Name} [{role}]: expected {(expected ? "visible" : "hidden")}, was {(rendered ? "visible" : "hidden")} (matched {count} element(s)).{note}");
+                    mismatches.Add($"{item.Name} [{role}]: expected {(expected ? "present" : "absent")}.{note} {exception.Message}");
                 }
             }
         }

@@ -18,8 +18,8 @@ public class LoginPageIntegrationTests
 
         Assert.NotNull(response);
         Assert.True(response.Ok);
-        Assert.Equal("Login - XI Portal", await fixture.Page.TitleAsync());
-        Assert.True(await loginButton.IsVisibleAsync());
+        await Assertions.Expect(fixture.Page).ToHaveTitleAsync("Login - XI Portal");
+        await Assertions.Expect(loginButton).ToBeVisibleAsync();
         fixture.AssertNoBrowserErrors();
     }
 }

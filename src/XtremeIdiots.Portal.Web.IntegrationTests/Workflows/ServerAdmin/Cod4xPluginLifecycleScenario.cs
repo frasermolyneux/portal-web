@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
 using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
@@ -28,13 +29,14 @@ internal sealed class Cod4xPluginLifecycleScenario
         bool configurationLoadSucceeds = true,
         bool malformedConfiguration = false,
         bool pendingRequest = false,
-        int upsertDelayMilliseconds = 0)
+        bool holdUpsert = false)
     {
         GameServerId = Guid.Parse("12121212-1212-1212-1212-121212121212");
         GameServer = CreateGameServer(GameServerId);
         CurrentConfiguration = CreateConfiguration(malformedConfiguration ? "{ malformed" : CreateExistingConfigurationJson(pendingRequest));
         RepositoryClient = new Mock<IRepositoryApiClient>(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
         AgentTelemetry = new Mock<IAgentTelemetryService>(MockBehavior.Strict);
+        UpsertGate = new RequestGate(holdUpsert);
 
         Mock.Get(RepositoryClient.Object.GameServers.V1)
             .Setup(api => api.GetGameServer(GameServerId, It.IsAny<CancellationToken>()))
@@ -58,10 +60,9 @@ internal sealed class Cod4xPluginLifecycleScenario
                 if (upsertSucceeds)
                     CurrentConfiguration = CreateConfiguration(dto.Configuration);
             })
-            .Returns(async () =>
+            .Returns(async (Guid _, string _, UpsertConfigurationDto _, CancellationToken cancellationToken) =>
             {
-                if (upsertDelayMilliseconds > 0)
-                    await Task.Delay(upsertDelayMilliseconds);
+                await UpsertGate.WaitAsync(cancellationToken);
                 return new ApiResult(upsertSucceeds ? HttpStatusCode.OK : HttpStatusCode.InternalServerError);
             });
         AgentTelemetry
@@ -75,6 +76,7 @@ internal sealed class Cod4xPluginLifecycleScenario
     public GameServerDto GameServer { get; }
     public Guid GameServerId { get; }
     public Mock<IRepositoryApiClient> RepositoryClient { get; }
+    public RequestGate UpsertGate { get; }
 
     public void ConfigureServices(IServiceCollection services)
     {

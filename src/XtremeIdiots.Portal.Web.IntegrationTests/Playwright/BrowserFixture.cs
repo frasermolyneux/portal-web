@@ -8,9 +8,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
 internal sealed class BrowserFixture : IAsyncDisposable
 {
-    private readonly IBrowser browser;
-    private readonly IBrowserContext browserContext;
-    private readonly IPlaywright playwright;
+    private readonly BrowserContextLease lease;
     private readonly BrowserDiagnosticCapture capture;
     private readonly TestDiagnosticScope diagnostics;
     private readonly bool ownsDiagnostics;
@@ -18,17 +16,13 @@ internal sealed class BrowserFixture : IAsyncDisposable
 
     private BrowserFixture(
         PortalWebKestrelHost host,
-        IPlaywright playwright,
-        IBrowser browser,
-        IBrowserContext browserContext,
+        BrowserContextLease lease,
         BrowserDiagnosticCapture capture,
         TestDiagnosticScope diagnostics,
         bool ownsDiagnostics)
     {
         Host = host;
-        this.playwright = playwright;
-        this.browser = browser;
-        this.browserContext = browserContext;
+        this.lease = lease;
         this.capture = capture;
         this.diagnostics = diagnostics;
         this.ownsDiagnostics = ownsDiagnostics;
@@ -37,33 +31,43 @@ internal sealed class BrowserFixture : IAsyncDisposable
     public PortalWebKestrelHost Host { get; }
     public IPage Page => capture.Page;
 
-    public async static Task<BrowserFixture> CreateAsync(
+    public static Task<BrowserFixture> CreateAsync(
         string? profile = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        CancellationToken cancellationToken = default)
+    {
+        return CreateWithRuntimeAsync(AssemblyBrowserRuntime.Current, profile, configureServices, cancellationToken);
+    }
+
+    internal async static Task<BrowserFixture> CreateWithRuntimeAsync(
+        BrowserRuntime runtime,
+        string? profile = null,
+        Action<IServiceCollection>? configureServices = null,
+        CancellationToken cancellationToken = default)
     {
         var ownsDiagnostics = TestDiagnosticScope.Current is null;
         var diagnostics = TestDiagnosticScope.Current ?? new TestDiagnosticScope("BrowserFixture initialization", typeof(BrowserFixture).FullName!, nameof(CreateAsync));
         using var activation = TestDiagnosticScope.Activate(diagnostics);
         PortalWebKestrelHost? host = null;
-        IPlaywright? playwright = null;
-        IBrowser? browser = null;
-        IBrowserContext? browserContext = null;
+        BrowserContextLease? lease = null;
         BrowserDiagnosticCapture? capture = null;
         try
         {
-            host = await PortalWebKestrelHost.CreateAsync(configureServices).ConfigureAwait(false);
-            playwright = await Microsoft.Playwright.Playwright.CreateAsync().ConfigureAwait(false);
-            browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true }).ConfigureAwait(false);
+            lease = await runtime.AcquireAsync(diagnostics, cancellationToken).ConfigureAwait(false);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, runtime.Stopping);
+            host = await PortalWebKestrelHost.CreateAsync(configureServices, cancellationToken: linked.Token).ConfigureAwait(false);
             var headers = new Dictionary<string, string> { [TestDiagnosticScope.HeaderName] = diagnostics.Id };
             if (profile is not null)
             {
                 headers[TestAuthenticationDefaults.HeaderName] = profile;
             }
 
-            browserContext = await browser.NewContextAsync(new BrowserNewContextOptions { ExtraHTTPHeaders = headers }).ConfigureAwait(false);
+            var browserContext = await lease.CreateContextAsync(new BrowserNewContextOptions { ExtraHTTPHeaders = headers }, linked.Token).ConfigureAwait(false);
             capture = new BrowserDiagnosticCapture(browserContext, host.BaseAddress, diagnostics, profile ?? "anonymous");
+            lease.BeforeClose(capture.CaptureAsync);
             await capture.InitializeAsync().ConfigureAwait(false);
-            return new BrowserFixture(host, playwright, browser, browserContext, capture, diagnostics, ownsDiagnostics);
+            linked.Token.ThrowIfCancellationRequested();
+            return new BrowserFixture(host, lease, capture, diagnostics, ownsDiagnostics);
         }
         catch (Exception exception)
         {
@@ -74,19 +78,9 @@ internal sealed class BrowserFixture : IAsyncDisposable
                 await cleanup.RunAsync("Capturing failed browser initialization", capture.CaptureAsync).ConfigureAwait(false);
             }
 
-            if (browserContext is not null)
+            if (lease is not null)
             {
-                await cleanup.RunAsync("Closing failed browser context", () => browserContext.DisposeAsync().AsTask()).ConfigureAwait(false);
-            }
-
-            if (browser is not null)
-            {
-                await cleanup.RunAsync("Closing failed browser", () => browser.DisposeAsync().AsTask()).ConfigureAwait(false);
-            }
-
-            if (playwright is not null)
-            {
-                cleanup.Run("Disposing failed Playwright", playwright.Dispose);
+                await cleanup.RunAsync("Releasing failed browser lease", () => lease.DisposeAsync().AsTask()).ConfigureAwait(false);
             }
 
             if (host is not null)
@@ -125,9 +119,7 @@ internal sealed class BrowserFixture : IAsyncDisposable
         using var activation = TestDiagnosticScope.Activate(diagnostics);
         var cleanup = new DiagnosticResourceCleanup(diagnostics);
         await cleanup.RunAsync("Capturing browser diagnostics", capture.CaptureAsync).ConfigureAwait(false);
-        await cleanup.RunAsync("Closing browser context", () => browserContext.DisposeAsync().AsTask(), IsExpectedDisconnect).ConfigureAwait(false);
-        await cleanup.RunAsync("Closing browser", () => browser.DisposeAsync().AsTask(), IsExpectedDisconnect).ConfigureAwait(false);
-        cleanup.Run("Disposing Playwright", playwright.Dispose);
+        await cleanup.RunAsync("Releasing browser context lease", () => lease.DisposeAsync().AsTask()).ConfigureAwait(false);
         await cleanup.RunAsync("Disposing application host", () => Host.DisposeAsync().AsTask()).ConfigureAwait(false);
         if (ownsDiagnostics)
         {
@@ -136,10 +128,5 @@ internal sealed class BrowserFixture : IAsyncDisposable
         }
 
         cleanup.ThrowIfFailed();
-    }
-
-    private bool IsExpectedDisconnect(PlaywrightException exception)
-    {
-        return !browser.IsConnected || exception.GetType().Name == "TargetClosedException";
     }
 }

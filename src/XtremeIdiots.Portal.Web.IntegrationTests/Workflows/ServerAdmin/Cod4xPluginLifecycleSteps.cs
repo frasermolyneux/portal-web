@@ -65,7 +65,7 @@ public sealed class Cod4xPluginLifecycleSteps
     public void GivenDelayedRepositoryScenario()
     {
         profile = TestPrincipalProfiles.Cod4xLifecycleManager;
-        Scenario = new Cod4xPluginLifecycleScenario(upsertDelayMilliseconds: 500);
+        Scenario = new Cod4xPluginLifecycleScenario(holdUpsert: true);
     }
 
     [When("the user requests install of version {string}")]
@@ -125,11 +125,13 @@ public sealed class Cod4xPluginLifecycleSteps
             response.Request.Method == "POST" &&
             new Uri(response.Url).AbsolutePath.Equals("/ServerAdmin/RequestCod4xPluginOperation", StringComparison.Ordinal));
         await Browser.Page.GetByTestId("cod4x-rollback").ClickAsync();
+        await Scenario.UpsertGate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
     }
 
     [When("the lifecycle request completes")]
     public async Task WhenLifecycleRequestCompletes()
     {
+        Scenario.UpsertGate.Release();
         await (pendingResponse ?? throw new InvalidOperationException("Lifecycle response was not started."));
     }
 
@@ -244,7 +246,8 @@ public sealed class Cod4xPluginLifecycleSteps
     public async Task ThenQueuedRequestAppearsAfterReload()
     {
         var action = Scenario.GetAttemptedDocument().OperationRequest?.Action.ToString();
-        await Assertions.Expect(Browser.Page.GetByTestId("cod4x-pending-request")).ToContainTextAsync(action ?? string.Empty, new() { Timeout = 5000 });
+        Assert.False(string.IsNullOrWhiteSpace(action));
+        await Assertions.Expect(Browser.Page.GetByTestId("cod4x-pending-request")).ToContainTextAsync(action);
     }
 
     [Then("the CoD4x lifecycle failure toast should report {string}")]
@@ -275,7 +278,10 @@ public sealed class Cod4xPluginLifecycleSteps
     public async Task DisposeBrowserAsync()
     {
         if (browser is not null)
+        {
+            Scenario.UpsertGate.Release();
             await browser.DisposeAsync();
+        }
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");

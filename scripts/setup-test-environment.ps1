@@ -79,12 +79,14 @@ try {
         $resultsDirectory = Join-Path $repositoryRoot "src\TestResults\bootstrap\$([guid]::NewGuid().ToString('N'))"
         $env:PORTAL_TEST_DIAGNOSTICS_DIRECTORY = Join-Path $resultsDirectory 'diagnostics'
         $smokeTest = 'XtremeIdiots.Portal.Web.IntegrationTests.Playwright.LoginPageIntegrationTests.LoginPage_RendersInChromium'
-        Invoke-TestCommand 'dotnet' @(
+        $smokeArguments = @(
             'test', $testProject, '--configuration', $Configuration, '--no-build',
             '--filter', "Category=Browser&FullyQualifiedName=$smokeTest",
             '--logger', 'trx;LogFileName=bootstrap.trx',
             '--results-directory', $resultsDirectory
-        ) "Chromium smoke test failed; inspect $resultsDirectory and the test output"
+        )
+        $smokeArguments += Get-BrowserTestArguments -RepositoryRoot $repositoryRoot
+        Invoke-TestCommand 'dotnet' $smokeArguments "Chromium smoke test failed; inspect $resultsDirectory and the test output"
 
         $resultsFile = Join-Path $resultsDirectory 'bootstrap.trx'
         Read-TestRunSummary -ResultsFile $resultsFile -Selection 'Chromium bootstrap smoke' -ExpectedTotal 1 | Out-Null

@@ -8,6 +8,7 @@ on:
       - .github/actions/setup-test-environment/**
       - scripts/setup-test-environment.ps1
       - scripts/test-support.ps1
+      - scripts/browser.runsettings
       - scripts/report-test-results.ps1
       - global.json
       - .node-version
@@ -20,6 +21,7 @@ on:
       - .github/actions/setup-test-environment/**
       - scripts/setup-test-environment.ps1
       - scripts/test-support.ps1
+      - scripts/browser.runsettings
       - scripts/report-test-results.ps1
       - global.json
       - .node-version
@@ -62,6 +64,7 @@ jobs:
           name: copilot-bootstrap-results
           path: |
             src/TestResults/bootstrap/**/*.trx
+            src/TestResults/bootstrap/**/Sequence*.xml
             src/TestResults/bootstrap/**/diagnostics/**
           retention-days: 7
           if-no-files-found: warn

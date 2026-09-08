@@ -1,0 +1,21 @@
+<RunSettings>
+  <RunConfiguration>
+    <TestSessionTimeout>900000</TestSessionTimeout>
+  </RunConfiguration>
+  <xUnit>
+    <MaxParallelThreads>2</MaxParallelThreads>
+    <ParallelAlgorithm>conservative</ParallelAlgorithm>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <DiagnosticMessages>true</DiagnosticMessages>
+    <LongRunningTestSeconds>60</LongRunningTestSeconds>
+  </xUnit>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="blame" enabled="true">
+        <Configuration>
+          <CollectDumpOnTestSessionHang TestTimeout="3m" HangDumpType="none" />
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

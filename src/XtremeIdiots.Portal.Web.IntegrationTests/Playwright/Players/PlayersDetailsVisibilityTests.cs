@@ -58,13 +58,9 @@ public sealed class PlayersDetailsVisibilityTests
         await GotoDetailsAsync(fixture, player.PlayerId);
 
         var gauge = fixture.Page.Locator(".risk-score-gauge .gauge");
-        Assert.Equal(1, await gauge.CountAsync());
-
-        var level = await gauge.GetAttributeAsync("data-risk-level");
-        Assert.Equal(expectedLevel, level);
-
-        var value = (await gauge.Locator(".gauge-value").InnerTextAsync()).Trim();
-        Assert.Equal(riskScore.ToString(), value);
+        await Assertions.Expect(gauge).ToHaveCountAsync(1);
+        await Assertions.Expect(gauge).ToHaveAttributeAsync("data-risk-level", expectedLevel);
+        await Assertions.Expect(gauge.Locator(".gauge-value")).ToHaveTextAsync(riskScore.ToString());
     }
 
     public static TheoryData<bool, bool> ProxyVpnFlags => new()
@@ -89,8 +85,8 @@ public sealed class PlayersDetailsVisibilityTests
         var proxyBadge = intelligencePanel.GetByText("Proxy", new() { Exact = true });
         var vpnBadge = intelligencePanel.GetByText("VPN", new() { Exact = true });
 
-        Assert.Equal(isProxy ? 1 : 0, await proxyBadge.CountAsync());
-        Assert.Equal(isVpn ? 1 : 0, await vpnBadge.CountAsync());
+        await Assertions.Expect(proxyBadge).ToHaveCountAsync(isProxy ? 1 : 0);
+        await Assertions.Expect(vpnBadge).ToHaveCountAsync(isVpn ? 1 : 0);
     }
 
     public static TheoryData<string, bool, string?, string?> BanCases => new()
@@ -137,18 +133,12 @@ public sealed class PlayersDetailsVisibilityTests
         await GotoDetailsAsync(fixture, player.PlayerId);
 
         var banner = fixture.Page.Locator(".alert-danger[role='alert']");
-        var bannerCount = await banner.CountAsync();
+        await Assertions.Expect(banner).ToHaveCountAsync(expectBanner ? 1 : 0);
 
         if (expectBanner)
         {
-            Assert.True(bannerCount == 1, $"[{caseName}] expected an active-ban banner, saw {bannerCount}.");
-            var text = await banner.InnerTextAsync();
-            Assert.Contains(expectedStrongText!, text, StringComparison.Ordinal);
-            Assert.Contains(expectedQualifier!, text, StringComparison.OrdinalIgnoreCase);
-        }
-        else
-        {
-            Assert.True(bannerCount == 0, $"[{caseName}] expected no active-ban banner, saw {bannerCount}.");
+            await Assertions.Expect(banner).ToContainTextAsync(expectedStrongText!, new() { UseInnerText = true });
+            await Assertions.Expect(banner).ToContainTextAsync(expectedQualifier!, new() { IgnoreCase = true, UseInnerText = true });
         }
     }
 
@@ -167,24 +157,17 @@ public sealed class PlayersDetailsVisibilityTests
         await GotoDetailsAsync(fixture, player.PlayerId);
 
         var summary = fixture.Page.Locator(".player-admin-summary");
-        var summaryText = await summary.InnerTextAsync();
-
-        Assert.Contains("Kicks", summaryText, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Warnings", summaryText, StringComparison.OrdinalIgnoreCase);
+        await Assertions.Expect(summary).ToContainTextAsync("Kicks", new() { IgnoreCase = true, UseInnerText = true });
+        await Assertions.Expect(summary).ToContainTextAsync("Warnings", new() { IgnoreCase = true, UseInnerText = true });
         // No bans/temp-bans/observations were created, so those labels must be absent.
-        Assert.DoesNotContain("Bans", summaryText, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Observations", summaryText, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("No admin actions", summaryText, StringComparison.OrdinalIgnoreCase);
+        await Assertions.Expect(summary).Not.ToContainTextAsync("Bans", new() { IgnoreCase = true, UseInnerText = true });
+        await Assertions.Expect(summary).Not.ToContainTextAsync("Observations", new() { IgnoreCase = true, UseInnerText = true });
+        await Assertions.Expect(summary).Not.ToContainTextAsync("No admin actions", new() { IgnoreCase = true, UseInnerText = true });
 
-        var warningsValue = await summary
-            .Locator("xpath=.//div[contains(@class,'detail-field')][.//dt[contains(., 'Warnings')]]//dd")
-            .InnerTextAsync();
-        Assert.Equal("2", warningsValue.Trim());
-
-        var kicksValue = await summary
-            .Locator("xpath=.//div[contains(@class,'detail-field')][.//dt[contains(., 'Kicks')]]//dd")
-            .InnerTextAsync();
-        Assert.Equal("1", kicksValue.Trim());
+        await Assertions.Expect(summary.Locator("xpath=.//div[contains(@class,'detail-field')][.//dt[contains(., 'Warnings')]]//dd"))
+            .ToHaveTextAsync("2");
+        await Assertions.Expect(summary.Locator("xpath=.//div[contains(@class,'detail-field')][.//dt[contains(., 'Kicks')]]//dd"))
+            .ToHaveTextAsync("1");
     }
 
     [Fact]
@@ -197,11 +180,9 @@ public sealed class PlayersDetailsVisibilityTests
         await GotoDetailsAsync(fixture, player.PlayerId);
 
         var summary = fixture.Page.Locator(".player-admin-summary");
-        var summaryText = await summary.InnerTextAsync();
-
-        Assert.Contains("No admin actions", summaryText, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Kicks", summaryText, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Warnings", summaryText, StringComparison.OrdinalIgnoreCase);
+        await Assertions.Expect(summary).ToContainTextAsync("No admin actions", new() { IgnoreCase = true, UseInnerText = true });
+        await Assertions.Expect(summary).Not.ToContainTextAsync("Kicks", new() { IgnoreCase = true, UseInnerText = true });
+        await Assertions.Expect(summary).Not.ToContainTextAsync("Warnings", new() { IgnoreCase = true, UseInnerText = true });
     }
 
     [Fact]
@@ -220,15 +201,10 @@ public sealed class PlayersDetailsVisibilityTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoDetailsAsync(fixture, player.PlayerId);
 
-        var aliasBadge = (await fixture.Page.Locator("#aliases-tab .badge").InnerTextAsync()).Trim();
-        var aliasRows = await fixture.Page.Locator("#aliasesTable tbody tr").CountAsync();
-        Assert.Equal("2", aliasBadge);
-        Assert.Equal(2, aliasRows);
-
-        var protectedBadge = (await fixture.Page.Locator("#protectedNames-tab .badge").InnerTextAsync()).Trim();
-        var protectedRows = await fixture.Page.Locator("#protectedNamesTable tbody tr").CountAsync();
-        Assert.Equal("3", protectedBadge);
-        Assert.Equal(3, protectedRows);
+        await Assertions.Expect(fixture.Page.Locator("#aliases-tab .badge")).ToHaveTextAsync("2");
+        await Assertions.Expect(fixture.Page.Locator("#aliasesTable tbody tr")).ToHaveCountAsync(2);
+        await Assertions.Expect(fixture.Page.Locator("#protectedNames-tab .badge")).ToHaveTextAsync("3");
+        await Assertions.Expect(fixture.Page.Locator("#protectedNamesTable tbody tr")).ToHaveCountAsync(3);
     }
 
     [Fact]
@@ -249,15 +225,12 @@ public sealed class PlayersDetailsVisibilityTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoDetailsAsync(fixture, player.PlayerId);
 
-        var badge = (await fixture.Page.Locator("#ipAddresses-tab .badge").InnerTextAsync()).Trim();
-        Assert.Equal("15", badge);
-
-        var rows = await fixture.Page.Locator("#ipAddressesTable tbody tr").CountAsync();
-        Assert.Equal(10, rows);
+        await Assertions.Expect(fixture.Page.Locator("#ipAddresses-tab .badge")).ToHaveTextAsync("15");
+        await Assertions.Expect(fixture.Page.Locator("#ipAddressesTable tbody tr")).ToHaveCountAsync(10);
 
         var notice = fixture.Page.Locator("#ipAddresses .alert-info");
-        Assert.Equal(1, await notice.CountAsync());
-        Assert.Contains("Showing 10 of 15", await notice.InnerTextAsync(), StringComparison.Ordinal);
+        await Assertions.Expect(notice).ToHaveCountAsync(1);
+        await Assertions.Expect(notice).ToContainTextAsync("Showing 10 of 15");
     }
 
     [Fact]
@@ -274,13 +247,13 @@ public sealed class PlayersDetailsVisibilityTests
         await GotoDetailsAsync(fixture, player.PlayerId);
 
         var table = fixture.Page.Locator("#relatedPlayersTable");
-        Assert.Equal(1, await table.CountAsync());
-        Assert.Equal(2, await table.Locator("tbody tr").CountAsync());
+        await Assertions.Expect(table).ToHaveCountAsync(1);
+        await Assertions.Expect(table.Locator("tbody tr")).ToHaveCountAsync(2);
 
-        Assert.Equal(1, await table.GetByText("Banned", new() { Exact = true }).CountAsync());
-        Assert.Equal(1, await table.GetByText("OK", new() { Exact = true }).CountAsync());
-        Assert.Equal(1, await table.GetByText("Current", new() { Exact = true }).CountAsync());
-        Assert.Equal(1, await table.GetByText("Historical", new() { Exact = true }).CountAsync());
+        await Assertions.Expect(table.GetByText("Banned", new() { Exact = true })).ToHaveCountAsync(1);
+        await Assertions.Expect(table.GetByText("OK", new() { Exact = true })).ToHaveCountAsync(1);
+        await Assertions.Expect(table.GetByText("Current", new() { Exact = true })).ToHaveCountAsync(1);
+        await Assertions.Expect(table.GetByText("Historical", new() { Exact = true })).ToHaveCountAsync(1);
     }
 
     [Fact]
@@ -292,7 +265,7 @@ public sealed class PlayersDetailsVisibilityTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         await GotoDetailsAsync(fixture, player.PlayerId);
 
-        Assert.Equal(0, await fixture.Page.Locator("#relatedPlayersTable").CountAsync());
+        await Assertions.Expect(fixture.Page.Locator("#relatedPlayersTable")).ToHaveCountAsync(0);
     }
 
     [Fact]
@@ -305,9 +278,9 @@ public sealed class PlayersDetailsVisibilityTests
         await GotoDetailsAsync(fixture, player.PlayerId);
 
         // The risk gauge and IP-address detail field are gated on Model.Intelligence != null.
-        Assert.Equal(0, await fixture.Page.Locator(".risk-score-gauge").CountAsync());
+        await Assertions.Expect(fixture.Page.Locator(".risk-score-gauge")).ToHaveCountAsync(0);
         // The IP Intelligence ibox itself is always present (only its populated body is conditional).
-        Assert.Equal(1, await fixture.Page.GetByText("IP Intelligence", new() { Exact = true }).CountAsync());
+        await Assertions.Expect(fixture.Page.GetByText("IP Intelligence", new() { Exact = true })).ToHaveCountAsync(1);
     }
 
     [Fact]
@@ -327,7 +300,7 @@ public sealed class PlayersDetailsVisibilityTests
 
         Assert.NotNull(response);
         Assert.NotEqual($"/Players/Details/{player.PlayerId}", new Uri(fixture.Page.Url).AbsolutePath);
-        Assert.Equal(0, await fixture.Page.GetByText("CrossGamePlayer").CountAsync());
+        await Assertions.Expect(fixture.Page.GetByText("CrossGamePlayer")).ToHaveCountAsync(0);
     }
 
     [Fact]
@@ -341,6 +314,6 @@ public sealed class PlayersDetailsVisibilityTests
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.Moderator, scenario.ConfigureServices);
         await GotoDetailsAsync(fixture, player.PlayerId);
 
-        Assert.Equal(1, await fixture.Page.GetByText("ScopedPlayer").First.CountAsync());
+        await Assertions.Expect(fixture.Page.GetByText("ScopedPlayer").First).ToHaveCountAsync(1);
     }
 }

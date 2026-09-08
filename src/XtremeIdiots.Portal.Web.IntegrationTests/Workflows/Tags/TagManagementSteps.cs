@@ -38,7 +38,7 @@ public sealed class TagManagementSteps
         await Browser.Page.GetByTestId("tag-name").FillAsync("VIP");
         await Browser.Page.GetByTestId("tag-description").FillAsync("Priority player");
         await Browser.Page.GetByTestId("tag-html").FillAsync("<span class=\"badge\">VIP</span>");
-        Assert.True(await Browser.Page.GetByTestId("tag-user-defined").IsCheckedAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("tag-user-defined")).ToBeCheckedAsync();
         await Browser.Page.GetByTestId("tag-create-submit").ClickAsync();
         await Browser.Page.WaitForURLAsync("**/Tags");
     }
@@ -48,7 +48,7 @@ public sealed class TagManagementSteps
     {
         await StartBrowserAsync();
         await Browser.Page.GotoAsync(new Uri(Browser.Host.BaseAddress, $"/Tags/Edit/{Scenario.Tag.TagId}").AbsoluteUri);
-        Assert.Equal("Existing tag", await Browser.Page.GetByTestId("tag-name").InputValueAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("tag-name")).ToHaveValueAsync("Existing tag");
         await Browser.Page.GetByTestId("tag-name").FillAsync("Updated tag");
         await Browser.Page.GetByTestId("tag-description").FillAsync("Updated description");
         await Browser.Page.GetByTestId("tag-edit-submit").ClickAsync();
@@ -60,7 +60,7 @@ public sealed class TagManagementSteps
     {
         await StartBrowserAsync();
         await Browser.Page.GotoAsync(new Uri(Browser.Host.BaseAddress, $"/Tags/Delete/{Scenario.Tag.TagId}").AbsoluteUri);
-        Assert.True(await Browser.Page.GetByText("Are you sure you want to delete this tag?").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("Are you sure you want to delete this tag?")).ToBeVisibleAsync();
         await Browser.Page.GetByTestId("tag-delete-submit").ClickAsync();
         await Browser.Page.WaitForURLAsync("**/Tags");
     }
@@ -85,7 +85,7 @@ public sealed class TagManagementSteps
     [Then("successful tag creation feedback should be displayed")]
     public async Task ThenSuccessfulTagCreationFeedbackShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText("The tag 'VIP' has been successfully created").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("The tag 'VIP' has been successfully created")).ToBeVisibleAsync();
     }
 
     [Then("the update tag command should preserve all expected details")]
@@ -102,7 +102,7 @@ public sealed class TagManagementSteps
     [Then("successful tag update feedback should be displayed")]
     public async Task ThenSuccessfulTagUpdateFeedbackShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText("The tag 'Updated tag' has been successfully updated").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("The tag 'Updated tag' has been successfully updated")).ToBeVisibleAsync();
     }
 
     [Then("the delete tag command should contain the existing tag identifier")]
@@ -114,7 +114,7 @@ public sealed class TagManagementSteps
     [Then("successful tag deletion feedback should be displayed")]
     public async Task ThenSuccessfulTagDeletionFeedbackShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText("The tag 'Existing tag' has been successfully deleted").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("The tag 'Existing tag' has been successfully deleted")).ToBeVisibleAsync();
     }
 
     [Then("tag creation access should be forbidden")]
@@ -122,7 +122,7 @@ public sealed class TagManagementSteps
     {
         Assert.NotNull(response);
         Assert.Equal(403, response.Status);
-        Assert.False(await Browser.Page.GetByTestId("tag-create-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("tag-create-form")).ToHaveCountAsync(0);
     }
 
     [Then("no tag should have been created")]

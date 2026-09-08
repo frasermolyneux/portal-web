@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
@@ -6,7 +7,7 @@ using XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.UserManagement;
 
 [Trait("Category", "Browser")]
-public sealed class ManageProfileTabsUiTests
+public sealed partial class ManageProfileTabsUiTests
 {
     [Fact]
     public async Task Manage_profile_defaults_to_overview_and_exposes_three_tabs()
@@ -19,12 +20,12 @@ public sealed class ManageProfileTabsUiTests
 
         Assert.NotNull(response);
         Assert.True(response.Ok);
-        Assert.Contains("active", await fixture.Page.Locator("#overview-tab").GetAttributeAsync("class"), StringComparison.Ordinal);
+        await Assertions.Expect(fixture.Page.Locator("#overview-tab")).ToHaveClassAsync(ActiveClassRegex());
         await Assertions.Expect(fixture.Page.Locator("#overview")).ToBeVisibleAsync();
         await Assertions.Expect(fixture.Page.Locator("#permissions")).ToBeHiddenAsync();
         await Assertions.Expect(fixture.Page.Locator("#notifications")).ToBeHiddenAsync();
-        Assert.Equal(3, await fixture.Page.Locator("#manageProfileTabs [role='tab']").CountAsync());
-        Assert.Contains("route-test@example.invalid", await fixture.Page.Locator("#overview").InnerTextAsync(), StringComparison.Ordinal);
+        await Assertions.Expect(fixture.Page.Locator("#manageProfileTabs [role='tab']")).ToHaveCountAsync(3);
+        await Assertions.Expect(fixture.Page.Locator("#overview")).ToContainTextAsync("route-test@example.invalid");
         fixture.AssertNoBrowserErrors();
     }
 
@@ -41,7 +42,7 @@ public sealed class ManageProfileTabsUiTests
 
         Assert.NotNull(response);
         Assert.True(response.Ok);
-        Assert.Contains("active", await fixture.Page.Locator(tabSelector).GetAttributeAsync("class"), StringComparison.Ordinal);
+        await Assertions.Expect(fixture.Page.Locator(tabSelector)).ToHaveClassAsync(ActiveClassRegex());
         await Assertions.Expect(fixture.Page.Locator(panelSelector)).ToBeVisibleAsync();
         await Assertions.Expect(fixture.Page.Locator("#overview")).ToBeHiddenAsync();
         fixture.AssertNoBrowserErrors();
@@ -57,12 +58,14 @@ public sealed class ManageProfileTabsUiTests
         await fixture.Page.Locator("#notifications-tab").ClickAsync();
 
         await Assertions.Expect(fixture.Page.Locator("#notifications")).ToBeVisibleAsync();
-        Assert.EndsWith("?tab=notifications#notifications", fixture.Page.Url, StringComparison.Ordinal);
+        await Assertions.Expect(fixture.Page).ToHaveURLAsync(
+            new Uri(fixture.Host.BaseAddress, $"/User/ManageProfile/{scenario.UserProfileId}?tab=notifications#notifications").AbsoluteUri);
 
         await fixture.Page.Locator("#permissions-tab").ClickAsync();
 
         await Assertions.Expect(fixture.Page.Locator("#permissions")).ToBeVisibleAsync();
-        Assert.EndsWith("?tab=permissions#permissions", fixture.Page.Url, StringComparison.Ordinal);
+        await Assertions.Expect(fixture.Page).ToHaveURLAsync(
+            new Uri(fixture.Host.BaseAddress, $"/User/ManageProfile/{scenario.UserProfileId}?tab=permissions#permissions").AbsoluteUri);
         fixture.AssertNoBrowserErrors();
     }
 
@@ -77,11 +80,11 @@ public sealed class ManageProfileTabsUiTests
         await fixture.Page.Locator("#claimType").SelectOptionAsync(AdditionalPermission.GameServers_Write);
         await fixture.Page.Locator("#gameTypeSelect").SelectOptionAsync(GameType.CallOfDuty5.ToString());
 
-        var postResponse = fixture.Page.WaitForResponseAsync(response =>
-            response.Request.Method == "POST" &&
-            new Uri(response.Url).AbsolutePath == "/User/CreateUserClaim");
-        await fixture.Page.Locator("#createClaimForm button[type='submit']").ClickAsync();
-        Assert.Equal(302, (await postResponse).Status);
+        var postResponse = await fixture.Page.RunAndWaitForResponseAsync(
+            () => fixture.Page.Locator("#createClaimForm button[type='submit']").ClickAsync(),
+            response => response.Request.Method == "POST" &&
+                new Uri(response.Url).AbsolutePath == "/User/CreateUserClaim");
+        Assert.Equal(302, postResponse.Status);
         await fixture.Page.WaitForURLAsync("**?tab=permissions#permissions");
 
         Assert.EndsWith("?tab=permissions#permissions", fixture.Page.Url, StringComparison.Ordinal);
@@ -92,4 +95,7 @@ public sealed class ManageProfileTabsUiTests
         await Assertions.Expect(fixture.Page.Locator("#permissions")).ToBeVisibleAsync();
         fixture.AssertNoBrowserErrors();
     }
+
+    [GeneratedRegex(@"\bactive\b")]
+    private static partial Regex ActiveClassRegex();
 }

@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -38,7 +39,7 @@ public class AuthorizationNavigationIntegrationTests
 
         Assert.NotNull(response);
         Assert.True(response.Ok);
-        Assert.Equal(0, await fixture.Page.GetByTestId("nav-global-settings").CountAsync());
+        await Assertions.Expect(fixture.Page.GetByTestId("nav-global-settings")).ToHaveCountAsync(0);
         fixture.AssertNoBrowserErrors();
     }
 
@@ -51,7 +52,7 @@ public class AuthorizationNavigationIntegrationTests
 
         Assert.NotNull(response);
         Assert.True(response.Ok);
-        Assert.True(await fixture.Page.GetByTestId("nav-global-settings").IsVisibleAsync());
+        await Assertions.Expect(fixture.Page.GetByTestId("nav-global-settings")).ToBeVisibleAsync();
         fixture.AssertNoBrowserErrors();
     }
 }

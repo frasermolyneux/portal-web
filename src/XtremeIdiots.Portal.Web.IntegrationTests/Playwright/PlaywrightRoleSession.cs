@@ -6,15 +6,15 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 /// <summary>An isolated per-role context on the shared browser, captured under the current test.</summary>
 internal sealed class PlaywrightRoleSession : IAsyncDisposable
 {
-    private readonly IBrowserContext browserContext;
+    private readonly Func<ValueTask> closeContext;
     private readonly BrowserDiagnosticCapture capture;
     private readonly TestDiagnosticScope diagnostics;
     private readonly bool ownsDiagnostics;
     private int disposed;
 
-    private PlaywrightRoleSession(IBrowserContext browserContext, BrowserDiagnosticCapture capture, TestDiagnosticScope diagnostics, bool ownsDiagnostics)
+    private PlaywrightRoleSession(Func<ValueTask> closeContext, BrowserDiagnosticCapture capture, TestDiagnosticScope diagnostics, bool ownsDiagnostics)
     {
-        this.browserContext = browserContext;
+        this.closeContext = closeContext;
         this.capture = capture;
         this.diagnostics = diagnostics;
         this.ownsDiagnostics = ownsDiagnostics;
@@ -22,22 +22,48 @@ internal sealed class PlaywrightRoleSession : IAsyncDisposable
 
     public IPage Page => capture.Page;
 
-    public async static Task<PlaywrightRoleSession> CreateAsync(IBrowserContext browserContext, Uri baseAddress, string name = "role", bool ownsDiagnostics = false)
+    public static Task<PlaywrightRoleSession> CreateAsync(IBrowserContext browserContext, Uri baseAddress, string name = "role", bool ownsDiagnostics = false)
+    {
+        return CreateCoreAsync(browserContext, baseAddress, name, ownsDiagnostics, browserContext.DisposeAsync);
+    }
+
+    internal async static Task<PlaywrightRoleSession> CreateAsync(
+        BrowserContextLease lease,
+        BrowserNewContextOptions options,
+        Uri baseAddress,
+        string name = "role",
+        bool ownsDiagnostics = false,
+        CancellationToken cancellationToken = default)
+    {
+        var context = await lease.CreateContextAsync(options, cancellationToken).ConfigureAwait(false);
+        return await CreateCoreAsync(context, baseAddress, name, ownsDiagnostics, lease.DisposeAsync, lease, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async static Task<PlaywrightRoleSession> CreateCoreAsync(
+        IBrowserContext browserContext,
+        Uri baseAddress,
+        string name,
+        bool ownsDiagnostics,
+        Func<ValueTask> closeContext,
+        BrowserContextLease? lease = null,
+        CancellationToken cancellationToken = default)
     {
         ownsDiagnostics |= TestDiagnosticScope.Current is null;
         var diagnostics = TestDiagnosticScope.Current ?? new TestDiagnosticScope("Role session initialization", typeof(PlaywrightRoleSession).FullName!, nameof(CreateAsync));
         var capture = new BrowserDiagnosticCapture(browserContext, baseAddress, diagnostics, name);
         try
         {
+            lease?.BeforeClose(capture.CaptureAsync);
             await capture.InitializeAsync().ConfigureAwait(false);
-            return new PlaywrightRoleSession(browserContext, capture, diagnostics, ownsDiagnostics);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new PlaywrightRoleSession(closeContext, capture, diagnostics, ownsDiagnostics);
         }
         catch (Exception exception)
         {
             diagnostics.RecordError("Role session initialization", exception);
             var cleanup = new DiagnosticResourceCleanup(diagnostics);
             await cleanup.RunAsync("Capturing failed role session", capture.CaptureAsync).ConfigureAwait(false);
-            await cleanup.RunAsync("Closing failed role context", () => browserContext.DisposeAsync().AsTask()).ConfigureAwait(false);
+            await cleanup.RunAsync("Closing failed role context", () => closeContext().AsTask()).ConfigureAwait(false);
             cleanup.AttachToPrimaryException(exception);
             if (ownsDiagnostics)
             {
@@ -63,7 +89,7 @@ internal sealed class PlaywrightRoleSession : IAsyncDisposable
 
         var cleanup = new DiagnosticResourceCleanup(diagnostics);
         await cleanup.RunAsync("Capturing role session diagnostics", capture.CaptureAsync).ConfigureAwait(false);
-        await cleanup.RunAsync("Closing role context", () => browserContext.DisposeAsync().AsTask()).ConfigureAwait(false);
+        await cleanup.RunAsync("Closing role context", () => closeContext().AsTask()).ConfigureAwait(false);
         if (ownsDiagnostics)
         {
             diagnostics.Complete("Unattributed");

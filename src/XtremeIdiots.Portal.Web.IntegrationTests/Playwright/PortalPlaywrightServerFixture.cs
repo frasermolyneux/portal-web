@@ -8,17 +8,21 @@ using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
 /// <summary>
-/// Shared, expensive Playwright infrastructure for the scalable UI test suite: a single Kestrel
-/// host and a single Chromium browser reused across every test in the <c>PortalPlaywright</c>
-/// collection. Individual tests create a cheap per-role <see cref="PlaywrightRoleSession"/> (an
-/// isolated browser context) rather than standing up their own host and browser.
+/// Shares only its Kestrel host. Role sessions lease isolated contexts from the assembly browser.
 /// </summary>
 public sealed class PortalPlaywrightServerFixture : IAsyncLifetime
 {
     private PortalWebKestrelHost host = null!;
-    private IPlaywright playwright = null!;
-    private IBrowser browser = null!;
+    private readonly BrowserRuntime? runtime;
     private TestDiagnosticScope? setupDiagnostics;
+    private int disposed;
+
+    public PortalPlaywrightServerFixture() { }
+
+    internal PortalPlaywrightServerFixture(BrowserRuntime runtime)
+    {
+        this.runtime = runtime;
+    }
 
     public Uri BaseAddress => host.BaseAddress;
 
@@ -30,8 +34,6 @@ public sealed class PortalPlaywrightServerFixture : IAsyncLifetime
         try
         {
             host = await PortalWebKestrelHost.CreateAsync().ConfigureAwait(false);
-            playwright = await Microsoft.Playwright.Playwright.CreateAsync().ConfigureAwait(false);
-            browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true }).ConfigureAwait(false);
             diagnostics.Complete("Passed");
         }
         catch (Exception exception)
@@ -49,7 +51,7 @@ public sealed class PortalPlaywrightServerFixture : IAsyncLifetime
     /// Creates an isolated browsing session impersonating the supplied role. Anonymous sends no
     /// authentication header.
     /// </summary>
-    internal async Task<PlaywrightRoleSession> CreateRoleSessionAsync(PortalTestRole role)
+    internal async Task<PlaywrightRoleSession> CreateRoleSessionAsync(PortalTestRole role, CancellationToken cancellationToken = default)
     {
         var ownsDiagnostics = TestDiagnosticScope.Current is null;
         var diagnostics = TestDiagnosticScope.Current ?? new TestDiagnosticScope($"Role session {role}", GetType().FullName!, nameof(CreateRoleSessionAsync));
@@ -66,14 +68,24 @@ public sealed class PortalPlaywrightServerFixture : IAsyncLifetime
             headers[TestAuthenticationDefaults.HeaderName] = profile;
         }
 
+        BrowserContextLease? lease = null;
         try
         {
-            var browserContext = await browser.NewContextAsync(new BrowserNewContextOptions { ExtraHTTPHeaders = headers }).ConfigureAwait(false);
-            return await PlaywrightRoleSession.CreateAsync(browserContext, host.BaseAddress, role.ToString(), ownsDiagnostics).ConfigureAwait(false);
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+            lease = await (runtime ?? AssemblyBrowserRuntime.Current).AcquireAsync(diagnostics, cancellationToken).ConfigureAwait(false);
+            return await PlaywrightRoleSession.CreateAsync(lease, new BrowserNewContextOptions { ExtraHTTPHeaders = headers },
+                host.BaseAddress, role.ToString(), ownsDiagnostics, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
             diagnostics.RecordError("Creating shared role context", exception);
+            var cleanup = new DiagnosticResourceCleanup(diagnostics);
+            if (lease is not null)
+            {
+                await cleanup.RunAsync("Releasing failed role lease", () => lease.DisposeAsync().AsTask()).ConfigureAwait(false);
+            }
+
+            cleanup.AttachToPrimaryException(exception);
             if (ownsDiagnostics)
             {
                 diagnostics.Complete("InitializationFailed", exception.ToString());
@@ -86,6 +98,11 @@ public sealed class PortalPlaywrightServerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
         var diagnostics = new TestDiagnosticScope("PortalPlaywright shared fixture teardown", GetType().FullName!, nameof(DisposeAsync));
         using var activation = TestDiagnosticScope.Activate(diagnostics);
         var cleanup = await CleanupAsync(diagnostics).ConfigureAwait(false);
@@ -101,18 +118,6 @@ public sealed class PortalPlaywrightServerFixture : IAsyncLifetime
     private async Task<DiagnosticResourceCleanup> CleanupAsync(TestDiagnosticScope diagnostics)
     {
         var cleanup = new DiagnosticResourceCleanup(diagnostics);
-        if (browser is not null)
-        {
-            await cleanup.RunAsync("Closing shared browser", () => browser.DisposeAsync().AsTask(), _ => !browser.IsConnected).ConfigureAwait(false);
-            browser = null!;
-        }
-
-        if (playwright is not null)
-        {
-            cleanup.Run("Disposing shared Playwright", playwright.Dispose);
-            playwright = null!;
-        }
-
         if (host is not null)
         {
             await cleanup.RunAsync("Disposing shared application host", () => host.DisposeAsync().AsTask()).ConfigureAwait(false);

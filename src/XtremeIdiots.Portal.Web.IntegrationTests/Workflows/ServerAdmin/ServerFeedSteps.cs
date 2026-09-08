@@ -18,6 +18,7 @@ public sealed class ServerFeedSteps
     private BrowserFixture? browser;
     private bool initiallyBackgrounded;
     private int requestCountBeforeAction;
+    private int browserRequestCountBeforeAction;
 
     [Given("a server feed with chat and event items")]
     public void GivenChatAndEventItems()
@@ -82,6 +83,7 @@ public sealed class ServerFeedSteps
         var responseTask = WaitForNextFeedResponseAsync();
         await Browser.Page.Locator("#sd-feedToggleEvents").UncheckAsync();
         await responseTask;
+        await WaitForFeedIdleAsync();
     }
 
     [When("the user pauses feed refresh")]
@@ -138,52 +140,87 @@ public sealed class ServerFeedSteps
         var responseTask = WaitForNextFeedResponseAsync();
         await Browser.Page.EvaluateAsync("ServerFeed.forceReload()");
         await responseTask;
+        await WaitForFeedIdleAsync();
     }
 
     [When("the page is backgrounded and refresh is requested")]
     public async Task WhenPageBackgroundedAndRefreshed()
     {
-        requestCountBeforeAction = Scenario.Requests.Count;
+        await RememberRequestCountsAsync();
         await Browser.Page.EvaluateAsync("Object.defineProperty(document, 'hidden', { configurable: true, value: true }); document.dispatchEvent(new Event('visibilitychange')); ServerFeed.refresh();");
-        await Browser.Page.EvaluateAsync("new Promise(resolve => setTimeout(resolve, 100))");
     }
 
     [When("the page becomes visible and refresh is requested")]
     public async Task WhenPageVisibleAndRefreshed()
     {
-        requestCountBeforeAction = Scenario.Requests.Count;
+        await RememberRequestCountsAsync();
         Scenario.QueueResponse(items: [ServerFeedScenario.Chat(ChatTwoId, "Visible refresh")]);
         var responseTask = WaitForNextFeedResponseAsync();
         await Browser.Page.EvaluateAsync("Object.defineProperty(document, 'hidden', { configurable: true, value: false }); document.dispatchEvent(new Event('visibilitychange')); ServerFeed.refresh();");
         await responseTask;
+        await WaitForFeedIdleAsync();
     }
 
     [When("two refreshes are requested while one is active")]
     public async Task WhenOverlappingRefreshesRequested()
     {
-        requestCountBeforeAction = Scenario.Requests.Count;
-        Scenario.QueueResponse(250, items: [ServerFeedScenario.Chat(ChatTwoId, "Delayed refresh")]);
+        await RememberRequestCountsAsync();
+        var held = Scenario.QueueResponse(hold: true, items: [ServerFeedScenario.Chat(ChatTwoId, "Delayed refresh")]);
         var responseTask = WaitForNextFeedResponseAsync();
-        await Browser.Page.EvaluateAsync("ServerFeed.refresh(); ServerFeed.refresh();");
+        await Browser.Page.EvaluateAsync("ServerFeed.refresh()");
+        try
+        {
+            await held.Gate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await Browser.Page.EvaluateAsync("ServerFeed.refresh()");
+            Assert.Equal(browserRequestCountBeforeAction + 1, await GetBrowserRequestCountAsync());
+        }
+        finally
+        {
+            held.Gate.Release();
+        }
+
         await responseTask;
+        await WaitForFeedIdleAsync();
     }
 
     [When("the server feed is disposed and refresh is requested")]
     public async Task WhenDisposedAndRefreshed()
     {
-        requestCountBeforeAction = Scenario.Requests.Count;
+        await RememberRequestCountsAsync();
         await Browser.Page.EvaluateAsync("ServerFeed.dispose(); ServerFeed.refresh();");
-        await Browser.Page.EvaluateAsync("new Promise(resolve => setTimeout(resolve, 100))");
     }
 
     [When("a forced reload supersedes a delayed refresh")]
     public async Task WhenForcedReloadSupersedesDelayedRefresh()
     {
-        requestCountBeforeAction = Scenario.Requests.Count;
-        Scenario.QueueResponse(300, items: [ServerFeedScenario.Chat(ChatTwoId, "Aborted item")]);
+        await RememberRequestCountsAsync();
+        var held = Scenario.QueueResponse(hold: true, allowAbort: true, items: [ServerFeedScenario.Chat(ChatTwoId, "Aborted item")]);
         Scenario.QueueResponse(items: [ServerFeedScenario.Chat("chat:55555555-6666-7777-8888-999999999999", "Replacement item")]);
-        await Browser.Page.EvaluateAsync("ServerFeed.refresh(); setTimeout(function () { ServerFeed.forceReload(); }, 25);");
+        var aborted = new TaskCompletionSource<IRequest>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnRequestFailed(object? sender, IRequest request)
+        {
+            if (IsFeedRequest(request))
+                aborted.TrySetResult(request);
+        }
+
+        Browser.Page.RequestFailed += OnRequestFailed;
+        try
+        {
+            await Browser.Page.EvaluateAsync("ServerFeed.refresh()");
+            await held.Gate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await Browser.Page.EvaluateAsync("ServerFeed.forceReload()");
+            var failedRequest = await aborted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal("net::ERR_ABORTED", failedRequest.Failure);
+        }
+        finally
+        {
+            Browser.Page.RequestFailed -= OnRequestFailed;
+            held.Gate.Release();
+        }
+
+        await held.Handled.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await Assertions.Expect(Browser.Page.Locator("#sd-feedItems")).ToContainTextAsync("Replacement item");
+        await WaitForFeedIdleAsync();
     }
 
     [Then("the feed should show the chat and event items")]
@@ -282,28 +319,32 @@ public sealed class ServerFeedSteps
 
     [Then("no background feed request should be sent")]
     [Then("no disposed feed request should be sent")]
-    public void ThenNoFeedRequestSent()
+    public async Task ThenNoFeedRequestSent()
     {
         Assert.Equal(requestCountBeforeAction, Scenario.Requests.Count);
+        Assert.Equal(browserRequestCountBeforeAction, await GetBrowserRequestCountAsync());
     }
 
     [Then("one visible feed request should be sent")]
     [Then("one overlapping feed request should be sent")]
-    public void ThenOneFeedRequestSent()
+    public async Task ThenOneFeedRequestSent()
     {
         Assert.Equal(requestCountBeforeAction + 1, Scenario.Requests.Count);
+        Assert.Equal(browserRequestCountBeforeAction + 1, await GetBrowserRequestCountAsync());
     }
 
     [Then("no initial feed request should be sent")]
-    public void ThenNoInitialFeedRequestSent()
+    public async Task ThenNoInitialFeedRequestSent()
     {
         Assert.Empty(Scenario.Requests);
+        Assert.Equal(0, await GetBrowserRequestCountAsync());
     }
 
     [Then("two supersession feed requests should be sent")]
-    public void ThenTwoSupersessionRequestsSent()
+    public async Task ThenTwoSupersessionRequestsSent()
     {
         Assert.Equal(requestCountBeforeAction + 2, Scenario.Requests.Count);
+        Assert.Equal(browserRequestCountBeforeAction + 2, await GetBrowserRequestCountAsync());
     }
 
     [Then("only the replacement feed item should be visible")]
@@ -331,7 +372,16 @@ public sealed class ServerFeedSteps
     public async Task DisposeBrowserAsync()
     {
         if (browser is not null)
-            await browser.DisposeAsync();
+        {
+            try
+            {
+                await Scenario.ReleaseResponsesAsync();
+            }
+            finally
+            {
+                await browser.DisposeAsync();
+            }
+        }
     }
 
     private BrowserFixture Browser => browser ?? throw new InvalidOperationException("Browser not started.");
@@ -347,6 +397,28 @@ public sealed class ServerFeedSteps
     {
         browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.GameAdmin, Scenario.ConfigureServices);
         await Browser.Page.RouteAsync("**/ServerAdmin/GetServerFeed/**", HandleFeedRouteAsync);
+        await Browser.Page.AddInitScriptAsync(
+            $$"""
+            (() => {
+                const feedPath = {{System.Text.Json.JsonSerializer.Serialize(FeedPath)}};
+                const counts = window.__portalFeedRequests = { started: 0, active: 0 };
+                const open = XMLHttpRequest.prototype.open;
+                const send = XMLHttpRequest.prototype.send;
+                XMLHttpRequest.prototype.open = function(method, url, ...args) {
+                    this.__portalFeedRequest = method.toUpperCase() === 'GET' &&
+                        new URL(url, location.href).pathname === feedPath;
+                    return open.call(this, method, url, ...args);
+                };
+                XMLHttpRequest.prototype.send = function(...args) {
+                    if (this.__portalFeedRequest) {
+                        counts.started++;
+                        counts.active++;
+                        this.addEventListener('loadend', () => counts.active--, { once: true });
+                    }
+                    return send.apply(this, args);
+                };
+            })();
+            """);
         if (initiallyBackgrounded)
         {
             await Browser.Page.AddInitScriptAsync("Object.defineProperty(document, 'hidden', { configurable: true, get: function () { return true; } });");
@@ -355,10 +427,12 @@ public sealed class ServerFeedSteps
         var response = await Browser.Page.GotoAsync(ServerDetailUrl);
         Assert.NotNull(response);
         Assert.True(response.Ok);
+        await Browser.Page.EvaluateAsync("() => new Promise(resolve => window.jQuery(resolve))");
         if (!initiallyBackgrounded)
             await WaitForInitialFeedAsync();
-        else
-            await Browser.Page.EvaluateAsync("new Promise(resolve => setTimeout(resolve, 100))");
+
+        // These scenarios drive refresh explicitly; disable unrelated periodic refreshes.
+        await Browser.Page.EvaluateAsync("ServerFeed.stop()");
     }
 
     private async Task HandleFeedRouteAsync(IRoute route)
@@ -369,8 +443,7 @@ public sealed class ServerFeedSteps
 
         try
         {
-            if (plan.DelayMilliseconds > 0)
-                await Task.Delay(plan.DelayMilliseconds);
+            await plan.Gate.WaitAsync();
 
             await route.FulfillAsync(new RouteFulfillOptions
             {
@@ -379,14 +452,25 @@ public sealed class ServerFeedSteps
                 Body = plan.Json,
             });
         }
-        catch (PlaywrightException) when (route.Request.Failure is not null)
+        catch (PlaywrightException) when (plan.AllowAbort && route.Request.Failure == "net::ERR_ABORTED")
         {
+            Console.WriteLine("The explicitly superseded feed request was aborted.");
+        }
+        catch (Exception exception)
+        {
+            plan.Handled.TrySetException(exception);
+            throw;
+        }
+        finally
+        {
+            plan.Handled.TrySetResult();
         }
     }
 
     private async Task WaitForInitialFeedAsync()
     {
         await Assertions.Expect(Browser.Page.Locator("#sd-feedItems")).Not.ToContainTextAsync("Loading server feed");
+        await WaitForFeedIdleAsync();
         Assert.NotEmpty(Scenario.Requests);
     }
 
@@ -395,11 +479,35 @@ public sealed class ServerFeedSteps
         var responseTask = WaitForNextFeedResponseAsync();
         await Browser.Page.EvaluateAsync("ServerFeed.refresh()");
         await responseTask;
+        await WaitForFeedIdleAsync();
     }
 
     private Task<IResponse> WaitForNextFeedResponseAsync()
     {
         return Browser.Page.WaitForResponseAsync(response =>
-            new Uri(response.Url).AbsolutePath.Equals($"/ServerAdmin/GetServerFeed/{Scenario.GameServerId}", StringComparison.Ordinal));
+            IsFeedRequest(response.Request));
+    }
+
+    private string FeedPath => $"/ServerAdmin/GetServerFeed/{Scenario.GameServerId}";
+
+    private bool IsFeedRequest(IRequest request)
+    {
+        return request.Method == "GET" && new Uri(request.Url).AbsolutePath.Equals(FeedPath, StringComparison.Ordinal);
+    }
+
+    private Task<int> GetBrowserRequestCountAsync()
+    {
+        return Browser.Page.EvaluateAsync<int>("window.__portalFeedRequests.started");
+    }
+
+    private async Task RememberRequestCountsAsync()
+    {
+        requestCountBeforeAction = Scenario.Requests.Count;
+        browserRequestCountBeforeAction = await GetBrowserRequestCountAsync();
+    }
+
+    private async Task WaitForFeedIdleAsync()
+    {
+        await using var handle = await Browser.Page.WaitForFunctionAsync("window.__portalFeedRequests.active === 0");
     }
 }

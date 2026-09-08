@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using Reqnroll;
 using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -10,9 +11,9 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 public sealed class RconCredentialsSteps
 {
     private BrowserFixture? browser;
-    private bool editFormAvailableWithoutRconControls;
+    private bool editFormWithoutRconControlsVerified;
     private string? profile;
-    private Microsoft.Playwright.IResponse? response;
+    private IResponse? response;
 
     [Given("a successful RCON credential scenario for a head admin")]
     public void GivenASuccessfulRconCredentialScenarioForAHeadAdmin()
@@ -74,11 +75,9 @@ public sealed class RconCredentialsSteps
         await Browser.Page.Locator("#general-tab-btn").ClickAsync();
         var title = Browser.Page.Locator("input[name='GameServer.Title']");
         await title.FillAsync(string.Empty);
-        var responseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
-            browserResponse.Request.Method == "POST" &&
-            new Uri(browserResponse.Url).AbsolutePath.StartsWith("/GameServers/Edit", StringComparison.Ordinal));
-        await Browser.Page.Locator("#game-server-edit-form").EvaluateAsync("form => form.submit()");
-        response = await responseTask;
+        response = await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.Locator("#game-server-edit-form").EvaluateAsync("form => form.submit()"),
+            IsEditResponse);
     }
 
     [When("the game admin navigates directly to the server edit form")]
@@ -95,10 +94,11 @@ public sealed class RconCredentialsSteps
         var formResponse = await Browser.Page.GotoAsync(EditUrl);
         Assert.NotNull(formResponse);
         Assert.True(formResponse.Ok);
-        editFormAvailableWithoutRconControls =
-            await Browser.Page.Locator("#game-server-edit-form").IsVisibleAsync() &&
-            !await Browser.Page.Locator("#rcon-tab-btn").IsVisibleAsync() &&
-            !await Browser.Page.GetByTestId("rcon-password-input").IsVisibleAsync();
+        // Verify before submitting: the successful POST navigates away from this form.
+        await Assertions.Expect(Browser.Page.Locator("#game-server-edit-form")).ToBeVisibleAsync();
+        await Assertions.Expect(Browser.Page.Locator("#rcon-tab-btn")).ToHaveCountAsync(0);
+        await Assertions.Expect(Browser.Page.GetByTestId("rcon-password-input")).ToHaveCountAsync(0);
+        editFormWithoutRconControlsVerified = true;
         await Browser.Page.Locator("#game-server-edit-form").EvaluateAsync(
             "form => { const input = document.createElement('input'); input.name = 'RconConfigPassword'; input.value = 'ForgedPassword'; form.appendChild(input); }");
         response = await SubmitEditFormAsync();
@@ -145,26 +145,26 @@ public sealed class RconCredentialsSteps
     [Then("successful game server update feedback should be displayed")]
     public async Task ThenSuccessfulGameServerUpdateFeedbackShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText("The game server CoD4 Server 1 has been updated for CallOfDuty4").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("The game server CoD4 Server 1 has been updated for CallOfDuty4")).ToBeVisibleAsync();
     }
 
     [Then("the RCON configuration failure warning should be displayed")]
     public async Task ThenTheRconConfigurationFailureWarningShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText(
-            "The game server CoD4 Server 1 has been updated but some configuration sections failed to save: rcon").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText(
+            "The game server CoD4 Server 1 has been updated but some configuration sections failed to save: rcon")).ToBeVisibleAsync();
     }
 
     [Then("the RCON password should be visible")]
     public async Task ThenTheRconPasswordShouldBeVisible()
     {
-        Assert.Equal("text", await Browser.Page.GetByTestId("rcon-password-input").GetAttributeAsync("type"));
+        await Assertions.Expect(Browser.Page.GetByTestId("rcon-password-input")).ToHaveAttributeAsync("type", "text");
     }
 
     [Then("the RCON password should be hidden")]
     public async Task ThenTheRconPasswordShouldBeHidden()
     {
-        Assert.Equal("password", await Browser.Page.GetByTestId("rcon-password-input").GetAttributeAsync("type"));
+        await Assertions.Expect(Browser.Page.GetByTestId("rcon-password-input")).ToHaveAttributeAsync("type", "password");
     }
 
     [Then("the required server title validation should be displayed")]
@@ -172,9 +172,8 @@ public sealed class RconCredentialsSteps
     {
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
-        Assert.Equal(
-            "The Title field is required.",
-            await Browser.Page.Locator("span[data-valmsg-for='GameServer.Title']").TextContentAsync());
+        await Assertions.Expect(Browser.Page.Locator("span[data-valmsg-for='GameServer.Title']"))
+            .ToHaveTextAsync("The Title field is required.");
     }
 
     [Then("game server editing should be denied")]
@@ -182,13 +181,13 @@ public sealed class RconCredentialsSteps
     {
         Assert.NotNull(response);
         Assert.Equal(403, response.Status);
-        Assert.False(await Browser.Page.Locator("#game-server-edit-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.Locator("#game-server-edit-form")).ToHaveCountAsync(0);
     }
 
     [Then("the server edit form should remain available without RCON controls")]
     public void ThenTheServerEditFormShouldRemainAvailableWithoutRconControls()
     {
-        Assert.True(editFormAvailableWithoutRconControls);
+        Assert.True(editFormWithoutRconControlsVerified);
     }
 
     [Then("the core game server update should be recorded without an RCON write")]
@@ -244,9 +243,9 @@ public sealed class RconCredentialsSteps
         var formResponse = await Browser.Page.GotoAsync(EditUrl);
         Assert.NotNull(formResponse);
         Assert.True(formResponse.Ok);
-        Assert.True(await Browser.Page.Locator("#game-server-edit-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.Locator("#game-server-edit-form")).ToBeVisibleAsync();
         await Browser.Page.Locator("#rcon-tab-btn").ClickAsync();
-        Assert.True(await Browser.Page.GetByTestId("rcon-password-input").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("rcon-password-input")).ToBeVisibleAsync();
     }
 
     private async Task StartBrowserAsync()
@@ -256,12 +255,15 @@ public sealed class RconCredentialsSteps
             Scenario.ConfigureServices);
     }
 
-    private async Task<Microsoft.Playwright.IResponse> SubmitEditFormAsync()
+    private async Task<IResponse> SubmitEditFormAsync()
     {
-        var responseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
-            browserResponse.Request.Method == "POST" &&
-            new Uri(browserResponse.Url).AbsolutePath.StartsWith("/GameServers/Edit", StringComparison.Ordinal));
-        await Browser.Page.GetByTestId("game-server-save").ClickAsync();
-        return await responseTask;
+        return await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.GetByTestId("game-server-save").ClickAsync(),
+            IsEditResponse);
+    }
+
+    private bool IsEditResponse(IResponse candidate)
+    {
+        return candidate.Request.Method == "POST" && new Uri(candidate.Url).AbsolutePath == new Uri(EditUrl).AbsolutePath;
     }
 }

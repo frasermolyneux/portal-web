@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using Reqnroll;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -9,7 +10,7 @@ public sealed class GameServerDeletionSteps
 {
     private BrowserFixture? browser;
     private string? profile;
-    private Microsoft.Playwright.IResponse? response;
+    private IResponse? response;
 
     [Given("a successful game server deletion scenario for a senior admin")]
     public void GivenASuccessfulGameServerDeletionScenarioForASeniorAdmin()
@@ -33,11 +34,10 @@ public sealed class GameServerDeletionSteps
     public async Task WhenTheSeniorAdminConfirmsGameServerDeletion()
     {
         await OpenDeleteFormAsync();
-        var responseTask = Browser.Page.WaitForResponseAsync(browserResponse =>
-            browserResponse.Request.Method == "POST" &&
-            new Uri(browserResponse.Url).AbsolutePath.StartsWith("/GameServers/Delete", StringComparison.Ordinal));
-        await Browser.Page.GetByTestId("game-server-delete-submit").ClickAsync();
-        response = await responseTask;
+        response = await Browser.Page.RunAndWaitForResponseAsync(
+            () => Browser.Page.GetByTestId("game-server-delete-submit").ClickAsync(),
+            browserResponse => browserResponse.Request.Method == "POST" &&
+                new Uri(browserResponse.Url).AbsolutePath == new Uri(DeleteUrl).AbsolutePath);
         Assert.Equal(302, response.Status);
         await Browser.Page.WaitForURLAsync("**/GameServers");
     }
@@ -59,14 +59,14 @@ public sealed class GameServerDeletionSteps
     [Then("successful game server deletion feedback should be displayed")]
     public async Task ThenSuccessfulGameServerDeletionFeedbackShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText(
-            "The game server CoD4 Server To Delete has been deleted for CallOfDuty4").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText(
+            "The game server CoD4 Server To Delete has been deleted for CallOfDuty4")).ToBeVisibleAsync();
     }
 
     [Then("failed game server deletion feedback should be displayed")]
     public async Task ThenFailedGameServerDeletionFeedbackShouldBeDisplayed()
     {
-        Assert.True(await Browser.Page.GetByText("Failed to delete the game server. Please try again.").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByText("Failed to delete the game server. Please try again.")).ToBeVisibleAsync();
     }
 
     [Then("game server deletion should be denied")]
@@ -74,7 +74,7 @@ public sealed class GameServerDeletionSteps
     {
         Assert.NotNull(response);
         Assert.EndsWith("/Errors/Display/401", Browser.Page.Url, StringComparison.Ordinal);
-        Assert.False(await Browser.Page.GetByTestId("game-server-delete-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("game-server-delete-form")).ToHaveCountAsync(0);
     }
 
     [Then("no game server delete command should be recorded")]
@@ -114,7 +114,7 @@ public sealed class GameServerDeletionSteps
         var formResponse = await Browser.Page.GotoAsync(DeleteUrl);
         Assert.NotNull(formResponse);
         Assert.True(formResponse.Ok);
-        Assert.True(await Browser.Page.GetByTestId("game-server-delete-form").IsVisibleAsync());
+        await Assertions.Expect(Browser.Page.GetByTestId("game-server-delete-form")).ToBeVisibleAsync();
     }
 
     private async Task StartBrowserAsync()

@@ -85,6 +85,39 @@ the owning suite instead of `All` or `Integration`. The existing
 `dotnet: test-integration` task and `run-ui-tests.ps1` remain compatibility
 entry points for both integration suites; `-SkipBuild` maps to `-NoBuild`.
 
+### Browser ownership and execution limits
+
+The browser harness reuses an assembly-owned Playwright/Chromium instance instead
+of launching Chromium for each test. Every ordinary test still gets an isolated
+browser context, Kestrel host, SQLite database, authentication headers and scenario
+mocks. Sharing the browser process does not share application state. The
+navigation collection can retain its shared read-only host, but its role contexts
+are isolated and participate in the same context limit.
+
+Browser contexts are acquired through bounded leases and returned even when
+initialization or disposal fails. A test disposes its context and host, never the
+assembly's browser. Assembly teardown closes the shared resources. Unexpected
+browser disconnection is a visible failure, not an implicit test retry.
+The defaults are two active contexts, a 120-second lease wait, a 60-second native
+browser launch, 30-second action/navigation waits, and the existing five-second
+retrying assertion timeout. Application hosts have a 60-second startup budget and
+a 30-second shutdown budget. A failed native context close blocks further
+allocations rather than exceeding the limit with an unclosed context.
+
+The Browser command and bootstrap smoke both use `scripts/browser.runsettings`:
+
+- At most two xUnit collection workers, using the conservative scheduler.
+- A three-minute VSTest hang watchdog and fifteen-minute test-session limit.
+- No automatic test reruns and no memory dumps; the blame sequence XML is retained
+  with the existing test artifact when a test host hangs.
+- The CI Browser job has a twenty-minute outer limit, including setup/build.
+
+Unit and HTTP commands do not use these browser runner settings, and the browser
+runtime stays lazy for non-browser execution. Existing Reqnroll workflow
+serialization remains in place. Use the repository commands/VS Code tasks for
+the complete configuration; a raw `dotnet test` invocation must explicitly pass
+`--settings scripts/browser.runsettings` to get the runner watchdog.
+
 ### CI and remote environments
 
 - PR and deployment verification use separate **Unit tests**, **HTTP integration
@@ -163,6 +196,26 @@ between the HTTP and browser selections.
 Prefer accessible selectors by role, label, and visible text. Add `data-testid` only when the control has no stable accessible selector. Razor changes must follow `docs/ui-standards-guide.md`.
 
 Authorization tests must keep real policies and handlers active. Add test identities or scenario data through the integration project rather than adding production test-login endpoints or credentials.
+
+### Synchronization conventions
+
+- Use retrying `Assertions.Expect` for DOM visibility, presence/count, text,
+  values and attributes. Keep presence checks distinct from visibility checks:
+  an unauthorized field should be absent when the policy removes its markup.
+- Register response waits before the triggering action, match the HTTP method
+  and exact path, and include identifying filters/search values where applicable.
+  Response headers alone do not prove the browser has processed the body:
+  wait for the resulting DOM state or the matching DataTables draw.
+- Hold asynchronous fake operations with `RequestGate`, await their entry signal,
+  assert the in-flight state, then explicitly release them. Release held work
+  during cleanup too. Do not create a supposed in-flight window with a short sleep.
+- Feed scenarios observe request starts and completion in the browser, and use
+  explicit response gates for overlap/supersession. After the initial load they
+  stop the periodic scheduler and drive the public refresh operation themselves;
+  unrelated polling cannot consume planned responses midway through an assertion.
+- Do not add blanket retries, `NetworkIdle` waits, or arbitrary sleeps to make a
+  test green. Infinite waits in cancellation/watchdog regression probes and
+  asynchronous error injection are intentional test stimuli, not synchronization.
 
 ## Diagnosing failures
 
@@ -268,7 +321,7 @@ Browser pages that require seeded identifiers or domain-specific fake responses 
 
 Phase 3 browser workflows are executable Gherkin specifications powered by Reqnroll and xUnit. Each `.feature` file owns readable Given/When/Then scenarios, while its `*Steps.cs` binding class performs Playwright interactions and assertions. Generated feature code is written below `obj/` and is not committed.
 
-Each workflow scenario replaces only the dependencies owned by that test host and records state-changing client calls in thread-safe queues. Reqnroll creates binding instances per scenario, and an async `AfterScenario` hook disposes the browser fixture. All `@workflow` features are marked non-parallelizable through `reqnroll.json` because each scenario owns a Chromium process and Kestrel host. Steps assert the browser result and exact downstream DTO rather than sharing mutable global mocks.
+Each workflow scenario replaces only the dependencies owned by that test host and records state-changing client calls in thread-safe queues. Reqnroll creates binding instances per scenario, and an async `AfterScenario` hook disposes the context lease and Kestrel host. Chromium is owned by the assembly, not the scenario. Existing `@workflow` serialization through `reqnroll.json` is retained while ordinary browser collections use bounded parallelism. Steps assert the browser result and exact downstream DTO rather than sharing mutable global mocks.
 
 Run a workflow pack independently through its feature tag:
 
