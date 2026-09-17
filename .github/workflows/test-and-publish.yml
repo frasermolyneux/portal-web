@@ -29,7 +29,7 @@ jobs:
     outputs:
       report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
@@ -61,7 +61,7 @@ jobs:
     outputs:
       report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
@@ -87,7 +87,7 @@ jobs:
       report: ${{ steps.tests.outputs.report || steps.not-run.outputs.report }}
       bootstrap: ${{ steps.tests.outputs.bootstrap }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
@@ -112,14 +112,14 @@ jobs:
     outputs:
       report: ${{ steps.summary.outputs.report }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           sparse-checkout: .github/scripts
           persist-credentials: false
 
       - name: Aggregate suite results
         id: summary
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
           SUITE_JOBS: ${{ toJSON(needs) }}
           RUN_BROWSER: ${{ inputs.run-browser }}
@@ -177,7 +177,7 @@ jobs:
     outputs:
       build_version: ${{ steps.nbgv-metadata.outputs.build_version }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 

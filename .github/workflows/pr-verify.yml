@@ -53,13 +53,13 @@ jobs:
       group: portal-test-results-${{ github.repository }}-${{ github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           sparse-checkout: .github/scripts
           persist-credentials: false
 
       - name: Create or update the owned test-results comment
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
           TEST_REPORT: ${{ needs.test-suites.outputs.test_report }}
           TEST_WORKFLOW_RESULT: ${{ needs.test-suites.result }}
