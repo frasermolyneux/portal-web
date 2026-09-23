@@ -23,6 +23,26 @@ Feature: File transport credentials
     Then the SFTP configuration should preserve the current password and fingerprint
     And the file transport browser should report no errors
 
+  Scenario: Head admin configures SFTP private-key authentication
+    Given a successful private-key file transport scenario for a head admin
+    When the head admin replaces the SFTP private key and passphrase
+    Then the private-key controls should replace the password control
+    And the SFTP configuration should contain the new private-key credentials
+    And the file transport browser should report no errors
+
+  Scenario: Blank SFTP private-key secrets preserve current values
+    Given a successful private-key file transport scenario for a head admin
+    When the head admin saves blank SFTP private-key fields
+    Then the SFTP configuration should preserve the current private-key credentials
+    And the file transport browser should report no errors
+
+  Scenario: Missing SFTP private key prevents writes
+    Given a private-key file transport scenario with no existing private key
+    When the head admin submits SFTP private-key authentication without a key
+    Then the SFTP private-key validation should be displayed
+    And no file transport writes should be recorded
+    And the file transport browser should report no errors
+
   Scenario: Missing SFTP fingerprint prevents writes
     Given a file transport scenario with no existing SFTP fingerprint
     When the head admin submits SFTP without a host key fingerprint

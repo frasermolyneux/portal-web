@@ -839,17 +839,27 @@ public class GameServersController(
             && string.IsNullOrEmpty(model.FileTransportConfigPrivateKey);
         var needsFileTransportPrivateKeyPassphrase = canEditFileTransport
             && usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPrivateKey)
             && string.IsNullOrEmpty(model.FileTransportConfigPrivateKeyPassphrase);
         var needsFileTransportHostKeyFingerprint = canEditFileTransport
             && isSftp
             && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint);
         var needsRconPassword = canEditRcon && string.IsNullOrEmpty(model.RconConfigPassword);
+        var options = new CredentialPreservationOptions(
+            needsFileTransportPassword,
+            needsFileTransportPrivateKey,
+            needsFileTransportPrivateKeyPassphrase,
+            needsFileTransportHostKeyFingerprint,
+            needsRconPassword);
 
-        if (!needsFileTransportPassword
-            && !needsFileTransportPrivateKey
-            && !needsFileTransportPrivateKeyPassphrase
-            && !needsFileTransportHostKeyFingerprint
-            && !needsRconPassword)
+        if (options is
+            {
+                FileTransportPassword: false,
+                FileTransportPrivateKey: false,
+                FileTransportPrivateKeyPassphrase: false,
+                FileTransportHostKeyFingerprint: false,
+                RconPassword: false
+            })
             return true;
 
         try
@@ -866,11 +876,7 @@ public class GameServersController(
                     model,
                     activeTransportNamespace,
                     config,
-                    needsFileTransportPassword,
-                    needsFileTransportPrivateKey,
-                    needsFileTransportPrivateKeyPassphrase,
-                    needsFileTransportHostKeyFingerprint,
-                    needsRconPassword,
+                    options,
                     Logger);
             }
 

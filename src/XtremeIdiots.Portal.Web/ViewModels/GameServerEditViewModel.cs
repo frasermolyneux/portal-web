@@ -41,6 +41,8 @@ public class GameServerEditViewModel : IValidatableObject
     public string? FileTransportConfigPassword { get; set; }
 
     [DisplayName("SFTP Authentication")]
+    [Required]
+    [EnumDataType(typeof(SftpAuthenticationType))]
     public SftpAuthenticationType FileTransportConfigSftpAuthenticationType { get; set; } = SftpAuthenticationType.Password;
 
     [DisplayName("SFTP Private Key")]

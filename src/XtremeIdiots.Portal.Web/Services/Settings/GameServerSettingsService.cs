@@ -29,22 +29,14 @@ public sealed class GameServerSettingsService(
         GameServerEditViewModel model,
         string activeTransportNamespace,
         ConfigurationDto config,
-        bool needsFileTransportPassword,
-        bool needsFileTransportPrivateKey,
-        bool needsFileTransportPrivateKeyPassphrase,
-        bool needsFileTransportHostKeyFingerprint,
-        bool needsRconPassword,
+        CredentialPreservationOptions options,
         ILogger logger)
     {
         namespaceSettingsParser.PopulateExistingCredentials(
             model,
             activeTransportNamespace,
             config,
-            needsFileTransportPassword,
-            needsFileTransportPrivateKey,
-            needsFileTransportPrivateKeyPassphrase,
-            needsFileTransportHostKeyFingerprint,
-            needsRconPassword,
+            options,
             logger);
     }
 

@@ -179,9 +179,6 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     model.FileTransportConfigPort = sftpDocument.Port ?? GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType);
                     model.FileTransportConfigUsername = sftpDocument.Username;
                     model.FileTransportConfigSftpAuthenticationType = sftpDocument.AuthenticationType;
-                    model.FileTransportConfigPassword = sftpDocument.Password;
-                    model.FileTransportConfigPrivateKey = sftpDocument.PrivateKey;
-                    model.FileTransportConfigPrivateKeyPassphrase = sftpDocument.PrivateKeyPassphrase;
                     model.FileTransportConfigHostKeyFingerprint = sftpDocument.HostKeyFingerprint;
                     model.FileTransportConfigMapsRootPath = sftpDocument.MapsRootPath;
                 }
@@ -192,10 +189,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     model.FileTransportConfigHostname = ftpDocument.Hostname;
                     model.FileTransportConfigPort = ftpDocument.Port ?? GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType);
                     model.FileTransportConfigUsername = ftpDocument.Username;
-                    model.FileTransportConfigPassword = ftpDocument.Password;
                     model.FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.Password;
-                    model.FileTransportConfigPrivateKey = null;
-                    model.FileTransportConfigPrivateKeyPassphrase = null;
                     model.FileTransportConfigMapsRootPath = ftpDocument.MapsRootPath;
                     model.FileTransportConfigHostKeyFingerprint = null;
                 }
@@ -518,11 +512,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         GameServerEditViewModel model,
         string activeTransportNamespace,
         ConfigurationDto config,
-        bool needsFileTransportPassword,
-        bool needsFileTransportPrivateKey,
-        bool needsFileTransportPrivateKeyPassphrase,
-        bool needsFileTransportHostKeyFingerprint,
-        bool needsRconPassword,
+        CredentialPreservationOptions options,
         ILogger logger)
     {
         if (string.IsNullOrWhiteSpace(config.Configuration))
@@ -530,27 +520,27 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
             return;
         }
 
-        if ((needsFileTransportPassword
-                || needsFileTransportPrivateKey
-                || needsFileTransportPrivateKeyPassphrase
-                || needsFileTransportHostKeyFingerprint)
+        if ((options.FileTransportPassword
+                || options.FileTransportPrivateKey
+                || options.FileTransportPrivateKeyPassphrase
+                || options.FileTransportHostKeyFingerprint)
             && string.Equals(config.Namespace, activeTransportNamespace, StringComparison.OrdinalIgnoreCase))
         {
             if (string.Equals(activeTransportNamespace, SftpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
                 && TryDeserialize(config, logger, out SftpSettingsDocument? sftpDocument)
                 && sftpDocument is not null)
             {
-                if (needsFileTransportPassword)
+                if (options.FileTransportPassword)
                 {
                     model.FileTransportConfigPassword = sftpDocument.Password;
                 }
 
-                if (needsFileTransportPrivateKey)
+                if (options.FileTransportPrivateKey)
                 {
                     model.FileTransportConfigPrivateKey = sftpDocument.PrivateKey;
                 }
 
-                if (needsFileTransportPrivateKeyPassphrase)
+                if (options.FileTransportPrivateKeyPassphrase)
                 {
                     model.FileTransportConfigPrivateKeyPassphrase = sftpDocument.PrivateKeyPassphrase;
                 }
@@ -564,12 +554,12 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
             if (string.Equals(activeTransportNamespace, FtpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
                 && TryDeserialize(config, logger, out FtpSettingsDocument? ftpDocument)
                 && ftpDocument is not null
-                && needsFileTransportPassword)
+                && options.FileTransportPassword)
             {
                 model.FileTransportConfigPassword = ftpDocument.Password;
             }
         }
-        else if (needsRconPassword && string.Equals(config.Namespace, RconSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+        else if (options.RconPassword && string.Equals(config.Namespace, RconSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
         {
             if (TryDeserialize(config, logger, out RconSettingsDocument? rconDocument) && rconDocument is not null)
             {

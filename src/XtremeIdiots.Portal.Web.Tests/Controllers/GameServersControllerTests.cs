@@ -987,9 +987,9 @@ public class GameServersControllerTests
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("PreserveExistingPasswordsAsync");
 
-        var preserved = await (Task<bool>)method.Invoke(
+        var preserved = await ((Task<bool>)method.Invoke(
             sut,
-            [model, gameServerId, true, false, CancellationToken.None])!;
+            [model, gameServerId, true, false, CancellationToken.None])!).ConfigureAwait(true);
 
         Assert.True(preserved);
         Assert.Equal("existing-private-key", model.FileTransportConfigPrivateKey);

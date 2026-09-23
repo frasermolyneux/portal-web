@@ -18,10 +18,6 @@ public interface INamespaceSettingsParser
         GameServerEditViewModel model,
         string activeTransportNamespace,
         ConfigurationDto config,
-        bool needsFileTransportPassword,
-        bool needsFileTransportPrivateKey,
-        bool needsFileTransportPrivateKeyPassphrase,
-        bool needsFileTransportHostKeyFingerprint,
-        bool needsRconPassword,
+        CredentialPreservationOptions options,
         ILogger logger);
 }

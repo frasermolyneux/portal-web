@@ -90,15 +90,11 @@ internal sealed class GameServerRconScenario
                 It.IsAny<GameServerEditViewModel>(),
                 It.IsAny<string>(),
                 It.IsAny<ConfigurationDto>(),
-                It.IsAny<bool>(),
-                It.IsAny<bool>(),
-                It.IsAny<bool>(),
-                It.IsAny<bool>(),
-                It.IsAny<bool>(),
+                It.IsAny<CredentialPreservationOptions>(),
                 It.IsAny<ILogger>()))
-            .Callback<GameServerEditViewModel, string, ConfigurationDto, bool, bool, bool, bool, bool, ILogger>((model, _, config, _, _, _, _, needsRconPassword, _) =>
+            .Callback<GameServerEditViewModel, string, ConfigurationDto, CredentialPreservationOptions, ILogger>((model, _, config, options, _) =>
             {
-                if (needsRconPassword && string.Equals(config.Namespace, "rcon", StringComparison.OrdinalIgnoreCase))
+                if (options.RconPassword && string.Equals(config.Namespace, "rcon", StringComparison.OrdinalIgnoreCase))
                     model.RconConfigPassword = "CurrentPassword";
             });
         SettingsService

@@ -12,6 +12,7 @@ public sealed class FileTransportCredentialsSteps
 {
     private BrowserFixture? browser;
     private bool formWithoutCredentialsVerified;
+    private bool privateKeyControlsVerified;
     private string? profile;
     private IResponse? response;
 
@@ -38,6 +39,20 @@ public sealed class FileTransportCredentialsSteps
     {
         profile = TestPrincipalProfiles.HeadAdmin;
         Scenario = new FileTransportScenario(existingFingerprint: false);
+    }
+
+    [Given("a successful private-key file transport scenario for a head admin")]
+    public void GivenASuccessfulPrivateKeyFileTransportScenarioForAHeadAdmin()
+    {
+        profile = TestPrincipalProfiles.HeadAdmin;
+        Scenario = new FileTransportScenario(privateKeyAuthentication: true);
+    }
+
+    [Given("a private-key file transport scenario with no existing private key")]
+    public void GivenAPrivateKeyFileTransportScenarioWithNoExistingPrivateKey()
+    {
+        profile = TestPrincipalProfiles.HeadAdmin;
+        Scenario = new FileTransportScenario(privateKeyAuthentication: true, existingPrivateKey: false);
     }
 
     [When("the head admin updates all SFTP connection fields")]
@@ -70,6 +85,38 @@ public sealed class FileTransportCredentialsSteps
         await OpenFileTransportTabAsync();
         await Browser.Page.GetByTestId("sftp-host-key-fingerprint").FillAsync(string.Empty);
         await Browser.Page.GetByTestId("file-transport-password").FillAsync("ChangedPassword");
+        response = await NativeSubmitAsync();
+    }
+
+    [When("the head admin replaces the SFTP private key and passphrase")]
+    public async Task WhenTheHeadAdminReplacesTheSftpPrivateKeyAndPassphrase()
+    {
+        await OpenFileTransportTabAsync();
+        await Browser.Page.GetByTestId("sftp-authentication-type").SelectOptionAsync("Password");
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToBeVisibleAsync();
+        await Browser.Page.GetByTestId("sftp-authentication-type").SelectOptionAsync("PrivateKey");
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToBeHiddenAsync();
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToBeVisibleAsync();
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToBeVisibleAsync();
+        privateKeyControlsVerified = true;
+        await Browser.Page.GetByTestId("sftp-private-key").FillAsync("NewPrivateKey");
+        await Browser.Page.GetByTestId("sftp-private-key-passphrase").FillAsync("NewPassphrase");
+        await SubmitAndFollowAsync();
+    }
+
+    [When("the head admin saves blank SFTP private-key fields")]
+    public async Task WhenTheHeadAdminSavesBlankSftpPrivateKeyFields()
+    {
+        await OpenFileTransportTabAsync();
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToHaveValueAsync(string.Empty);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync(string.Empty);
+        await SubmitAndFollowAsync();
+    }
+
+    [When("the head admin submits SFTP private-key authentication without a key")]
+    public async Task WhenTheHeadAdminSubmitsPrivateKeyAuthenticationWithoutAKey()
+    {
+        await OpenFileTransportTabAsync();
         response = await NativeSubmitAsync();
     }
 
@@ -138,6 +185,32 @@ public sealed class FileTransportCredentialsSteps
     public void ThenSftpSecretsArePreserved()
     {
         AssertTransport("sftp", "sftp.example.com", 22, "ops-user", "CurrentSftpPassword", "/maps", "aa:bb:cc");
+    }
+
+    [Then("the private-key controls should replace the password control")]
+    public void ThenPrivateKeyControlsReplacePassword()
+    {
+        Assert.True(privateKeyControlsVerified);
+    }
+
+    [Then("the SFTP configuration should contain the new private-key credentials")]
+    public void ThenSftpConfigurationContainsNewPrivateKeyCredentials()
+    {
+        AssertPrivateKeyTransport("NewPrivateKey", "NewPassphrase");
+    }
+
+    [Then("the SFTP configuration should preserve the current private-key credentials")]
+    public void ThenSftpConfigurationPreservesCurrentPrivateKeyCredentials()
+    {
+        AssertPrivateKeyTransport("CurrentPrivateKey", "CurrentPassphrase");
+    }
+
+    [Then("the SFTP private-key validation should be displayed")]
+    public async Task ThenPrivateKeyValidationIsDisplayed()
+    {
+        Assert.NotNull(response);
+        Assert.Equal(200, response.Status);
+        await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("SFTP private key is required");
     }
 
     [Then("the SFTP fingerprint validation should be displayed")]
@@ -249,6 +322,18 @@ public sealed class FileTransportCredentialsSteps
         Assert.Equal(mapsRoot, root.GetProperty("mapsRootPath").GetString());
         if (fingerprint is not null)
             Assert.Equal(fingerprint, root.GetProperty("hostKeyFingerprint").GetString());
+    }
+
+    private void AssertPrivateKeyTransport(string privateKey, string passphrase)
+    {
+        var command = Assert.Single(Scenario.UpsertedConfigurations);
+        Assert.Equal("sftp", command.Namespace);
+        using var json = JsonDocument.Parse(command.Configuration);
+        var root = json.RootElement;
+        Assert.Equal("PrivateKey", root.GetProperty("authenticationType").GetString());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("password").ValueKind);
+        Assert.Equal(privateKey, root.GetProperty("privateKey").GetString());
+        Assert.Equal(passphrase, root.GetProperty("privateKeyPassphrase").GetString());
     }
 
     private void Configure(string authenticationProfile, bool succeeds)
