@@ -71,7 +71,7 @@
 
         <div class="mb-3 @(usesPrivateKey ? "" : "d-none")" id="sftp-private-key-group">
             <label for="SftpConfigPrivateKey" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKey)</label>
-            <textarea asp-for="SftpConfigPrivateKey" id="SftpConfigPrivateKey" class="form-control font-monospace" rows="8"
+            <textarea name="SftpConfigPrivateKey" id="SftpConfigPrivateKey" class="form-control font-monospace" rows="8"
                       autocomplete="off" spellcheck="false" data-testid="sftp-private-key"></textarea>
             <span asp-validation-for="SftpConfigPrivateKey" class="text-danger"></span>
             <small class="form-text text-muted">OpenSSH or PEM private key used to authenticate the SFTP connection.</small>
