@@ -30,6 +30,8 @@ public sealed class GameServerSettingsService(
         string activeTransportNamespace,
         ConfigurationDto config,
         bool needsFileTransportPassword,
+        bool needsFileTransportPrivateKey,
+        bool needsFileTransportPrivateKeyPassphrase,
         bool needsFileTransportHostKeyFingerprint,
         bool needsRconPassword,
         ILogger logger)
@@ -39,6 +41,8 @@ public sealed class GameServerSettingsService(
             activeTransportNamespace,
             config,
             needsFileTransportPassword,
+            needsFileTransportPrivateKey,
+            needsFileTransportPrivateKeyPassphrase,
             needsFileTransportHostKeyFingerprint,
             needsRconPassword,
             logger);

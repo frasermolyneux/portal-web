@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -521,6 +522,19 @@ public class GameServersController(
             if (canEditFileTransport.Succeeded
                 && selectedFileTransportEnabled
                 && selectedFileTransportType == FileTransportType.Sftp
+                && model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.PrivateKey
+                && string.IsNullOrWhiteSpace(model.FileTransportConfigPrivateKey))
+            {
+                ModelState.AddModelError(nameof(model.SftpConfigPrivateKey), "SFTP private key is required when private-key authentication is selected.");
+                AddGameTypeViewData(model.GameServer.GameType);
+                AddPlatformViewData(model.GameServer.Platform);
+                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                return View(model);
+            }
+
+            if (canEditFileTransport.Succeeded
+                && selectedFileTransportEnabled
+                && selectedFileTransportType == FileTransportType.Sftp
                 && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint))
             {
                 ModelState.AddModelError(nameof(model.FtpConfigHostKeyFingerprint), "SFTP host key fingerprint is required when SFTP is enabled.");
@@ -815,13 +829,27 @@ public class GameServersController(
         CancellationToken cancellationToken)
     {
         var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
-        var needsFileTransportPassword = canEditFileTransport && string.IsNullOrEmpty(model.FileTransportConfigPassword);
+        var isSftp = string.Equals(activeTransportNamespace, SftpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase);
+        var usesPrivateKey = isSftp && model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.PrivateKey;
+        var needsFileTransportPassword = canEditFileTransport
+            && !usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPassword);
+        var needsFileTransportPrivateKey = canEditFileTransport
+            && usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPrivateKey);
+        var needsFileTransportPrivateKeyPassphrase = canEditFileTransport
+            && usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPrivateKeyPassphrase);
         var needsFileTransportHostKeyFingerprint = canEditFileTransport
-            && string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase)
+            && isSftp
             && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint);
         var needsRconPassword = canEditRcon && string.IsNullOrEmpty(model.RconConfigPassword);
 
-        if (!needsFileTransportPassword && !needsFileTransportHostKeyFingerprint && !needsRconPassword)
+        if (!needsFileTransportPassword
+            && !needsFileTransportPrivateKey
+            && !needsFileTransportPrivateKeyPassphrase
+            && !needsFileTransportHostKeyFingerprint
+            && !needsRconPassword)
             return true;
 
         try
@@ -839,6 +867,8 @@ public class GameServersController(
                     activeTransportNamespace,
                     config,
                     needsFileTransportPassword,
+                    needsFileTransportPrivateKey,
+                    needsFileTransportPrivateKeyPassphrase,
                     needsFileTransportHostKeyFingerprint,
                     needsRconPassword,
                     Logger);

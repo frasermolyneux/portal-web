@@ -22,6 +22,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -948,6 +949,52 @@ public class GameServersControllerTests
         using var doc = System.Text.Json.JsonDocument.Parse(transportJson);
         var root = doc.RootElement;
         Assert.Equal("/customer-a/server1", root.GetProperty("mapsRootPath").GetString());
+    }
+
+    [Fact]
+    public async Task PreserveExistingPasswordsAsync_PrivateKeyFieldsBlank_PreservesCurrentCredentials()
+    {
+        var gameServerId = Guid.NewGuid();
+        var existingSftpConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SftpSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                {
+                  "authenticationType": "PrivateKey",
+                  "privateKey": "existing-private-key",
+                  "privateKeyPassphrase": "existing-passphrase",
+                  "hostKeyFingerprint": "aa:bb:cc"
+                }
+                """,
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+        mockRepositoryApiClient
+            .Setup(client => client.GameServerConfigurations.V1.GetConfigurations(
+                gameServerId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(
+                    new CollectionModel<ConfigurationDto>([existingSftpConfig]))));
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = RepositoryFileTransportType.Sftp
+            },
+            FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.PrivateKey
+        };
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PreserveExistingPasswordsAsync");
+
+        var preserved = await (Task<bool>)method.Invoke(
+            sut,
+            [model, gameServerId, true, false, CancellationToken.None])!;
+
+        Assert.True(preserved);
+        Assert.Equal("existing-private-key", model.FileTransportConfigPrivateKey);
+        Assert.Equal("existing-passphrase", model.FileTransportConfigPrivateKeyPassphrase);
+        Assert.Equal("aa:bb:cc", model.FileTransportConfigHostKeyFingerprint);
     }
 
     [Fact]

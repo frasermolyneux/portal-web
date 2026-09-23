@@ -47,7 +47,7 @@ public class NamespaceSettingsSerializerTests
 
     [Theory]
     [InlineData(false, "ftp", 21, 6)]
-    [InlineData(true, "sftp", 22, 7)]
+    [InlineData(true, "sftp", 22, 10)]
     public void BuildGameServerConfigurations_FileTransport_SerializesExactContract(bool sftp, string expectedNamespace, int port, int propertyCount)
     {
         var model = BuildDefaultModel();
@@ -58,6 +58,7 @@ public class NamespaceSettingsSerializerTests
         model.FileTransportConfigPassword = "deploy-secret";
         model.FileTransportConfigMapsRootPath = "/maps";
         model.FileTransportConfigHostKeyFingerprint = sftp ? "aa:bb:cc" : null;
+        model.FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.Password;
 
         var configurations = serializer.BuildGameServerConfigurations(model, true, false, false);
         var (_, json) = Assert.Single(configurations, configuration => configuration.Namespace == expectedNamespace);
@@ -70,7 +71,36 @@ public class NamespaceSettingsSerializerTests
         Assert.Equal("deploy-secret", document.RootElement.GetProperty("password").GetString());
         Assert.Equal("/maps", document.RootElement.GetProperty("mapsRootPath").GetString());
         if (sftp)
+        {
+            Assert.Equal("Password", document.RootElement.GetProperty("authenticationType").GetString());
+            Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("privateKey").ValueKind);
+            Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("privateKeyPassphrase").ValueKind);
             Assert.Equal("aa:bb:cc", document.RootElement.GetProperty("hostKeyFingerprint").GetString());
+        }
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_SftpPrivateKey_SerializesPrivateKeyCredentials()
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.FileTransportType = Repository.Abstractions.Constants.V1.FileTransportType.Sftp;
+        model.FileTransportConfigHostname = "files.example.com";
+        model.FileTransportConfigPort = 22;
+        model.FileTransportConfigUsername = "deploy-user";
+        model.FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.PrivateKey;
+        model.FileTransportConfigPassword = "unused-password";
+        model.FileTransportConfigPrivateKey = "private-key-content";
+        model.FileTransportConfigPrivateKeyPassphrase = "key-passphrase";
+        model.FileTransportConfigHostKeyFingerprint = "aa:bb:cc";
+
+        var configurations = serializer.BuildGameServerConfigurations(model, true, false, false);
+        var (_, json) = Assert.Single(configurations, configuration => configuration.Namespace == SftpSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("PrivateKey", document.RootElement.GetProperty("authenticationType").GetString());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("password").ValueKind);
+        Assert.Equal("private-key-content", document.RootElement.GetProperty("privateKey").GetString());
+        Assert.Equal("key-passphrase", document.RootElement.GetProperty("privateKeyPassphrase").GetString());
     }
 
     [Fact]

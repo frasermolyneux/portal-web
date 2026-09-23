@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
@@ -38,6 +39,15 @@ public class GameServerEditViewModel : IValidatableObject
 
     [DisplayName("File Transport Password")]
     public string? FileTransportConfigPassword { get; set; }
+
+    [DisplayName("SFTP Authentication")]
+    public SftpAuthenticationType FileTransportConfigSftpAuthenticationType { get; set; } = SftpAuthenticationType.Password;
+
+    [DisplayName("SFTP Private Key")]
+    public string? FileTransportConfigPrivateKey { get; set; }
+
+    [DisplayName("Private Key Passphrase")]
+    public string? FileTransportConfigPrivateKeyPassphrase { get; set; }
 
     [DisplayName("SFTP Host Key Fingerprint")]
     public string? FileTransportConfigHostKeyFingerprint { get; set; }
@@ -283,6 +293,9 @@ public class GameServerEditViewModel : IValidatableObject
     public int FtpConfigPort { get => FileTransportConfigPort; set => FileTransportConfigPort = value; }
     public string? FtpConfigUsername { get => FileTransportConfigUsername; set => FileTransportConfigUsername = value; }
     public string? FtpConfigPassword { get => FileTransportConfigPassword; set => FileTransportConfigPassword = value; }
+    public SftpAuthenticationType SftpConfigAuthenticationType { get => FileTransportConfigSftpAuthenticationType; set => FileTransportConfigSftpAuthenticationType = value; }
+    public string? SftpConfigPrivateKey { get => FileTransportConfigPrivateKey; set => FileTransportConfigPrivateKey = value; }
+    public string? SftpConfigPrivateKeyPassphrase { get => FileTransportConfigPrivateKeyPassphrase; set => FileTransportConfigPrivateKeyPassphrase = value; }
     public string? FtpConfigHostKeyFingerprint { get => FileTransportConfigHostKeyFingerprint; set => FileTransportConfigHostKeyFingerprint = value; }
     public string? FtpConfigMapsRootPath { get => FileTransportConfigMapsRootPath; set => FileTransportConfigMapsRootPath = value; }
 

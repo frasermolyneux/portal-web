@@ -19,6 +19,8 @@ public interface INamespaceSettingsParser
         string activeTransportNamespace,
         ConfigurationDto config,
         bool needsFileTransportPassword,
+        bool needsFileTransportPrivateKey,
+        bool needsFileTransportPrivateKeyPassphrase,
         bool needsFileTransportHostKeyFingerprint,
         bool needsRconPassword,
         ILogger logger);

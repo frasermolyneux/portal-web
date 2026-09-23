@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport
 @model GameServerDto
 
 @{
@@ -11,6 +12,9 @@
     var fileTransportEnabled = Model.FileTransportEnabled;
     var fileTransportType = Model.FileTransportType;
     var fileTransportLabel = fileTransportType == FileTransportType.Sftp ? "SFTP" : "FTP";
+    var sftpAuthenticationType = ViewData["SftpAuthenticationType"] is SftpAuthenticationType authenticationType
+        ? authenticationType
+        : SftpAuthenticationType.Password;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -59,10 +63,31 @@
                                     <dt class="detail-label">@fileTransportLabel Username</dt>
                                     <dd class="detail-value">@ViewBag.FtpUsername</dd>
                                 </div>
-                                <div class="detail-field col-sm-6">
-                                    <dt class="detail-label">@fileTransportLabel Password</dt>
-                                    <dd class="detail-value">@ViewBag.FtpPassword</dd>
-                                </div>
+                                @if (fileTransportType == FileTransportType.Sftp)
+                                {
+                                    <div class="detail-field col-sm-6">
+                                        <dt class="detail-label">SFTP Authentication</dt>
+                                        <dd class="detail-value">@sftpAuthenticationType</dd>
+                                    </div>
+                                }
+                                @if (fileTransportType != FileTransportType.Sftp || sftpAuthenticationType == SftpAuthenticationType.Password)
+                                {
+                                    <div class="detail-field col-sm-6">
+                                        <dt class="detail-label">@fileTransportLabel Password</dt>
+                                        <dd class="detail-value">@ViewBag.FtpPassword</dd>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="detail-field col-sm-6">
+                                        <dt class="detail-label">SFTP Private Key</dt>
+                                        <dd class="detail-value">@(ViewBag.SftpPrivateKeyConfigured == true ? "Configured" : "Not configured")</dd>
+                                    </div>
+                                    <div class="detail-field col-sm-6">
+                                        <dt class="detail-label">Private Key Passphrase</dt>
+                                        <dd class="detail-value">@(ViewBag.SftpPrivateKeyPassphraseConfigured == true ? "Configured" : "Not configured")</dd>
+                                    </div>
+                                }
                             }
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,

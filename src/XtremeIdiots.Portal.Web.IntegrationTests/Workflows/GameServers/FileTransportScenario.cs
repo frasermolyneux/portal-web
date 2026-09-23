@@ -73,8 +73,10 @@ internal sealed class FileTransportScenario
         SettingsService.SetupGet(service => service.DeletedNamespaces).Returns([]);
         SettingsService.Setup(service => service.PopulateConfigFromNamespace(It.IsAny<GameServerEditViewModel>(), It.IsAny<ConfigurationDto>(), It.IsAny<ILogger>()))
             .Callback<GameServerEditViewModel, ConfigurationDto, ILogger>((model, config, _) => PopulateCredentials(model, config));
-        SettingsService.Setup(service => service.PopulateExistingCredentials(It.IsAny<GameServerEditViewModel>(), It.IsAny<string>(), It.IsAny<ConfigurationDto>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<ILogger>()))
-            .Callback<GameServerEditViewModel, string, ConfigurationDto, bool, bool, bool, ILogger>((model, _, config, needsPassword, needsFingerprint, _, _) => PreserveExistingSecrets(model, config, needsPassword, needsFingerprint));
+        SettingsService.Setup(service => service.PopulateExistingCredentials(It.IsAny<GameServerEditViewModel>(), It.IsAny<string>(), It.IsAny<ConfigurationDto>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<ILogger>()))
+            .Callback<GameServerEditViewModel, string, ConfigurationDto, bool, bool, bool, bool, bool, ILogger>(
+                (model, _, config, needsPassword, _, _, needsFingerprint, _, _) =>
+                    PreserveExistingSecrets(model, config, needsPassword, needsFingerprint));
         SettingsService.Setup(service => service.BuildNamespaceConfigurations(It.IsAny<GameServerEditViewModel>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
             .Returns<GameServerEditViewModel, bool, bool, bool>((model, canEdit, _, _) => canEdit ? [BuildConfiguration(model)] : []);
     }
