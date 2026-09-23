@@ -839,7 +839,6 @@ public class GameServersController(
             && string.IsNullOrEmpty(model.FileTransportConfigPrivateKey);
         var needsFileTransportPrivateKeyPassphrase = canEditFileTransport
             && usesPrivateKey
-            && string.IsNullOrEmpty(model.FileTransportConfigPrivateKey)
             && string.IsNullOrEmpty(model.FileTransportConfigPrivateKeyPassphrase);
         var needsFileTransportHostKeyFingerprint = canEditFileTransport
             && isSftp

@@ -951,8 +951,12 @@ public class GameServersControllerTests
         Assert.Equal("/customer-a/server1", root.GetProperty("mapsRootPath").GetString());
     }
 
-    [Fact]
-    public async Task PreserveExistingPasswordsAsync_PrivateKeyFieldsBlank_PreservesCurrentCredentials()
+    [Theory]
+    [InlineData(null, "existing-private-key")]
+    [InlineData("replacement-private-key", "replacement-private-key")]
+    public async Task PreserveExistingPasswordsAsync_PrivateKeyPassphraseBlank_PreservesCurrentCredentials(
+        string? submittedPrivateKey,
+        string expectedPrivateKey)
     {
         var gameServerId = Guid.NewGuid();
         var existingSftpConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
@@ -982,7 +986,8 @@ public class GameServersControllerTests
             {
                 FileTransportType = RepositoryFileTransportType.Sftp
             },
-            FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.PrivateKey
+            FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.PrivateKey,
+            FileTransportConfigPrivateKey = submittedPrivateKey
         };
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("PreserveExistingPasswordsAsync");
@@ -992,7 +997,7 @@ public class GameServersControllerTests
             [model, gameServerId, true, false, CancellationToken.None])!).ConfigureAwait(true);
 
         Assert.True(preserved);
-        Assert.Equal("existing-private-key", model.FileTransportConfigPrivateKey);
+        Assert.Equal(expectedPrivateKey, model.FileTransportConfigPrivateKey);
         Assert.Equal("existing-passphrase", model.FileTransportConfigPrivateKeyPassphrase);
         Assert.Equal("aa:bb:cc", model.FileTransportConfigHostKeyFingerprint);
     }
