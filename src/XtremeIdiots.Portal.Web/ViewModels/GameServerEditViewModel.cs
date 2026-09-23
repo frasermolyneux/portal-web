@@ -295,6 +295,8 @@ public class GameServerEditViewModel : IValidatableObject
     public int FtpConfigPort { get => FileTransportConfigPort; set => FileTransportConfigPort = value; }
     public string? FtpConfigUsername { get => FileTransportConfigUsername; set => FileTransportConfigUsername = value; }
     public string? FtpConfigPassword { get => FileTransportConfigPassword; set => FileTransportConfigPassword = value; }
+    [Required]
+    [EnumDataType(typeof(SftpAuthenticationType))]
     public SftpAuthenticationType SftpConfigAuthenticationType { get => FileTransportConfigSftpAuthenticationType; set => FileTransportConfigSftpAuthenticationType = value; }
     public string? SftpConfigPrivateKey { get => FileTransportConfigPrivateKey; set => FileTransportConfigPrivateKey = value; }
     public string? SftpConfigPrivateKeyPassphrase { get => FileTransportConfigPrivateKeyPassphrase; set => FileTransportConfigPrivateKeyPassphrase = value; }

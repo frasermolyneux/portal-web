@@ -70,7 +70,7 @@
         </div>
 
         <div class="mb-3 @(usesPrivateKey ? "" : "d-none")" id="sftp-private-key-group">
-            <label asp-for="SftpConfigPrivateKey" class="form-label"></label>
+            <label for="SftpConfigPrivateKey" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKey)</label>
             <textarea asp-for="SftpConfigPrivateKey" id="SftpConfigPrivateKey" class="form-control font-monospace" rows="8"
                       autocomplete="off" spellcheck="false" data-testid="sftp-private-key"></textarea>
             <span asp-validation-for="SftpConfigPrivateKey" class="text-danger"></span>
