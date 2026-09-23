@@ -136,6 +136,14 @@ public sealed class FileTransportCredentialsSteps
         response = await NativeSubmitAsync().ConfigureAwait(true);
     }
 
+    [When("the head admin submits private-key authentication with an invalid maps root")]
+    public async Task WhenTheHeadAdminSubmitsPrivateKeyAuthenticationWithInvalidMapsRoot()
+    {
+        await OpenFileTransportTabAsync().ConfigureAwait(true);
+        await Browser.Page.GetByTestId("file-transport-maps-root").FillAsync("/maps/../secrets").ConfigureAwait(true);
+        response = await NativeSubmitAsync().ConfigureAwait(true);
+    }
+
     [When("the head admin submits a maps root containing path traversal")]
     public async Task WhenTheHeadAdminSubmitsTraversalMapsRoot()
     {
@@ -227,6 +235,15 @@ public sealed class FileTransportCredentialsSteps
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
         await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("SFTP private key is required").ConfigureAwait(true);
+    }
+
+    [Then("the private-key secret controls should remain blank")]
+    public async Task ThenPrivateKeySecretControlsRemainBlank()
+    {
+        Assert.NotNull(response);
+        Assert.Equal(200, response.Status);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
     }
 
     [Then("the SFTP fingerprint validation should be displayed")]

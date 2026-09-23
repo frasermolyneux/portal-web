@@ -66,8 +66,10 @@
                                 @if (fileTransportType == FileTransportType.Sftp)
                                 {
                                     <div class="detail-field col-sm-6">
-                                        <div class="detail-label">SFTP Authentication</div>
-                                        <div class="detail-value">@sftpAuthenticationType</div>
+                                        <dl class="mb-0">
+                                            <dt class="detail-label">SFTP Authentication</dt>
+                                            <dd class="detail-value">@sftpAuthenticationType</dd>
+                                        </dl>
                                     </div>
                                 }
                                 @if (fileTransportType != FileTransportType.Sftp || sftpAuthenticationType == SftpAuthenticationType.Password)
@@ -80,12 +82,16 @@
                                 else
                                 {
                                     <div class="detail-field col-sm-6">
-                                        <div class="detail-label">SFTP Private Key</div>
-                                        <div class="detail-value">@(ViewBag.SftpPrivateKeyConfigured == true ? "Configured" : "Not configured")</div>
+                                        <dl class="mb-0">
+                                            <dt class="detail-label">SFTP Private Key</dt>
+                                            <dd class="detail-value">@(ViewBag.SftpPrivateKeyConfigured == true ? "Configured" : "Not configured")</dd>
+                                        </dl>
                                     </div>
                                     <div class="detail-field col-sm-6">
-                                        <div class="detail-label">Private Key Passphrase</div>
-                                        <div class="detail-value">@(ViewBag.SftpPrivateKeyPassphraseConfigured == true ? "Configured" : "Not configured")</div>
+                                        <dl class="mb-0">
+                                            <dt class="detail-label">Private Key Passphrase</dt>
+                                            <dd class="detail-value">@(ViewBag.SftpPrivateKeyPassphraseConfigured == true ? "Configured" : "Not configured")</dd>
+                                        </dl>
                                     </div>
                                 }
                             }
