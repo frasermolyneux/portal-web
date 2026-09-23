@@ -78,7 +78,7 @@
         </div>
 
         <div class="mb-3 @(usesPrivateKey ? "" : "d-none")" id="sftp-private-key-passphrase-group">
-            <label asp-for="SftpConfigPrivateKeyPassphrase" class="form-label"></label>
+            <label for="sftpPrivateKeyPassphraseInput" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKeyPassphrase)</label>
             <div class="input-group">
                 <input asp-for="SftpConfigPrivateKeyPassphrase" class="form-control" type="password"
                        id="sftpPrivateKeyPassphraseInput" autocomplete="new-password"
