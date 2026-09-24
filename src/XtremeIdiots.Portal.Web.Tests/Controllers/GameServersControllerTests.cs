@@ -1299,8 +1299,10 @@ public class GameServersControllerTests
         Assert.Null(capturedUpdate.FtpEnabled);
     }
 
-    [Fact]
-    public async Task Edit_WhenDependencyPrerequisitesAreOff_DoesNotAutoUnsetAgentAndBanFileSync()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Edit_WhenSftpAuthenticationIsOmittedForFtp_DoesNotRejectRequest(bool fileTransportEnabled)
     {
         // Arrange
         var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
@@ -1348,14 +1350,17 @@ public class GameServersControllerTests
                 Hostname = existingServer.Hostname,
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = true,
-                FileTransportEnabled = false,
+                FileTransportEnabled = fileTransportEnabled,
                 FileTransportType = RepositoryFileTransportType.Ftp,
                 RconEnabled = false,
                 BanFileSyncEnabled = true,
                 BanFileRootPath = "/",
                 ServerListEnabled = false
             },
-            SftpConfigAuthenticationType = SftpAuthenticationType.Password
+            FileTransportConfigHostname = "ftp.example.com",
+            FileTransportConfigPort = 21,
+            FileTransportConfigUsername = "test-user",
+            FileTransportConfigPassword = "test-pass"
         };
 
         var sut = CreateSut();
@@ -1369,7 +1374,7 @@ public class GameServersControllerTests
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.AgentEnabled);
         Assert.True(capturedUpdate.BanFileSyncEnabled);
-        Assert.False(capturedUpdate.FileTransportEnabled);
+        Assert.Equal(fileTransportEnabled, capturedUpdate.FileTransportEnabled);
         Assert.False(capturedUpdate.RconEnabled);
     }
 

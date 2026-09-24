@@ -423,7 +423,10 @@ public class GameServersController(
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
             var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
-            if (canEditFileTransport.Succeeded && model.SftpConfigAuthenticationType is null)
+            if (canEditFileTransport.Succeeded
+                && model.GameServer.FileTransportEnabled
+                && model.GameServer.FileTransportType == FileTransportType.Sftp
+                && model.SftpConfigAuthenticationType is null)
             {
                 ModelState.AddModelError(
                     nameof(GameServerEditViewModel.SftpConfigAuthenticationType),
