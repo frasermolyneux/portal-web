@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
@@ -44,6 +45,7 @@ public class GameServerEditViewModel : IValidatableObject
     public string? FileTransportConfigPassword { get; set; }
 
     [DisplayName("SFTP Authentication")]
+    [BindNever]
     [Required]
     [EnumDataType(typeof(SftpAuthenticationType))]
     public SftpAuthenticationType FileTransportConfigSftpAuthenticationType {

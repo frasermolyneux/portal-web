@@ -76,6 +76,7 @@ Feature: File transport credentials
   Scenario: Traversal maps root prevents writes
     Given a successful file transport scenario for a head admin
     When the head admin submits a maps root containing path traversal
+    Then the file transport password should remain blank
     Then the maps root validation should be displayed
     And no file transport writes should be recorded
     And the file transport browser should report no errors

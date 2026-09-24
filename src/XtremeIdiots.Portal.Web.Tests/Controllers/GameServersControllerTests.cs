@@ -1281,6 +1281,7 @@ public class GameServersControllerTests
             FileTransportConfigPort = 22,
             FileTransportConfigUsername = "test-user",
             FileTransportConfigPassword = "test-pass",
+            SftpConfigAuthenticationType = SftpAuthenticationType.Password,
             FileTransportConfigHostKeyFingerprint = "40:44:78:e0:7a:e0:c2:e7:fe:37:14:9e:4f:09:e0:07"
         };
 
@@ -1353,7 +1354,8 @@ public class GameServersControllerTests
                 BanFileSyncEnabled = true,
                 BanFileRootPath = "/",
                 ServerListEnabled = false
-            }
+            },
+            SftpConfigAuthenticationType = SftpAuthenticationType.Password
         };
 
         var sut = CreateSut();

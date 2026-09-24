@@ -336,6 +336,15 @@ public sealed class FileTransportCredentialsSteps
         await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveAttributeAsync("type", "password");
     }
 
+    [Then("the file transport password should remain blank")]
+    public async Task ThenPasswordRemainsBlank()
+    {
+        Assert.NotNull(response);
+        Assert.Equal(200, response.Status);
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
+        Assert.DoesNotContain("CurrentSftpPassword", await Browser.Page.ContentAsync().ConfigureAwait(true), StringComparison.Ordinal);
+    }
+
     [Then("successful file transport update feedback should be displayed")]
     public async Task ThenSuccessFeedback()
     {
