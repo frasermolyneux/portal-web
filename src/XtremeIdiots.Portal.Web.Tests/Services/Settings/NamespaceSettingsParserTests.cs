@@ -115,6 +115,31 @@ public class NamespaceSettingsParserTests
         Assert.Equal("rcon-secret", viewData["RconPassword"]);
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void PopulateGameServerDetails_SftpPrivateKey_MapsStatusWithoutExposingSecrets(
+        bool hasPrivateKey,
+        bool hasPassphrase)
+    {
+        var viewData = new Dictionary<string, object?>();
+        var configuration = BuildConfiguration("sftp", System.Text.Json.JsonSerializer.Serialize(new
+        {
+            authenticationType = "PrivateKey",
+            privateKey = hasPrivateKey ? "private-key-content" : null,
+            privateKeyPassphrase = hasPassphrase ? "key-passphrase" : null
+        }));
+
+        parser.PopulateGameServerDetails(viewData, FileTransportType.Sftp, configuration, logger);
+
+        Assert.Equal(SftpAuthenticationType.PrivateKey, viewData["SftpAuthenticationType"]);
+        Assert.Equal(hasPrivateKey, viewData["SftpPrivateKeyConfigured"]);
+        Assert.Equal(hasPassphrase, viewData["SftpPrivateKeyPassphraseConfigured"]);
+        Assert.DoesNotContain(viewData.Values, value =>
+            string.Equals(value as string, "private-key-content", StringComparison.Ordinal)
+            || string.Equals(value as string, "key-passphrase", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void PopulateGameServerSettingsViewModel_SftpPrivateKey_MapsModeWithoutExposingCredentials()
     {

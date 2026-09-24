@@ -43,6 +43,13 @@ Feature: File transport credentials
     And no file transport writes should be recorded
     And the file transport browser should report no errors
 
+  Scenario: Missing SFTP authentication type prevents writes
+    Given a successful private-key file transport scenario for a head admin
+    When the head admin omits the SFTP authentication type
+    Then the SFTP authentication type validation should be displayed
+    And no file transport writes should be recorded
+    And the file transport browser should report no errors
+
   Scenario: Invalid SFTP private-key form does not redisplay secrets
     Given a successful private-key file transport scenario for a head admin
     When the head admin submits private-key authentication with an invalid maps root

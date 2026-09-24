@@ -127,6 +127,14 @@ public sealed class FileTransportCredentialsSteps
         response = await NativeSubmitAsync().ConfigureAwait(true);
     }
 
+    [When("the head admin omits the SFTP authentication type")]
+    public async Task WhenTheHeadAdminOmitsTheSftpAuthenticationType()
+    {
+        await OpenFileTransportTabAsync().ConfigureAwait(true);
+        await Browser.Page.GetByTestId("sftp-authentication-type").EvaluateAsync("select => select.remove()").ConfigureAwait(true);
+        response = await NativeSubmitAsync().ConfigureAwait(true);
+    }
+
     [When("the head admin submits SFTP private-key authentication without passphrase or fingerprint fields")]
     public async Task WhenTheHeadAdminSubmitsPrivateKeyAuthenticationWithoutPassphraseOrFingerprintFields()
     {
@@ -235,6 +243,14 @@ public sealed class FileTransportCredentialsSteps
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
         await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("SFTP private key is required").ConfigureAwait(true);
+    }
+
+    [Then("the SFTP authentication type validation should be displayed")]
+    public async Task ThenSftpAuthenticationTypeValidationIsDisplayed()
+    {
+        Assert.NotNull(response);
+        Assert.Equal(200, response.Status);
+        await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("The SFTP Authentication field is required").ConfigureAwait(true);
     }
 
     [Then("the private-key secret controls should remain blank")]

@@ -423,6 +423,13 @@ public class GameServersController(
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
             var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
+            if (canEditFileTransport.Succeeded && model.SftpConfigAuthenticationType is null)
+            {
+                ModelState.AddModelError(
+                    nameof(GameServerEditViewModel.SftpConfigAuthenticationType),
+                    "The SFTP Authentication field is required.");
+            }
+
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var globalDefaultsLoaded = await PopulateGlobalDefaultsAsync(model, cancellationToken).ConfigureAwait(false);

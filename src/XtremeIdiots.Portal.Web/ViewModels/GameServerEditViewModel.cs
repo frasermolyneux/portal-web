@@ -14,6 +14,9 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 /// </summary>
 public class GameServerEditViewModel : IValidatableObject
 {
+    private SftpAuthenticationType fileTransportConfigSftpAuthenticationType = SftpAuthenticationType.Password;
+    private SftpAuthenticationType? boundSftpAuthenticationType;
+
     public const int DefaultBroadcastIntervalSeconds = 500;
     public const int MaxFunnyMessageLength = 120;
     public const string DefaultScreenshotFilePattern = "*.jpg";
@@ -43,7 +46,13 @@ public class GameServerEditViewModel : IValidatableObject
     [DisplayName("SFTP Authentication")]
     [Required]
     [EnumDataType(typeof(SftpAuthenticationType))]
-    public SftpAuthenticationType FileTransportConfigSftpAuthenticationType { get; set; } = SftpAuthenticationType.Password;
+    public SftpAuthenticationType FileTransportConfigSftpAuthenticationType {
+        get => fileTransportConfigSftpAuthenticationType;
+        set {
+            fileTransportConfigSftpAuthenticationType = value;
+            boundSftpAuthenticationType = value;
+        }
+    }
 
     [DisplayName("SFTP Private Key")]
     public string? FileTransportConfigPrivateKey { get; set; }
@@ -295,11 +304,16 @@ public class GameServerEditViewModel : IValidatableObject
     public int FtpConfigPort { get => FileTransportConfigPort; set => FileTransportConfigPort = value; }
     public string? FtpConfigUsername { get => FileTransportConfigUsername; set => FileTransportConfigUsername = value; }
     public string? FtpConfigPassword { get => FileTransportConfigPassword; set => FileTransportConfigPassword = value; }
-    [Required]
     [EnumDataType(typeof(SftpAuthenticationType))]
     public SftpAuthenticationType? SftpConfigAuthenticationType {
-        get => FileTransportConfigSftpAuthenticationType;
-        set => FileTransportConfigSftpAuthenticationType = value ?? (SftpAuthenticationType)(-1);
+        get => boundSftpAuthenticationType;
+        set {
+            boundSftpAuthenticationType = value;
+            if (value.HasValue)
+            {
+                fileTransportConfigSftpAuthenticationType = value.Value;
+            }
+        }
     }
     public string? SftpConfigPrivateKey { get => FileTransportConfigPrivateKey; set => FileTransportConfigPrivateKey = value; }
     public string? SftpConfigPrivateKeyPassphrase { get => FileTransportConfigPrivateKeyPassphrase; set => FileTransportConfigPrivateKeyPassphrase = value; }
