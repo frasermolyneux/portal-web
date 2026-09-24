@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport
 @model GameServerDto
 
 @{
@@ -11,6 +12,9 @@
     var fileTransportEnabled = Model.FileTransportEnabled;
     var fileTransportType = Model.FileTransportType;
     var fileTransportLabel = fileTransportType == FileTransportType.Sftp ? "SFTP" : "FTP";
+    var sftpAuthenticationType = ViewData["SftpAuthenticationType"] is SftpAuthenticationType authenticationType
+        ? authenticationType
+        : SftpAuthenticationType.Password;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -24,89 +28,110 @@
                         <h5>@ViewData["Title"]</h5>
                     </div>
                     <div class="ibox-content">
-                        <dl class="detail-fields row">
-                            <div class="detail-field col-sm-6">
+                        <div class="detail-fields row">
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.Title)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.Title)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.GameType)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.GameType)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.Platform)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.Platform)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.Hostname)</dt>
                                 <dd class="detail-value">
                                     <server-host host="@Model.Hostname" port="@Model.QueryPort"></server-host>
                                 </dd>
-                            </div>
+                            </dl>
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                         Guid>(Model.GameType, Model.GameServerId), AuthPolicies.GameServers_Credentials_FileTransport_Read)).Succeeded)
                             {
-                                <div class="detail-field col-sm-6">
+                                <dl class="detail-field col-sm-6">
                                     <dt class="detail-label">@fileTransportLabel Hostname</dt>
                                     <dd class="detail-value">@ViewBag.FtpHostname</dd>
-                                </div>
-                                <div class="detail-field col-sm-6">
+                                </dl>
+                                <dl class="detail-field col-sm-6">
                                     <dt class="detail-label">@fileTransportLabel Port</dt>
                                     <dd class="detail-value">@ViewBag.FtpPort</dd>
-                                </div>
-                                <div class="detail-field col-sm-6">
+                                </dl>
+                                <dl class="detail-field col-sm-6">
                                     <dt class="detail-label">@fileTransportLabel Username</dt>
                                     <dd class="detail-value">@ViewBag.FtpUsername</dd>
-                                </div>
-                                <div class="detail-field col-sm-6">
-                                    <dt class="detail-label">@fileTransportLabel Password</dt>
-                                    <dd class="detail-value">@ViewBag.FtpPassword</dd>
-                                </div>
+                                </dl>
+                                @if (fileTransportType == FileTransportType.Sftp)
+                                {
+                                    <dl class="detail-field col-sm-6">
+                                        <dt class="detail-label">SFTP Authentication</dt>
+                                        <dd class="detail-value">@sftpAuthenticationType</dd>
+                                    </dl>
+                                }
+                                @if (fileTransportType != FileTransportType.Sftp || sftpAuthenticationType == SftpAuthenticationType.Password)
+                                {
+                                    <dl class="detail-field col-sm-6">
+                                        <dt class="detail-label">@fileTransportLabel Password</dt>
+                                        <dd class="detail-value">@ViewBag.FtpPassword</dd>
+                                    </dl>
+                                }
+                                else
+                                {
+                                    <dl class="detail-field col-sm-6">
+                                        <dt class="detail-label">SFTP Private Key</dt>
+                                        <dd class="detail-value">@(ViewBag.SftpPrivateKeyConfigured == true ? "Configured" : "Not configured")</dd>
+                                    </dl>
+                                    <dl class="detail-field col-sm-6">
+                                        <dt class="detail-label">Private Key Passphrase</dt>
+                                        <dd class="detail-value">@(ViewBag.SftpPrivateKeyPassphraseConfigured == true ? "Configured" : "Not configured")</dd>
+                                    </dl>
+                                }
                             }
 
                             @if ((await AuthorizationService.AuthorizeAsync(User, new Tuple<GameType,
                                                         Guid>(Model.GameType, Model.GameServerId), AuthPolicies.GameServers_Credentials_Rcon_Read)).Succeeded)
                             {
-                                <div class="detail-field col-sm-6">
+                                <dl class="detail-field col-sm-6">
                                     <dt class="detail-label">RCON Password</dt>
                                     <dd class="detail-value">@ViewBag.RconPassword</dd>
-                                </div>
+                                </dl>
                             }
 
-                            <div class="detail-field col-sm-6">
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.AgentEnabled)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.AgentEnabled)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">File Transport Enabled</dt>
                                 <dd class="detail-value">@fileTransportEnabled</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">File Transport Type</dt>
                                 <dd class="detail-value">@fileTransportLabel</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.RconEnabled)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.RconEnabled)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.BanFileSyncEnabled)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.BanFileSyncEnabled)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.BanFileRootPath)</dt>
                                 <dd class="detail-value"><code>@Model.BanFileRootPath</code></dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.ServerListEnabled)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.ServerListEnabled)</dd>
-                            </div>
-                            <div class="detail-field col-sm-6">
+                            </dl>
+                            <dl class="detail-field col-sm-6">
                                 <dt class="detail-label">@Html.DisplayNameFor(model => model.ServerListPosition)</dt>
                                 <dd class="detail-value">@Html.DisplayFor(model => model.ServerListPosition)</dd>
-                            </div>
-                        </dl>
+                            </dl>
+                        </div>
                     </div>
                     <div class="ibox-footer">
                         @if ((await AuthorizationService.AuthorizeAsync(User, Model.GameType, AuthPolicies.GameServers_Write)).Succeeded)

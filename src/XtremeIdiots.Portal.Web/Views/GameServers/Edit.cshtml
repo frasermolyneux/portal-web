@@ -318,6 +318,11 @@
 
         var fileTransferTab = document.getElementById('filetransfer-tab');
         var portInput = document.getElementById('FtpConfigPort');
+        var authenticationTypeGroup = document.getElementById('sftp-authentication-type-group');
+        var authenticationTypeSelect = document.getElementById('SftpConfigAuthenticationType');
+        var passwordGroup = document.getElementById('file-transport-password-group');
+        var privateKeyGroup = document.getElementById('sftp-private-key-group');
+        var privateKeyPassphraseGroup = document.getElementById('sftp-private-key-passphrase-group');
         var sftpHostKeyGroup = document.getElementById('sftp-host-key-fingerprint-group');
         var defaultPortValue = document.getElementById('file-transport-default-port');
         var transportLabelNodes = document.querySelectorAll('.js-file-transport-label');
@@ -325,6 +330,9 @@
         var previousValue = typeSelect.getAttribute('data-prev-value') || typeSelect.value;
         var previousMeta = getFileTransportMeta(previousValue);
         var currentMeta = getFileTransportMeta(typeSelect.value);
+        var isSftp = currentMeta.label === 'SFTP';
+        var authenticationType = (authenticationTypeSelect?.value || '').toLowerCase();
+        var usesPrivateKey = isSftp && (authenticationType === 'privatekey' || authenticationType === '1');
 
         transportLabelNodes.forEach(function (node) {
         node.textContent = currentMeta.label;
@@ -334,8 +342,24 @@
         defaultPortValue.textContent = currentMeta.defaultPort;
         }
 
+        if (authenticationTypeGroup) {
+        authenticationTypeGroup.classList.toggle('d-none', !isSftp);
+        }
+
+        if (passwordGroup) {
+        passwordGroup.classList.toggle('d-none', usesPrivateKey);
+        }
+
+        if (privateKeyGroup) {
+        privateKeyGroup.classList.toggle('d-none', !usesPrivateKey);
+        }
+
+        if (privateKeyPassphraseGroup) {
+        privateKeyPassphraseGroup.classList.toggle('d-none', !usesPrivateKey);
+        }
+
         if (sftpHostKeyGroup) {
-        sftpHostKeyGroup.classList.toggle('d-none', currentMeta.label !== 'SFTP');
+        sftpHostKeyGroup.classList.toggle('d-none', !isSftp);
         }
 
         if (portInput) {
@@ -433,6 +457,11 @@
         var fileTransportTypeSelect = document.getElementById('GameServer_FileTransportType');
         if (fileTransportTypeSelect) {
         fileTransportTypeSelect.addEventListener('change', updateFileTransportUi);
+        }
+
+        var sftpAuthenticationTypeSelect = document.getElementById('SftpConfigAuthenticationType');
+        if (sftpAuthenticationTypeSelect) {
+        sftpAuthenticationTypeSelect.addEventListener('change', updateFileTransportUi);
         }
 
         ['GameServer_FileTransportEnabled', 'GameServer_RconEnabled', 'GameServer_AgentEnabled'].forEach(function (id) {

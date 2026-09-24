@@ -22,6 +22,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -950,6 +951,57 @@ public class GameServersControllerTests
         Assert.Equal("/customer-a/server1", root.GetProperty("mapsRootPath").GetString());
     }
 
+    [Theory]
+    [InlineData(null, "existing-private-key")]
+    [InlineData("replacement-private-key", "replacement-private-key")]
+    public async Task PreserveExistingPasswordsAsync_PrivateKeyPassphraseBlank_PreservesCurrentCredentials(
+        string? submittedPrivateKey,
+        string expectedPrivateKey)
+    {
+        var gameServerId = Guid.NewGuid();
+        var existingSftpConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SftpSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                {
+                  "authenticationType": "PrivateKey",
+                  "privateKey": "existing-private-key",
+                  "privateKeyPassphrase": "existing-passphrase",
+                  "hostKeyFingerprint": "aa:bb:cc"
+                }
+                """,
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+        mockRepositoryApiClient
+            .Setup(client => client.GameServerConfigurations.V1.GetConfigurations(
+                gameServerId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(
+                    new CollectionModel<ConfigurationDto>([existingSftpConfig]))));
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = RepositoryFileTransportType.Sftp
+            },
+            FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.PrivateKey,
+            FileTransportConfigPrivateKey = submittedPrivateKey
+        };
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PreserveExistingPasswordsAsync");
+
+        var preserved = await ((Task<bool>)method.Invoke(
+            sut,
+            [model, gameServerId, true, false, CancellationToken.None])!).ConfigureAwait(true);
+
+        Assert.True(preserved);
+        Assert.Equal(expectedPrivateKey, model.FileTransportConfigPrivateKey);
+        Assert.Equal("existing-passphrase", model.FileTransportConfigPrivateKeyPassphrase);
+        Assert.Equal("aa:bb:cc", model.FileTransportConfigHostKeyFingerprint);
+    }
+
     [Fact]
     public async Task SaveConfigNamespacesAsync_WithDisabledFeatures_DoesNotCallDeleteConfigurationAsync()
     {
@@ -1229,6 +1281,7 @@ public class GameServersControllerTests
             FileTransportConfigPort = 22,
             FileTransportConfigUsername = "test-user",
             FileTransportConfigPassword = "test-pass",
+            SftpConfigAuthenticationType = SftpAuthenticationType.Password,
             FileTransportConfigHostKeyFingerprint = "40:44:78:e0:7a:e0:c2:e7:fe:37:14:9e:4f:09:e0:07"
         };
 
@@ -1246,8 +1299,10 @@ public class GameServersControllerTests
         Assert.Null(capturedUpdate.FtpEnabled);
     }
 
-    [Fact]
-    public async Task Edit_WhenDependencyPrerequisitesAreOff_DoesNotAutoUnsetAgentAndBanFileSync()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Edit_WhenSftpAuthenticationIsOmittedForFtp_DoesNotRejectRequest(bool fileTransportEnabled)
     {
         // Arrange
         var existingServer = CreateGameServerDto(ftpEnabled: true, fileTransportEnabled: true, fileTransportType: "Ftp");
@@ -1295,13 +1350,17 @@ public class GameServersControllerTests
                 Hostname = existingServer.Hostname,
                 QueryPort = existingServer.QueryPort,
                 AgentEnabled = true,
-                FileTransportEnabled = false,
+                FileTransportEnabled = fileTransportEnabled,
                 FileTransportType = RepositoryFileTransportType.Ftp,
                 RconEnabled = false,
                 BanFileSyncEnabled = true,
                 BanFileRootPath = "/",
                 ServerListEnabled = false
-            }
+            },
+            FileTransportConfigHostname = "ftp.example.com",
+            FileTransportConfigPort = 21,
+            FileTransportConfigUsername = "test-user",
+            FileTransportConfigPassword = "test-pass"
         };
 
         var sut = CreateSut();
@@ -1315,7 +1374,7 @@ public class GameServersControllerTests
         Assert.NotNull(capturedUpdate);
         Assert.True(capturedUpdate.AgentEnabled);
         Assert.True(capturedUpdate.BanFileSyncEnabled);
-        Assert.False(capturedUpdate.FileTransportEnabled);
+        Assert.Equal(fileTransportEnabled, capturedUpdate.FileTransportEnabled);
         Assert.False(capturedUpdate.RconEnabled);
     }
 

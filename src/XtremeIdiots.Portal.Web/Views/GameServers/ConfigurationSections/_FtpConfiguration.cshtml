@@ -1,5 +1,11 @@
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport
 @using XtremeIdiots.Portal.Web.ViewModels
 @model GameServerEditViewModel
+
+@{
+    var isSftp = Model.GameServer.FileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp;
+    var usesPrivateKey = isSftp && Model.SftpConfigAuthenticationType == SftpAuthenticationType.PrivateKey;
+}
 
 <div class="ibox">
     <div class="ibox-title">
@@ -19,65 +25,99 @@
             <input asp-for="FtpConfigHostname" class="form-control" data-testid="file-transport-hostname" />
             <span asp-validation-for="FtpConfigHostname" class="text-danger"></span>
             <small class="form-text text-muted">The hostname or IP address of the <span
-                class="js-file-transport-label">@Model.FileTransportLabel</span> server for
-                file transfers.</small>
+                class="js-file-transport-label">@Model.FileTransportLabel</span> server for file transfers.</small>
+        </div>
+        <div class="mb-3">
+            <label asp-for="FtpConfigPort" class="form-label"></label>
+            <input asp-for="FtpConfigPort" class="form-control" type="number" data-testid="file-transport-port" />
+            <span asp-validation-for="FtpConfigPort" class="text-danger"></span>
+            <small class="form-text text-muted"><span class="js-file-transport-label">@Model.FileTransportLabel</span>
+                port number (default:
+                <span id="file-transport-default-port">@GameServerEditViewModel.GetDefaultPort(Model.GameServer.FileTransportType)</span>).</small>
+        </div>
+        <div class="mb-3">
+            <label asp-for="FtpConfigUsername" class="form-label"></label>
+            <input asp-for="FtpConfigUsername" class="form-control" data-testid="file-transport-username" />
+            <span asp-validation-for="FtpConfigUsername" class="text-danger"></span>
+            <small class="form-text text-muted">Username for <span
+                class="js-file-transport-label">@Model.FileTransportLabel</span> authentication.</small>
+        </div>
+
+        <div class="mb-3 @(isSftp ? "" : "d-none")" id="sftp-authentication-type-group">
+            <label asp-for="SftpConfigAuthenticationType" class="form-label"></label>
+            <select asp-for="SftpConfigAuthenticationType" class="form-select"
+                    data-testid="sftp-authentication-type">
+                <option value="@SftpAuthenticationType.Password">Password</option>
+                <option value="@SftpAuthenticationType.PrivateKey">Private key</option>
+            </select>
+            <span asp-validation-for="SftpConfigAuthenticationType" class="text-danger"></span>
+            <small class="form-text text-muted">Choose password authentication or an OpenSSH private key.</small>
+        </div>
+
+        <div class="mb-3 @(!isSftp || !usesPrivateKey ? "" : "d-none")" id="file-transport-password-group">
+            <label asp-for="FtpConfigPassword" class="form-label"></label>
+            <div class="input-group">
+                <input name="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput"
+                       value="" data-testid="file-transport-password" />
+                <button class="btn btn-outline-secondary" type="button" data-password-toggle="ftpPasswordInput"
+                        data-testid="file-transport-password-toggle" aria-label="Show or hide file transport password">
+                    <i class="fa-solid fa-fw fa-eye"></i>
+                </button>
             </div>
-            <div class="mb-3">
-                <label asp-for="FtpConfigPort" class="form-label"></label>
-                <input asp-for="FtpConfigPort" class="form-control" type="number" data-testid="file-transport-port" />
-                <span asp-validation-for="FtpConfigPort" class="text-danger"></span>
-                <small class="form-text text-muted"><span class="js-file-transport-label">@Model.FileTransportLabel</span>
-                    port number (default:
-                    <span
-                    id="file-transport-default-port">@XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel.GetDefaultPort(Model.GameServer.FileTransportType)</span>).</small>
-                </div>
-                <div class="mb-3">
-                    <label asp-for="FtpConfigUsername" class="form-label"></label>
-                    <input asp-for="FtpConfigUsername" class="form-control" data-testid="file-transport-username" />
-                    <span asp-validation-for="FtpConfigUsername" class="text-danger"></span>
-                    <small class="form-text text-muted">Username for <span
-                        class="js-file-transport-label">@Model.FileTransportLabel</span> authentication.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label asp-for="FtpConfigPassword" class="form-label"></label>
-                        <div class="input-group">
-                            <input name="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput"
-                                   value="@Model.FtpConfigPassword" data-testid="file-transport-password" />
-                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="ftpPasswordInput"
-                                    data-testid="file-transport-password-toggle" aria-label="Show or hide file transport password">
-                                <i class="fa-solid fa-fw fa-eye"></i>
-                            </button>
-                        </div>
-                        <span asp-validation-for="FtpConfigPassword" class="text-danger"></span>
-                        <small class="form-text text-muted">Password for <span
-                            class="js-file-transport-label">@Model.FileTransportLabel</span> authentication.</small>
-                        </div>
+            <span asp-validation-for="FtpConfigPassword" class="text-danger"></span>
+            <small class="form-text text-muted">Password for <span
+                class="js-file-transport-label">@Model.FileTransportLabel</span> authentication.</small>
+        </div>
 
-                        <div class="mb-3 @(Model.GameServer.FileTransportType == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType.Sftp ? "" : "d-none")"
-                             id="sftp-host-key-fingerprint-group">
-                            <label asp-for="FtpConfigHostKeyFingerprint" class="form-label"></label>
-                            <input asp-for="FtpConfigHostKeyFingerprint" class="form-control" autocomplete="off"
-                                   data-testid="sftp-host-key-fingerprint" />
-                            <span asp-validation-for="FtpConfigHostKeyFingerprint" class="text-danger"></span>
-                            <small class="form-text text-muted">Hex fingerprint of the SFTP server host key (for example
-                                <code>40:44:78:e0:7a:e0:c2:e7:fe:37:14:9e:4f:09:e0:07</code>).</small>
-                            </div>
+        <div class="mb-3 @(usesPrivateKey ? "" : "d-none")" id="sftp-private-key-group">
+            <label for="SftpConfigPrivateKey" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKey)</label>
+            <textarea name="SftpConfigPrivateKey" id="SftpConfigPrivateKey" class="form-control font-monospace" rows="8"
+                      autocomplete="off" spellcheck="false" data-testid="sftp-private-key"></textarea>
+            <span asp-validation-for="SftpConfigPrivateKey" class="text-danger"></span>
+            <small class="form-text text-muted">OpenSSH or PEM private key used to authenticate the SFTP connection.</small>
+        </div>
 
-                            <div class="mb-3">
-                                <label asp-for="FtpConfigMapsRootPath" class="form-label"></label>
-                                <div class="input-group">
-                                    <input asp-for="FtpConfigMapsRootPath" class="form-control" type="text" maxlength="255" placeholder="/"
-                                           data-testid="file-transport-maps-root" />
-                                    <button class="btn btn-outline-secondary" type="button" data-file-browser
-                                            data-server-id="@Model.GameServer.GameServerId" data-target-id="FtpConfigMapsRootPath"
-                                            data-selection-mode="directory" data-initial-path-source="FtpConfigMapsRootPath"
-                                            data-file-browse-purpose="file-transport-configuration">
-                                        <i class="fa-solid fa-fw fa-folder-open"></i>Browse
-                                    </button>
-                                </div>
-                                <span asp-validation-for="FtpConfigMapsRootPath" class="text-danger"></span>
-                                <small class="form-text text-muted">Optional root path that contains the <code>usermaps</code> folder.
-                                    Leave empty to use server default (<code>/</code>).</small>
-                                </div>
-                            </div>
-                        </div>
+        <div class="mb-3 @(usesPrivateKey ? "" : "d-none")" id="sftp-private-key-passphrase-group">
+            <label for="sftpPrivateKeyPassphraseInput" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKeyPassphrase)</label>
+            <div class="input-group">
+                <input name="SftpConfigPrivateKeyPassphrase" class="form-control" type="password"
+                       id="sftpPrivateKeyPassphraseInput" autocomplete="new-password" value=""
+                       data-testid="sftp-private-key-passphrase" />
+                <button class="btn btn-outline-secondary" type="button"
+                        data-password-toggle="sftpPrivateKeyPassphraseInput"
+                        data-testid="sftp-private-key-passphrase-toggle"
+                        aria-label="Show or hide private key passphrase">
+                    <i class="fa-solid fa-fw fa-eye"></i>
+                </button>
+            </div>
+            <span asp-validation-for="SftpConfigPrivateKeyPassphrase" class="text-danger"></span>
+            <small class="form-text text-muted">Optional passphrase for an encrypted private key.</small>
+        </div>
+
+        <div class="mb-3 @(isSftp ? "" : "d-none")" id="sftp-host-key-fingerprint-group">
+            <label asp-for="FtpConfigHostKeyFingerprint" class="form-label"></label>
+            <input asp-for="FtpConfigHostKeyFingerprint" class="form-control" autocomplete="off"
+                   data-testid="sftp-host-key-fingerprint" />
+            <span asp-validation-for="FtpConfigHostKeyFingerprint" class="text-danger"></span>
+            <small class="form-text text-muted">Hex fingerprint of the SFTP server host key (for example
+                <code>40:44:78:e0:7a:e0:c2:e7:fe:37:14:9e:4f:09:e0:07</code>).</small>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="FtpConfigMapsRootPath" class="form-label"></label>
+            <div class="input-group">
+                <input asp-for="FtpConfigMapsRootPath" class="form-control" type="text" maxlength="255" placeholder="/"
+                       data-testid="file-transport-maps-root" />
+                <button class="btn btn-outline-secondary" type="button" data-file-browser
+                        data-server-id="@Model.GameServer.GameServerId" data-target-id="FtpConfigMapsRootPath"
+                        data-selection-mode="directory" data-initial-path-source="FtpConfigMapsRootPath"
+                        data-file-browse-purpose="file-transport-configuration">
+                    <i class="fa-solid fa-fw fa-folder-open"></i>Browse
+                </button>
+            </div>
+            <span asp-validation-for="FtpConfigMapsRootPath" class="text-danger"></span>
+            <small class="form-text text-muted">Optional root path that contains the <code>usermaps</code> folder.
+                Leave empty to use server default (<code>/</code>).</small>
+        </div>
+    </div>
+</div>

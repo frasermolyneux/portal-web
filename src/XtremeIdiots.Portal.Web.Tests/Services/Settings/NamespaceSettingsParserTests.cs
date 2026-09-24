@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
@@ -109,8 +110,63 @@ public class NamespaceSettingsParserTests
         Assert.Equal(22, viewData["FtpPort"]);
         Assert.Equal("ops-user", viewData["FtpUsername"]);
         Assert.Equal("sftp-secret", viewData["FtpPassword"]);
+        Assert.Equal(SftpAuthenticationType.Password, viewData["SftpAuthenticationType"]);
         Assert.Equal(FileTransportType.Sftp, viewData["FileTransportType"]);
         Assert.Equal("rcon-secret", viewData["RconPassword"]);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void PopulateGameServerDetails_SftpPrivateKey_MapsStatusWithoutExposingSecrets(
+        bool hasPrivateKey,
+        bool hasPassphrase)
+    {
+        var viewData = new Dictionary<string, object?>();
+        var configuration = BuildConfiguration("sftp", System.Text.Json.JsonSerializer.Serialize(new
+        {
+            authenticationType = "PrivateKey",
+            privateKey = hasPrivateKey ? "private-key-content" : null,
+            privateKeyPassphrase = hasPassphrase ? "key-passphrase" : null
+        }));
+
+        parser.PopulateGameServerDetails(viewData, FileTransportType.Sftp, configuration, logger);
+
+        Assert.Equal(SftpAuthenticationType.PrivateKey, viewData["SftpAuthenticationType"]);
+        Assert.Equal(hasPrivateKey, viewData["SftpPrivateKeyConfigured"]);
+        Assert.Equal(hasPassphrase, viewData["SftpPrivateKeyPassphraseConfigured"]);
+        Assert.DoesNotContain(viewData.Values, value =>
+            string.Equals(value as string, "private-key-content", StringComparison.Ordinal)
+            || string.Equals(value as string, "key-passphrase", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PopulateGameServerSettingsViewModel_SftpPrivateKey_MapsModeWithoutExposingCredentials()
+    {
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = FileTransportType.Sftp
+            }
+        };
+        var configuration = BuildConfiguration("sftp", /*lang=json,strict*/ """
+        {
+          "hostname": "sftp.example.com",
+          "port": 22,
+          "username": "ops-user",
+          "authenticationType": "PrivateKey",
+          "privateKey": "private-key-content",
+          "privateKeyPassphrase": "key-passphrase",
+          "hostKeyFingerprint": "aa:bb:cc"
+        }
+        """);
+
+        parser.PopulateGameServerSettingsViewModel(model, configuration, logger);
+
+        Assert.Equal(SftpAuthenticationType.PrivateKey, model.FileTransportConfigSftpAuthenticationType);
+        Assert.Null(model.FileTransportConfigPrivateKey);
+        Assert.Null(model.FileTransportConfigPrivateKeyPassphrase);
     }
 
     [Fact]
@@ -125,7 +181,10 @@ public class NamespaceSettingsParserTests
 
         var sftpConfig = BuildConfiguration("sftp", /*lang=json,strict*/ """
         {
+          "authenticationType": "PrivateKey",
           "password": "existing-sftp-password",
+          "privateKey": "existing-private-key",
+          "privateKeyPassphrase": "existing-passphrase",
           "hostKeyFingerprint": "aa:bb:cc"
         }
         """);
@@ -140,21 +199,19 @@ public class NamespaceSettingsParserTests
             model,
             activeTransportNamespace: "sftp",
             sftpConfig,
-            needsFileTransportPassword: true,
-            needsFileTransportHostKeyFingerprint: true,
-            needsRconPassword: true,
+            new CredentialPreservationOptions(true, true, true, true, true),
             logger);
 
         parser.PopulateExistingCredentials(
             model,
             activeTransportNamespace: "sftp",
             rconConfig,
-            needsFileTransportPassword: true,
-            needsFileTransportHostKeyFingerprint: true,
-            needsRconPassword: true,
+            new CredentialPreservationOptions(true, true, true, true, true),
             logger);
 
         Assert.Equal("existing-sftp-password", model.FileTransportConfigPassword);
+        Assert.Equal("existing-private-key", model.FileTransportConfigPrivateKey);
+        Assert.Equal("existing-passphrase", model.FileTransportConfigPrivateKeyPassphrase);
         Assert.Equal("aa:bb:cc", model.FileTransportConfigHostKeyFingerprint);
         Assert.Equal("existing-rcon-password", model.RconConfigPassword);
     }

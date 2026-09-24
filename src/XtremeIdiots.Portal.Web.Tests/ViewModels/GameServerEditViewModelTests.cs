@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -7,6 +8,20 @@ namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
 
 public class GameServerEditViewModelTests
 {
+    [Fact]
+    public void Validate_UndefinedSftpAuthenticationType_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.FileTransportConfigSftpAuthenticationType = (SftpAuthenticationType)999;
+        var validationResults = new List<ValidationResult>();
+
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
+
+        Assert.False(isValid);
+        Assert.Contains(validationResults, result =>
+            result.MemberNames.Contains(nameof(GameServerEditViewModel.FileTransportConfigSftpAuthenticationType)));
+    }
+
     [Fact]
     public void BroadcastsIntervalSeconds_DefaultsTo500()
     {

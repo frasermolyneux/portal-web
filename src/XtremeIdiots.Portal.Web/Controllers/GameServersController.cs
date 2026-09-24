@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -422,6 +423,16 @@ public class GameServersController(
             var canEditFileTransport = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_FileTransport_Write).ConfigureAwait(false);
             var canEditGameServerRcon = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Credentials_Rcon_Write).ConfigureAwait(false);
             var canConfigureScreenshots = await authorizationService.AuthorizeAsync(User, gameServerData.GameType, AuthPolicies.GameServers_Admin_Screenshots_Configure).ConfigureAwait(false);
+            if (canEditFileTransport.Succeeded
+                && model.GameServer.FileTransportEnabled
+                && model.GameServer.FileTransportType == FileTransportType.Sftp
+                && model.SftpConfigAuthenticationType is null)
+            {
+                ModelState.AddModelError(
+                    nameof(GameServerEditViewModel.SftpConfigAuthenticationType),
+                    "The SFTP Authentication field is required.");
+            }
+
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var globalDefaultsLoaded = await PopulateGlobalDefaultsAsync(model, cancellationToken).ConfigureAwait(false);
@@ -517,6 +528,19 @@ public class GameServersController(
             var selectedFileTransportType = canEditFileTransport.Succeeded
                 ? model.GameServer.FileTransportType
                 : existingFileTransportType;
+
+            if (canEditFileTransport.Succeeded
+                && selectedFileTransportEnabled
+                && selectedFileTransportType == FileTransportType.Sftp
+                && model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.PrivateKey
+                && string.IsNullOrWhiteSpace(model.FileTransportConfigPrivateKey))
+            {
+                ModelState.AddModelError(nameof(model.SftpConfigPrivateKey), "SFTP private key is required when private-key authentication is selected.");
+                AddGameTypeViewData(model.GameServer.GameType);
+                AddPlatformViewData(model.GameServer.Platform);
+                await RepopulateAuthFlags(model, gameServerData.GameType).ConfigureAwait(false);
+                return View(model);
+            }
 
             if (canEditFileTransport.Succeeded
                 && selectedFileTransportEnabled
@@ -815,13 +839,36 @@ public class GameServersController(
         CancellationToken cancellationToken)
     {
         var activeTransportNamespace = GameServerEditViewModel.GetFileTransportNamespace(model.GameServer.FileTransportType);
-        var needsFileTransportPassword = canEditFileTransport && string.IsNullOrEmpty(model.FileTransportConfigPassword);
+        var isSftp = string.Equals(activeTransportNamespace, SftpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase);
+        var usesPrivateKey = isSftp && model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.PrivateKey;
+        var needsFileTransportPassword = canEditFileTransport
+            && !usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPassword);
+        var needsFileTransportPrivateKey = canEditFileTransport
+            && usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPrivateKey);
+        var needsFileTransportPrivateKeyPassphrase = canEditFileTransport
+            && usesPrivateKey
+            && string.IsNullOrEmpty(model.FileTransportConfigPrivateKeyPassphrase);
         var needsFileTransportHostKeyFingerprint = canEditFileTransport
-            && string.Equals(activeTransportNamespace, "sftp", StringComparison.OrdinalIgnoreCase)
+            && isSftp
             && string.IsNullOrWhiteSpace(model.FileTransportConfigHostKeyFingerprint);
         var needsRconPassword = canEditRcon && string.IsNullOrEmpty(model.RconConfigPassword);
+        var options = new CredentialPreservationOptions(
+            needsFileTransportPassword,
+            needsFileTransportPrivateKey,
+            needsFileTransportPrivateKeyPassphrase,
+            needsFileTransportHostKeyFingerprint,
+            needsRconPassword);
 
-        if (!needsFileTransportPassword && !needsFileTransportHostKeyFingerprint && !needsRconPassword)
+        if (options is
+            {
+                FileTransportPassword: false,
+                FileTransportPrivateKey: false,
+                FileTransportPrivateKeyPassphrase: false,
+                FileTransportHostKeyFingerprint: false,
+                RconPassword: false
+            })
             return true;
 
         try
@@ -838,9 +885,7 @@ public class GameServersController(
                     model,
                     activeTransportNamespace,
                     config,
-                    needsFileTransportPassword,
-                    needsFileTransportHostKeyFingerprint,
-                    needsRconPassword,
+                    options,
                     Logger);
             }
 

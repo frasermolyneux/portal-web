@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -19,7 +20,11 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 
 internal sealed class FileTransportScenario
 {
-    public FileTransportScenario(bool upsertSucceeds = true, bool existingFingerprint = true)
+    public FileTransportScenario(
+        bool upsertSucceeds = true,
+        bool existingFingerprint = true,
+        bool privateKeyAuthentication = false,
+        bool existingPrivateKey = true)
     {
         GameServerId = Guid.Parse("99999999-9999-9999-9999-999999999999");
         GameServer = CreateGameServer(GameServerId);
@@ -30,7 +35,10 @@ internal sealed class FileTransportScenario
                 hostname = "sftp.example.com",
                 port = 22,
                 username = "ops-user",
-                password = "CurrentSftpPassword",
+                authenticationType = privateKeyAuthentication ? "PrivateKey" : "Password",
+                password = privateKeyAuthentication ? null : "CurrentSftpPassword",
+                privateKey = privateKeyAuthentication && existingPrivateKey ? "CurrentPrivateKey" : null,
+                privateKeyPassphrase = privateKeyAuthentication && existingPrivateKey ? "CurrentPassphrase" : null,
                 mapsRootPath = "/maps",
                 hostKeyFingerprint = existingFingerprint ? "aa:bb:cc" : null,
             }));
@@ -73,8 +81,14 @@ internal sealed class FileTransportScenario
         SettingsService.SetupGet(service => service.DeletedNamespaces).Returns([]);
         SettingsService.Setup(service => service.PopulateConfigFromNamespace(It.IsAny<GameServerEditViewModel>(), It.IsAny<ConfigurationDto>(), It.IsAny<ILogger>()))
             .Callback<GameServerEditViewModel, ConfigurationDto, ILogger>((model, config, _) => PopulateCredentials(model, config));
-        SettingsService.Setup(service => service.PopulateExistingCredentials(It.IsAny<GameServerEditViewModel>(), It.IsAny<string>(), It.IsAny<ConfigurationDto>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<ILogger>()))
-            .Callback<GameServerEditViewModel, string, ConfigurationDto, bool, bool, bool, ILogger>((model, _, config, needsPassword, needsFingerprint, _, _) => PreserveExistingSecrets(model, config, needsPassword, needsFingerprint));
+        SettingsService.Setup(service => service.PopulateExistingCredentials(
+                It.IsAny<GameServerEditViewModel>(),
+                It.IsAny<string>(),
+                It.IsAny<ConfigurationDto>(),
+                It.IsAny<CredentialPreservationOptions>(),
+                It.IsAny<ILogger>()))
+            .Callback<GameServerEditViewModel, string, ConfigurationDto, CredentialPreservationOptions, ILogger>(
+                (model, _, config, options, _) => PreserveExistingSecrets(model, config, options));
         SettingsService.Setup(service => service.BuildNamespaceConfigurations(It.IsAny<GameServerEditViewModel>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
             .Returns<GameServerEditViewModel, bool, bool, bool>((model, canEdit, _, _) => canEdit ? [BuildConfiguration(model)] : []);
     }
@@ -104,7 +118,16 @@ internal sealed class FileTransportScenario
             hostname = model.FtpConfigHostname,
             port = model.FtpConfigPort,
             username = model.FtpConfigUsername,
-            password = model.FtpConfigPassword,
+            authenticationType = model.SftpConfigAuthenticationType.ToString(),
+            password = model.SftpConfigAuthenticationType == SftpAuthenticationType.Password
+                ? model.FtpConfigPassword
+                : null,
+            privateKey = model.SftpConfigAuthenticationType == SftpAuthenticationType.PrivateKey
+                ? model.SftpConfigPrivateKey
+                : null,
+            privateKeyPassphrase = model.SftpConfigAuthenticationType == SftpAuthenticationType.PrivateKey
+                ? model.SftpConfigPrivateKeyPassphrase
+                : null,
             mapsRootPath = model.FtpConfigMapsRootPath,
             hostKeyFingerprint = ns == "sftp" ? model.FtpConfigHostKeyFingerprint : null,
         };
@@ -145,22 +168,40 @@ internal sealed class FileTransportScenario
         model.FtpConfigHostname = "sftp.example.com";
         model.FtpConfigPort = 22;
         model.FtpConfigUsername = "ops-user";
-        if (password)
-            model.FtpConfigPassword = "CurrentSftpPassword";
+        using var document = JsonDocument.Parse(config.Configuration);
+        model.SftpConfigAuthenticationType = document.RootElement.GetProperty("authenticationType").GetString() == "PrivateKey"
+            ? SftpAuthenticationType.PrivateKey
+            : SftpAuthenticationType.Password;
         if (fingerprint)
             model.FtpConfigHostKeyFingerprint = "aa:bb:cc";
         model.FtpConfigMapsRootPath = "/maps";
     }
 
-    private static void PreserveExistingSecrets(GameServerEditViewModel model, ConfigurationDto config, bool password, bool fingerprint)
+    private static void PreserveExistingSecrets(
+        GameServerEditViewModel model,
+        ConfigurationDto config,
+        CredentialPreservationOptions options)
     {
         if (!string.Equals(config.Namespace, "sftp", StringComparison.OrdinalIgnoreCase))
             return;
         using var document = JsonDocument.Parse(config.Configuration);
-        if (password)
-            model.FtpConfigPassword = document.RootElement.GetProperty("password").GetString();
-        if (fingerprint && document.RootElement.TryGetProperty("hostKeyFingerprint", out var value))
+        if (options.FileTransportPassword)
+            model.FtpConfigPassword = GetOptionalString(document.RootElement, "password");
+        if (options.FileTransportPrivateKey
+            && document.RootElement.TryGetProperty("privateKey", out _))
+            model.SftpConfigPrivateKey = GetOptionalString(document.RootElement, "privateKey");
+        if (options.FileTransportPrivateKeyPassphrase
+            && document.RootElement.TryGetProperty("privateKeyPassphrase", out _))
+            model.SftpConfigPrivateKeyPassphrase = GetOptionalString(document.RootElement, "privateKeyPassphrase");
+        if (options.FileTransportHostKeyFingerprint
+            && document.RootElement.TryGetProperty("hostKeyFingerprint", out var value))
             model.FtpConfigHostKeyFingerprint = value.ValueKind == JsonValueKind.Null ? null : value.GetString();
+    }
+
+    private static string? GetOptionalString(JsonElement root, string propertyName)
+    {
+        var value = root.GetProperty(propertyName);
+        return value.ValueKind == JsonValueKind.Null ? null : value.GetString();
     }
 
     public sealed record ConfigurationCommand(string Namespace, string Configuration);

@@ -170,7 +170,16 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     Hostname = model.FileTransportConfigHostname,
                     Port = model.FileTransportConfigPort,
                     Username = model.FileTransportConfigUsername,
-                    Password = model.FileTransportConfigPassword,
+                    AuthenticationType = model.FileTransportConfigSftpAuthenticationType,
+                    Password = model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.Password
+                        ? model.FileTransportConfigPassword
+                        : null,
+                    PrivateKey = model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.PrivateKey
+                        ? model.FileTransportConfigPrivateKey
+                        : null,
+                    PrivateKeyPassphrase = model.FileTransportConfigSftpAuthenticationType == SftpAuthenticationType.PrivateKey
+                        ? model.FileTransportConfigPrivateKeyPassphrase
+                        : null,
                     MapsRootPath = string.IsNullOrWhiteSpace(model.FileTransportConfigMapsRootPath)
                         ? null
                         : model.FileTransportConfigMapsRootPath,

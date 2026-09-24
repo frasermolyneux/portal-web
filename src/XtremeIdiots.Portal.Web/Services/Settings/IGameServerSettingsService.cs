@@ -18,9 +18,7 @@ public interface IGameServerSettingsService
         GameServerEditViewModel model,
         string activeTransportNamespace,
         ConfigurationDto config,
-        bool needsFileTransportPassword,
-        bool needsFileTransportHostKeyFingerprint,
-        bool needsRconPassword,
+        CredentialPreservationOptions options,
         ILogger logger);
 
     IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(
