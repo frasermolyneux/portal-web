@@ -58,7 +58,7 @@
             <label asp-for="FtpConfigPassword" class="form-label"></label>
             <div class="input-group">
                 <input name="FtpConfigPassword" class="form-control" type="password" id="ftpPasswordInput"
-                       value="" data-testid="file-transport-password" />
+                       value="@Model.FtpConfigPassword" data-testid="file-transport-password" />
                 <button class="btn btn-outline-secondary" type="button" data-password-toggle="ftpPasswordInput"
                         data-testid="file-transport-password-toggle" aria-label="Show or hide file transport password">
                     <i class="fa-solid fa-fw fa-eye"></i>
@@ -72,7 +72,7 @@
         <div class="mb-3 @(usesPrivateKey ? "" : "d-none")" id="sftp-private-key-group">
             <label for="SftpConfigPrivateKey" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKey)</label>
             <textarea name="SftpConfigPrivateKey" id="SftpConfigPrivateKey" class="form-control font-monospace" rows="8"
-                      autocomplete="off" spellcheck="false" data-testid="sftp-private-key"></textarea>
+                      autocomplete="off" spellcheck="false" data-testid="sftp-private-key">@Model.SftpConfigPrivateKey</textarea>
             <span asp-validation-for="SftpConfigPrivateKey" class="text-danger"></span>
             <small class="form-text text-muted">OpenSSH or PEM private key used to authenticate the SFTP connection.</small>
         </div>
@@ -81,7 +81,7 @@
             <label for="sftpPrivateKeyPassphraseInput" class="form-label">@Html.DisplayNameFor(model => model.SftpConfigPrivateKeyPassphrase)</label>
             <div class="input-group">
                 <input name="SftpConfigPrivateKeyPassphrase" class="form-control" type="password"
-                       id="sftpPrivateKeyPassphraseInput" autocomplete="new-password" value=""
+                       id="sftpPrivateKeyPassphraseInput" autocomplete="new-password" value="@Model.SftpConfigPrivateKeyPassphrase"
                        data-testid="sftp-private-key-passphrase" />
                 <button class="btn btn-outline-secondary" type="button"
                         data-password-toggle="sftpPrivateKeyPassphraseInput"

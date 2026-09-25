@@ -115,10 +115,63 @@ public class NamespaceSettingsParserTests
         Assert.Equal("rcon-secret", viewData["RconPassword"]);
     }
 
+    [Fact]
+    public void PopulateGameServerSettingsViewModel_CredentialNamespaces_MapEditableValues()
+    {
+        var sftpModel = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = FileTransportType.Sftp
+            }
+        };
+        var sftpConfig = BuildConfiguration("sftp", /*lang=json,strict*/ """
+        {
+          "hostname": "sftp.example.com",
+          "port": 22,
+          "username": "ops-user",
+          "password": "sftp-secret",
+          "hostKeyFingerprint": "aa:bb:cc"
+        }
+        """);
+        var rconConfig = BuildConfiguration("rcon", /*lang=json,strict*/ """
+        {
+          "password": "rcon-secret"
+        }
+        """);
+
+        parser.PopulateGameServerSettingsViewModel(sftpModel, sftpConfig, logger);
+        parser.PopulateGameServerSettingsViewModel(sftpModel, rconConfig, logger);
+
+        Assert.Equal("sftp-secret", sftpModel.FileTransportConfigPassword);
+        Assert.Equal(SftpAuthenticationType.Password, sftpModel.FileTransportConfigSftpAuthenticationType);
+        Assert.Equal("rcon-secret", sftpModel.RconConfigPassword);
+
+        var ftpModel = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = FileTransportType.Ftp
+            }
+        };
+        var ftpConfig = BuildConfiguration("ftp", /*lang=json,strict*/ """
+        {
+          "hostname": "ftp.example.com",
+          "port": 21,
+          "username": "ops-user",
+          "password": "ftp-secret"
+        }
+        """);
+
+        parser.PopulateGameServerSettingsViewModel(ftpModel, ftpConfig, logger);
+
+        Assert.Equal("ftp-secret", ftpModel.FileTransportConfigPassword);
+    }
+
     [Theory]
     [InlineData(true, true)]
     [InlineData(false, false)]
-    public void PopulateGameServerDetails_SftpPrivateKey_MapsStatusWithoutExposingSecrets(
+    public void PopulateGameServerDetails_SftpPrivateKey_MapsCredentials(
         bool hasPrivateKey,
         bool hasPassphrase)
     {
@@ -133,15 +186,12 @@ public class NamespaceSettingsParserTests
         parser.PopulateGameServerDetails(viewData, FileTransportType.Sftp, configuration, logger);
 
         Assert.Equal(SftpAuthenticationType.PrivateKey, viewData["SftpAuthenticationType"]);
-        Assert.Equal(hasPrivateKey, viewData["SftpPrivateKeyConfigured"]);
-        Assert.Equal(hasPassphrase, viewData["SftpPrivateKeyPassphraseConfigured"]);
-        Assert.DoesNotContain(viewData.Values, value =>
-            string.Equals(value as string, "private-key-content", StringComparison.Ordinal)
-            || string.Equals(value as string, "key-passphrase", StringComparison.Ordinal));
+        Assert.Equal(hasPrivateKey ? "private-key-content" : null, viewData["SftpPrivateKey"]);
+        Assert.Equal(hasPassphrase ? "key-passphrase" : null, viewData["SftpPrivateKeyPassphrase"]);
     }
 
     [Fact]
-    public void PopulateGameServerSettingsViewModel_SftpPrivateKey_MapsModeWithoutExposingCredentials()
+    public void PopulateGameServerSettingsViewModel_SftpPrivateKey_MapsCredentials()
     {
         var model = new GameServerEditViewModel
         {
@@ -165,8 +215,8 @@ public class NamespaceSettingsParserTests
         parser.PopulateGameServerSettingsViewModel(model, configuration, logger);
 
         Assert.Equal(SftpAuthenticationType.PrivateKey, model.FileTransportConfigSftpAuthenticationType);
-        Assert.Null(model.FileTransportConfigPrivateKey);
-        Assert.Null(model.FileTransportConfigPrivateKeyPassphrase);
+        Assert.Equal("private-key-content", model.FileTransportConfigPrivateKey);
+        Assert.Equal("key-passphrase", model.FileTransportConfigPrivateKeyPassphrase);
     }
 
     [Fact]

@@ -179,6 +179,9 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     model.FileTransportConfigPort = sftpDocument.Port ?? GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType);
                     model.FileTransportConfigUsername = sftpDocument.Username;
                     model.FileTransportConfigSftpAuthenticationType = sftpDocument.AuthenticationType;
+                    model.FileTransportConfigPassword = sftpDocument.Password;
+                    model.FileTransportConfigPrivateKey = sftpDocument.PrivateKey;
+                    model.FileTransportConfigPrivateKeyPassphrase = sftpDocument.PrivateKeyPassphrase;
                     model.FileTransportConfigHostKeyFingerprint = sftpDocument.HostKeyFingerprint;
                     model.FileTransportConfigMapsRootPath = sftpDocument.MapsRootPath;
                 }
@@ -189,6 +192,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     model.FileTransportConfigHostname = ftpDocument.Hostname;
                     model.FileTransportConfigPort = ftpDocument.Port ?? GameServerEditViewModel.GetDefaultPort(model.GameServer.FileTransportType);
                     model.FileTransportConfigUsername = ftpDocument.Username;
+                    model.FileTransportConfigPassword = ftpDocument.Password;
                     model.FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.Password;
                     model.FileTransportConfigMapsRootPath = ftpDocument.MapsRootPath;
                     model.FileTransportConfigHostKeyFingerprint = null;
@@ -478,8 +482,8 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                     viewData["FtpUsername"] = sftpDocument.Username;
                     viewData["FtpPassword"] = sftpDocument.Password;
                     viewData["SftpAuthenticationType"] = sftpDocument.AuthenticationType;
-                    viewData["SftpPrivateKeyConfigured"] = !string.IsNullOrWhiteSpace(sftpDocument.PrivateKey);
-                    viewData["SftpPrivateKeyPassphraseConfigured"] = !string.IsNullOrWhiteSpace(sftpDocument.PrivateKeyPassphrase);
+                    viewData["SftpPrivateKey"] = sftpDocument.PrivateKey;
+                    viewData["SftpPrivateKeyPassphrase"] = sftpDocument.PrivateKeyPassphrase;
                     viewData["FileTransportType"] = fileTransportType;
                 }
                 else if (string.Equals(config.Namespace, FtpSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)

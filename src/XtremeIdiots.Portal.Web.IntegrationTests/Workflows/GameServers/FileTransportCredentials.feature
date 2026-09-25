@@ -50,10 +50,10 @@ Feature: File transport credentials
     And no file transport writes should be recorded
     And the file transport browser should report no errors
 
-  Scenario: Invalid SFTP private-key form does not redisplay secrets
+  Scenario: Invalid SFTP private-key form retains credentials
     Given a successful private-key file transport scenario for a head admin
     When the head admin submits private-key authentication with an invalid maps root
-    Then the private-key secret controls should remain blank
+    Then the private-key secret controls should retain their values
     And the maps root validation should be displayed
     And no file transport writes should be recorded
     And the file transport browser should report no errors
@@ -76,7 +76,7 @@ Feature: File transport credentials
   Scenario: Traversal maps root prevents writes
     Given a successful file transport scenario for a head admin
     When the head admin submits a maps root containing path traversal
-    Then the file transport password should remain blank
+    Then the file transport password should retain its value
     Then the maps root validation should be displayed
     And no file transport writes should be recorded
     And the file transport browser should report no errors

@@ -1003,6 +1003,52 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public async Task PreserveExistingPasswordsAsync_SftpPasswordBlank_PreservesLegacyCurrentPassword()
+    {
+        var gameServerId = Guid.NewGuid();
+        var existingSftpConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SftpSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                {
+                  "hostname": "sftp.example.com",
+                  "port": 22,
+                  "username": "test-user",
+                  "password": "existing-password",
+                  "hostKeyFingerprint": "aa:bb:cc"
+                }
+                """,
+            LastModifiedUtc = DateTime.UtcNow
+        }))!;
+        mockRepositoryApiClient
+            .Setup(client => client.GameServerConfigurations.V1.GetConfigurations(
+                gameServerId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(
+                    new CollectionModel<ConfigurationDto>([existingSftpConfig]))));
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                FileTransportType = RepositoryFileTransportType.Sftp
+            },
+            FileTransportConfigSftpAuthenticationType = SftpAuthenticationType.Password
+        };
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("PreserveExistingPasswordsAsync");
+
+        var preserved = await ((Task<bool>)method.Invoke(
+            sut,
+            [model, gameServerId, true, false, CancellationToken.None])!).ConfigureAwait(true);
+
+        Assert.True(preserved);
+        Assert.Equal("existing-password", model.FileTransportConfigPassword);
+        Assert.Equal("aa:bb:cc", model.FileTransportConfigHostKeyFingerprint);
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_WithDisabledFeatures_DoesNotCallDeleteConfigurationAsync()
     {
         var sut = CreateSut();
