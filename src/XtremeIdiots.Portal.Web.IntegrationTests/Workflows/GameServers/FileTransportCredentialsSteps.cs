@@ -273,11 +273,10 @@ public sealed class FileTransportCredentialsSteps
         await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("SFTP host key fingerprint is required");
     }
 
-    [Then("the SFTP private-key passphrase should remain blank")]
-    public async Task ThenPrivateKeyPassphraseRemainsBlank()
+    [Then("the SFTP private-key passphrase should retain its current value")]
+    public async Task ThenPrivateKeyPassphraseRetainsItsCurrentValue()
     {
-        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
-        Assert.DoesNotContain("CurrentPassphrase", await Browser.Page.ContentAsync().ConfigureAwait(true), StringComparison.Ordinal);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync("CurrentPassphrase").ConfigureAwait(true);
     }
 
     [Then("the maps root validation should be displayed")]

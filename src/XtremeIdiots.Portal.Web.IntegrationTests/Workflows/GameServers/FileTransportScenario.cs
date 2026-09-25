@@ -161,7 +161,7 @@ internal sealed class FileTransportScenario
         }))!;
     }
 
-    private static void PopulateCredentials(GameServerEditViewModel model, ConfigurationDto config, bool password = true, bool fingerprint = true)
+    private static void PopulateCredentials(GameServerEditViewModel model, ConfigurationDto config)
     {
         if (!string.Equals(config.Namespace, "sftp", StringComparison.OrdinalIgnoreCase))
             return;
@@ -172,8 +172,10 @@ internal sealed class FileTransportScenario
         model.SftpConfigAuthenticationType = document.RootElement.GetProperty("authenticationType").GetString() == "PrivateKey"
             ? SftpAuthenticationType.PrivateKey
             : SftpAuthenticationType.Password;
-        if (fingerprint)
-            model.FtpConfigHostKeyFingerprint = "aa:bb:cc";
+        model.FtpConfigPassword = GetOptionalString(document.RootElement, "password");
+        model.SftpConfigPrivateKey = GetOptionalString(document.RootElement, "privateKey");
+        model.SftpConfigPrivateKeyPassphrase = GetOptionalString(document.RootElement, "privateKeyPassphrase");
+        model.FtpConfigHostKeyFingerprint = GetOptionalString(document.RootElement, "hostKeyFingerprint");
         model.FtpConfigMapsRootPath = "/maps";
     }
 

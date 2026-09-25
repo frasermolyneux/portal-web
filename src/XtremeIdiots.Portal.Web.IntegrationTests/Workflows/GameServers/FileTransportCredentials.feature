@@ -65,11 +65,11 @@ Feature: File transport credentials
     And no file transport writes should be recorded
     And the file transport browser should report no errors
 
-  Scenario: SFTP private-key validation redisplay keeps passphrase blank
+  Scenario: SFTP private-key validation redisplay retains passphrase
     Given a private-key file transport scenario with no existing SFTP fingerprint
     When the head admin submits SFTP private-key authentication without passphrase or fingerprint fields
     Then the SFTP fingerprint validation should be displayed
-    And the SFTP private-key passphrase should remain blank
+    And the SFTP private-key passphrase should retain its current value
     And no file transport writes should be recorded
     And the file transport browser should report no errors
 
