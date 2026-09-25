@@ -81,11 +81,11 @@
                                 {
                                     <dl class="detail-field col-sm-6">
                                         <dt class="detail-label">SFTP Private Key</dt>
-                                        <dd class="detail-value">@(ViewBag.SftpPrivateKeyConfigured == true ? "Configured" : "Not configured")</dd>
+                                        <dd class="detail-value"><pre class="mb-0"><code>@ViewBag.SftpPrivateKey</code></pre></dd>
                                     </dl>
                                     <dl class="detail-field col-sm-6">
                                         <dt class="detail-label">Private Key Passphrase</dt>
-                                        <dd class="detail-value">@(ViewBag.SftpPrivateKeyPassphraseConfigured == true ? "Configured" : "Not configured")</dd>
+                                        <dd class="detail-value">@ViewBag.SftpPrivateKeyPassphrase</dd>
                                     </dl>
                                 }
                             }

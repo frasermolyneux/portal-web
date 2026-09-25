@@ -23,8 +23,10 @@ internal sealed class CredentialsContentScenario
     public const string SftpHostname = "sftp.creds.example.com";
     public const string SftpUsername = "ops-user";
     public const string SftpPassword = "SftpSecret456";
+    public const string SftpPrivateKey = "SftpPrivateKey789";
+    public const string SftpPrivateKeyPassphrase = "SftpPassphrase012";
 
-    public CredentialsContentScenario()
+    public CredentialsContentScenario(bool privateKeyAuthentication = false)
     {
         GameServerId = Guid.Parse(TestPrincipalProfiles.CredentialServerId);
         GameServer = CreateGameServer(GameServerId);
@@ -38,7 +40,11 @@ internal sealed class CredentialsContentScenario
             hostname = SftpHostname,
             port = 22,
             username = SftpUsername,
-            password = SftpPassword,
+            authenticationType = privateKeyAuthentication ? "PrivateKey" : "Password",
+            password = privateKeyAuthentication ? null : SftpPassword,
+            privateKey = privateKeyAuthentication ? SftpPrivateKey : null,
+            privateKeyPassphrase = privateKeyAuthentication ? SftpPrivateKeyPassphrase : null,
+            hostKeyFingerprint = "aa:bb:cc",
             mapsRootPath = "/maps",
         }));
 
@@ -53,6 +59,11 @@ internal sealed class CredentialsContentScenario
         Mock.Get(RepositoryClient.Object.GameServers.V1)
             .Setup(api => api.GetGameServers(It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<GameServerOrder>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(gameServersResult);
+        Mock.Get(RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServer(GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(
+                HttpStatusCode.OK,
+                new ApiResponse<GameServerDto>(GameServer)));
 
         Mock.Get(RepositoryClient.Object.GameServerConfigurations.V1)
             .Setup(api => api.GetConfigurations(GameServerId, It.IsAny<CancellationToken>()))

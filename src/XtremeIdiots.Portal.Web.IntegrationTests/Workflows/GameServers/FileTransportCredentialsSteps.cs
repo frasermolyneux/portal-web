@@ -81,6 +81,7 @@ public sealed class FileTransportCredentialsSteps
     public async Task WhenTheHeadAdminClearsAndSavesSftpSecrets()
     {
         await OpenFileTransportTabAsync();
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveValueAsync("CurrentSftpPassword");
         await Browser.Page.GetByTestId("file-transport-password").FillAsync(string.Empty);
         await Browser.Page.GetByTestId("sftp-host-key-fingerprint").FillAsync(string.Empty);
         await SubmitAndFollowAsync();
@@ -115,8 +116,10 @@ public sealed class FileTransportCredentialsSteps
     public async Task WhenTheHeadAdminSavesBlankSftpPrivateKeyFields()
     {
         await OpenFileTransportTabAsync().ConfigureAwait(true);
-        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
-        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToHaveValueAsync("CurrentPrivateKey").ConfigureAwait(true);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync("CurrentPassphrase").ConfigureAwait(true);
+        await Browser.Page.GetByTestId("sftp-private-key").FillAsync(string.Empty).ConfigureAwait(true);
+        await Browser.Page.GetByTestId("sftp-private-key-passphrase").FillAsync(string.Empty).ConfigureAwait(true);
         await SubmitAndFollowAsync().ConfigureAwait(true);
     }
 
@@ -253,13 +256,13 @@ public sealed class FileTransportCredentialsSteps
         await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("The SFTP Authentication field is required").ConfigureAwait(true);
     }
 
-    [Then("the private-key secret controls should remain blank")]
-    public async Task ThenPrivateKeySecretControlsRemainBlank()
+    [Then("the private-key secret controls should retain their values")]
+    public async Task ThenPrivateKeySecretControlsRetainTheirValues()
     {
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
-        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
-        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key")).ToHaveValueAsync("CurrentPrivateKey").ConfigureAwait(true);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync("CurrentPassphrase").ConfigureAwait(true);
     }
 
     [Then("the SFTP fingerprint validation should be displayed")]
@@ -270,11 +273,10 @@ public sealed class FileTransportCredentialsSteps
         await Assertions.Expect(Browser.Page.Locator("body")).ToContainTextAsync("SFTP host key fingerprint is required");
     }
 
-    [Then("the SFTP private-key passphrase should remain blank")]
-    public async Task ThenPrivateKeyPassphraseRemainsBlank()
+    [Then("the SFTP private-key passphrase should retain its current value")]
+    public async Task ThenPrivateKeyPassphraseRetainsItsCurrentValue()
     {
-        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
-        Assert.DoesNotContain("CurrentPassphrase", await Browser.Page.ContentAsync().ConfigureAwait(true), StringComparison.Ordinal);
+        await Assertions.Expect(Browser.Page.GetByTestId("sftp-private-key-passphrase")).ToHaveValueAsync("CurrentPassphrase").ConfigureAwait(true);
     }
 
     [Then("the maps root validation should be displayed")]
@@ -336,13 +338,12 @@ public sealed class FileTransportCredentialsSteps
         await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveAttributeAsync("type", "password");
     }
 
-    [Then("the file transport password should remain blank")]
-    public async Task ThenPasswordRemainsBlank()
+    [Then("the file transport password should retain its value")]
+    public async Task ThenPasswordRetainsItsValue()
     {
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
-        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveValueAsync(string.Empty).ConfigureAwait(true);
-        Assert.DoesNotContain("CurrentSftpPassword", await Browser.Page.ContentAsync().ConfigureAwait(true), StringComparison.Ordinal);
+        await Assertions.Expect(Browser.Page.GetByTestId("file-transport-password")).ToHaveValueAsync("CurrentSftpPassword").ConfigureAwait(true);
     }
 
     [Then("successful file transport update feedback should be displayed")]
