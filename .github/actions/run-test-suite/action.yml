@@ -58,7 +58,9 @@ runs:
     - name: Summarize bootstrap smoke separately
       id: bootstrap-report
       if: always() && inputs.suite == 'Browser'
-      shell: pwsh
-      env:
-        ARTIFACT_ID: ${{ steps.artifacts.outputs.artifact-id }}
-      run: ./scripts/report-test-results.ps1 -Suite bootstrap -ArtifactId $env:ARTIFACT_ID
+      uses: frasermolyneux/actions/dotnet-test-report@dotnet-test-report/v1
+      with:
+        suite: bootstrap
+        results-directory: src/TestResults/bootstrap
+        artifact-id: ${{ steps.artifacts.outputs.artifact-id }}
+        source-path-pattern: '^src/XtremeIdiots\.Portal\.Web\.(?:Tests|IntegrationTests)/.+\.(?:cs|feature)$'
