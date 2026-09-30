@@ -31,12 +31,12 @@ public class DemosControllerTests
     {
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
         var mockUserManager = new Mock<UserManager<IdentityUser>>(
-            mockUserStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+            mockUserStore.Object, null, null, null, null, null, null, null, null);
         var mockSignInManager = new Mock<SignInManager<IdentityUser>>(
             mockUserManager.Object,
             new Mock<IHttpContextAccessor>().Object,
             new Mock<IUserClaimsPrincipalFactory<IdentityUser>>().Object,
-            null!, null!, null!, null!);
+            null, null, null, null);
 
         var controller = new DemosController(
             mockAuthorizationService.Object,
