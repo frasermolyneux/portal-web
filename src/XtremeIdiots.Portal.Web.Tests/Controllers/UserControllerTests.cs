@@ -79,7 +79,7 @@ public class UserControllerTests
     {
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
         mockUserManager = new Mock<UserManager<IdentityUser>>(
-            mockUserStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+            mockUserStore.Object, null, null, null, null, null, null, null, null);
 
         SetupNotificationPreferencesAuthorizationFailure();
         SetupNotificationTypes();
