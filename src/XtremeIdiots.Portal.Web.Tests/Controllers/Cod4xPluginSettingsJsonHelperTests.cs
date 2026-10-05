@@ -13,24 +13,32 @@ public class Cod4xPluginSettingsJsonHelperTests
     [Fact]
     public void TryDeserialize_WithNestedBooleanStrings_NormalizesOnlyBooleanStringValues()
     {
-        const string json = """
+        var json = JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["enabled"] = "  TrUe  ",
+            ["trueString"] = "TRUE",
+            ["falseString"] = " fAlSe ",
+            ["nested"] = new Dictionary<string, object?>
             {
-              "enabled": "  TrUe  ",
-              "trueString": "TRUE",
-              "falseString": " fAlSe ",
-              "nested": {
-                "flag": " false ",
-                "items": [" true ", { "flag": "FALSE" }, null, 17, [], {}]
-              },
-              "nativeBoolean": true,
-              "nativeFalseBoolean": false,
-              "nullChild": null,
-              "emptyObject": {},
-              "emptyArray": [],
-              "nonBooleanString": "yes",
-              "number": 42
-            }
-            """;
+                ["flag"] = " false ",
+                ["items"] = new object?[]
+                {
+                    " true ",
+                    new Dictionary<string, object?> { ["flag"] = "FALSE" },
+                    null,
+                    17,
+                    Array.Empty<object>(),
+                    new Dictionary<string, object?>()
+                }
+            },
+            ["nativeBoolean"] = true,
+            ["nativeFalseBoolean"] = false,
+            ["nullChild"] = null,
+            ["emptyObject"] = new Dictionary<string, object?>(),
+            ["emptyArray"] = Array.Empty<object>(),
+            ["nonBooleanString"] = "yes",
+            ["number"] = 42
+        });
 
         var result = Cod4xPluginSettingsJsonHelper.TryDeserialize(json, jsonOptions, out var document);
 
