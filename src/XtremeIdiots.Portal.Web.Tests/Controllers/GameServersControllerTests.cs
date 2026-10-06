@@ -1126,7 +1126,7 @@ public class GameServersControllerTests
         };
 
         var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, errors, CancellationToken.None])!;
-        await task;
+        await task.ConfigureAwait(true);
 
         Assert.Empty(errors);
     }
