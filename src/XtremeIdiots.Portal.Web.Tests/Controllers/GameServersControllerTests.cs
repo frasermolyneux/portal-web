@@ -1102,6 +1102,36 @@ public class GameServersControllerTests
     }
 
     [Fact]
+    public async Task SaveConfigNamespacesAsync_DeleteNoContent_DoesNotAddConfigurationError()
+    {
+        var sut = CreateSut();
+        var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
+        var gameServerId = Guid.NewGuid();
+        var errors = new List<string>();
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                gameServerId,
+                VpnProtectionSettingsConstants.Namespace,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = gameServerId,
+                Title = "Server Alpha"
+            }
+        };
+
+        var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, errors, CancellationToken.None])!;
+        await task;
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task SaveConfigNamespacesAsync_WithReenable_UpsertsThenIgnoresDelete()
     {
         var sut = CreateSut();

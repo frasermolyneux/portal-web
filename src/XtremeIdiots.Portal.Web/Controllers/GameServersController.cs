@@ -1067,7 +1067,9 @@ public class GameServersController(
             var result = await repositoryApiClient.GameServerConfigurations.V1
                 .DeleteConfiguration(gameServerId, ns, cancellationToken).ConfigureAwait(false);
 
-            if (!result.IsSuccess && !result.IsNotFound)
+            if (!result.IsSuccess
+                && !result.IsNotFound
+                && result.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
                 Logger.LogWarning("Failed to delete configuration namespace '{Namespace}' for game server {GameServerId}", ns, gameServerId);
                 errors.Add(ns);
