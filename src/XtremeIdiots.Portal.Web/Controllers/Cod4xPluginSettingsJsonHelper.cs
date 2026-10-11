@@ -50,49 +50,62 @@ internal static class Cod4xPluginSettingsJsonHelper
     {
         if (node is System.Text.Json.Nodes.JsonObject jsonObject)
         {
-            var keys = jsonObject.Select(kvp => kvp.Key).ToArray();
-            foreach (var key in keys)
-            {
-                var child = jsonObject[key];
-                if (child is null)
-                {
-                    continue;
-                }
-
-                if (child is System.Text.Json.Nodes.JsonValue value
-                    && value.TryGetValue<string>(out var stringValue)
-                    && bool.TryParse(stringValue, out var parsedBool))
-                {
-                    jsonObject[key] = parsedBool;
-                    continue;
-                }
-
-                NormalizeBooleanNodes(child);
-            }
-
+            NormalizeBooleanObjectChildren(jsonObject);
             return;
         }
 
         if (node is System.Text.Json.Nodes.JsonArray jsonArray)
         {
-            for (var i = 0; i < jsonArray.Count; i++)
-            {
-                var child = jsonArray[i];
-                if (child is null)
-                {
-                    continue;
-                }
-
-                if (child is System.Text.Json.Nodes.JsonValue value
-                    && value.TryGetValue<string>(out var stringValue)
-                    && bool.TryParse(stringValue, out var parsedBool))
-                {
-                    jsonArray[i] = parsedBool;
-                    continue;
-                }
-
-                NormalizeBooleanNodes(child);
-            }
+            NormalizeBooleanArrayItems(jsonArray);
         }
+    }
+
+    private static void NormalizeBooleanObjectChildren(System.Text.Json.Nodes.JsonObject jsonObject)
+    {
+        var keys = jsonObject.Select(kvp => kvp.Key).ToArray();
+        foreach (var key in keys)
+        {
+            var child = jsonObject[key];
+            if (child is null)
+            {
+                continue;
+            }
+
+            if (TryParseBooleanString(child, out var parsedBool))
+            {
+                jsonObject[key] = parsedBool;
+                continue;
+            }
+
+            NormalizeBooleanNodes(child);
+        }
+    }
+
+    private static void NormalizeBooleanArrayItems(System.Text.Json.Nodes.JsonArray jsonArray)
+    {
+        for (var i = 0; i < jsonArray.Count; i++)
+        {
+            var child = jsonArray[i];
+            if (child is null)
+            {
+                continue;
+            }
+
+            if (TryParseBooleanString(child, out var parsedBool))
+            {
+                jsonArray[i] = parsedBool;
+                continue;
+            }
+
+            NormalizeBooleanNodes(child);
+        }
+    }
+
+    private static bool TryParseBooleanString(System.Text.Json.Nodes.JsonNode node, out bool parsedBool)
+    {
+        parsedBool = false;
+        return node is System.Text.Json.Nodes.JsonValue value
+            && value.TryGetValue<string>(out var stringValue)
+            && bool.TryParse(stringValue, out parsedBool);
     }
 }
