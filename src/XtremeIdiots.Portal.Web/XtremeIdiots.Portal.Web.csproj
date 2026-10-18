@@ -46,6 +46,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
     <PackageReference Include="NuGet.Protocol" Version="7.9.0" PrivateAssets="all" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageReference Include="MX.Observability.ApplicationInsights.AspNetCore" Version="1.1.33" />
     <PackageReference Include="MX.Api.Abstractions" Version="2.3.81" />
     <PackageReference Include="MX.Api.Client" Version="2.3.81" />
