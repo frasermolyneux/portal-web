@@ -40,7 +40,7 @@ $(document).ready(function () {
         },
         columns: [
             { data: 'gameType', name: 'gameType', orderable: true, render: function (data) { return gameTypeIcon(data); } },
-            { data: 'mapName', name: 'mapName', orderable: true },
+            { data: 'mapName', name: 'mapName', orderable: true, render: $.fn.dataTable.render.text() },
             { data: 'mapFiles', name: 'mapFiles', orderable: false, render: function (data, type, row) { return renderMapFiles(data, row); } },
             { data: null, name: 'popularity', orderable: true, render: renderPopularity, className: 'popularity-column' },
             { data: null, orderable: false, render: renderImage }
@@ -61,18 +61,46 @@ $(document).ready(function () {
     })();
 
     function renderMapFiles(data, row) {
+        const container = document.createElement('div');
+        if (safeUrl(row?.redirectManagerUrl)) {
+            const manager = document.createElement('a');
+            manager.href = row.redirectManagerUrl;
+            manager.textContent = 'Browse / ZIP';
+            manager.className = 'small d-block mb-1';
+            container.append(manager);
+        }
         if (data && data.length) {
-            let html = '<ul class="list-unstyled mb-0 map-files">';
+            const list = document.createElement('ul');
+            list.className = 'list-unstyled mb-0 map-files';
             for (const f of data) {
                 if (f && f.url && f.fileName) {
-                    html += '<li><a href="' + f.url + '">' + f.fileName + '</a></li>';
+                    const item = document.createElement('li');
+                    const url = safeUrl(f.url);
+                    const label = document.createElement(url ? 'a' : 'span');
+                    if (url) label.href = url;
+                    label.textContent = f.fileName + (url ? '' : ' (download unavailable)');
+                    item.append(label);
+                    list.append(item);
                 }
             }
-            html += '</ul>';
-            return html;
+            container.append(list);
+        } else {
+            const label = document.createElement('span');
+            label.className = row?.builtIn ? 'badge bg-info' : 'text-muted';
+            label.textContent = row?.builtIn ? 'Built-in' : 'No Map Files';
+            container.append(label);
         }
-        if (row && row.builtIn) return '<span class="badge bg-info">Built-in</span>';
-        return '<span class="text-muted">No Map Files</span>';
+        return container.innerHTML;
+    }
+
+    function safeUrl(value) {
+        if (typeof value !== 'string' || !value.trim()) return null;
+        try {
+            const url = new URL(value, window.location.origin);
+            return ['https:', 'http:'].includes(url.protocol) ? url.href : null;
+        } catch {
+            return null;
+        }
     }
 
     function renderPopularity(data, type, row) {
@@ -98,7 +126,7 @@ $(document).ready(function () {
 
         const likePctStr = likePct.toFixed(2);
         const dislikePctStr = dislikePct.toFixed(2);
-        return '<div class="progress" id="progress-' + row.mapName + '" style="width:100%;min-width:140px;max-width:260px;">' +
+        return '<div class="progress" id="progress-' + encodeURIComponent(row.mapName ?? '') + '" style="width:100%;min-width:140px;max-width:260px;">' +
             '<div class="progress-bar bg-info" role="progressbar" style="width: ' + likePctStr + '%" aria-valuenow="' + totalLikes + '" aria-valuemin="0" aria-valuemax="' + totalVotes + '"></div>' +
             '<div class="progress-bar bg-danger" role="progressbar" style="width: ' + dislikePctStr + '%" aria-valuenow="' + totalDislikes + '" aria-valuemin="0" aria-valuemax="' + totalVotes + '"></div>' +
             '</div>' +
@@ -106,9 +134,13 @@ $(document).ready(function () {
     }
 
     function renderImage(data, type, row) {
-        const src = row.mapImageUri || '/images/noimage.jpg';
-        const alt = row.mapImageUri ? ('Map image for ' + row.mapName) : 'No map image available';
-        return '<img class="map-image img-fluid" alt="' + alt + '" src="' + src + '" loading="lazy" />';
+        const image = document.createElement('img');
+        const src = safeUrl(row.mapImageUri);
+        image.src = src || '/images/noimage.jpg';
+        image.alt = src ? ('Map image for ' + row.mapName) : 'No map image available';
+        image.className = 'map-image img-fluid';
+        image.loading = 'lazy';
+        return image.outerHTML;
     }
 
     function applyGameColumnVisibility() {
@@ -145,8 +177,5 @@ $(document).ready(function () {
     applyGameColumnVisibility();
 
     // Reduce internal padding under the table region
-    const iboxContent = tableEl.closest('.ibox-content');
-    if (iboxContent) {
-        iboxContent.classList.add('datatable-tight');
-    }
+    tableEl.closest('.ibox-content').addClass('datatable-tight');
 });
