@@ -5,6 +5,14 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      scope:
+        description: "Use maps-bootstrap for application-only delivery without Terraform changes."
+        type: choice
+        default: standard
+        options:
+          - standard
+          - maps-bootstrap
   schedule:
     - cron: "0 9 * * 3"
 
@@ -19,8 +27,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     outputs:
-      src: ${{ steps.changes.outputs.src }}
-      terraform: ${{ steps.changes.outputs.terraform }}
+      src: ${{ inputs.scope == 'maps-bootstrap' || steps.changes.outputs.src == 'true' }}
+      terraform: ${{ inputs.scope != 'maps-bootstrap' && steps.changes.outputs.terraform == 'true' }}
     steps:
       - id: changes
         uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
@@ -38,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       has_resources: ${{ steps.state-check.outputs.has_resources }}
-      state_tainted: ${{ steps.state-check.outputs.state_tainted }}
+      state_tainted: ${{ inputs.scope != 'maps-bootstrap' && steps.state-check.outputs.state_tainted == 'true' }}
     steps:
       - id: state-check
         uses: frasermolyneux/actions/terraform-state-check@terraform-state-check/v1.1
