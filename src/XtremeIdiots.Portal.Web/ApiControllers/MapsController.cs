@@ -89,6 +89,7 @@ public class MapsController(
                     gameType = mapItem.GameType.ToString(),
                     mapItem.MapName,
                     mapItem.MapFiles,
+                    redirectManagerUrl = mapItem.GameType.RedirectManagerUrl(mapItem.MapName),
                     mapItem.MapImageUri,
                     mapItem.TotalLikes,
                     mapItem.TotalDislikes,

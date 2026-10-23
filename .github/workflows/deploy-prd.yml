@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    # checkov:skip=CKV_GHA_7:Deployment entry point selects fixed jobs; build inputs are unchanged and user input never enters commands.
+    inputs:
+      scope:
+        description: "Use maps-bootstrap for production application-only delivery without dev or Terraform changes."
+        type: choice
+        default: standard
+        options:
+          - standard
+          - maps-bootstrap
   schedule:
     - cron: "0 9 * * 3"
 
@@ -19,9 +28,15 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     outputs:
-      src: ${{ steps.changes.outputs.src }}
+      src: ${{ inputs.scope == 'maps-bootstrap' || steps.changes.outputs.src == 'true' }}
       terraform: ${{ steps.changes.outputs.terraform }}
     steps:
+      - name: Require approved main for maps bootstrap
+        if: inputs.scope == 'maps-bootstrap' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::maps-bootstrap must run from approved main."
+          exit 1
+
       - id: changes
         uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
         with:
@@ -30,7 +45,7 @@ jobs:
             terraform:terraform/**
 
   terraform-state-check-dev:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
     permissions:
       contents: read
       id-token: write
@@ -60,7 +75,7 @@ jobs:
     uses: ./.github/workflows/test-and-publish.yml
 
   terraform-plan-and-apply-dev:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
     permissions:
       contents: read
       id-token: write
@@ -73,7 +88,7 @@ jobs:
       group: ${{ github.repository }}-dev
     steps:
       - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v1.4
-        if: needs.detect-changes.outputs.terraform == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true'
+        if: inputs.scope != 'maps-bootstrap' && (needs.detect-changes.outputs.terraform == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
@@ -83,7 +98,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - uses: frasermolyneux/actions/terraform-output@terraform-output/v1.0
-        if: needs.detect-changes.outputs.terraform != 'true' && needs.terraform-state-check-dev.outputs.state_tainted != 'true'
+        if: inputs.scope == 'maps-bootstrap' || (needs.detect-changes.outputs.terraform != 'true' && needs.terraform-state-check-dev.outputs.state_tainted != 'true')
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
@@ -119,7 +134,7 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-dev
     if: |
-      !failure() && !cancelled() && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
+      !failure() && !cancelled() && inputs.scope != 'maps-bootstrap' && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
@@ -150,13 +165,13 @@ jobs:
       - terraform-plan-and-apply-dev
       - app-service-deploy-dev
     if: |
-      !failure() && !cancelled() && (needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
+      !failure() && !cancelled() && (inputs.scope == 'maps-bootstrap' || needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
     steps:
       - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v1.4
-        if: needs.detect-changes.outputs.terraform == 'true'
+        if: inputs.scope != 'maps-bootstrap' && needs.detect-changes.outputs.terraform == 'true'
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/prd.tfvars"
@@ -166,7 +181,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - uses: frasermolyneux/actions/terraform-output@terraform-output/v1.0
-        if: needs.detect-changes.outputs.terraform != 'true'
+        if: inputs.scope == 'maps-bootstrap' || needs.detect-changes.outputs.terraform != 'true'
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/prd.tfvars"
