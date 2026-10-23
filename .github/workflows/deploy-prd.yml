@@ -8,7 +8,7 @@ on:
     # checkov:skip=CKV_GHA_7:Deployment entry point selects fixed jobs; build inputs are unchanged and user input never enters commands.
     inputs:
       scope:
-        description: "Use maps-bootstrap for application-only delivery without Terraform changes."
+        description: "Use maps-bootstrap for production application-only delivery without dev or Terraform changes."
         type: choice
         default: standard
         options:
@@ -45,7 +45,7 @@ jobs:
             terraform:terraform/**
 
   terraform-state-check-dev:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
     permissions:
       contents: read
       id-token: write
@@ -75,7 +75,7 @@ jobs:
     uses: ./.github/workflows/test-and-publish.yml
 
   terraform-plan-and-apply-dev:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
     permissions:
       contents: read
       id-token: write
@@ -134,7 +134,7 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-dev
     if: |
-      !failure() && !cancelled() && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
+      !failure() && !cancelled() && inputs.scope != 'maps-bootstrap' && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
@@ -165,7 +165,7 @@ jobs:
       - terraform-plan-and-apply-dev
       - app-service-deploy-dev
     if: |
-      !failure() && !cancelled() && (needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
+      !failure() && !cancelled() && (inputs.scope == 'maps-bootstrap' || needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
