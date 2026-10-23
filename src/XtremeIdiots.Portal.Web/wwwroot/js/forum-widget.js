@@ -308,6 +308,13 @@
 
     // --- Lifecycle ---
 
+    function renderError(container, message) {
+        var error = document.createElement('div');
+        error.className = 'xi-pw-error';
+        error.textContent = message;
+        container.replaceChildren(error);
+    }
+
     function refresh() {
         var container = document.getElementById('portal-notifications-widget');
         if (!container || refreshActive || document.hidden) return;
@@ -316,13 +323,13 @@
         apiGet('/api/external/notifications?take=20', function (err, data) {
             try {
                 if (err) {
-                    container.innerHTML = '<div class="xi-pw-error">Unable to load notifications</div>';
+                    renderError(container, 'Unable to load notifications');
                     return;
                 }
                 renderWidget(container, data);
             } catch (e) {
                 console.error('Forum widget render error:', e);
-                container.innerHTML = '<div class="xi-pw-error">Unable to display notifications</div>';
+                renderError(container, 'Unable to display notifications');
             } finally {
                 refreshActive = false;
             }

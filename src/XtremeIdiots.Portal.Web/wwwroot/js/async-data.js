@@ -1,6 +1,10 @@
 (function () {
     'use strict';
 
+    function renderHtml(element, html) {
+        element.replaceChildren(DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true, ADD_ATTR: ['target'] }));
+    }
+
     function createPoller(options) {
         var timer = null;
         var active = null;
@@ -101,7 +105,7 @@
         }).then(function (payload) {
             if (controller.signal.aborted) return;
             if (options.render) options.render(element, payload);
-            else element.innerHTML = payload;
+            else renderHtml(element, payload);
             if (options.onLoaded) options.onLoaded(element);
             element.dispatchEvent(new CustomEvent('portal:section-loaded', { bubbles: true }));
         }).catch(function (error) {
@@ -126,5 +130,5 @@
         return element.portalSectionRequest;
     }
 
-    window.PortalAsync = { createPoller: createPoller, loadSection: loadSection };
+    window.PortalAsync = { createPoller: createPoller, loadSection: loadSection, renderHtml: renderHtml };
 })();

@@ -7,6 +7,37 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
 public sealed class AsyncDataTests
 {
     [Fact]
+    public async Task SectionMarkup_PreservesUiAttributesWithoutExecutableContent()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        foreach (var script in new[] { "/js/vendor/dompurify.min.js", "/js/async-data.js" })
+        {
+            await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, script).AbsoluteUri });
+        }
+
+        await page.EvaluateAsync("""
+            () => {
+                const host = document.createElement('div');
+                host.id = 'section-sanitization';
+                document.body.append(host);
+                PortalAsync.renderHtml(host,
+                    '<span class="badge" data-testid="safe-fragment">Ready</span>' +
+                    '<a href="javascript:window.unexpectedExecution=true">Unsafe link</a>' +
+                    '<img onerror="window.unexpectedExecution=true">' +
+                    '<script>window.unexpectedExecution=true</script>');
+            }
+            """);
+
+        await Assertions.Expect(page.GetByTestId("safe-fragment")).ToHaveTextAsync("Ready");
+        await Assertions.Expect(page.Locator("#section-sanitization script, #section-sanitization [onerror]")).ToHaveCountAsync(0);
+        Assert.Null(await page.Locator("#section-sanitization a").GetAttributeAsync("href"));
+        Assert.False(await page.EvaluateAsync<bool>("() => window.unexpectedExecution === true"));
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task Poller_CoalescesRefreshesAndSchedulesOnlyAfterCompletion()
     {
         await using var fixture = await BrowserFixture.CreateAsync();

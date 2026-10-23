@@ -164,7 +164,7 @@
                 element.replaceChildren();
                 banners.forEach(function(banner) {
                     var container = document.createElement('div');
-                    container.innerHTML = banner;
+                    PortalAsync.renderHtml(container, banner);
                     element.appendChild(container);
                 });
                 if (!banners.length) element.textContent = 'No server banners available.';

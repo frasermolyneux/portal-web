@@ -59,9 +59,9 @@
                         const html = formatIPAddress(intel.address, intel.proxyCheckRiskScore, intel.isProxy,
                             intel.isVpn, intel.proxyType || '', intel.countryCode || '') +
                             (intel.status === 'unavailable' ? ' <small class="text-muted">Risk unavailable</small>' : '');
+                        window.PortalAsync.renderHtml(cell, html);
                         if ($.fn.DataTable.isDataTable('#ipAddressesTable'))
-                            $('#ipAddressesTable').DataTable().cell(cell).data(html);
-                        else cell.innerHTML = html;
+                            $('#ipAddressesTable').DataTable().cell(cell).invalidate('dom');
                     });
                 });
                 historyExpires = expires;
