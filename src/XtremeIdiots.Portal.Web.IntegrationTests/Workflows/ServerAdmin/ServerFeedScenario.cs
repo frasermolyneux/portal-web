@@ -6,6 +6,8 @@ using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -24,8 +26,13 @@ internal sealed class ServerFeedScenario
         GameServerId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
         GameServer = CreateGameServer(GameServerId);
         RepositoryClient = new Mock<IRepositoryApiClient>(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
+        ServersClient = new Mock<IServersApiClient>(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
         AgentTelemetry = new Mock<IAgentTelemetryService>(MockBehavior.Strict);
 
+        Mock.Get(ServersClient.Object.Cod4Rcon.V1)
+            .Setup(api => api.Status(GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK,
+                new ApiResponse<RconStatusResponseDto>(JsonConvert.DeserializeObject<RconStatusResponseDto>(/*lang=json,strict*/ """{"players":[]}"""))));
         Mock.Get(RepositoryClient.Object.GameServers.V1)
             .Setup(api => api.GetGameServer(GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(GameServer)));
@@ -40,12 +47,15 @@ internal sealed class ServerFeedScenario
     public ConcurrentQueue<FeedResponsePlan> Plans { get; } = new();
     public ConcurrentQueue<Uri> Requests { get; } = new();
     public Mock<IRepositoryApiClient> RepositoryClient { get; }
+    public Mock<IServersApiClient> ServersClient { get; }
 
     public void ConfigureServices(IServiceCollection services)
     {
         services.RemoveAll<IRepositoryApiClient>();
+        services.RemoveAll<IServersApiClient>();
         services.RemoveAll<IAgentTelemetryService>();
         services.AddSingleton(RepositoryClient.Object);
+        services.AddSingleton(ServersClient.Object);
         services.AddSingleton(AgentTelemetry.Object);
     }
 

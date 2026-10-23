@@ -28,6 +28,10 @@ internal sealed class SayCommandScenario
             .Setup(api => api.GetGameServer(GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(GameServer)));
         Mock.Get(ServersClient.Object.Cod4Rcon.V1)
+            .Setup(api => api.Status(GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK,
+                new ApiResponse<RconStatusResponseDto>(JsonConvert.DeserializeObject<RconStatusResponseDto>(/*lang=json,strict*/ """{"players":[]}"""))));
+        Mock.Get(ServersClient.Object.Cod4Rcon.V1)
             .Setup(api => api.Say(GameServerId, It.IsAny<SayRequest>(), It.IsAny<CancellationToken>()))
             .Callback<Guid, SayRequest, CancellationToken>((_, request, _) => Messages.Enqueue(request.Message ?? string.Empty))
             .ReturnsAsync(new ApiResult<SayRequest>(saySucceeds ? HttpStatusCode.OK : HttpStatusCode.InternalServerError));

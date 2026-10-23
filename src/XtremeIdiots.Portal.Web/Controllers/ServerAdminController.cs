@@ -69,6 +69,7 @@ public class ServerAdminController(
         "connection_string"
     ];
     private readonly static ConcurrentDictionary<Guid, SemaphoreSlim> cod4xLifecycleLocks = new();
+    private readonly static SemaphoreSlim playerEnrichmentLock = new(1, 1);
 
     private readonly static JsonSerializerOptions cod4xPluginJsonOptions = new()
     {
@@ -80,6 +81,7 @@ public class ServerAdminController(
     private const string Cod4xArtifactsPrefix = "releases/";
     private const string DefaultCod4xPluginArtifactRoot = "/tmp/portal-cod4x-plugin-artifacts";
     private const string Cod4xPluginArtifactFileName = "portal-cod4x-plugin";
+    private const string EnrichmentUnavailableStatus = "unavailable";
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -360,12 +362,13 @@ public class ServerAdminController(
     }
 
     /// <summary>
-    /// Gets enriched RCON player data including profiles, IP geolocation, and risk assessment
+    /// Gets live RCON players without waiting for optional profile or IP enrichment.
     /// </summary>
     /// <param name="id">Game server ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>JSON with enriched player data for DataTables</returns>
+    /// <returns>JSON with live player data for DataTables</returns>
     [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetRconPlayers(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -378,125 +381,168 @@ public class ServerAdminController(
 
             if (!getServerStatusResult.IsSuccess || getServerStatusResult.Result?.Data?.Players is null)
             {
-                return Json(new { data = Array.Empty<object>() });
+                Logger.LogWarning("Failed to retrieve live players for server {ServerId}", id);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Live players are unavailable." });
             }
 
             var rconPlayers = getServerStatusResult.Result.Data.Players;
 
-            // Enrich players in parallel; Task.WhenAll preserves input order in its result array.
-            var enrichedPlayers = await Task.WhenAll(
-                rconPlayers.Select(rconPlayer => EnrichRconPlayerDataAsync(rconPlayer, gameServerData!.GameType, cancellationToken)))
-                .ConfigureAwait(false);
-
-            return Json(new { data = enrichedPlayers });
+            return Json(new
+            {
+                data = rconPlayers.Select(player => new
+                {
+                    num = player.Num,
+                    name = player.Name,
+                    guid = player.Guid,
+                    ipAddress = player.IpAddress,
+                    rate = player.Rate
+                })
+            });
         }, nameof(GetRconPlayers)).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Enriches RCON player data with profile information, geolocation, and risk assessment
-    /// </summary>
-    /// <param name="rconPlayer">The RCON player data from the game server</param>
-    /// <param name="gameType">The type of game being played</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Enriched player data object with additional context</returns>
-    private async Task<object> EnrichRconPlayerDataAsync(dynamic rconPlayer, GameType gameType, CancellationToken cancellationToken)
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetRconPlayerEnrichment(
+        Guid id, int playerSlot, string? playerGuid, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        PlayerDto? playerProfile = null;
-        string? countryCode = null;
-        var proxyCheckRiskScore = 0;
-        var isProxy = false;
-        var isVpn = false;
-        var proxyType = string.Empty;
-
-        // Try to find existing player profile by GUID (successful lookups cached briefly to avoid repeated lookups across polls)
-        string guid = rconPlayer.Guid?.ToString() ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(guid))
+        return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var profileCacheKey = $"rcon-player-profile:{gameType}:{guid}";
-            if (memoryCache.TryGetValue(profileCacheKey, out PlayerDto? cachedProfile))
+            var (actionResult, server) = await GetAuthorizedGameServerAsync(id, nameof(GetRconPlayerEnrichment), cancellationToken).ConfigureAwait(false);
+            if (actionResult is not null)
+                return actionResult;
+
+            var status = await GetServerStatusAsync(id, server!.GameType, cancellationToken).ConfigureAwait(false);
+            if (!status.IsSuccess || status.Result?.Data?.Players is null)
             {
-                playerProfile = cachedProfile;
+                Logger.LogWarning("Live status unavailable when enriching a player for server {ServerId}", id);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Live players are unavailable." });
+            }
+
+            var player = status.Result.Data.Players.SingleOrDefault(player => player.Num == playerSlot);
+            if (player is null ||
+                !string.Equals(player.Guid ?? string.Empty, playerGuid ?? string.Empty, StringComparison.Ordinal) ||
+                !string.Equals(player.IpAddress ?? string.Empty, ipAddress ?? string.Empty, StringComparison.Ordinal))
+            {
+                Logger.LogInformation("Player slot {PlayerSlot} changed before enrichment on server {ServerId}", playerSlot, id);
+                return NotFound(new { message = "The player is no longer in this slot." });
+            }
+
+            var cachedProfile = GetCachedRconProfile(server.GameType, player.Guid ?? string.Empty);
+            var cachedIntelligence = GetCachedRconIpIntelligence(player.IpAddress ?? string.Empty);
+            if (cachedProfile is not null && cachedIntelligence is not null)
+                return Json(ToEnrichmentViewModel(cachedProfile, cachedIntelligence));
+
+            // Serialize cache misses across requests/admins, not just within one browser.
+            await playerEnrichmentLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var profile = await GetRconProfileAsync(server.GameType, player.Guid ?? string.Empty).ConfigureAwait(false);
+                var intelligence = await GetRconIpIntelligenceAsync(player.IpAddress ?? string.Empty, cancellationToken).ConfigureAwait(false);
+                return Json(ToEnrichmentViewModel(profile, intelligence));
+            }
+            finally
+            {
+                playerEnrichmentLock.Release();
+            }
+        }, nameof(GetRconPlayerEnrichment)).ConfigureAwait(false);
+    }
+
+    private sealed record RconProfile(Guid? PlayerId, string? Username, string Status, DateTime ExpiresAtUtc);
+    private sealed record RconIpIntelligence(
+        string? CountryCode, int? RiskScore, bool? IsProxy, bool? IsVpn, string? ProxyType, string Status, DateTime ExpiresAtUtc);
+
+    private static RconPlayerEnrichmentViewModel ToEnrichmentViewModel(RconProfile profile, RconIpIntelligence intelligence)
+    {
+        return new(
+            profile.PlayerId, profile.Username, profile.Status,
+            intelligence.CountryCode, intelligence.RiskScore, intelligence.IsProxy,
+            intelligence.IsVpn, intelligence.ProxyType, intelligence.Status,
+            profile.ExpiresAtUtc < intelligence.ExpiresAtUtc ? profile.ExpiresAtUtc : intelligence.ExpiresAtUtc);
+    }
+
+    private RconProfile? GetCachedRconProfile(GameType gameType, string playerGuid)
+    {
+        return string.IsNullOrWhiteSpace(playerGuid)
+            ? new(null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10))
+            : memoryCache.Get<RconProfile>($"rcon-profile:{gameType}:{playerGuid}");
+    }
+
+    private RconIpIntelligence? GetCachedRconIpIntelligence(string ipAddress)
+    {
+        return string.IsNullOrWhiteSpace(ipAddress)
+            ? new(null, null, null, null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10))
+            : memoryCache.Get<RconIpIntelligence>($"rcon-intelligence:{ipAddress}");
+    }
+
+    private async Task<RconProfile> GetRconProfileAsync(GameType gameType, string guid)
+    {
+        var key = $"rcon-profile:{gameType}:{guid}";
+        var cached = GetCachedRconProfile(gameType, guid);
+        if (cached is not null)
+            return cached;
+
+        RconProfile result;
+        try
+        {
+            var response = await repositoryApiClient.Players.V1.GetPlayerByGameType(gameType, guid, PlayerEntityOptions.None).ConfigureAwait(false);
+            if (response.IsSuccess && response.Result?.Data is { } player &&
+                player.GameType == gameType && string.Equals(player.Guid, guid, StringComparison.OrdinalIgnoreCase))
+            {
+                result = new(player.PlayerId, player.Username, "available", DateTime.UtcNow.AddMinutes(10));
+            }
+            else if (response.IsNotFound)
+            {
+                result = new(null, null, "notFound", DateTime.UtcNow.AddMinutes(1));
             }
             else
             {
-                try
-                {
-                    // Search for player by GUID using GetPlayers with filter
-                    var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-                        gameType, PlayersFilter.UsernameAndGuid, guid, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
-
-                    if (playerResponse.IsSuccess && playerResponse.Result?.Data?.Items?.Any() == true)
-                    {
-                        playerProfile = playerResponse.Result.Data.Items.First();
-
-                        // Only cache successful lookups so a transient failure or "not found" isn't served stale.
-                        memoryCache.Set(profileCacheKey, playerProfile, TimeSpan.FromSeconds(60));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to retrieve player profile for GUID {Guid}", guid);
-                }
+                Logger.LogWarning("Player profile lookup failed for game {GameType}, status {StatusCode}", gameType, response.StatusCode);
+                result = new(null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
             }
         }
-
-        // Get IP address enrichment data via V1.1 intelligence endpoint (successful lookups cached — intelligence rarely changes per IP)
-        string ipAddress = rconPlayer.IpAddress?.ToString() ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(ipAddress))
+        catch (Exception ex)
         {
-            var intelCacheKey = $"rcon-ip-intel:{ipAddress}";
-            if (memoryCache.TryGetValue(intelCacheKey, out (string? CountryCode, int RiskScore, bool IsProxy, bool IsVpn, string ProxyType) cachedIntel))
+            Logger.LogWarning(ex, "Player profile enrichment failed for game {GameType}", gameType);
+            result = new(null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
+        }
+
+        return memoryCache.Set(key, result, result.ExpiresAtUtc);
+    }
+
+    private async Task<RconIpIntelligence> GetRconIpIntelligenceAsync(string ipAddress, CancellationToken cancellationToken)
+    {
+        var key = $"rcon-intelligence:{ipAddress}";
+        var cached = GetCachedRconIpIntelligence(ipAddress);
+        if (cached is not null)
+            return cached;
+
+        RconIpIntelligence result;
+        try
+        {
+            var response = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
+            if (response.IsSuccess && response.Result?.Data is { } intelligence)
             {
-                countryCode = cachedIntel.CountryCode;
-                proxyCheckRiskScore = cachedIntel.RiskScore;
-                isProxy = cachedIntel.IsProxy;
-                isVpn = cachedIntel.IsVpn;
-                proxyType = cachedIntel.ProxyType;
+                var proxy = intelligence.ProxyCheck;
+                result = new(intelligence.CountryCode, proxy?.RiskScore, proxy?.IsProxy, proxy?.IsVpn, proxy?.ProxyType,
+                    proxy is null ? EnrichmentUnavailableStatus : "available",
+                    proxy is null ? DateTime.UtcNow.AddSeconds(30) : DateTime.UtcNow.AddMinutes(10));
+                if (proxy is null)
+                    Logger.LogWarning("IP intelligence response contained no risk assessment");
             }
             else
             {
-                try
-                {
-                    var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
-                    if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
-                    {
-                        var intelligence = intelligenceResult.Result.Data;
-                        countryCode = intelligence.CountryCode;
-
-                        if (intelligence.ProxyCheck is not null)
-                        {
-                            proxyCheckRiskScore = intelligence.ProxyCheck.RiskScore;
-                            isProxy = intelligence.ProxyCheck.IsProxy;
-                            isVpn = intelligence.ProxyCheck.IsVpn;
-                            proxyType = intelligence.ProxyCheck.ProxyType;
-                        }
-
-                        // Only cache successful lookups so a transient failure isn't served as "clean / risk 0" for the full TTL.
-                        memoryCache.Set(intelCacheKey, (countryCode, proxyCheckRiskScore, isProxy, isVpn, proxyType), TimeSpan.FromMinutes(10));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogDebug(ex, "Failed to retrieve intelligence data for IP {IpAddress}", ipAddress);
-                }
+                Logger.LogWarning("IP intelligence lookup failed with status {StatusCode}", response.StatusCode);
+                result = new(null, null, null, null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
             }
         }
-
-        return new
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            num = rconPlayer.Num,
-            name = rconPlayer.Name?.ToString() ?? string.Empty,
-            guid = guid,
-            ipAddress = ipAddress,
-            rate = rconPlayer.Rate,
-            playerId = playerProfile?.PlayerId,
-            username = playerProfile?.Username,
-            countryCode,
-            proxyCheckRiskScore,
-            isProxy,
-            isVpn,
-            proxyType
-        };
+            Logger.LogWarning(ex, "IP intelligence enrichment failed");
+            result = new(null, null, null, null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
+        }
+
+        return memoryCache.Set(key, result, result.ExpiresAtUtc);
     }
 
     /// <summary>
@@ -2408,21 +2454,11 @@ public class ServerAdminController(
             return null;
 
         var playerGuid = livePlayer.Guid.Trim();
-        var playerResponse = await repositoryApiClient.Players.V1.GetPlayers(
-            gameType,
-            PlayersFilter.UsernameAndGuid,
-            playerGuid,
-            0,
-            100,
-            PlayersOrder.LastSeenDesc,
-            PlayerEntityOptions.None).ConfigureAwait(false);
-
-        var exactMatches = playerResponse.Result?.Data?.Items?
-            .Where(player => string.Equals(player.Guid?.Trim(), playerGuid, StringComparison.OrdinalIgnoreCase))
-            .Take(2)
-            .ToArray() ?? [];
-        var repositoryPlayer = exactMatches.Length == 1 ? exactMatches[0] : null;
-        return playerResponse.IsSuccess && repositoryPlayer is not null
+        var playerResponse = await repositoryApiClient.Players.V1.GetPlayerByGameType(
+            gameType, playerGuid, PlayerEntityOptions.None).ConfigureAwait(false);
+        var repositoryPlayer = playerResponse.Result?.Data;
+        return playerResponse.IsSuccess && repositoryPlayer is not null && repositoryPlayer.GameType == gameType &&
+            string.Equals(repositoryPlayer.Guid?.Trim(), playerGuid, StringComparison.OrdinalIgnoreCase)
             ? new ModerationTarget(playerSlot, playerGuid, livePlayer.Name, repositoryPlayer.PlayerId)
             : null;
     }

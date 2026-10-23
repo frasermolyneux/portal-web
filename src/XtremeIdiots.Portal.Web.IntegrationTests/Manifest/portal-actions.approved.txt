@@ -200,6 +200,7 @@ XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetGameChatLogAjax#POS
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetGameServers#GET#ServerAdmin/GetGameServers#()|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetMapRotation#GET#ServerAdmin/GetMapRotation#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetPlayerChatLog#POST#ServerAdmin/GetPlayerChatLog#(System.Guid,System.Nullable<System.Boolean>)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetRconPlayerEnrichment#GET#ServerAdmin/GetRconPlayerEnrichment#(System.Guid,System.Int32,System.String,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetRconPlayers#GET#ServerAdmin/GetRconPlayers#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetServerChatLogAjax#POST#ServerAdmin/GetServerChatLogAjax#(System.Guid,System.Nullable<System.Boolean>)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetServerFeed#GET#ServerAdmin/GetServerFeed#(System.Guid,System.Nullable<System.DateTime>,System.String,System.String,System.Nullable<System.Guid>,System.Nullable<System.Guid>,System.Boolean,System.Boolean,System.Int32,System.Int32)|HttpEndpoint
