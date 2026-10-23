@@ -29,6 +29,10 @@ internal sealed class MapControlScenario
             .Setup(api => api.GetGameServer(GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(GameServer)));
         Mock.Get(ServersClient.Object.Cod4Rcon.V1)
+            .Setup(api => api.Status(GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK,
+                new ApiResponse<RconStatusResponseDto>(JsonConvert.DeserializeObject<RconStatusResponseDto>(/*lang=json,strict*/ """{"players":[]}"""))));
+        Mock.Get(ServersClient.Object.Cod4Rcon.V1)
             .Setup(api => api.Map(GameServerId, It.IsAny<ChangeMapRequest>(), It.IsAny<CancellationToken>()))
             .Callback<Guid, ChangeMapRequest, CancellationToken>((_, request, _) => Commands.Enqueue($"map:{request.MapName}"))
             .ReturnsAsync(new ApiResult<string>(statusCode));

@@ -69,9 +69,8 @@ var RconPlayers = (function () {
                         if (row.playerId) {
                             return '<a href="/Players/Details/' + row.playerId + '" target="_blank" rel="noopener noreferrer">' + CodColors.renderSafe(row.name) + '</a>';
                         }
-                        var profileLabel = row.profileStatus === 'unavailable' ? 'Profile unavailable' :
-                            row.profileStatus === 'notFound' ? 'No profile' :
-                            row.profileStatus === 'notApplicable' ? '' : 'Profile pending';
+                        var profileLabels = { unavailable: 'Profile unavailable', notFound: 'No profile', notApplicable: '' };
+                        var profileLabel = profileLabels[row.profileStatus] ?? 'Profile pending';
                         return CodColors.renderSafe(row.name) +
                             (profileLabel ? ' <small class="text-muted">' + profileLabel + '</small>' : '');
                     }
@@ -167,7 +166,7 @@ var RconPlayers = (function () {
             success: function (json) {
                 if (_disposed) return;
                 json.data = json.data.map(function (player) {
-                    return Object.assign({}, player, cachedEnrichment(playerKey(player)));
+                    return { ...player, ...cachedEnrichment(playerKey(player)) };
                 });
                 _lastRefreshTime = new Date();
                 RconUtils.updateRefreshBadge(_refreshBadgeId, _lastRefreshTime);
@@ -195,7 +194,7 @@ var RconPlayers = (function () {
         _table.rows().every(function () {
             var player = this.data();
             if (playerKey(player) === key) {
-                this.data(Object.assign({}, player, value));
+                this.data({ ...player, ...value });
                 updated = true;
             }
         });

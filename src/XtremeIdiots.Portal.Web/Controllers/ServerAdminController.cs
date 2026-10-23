@@ -81,6 +81,7 @@ public class ServerAdminController(
     private const string Cod4xArtifactsPrefix = "releases/";
     private const string DefaultCod4xPluginArtifactRoot = "/tmp/portal-cod4x-plugin-artifacts";
     private const string Cod4xPluginArtifactFileName = "portal-cod4x-plugin";
+    private const string EnrichmentUnavailableStatus = "unavailable";
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -427,17 +428,18 @@ public class ServerAdminController(
                 return NotFound(new { message = "The player is no longer in this slot." });
             }
 
+            var cachedProfile = GetCachedRconProfile(server.GameType, player.Guid ?? string.Empty);
+            var cachedIntelligence = GetCachedRconIpIntelligence(player.IpAddress ?? string.Empty);
+            if (cachedProfile is not null && cachedIntelligence is not null)
+                return Json(ToEnrichmentViewModel(cachedProfile, cachedIntelligence));
+
             // Serialize cache misses across requests/admins, not just within one browser.
             await playerEnrichmentLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var profile = await GetRconProfileAsync(server.GameType, player.Guid ?? string.Empty).ConfigureAwait(false);
                 var intelligence = await GetRconIpIntelligenceAsync(player.IpAddress ?? string.Empty, cancellationToken).ConfigureAwait(false);
-                return Json(new RconPlayerEnrichmentViewModel(
-                    profile.PlayerId, profile.Username, profile.Status,
-                    intelligence.CountryCode, intelligence.RiskScore, intelligence.IsProxy,
-                    intelligence.IsVpn, intelligence.ProxyType, intelligence.Status,
-                    profile.ExpiresAtUtc < intelligence.ExpiresAtUtc ? profile.ExpiresAtUtc : intelligence.ExpiresAtUtc));
+                return Json(ToEnrichmentViewModel(profile, intelligence));
             }
             finally
             {
@@ -450,13 +452,34 @@ public class ServerAdminController(
     private sealed record RconIpIntelligence(
         string? CountryCode, int? RiskScore, bool? IsProxy, bool? IsVpn, string? ProxyType, string Status, DateTime ExpiresAtUtc);
 
+    private static RconPlayerEnrichmentViewModel ToEnrichmentViewModel(RconProfile profile, RconIpIntelligence intelligence)
+    {
+        return new(
+            profile.PlayerId, profile.Username, profile.Status,
+            intelligence.CountryCode, intelligence.RiskScore, intelligence.IsProxy,
+            intelligence.IsVpn, intelligence.ProxyType, intelligence.Status,
+            profile.ExpiresAtUtc < intelligence.ExpiresAtUtc ? profile.ExpiresAtUtc : intelligence.ExpiresAtUtc);
+    }
+
+    private RconProfile? GetCachedRconProfile(GameType gameType, string playerGuid)
+    {
+        return string.IsNullOrWhiteSpace(playerGuid)
+            ? new(null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10))
+            : memoryCache.Get<RconProfile>($"rcon-profile:{gameType}:{playerGuid}");
+    }
+
+    private RconIpIntelligence? GetCachedRconIpIntelligence(string ipAddress)
+    {
+        return string.IsNullOrWhiteSpace(ipAddress)
+            ? new(null, null, null, null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10))
+            : memoryCache.Get<RconIpIntelligence>($"rcon-intelligence:{ipAddress}");
+    }
+
     private async Task<RconProfile> GetRconProfileAsync(GameType gameType, string guid)
     {
-        if (string.IsNullOrWhiteSpace(guid))
-            return new(null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10));
-
         var key = $"rcon-profile:{gameType}:{guid}";
-        if (memoryCache.TryGetValue(key, out RconProfile? cached) && cached is not null)
+        var cached = GetCachedRconProfile(gameType, guid);
+        if (cached is not null)
             return cached;
 
         RconProfile result;
@@ -475,13 +498,13 @@ public class ServerAdminController(
             else
             {
                 Logger.LogWarning("Player profile lookup failed for game {GameType}, status {StatusCode}", gameType, response.StatusCode);
-                result = new(null, null, "unavailable", DateTime.UtcNow.AddSeconds(30));
+                result = new(null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             Logger.LogWarning(ex, "Player profile enrichment failed for game {GameType}", gameType);
-            result = new(null, null, "unavailable", DateTime.UtcNow.AddSeconds(30));
+            result = new(null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
         }
 
         return memoryCache.Set(key, result, result.ExpiresAtUtc);
@@ -489,11 +512,9 @@ public class ServerAdminController(
 
     private async Task<RconIpIntelligence> GetRconIpIntelligenceAsync(string ipAddress, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(ipAddress))
-            return new(null, null, null, null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10));
-
         var key = $"rcon-intelligence:{ipAddress}";
-        if (memoryCache.TryGetValue(key, out RconIpIntelligence? cached) && cached is not null)
+        var cached = GetCachedRconIpIntelligence(ipAddress);
+        if (cached is not null)
             return cached;
 
         RconIpIntelligence result;
@@ -504,7 +525,7 @@ public class ServerAdminController(
             {
                 var proxy = intelligence.ProxyCheck;
                 result = new(intelligence.CountryCode, proxy?.RiskScore, proxy?.IsProxy, proxy?.IsVpn, proxy?.ProxyType,
-                    proxy is null ? "unavailable" : "available",
+                    proxy is null ? EnrichmentUnavailableStatus : "available",
                     proxy is null ? DateTime.UtcNow.AddSeconds(30) : DateTime.UtcNow.AddMinutes(10));
                 if (proxy is null)
                     Logger.LogWarning("IP intelligence response contained no risk assessment");
@@ -512,13 +533,13 @@ public class ServerAdminController(
             else
             {
                 Logger.LogWarning("IP intelligence lookup failed with status {StatusCode}", response.StatusCode);
-                result = new(null, null, null, null, null, "unavailable", DateTime.UtcNow.AddSeconds(30));
+                result = new(null, null, null, null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             Logger.LogWarning(ex, "IP intelligence enrichment failed");
-            result = new(null, null, null, null, null, "unavailable", DateTime.UtcNow.AddSeconds(30));
+            result = new(null, null, null, null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
         }
 
         return memoryCache.Set(key, result, result.ExpiresAtUtc);
