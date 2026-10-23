@@ -11,6 +11,7 @@
 
     var POLL_INTERVAL = 60000;
     var pollTimer = null;
+    var refreshActive = false;
     var widgetState = { token: null, portalUrl: '', authenticated: false, filters: {} };
 
     // Action type icons (Unicode)
@@ -107,15 +108,19 @@
         }
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
+        xhr.timeout = 30000;
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () {
             if (xhr.status >= 200 && xhr.status < 300) {
-                try { cb(null, JSON.parse(xhr.responseText)); } catch (e) { cb(e, null); }
+                var data;
+                try { data = JSON.parse(xhr.responseText); } catch (e) { cb(e, null); return; }
+                cb(null, data);
             } else {
                 cb(new Error('HTTP ' + xhr.status), null);
             }
         };
         xhr.onerror = function () { cb(new Error('Network error'), null); };
+        xhr.ontimeout = function () { cb(new Error('Notification request timed out'), null); };
         xhr.send();
     }
 
@@ -305,18 +310,21 @@
 
     function refresh() {
         var container = document.getElementById('portal-notifications-widget');
-        if (!container) return;
+        if (!container || refreshActive || document.hidden) return;
 
+        refreshActive = true;
         apiGet('/api/external/notifications?take=20', function (err, data) {
-            if (err) {
-                container.innerHTML = '<div class="xi-pw-error">Unable to load notifications</div>';
-                return;
-            }
             try {
+                if (err) {
+                    container.innerHTML = '<div class="xi-pw-error">Unable to load notifications</div>';
+                    return;
+                }
                 renderWidget(container, data);
             } catch (e) {
                 console.error('Forum widget render error:', e);
                 container.innerHTML = '<div class="xi-pw-error">Unable to display notifications</div>';
+            } finally {
+                refreshActive = false;
             }
         });
     }

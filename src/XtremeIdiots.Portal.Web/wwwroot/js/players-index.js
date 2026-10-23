@@ -9,6 +9,27 @@ $(document).ready(function () {
     const playerTagSel = document.getElementById('filterPlayerTag');
     const hasSteamColumn = String(tableEl.data('steam-column')).toLowerCase() === 'true';
     const lastSeenColumnIndex = hasSteamColumn ? 6 : 5;
+    const intelligenceCache = new Map();
+    let intelligenceRequest = null;
+    let drawVersion = 0;
+    let drawToken = null;
+    let drawTokenExpires = 0;
+    const enrichmentStatus = document.createElement('div');
+    enrichmentStatus.setAttribute('role', 'status');
+    tableEl[0].after(enrichmentStatus);
+
+    tableEl.on('preXhr.dt', function () {
+        drawVersion++;
+        intelligenceRequest?.abort();
+        drawToken = null;
+        enrichmentStatus.replaceChildren();
+    });
+    tableEl.on('xhr.dt', function (event, settings, json) {
+        if (json && Number(json.draw) === settings.iDraw) {
+            drawToken = json.enrichmentToken;
+            drawTokenExpires = Date.parse(json.enrichmentExpiresAtUtc);
+        }
+    });
 
     function normalizePath(path) {
         if (!path) return '';
@@ -59,7 +80,13 @@ $(document).ready(function () {
         { data: 'tags', name: 'tags', orderable: false, render: function (data, type) { return renderPlayerTags(data, type); } },
         {
             data: 'ipAddress', name: 'ipAddress', orderable: false, render: function (data, type, row) {
-                return data ? formatIPAddress(data, row['proxyCheckRiskScore'], row['isProxy'], row['isVpn'], row['proxyType'], row['countryCode'], true) : '';
+                if (!data) return '';
+                if (type !== 'display') return data;
+                const cached = intelligenceCache.get(JSON.stringify([row.playerId, data]));
+                const intel = cached && Date.parse(cached.expiresAtUtc) > Date.now() ? cached : row;
+                return formatIPAddress(data, intel.proxyCheckRiskScore, intel.isProxy, intel.isVpn, intel.proxyType || '', intel.countryCode || '', true) +
+                    (intel.status === 'unavailable' ? ' <small class="text-muted">Risk unavailable</small>' :
+                        intel.status !== 'available' ? ' <small class="text-muted">Risk pending</small>' : '');
             }
         },
         { data: 'guid', name: 'guid', orderable: false, defaultContent: '' }
@@ -142,6 +169,74 @@ $(document).ready(function () {
         },
         columns: columns
     });
+
+    async function enrichVisibleRows() {
+        if (!drawToken || intelligenceRequest || document.hidden) return;
+        if (drawTokenExpires <= Date.now()) { table.ajax.reload(null, false); return; }
+        const version = drawVersion;
+        const rows = table.rows({ page: 'current' }).data().toArray();
+        const missing = rows.filter(function (row) {
+            const key = JSON.stringify([row.playerId, row.ipAddress]);
+            const cached = intelligenceCache.get(key);
+            if (cached && Date.parse(cached.expiresAtUtc) > Date.now()) return false;
+            intelligenceCache.delete(key);
+            return !!row.ipAddress;
+        });
+        if (!missing.length) return;
+        const controller = new AbortController();
+        intelligenceRequest = controller;
+        try {
+            const response = await fetch('/Players/GetVisibleIntelligence', {
+                method: 'POST',
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: JSON.stringify({ token: drawToken, playerIds: missing.map(row => row.playerId) })
+            });
+            if (!response.ok || response.redirected) throw new Error('IP intelligence unavailable');
+            const json = await response.json();
+            if (version !== drawVersion) return;
+            json.data.forEach(function (intel) {
+                const key = JSON.stringify([intel.playerId, intel.ipAddress]);
+                intelligenceCache.delete(key);
+                intelligenceCache.set(key, intel);
+                while (intelligenceCache.size > 256) intelligenceCache.delete(intelligenceCache.keys().next().value);
+                table.rows({ page: 'current' }).every(function () {
+                    const row = this.data();
+                    if (row.playerId === intel.playerId && row.ipAddress === intel.ipAddress)
+                        this.data({ ...row, ...intel });
+                });
+                if (json.data.some(intel => intel.status === 'unavailable')) showIntelligenceRetry();
+            });
+        } catch (error) {
+            if (error.name !== 'AbortError' && version === drawVersion) {
+                table.rows({ page: 'current' }).every(function () {
+                    this.data({ ...this.data(), status: 'unavailable' });
+                });
+                showIntelligenceRetry();
+            }
+            function showIntelligenceRetry() {
+                enrichmentStatus.replaceChildren();
+                enrichmentStatus.append(document.createTextNode('Some IP intelligence is unavailable. '));
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.className = 'btn btn-outline-secondary btn-sm';
+                retry.textContent = 'Retry';
+                retry.addEventListener('click', function () {
+                    intelligenceCache.clear();
+                    table.ajax.reload(null, false);
+                });
+                enrichmentStatus.append(retry);
+            }
+        } finally {
+            if (intelligenceRequest === controller) intelligenceRequest = null;
+        }
+    }
+    table.on('draw.dt', enrichVisibleRows);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) enrichVisibleRows(); });
+    window.addEventListener('pagehide', function () { intelligenceRequest?.abort(); intelligenceCache.clear(); });
 
     function escapeHtml(value) {
         return String(value)

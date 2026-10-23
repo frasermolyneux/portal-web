@@ -136,7 +136,7 @@ internal sealed class PlayersIndexScenario
 }
 
 /// <summary>
-/// Deterministic proxy/geo intelligence returned for every IP in the Players Index AJAX response.
+/// Deterministic proxy/geo intelligence returned for the visible Players Index enrichment batch.
 /// </summary>
 internal sealed class IpIntelligenceOptions
 {

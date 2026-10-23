@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -18,6 +19,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Services;
 using PlayersApiController = XtremeIdiots.Portal.Web.ApiControllers.PlayersController;
 
 namespace XtremeIdiots.Portal.Web.Tests.ApiControllers;
@@ -26,7 +28,7 @@ public class PlayersControllerTests
 {
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new();
-    private readonly Mock<IGeoLocationApiClient> mockGeoLocationApiClient = new();
+    private readonly Mock<IIpIntelligenceService> mockIpIntelligenceService = new();
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<PlayersApiController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
@@ -47,7 +49,8 @@ public class PlayersControllerTests
         var controller = new PlayersApiController(
             mockAuthorizationService.Object,
             mockRepositoryApiClient.Object,
-            mockGeoLocationApiClient.Object,
+            mockIpIntelligenceService.Object,
+            new EphemeralDataProtectionProvider(),
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,

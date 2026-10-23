@@ -31,6 +31,7 @@ public record AgentServerStatus
 
 public record AgentServerSummary
 {
+    public OptionalDataState TelemetryState { get; init; } = OptionalDataState.Available;
     public Guid ServerId { get; init; }
     public string? ServerTitle { get; init; }
     public string? GameType { get; init; }

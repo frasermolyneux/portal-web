@@ -66,6 +66,7 @@ XtremeIdiots.Portal.Web.ApiControllers.NotificationsApiController#GetUnreadCount
 XtremeIdiots.Portal.Web.ApiControllers.NotificationsApiController#MarkAllAsRead#POST#api/notifications/read-all#()|StateChange
 XtremeIdiots.Portal.Web.ApiControllers.NotificationsApiController#MarkAsRead#POST#api/notifications/{id}/read#(System.Guid)|StateChange
 XtremeIdiots.Portal.Web.ApiControllers.PlayersController#GetPlayersAjax#POST#Players/GetPlayersAjax/{id?}#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.PlayersFilter>,System.Nullable<System.Guid>)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.PlayersController#GetVisibleIntelligence#POST#Players/GetVisibleIntelligence#(XtremeIdiots.Portal.Web.ApiControllers.PlayersController+IntelligenceBatchRequest)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ServerAdminController#GetChatLogAjax#POST#ServerAdmin/GetChatLogAjax#(System.Nullable<System.Boolean>)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ServerAdminController#GetGameChatLogAjax#POST#ServerAdmin/GetGameChatLogAjax#(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType,System.Nullable<System.Boolean>)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ServerAdminController#GetServerChatLogAjax#POST#ServerAdmin/GetServerChatLogAjax#(System.Guid,System.Nullable<System.Boolean>)|HttpEndpoint
@@ -103,6 +104,11 @@ XtremeIdiots.Portal.Web.Controllers.ConnectedPlayersController#CreateManualLink#
 XtremeIdiots.Portal.Web.Controllers.ConnectedPlayersController#ForceUnlink#POST#ConnectedPlayers/ForceUnlink#(System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.ConnectedPlayersController#Index#GET#ConnectedPlayers/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.CredentialsController#Index#GET#Credentials/Index#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.DashboardController#GetOverviewLeaderboard#GET#Dashboard/GetOverviewLeaderboard#()|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.DashboardController#GetOverviewSummary#GET#Dashboard/GetOverviewSummary#()|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.DashboardController#GetOverviewTelemetry#GET#Dashboard/GetOverviewTelemetry#(XtremeIdiots.Portal.Web.Services.CachedAgentTelemetryService)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.DashboardController#GetOverviewTrend#GET#Dashboard/GetOverviewTrend#()|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.DashboardController#GetOverviewUtilization#GET#Dashboard/GetOverviewUtilization#()|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.DashboardController#Index#GET#Dashboard/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.DataMaintenanceController#DeletePlayer#POST#DataMaintenance/DeletePlayer#(System.Guid,System.String)|StateChange
 XtremeIdiots.Portal.Web.Controllers.DataMaintenanceController#Index#GET#DataMaintenance/Index#()|BrowserPage
@@ -135,6 +141,7 @@ XtremeIdiots.Portal.Web.Controllers.GlobalSettingsController#Index#POST#GlobalSe
 XtremeIdiots.Portal.Web.Controllers.HealthCheckController#Status#GET#HealthCheck/Status#()|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.HomeController#Index#GET#Home/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.IPAddressesController#Details#GET#IPAddresses/Details#(System.String)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.IPAddressesController#GetIntelligence#GET#IPAddresses/GetIntelligence#(System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.IdentityController#ExternalLoginCallback#GET#Identity/ExternalLoginCallback#(System.String,System.String)|ExternalCallback
 XtremeIdiots.Portal.Web.Controllers.IdentityController#IdentityError#GET#Identity/IdentityError#(System.String)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.IdentityController#Login#GET#Identity/Login#(System.String)|BrowserPage
@@ -177,6 +184,8 @@ XtremeIdiots.Portal.Web.Controllers.PlayerTagsController#Remove#GET#PlayerTags/R
 XtremeIdiots.Portal.Web.Controllers.PlayerTagsController#RemoveConfirmed#POST#PlayerTags/Remove#(System.Guid,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.PlayersController#Details#GET#Players/Details#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.PlayersController#GameIndex#GET#Players/GameIndex#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.PlayersController#GetIntelligence#GET#Players/GetIntelligence#(System.Guid,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.PlayersController#GetIpHistory#GET#Players/GetIpHistory#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.PlayersController#Index#GET#Players/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ProfileController#ActivateConnectedPlayerCode#POST#Profile/ActivateConnectedPlayerCode#()|StateChange
 XtremeIdiots.Portal.Web.Controllers.ProfileController#AllNotifications#GET#Profile/AllNotifications#(System.Int32)|BrowserPage
@@ -199,6 +208,9 @@ XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetCurrentMap#GET#Serv
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetGameChatLogAjax#POST#ServerAdmin/GetGameChatLogAjax#(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType,System.Nullable<System.Boolean>)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetGameServers#GET#ServerAdmin/GetGameServers#()|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetMapRotation#GET#ServerAdmin/GetMapRotation#(System.Guid)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetOverviewBanFileMonitors#GET#ServerAdmin/GetOverviewBanFileMonitors#(System.Guid)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetOverviewStatistics#GET#ServerAdmin/GetOverviewStatistics#(System.Guid,XtremeIdiots.Portal.Web.Services.ServerStatisticsService,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetOverviewTelemetry#GET#ServerAdmin/GetOverviewTelemetry#(System.Guid,XtremeIdiots.Portal.Web.Services.CachedAgentTelemetryService,System.Boolean)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetPlayerChatLog#POST#ServerAdmin/GetPlayerChatLog#(System.Guid,System.Nullable<System.Boolean>)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetRconPlayerEnrichment#GET#ServerAdmin/GetRconPlayerEnrichment#(System.Guid,System.Int32,System.String,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#GetRconPlayers#GET#ServerAdmin/GetRconPlayers#(System.Guid)|HttpEndpoint
@@ -223,12 +235,14 @@ XtremeIdiots.Portal.Web.Controllers.ServerAdminController#TempBanRconPlayer#POST
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#ToggleChatMessageLock#POST#ServerAdmin/ToggleChatMessageLock#(System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.ServersController#Details#GET#Servers/Details#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetLivePlayers#GET#Servers/GetLivePlayers#(System.Guid)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.ServersController#GetOverviewStatistics#GET#Servers/GetOverviewStatistics#(System.Guid,XtremeIdiots.Portal.Web.Services.ServerStatisticsService,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetPublicMapRotation#GET#Servers/GetPublicMapRotation#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetRecentPlayersForMap#GET#Servers/GetRecentPlayersForMap#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#Index#GET#Servers/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ServersController#Map#GET#Servers/Map#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.StatusController#AgentStatus#GET#Status/AgentStatus#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.StatusController#BanFileStatus#GET#Status/BanFileStatus#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.StatusController#GetOverviewTelemetry#GET#Status/GetOverviewTelemetry#(XtremeIdiots.Portal.Web.Services.CachedAgentTelemetryService)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.TagsController#Create#GET#Tags/Create#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.TagsController#Create#POST#Tags/Create#(XtremeIdiots.Portal.Web.ViewModels.CreateTagViewModel)|StateChange
 XtremeIdiots.Portal.Web.Controllers.TagsController#Delete#GET#Tags/Delete#(System.Guid)|BrowserPage

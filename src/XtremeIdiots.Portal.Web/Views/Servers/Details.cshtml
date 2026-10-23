@@ -111,15 +111,9 @@
                         </div>
                     </div>
 
-                    @if (Model.GameServerStats.Any())
-                    {
-                        <div class="ibox mt-3">
-                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
-                            <div class="ibox-content">
-                                <div id="si-playerCountChart" style="height: 300px; width: 100%;"></div>
-                            </div>
-                        </div>
-                    }
+                    <div data-overview-url="@Url.Action("GetOverviewStatistics", new { id = serverId })">
+                        <p class="text-muted" role="status">Loading player statistics…</p>
+                    </div>
                 </div>
 
                 @* Connected Players *@
@@ -169,22 +163,9 @@
             </div>
 
             @* Map Timeline *@
-            @if (Model.MapTimelineDataPoints.Any())
-            {
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <div class="ibox">
-                            <div class="ibox-title"><h5>Map Timeline <small class="text-muted">(24h)</small></h5></div>
-                            <div class="ibox-content">
-                                @{
-                                    var mapTimelineHeight = Model.GameServerStats.GroupBy(m => m.MapName).ToList().Count * 41 + 50;
-                                }
-                                <div id="si-mapsTimeline" style="height: @(mapTimelineHeight)px; width: 100%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
+            <div data-overview-url="@Url.Action("GetOverviewStatistics", new { id = serverId, panel = "timeline" })">
+                <p class="text-muted" role="status">Loading map timeline…</p>
+            </div>
         </div>
 
         @* ═══ PLAYER MAP TAB ═══ *@
@@ -228,7 +209,11 @@
 </div>
 
 @section Scripts {
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="~/js/overview-panels.js" asp-append-version="true"></script>
+    @if (Configuration.GetValue("ExternalAssets:Enabled", true))
+    {
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    }
 
     <div policy="@AuthPolicies.Dashboard_Read">
         <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
@@ -242,6 +227,7 @@
 
         // ─── Live Players Table ───
         (function() {
+            var updatePlayers;
             var table = $('#si-playersTable').DataTable({
                 processing: true,
                 paging: false,
@@ -249,12 +235,8 @@
                 searching: false,
                 autoWidth: false,
                 order: [[0, "asc"]],
-                ajax: {
-                    url: '/Servers/GetLivePlayers/' + serverId,
-                    dataSrc: function(json) {
-                        $('#si-playerCount').text(json.data ? json.data.length : 0);
-                        return json.data || [];
-                    }
+                ajax: function(request, callback) {
+                    updatePlayers = callback;
                 },
                 columns: [
                     { data: 'num', width: '50px' },
@@ -287,8 +269,25 @@
                 ]
             });
 
-            // Auto-refresh every 30 seconds
-            setInterval(function() { table.ajax.reload(null, false); }, 30000);
+            PortalAsync.createPoller({
+                intervalMs: 30000,
+                load: async function(signal) {
+                    var response = await fetch('/Servers/GetLivePlayers/' + serverId, {
+                        credentials: 'same-origin', signal: signal
+                    });
+                    if (!response.ok || response.redirected) throw new Error('Live players unavailable (' + response.status + ')');
+                    var json = await response.json();
+                    if (signal.aborted) return;
+                    $('#si-playerCount').text(json.data ? json.data.length : 0);
+                    updatePlayers({ data: json.data || [] });
+                    $('#si-playersTable').removeAttr('data-refresh-unavailable');
+                },
+                onError: function(error) {
+                    console.warn('Live players unavailable:', error);
+                    $('#si-playersTable').attr('data-refresh-unavailable', 'true');
+                    updatePlayers({ data: table.rows().data().toArray() });
+                }
+            }).start();
         })();
 
         // ─── Map Rotation (loads once) ───
@@ -342,60 +341,6 @@
                 }
             });
         })();
-
-        // ─── Google Charts: Player Count ───
-        @if (Model.GameServerStats.Any())
-        {
-            <text>
-            google.charts.load('current', { 'packages': ['corechart', 'timeline'] });
-            google.charts.setOnLoadCallback(function() {
-                var data = new google.visualization.DataTable();
-                data.addColumn('datetime', 'Timestamp');
-                data.addColumn('number', 'Player Count');
-                data.addRows([
-                    @foreach (var item in Model.GameServerStats)
-                    {
-                        <text>[new Date(@item.Timestamp.Year, @(item.Timestamp.Month-1), @item.Timestamp.Day, @item.Timestamp.Hour, @item.Timestamp.Minute, @item.Timestamp.Second), @item.PlayerCount],</text>
-                    }
-                ]);
-                var chart = new google.visualization.LineChart(document.getElementById('si-playerCountChart'));
-                chart.draw(data, {
-                    title: 'Player Count (Last 48 hours)',
-                    curveType: 'function',
-                    legend: { position: 'bottom' },
-                    seriesType: 'line',
-                    height: 300
-                });
-            });
-            </text>
-        }
-
-        // ─── Google Charts: Map Timeline (draw on tab show) ───
-        @if (Model.MapTimelineDataPoints.Any())
-        {
-            <text>
-            google.charts.setOnLoadCallback(function() {
-                $('button[data-bs-target="#maps"]').on('shown.bs.tab', function() {
-                    var container = document.getElementById('si-mapsTimeline');
-                    if (!container || container.dataset.drawn) return;
-
-                    var chart = new google.visualization.Timeline(container);
-                    var dataTable = new google.visualization.DataTable();
-                    dataTable.addColumn({ type: 'string', id: 'Map Name' });
-                    dataTable.addColumn({ type: 'datetime', id: 'Start' });
-                    dataTable.addColumn({ type: 'datetime', id: 'End' });
-                    dataTable.addRows([
-                        @foreach (var dp in Model.MapTimelineDataPoints)
-                        {
-                            <text>['@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(dp.MapName))', new Date(@dp.Start.Year, @(dp.Start.Month-1), @dp.Start.Day, @dp.Start.Hour, @dp.Start.Minute, @dp.Start.Second), new Date(@dp.End.Year, @(dp.End.Month-1), @dp.End.Day, @dp.End.Hour, @dp.End.Minute, @dp.End.Second)],</text>
-                        }
-                    ]);
-                    chart.draw(dataTable);
-                    container.dataset.drawn = 'true';
-                });
-            });
-            </text>
-        }
 
         // ─── Google Maps: Player Map (load on tab show) ───
         @{

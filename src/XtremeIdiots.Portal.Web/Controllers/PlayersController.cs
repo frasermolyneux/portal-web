@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -21,7 +22,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.Players_Read)]
 public class PlayersController(
     IAuthorizationService authorizationService,
-    IGeoLocationApiClient geoLocationClient,
+    IIpIntelligenceService ipIntelligenceService,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<PlayersController> logger,
@@ -95,7 +96,7 @@ public class PlayersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, playerData) = await GetAuthorizedPlayerAsync(id, "view", cancellationToken).ConfigureAwait(false);
+            var (actionResult, playerData) = await GetAuthorizedPlayerAsync(id, "view", cancellationToken: cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
@@ -104,14 +105,7 @@ public class PlayersController(
                 Player = playerData!
             };
 
-            await EnrichCurrentPlayerIntelligenceAsync(playerDetailsViewModel, playerData!, id, cancellationToken).ConfigureAwait(false);
-
-            if (playerData!.PlayerIpAddresses is not null && playerData.PlayerIpAddresses.Count != 0)
-            {
-                await EnrichPlayerIpAddressesAsync(playerDetailsViewModel, playerData, id, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (playerData.RelatedPlayers is not null && playerData.RelatedPlayers.Count != 0)
+            if (playerData!.RelatedPlayers is not null && playerData.RelatedPlayers.Count != 0)
             {
                 foreach (var rp in playerData.RelatedPlayers)
                 {
@@ -128,11 +122,12 @@ public class PlayersController(
     private async Task<(IActionResult? ActionResult, PlayerDto? Data)> GetAuthorizedPlayerAsync(
         Guid id,
         string action,
+        PlayerEntityOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         var playerApiResponse = await repositoryApiClient.Players.V1.GetPlayer(id,
-            PlayerEntityOptions.Aliases | PlayerEntityOptions.IpAddresses | PlayerEntityOptions.AdminActions |
-            PlayerEntityOptions.RelatedPlayers | PlayerEntityOptions.ProtectedNames | PlayerEntityOptions.Tags | PlayerEntityOptions.Counts).ConfigureAwait(false);
+            options ?? (PlayerEntityOptions.Aliases | PlayerEntityOptions.IpAddresses | PlayerEntityOptions.AdminActions |
+            PlayerEntityOptions.RelatedPlayers | PlayerEntityOptions.ProtectedNames | PlayerEntityOptions.Tags | PlayerEntityOptions.Counts)).ConfigureAwait(false);
 
         if (playerApiResponse.IsNotFound)
         {
@@ -160,55 +155,44 @@ public class PlayersController(
         return authResult is not null ? ((IActionResult? ActionResult, PlayerDto? Data))(authResult, null) : ((IActionResult? ActionResult, PlayerDto? Data))(null, playerData);
     }
 
-    private async Task EnrichCurrentPlayerIntelligenceAsync(PlayerDetailsViewModel viewModel, PlayerDto playerData, Guid playerId, CancellationToken cancellationToken = default)
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetIntelligence(Guid id, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(playerData.IpAddress))
-            return;
-
-        try
-        {
-            var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(playerData.IpAddress, cancellationToken).ConfigureAwait(false);
-
-            if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
-                viewModel.Intelligence = intelligenceResult.Result.Data;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to retrieve intelligence for IP {IpAddress} for player {PlayerId}",
-                playerData.IpAddress, playerId);
-        }
+        var (actionResult, player) = await GetAuthorizedPlayerAsync(id, nameof(GetIntelligence), PlayerEntityOptions.None, cancellationToken).ConfigureAwait(false);
+        if (actionResult is not null)
+            return actionResult;
+        if (!string.Equals(player!.IpAddress, ipAddress, StringComparison.Ordinal))
+            return NotFound();
+        var intelligence = await ipIntelligenceService.GetAsync(player.IpAddress, cancellationToken).ConfigureAwait(false);
+        ViewData["IpAddress"] = player.IpAddress;
+        return PartialView("_Intelligence", intelligence);
     }
 
-    private async Task EnrichPlayerIpAddressesAsync(PlayerDetailsViewModel viewModel, PlayerDto playerData, Guid playerId, CancellationToken cancellationToken = default)
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetIpHistory(Guid id, CancellationToken cancellationToken = default)
     {
-        var ipAddresses = playerData.PlayerIpAddresses.OrderByDescending(x => x.LastUsed).Take(10).ToList();
+        var (actionResult, playerData) = await GetAuthorizedPlayerAsync(id, nameof(GetIpHistory), PlayerEntityOptions.IpAddresses, cancellationToken).ConfigureAwait(false);
+        if (actionResult is not null)
+            return actionResult;
+        var ipAddresses = (playerData!.PlayerIpAddresses ?? []).OrderByDescending(x => x.LastUsed).Take(10).ToList();
         var tasks = ipAddresses.Select(async ipAddress =>
         {
-            var enrichedIp = new PlayerIpAddressViewModel
+            var intelligence = await ipIntelligenceService.GetAsync(ipAddress.Address, cancellationToken).ConfigureAwait(false);
+            return new
             {
-                IpAddressDto = ipAddress,
-                IsCurrentIp = ipAddress.Address == playerData.IpAddress
+                ipAddress.Address,
+                countryCode = intelligence.Intelligence?.CountryCode,
+                proxyCheckRiskScore = intelligence.RiskScore,
+                intelligence.IsProxy,
+                intelligence.IsVpn,
+                intelligence.ProxyType,
+                intelligence.Status,
+                intelligence.ExpiresAtUtc
             };
-
-            try
-            {
-                var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress.Address, cancellationToken).ConfigureAwait(false);
-                if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
-                {
-                    enrichedIp.Intelligence = intelligenceResult.Result.Data;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to enrich IP address {IpAddress} for player {PlayerId}",
-                    ipAddress.Address, playerId);
-            }
-
-            return enrichedIp;
         }).ToList();
-
-        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-        viewModel.EnrichedIpAddresses.AddRange(results);
+        return Json(new { data = await Task.WhenAll(tasks).ConfigureAwait(false) });
     }
 
     private async Task<PlayersIndexViewModel> BuildPlayersIndexViewModelAsync(

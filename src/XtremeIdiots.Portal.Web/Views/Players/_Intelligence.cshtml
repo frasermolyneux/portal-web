@@ -1,0 +1,56 @@
+@model XtremeIdiots.Portal.Web.Services.IpIntelligenceResult
+@{
+    var intelligence = Model.Intelligence;
+    var riskLevel = Model.RiskScore >= 80 ? "critical" : Model.RiskScore >= 50 ? "high" : Model.RiskScore >= 25 ? "medium" : "low";
+}
+<p><ip-address ip="@ViewData["IpAddress"]" country-code="@intelligence?.CountryCode"
+    risk="@Model.RiskScore"></ip-address></p>
+@if (intelligence is null)
+{
+    <p role="status" class="text-muted">IP intelligence is unavailable.</p>
+}
+else
+{
+    @if (Model.HasRiskAssessment)
+    {
+        <div class="risk-score-gauge">
+            <div class="gauge-container"><div class="gauge" data-risk-level="@riskLevel"><span class="gauge-value">@Model.RiskScore</span></div></div>
+            <p class="mt-2"><small class="text-muted">Risk Score</small></p>
+        </div>
+        @if (Model.IsProxy == true)
+        {
+            <span class="badge bg-danger">Proxy</span>
+        }
+        @if (Model.IsVpn == true)
+        {
+            <span class="badge bg-warning text-dark">VPN</span>
+        }
+    }
+    <dl class="detail-fields">
+        <dt class="detail-label">Location</dt>
+        <dd class="detail-value"><location-summary intelligence-model="@intelligence"></location-summary></dd>
+        <dt class="detail-label">Risk Score</dt>
+        <dd class="detail-value">@(Model.RiskScore?.ToString() ?? "Unavailable")</dd>
+        @if (!string.IsNullOrWhiteSpace(Model.ProxyType))
+        {
+            <dt class="detail-label">Type</dt>
+            <dd class="detail-value">@Model.ProxyType</dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(intelligence.Timezone))
+        {
+            <dt class="detail-label">Time Zone</dt>
+            <dd class="detail-value">@intelligence.Timezone</dd>
+        }
+        @if (intelligence.Latitude.HasValue && intelligence.Longitude.HasValue)
+        {
+            <dt class="detail-label">Coordinates</dt>
+            <dd class="detail-value">@intelligence.Latitude, @intelligence.Longitude</dd>
+        }
+    </dl>
+}
+<div id="map" class="player-location-map" data-latitude="@(intelligence?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))" data-longitude="@(intelligence?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))"></div>
+<div class="text-end mt-2"><small><a target="_blank" rel="noopener" href="https://www.geo-location.net/">Powered by geo-location.net</a></small></div>
+@if (Model.Status == "unavailable")
+{
+    <button class="btn btn-outline-secondary btn-sm" type="button" data-retry-player-intelligence>Retry</button>
+}

@@ -3,6 +3,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.CentralBanFileStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
+using XtremeIdiots.Portal.Web.Services.Settings;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -18,10 +19,9 @@ public sealed class BanFileMonitorsDashboardViewModel
     public required IReadOnlyDictionary<Guid, GameServerLiveStatusDto> LiveStatusLookup { get; init; }
 
     /// <summary>
-    /// Per-server config namespace lookup (used for file transport host display in the table).
-    /// Same shape as other admin views in this project.
+    /// Per-server typed configuration projection used for file transport host display.
     /// </summary>
-    public required IReadOnlyDictionary<Guid, Dictionary<string, System.Text.Json.JsonElement>> ServerConfigs { get; init; }
+    public required IReadOnlyDictionary<Guid, GameServerReadSettings> ServerConfigs { get; init; }
 
     public required IReadOnlyList<BanFileMonitorGameTypeCard> GameTypeCards { get; init; }
 

@@ -1,0 +1,46 @@
+@using XtremeIdiots.Portal.Web.Services
+@model OptionalOverviewData<AgentServerStatus>
+@if (Model.Data is null)
+{
+    <div class="alert alert-warning mb-0" role="status" data-overview-unavailable>Agent telemetry is unavailable for this server.</div>
+}
+else
+{
+    var status = Model.Data;
+    var statusClass = status.ActivityStatus switch
+    {
+        AgentActivityStatus.Active => "bg-success",
+        AgentActivityStatus.Idle => "bg-info",
+        AgentActivityStatus.Offline => "bg-danger",
+        _ => "bg-secondary"
+    };
+    @if (Model.State == OptionalDataState.Stale)
+    {
+        <p class="text-warning" role="status">Showing cached telemetry from @Model.ObservedAt?.ToString("u").</p>
+    }
+    <dl class="row mb-0">
+        <dt class="col-6">Status</dt>
+        <dd class="col-6"><span class="badge @statusClass">@status.ActivityStatus</span></dd>
+        <dt class="col-6">Events/Hour</dt><dd class="col-6">@status.EventsLastHour</dd>
+        <dt class="col-6">Chat/Hour</dt><dd class="col-6">@status.ChatMessagesLastHour</dd>
+        @if (status.LastEventReceived.HasValue)
+        {
+            <dt class="col-6">Last Event</dt>
+            <dd class="col-6"><time time-ago utc="@status.LastEventReceived.Value" show-absolute="false"></time></dd>
+        }
+        @if (ViewData["Detailed"] is true)
+        {
+            <dt class="col-6">Players Connected/Hour</dt><dd class="col-6">@status.PlayersConnectedLastHour</dd>
+            <dt class="col-6">Bans Detected (24h)</dt><dd class="col-6">@status.BansDetectedLast24h</dd>
+            <dt class="col-6">Moderation Triggers (24h)</dt><dd class="col-6">@status.ModerationTriggersLast24h</dd>
+            @if (status.LastMapChange.HasValue)
+            {
+                <dt class="col-6">Last Map Change</dt><dd class="col-6">@status.LastMapChange.Value.ToString("dd MMM HH:mm")</dd>
+            }
+            @if (!string.IsNullOrWhiteSpace(status.LastMapName))
+            {
+                <dt class="col-6">Last Map</dt><dd class="col-6">@status.LastMapName</dd>
+            }
+        }
+    </dl>
+}

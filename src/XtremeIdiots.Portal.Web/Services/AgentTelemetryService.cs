@@ -152,7 +152,9 @@ public class AgentTelemetryService(
             new QueryTimeRange(timeRange),
             cancellationToken: ct).ConfigureAwait(false);
 
-        return response.Value;
+        return response.Value.Status != LogsQueryResultStatus.Success
+            ? throw new InvalidOperationException("Agent telemetry query did not complete successfully.")
+            : response.Value;
     }
 
     private static AgentActivityStatus ResolveActivityStatus(DateTime? lastEvent)

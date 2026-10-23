@@ -34,8 +34,8 @@
 
 
             <div class="col-md-6 text-center">
-                <div width="100%">
-                    @await Component.InvokeAsync("GameServerList")
+                <div id="homeServerBanners" aria-live="polite">
+                    <span class="text-muted">Loading servers...</span>
                 </div>
             </div>
 
@@ -156,3 +156,19 @@
     </section>
 
 </div>
+
+@section Scripts {
+    <script>
+        PortalAsync.loadSection('#homeServerBanners', '/Banners/GetGameServers', {
+            render: function(element, banners) {
+                element.replaceChildren();
+                banners.forEach(function(banner) {
+                    var container = document.createElement('div');
+                    container.innerHTML = banner;
+                    element.appendChild(container);
+                });
+                if (!banners.length) element.textContent = 'No server banners available.';
+            }
+        });
+    </script>
+}

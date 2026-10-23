@@ -1,0 +1,45 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model DashboardViewModel
+@{ var summary = Model.Summary!; }
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3"><div class="ibox"><div class="ibox-content">
+        <h5 class="text-muted fw-normal mt-0">Servers</h5>
+        <h2 class="stat-value mt-2 mb-1"><span class="text-success">@summary.OnlineServerCount</span> <small class="text-muted fs-6">/ @summary.TotalServers</small></h2>
+    </div></div></div>
+    <div class="col-lg-3 col-md-6 mb-3"><div class="ibox"><div class="ibox-content">
+        <h5 class="text-muted fw-normal mt-0">Players Online</h5><h2 class="stat-value mt-2 mb-1">@summary.TotalPlayersOnline</h2><small class="text-muted">Across all servers</small>
+    </div></div></div>
+    <div class="col-lg-3 col-md-6 mb-3"><div class="ibox"><div class="ibox-content">
+        <h5 class="text-muted fw-normal mt-0">Unclaimed Bans</h5><h2 class="stat-value mt-2 mb-1 @(summary.UnclaimedBanCount > 0 ? "text-warning" : "text-success")">@summary.UnclaimedBanCount</h2>
+        @if (summary.UnclaimedBanCount > 0)
+        {
+            <a asp-controller="AdminActions" asp-action="Unclaimed" class="text-warning text-decoration-none"><small><i class="fa-solid fa-fw fa-arrow-right" aria-hidden="true"></i> View unclaimed</small></a>
+        }
+        else
+        {
+            <small class="text-muted">All clear</small>
+        }
+    </div></div></div>
+    <div class="col-lg-3 col-md-6 mb-3"><div class="ibox"><div class="ibox-content">
+        <h5 class="text-muted fw-normal mt-0">Open Reports</h5><h2 class="stat-value mt-2 mb-1 @(summary.OpenReportCount > 0 ? "text-warning" : "text-success")">@summary.OpenReportCount</h2><small class="text-muted">Awaiting review</small>
+    </div></div></div>
+</div>
+@if (summary.RecentActions24h is not null && summary.RecentActions7d is not null)
+{
+    <div class="row mb-4"><div class="col-12"><div class="ibox">
+        <div class="ibox-title"><h5>Moderation Activity</h5></div>
+        <div class="ibox-content"><div class="row text-center">
+            @foreach (var item in new[] { (Label: "Last 24 hours", Actions: summary.RecentActions24h), (Label: "Last 7 days", Actions: summary.RecentActions7d) })
+            {
+                <div class="col">
+                    <small class="text-muted d-block mb-1">@item.Label</small>
+                    <span class="badge bg-danger me-1">@item.Actions.Bans Bans</span>
+                    <span class="badge bg-warning text-dark me-1">@item.Actions.TempBans TempBans</span>
+                    <span class="badge bg-info me-1">@item.Actions.Kicks Kicks</span>
+                    <span class="badge bg-secondary me-1">@item.Actions.Warnings Warnings</span>
+                    <span class="badge bg-light text-dark">@item.Actions.Observations Obs</span>
+                </div>
+            }
+        </div></div>
+    </div></div></div>
+}

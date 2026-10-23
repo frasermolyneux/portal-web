@@ -37,4 +37,5 @@ public class DashboardViewModel
     /// True if agent telemetry data failed to load.
     /// </summary>
     public bool AgentTelemetryUnavailable { get; set; }
+    public bool AgentTelemetryStale { get; set; }
 }

@@ -129,53 +129,15 @@
                     @* Agent Status Card *@
                     <div class="ibox">
                         <div class="ibox-title"><h5>Agent Status</h5></div>
-                        <div class="ibox-content">
-                            @if (Model.AgentStatus is not null)
-                            {
-                                var statusClass = Model.AgentStatus.ActivityStatus switch
-                                {
-                                    AgentActivityStatus.Active => "bg-success",
-                                    AgentActivityStatus.Idle => "bg-info",
-                                    AgentActivityStatus.Offline => "bg-danger",
-                                    _ => "bg-secondary"
-                                };
-                                <p><span class="badge @statusClass">@Model.AgentStatus.ActivityStatus</span></p>
-                                <dl class="row mb-0">
-                                    <dt class="col-6">Events/Hour</dt>
-                                    <dd class="col-6">@Model.AgentStatus.EventsLastHour</dd>
-                                    <dt class="col-6">Chat/Hour</dt>
-                                    <dd class="col-6">@Model.AgentStatus.ChatMessagesLastHour</dd>
-                                    @if (Model.AgentStatus.LastEventReceived.HasValue)
-                                    {
-                                        <dt class="col-6">Last Event</dt>
-                                        <dd class="col-6">
-                                            @{
-                                                var agentElapsed = DateTime.UtcNow - Model.AgentStatus.LastEventReceived.Value;
-                                            }
-                                            @if (agentElapsed.TotalMinutes < 1) { @($"{(int)agentElapsed.TotalSeconds}s ago") }
-                                            else if (agentElapsed.TotalHours < 1) { @($"{(int)agentElapsed.TotalMinutes}m ago") }
-                                            else { <span class="text-danger">@($"{(int)agentElapsed.TotalHours}h ago")</span> }
-                                        </dd>
-                                    }
-                                </dl>
-                            }
-                            else
-                            {
-                                <p class="text-muted">Agent telemetry unavailable</p>
-                            }
+                        <div class="ibox-content" data-overview-url="@Url.Action("GetOverviewTelemetry", new { id = serverId })">
+                            <p class="text-muted" role="status">Loading agent telemetry…</p>
                         </div>
                     </div>
 
                     @* Player Count Chart *@
-                    @if (Model.GameServerStats.Any())
-                    {
-                        <div class="ibox">
-                            <div class="ibox-title"><h5>Player Count <small class="text-muted">(48h)</small></h5></div>
-                            <div class="ibox-content">
-                                <div id="sd-playerCountChart" style="height: 200px; width: 100%;"></div>
-                            </div>
-                        </div>
-                    }
+                    <div data-overview-url="@Url.Action("GetOverviewStatistics", new { id = serverId })">
+                        <p class="text-muted" role="status">Loading player statistics…</p>
+                    </div>
 
                     @* Quick Actions + Server Control *@
                     <div class="ibox">
@@ -329,18 +291,9 @@
                         </div>
 
                         @* Map Timeline (Google Charts) *@
-                        @if (Model.MapTimelineDataPoints.Any())
-                        {
-                            <div class="ibox">
-                                <div class="ibox-title"><h5>Map Timeline <small class="text-muted">(24h)</small></h5></div>
-                                <div class="ibox-content">
-                                    @{
-                                        var mapTimelineHeight = Model.GameServerStats.GroupBy(m => m.MapName).ToList().Count * 41 + 50;
-                                    }
-                                    <div id="sd-mapsTimeline" style="height: @(mapTimelineHeight)px; width: 100%;"></div>
-                                </div>
-                            </div>
-                        }
+                        <div data-overview-url="@Url.Action("GetOverviewStatistics", new { id = serverId, panel = "timeline" })">
+                            <p class="text-muted" role="status">Loading map timeline…</p>
+                        </div>
                     </div>
                     <div class="col-lg-4">
                         <div class="ibox">
@@ -377,47 +330,8 @@
                     <div class="col-md-6">
                         <div class="ibox">
                             <div class="ibox-title"><h5>Agent Telemetry</h5></div>
-                            <div class="ibox-content">
-                                @if (Model.AgentStatus is not null)
-                                {
-                                    var statusClass2 = Model.AgentStatus.ActivityStatus switch
-                                    {
-                                        AgentActivityStatus.Active => "bg-success",
-                                        AgentActivityStatus.Idle => "bg-info",
-                                        AgentActivityStatus.Offline => "bg-danger",
-                                        _ => "bg-secondary"
-                                    };
-                                    <dl class="row mb-0">
-                                        <dt class="col-6">Status</dt>
-                                        <dd class="col-6"><span class="badge @statusClass2">@Model.AgentStatus.ActivityStatus</span></dd>
-                                        <dt class="col-6">Events/Hour</dt>
-                                        <dd class="col-6">@Model.AgentStatus.EventsLastHour</dd>
-                                        <dt class="col-6">Players Connected/Hour</dt>
-                                        <dd class="col-6">@Model.AgentStatus.PlayersConnectedLastHour</dd>
-                                        <dt class="col-6">Chat Messages/Hour</dt>
-                                        <dd class="col-6">@Model.AgentStatus.ChatMessagesLastHour</dd>
-                                        <dt class="col-6">Bans Detected (24h)</dt>
-                                        <dd class="col-6">@Model.AgentStatus.BansDetectedLast24h</dd>
-                                        <dt class="col-6">Moderation Triggers (24h)</dt>
-                                        <dd class="col-6">@Model.AgentStatus.ModerationTriggersLast24h</dd>
-                                        @if (Model.AgentStatus.LastMapChange.HasValue)
-                                        {
-                                            <dt class="col-6">Last Map Change</dt>
-                                            <dd class="col-6">@Model.AgentStatus.LastMapChange.Value.ToString("dd MMM HH:mm")</dd>
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(Model.AgentStatus.LastMapName))
-                                        {
-                                            <dt class="col-6">Last Map</dt>
-                                            <dd class="col-6">@Model.AgentStatus.LastMapName</dd>
-                                        }
-                                    </dl>
-                                }
-                                else
-                                {
-                                    <div class="alert alert-warning mb-0">
-                                        <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Agent telemetry is unavailable for this server.
-                                    </div>
-                                }
+                            <div class="ibox-content" data-overview-url="@Url.Action("GetOverviewTelemetry", new { id = serverId, detailed = true })">
+                                <p class="text-muted" role="status">Loading agent telemetry…</p>
                             </div>
                         </div>
                     </div>
@@ -427,51 +341,8 @@
                         {
                         <div class="ibox">
                             <div class="ibox-title"><h5>Ban File Monitors</h5></div>
-                            <div class="ibox-content">
-                                @if (Model.BanFileMonitors.Any())
-                                {
-                                    <div class="table-responsive">
-                                        <table class="table table-sm w-100">
-                                            <thead><tr><th>Watching</th><th>Last Check</th><th>Last Push</th></tr></thead>
-                                            <tbody>
-                                                @foreach (var bfm in Model.BanFileMonitors)
-                                                {
-                                                    <tr>
-                                                        <td>
-                                                            <small>@(bfm.RemoteFilePath ?? "(awaiting first check)")</small>
-                                                        </td>
-                                                        <td>
-                                                            @if (bfm.LastCheckUtc.HasValue)
-                                                            {
-                                                                var checkElapsed = DateTime.UtcNow - bfm.LastCheckUtc.Value;
-                                                                var checkClass = checkElapsed.TotalMinutes < 15 ? "text-success" : checkElapsed.TotalHours < 1 ? "text-warning" : "text-danger";
-                                                                <small class="@checkClass">@bfm.LastCheckUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                            }
-                                                            else
-                                                            {
-                                                                <small class="text-muted">Never</small>
-                                                            }
-                                                        </td>
-                                                        <td>
-                                                            @if (bfm.LastPushUtc.HasValue)
-                                                            {
-                                                                <small>@bfm.LastPushUtc.Value.ToString("dd MMM HH:mm")</small>
-                                                            }
-                                                            else
-                                                            {
-                                                                <small class="text-muted">Never</small>
-                                                            }
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <p class="text-muted mb-0">No ban file monitors configured for this server.</p>
-                                }
+                            <div class="ibox-content" data-overview-url="@Url.Action("GetOverviewBanFileMonitors", new { id = serverId })">
+                                <p class="text-muted" role="status">Loading ban file monitors…</p>
                             </div>
                         </div>
                         }
@@ -611,6 +482,7 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/overview-panels.js" asp-append-version="true"></script>
 
     <environment names="Development">
         <script src="~/lib/toastr/toastr.js"></script>
@@ -819,58 +691,5 @@
             if (typeof RconMapControl !== 'undefined') RconMapControl.dispose();
         });
 
-        // Google Charts: Player Count
-        @if (Configuration.GetValue("ExternalAssets:Enabled", true) && Model.GameServerStats.Any())
-        {
-            <text>
-            google.charts.load('current', { 'packages': ['corechart', 'timeline'] });
-            google.charts.setOnLoadCallback(function() {
-                var playerCountData = new google.visualization.DataTable();
-                playerCountData.addColumn('datetime', 'Timestamp');
-                playerCountData.addColumn('number', 'Player Count');
-                playerCountData.addRows([
-                    @foreach (var item in Model.GameServerStats)
-                    {
-                        <text>[new Date(@item.Timestamp.Year, @(item.Timestamp.Month-1), @item.Timestamp.Day, @item.Timestamp.Hour, @item.Timestamp.Minute, @item.Timestamp.Second), @item.PlayerCount],</text>
-                    }
-                ]);
-                var chart = new google.visualization.LineChart(document.getElementById('sd-playerCountChart'));
-                chart.draw(playerCountData, {
-                    title: 'Player Count (Last 48 hours)',
-                    curveType: 'function',
-                    legend: { position: 'bottom' },
-                    seriesType: 'line'
-                });
-            });
-            </text>
-        }
-
-        // Google Charts: Map Timeline
-        @if (Configuration.GetValue("ExternalAssets:Enabled", true) && Model.MapTimelineDataPoints.Any())
-        {
-            <text>
-            google.charts.setOnLoadCallback(function() {
-                // Only draw when map control tab is shown
-                $('button[data-bs-target="#mapcontrol"]').on('shown.bs.tab', function() {
-                    var container = document.getElementById('sd-mapsTimeline');
-                    if (!container || container.dataset.drawn) return;
-
-                    var chart = new google.visualization.Timeline(container);
-                    var dataTable = new google.visualization.DataTable();
-                    dataTable.addColumn({ type: 'string', id: 'Map Name' });
-                    dataTable.addColumn({ type: 'datetime', id: 'Start' });
-                    dataTable.addColumn({ type: 'datetime', id: 'End' });
-                    dataTable.addRows([
-                        @foreach (var dp in Model.MapTimelineDataPoints)
-                        {
-                            <text>['@dp.MapName', new Date(@dp.Start.Year, @(dp.Start.Month-1), @dp.Start.Day, @dp.Start.Hour, @dp.Start.Minute, @dp.Start.Second), new Date(@dp.End.Year, @(dp.End.Month-1), @dp.End.Day, @dp.End.Hour, @dp.End.Minute, @dp.End.Second)],</text>
-                        }
-                    ]);
-                    chart.draw(dataTable);
-                    container.dataset.drawn = 'true';
-                });
-            });
-            </text>
-        }
     </script>
 }

@@ -1,0 +1,8 @@
+@using System.Text.Json
+@using XtremeIdiots.Portal.Web.Services
+@model OptionalOverviewData<IReadOnlyList<AgentServerSummary>>
+@if (Model.State == OptionalDataState.Stale)
+{
+    <p class="text-warning" role="status">Showing cached telemetry from @Model.ObservedAt?.ToString("u").</p>
+}
+<script type="application/json" data-agent-status-data>@Html.Raw(JsonSerializer.Serialize(Model.Data, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
