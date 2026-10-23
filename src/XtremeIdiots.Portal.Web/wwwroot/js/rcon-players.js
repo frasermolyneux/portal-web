@@ -17,8 +17,16 @@ var RconPlayers = (function () {
     var _canKick = false;
     var _canTempBan = false;
     var _canBan = false;
+    var _liveRequest = null;
+    var _running = false;
+    var _disposed = false;
+    var _intervalMs = 10000;
+    var _enrichmentCache = new Map();
+    var _pendingEnrichment = new Map();
 
     function init(options) {
+        _disposed = false;
+        _enrichmentCache.clear();
         _serverId = options.serverId;
         _antiForgeryToken = options.antiForgeryToken;
         _tableSelector = options.tableSelector || '#dataTable';
@@ -43,18 +51,7 @@ var RconPlayers = (function () {
             },
             autoWidth: false,
             order: [[0, "asc"]],
-            ajax: {
-                url: '/ServerAdmin/GetRconPlayers/' + _serverId,
-                dataSrc: function (json) {
-                    _lastRefreshTime = new Date();
-                    RconUtils.updateRefreshBadge(_refreshBadgeId, _lastRefreshTime);
-                    if (json.data) {
-                        $(_playerCountSelector).text(json.data.length || 0);
-                    }
-                    return json.data;
-                },
-                error: RconUtils.handleAjaxError
-            },
+            ajax: loadPlayers,
             columnDefs: [
                 { targets: 0, responsivePriority: 1 },
                 { targets: 1, responsivePriority: 2 },
@@ -68,10 +65,15 @@ var RconPlayers = (function () {
                 {
                     data: 'name', name: 'name',
                     render: function (data, type, row) {
+                        if (type !== 'display') return data;
                         if (row.playerId) {
                             return '<a href="/Players/Details/' + row.playerId + '" target="_blank" rel="noopener noreferrer">' + CodColors.renderSafe(row.name) + '</a>';
                         }
-                        return CodColors.renderSafe(row.name);
+                        var profileLabel = row.profileStatus === 'unavailable' ? 'Profile unavailable' :
+                            row.profileStatus === 'notFound' ? 'No profile' :
+                            row.profileStatus === 'notApplicable' ? '' : 'Profile pending';
+                        return CodColors.renderSafe(row.name) +
+                            (profileLabel ? ' <small class="text-muted">' + profileLabel + '</small>' : '');
                     }
                 },
                 { data: 'guid', name: 'guid', sortable: false },
@@ -79,15 +81,22 @@ var RconPlayers = (function () {
                     data: 'ipAddress', name: 'ipAddress', sortable: false,
                     render: function (data, type, row) {
                         if (!data) return '';
-                        return formatIPAddress(
+                        if (type !== 'display') return data;
+                        var available = row.ipIntelligenceStatus === 'available';
+                        var rendered = formatIPAddress(
                             row.ipAddress,
-                            row.proxyCheckRiskScore || 0,
-                            row.isProxy === true,
-                            row.isVpn === true,
-                            row.proxyType || '',
+                            available ? row.proxyCheckRiskScore : null,
+                            available && row.isProxy === true,
+                            available && row.isVpn === true,
+                            available ? row.proxyType || '' : '',
                             row.countryCode || '',
                             true
                         );
+                        if (!available) {
+                            rendered += ' <small class="text-muted">' +
+                                (row.ipIntelligenceStatus === 'unavailable' ? 'Risk unavailable' : 'Risk pending') + '</small>';
+                        }
+                        return rendered;
                     }
                 },
                 { data: 'rate', name: 'rate', sortable: false },
@@ -120,6 +129,114 @@ var RconPlayers = (function () {
         return _table;
     }
 
+    function playerKey(player) {
+        return JSON.stringify([player.guid || '', player.ipAddress || '', player.guid ? null : player.num]);
+    }
+
+    function cachedEnrichment(key) {
+        var cached = _enrichmentCache.get(key);
+        if (cached && cached.expiresAt > Date.now()) return cached.value;
+        _enrichmentCache.delete(key);
+        return null;
+    }
+
+    function cacheEnrichment(key, value, expiresAt) {
+        _enrichmentCache.delete(key);
+        _enrichmentCache.set(key, { value: value, expiresAt: expiresAt });
+        if (_enrichmentCache.size > 256) {
+            _enrichmentCache.delete(_enrichmentCache.keys().next().value);
+        }
+    }
+
+    function scheduleRefresh() {
+        if (_intervalId) clearTimeout(_intervalId);
+        if (!_running || _disposed) return;
+        _intervalId = setTimeout(function () {
+            _intervalId = null;
+            if (_refreshEnabled) reload();
+            else scheduleRefresh();
+        }, _intervalMs);
+    }
+
+    function loadPlayers(request, callback) {
+        if (_disposed || _liveRequest) return;
+        if (_intervalId) clearTimeout(_intervalId);
+        _liveRequest = $.ajax({
+            url: '/ServerAdmin/GetRconPlayers/' + _serverId,
+            type: 'GET',
+            success: function (json) {
+                if (_disposed) return;
+                json.data = json.data.map(function (player) {
+                    return Object.assign({}, player, cachedEnrichment(playerKey(player)));
+                });
+                _lastRefreshTime = new Date();
+                RconUtils.updateRefreshBadge(_refreshBadgeId, _lastRefreshTime);
+                $(_playerCountSelector).text(json.data.length);
+                callback(json);
+                // DataTables can invoke the initial AJAX callback before initTable returns.
+                if (_table) enrichPlayers();
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                if (_disposed || textStatus === 'abort') return;
+                RconUtils.handleAjaxError(xhr, textStatus, errorThrown);
+                callback({ data: _table ? _table.rows().data().toArray() : [] });
+            },
+            complete: function () {
+                _liveRequest = null;
+                scheduleRefresh();
+            }
+        });
+        return _liveRequest;
+    }
+
+    function applyEnrichment(key, value) {
+        if (!_table || _disposed) return;
+        var updated = false;
+        _table.rows().every(function () {
+            var player = this.data();
+            if (playerKey(player) === key) {
+                this.data(Object.assign({}, player, value));
+                updated = true;
+            }
+        });
+        if (updated) _table.draw(false);
+    }
+
+    function enrichPlayers() {
+        if (_disposed || !_table) return;
+        _table.rows().data().toArray().some(function (player) {
+            if (_pendingEnrichment.size >= 2) return true;
+            var key = playerKey(player);
+            if (cachedEnrichment(key) || _pendingEnrichment.has(key)) return false;
+            if (!player.guid && !player.ipAddress) return false;
+
+            _pendingEnrichment.set(key, null);
+            var request = $.ajax({
+                url: '/ServerAdmin/GetRconPlayerEnrichment/' + _serverId,
+                type: 'GET',
+                data: { playerSlot: player.num, playerGuid: player.guid, ipAddress: player.ipAddress },
+                success: function (value) {
+                    if (_disposed) return;
+                    cacheEnrichment(key, value, Math.max(Date.now() + 1000, Date.parse(value.expiresAtUtc)));
+                    applyEnrichment(key, value);
+                },
+                error: function (xhr, textStatus) {
+                    if (_disposed || textStatus === 'abort') return;
+                    console.warn('Player enrichment unavailable:', xhr.status);
+                    var value = { playerId: null, profileStatus: 'unavailable', ipIntelligenceStatus: 'unavailable' };
+                    cacheEnrichment(key, value, Date.now() + 30000);
+                    applyEnrichment(key, value);
+                },
+                complete: function () {
+                    _pendingEnrichment.delete(key);
+                    enrichPlayers();
+                }
+            });
+            _pendingEnrichment.set(key, request);
+            return false;
+        });
+    }
+
     function _handlePlayerAction(action, $btn, verb) {
         var playerSlot = $btn.data('slot');
         var playerGuid = $btn.data('guid') || '';
@@ -139,7 +256,7 @@ var RconPlayers = (function () {
             success: function (result) {
                 if (result.success) {
                     RconUtils.showToast(verb.includes('ban') ? 'warning' : 'success', result.message || 'Action completed');
-                    if (_table) _table.ajax.reload();
+                    reload();
                 } else {
                     RconUtils.showToast('error', result.message || 'Action failed');
                 }
@@ -151,7 +268,7 @@ var RconPlayers = (function () {
     }
 
     function reload() {
-        if (_table) _table.ajax.reload(null, false);
+        if (_table && !_liveRequest && !_disposed) _table.ajax.reload(null, false);
     }
 
     function setRefreshEnabled(enabled) {
@@ -159,22 +276,27 @@ var RconPlayers = (function () {
     }
 
     function start(intervalMs) {
+        _running = true;
+        _intervalMs = intervalMs || 10000;
         initTable();
-        if (_intervalId) clearInterval(_intervalId);
-        _intervalId = setInterval(function () {
-            if (_refreshEnabled) reload();
-        }, intervalMs || 10000);
+        if (!_liveRequest) scheduleRefresh();
     }
 
     function stop() {
+        _running = false;
         if (_intervalId) {
-            clearInterval(_intervalId);
+            clearTimeout(_intervalId);
             _intervalId = null;
         }
     }
 
     function dispose() {
+        _disposed = true;
         stop();
+        if (_liveRequest) _liveRequest.abort();
+        _pendingEnrichment.forEach(function (request) { if (request) request.abort(); });
+        _pendingEnrichment.clear();
+        _enrichmentCache.clear();
         if (_tableSelector) {
             $(_tableSelector).off('click', '.kick-player');
             $(_tableSelector).off('click', '.tempban-player');

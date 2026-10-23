@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.Api.Abstractions;
+using MX.GeoLocation.Abstractions.Models.V1_1;
 using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
@@ -80,6 +81,151 @@ public class ServerAdminControllerTests
         controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
         return controller;
+    }
+
+    [Fact]
+    public async Task GetRconPlayers_ReturnsLiveIdentityWithoutEnrichment()
+    {
+        var id = ConfigureEnrichmentTarget();
+        var result = Assert.IsType<JsonResult>(await CreateSut().GetRconPlayers(id));
+        var player = Assert.Single(JObject.FromObject(result.Value!)["data"]!);
+
+        Assert.Equal("Live player", player.Value<string>("name"));
+        Assert.Equal("live-guid", player.Value<string>("guid"));
+        Assert.Null(player["playerId"]);
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
+            It.IsAny<GameType>(), It.IsAny<string>(), It.IsAny<PlayerEntityOptions>()), Times.Never);
+        mockGeoLocationClient.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GetRconPlayerEnrichment_UsesExactLookupAndSharesCacheAcrossRequests()
+    {
+        var id = ConfigureEnrichmentTarget();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<ApiResult<PlayerDto>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var profile = JsonConvert.DeserializeObject<PlayerDto>(
+                                 /*lang=json,strict*/
+                                 """{"playerId":"99999999-9999-9999-9999-999999999999","gameType":"CallOfDuty4","guid":"live-guid","username":"Profile"}""")!;
+        mockRepositoryApiClient
+            .Setup(x => x.Players.V1.GetPlayerByGameType(GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.None))
+            .Returns(() =>
+            {
+                entered.TrySetResult();
+                return release.Task;
+            });
+
+        var first = CreateSut().GetRconPlayerEnrichment(id, 7, "live-guid", "");
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var second = CreateSut().GetRconPlayerEnrichment(id, 7, "live-guid", "");
+        try
+        {
+            Assert.IsType<JsonResult>(await CreateSut().GetRconPlayers(id).WaitAsync(TimeSpan.FromSeconds(1)));
+        }
+        finally
+        {
+            release.TrySetResult(new ApiResult<PlayerDto>(HttpStatusCode.OK, new ApiResponse<PlayerDto>(profile)));
+        }
+
+        foreach (var result in await Task.WhenAll(first, second))
+        {
+            var model = Assert.IsType<RconPlayerEnrichmentViewModel>(Assert.IsType<JsonResult>(result).Value);
+            Assert.Equal(profile.PlayerId, model.PlayerId);
+            Assert.Equal("available", model.ProfileStatus);
+        }
+
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
+            GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.None), Times.Once);
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayers(
+            It.IsAny<GameType?>(), It.IsAny<PlayersFilter?>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<PlayersOrder?>(), It.IsAny<PlayerEntityOptions>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound, "notFound")]
+    [InlineData(HttpStatusCode.ServiceUnavailable, "unavailable")]
+    public async Task GetRconPlayerEnrichment_CachesMissingAndFailedProfiles(HttpStatusCode status, string expected)
+    {
+        var id = ConfigureEnrichmentTarget();
+        mockRepositoryApiClient
+            .Setup(x => x.Players.V1.GetPlayerByGameType(GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.None))
+            .ReturnsAsync(new ApiResult<PlayerDto>(status));
+
+        for (var i = 0; i < 2; i++)
+        {
+            var result = Assert.IsType<JsonResult>(await CreateSut().GetRconPlayerEnrichment(id, 7, "live-guid", ""));
+            var model = Assert.IsType<RconPlayerEnrichmentViewModel>(result.Value);
+            Assert.Equal(expected, model.ProfileStatus);
+            Assert.Null(model.PlayerId);
+            Assert.True(model.ExpiresAtUtc <= DateTime.UtcNow.AddMinutes(1));
+        }
+
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
+            GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.None), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("other-guid", "203.0.113.7")]
+    [InlineData("live-guid", "203.0.113.8")]
+    public async Task GetRconPlayerEnrichment_RejectsStaleIdentityOrIp(string playerGuid, string ipAddress)
+    {
+        var id = ConfigureEnrichmentTarget("203.0.113.7");
+        Assert.IsType<NotFoundObjectResult>(await CreateSut().GetRconPlayerEnrichment(id, 7, playerGuid, ipAddress));
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
+            It.IsAny<GameType>(), It.IsAny<string>(), It.IsAny<PlayerEntityOptions>()), Times.Never);
+        mockGeoLocationClient.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GetRconPlayerEnrichment_RequiresResourceAuthorization()
+    {
+        var id = ConfigureEnrichmentTarget();
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        Assert.IsType<UnauthorizedResult>(await CreateSut().GetRconPlayerEnrichment(id, 7, "live-guid", ""));
+        mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
+            It.IsAny<GameType>(), It.IsAny<string>(), It.IsAny<PlayerEntityOptions>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetRconPlayerEnrichment_DoesNotReportMissingRiskDataAsSafe()
+    {
+        var id = ConfigureEnrichmentTarget("203.0.113.7");
+        mockRepositoryApiClient
+            .Setup(x => x.Players.V1.GetPlayerByGameType(GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.None))
+            .ReturnsAsync(new ApiResult<PlayerDto>(HttpStatusCode.NotFound));
+        mockGeoLocationClient
+            .Setup(x => x.GeoLookup.V1_1.GetIpIntelligence("203.0.113.7", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<IpIntelligenceDto>(
+                HttpStatusCode.OK, new ApiResponse<IpIntelligenceDto>(new IpIntelligenceDto())));
+
+        var result = Assert.IsType<JsonResult>(await CreateSut().GetRconPlayerEnrichment(id, 7, "live-guid", "203.0.113.7"));
+        var model = Assert.IsType<RconPlayerEnrichmentViewModel>(result.Value);
+        Assert.Equal("unavailable", model.IpIntelligenceStatus);
+        Assert.Null(model.ProxyCheckRiskScore);
+        Assert.Null(model.IsProxy);
+        Assert.Null(model.IsVpn);
+    }
+
+    private Guid ConfigureEnrichmentTarget(string ipAddress = "")
+    {
+        var id = Guid.NewGuid();
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(id))));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var status = JsonConvert.DeserializeObject<RconStatusResponseDto>(JsonConvert.SerializeObject(new
+        {
+            Players = new[] { new { Num = 7, Guid = "live-guid", Name = "Live player", IpAddress = ipAddress, Rate = 25000 } }
+        }));
+        mockServersApiClient
+            .Setup(x => x.Cod4Rcon.V1.Status(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<RconStatusResponseDto>(status)));
+        return id;
     }
 
     [Fact]
@@ -1397,17 +1543,13 @@ public class ServerAdminControllerTests
         }
 
         mockRepositoryApiClient
-            .Setup(x => x.Players.V1.GetPlayers(
+            .Setup(x => x.Players.V1.GetPlayerByGameType(
                 gameType,
-                PlayersFilter.UsernameAndGuid,
                 playerGuid,
-                0,
-                100,
-                PlayersOrder.LastSeenDesc,
                 PlayerEntityOptions.None))
-            .ReturnsAsync(new ApiResult<CollectionModel<PlayerDto>>(
+            .ReturnsAsync(new ApiResult<PlayerDto>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([player]))));
+                new ApiResponse<PlayerDto>(player)));
         mockAdminActionTopics
             .Setup(x => x.CreateTopicForAdminAction(
                 It.IsAny<AdminActionType>(),

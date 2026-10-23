@@ -40,17 +40,13 @@ internal sealed class PlayerModerationScenario
             .Setup(api => api.GetGameServer(GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(GameServer)));
         Mock.Get(RepositoryClient.Object.Players.V1)
-            .Setup(api => api.GetPlayers(
+            .Setup(api => api.GetPlayerByGameType(
                 GameType.CallOfDuty4,
-                PlayersFilter.UsernameAndGuid,
                 PlayerGuid,
-                0,
-                100,
-                PlayersOrder.LastSeenDesc,
                 PlayerEntityOptions.None))
-            .ReturnsAsync(new ApiResult<CollectionModel<PlayerDto>>(
+            .ReturnsAsync(new ApiResult<PlayerDto>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([Player]))));
+                new ApiResponse<PlayerDto>(Player)));
         Mock.Get(RepositoryClient.Object.AdminActions.V1)
             .Setup(api => api.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()))
             .Callback<CreateAdminActionDto, CancellationToken>((action, _) => AttemptedAdminActions.Enqueue(action))
