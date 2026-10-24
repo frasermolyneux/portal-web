@@ -1,9 +1,12 @@
 using Microsoft.Playwright;
 using Moq;
 using MX.Api.Abstractions;
+using Newtonsoft.Json.Linq;
+using System.Collections.Concurrent;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
@@ -14,6 +17,79 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "Browser")]
 public sealed class OverviewPanelTests
 {
+    [Fact]
+    public async Task PublicPlayerPollingReplacesSnapshotsAndShowsFailuresWithoutDuplicatingRows()
+    {
+        var scenario = new MapControlScenario();
+        var publicServerJson = JObject.FromObject(scenario.GameServer);
+        publicServerJson[nameof(GameServerDto.ServerListEnabled)] = true;
+        var publicServer = publicServerJson.ToObject<GameServerDto>();
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(publicServer)));
+        scenario.RepositoryClient.Setup(r => r.LiveStatus.V1.GetGameServerLiveStatus(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerLiveStatusDto>(HttpStatusCode.NotFound));
+        await using var browser = await BrowserFixture.CreateAsync(configureServices: scenario.ConfigureServices);
+        var scriptErrors = new ConcurrentQueue<string>();
+        browser.Page.PageError += (_, error) => scriptErrors.Enqueue(error);
+        var reads = 0;
+        await browser.Page.RouteAsync("**/Servers/GetLivePlayers/*", async route =>
+        {
+            var read = Interlocked.Increment(ref reads);
+            if (read is 1 or 4)
+            {
+                await route.FulfillAsync(new() { Status = 503, ContentType = "application/json", Body = "{}" });
+                return;
+            }
+
+            string[] names = read switch
+            {
+                2 => ["Alpha", "Beta"],
+                3 => ["Gamma"],
+                _ => []
+            };
+            await route.FulfillAsync(new()
+            {
+                ContentType = "application/json",
+                Body = Newtonsoft.Json.JsonConvert.SerializeObject(new
+                {
+                    data = names.Select((name, num) => new { num, name, score = 0, ping = 42, countryCode = (string?)null })
+                })
+            });
+        });
+        await browser.Page.RouteAsync("**/Servers/GetOverviewStatistics/*", route =>
+            route.FulfillAsync(new() { ContentType = "text/html", Body = "<p>No statistics</p>" }));
+        await browser.Page.RouteAsync("**/Servers/GetPublicMapRotation/*", route =>
+            route.FulfillAsync(new() { ContentType = "application/json", Body = /*lang=json,strict*/ """{"success":false,"maps":[]}""" }));
+        await browser.Page.Clock.InstallAsync();
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Servers/Details/{scenario.GameServerId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+        var status = browser.Page.Locator("#si-playerRefreshStatus");
+        var rows = browser.Page.Locator("#si-playersTable tbody tr");
+        await Assertions.Expect(status).ToBeVisibleAsync();
+        await Assertions.Expect(status).ToHaveTextAsync("Live player data unavailable. Retrying automatically.");
+
+        await browser.Page.Clock.RunForAsync(60000);
+        await Assertions.Expect(rows).ToHaveCountAsync(2);
+        await Assertions.Expect(rows).ToContainTextAsync(["Alpha", "Beta"]);
+        await Assertions.Expect(status).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#si-playerCount")).ToHaveTextAsync("2");
+        await browser.Page.Clock.RunForAsync(30000);
+        await Assertions.Expect(rows).ToHaveCountAsync(1);
+        await Assertions.Expect(rows).ToContainTextAsync("Gamma");
+        await Assertions.Expect(browser.Page.Locator("#si-playerCount")).ToHaveTextAsync("1");
+
+        await browser.Page.Clock.RunForAsync(30000);
+        await Assertions.Expect(status).ToContainTextAsync("Showing the last successful snapshot");
+        await Assertions.Expect(rows).ToHaveCountAsync(1);
+        await Assertions.Expect(rows).ToContainTextAsync("Gamma");
+        await browser.Page.Clock.RunForAsync(60000);
+        await Assertions.Expect(status).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#si-playerCount")).ToHaveTextAsync("0");
+        await Assertions.Expect(rows).ToContainTextAsync("No records found");
+        Assert.Equal(5, Volatile.Read(ref reads));
+        Assert.Empty(scriptErrors);
+    }
+
     [Fact]
     public async Task AgentStatusFailureMarksRowsUnavailableAndRetryCanRecover()
     {

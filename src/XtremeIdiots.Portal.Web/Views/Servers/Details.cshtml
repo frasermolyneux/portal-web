@@ -123,6 +123,7 @@
                             <h5>Connected Players <span id="si-playerCount" class="badge bg-secondary ms-1">@(liveStatus?.CurrentPlayers ?? 0)</span></h5>
                         </div>
                         <div class="ibox-content">
+                            <p id="si-playerRefreshStatus" class="small text-warning d-none" role="status"></p>
                             <div class="table-responsive">
                                 <table id="si-playersTable" class="table table-striped table-hover w-100">
                                     <thead>
@@ -228,6 +229,7 @@
         // ─── Live Players Table ───
         (function() {
             var updatePlayers;
+            var hasPlayerSnapshot = false;
             var table = $('#si-playersTable').DataTable({
                 processing: true,
                 paging: false,
@@ -236,7 +238,10 @@
                 autoWidth: false,
                 order: [[0, "asc"]],
                 ajax: function(request, callback) {
-                    updatePlayers = callback;
+                    updatePlayers = function(snapshot) {
+                        table.clear();
+                        callback(snapshot);
+                    };
                 },
                 columns: [
                     { data: 'num', width: '50px' },
@@ -280,11 +285,18 @@
                     if (signal.aborted) return;
                     $('#si-playerCount').text(json.data ? json.data.length : 0);
                     updatePlayers({ data: json.data || [] });
+                    hasPlayerSnapshot = true;
+                    $('#si-playerRefreshStatus').text('').addClass('d-none');
                     $('#si-playersTable').removeAttr('data-refresh-unavailable');
                 },
                 onError: function(error) {
                     console.warn('Live players unavailable:', error);
                     $('#si-playersTable').attr('data-refresh-unavailable', 'true');
+                    $('#si-playerRefreshStatus')
+                        .text(hasPlayerSnapshot
+                            ? 'Live player updates unavailable. Showing the last successful snapshot; retrying automatically.'
+                            : 'Live player data unavailable. Retrying automatically.')
+                        .removeClass('d-none');
                     updatePlayers({ data: table.rows().data().toArray() });
                 }
             }).start();
