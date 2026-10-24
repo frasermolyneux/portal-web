@@ -92,11 +92,11 @@ $(document).ready(function () {
                     var count = Number(data) || 0;
 
                     if (count === 0) {
-                        return '<span class="badge bg-secondary">Inactive</span>';
+                        return '<span class="badge bg-secondary">Unassigned</span>';
                     }
 
                     var serverLabel = count === 1 ? 'server' : 'servers';
-                    return '<span class="badge bg-success">Active on ' + count + ' ' + serverLabel + '</span>';
+                    return '<span class="badge bg-secondary">Assigned to ' + count + ' ' + serverLabel + '</span>';
                 }
             },
             {
@@ -229,6 +229,6 @@ $(document).ready(function () {
 
     applyGameColumnVisibility();
 
-    var iboxContent = tableEl.closest('.ibox-content');
+    var iboxContent = tableEl.closest('.ibox-content')[0];
     if (iboxContent) iboxContent.classList.add('datatable-tight');
 });

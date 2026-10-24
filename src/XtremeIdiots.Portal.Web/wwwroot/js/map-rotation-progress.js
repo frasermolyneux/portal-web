@@ -1,3 +1,10 @@
+function mapRotationTerminalMessage(data, failedMaps) {
+    if (data.runtimeStatus !== 'Completed') return 'Orchestration ' + data.runtimeStatus.toLowerCase();
+    if (data.success === false || failedMaps) return 'Operation failed — review the error and recorded results.';
+    if (data.success === true) return 'Operation succeeded — runtime use is not confirmed.';
+    return 'Orchestration finished — review recorded file and configuration results.';
+}
+
 $(document).ready(function () {
     var $container = $('#operationsContainer');
     if ($container.length === 0) return;
@@ -139,10 +146,9 @@ $(document).ready(function () {
         if (!data || data.status === 'not_found') {
             ctx.failedCount++;
             if (ctx.failedCount >= maxFailedPolls) {
-                $label.text('Orchestration not found. The operation may have completed or not started.');
+                $label.text('Orchestration not found. Completion is not confirmed. Refresh to check the recorded operation result.');
                 $bar.removeClass('progress-bar-animated bg-info').addClass('bg-warning');
                 ctx.terminal = true;
-                scheduleReloadIfAllDone();
                 return;
             }
             $label.text(ctx.isBootstrap ? 'Waiting for orchestration to start...' : 'Waiting for progress data...');
@@ -155,7 +161,6 @@ $(document).ready(function () {
                 $label.text('Unable to reach sync service. Please refresh the page.');
                 $bar.removeClass('progress-bar-animated bg-info').addClass('bg-danger');
                 ctx.terminal = true;
-                scheduleReloadIfAllDone();
                 return;
             }
             $label.text('Retrying connection to sync service...');
@@ -167,14 +172,17 @@ $(document).ready(function () {
 
         renderOrchestrationStatus(ctx, data);
         updateStaleIndicator(ctx, data);
+        if (data.error) {
+            ctx.$row.find('.operation-error').text(data.error).addClass('text-danger');
+        }
 
         var isTerminal = data.runtimeStatus === 'Completed' || data.runtimeStatus === 'Failed' ||
                          data.runtimeStatus === 'Terminated' || data.runtimeStatus === 'Canceled';
 
         if (!data.progress) {
             if (isTerminal) {
-                $label.text('Operation ' + data.runtimeStatus.toLowerCase());
-                $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' ? 'bg-success' : 'bg-danger');
+                $label.text(mapRotationTerminalMessage(data, false));
+                $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' && data.success !== false ? 'bg-secondary' : 'bg-danger');
                 $bar.css('width', '100%');
                 ctx.terminal = true;
                 scheduleReloadIfAllDone();
@@ -192,7 +200,9 @@ $(document).ready(function () {
         $bar.css('width', pct + '%').attr('aria-valuenow', pct);
 
         if (isTerminal) {
-            $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' ? 'bg-success' : 'bg-danger');
+            var failedMaps = p.maps?.some(function (map) { return map.status === 'Failed'; });
+            $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' && data.success !== false && !failedMaps ? 'bg-secondary' : 'bg-danger');
+            $label.text(mapRotationTerminalMessage(data, failedMaps));
             ctx.terminal = true;
         }
 

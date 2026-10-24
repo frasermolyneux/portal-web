@@ -332,23 +332,22 @@ public class SettingsUiConsistencyTests
     }
 
     [Fact]
-    public void MapRotationsIndex_UsesServerActivationColumnHeading()
+    public void MapRotationsIndex_UsesAssignmentsInsteadOfRuntimeActivationColumnHeading()
     {
         var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/MapRotations/Index.cshtml");
 
-        Assert.Contains("<th scope=\"col\">Server Activation</th>", viewMarkup);
-        Assert.DoesNotContain("<th scope=\"col\">Servers</th>", viewMarkup);
+        Assert.Contains("<th scope=\"col\">Server Assignments</th>", viewMarkup);
+        Assert.DoesNotContain("<th scope=\"col\">Server Activation</th>", viewMarkup);
     }
 
     [Fact]
-    public void MapRotationsIndexScript_RendersServerActivationBadgesWithExpectedStates()
+    public void MapRotationsIndexScript_DescribesAssignmentsWithoutClaimingRuntimeActivation()
     {
         var scriptMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/wwwroot/js/map-rotations-index.js");
 
-        Assert.Contains("<span class=\"badge bg-secondary\">Inactive</span>", scriptMarkup);
-        Assert.Contains("<span class=\"badge bg-success\">Active on ", scriptMarkup);
-        Assert.Contains("var count = Number(data) || 0;", scriptMarkup);
-        Assert.Contains("var serverLabel = count === 1 ? 'server' : 'servers';", scriptMarkup);
+        Assert.Contains("<span class=\"badge bg-secondary\">Unassigned</span>", scriptMarkup);
+        Assert.Contains("<span class=\"badge bg-secondary\">Assigned to ", scriptMarkup);
+        Assert.DoesNotContain("Active on ", scriptMarkup);
     }
 
     private static string ReadRepoFile(string relativePath)

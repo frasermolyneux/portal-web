@@ -158,6 +158,7 @@ XtremeIdiots.Portal.Web.Controllers.MapManagerController#DeleteMapFromHost#POST#
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#Manage#GET#MapManager/Manage#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#PushMapToRemote#POST#MapManager/PushMapToRemote#(XtremeIdiots.Portal.Web.ViewModels.PushMapToRemoteViewModel)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#ActivateAssignment#POST#MapRotations/ActivateAssignment#(System.Guid,System.Guid)|StateChange
+XtremeIdiots.Portal.Web.Controllers.MapRotationsController#ApplyAssignment#POST#MapRotations/ApplyAssignment#(System.Guid,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#AssignmentStatus#GET#MapRotations/AssignmentStatus#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#CancelOperation#POST#MapRotations/CancelOperation#(System.Guid,System.Guid,System.String)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#Clone#GET#MapRotations/Clone#(System.Guid)|BrowserPage

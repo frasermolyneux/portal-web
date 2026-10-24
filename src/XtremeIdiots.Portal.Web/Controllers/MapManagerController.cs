@@ -144,7 +144,12 @@ public class MapManagerController(
             if (actionResult != null)
                 return actionResult;
 
-            await syncApiClient.TriggerPushMap(viewModel.GameServerId, viewModel.MapName!, cancellationToken).ConfigureAwait(false);
+            var pushResult = await syncApiClient.TriggerPushMap(viewModel.GameServerId, gameServerData!.GameType, viewModel.MapName!, cancellationToken).ConfigureAwait(false);
+            if (!pushResult.Success)
+            {
+                this.AddAlertDanger($"Map push could not be queued: {pushResult.Error}");
+                return RedirectToAction(nameof(Manage), new { id = viewModel.GameServerId });
+            }
 
             TrackSuccessTelemetry("MapPushedToRemote", nameof(PushMapToRemote), new Dictionary<string, string>
             {
@@ -152,7 +157,7 @@ public class MapManagerController(
                 { nameof(viewModel.MapName), viewModel.MapName ?? "Unknown" }
             });
 
-            this.AddAlertSuccess($"Map '{viewModel.MapName}' push has been triggered. The map will be synced to the server shortly.");
+            this.AddAlertInfo($"Map '{viewModel.MapName}' push was queued. Check the file results before using the map.");
             return RedirectToAction(nameof(Manage), new { id = viewModel.GameServerId });
         }, nameof(PushMapToRemote)).ConfigureAwait(false);
     }

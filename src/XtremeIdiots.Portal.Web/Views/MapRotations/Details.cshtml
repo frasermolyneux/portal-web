@@ -168,11 +168,13 @@
                     <div class="ibox-content">
                         <div class="text-muted small mb-3">
                             <i class="fa-solid fa-fw fa-circle-info" aria-hidden="true"></i>
-                            <strong>Recommended sequence:</strong> Assign next rotation -> Sync -> Activate -> Restart server -> Unassign previous assignment.
+                            <strong>Apply rotation → review results.</strong> Repair files and apply this slot and its linked main/AACP slot using the same rotation.
                             <br />
-                            <strong>Deployment</strong> syncs maps to the server file system. <strong>Activation</strong> switches the live config target.
-                            Activating a new assignment on the same target automatically deactivates the previously active assignment.
-                            Removed assignments are retained for 48 hours, then purged automatically.
+                            <strong>Files / Deployment</strong> and <strong>Configuration / Activation</strong> are separate results, not runtime confirmation.
+                            Repair files and Verify files do not rewrite configuration. Restart only when actually necessary, as a separate explicit action.
+                            Only the same-server, same-rotation pair <code>sv_maprotation</code> / <code>scr_aacp_maps_1</code> is linked for Apply; small/medium/large slots and different rotations remain independent. Review each target's result.
+                            Repair files, Verify files and Reapply configuration are selected-slot only.
+                            Unassign preserves server map files and the rotation library; removed assignments are retained for 90 days.
                         </div>
                         @if (Model.Rotation.ServerAssignments == null || Model.Rotation.ServerAssignments.Count == 0)
                         {
@@ -189,8 +191,8 @@
                                         <tr>
                                             <th style="width: 20%;">Server</th>
                                             <th style="width: 25%;">Config Target</th>
-                                            <th style="width: 10%;">Deployment</th>
-                                            <th style="width: 10%;">Activation</th>
+                                            <th style="width: 10%;">Files / Deployment</th>
+                                            <th style="width: 10%;">Configuration / Activation</th>
                                             <th style="width: 10%;">Deployed Ver.</th>
                                             <th style="width: 25%;">Actions</th>
                                         </tr>
@@ -224,10 +226,10 @@
                                                 </td>
                                                 <td>
                                                     @await Html.PartialAsync("_AssignmentStatusBadge", ("Deployment", assignment.DeploymentState.ToString()))
-                                                    @if (!string.IsNullOrEmpty(assignment.LastError) && assignment.DeploymentState == DeploymentState.Failed)
+                                                    @if (!string.IsNullOrEmpty(assignment.LastError))
                                                     {
                                                         <div class="text-danger small mt-1" title="@assignment.LastError">
-                                                            <i class="fa-solid fa-fw fa-exclamation-triangle" aria-hidden="true"></i> @(assignment.LastError.Length > 80 ? assignment.LastError[..80] + "..." : assignment.LastError)
+                                                            <i class="fa-solid fa-fw fa-exclamation-triangle" aria-hidden="true"></i> @assignment.LastError
                                                         </div>
                                                     }
                                                 </td>
@@ -261,73 +263,7 @@
                                                     <a policy="@AuthPolicies.GameServers_Maps_Read" policy-resource="@Model.Rotation.GameType" asp-controller="MapManager" asp-action="Manage" asp-route-id="@assignment.GameServerId" class="btn btn-outline-secondary btn-sm me-1" title="Manage maps on this server">
                                                         <i class="fa-solid fa-fw fa-hard-drive" aria-hidden="true"></i> Maps
                                                     </a>
-                                                    @if (assignment.DeploymentState == DeploymentState.Pending || assignment.DeploymentState == DeploymentState.Failed)
-                                                    {
-                                                        var isAacpInDetails = assignment.ConfigVariableName?.StartsWith("scr_aacp_maps_", StringComparison.OrdinalIgnoreCase) == true;
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="SyncAssignment" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1"
-                                                                    title="@(isAacpInDetails ? "AACP: Maps are shared with the main rotation. Consider using Activate instead if maps are already deployed." : "Sync maps to server")">
-                                                                <i class="fa-solid fa-fw fa-sync" aria-hidden="true"></i> Sync
-                                                            </button>
-                                                        </form>
-                                                    }
-                                                    @if (isStale && assignment.DeploymentState == DeploymentState.Synced)
-                                                    {
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="SyncAssignment" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-warning btn-sm me-1">
-                                                                <i class="fa-solid fa-fw fa-sync" aria-hidden="true"></i> Re-sync
-                                                            </button>
-                                                        </form>
-                                                    }
-                                                    @if (assignment.DeploymentState == DeploymentState.Synced && !isStale && !string.IsNullOrEmpty(assignment.ConfigFilePath) && assignment.ActivationState != ActivationState.Active)
-                                                    {
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="ActivateAssignment" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-primary btn-sm me-1" title="Activating this assignment will automatically deactivate any currently active assignment on the same config target.">
-                                                                <i class="fa-solid fa-fw fa-play" aria-hidden="true"></i> Activate (Handover)
-                                                            </button>
-                                                        </form>
-                                                    }
-                                                    @if (assignment.ActivationState == ActivationState.Active)
-                                                    {
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="DeactivateAssignment" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
-                                                                <i class="fa-solid fa-fw fa-stop" aria-hidden="true"></i> Deactivate
-                                                            </button>
-                                                        </form>
-                                                    }
-                                                    @if (assignment.DeploymentState is not DeploymentState.Removed and not DeploymentState.Removing)
-                                                    {
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="DeleteAssignment" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Are you sure you want to unassign this server? Maps will be removed from the server.">
-                                                                <i class="fa-solid fa-fw fa-unlink" aria-hidden="true"></i> Unassign
-                                                            </button>
-                                                        </form>
-
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="DeleteAssignment" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
-                                                            <input type="hidden" name="mapRotationId" value="@Model.Rotation.MapRotationId" />
-                                                            <input type="hidden" name="force" value="true" />
-                                                            <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Force unassign skips map cleanup. Use only if normal unassign is blocked. Continue?">
-                                                                <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i> Force Unassign
-                                                            </button>
-                                                        </form>
-                                                    }
+                                                    @await Html.PartialAsync("_AssignmentActions", (assignment, Model.Rotation.GameType, Model.Rotation.MapRotationId, !Model.AssignmentOperations.ContainsKey(assignment.MapRotationServerAssignmentId) || Model.AssignmentOperations[assignment.MapRotationServerAssignmentId].Any(o => o.Status == AssignmentOperationStatus.InProgress)))
                                                 </td>
                                             </tr>
                                         }
