@@ -336,7 +336,7 @@ public class SettingsUiConsistencyTests
     {
         var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/MapRotations/Index.cshtml");
 
-        Assert.Contains("<th scope=\"col\">Server Assignments</th>", viewMarkup);
+        Assert.Contains("<th scope=\"col\">Servers</th>", viewMarkup);
         Assert.DoesNotContain("<th scope=\"col\">Server Activation</th>", viewMarkup);
     }
 

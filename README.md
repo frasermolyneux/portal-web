@@ -18,7 +18,7 @@
 * [UI Testing](/docs/ui-testing.md) - Shared test bootstrap, local/remote prerequisites, and browser troubleshooting.
 * [Identity Manual Run](/docs/identity-manual-run.sql) - Manual SQL to validate or repair identity artifacts.
 * [Manual Steps](/docs/manual-steps.md) - Post-deployment configuration steps.
-* [Map Rotation Recovery](/docs/map-rotation-recovery.md) - Portal-only file repair, verification, and configuration application.
+* [Map Rotations](/docs/map-rotations.md) - Apply, verify, and maintain server rotations.
 * [Mobile Table Improvements](/docs/mobile-table-improvements.md) - Responsive table patterns and UX notes.
 * [Platform Settings Contracts](/docs/platform-settings-contracts.md) - Settings architecture, migration summary, and troubleshooting runbook.
 

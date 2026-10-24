@@ -16,11 +16,11 @@ $(document).ready(function () {
         searchDelay: 800,
         stateSave: true,
         stateSaveParams: function (settings, data) {
-            data._mapRotationsStructureVersion = 3;
+            data._mapRotationsStructureVersion = 4;
             if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
         },
         stateLoadParams: function (settings, data) {
-            if (data._mapRotationsStructureVersion !== 3) {
+            if (data._mapRotationsStructureVersion !== 4) {
                 var key = 'DataTables_dataTable_' + window.location.pathname;
                 try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
                 return false;
@@ -38,8 +38,8 @@ $(document).ready(function () {
             { targets: 4, responsivePriority: 6, width: '50px' },
             { targets: 5, responsivePriority: 7, width: '170px' },
             { targets: 6, responsivePriority: 8, width: '90px' },
-            { targets: 7, responsivePriority: 9, width: '100px' },
-            { targets: 8, responsivePriority: 2, orderable: false, width: '120px' }
+            { targets: 7, visible: false },
+            { targets: 8, responsivePriority: 2, orderable: false, width: '80px' }
         ],
         ajax: {
             url: dataUrl,
@@ -67,10 +67,6 @@ $(document).ready(function () {
                 render: function (data, type, row) {
                     var html = '<strong>' + escapeHtml(data) + '</strong>';
                     if (row.category) html += ' <span class="badge bg-outline-secondary small">' + escapeHtml(row.category) + '</span>';
-                    if (row.description) {
-                        var desc = row.description.length > 60 ? row.description.substring(0, 60) + '…' : row.description;
-                        html += '<br><small class="text-muted">' + escapeHtml(desc) + '</small>';
-                    }
                     return html;
                 }
             },
@@ -106,27 +102,13 @@ $(document).ready(function () {
                 }
             },
             {
-                data: 'createdByDisplayName', name: 'createdBy', orderable: true,
-                render: function (data, type, row) {
-                    var author = row.lastModifiedByDisplayName || data;
-                    if (!author) return '<small class="text-muted">—</small>';
-                    var html = '<small>' + escapeHtml(author) + '</small>';
-                    if (row.lastModifiedByDisplayName && data && row.lastModifiedByDisplayName !== data) {
-                        html += '<br><small class="text-muted">Created: ' + escapeHtml(data) + '</small>';
-                    }
-                    return html;
-                }
+                data: 'createdByDisplayName', name: 'createdBy', orderable: false, defaultContent: '',
+                render: function (data) { return escapeHtml(data); }
             },
             {
                 data: null, name: 'actions', orderable: false,
                 render: function (data, type, row) {
-                    var html = '<div class="btn-group btn-group-sm" role="group">';
-                    html += '<a href="/MapRotations/Details/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm" title="Details"><i class="fa-solid fa-fw fa-eye"></i></a>';
-                    html += '<a href="/MapRotations/Edit/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm" title="Edit"><i class="fa-solid fa-fw fa-pen-to-square"></i></a>';
-                    html += '<a href="/MapRotations/Clone/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm" title="Clone"><i class="fa-solid fa-fw fa-clone"></i></a>';
-                    html += '<button type="button" class="btn btn-outline-danger btn-sm btn-delete" data-id="' + row.mapRotationId + '" data-title="' + escapeHtml(row.title) + '" title="Delete"><i class="fa-solid fa-fw fa-trash"></i></button>';
-                    html += '</div>';
-                    return html;
+                    return '<a href="/MapRotations/Details/' + row.mapRotationId + '" class="btn btn-outline-secondary btn-sm">Open</a>';
                 }
             }
         ],
@@ -210,22 +192,6 @@ $(document).ready(function () {
             }
         });
     }
-
-    // Delete handler
-    tableEl.on('click', '.btn-delete', function () {
-        var id = $(this).data('id');
-        var title = $(this).data('title');
-        if (!confirm('Are you sure you want to delete "' + title + '"? This cannot be undone.')) return;
-
-        var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
-        $.ajax({
-            url: '/MapRotations/Delete/' + id,
-            type: 'POST',
-            headers: { 'RequestVerificationToken': token },
-            success: function () { table.ajax.reload(null, false); },
-            error: function () { alert('Failed to delete rotation.'); }
-        });
-    });
 
     applyGameColumnVisibility();
 

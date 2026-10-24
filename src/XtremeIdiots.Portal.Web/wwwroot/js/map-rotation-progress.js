@@ -1,8 +1,8 @@
 function mapRotationTerminalMessage(data, failedMaps) {
-    if (data.runtimeStatus !== 'Completed') return 'Orchestration ' + data.runtimeStatus.toLowerCase();
-    if (data.success === false || failedMaps) return 'Operation failed — review the error and recorded results.';
-    if (data.success === true) return 'Operation succeeded — runtime use is not confirmed.';
-    return 'Orchestration finished — review recorded file and configuration results.';
+    if (data.runtimeStatus === 'Canceled') return 'Operation cancelled.';
+    if (data.runtimeStatus !== 'Completed' || data.success === false || failedMaps) return 'Operation failed. Review the details below.';
+    if (data.success === true) return 'Completed successfully.';
+    return 'Finished. Refresh to check the recorded result.';
 }
 
 $(document).ready(function () {
@@ -57,11 +57,11 @@ $(document).ready(function () {
 
     function statusIcon(status) {
         switch (status) {
-            case 'Completed': return '<i class="fa-solid fa-check text-success"></i>';
-            case 'InProgress': return '<i class="fa-solid fa-spinner fa-spin text-info"></i>';
-            case 'Failed': return '<i class="fa-solid fa-times text-danger"></i>';
-            case 'Skipped': return '<i class="fa-solid fa-forward text-muted"></i>';
-            default: return '<i class="fa-solid fa-clock text-muted"></i>';
+            case 'Completed':
+            case 'Skipped': return '<i class="fa-solid fa-fw fa-check text-success" aria-hidden="true"></i>';
+            case 'InProgress': return '<i class="fa-solid fa-fw fa-spinner fa-spin text-info" aria-hidden="true"></i>';
+            case 'Failed': return '<i class="fa-solid fa-fw fa-times text-danger" aria-hidden="true"></i>';
+            default: return '<i class="fa-solid fa-fw fa-clock text-muted" aria-hidden="true"></i>';
         }
     }
 
@@ -73,6 +73,21 @@ $(document).ready(function () {
             case 'Skipped': return 'bg-secondary';
             default: return 'bg-secondary';
         }
+    }
+
+    function finishProgress(ctx, data, failedMaps) {
+        var succeeded = data.runtimeStatus === 'Completed' && data.success === true && !failedMaps;
+        var failed = data.success === false || failedMaps ||
+            data.runtimeStatus === 'Failed' || data.runtimeStatus === 'Terminated';
+        ctx.$detailRow.find('.progress-label').text(mapRotationTerminalMessage(data, failedMaps));
+        ctx.$detailRow.find('.progress-bar')
+            .removeClass('progress-bar-animated bg-info bg-secondary bg-success bg-danger bg-warning')
+            .addClass(succeeded ? 'bg-success' : failed ? 'bg-danger' : 'bg-secondary')
+            .css('width', '100%').attr('aria-valuenow', 100);
+        ctx.$row.removeClass('table-info');
+        ctx.$row.find('.stale-badge').remove();
+        ctx.terminal = true;
+        scheduleReloadIfAllDone();
     }
 
     function formatElapsed(startIso) {
@@ -113,24 +128,12 @@ $(document).ready(function () {
 
         if (staleSinceUpdate) {
             if ($staleBadge.length === 0) {
-                $statusCell.append(' <span class="badge bg-warning text-dark stale-badge" title="Orchestration has not updated for over 15 minutes — may be stuck">⚠️ Stale</span>');
+                $statusCell.append(' <span class="badge bg-warning text-dark stale-badge" title="No progress update for over 15 minutes">No recent updates</span>');
             }
         }
-    }
-
-    function renderOrchestrationStatus(ctx, data) {
-        var $orchStatus = ctx.$detailRow.find('.progress-orchestration-status');
-        if (!data) {
-            $orchStatus.html('');
-            return;
+        else {
+            $staleBadge.remove();
         }
-
-        var html = '<small class="text-muted">';
-        html += '<strong>Orchestration:</strong> ' + (data.runtimeStatus || '—');
-        if (data.createdAt) html += ' | Created: ' + portalDate.formatDateTime(data.createdAt);
-        if (data.lastUpdatedAt) html += ' | Last updated: ' + portalDate.formatDateTime(data.lastUpdatedAt);
-        html += '</small>';
-        $orchStatus.html(html);
     }
 
     function updateProgress(instanceId, data) {
@@ -146,34 +149,33 @@ $(document).ready(function () {
         if (!data || data.status === 'not_found') {
             ctx.failedCount++;
             if (ctx.failedCount >= maxFailedPolls) {
-                $label.text('Orchestration not found. Completion is not confirmed. Refresh to check the recorded operation result.');
+                $label.text('Progress is unavailable. Refresh to check the recorded result.');
                 $bar.removeClass('progress-bar-animated bg-info').addClass('bg-warning');
                 ctx.terminal = true;
                 return;
             }
-            $label.text(ctx.isBootstrap ? 'Waiting for orchestration to start...' : 'Waiting for progress data...');
+            $label.text(ctx.isBootstrap ? 'Waiting to start...' : 'Waiting for progress...');
             return;
         }
 
         if (data.status === 'error') {
             ctx.failedCount++;
             if (ctx.failedCount >= maxFailedPolls) {
-                $label.text('Unable to reach sync service. Please refresh the page.');
-                $bar.removeClass('progress-bar-animated bg-info').addClass('bg-danger');
+                $label.text('Connection lost. Refresh to check progress.');
+                $bar.removeClass('progress-bar-animated bg-info').addClass('bg-warning');
                 ctx.terminal = true;
                 return;
             }
-            $label.text('Retrying connection to sync service...');
+            $label.text('Reconnecting...');
             return;
         }
 
         // status === 'found'
         ctx.failedCount = 0;
 
-        renderOrchestrationStatus(ctx, data);
         updateStaleIndicator(ctx, data);
         if (data.error) {
-            ctx.$row.find('.operation-error').text(data.error).addClass('text-danger');
+            ctx.$row.find('.operation-error').text(data.error).removeClass('text-muted').addClass('text-danger');
         }
 
         var isTerminal = data.runtimeStatus === 'Completed' || data.runtimeStatus === 'Failed' ||
@@ -181,11 +183,7 @@ $(document).ready(function () {
 
         if (!data.progress) {
             if (isTerminal) {
-                $label.text(mapRotationTerminalMessage(data, false));
-                $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' && data.success !== false ? 'bg-secondary' : 'bg-danger');
-                $bar.css('width', '100%');
-                ctx.terminal = true;
-                scheduleReloadIfAllDone();
+                finishProgress(ctx, data, false);
                 return;
             }
             $label.text('Operation starting...');
@@ -201,9 +199,7 @@ $(document).ready(function () {
 
         if (isTerminal) {
             var failedMaps = p.maps?.some(function (map) { return map.status === 'Failed'; });
-            $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' && data.success !== false && !failedMaps ? 'bg-secondary' : 'bg-danger');
-            $label.text(mapRotationTerminalMessage(data, failedMaps));
-            ctx.terminal = true;
+            finishProgress(ctx, data, failedMaps);
         }
 
         // Render per-map status
@@ -215,18 +211,17 @@ $(document).ready(function () {
                 $item.append('<span class="me-2" style="min-width:24px;">' + statusIcon(map.status) + '</span>');
                 $item.append($('<span class="badge bg-secondary me-2" style="min-width:28px;">').text(idx + 1));
                 $item.append($('<span class="flex-grow-1">').text(map.mapName));
-                $item.append($('<span class="badge ' + statusBadge(map.status) + '">').text(map.status));
+                var label = map.status === 'Skipped' ? 'Ready' : map.status === 'InProgress' ? 'Working' : map.status;
+                $item.append($('<span class="badge ' + statusBadge(map.status) + '">').text(label));
                 if (map.error) {
-                    $item.append($('<small class="text-danger ms-2">').text(map.error));
+                    var messageClass = map.status === 'Failed' ? 'text-danger' : 'text-muted';
+                    $item.append($('<small class="' + messageClass + ' ms-2">').text(map.error));
                 }
                 $list.append($item);
             });
             $mapList.append($list);
         }
 
-        if (isTerminal) {
-            scheduleReloadIfAllDone();
-        }
     }
 
     var reloadScheduled = false;
@@ -253,8 +248,8 @@ $(document).ready(function () {
             polling = false;
             var $timeoutBanner = $('<div class="alert alert-warning mt-3">' +
                 '<i class="fa-solid fa-fw fa-clock"></i> ' +
-                '<strong>Polling timed out.</strong> The operation may still be running. ' +
-                '<a href="javascript:location.reload()" class="alert-link">Refresh to check status</a> or cancel the operation manually.' +
+                '<strong>Live updates paused.</strong> The action may still be running. ' +
+                '<a href="javascript:location.reload()" class="alert-link">Refresh to keep watching</a>.' +
                 '</div>');
             $container.append($timeoutBanner);
             return;

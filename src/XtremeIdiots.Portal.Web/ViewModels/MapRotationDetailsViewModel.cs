@@ -7,7 +7,6 @@ public class MapRotationDetailsViewModel
 {
     public required MapRotationDto Rotation { get; set; }
     public List<MapDto> Maps { get; set; } = [];
-    public Dictionary<Guid, List<MapRotationAssignmentOperationDto>> AssignmentOperations { get; set; } = [];
 
     /// <summary>
     /// Whether the current user is authorized to deploy to at least one compatible server.
