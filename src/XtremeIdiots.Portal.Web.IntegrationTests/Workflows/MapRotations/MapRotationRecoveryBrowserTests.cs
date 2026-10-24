@@ -171,7 +171,7 @@ public sealed class MapRotationRecoveryBrowserTests
         await browser.Page.RouteAsync("**/MapRotations/GetMapRotationsAjax**", route => route.FulfillAsync(new RouteFulfillOptions
         {
             ContentType = "application/json",
-            Body = /*lang=json,strict*/ """{"draw":1,"recordsTotal":1,"recordsFiltered":1,"data":[{"mapRotationId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","gameType":"CallOfDuty4","title":"Synthetic assigned rotation","gameMode":"dm","status":"Published","mapCount":1,"serverCount":1,"updatedAt":"2026-10-24"}]}"""
+            Body = /*lang=json,strict*/ """{"draw":1,"recordsTotal":1,"recordsFiltered":1,"data":[{"mapRotationId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","gameType":"CallOfDuty4","title":"Synthetic assigned rotation","gameMode":"dm","status":"Published","mapCount":1,"serverCount":1,"updatedAt":"2026-10-24","createdByDisplayName":"<img src=x onerror='window.rotationAuthorExecuted=true'>"}]}"""
         }));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations").AbsoluteUri);
         await Assertions.Expect(browser.Page.Locator("#dataTable")).ToBeVisibleAsync();
@@ -181,6 +181,9 @@ public sealed class MapRotationRecoveryBrowserTests
         await Assertions.Expect(browser.Page.Locator("#dataTable tbody a.btn")).ToHaveCountAsync(1);
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Open", Exact = true })).ToBeVisibleAsync();
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Columnheader, new() { Name = "Author", Exact = true })).ToHaveCountAsync(0);
+        var authorHtml = await browser.Page.EvaluateAsync<string>("() => $('#dataTable').DataTable().cell(0, 'createdBy:name').node().innerHTML");
+        Assert.Contains("&lt;img", authorHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("<img", authorHtml, StringComparison.Ordinal);
         var request = await browser.Page.RunAndWaitForRequestAsync(
             () => browser.Page.Locator("#filterMyRotations").ClickAsync(),
             request => request.Method == "POST" && new Uri(request.Url).AbsolutePath == "/MapRotations/GetMapRotationsAjax");

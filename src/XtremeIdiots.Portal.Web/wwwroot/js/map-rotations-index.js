@@ -102,7 +102,8 @@ $(document).ready(function () {
                 }
             },
             {
-                data: 'createdByDisplayName', name: 'createdBy', orderable: false, defaultContent: ''
+                data: 'createdByDisplayName', name: 'createdBy', orderable: false, defaultContent: '',
+                render: function (data) { return escapeHtml(data); }
             },
             {
                 data: null, name: 'actions', orderable: false,
