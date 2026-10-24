@@ -6,52 +6,58 @@
 <div class="wrapper wrapper-content animated fadeInRight" id="mapDownloads"
      data-member="@(User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : "")">
     <div class="ibox">
-        <div class="ibox-title"><h5>Map and mod downloads</h5></div>
+        <div class="ibox-title native-download-header">
+            <div>
+                <p id="downloadContext" class="small text-muted mb-1">Map and mod downloads</p>
+                <h5 id="downloadHeading" tabindex="-1">Downloads</h5>
+            </div>
+            <button id="downloadBack" type="button" class="btn btn-outline-secondary btn-sm" hidden>Back to collection</button>
+        </div>
         <div class="ibox-content">
-            <p>Browse live map and mod files. Downloads go directly from Maps Manager to your device.</p>
-            <p><a href="https://maps.xtremeidiots.com/" target="_blank" rel="noopener noreferrer">Open in Maps Manager</a></p>
-            <form id="downloadSearch" class="row g-2 mb-3">
+            <form id="downloadSearch" class="native-download-filters">
                 @Html.AntiForgeryToken()
-                <div class="col-sm-3"><label for="downloadGame" class="form-label">Game</label>
+                <div><label for="downloadGame" class="form-label">Game</label>
                     <select id="downloadGame" class="form-select">
                         <option value="cod4">Call of Duty 4 / COD4x</option>
                         <option value="cod5">Call of Duty 5</option>
                         <option value="cod2">Call of Duty 2</option>
                     </select>
                 </div>
-                <div class="col-sm-3"><label for="downloadKind" class="form-label">Collection</label>
+                <div><label for="downloadKind" class="form-label">Collection</label>
                     <select id="downloadKind" class="form-select"><option value="maps">Maps</option><option value="mods">Mods</option></select>
                 </div>
-                <div class="col-sm-4"><label for="downloadQuery" class="form-label">Search</label>
+                <div><label for="downloadQuery" class="form-label">Search</label>
                     <input id="downloadQuery" class="form-control" type="search" maxlength="200" />
                 </div>
-                <div class="col-sm-2 d-flex align-items-end"><button class="btn btn-primary" type="submit">Search</button></div>
+                <button class="btn btn-primary" type="submit">Search</button>
             </form>
-            <output id="downloadStatus" class="d-block mb-3" aria-live="polite"></output>
-            <h2 id="downloadHeading" class="h5" tabindex="-1">Files</h2>
-            <button id="downloadBack" type="button" class="btn btn-outline-secondary btn-sm mb-2" hidden>Back to collection</button>
-            <div id="downloadEntries" class="native-download-entries" aria-busy="false"></div>
-            <nav aria-label="Download pages" class="d-flex gap-2 mt-3">
+            <output id="downloadStatus" class="native-download-status" aria-live="polite"></output>
+            <div id="downloadEntries" class="native-download-entries" role="list" aria-label="Files and folders" aria-busy="false"></div>
+            <nav id="downloadPagination" aria-label="Download pages" class="native-download-pagination" hidden>
                 <button id="downloadPrevious" type="button" class="btn btn-outline-secondary btn-sm" disabled>Previous</button>
                 <span id="downloadPage"></span>
                 <button id="downloadNext" type="button" class="btn btn-outline-secondary btn-sm" disabled>Next</button>
             </nav>
         </div>
-        <div class="ibox-footer d-flex flex-wrap gap-2 align-items-center">
-            <output id="downloadSelection">0 of 15 folders selected</output>
-            <button id="downloadZip" type="button" class="btn btn-primary" disabled>Create selected ZIP</button>
-            <button id="downloadClear" type="button" class="btn btn-outline-secondary" disabled>Clear selection</button>
+        <div class="ibox-footer native-download-toolbar">
+            <button id="downloadFolderZip" type="button" class="btn btn-primary" hidden>Create folder ZIP</button>
+            <div id="downloadSelectionBar" class="native-download-toolbar" hidden>
+                <output id="downloadSelection">0 of 15 folders selected</output>
+                <button id="downloadZip" type="button" class="btn btn-primary" disabled>Create selected ZIP</button>
+                <button id="downloadClear" type="button" class="btn btn-outline-secondary" disabled>Clear selection</button>
+            </div>
             @if (User.Identity?.IsAuthenticated != true)
             {
-                <a asp-controller="Identity" asp-action="Login" asp-route-returnUrl="/MapDownloads">Sign in to Portal for ZIP downloads</a>
+                <a id="downloadLogin" asp-controller="Identity" asp-action="Login"
+                   asp-route-returnUrl="@($"{Context.Request.Path}{Context.Request.QueryString}")" hidden>Sign in to Portal for ZIP downloads</a>
             }
+            <a id="downloadManager" href="https://maps.xtremeidiots.com/" target="_blank" rel="noopener noreferrer"
+               class="native-download-manager">Open in Maps Manager</a>
         </div>
     </div>
-    <div class="ibox">
-        <div class="ibox-title"><h5>Downloads and ZIP preparation</h5></div>
+    <div id="downloadActivity" class="ibox" hidden>
+        <div class="ibox-title"><h5>Downloads</h5></div>
         <div class="ibox-content">
-            <p class="form-text">ZIP preparation updates automatically. Dismiss removes a task from this page, not the server.
-                Supported browsers can save resumable downloads to disk. Other browsers use their normal download manager.</p>
             <section id="downloadTasks" aria-label="Downloads and ZIP preparation" tabindex="-1" aria-live="polite" aria-relevant="additions text"></section>
         </div>
     </div>

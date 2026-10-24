@@ -15,6 +15,53 @@ public sealed class NativeMapDownloadsBrowserTests
     private const string DirectUrl = "https://maps.test.invalid/v1/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     [Theory]
+    [InlineData(1440, true)]
+    [InlineData(390, false)]
+    public async Task FolderDetail_OnlyShowsRelevantActions_AndFitsDesktopAndMobile(int width, bool authenticated)
+    {
+        var file = RedirectDtoFactory.CreateFile(FilePath, 3);
+        var fake = new FakeRedirectApiClient()
+            .WithData("Manifest", RedirectDtoFactory.CreateManifest(files: [file]))
+            .WithData("CreateArchive", RedirectDtoFactory.CreateArchive(status: "complete"));
+        await using var browser = await BrowserFixture.CreateAsync(authenticated ? TestPrincipalProfiles.GameAdmin : null,
+            services => services.AddSingleton<IRedirectApiClient>(fake));
+        await browser.Page.SetViewportSizeAsync(width, 900);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads?game=cod4&map=mp_test").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("#downloadEntries [role=listitem]")).ToHaveCountAsync(1);
+        await Assertions.Expect(browser.Page.Locator("#downloadHeading")).ToHaveTextAsync("mp_test");
+        await Assertions.Expect(browser.Page.Locator("#downloadSearch")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadPagination")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadSelectionBar")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadActivity")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("[data-select-path]")).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Open in Maps Manager" }))
+            .ToHaveAttributeAsync("href", "https://maps.xtremeidiots.com/?game=cod4&map=mp_test");
+        Assert.True(await browser.Page.Locator("#mapDownloads").EvaluateAsync<bool>(
+            "root => root.scrollWidth <= root.clientWidth && root.getBoundingClientRect().width <= 1120"));
+        if (authenticated)
+        {
+            var zip = browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" });
+            await Assertions.Expect(zip).ToHaveCountAsync(1);
+            await zip.ClickAsync();
+            await Assertions.Expect(browser.Page.Locator("#downloadActivity")).ToBeVisibleAsync();
+            await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP ready to save");
+            await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Dismiss download task" }).ClickAsync();
+            await Assertions.Expect(browser.Page.Locator("#downloadActivity")).ToBeHiddenAsync();
+            await Assertions.Expect(browser.Page.Locator("#downloadHeading")).ToBeFocusedAsync();
+        }
+        else
+        {
+            await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" })).ToHaveCountAsync(0);
+            await Assertions.Expect(browser.Page.Locator("#downloadLogin"))
+                .ToHaveAttributeAsync("href", "/Identity/Login?returnUrl=%2FMapDownloads%3Fgame%3Dcod4%26map%3Dmp_test");
+        }
+
+        var screenshot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestResults", $"native-download-folder-{width}.png"));
+        await browser.Page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshot, FullPage = true });
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task NativeFileJourney_LoadsLiveFiles_AndUsesStandardBrowserDownloadWithoutSecondLogin(bool authenticated)
@@ -38,8 +85,8 @@ public sealed class NativeMapDownloadsBrowserTests
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Maps").AbsoluteUri);
         await browser.Page.GetByRole(AriaRole.Link, new() { Name = "Map and mod downloads", Exact = true }).ClickAsync();
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Browse files" }).ClickAsync();
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Status).First).ToContainTextAsync("1 live files");
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create selected ZIP" })).ToBeDisabledAsync();
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Status).First).ToContainTextAsync("1 file");
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create selected ZIP" })).ToHaveCountAsync(0);
         var login = browser.Page.GetByRole(AriaRole.Link, new() { Name = "Sign in to Portal for ZIP downloads" });
         if (authenticated)
             await Assertions.Expect(login).ToHaveCountAsync(0);

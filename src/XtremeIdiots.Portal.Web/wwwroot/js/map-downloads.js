@@ -12,7 +12,7 @@
     const aliases = { CallOfDuty2: 'cod2', CallOfDuty4: 'cod4', CallOfDuty4x: 'cod4', cod4x: 'cod4', CallOfDuty5: 'cod5' };
     const game = query.get('game') || 'cod4';
     byId('downloadGame').value = aliases[game] || (['cod2', 'cod4', 'cod5'].includes(game) ? game : 'cod4');
-    let page = 1, version = null, path = null, manifest = query.get('map'), generation = 0;
+    let page = 1, version = null, path = null, folder = null, manifest = query.get('map'), generation = 0;
     if (byId('downloadGame').value === 'cod2' && manifest) {
         byId('downloadQuery').value = manifest;
         manifest = null;
@@ -59,7 +59,20 @@
         byId('downloadSelection').textContent = `${selected.size} of 15 folders selected`;
         byId('downloadZip').disabled = !member || selected.size === 0;
         byId('downloadClear').disabled = selected.size === 0;
+        byId('downloadSelectionBar').hidden = !!path || !!manifest || selected.size === 0;
         root.querySelectorAll('[data-select-path]').forEach(input => { input.checked = selected.has(input.dataset.selectPath); });
+    }
+    function updateView() {
+        byId('downloadSearch').hidden = !!path || !!manifest;
+        byId('downloadBack').hidden = !path && !manifest;
+        byId('downloadContext').textContent = byId('downloadGame').selectedOptions[0].textContent;
+        const managerQuery = new URLSearchParams();
+        if (manifest) {
+            managerQuery.set('game', byId('downloadGame').value);
+            managerQuery.set('map', manifest);
+        } else if (path) managerQuery.set('path', path);
+        byId('downloadManager').href = 'https://maps.xtremeidiots.com/' + (managerQuery.size ? '?' + managerQuery : '');
+        updateSelection();
     }
     function choose(entry, input) {
         if (input.checked && selected.size >= 15) {
@@ -74,6 +87,10 @@
         const current = ++generation;
         const entries = byId('downloadEntries');
         entries.setAttribute('aria-busy', 'true');
+        byId('downloadFolderZip').hidden = true;
+        byId('downloadPagination').hidden = true;
+        if (byId('downloadLogin')) byId('downloadLogin').hidden = true;
+        updateView();
         status('Loading live files…');
         try {
             const data = await loadMetadata();
@@ -81,21 +98,18 @@
             version = data.version;
             const files = data.files || data.entries;
             entries.replaceChildren();
-            byId('downloadHeading').textContent = manifest ? data.name : path || 'Collection';
-            byId('downloadBack').hidden = !path && !manifest;
-            if (manifest) {
-                const folder = { path: data.path, name: data.name, isDirectory: true };
-                const tools = document.createElement('div');
-                tools.className = 'd-flex gap-2 mb-2';
-                addFolderTools(tools, folder);
-                entries.append(tools);
-            }
+            if (manifest) folder = { path: data.path, name: data.name, isDirectory: true };
+            byId('downloadHeading').textContent = folder?.name || byId('downloadKind').selectedOptions[0].textContent;
+            byId('downloadFolderZip').hidden = !member || !folder || !selectable(folder) || !files.length;
+            const zipAvailable = folder ? selectable(folder) && files.length > 0 : files.some(selectable);
+            if (byId('downloadLogin')) byId('downloadLogin').hidden = !zipAvailable;
             files.forEach(entry => entries.append(renderEntry(entry, data)));
+            byId('downloadPagination').hidden = !!manifest || data.totalCount <= data.pageSize;
             byId('downloadPrevious').disabled = !!manifest || page <= 1;
             byId('downloadNext').disabled = !!manifest || page * data.pageSize >= data.totalCount;
             byId('downloadPage').textContent = manifest ? `${files.length} files` : `Page ${page} · ${data.totalCount} entries`;
-            let summary = files.length ? 'Live files loaded.' : 'No matching files.';
-            if (manifest) summary = `${files.length} live files · ${bytes(data.bytes)} total`;
+            let summary = files.length ? `${data.totalCount} ${data.totalCount === 1 ? 'entry' : 'entries'}` : 'No matching files.';
+            if (manifest) summary = `${files.length} ${files.length === 1 ? 'file' : 'files'} · ${bytes(data.bytes)}`;
             status(summary);
             updateSelection();
             if (focus) byId('downloadHeading').focus();
@@ -121,16 +135,19 @@
     function renderEntry(entry, data) {
         const row = document.createElement('div');
         row.className = 'native-download-entry';
+        row.setAttribute('role', 'listitem');
         const label = document.createElement('span');
         label.className = 'native-download-name';
         label.textContent = manifest ? entry.path.slice(data.path.length + 1) : entry.name;
         const size = document.createElement('span');
+        size.className = 'native-download-size';
         size.textContent = bytes(entry.bytes);
         const actions = document.createElement('div');
         actions.className = 'd-flex flex-wrap gap-2 align-items-center';
         if (entry.isDirectory) {
             actions.append(button('Browse files', () => {
                 path = entry.path;
+                folder = entry;
                 manifest = /^redirect\/cod[45]\/usermaps\/[^/]+$/.test(path) && byId('downloadKind').value === 'maps'
                     ? entry.name : null;
                 page = 1; version = null; void load(true);
@@ -155,16 +172,17 @@
         container.append(label, button('Create folder ZIP', () => createZip([entry.path])));
     }
     root.querySelector('#downloadSearch').addEventListener('submit', event => {
-        event.preventDefault(); page = 1; version = null; path = null; manifest = null; void load(true);
+        event.preventDefault(); page = 1; version = null; path = null; folder = null; manifest = null; void load(true);
     });
     ['downloadGame', 'downloadKind'].forEach(id => byId(id).addEventListener('change', () => {
-        page = 1; version = null; path = null; manifest = null; void load(true);
+        page = 1; version = null; path = null; folder = null; manifest = null; void load(true);
     }));
-    byId('downloadBack').addEventListener('click', () => { path = null; manifest = null; page = 1; version = null; void load(true); });
+    byId('downloadBack').addEventListener('click', () => { path = null; folder = null; manifest = null; page = 1; version = null; void load(true); });
     byId('downloadPrevious').addEventListener('click', () => { page--; void load(true); });
     byId('downloadNext').addEventListener('click', () => { page++; void load(true); });
     byId('downloadClear').addEventListener('click', () => { selected.clear(); updateSelection(); });
     byId('downloadZip').addEventListener('click', () => createZip([...selected]));
+    byId('downloadFolderZip').addEventListener('click', () => { if (folder) void createZip([folder.path]); });
 
     // Only file handles and resource identifiers are persisted, never capability URLs.
     const database = new Promise(resolve => {
@@ -206,6 +224,7 @@
     }
     function renderTask(task) {
         if (!tasks.has(task.id)) return;
+        byId('downloadActivity').hidden = false;
         if (!task.element) {
             task.element = document.createElement('div');
             task.element.className = 'native-download-task';
@@ -238,7 +257,10 @@
         }
         actions.append(button(!task.resource && task.busy ? 'Dismiss ZIP task' : 'Dismiss download task', async () => {
             task.abort?.abort(); clearTimeout(task.timer); tasks.delete(task.id);
-            task.element.remove(); byId('downloadTasks').focus(); await store(task, true);
+            task.element.remove();
+            byId('downloadActivity').hidden = tasks.size === 0;
+            (tasks.size ? byId('downloadTasks') : byId('downloadHeading')).focus();
+            await store(task, true);
         }));
         return actions;
     }
