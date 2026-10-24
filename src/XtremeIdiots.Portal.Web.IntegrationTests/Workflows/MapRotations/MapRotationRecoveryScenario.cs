@@ -19,7 +19,8 @@ internal sealed class MapRotationRecoveryScenario
     public Mock<ISyncApiClient> Sync { get; } = new();
     private readonly Mock<IRepositoryApiClient> repository = new() { DefaultValue = DefaultValue.Mock };
 
-    public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true)
+    public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
+        AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress)
     {
         var serverId = permitted ? Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId) : Guid.NewGuid();
         var assignment = new MapRotationServerAssignmentDto(AssignmentId, RotationId, serverId,
@@ -48,7 +49,7 @@ internal sealed class MapRotationRecoveryScenario
                     MapRotationServerAssignmentId = AssignmentId,
                     DurableFunctionInstanceId = $"maprot-apply-{AssignmentId}",
                     StartedAt = DateTime.UtcNow,
-                    Status = AssignmentOperationStatus.InProgress
+                    Status = operationStatus
                 }))!);
         }
 

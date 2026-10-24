@@ -1226,7 +1226,7 @@ public class MapRotationsController(
                 lastUpdatedAt = queryResult.Result.LastUpdatedAt,
                 progress = queryResult.Result.Progress,
                 success = queryResult.Result.Success,
-                error = queryResult.Result.Error ?? queryResult.Result.Progress?.Maps?.FirstOrDefault(m => m.Status == "Failed")?.Error
+                error = queryResult.Result.Error ?? queryResult.Result.Progress?.Maps?.FirstOrDefault(m => m.Status == nameof(AssignmentOperationStatus.Failed))?.Error
             }),
             OrchestrationStatusQueryOutcome.NotFound => Json(new { status = "not_found" }),
             OrchestrationStatusQueryOutcome.Error => Json(new { status = "error" }),
@@ -1278,8 +1278,15 @@ public class MapRotationsController(
                 && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase));
             if (operation == null)
                 return BadRequest("The operation and instance do not belong to this assignment.");
-            if (operation.Status != AssignmentOperationStatus.InProgress)
+            var retryingFinalization = operation.Status == AssignmentOperationStatus.Cancelled
+                && (assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
+                    || assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating);
+            if (operation.Status != AssignmentOperationStatus.InProgress && !retryingFinalization)
                 return Conflict("This operation is no longer in progress. Refresh its result.");
+            if (retryingFinalization && operationsResponse.Result.Data.Items.Any(o => o.Status == AssignmentOperationStatus.InProgress))
+                return Conflict("Another operation is in progress. Cancellation finalization cannot reset its assignment state.");
+            if (retryingFinalization && operationsResponse.Result.Data.Items.Any(o => o.StartedAt > operation.StartedAt))
+                return Conflict("A newer operation exists. Refresh its result before retrying cancellation finalization.");
 
             var termination = await TerminateAndConfirm(instanceId!, cancellationToken).ConfigureAwait(false);
             if (termination.CancellationRequested)
@@ -1295,53 +1302,50 @@ public class MapRotationsController(
                 return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
             }
 
-            var updateResult = await repositoryApiClient.MapRotations.V1.UpdateAssignmentOperation(
-                operationId, AssignmentOperationStatus.Cancelled, "Orchestration terminated by user").ConfigureAwait(false);
-
-            if (updateResult.IsSuccess)
+            if (!retryingFinalization)
             {
-                var refreshed = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
-                if (!refreshed.IsSuccess || refreshed.Result?.Data == null)
+                var updateResult = await repositoryApiClient.MapRotations.V1.UpdateAssignmentOperation(
+                    operationId, AssignmentOperationStatus.Cancelled, "Orchestration terminated by user").ConfigureAwait(false);
+                if (!updateResult.IsSuccess)
                 {
-                    this.AddAlertDanger("Termination confirmed, but assignment state could not be reloaded. No reset was performed.");
+                    this.AddAlertDanger("Orchestration terminated, but the operation record could not be marked cancelled. Refresh and retry cancellation.");
                     return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
                 }
-
-                assignment = refreshed.Result.Data;
-                var deploymentReset = assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
-                    ? DeploymentState.Failed
-                    : (DeploymentState?)null;
-
-                var activationReset = assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating
-                    ? ActivationState.Failed
-                    : (ActivationState?)null;
-
-                if (deploymentReset.HasValue || activationReset.HasValue)
-                {
-                    var resetDto = new UpdateMapRotationServerAssignmentDto(assignmentId)
-                    {
-                        DeploymentState = deploymentReset,
-                        ActivationState = activationReset,
-                        LastError = "Operation cancelled by user. Configuration may have changed; deactivate successfully before unassigning.",
-                        LastErrorAt = DateTime.UtcNow
-                    };
-
-                    var resetResult = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(resetDto, cancellationToken).ConfigureAwait(false);
-                    if (!resetResult.IsSuccess)
-                    {
-                        this.AddAlertDanger("Orchestration terminated and operation marked cancelled, but assignment state reset failed. Refresh and resolve its state before retrying.");
-                        return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-                    }
-                }
-
-                this.AddAlertSuccess("Operation cancelled successfully.");
-                TrackSuccessTelemetry("MapRotationOperationCancelled", nameof(CancelOperation));
             }
-            else
+
+            var refreshed = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+            if (!refreshed.IsSuccess || refreshed.Result?.Data == null)
             {
-                this.AddAlertDanger("Orchestration terminated, but the operation record could not be marked cancelled. Refresh and resolve its state before retrying.");
+                this.AddAlertDanger("Termination confirmed, but assignment state could not be reloaded. No reset was performed. Refresh and use Retry cancellation finalization if its state is still busy.");
+                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
             }
 
+            assignment = refreshed.Result.Data;
+            var deploymentReset = assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
+                ? DeploymentState.Failed
+                : (DeploymentState?)null;
+            var activationReset = assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating
+                ? ActivationState.Failed
+                : (ActivationState?)null;
+            if (deploymentReset.HasValue || activationReset.HasValue)
+            {
+                var resetDto = new UpdateMapRotationServerAssignmentDto(assignmentId)
+                {
+                    DeploymentState = deploymentReset,
+                    ActivationState = activationReset,
+                    LastError = "Operation cancelled by user. Configuration may have changed; deactivate successfully before unassigning.",
+                    LastErrorAt = DateTime.UtcNow
+                };
+                var resetResult = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(resetDto, cancellationToken).ConfigureAwait(false);
+                if (!resetResult.IsSuccess)
+                {
+                    this.AddAlertDanger("Orchestration terminated and operation marked cancelled, but assignment state reset failed. Refresh and use Retry cancellation finalization.");
+                    return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+                }
+            }
+
+            this.AddAlertSuccess("Operation cancelled successfully.");
+            TrackSuccessTelemetry("MapRotationOperationCancelled", nameof(CancelOperation));
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
         }, nameof(CancelOperation)).ConfigureAwait(false);
     }

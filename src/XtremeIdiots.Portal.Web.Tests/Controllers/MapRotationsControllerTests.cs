@@ -1403,7 +1403,7 @@ public class MapRotationsControllerTests
     }
 
     [Fact]
-    public async Task CancelOperation_ConfirmedTermination_ResetFailureIsVisibleAndNeverInactive()
+    public async Task CancelOperation_ConfirmedTermination_ResetFailureIsVisibleAndRetryableWithoutFalseInactive()
     {
         var (sut, assignment) = SetupRecovery(DeploymentState.Syncing, ActivationState.Activating);
         var operationId = Guid.NewGuid();
@@ -1427,6 +1427,20 @@ public class MapRotationsControllerTests
         mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
             It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.ActivationState == ActivationState.Failed
                 && dto.DeploymentState == DeploymentState.Failed), It.IsAny<CancellationToken>()), Times.Once);
+
+        SetOperation(assignment, operationId, instanceId, AssignmentOperationStatus.Cancelled);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+
+        await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId);
+
+        Assert.Contains("cancelled successfully", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateAssignmentOperation(
+            operationId, AssignmentOperationStatus.Cancelled, It.IsAny<string>()), Times.Once);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.ActivationState == ActivationState.Failed
+                && dto.DeploymentState == DeploymentState.Failed), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        mockSyncApiClient.Verify(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     private void VerifyNoCancellationMutation()
@@ -1454,7 +1468,8 @@ public class MapRotationsControllerTests
         return (CreateSut(), assignment);
     }
 
-    private void SetOperation(MapRotationServerAssignmentDto assignment, Guid operationId, string instanceId)
+    private void SetOperation(MapRotationServerAssignmentDto assignment, Guid operationId, string instanceId,
+        AssignmentOperationStatus status = AssignmentOperationStatus.InProgress)
     {
         var operation = Newtonsoft.Json.JsonConvert.DeserializeObject<MapRotationAssignmentOperationDto>(
             Newtonsoft.Json.JsonConvert.SerializeObject(new
@@ -1462,7 +1477,7 @@ public class MapRotationsControllerTests
                 MapRotationAssignmentOperationId = operationId,
                 assignment.MapRotationServerAssignmentId,
                 DurableFunctionInstanceId = instanceId,
-                Status = AssignmentOperationStatus.InProgress,
+                Status = status,
                 StartedAt = DateTime.UtcNow
             }))!;
         mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetAssignmentOperations(

@@ -176,6 +176,11 @@
                                         @foreach (var op in Model.Operations)
                                         {
                                             var isInProgress = op.Status == AssignmentOperationStatus.InProgress;
+                                            var resetPending = op.Status == AssignmentOperationStatus.Cancelled
+                                                && Model.Operations.FirstOrDefault()?.MapRotationAssignmentOperationId == op.MapRotationAssignmentOperationId
+                                                && (Model.Assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
+                                                    || Model.Assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating)
+                                                && !Model.Operations.Any(o => o.Status == AssignmentOperationStatus.InProgress);
                                             var elapsedMinutes = isInProgress ? (DateTime.UtcNow - op.StartedAt).TotalMinutes : 0;
                                             <tr class="@(op.Status == AssignmentOperationStatus.Failed ? "table-danger" : isInProgress ? "table-info" : "")"
                                                 @if (isInProgress && !string.IsNullOrEmpty(op.DurableFunctionInstanceId))
@@ -235,7 +240,7 @@
                                                     }
                                                 </td>
                                                 <td>
-                                                    @if (isInProgress)
+                                                    @if (isInProgress || resetPending)
                                                     {
                                                         <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="CancelOperation" method="post" class="d-inline">
                                                             @Html.AntiForgeryToken()
@@ -243,7 +248,7 @@
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Request cancellation? The current activity must finish safely before cancellation is confirmed.">
-                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Cancel
+                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> @(resetPending ? "Retry cancellation finalization" : "Cancel")
                                                             </button>
                                                         </form>
                                                     }

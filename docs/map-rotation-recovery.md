@@ -102,8 +102,12 @@ assignments. Busy/removing/removed assignments cannot start another action.
 No action automatically restarts a server. Only use an explicit, separately
 authorized Server Admin restart if the game/mod actually requires one for a
 deliberate configuration change. Configuration activation is not runtime proof.
-V2 stages configuration writes and reads the exact variable back from the file;
-RCON commands are acknowledged, but running values are not independently queried.
+Map transfers are staged on FTP and SFTP. SFTP configuration writes are staged
+with restricted temporary-file permissions and preserve the original owner/group
+and mode; FTP configuration writes use acknowledged in-place STOR to preserve
+ownership and mode. V2 reads the exact variable back from the file after either
+configuration write. RCON commands are acknowledged, but running values are not
+independently queried.
 Standard rotations over 1024 characters now fail explicitly rather than reporting
 success through unreferenced suffix variables. Review that error instead of
 assuming the full rotation was applied.
@@ -115,3 +119,8 @@ or assignment-reset failure is shown explicitly. After uncertain configuration
 cancellation, complete **Deactivate** successfully before **Unassign**. Unassign
 preserves server map files and the rotation library; removed assignment history
 is retained for 90 days.
+
+If a confirmed legacy cancellation records **Cancelled** but its assignment reset
+fails, refresh and use **Retry cancellation finalization** on that latest operation.
+It rechecks ownership and confirmed termination before retrying the pending reset;
+it does not force healthy badges or override a newer/in-progress operation.
