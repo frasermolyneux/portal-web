@@ -124,6 +124,8 @@ If a confirmed terminal operation records **Cancelled** or **Failed** but its as
 fails, refresh and use **Retry operation finalization** on that latest operation.
 It rechecks ownership and confirmed termination before retrying the pending reset;
 it does not force healthy badges or override a newer/in-progress operation.
+Finalization retries never send another cancellation request. They reject a reused
+instance ID's newer execution and newer work on the initiating linked slot.
 An already-failed orchestration is finalized as **Failed**, never cancellation success.
 For linked main/AACP Apply, either target can request cancellation using its own
 persisted operation; the server, rotation and exact linked-slot relationship are

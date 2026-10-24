@@ -1288,7 +1288,16 @@ public class MapRotationsController(
             if (retryingFinalization && operationsResponse.Result.Data.Items.Any(o => o.StartedAt > operation.StartedAt))
                 return Conflict("A newer operation exists. Refresh its result before retrying cancellation finalization.");
 
-            var (termination, alreadyFailed) = await TerminateAndConfirm(instanceId!, cancellationToken).ConfigureAwait(false);
+            if (retryingFinalization)
+            {
+                var sourceError = await CheckFinalizationSource(instanceId!, assignmentId, operation.StartedAt, cancellationToken).ConfigureAwait(false);
+                if (sourceError != null)
+                    return sourceError;
+            }
+
+            var (termination, alreadyFailed) = retryingFinalization
+                ? await ConfirmTerminalStatus(instanceId!, operation.StartedAt, cancellationToken).ConfigureAwait(false)
+                : await TerminateAndConfirm(instanceId!, cancellationToken).ConfigureAwait(false);
             if (termination.CancellationRequested)
             {
                 this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
@@ -1377,13 +1386,33 @@ public class MapRotationsController(
     private async Task<(SyncTriggerResult Result, bool AlreadyFailed)> TerminateAndConfirm(string instanceId, CancellationToken cancellationToken)
     {
         var result = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
-        if (!result.Success)
-            return (result, false);
+        return !result.Success ? ((SyncTriggerResult Result, bool AlreadyFailed))(result, false) : await ConfirmTerminalStatus(instanceId, null, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<(SyncTriggerResult Result, bool AlreadyFailed)> ConfirmTerminalStatus(string instanceId, DateTime? operationStartedAt, CancellationToken cancellationToken)
+    {
         var status = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
+        if (operationStartedAt.HasValue && status.Result?.CreatedAt > operationStartedAt.Value)
+            return (new SyncTriggerResult(false, Error: "This instance ID belongs to a newer execution. Nothing was terminated or reset; refresh its current operation."), false);
+
         var runtimeStatus = status.Outcome == OrchestrationStatusQueryOutcome.Found ? status.Result?.RuntimeStatus : null;
         return runtimeStatus is "Terminated" or "Canceled" or nameof(AssignmentOperationStatus.Failed)
             ? (new SyncTriggerResult(true), runtimeStatus == nameof(AssignmentOperationStatus.Failed))
             : (new SyncTriggerResult(false, Error: "Termination was requested but is not confirmed. Refresh the operation result before retrying; no assignment reset was performed."), false);
+    }
+
+    private async Task<IActionResult?> CheckFinalizationSource(string instanceId, Guid assignmentId, DateTime operationStartedAt, CancellationToken cancellationToken)
+    {
+        if (IsAssignmentInstance(instanceId, assignmentId))
+            return null;
+
+        var sourceId = Guid.Parse(instanceId[^36..]);
+        var operations = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(sourceId, 0, 100, cancellationToken).ConfigureAwait(false);
+        return !operations.IsSuccess || operations.Result?.Data?.Items == null
+            ? StatusCode(502, "Unable to verify the initiating slot's operations. Nothing was terminated or reset.")
+            : operations.Result.Data.Items.Any(o => o.StartedAt > operationStartedAt)
+            ? Conflict("The initiating slot has newer work. Refresh its result; this old finalization retry cannot terminate or reset it.")
+            : (IActionResult?)null;
     }
 
     private async Task<IActionResult?> CheckAssignmentInstanceOwnership(string instanceId, MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
