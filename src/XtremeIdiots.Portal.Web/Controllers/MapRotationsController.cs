@@ -1386,6 +1386,23 @@ public class MapRotationsController(
             : (new SyncTriggerResult(false, Error: "Termination was requested but is not confirmed. Refresh the operation result before retrying; no assignment reset was performed."), false);
     }
 
+    private async Task<IActionResult?> CheckAssignmentInstanceOwnership(string instanceId, MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
+    {
+        var assignmentId = assignment.MapRotationServerAssignmentId;
+        if (IsAssignmentInstance(instanceId, assignmentId))
+            return null;
+
+        var operations = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(assignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
+        if (!operations.IsSuccess || operations.Result?.Data?.Items == null)
+            return StatusCode(502, "Unable to verify operation ownership. Nothing was cancelled.");
+
+        var persisted = operations.Result.Data.Items.Any(o => o.MapRotationServerAssignmentId == assignmentId
+            && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase));
+        return !persisted || !await IsLinkedApplyInstance(instanceId, assignment, cancellationToken).ConfigureAwait(false)
+            ? BadRequest("The instance does not belong to this assignment or its verified linked main/AACP slot.")
+            : (IActionResult?)null;
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> TerminateOrchestration(string instanceId, Guid assignmentId, CancellationToken cancellationToken = default)
@@ -1412,16 +1429,9 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            if (!IsAssignmentInstance(instanceId, assignmentId))
-            {
-                var operations = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(assignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
-                if (!operations.IsSuccess || operations.Result?.Data?.Items == null)
-                    return StatusCode(502, "Unable to verify operation ownership. Nothing was cancelled.");
-                var persisted = operations.Result.Data.Items.Any(o => o.MapRotationServerAssignmentId == assignmentId
-                    && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase));
-                if (!persisted || !await IsLinkedApplyInstance(instanceId, assignmentResponse.Result.Data, cancellationToken).ConfigureAwait(false))
-                    return BadRequest("The instance does not belong to this assignment or its verified linked main/AACP slot.");
-            }
+            var ownershipError = await CheckAssignmentInstanceOwnership(instanceId, assignmentResponse.Result.Data, cancellationToken).ConfigureAwait(false);
+            if (ownershipError != null)
+                return ownershipError;
 
             var (terminateResult, alreadyFailed) = await TerminateAndConfirm(instanceId, cancellationToken).ConfigureAwait(false);
 
@@ -1430,18 +1440,18 @@ public class MapRotationsController(
                 this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
                 TempData[PendingInstanceKey] = instanceId;
             }
-            else if (terminateResult.Success && alreadyFailed)
+            else if (!terminateResult.Success)
+            {
+                this.AddAlertDanger($"Failed to terminate orchestration '{instanceId}': {terminateResult.Error}");
+            }
+            else if (alreadyFailed)
             {
                 this.AddAlertWarning("Orchestration has already failed. Use its operation cancellation/finalization action if the assignment is still busy; failure is not cancellation success.");
             }
-            else if (terminateResult.Success)
+            else
             {
                 this.AddAlertInfo($"Orchestration '{instanceId}' termination confirmed. Check the operation and assignment states before retrying.");
                 TrackSuccessTelemetry("MapRotationOrchestrationTerminated", nameof(TerminateOrchestration));
-            }
-            else
-            {
-                this.AddAlertDanger($"Failed to terminate orchestration '{instanceId}': {terminateResult.Error}");
             }
 
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
