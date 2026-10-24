@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using System.Text.Json;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
@@ -162,21 +163,33 @@ public sealed class AsyncDataTests
         await using var fixture = await BrowserFixture.CreateAsync();
         var page = fixture.Page;
         var reads = 0;
-        await page.RouteAsync("**/api/notifications/unread-count", route =>
+        var recentReads = 0;
+        var secondCountStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseSecondCount = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondMutationApplied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await page.RouteAsync("**/api/notifications/unread-count", async route =>
         {
-            var count = Interlocked.Increment(ref reads) == 1 ? 3 : 0;
-            return route.FulfillAsync(new() { ContentType = "application/json", Body = $$"""{"count":{{count}}}""" });
+            var read = Interlocked.Increment(ref reads);
+            if (read == 2)
+            {
+                secondCountStarted.TrySetResult();
+                await releaseSecondCount.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+
+            var count = read <= 2 ? 3 : 0;
+            await route.FulfillAsync(new() { ContentType = "application/json", Body = $$"""{"count":{{count}}}""" });
         });
         await page.RouteAsync("**/api/notifications/read-all", route => route.FulfillAsync(new()
         {
             ContentType = "application/json",
             Body = "{}"
         }));
-        await page.RouteAsync("**/api/notifications/recent?take=10", route => route.FulfillAsync(new()
+        await page.RouteAsync("**/api/notifications/recent?take=10", route =>
         {
-            ContentType = "application/json",
-            Body = "[]"
-        }));
+            if (Interlocked.Increment(ref recentReads) == 2)
+                secondMutationApplied.TrySetResult();
+            return route.FulfillAsync(new() { ContentType = "application/json", Body = "[]" });
+        });
         await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
         await page.SetContentAsync("""
             <style>.d-none { display: none; }</style>
@@ -192,19 +205,80 @@ public sealed class AsyncDataTests
         }
 
         await Assertions.Expect(page.Locator("#notificationBadge")).ToHaveTextAsync("3");
-        for (var i = 0; i < 2; i++)
-        {
-            await page.RunAndWaitForResponseAsync(
-                () => page.Locator("#markAllReadBtn").ClickAsync(),
-                response => response.Url.EndsWith("/api/notifications/unread-count", StringComparison.Ordinal));
-        }
-
+        await page.Locator("#markAllReadBtn").ClickAsync();
+        await secondCountStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await page.Locator("#markAllReadBtn").ClickAsync();
+        await secondMutationApplied.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        releaseSecondCount.TrySetResult();
         await Assertions.Expect(page.Locator("#notificationBadge")).ToBeHiddenAsync();
         Assert.Equal(3, Volatile.Read(ref reads));
         await page.RunAndWaitForResponseAsync(
             () => page.Clock.RunForAsync(60000),
             response => response.Url.EndsWith("/api/notifications/unread-count", StringComparison.Ordinal));
         Assert.Equal(4, Volatile.Read(ref reads));
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ForumWidget_ResumesDeferredVisibilityAndCachedPageLoads(bool authenticated)
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        var reads = 0;
+        await page.RouteAsync("**/api/external/notifications?*", route =>
+        {
+            var read = Interlocked.Increment(ref reads);
+            return route.FulfillAsync(new()
+            {
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new
+                {
+                    authenticated,
+                    unreadCount = 0,
+                    notifications = new[] { new { title = $"Feed {read}", message = "Test activity", isRead = true } }
+                })
+            });
+        });
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.Clock.InstallAsync();
+        await page.EvaluateAsync("""
+            authenticated => {
+                window.testWidgetHidden = true;
+                Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.testWidgetHidden });
+                const host = document.createElement('div');
+                host.id = 'portal-notifications-widget';
+                host.setAttribute('data-portal-url', window.location.origin);
+                if (authenticated) host.setAttribute('data-token', 'synthetic-widget-token');
+                document.body.append(host);
+            }
+            """, authenticated);
+        await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, "/js/forum-widget.js").AbsoluteUri });
+        await Assertions.Expect(page.Locator("#portal-notifications-widget")).ToHaveTextAsync("Loading notifications...");
+        Assert.Equal(0, Volatile.Read(ref reads));
+
+        await page.EvaluateAsync("""
+            () => {
+                window.testWidgetHidden = false;
+                document.dispatchEvent(new Event('visibilitychange'));
+            }
+            """);
+        await Assertions.Expect(page.GetByText("Feed 1", new() { Exact = true })).ToBeVisibleAsync();
+        await page.EvaluateAsync("""
+            () => {
+                window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+                window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+            }
+            """);
+        await Assertions.Expect(page.GetByText("Feed 2", new() { Exact = true })).ToBeVisibleAsync();
+        await page.Clock.RunForAsync(60000);
+        if (authenticated)
+        {
+            await Assertions.Expect(page.GetByText("Feed 3", new() { Exact = true })).ToBeVisibleAsync();
+        }
+
+        Assert.Equal(authenticated ? 3 : 2, Volatile.Read(ref reads));
         fixture.AssertNoBrowserErrors();
     }
 

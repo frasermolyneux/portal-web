@@ -110,7 +110,10 @@
             },
             stop: stop,
             dispose: dispose,
-            refresh: refresh
+            refresh: refresh,
+            refreshAfterCurrent: function () {
+                return active ? active.then(refresh) : refresh();
+            }
         };
     }
 

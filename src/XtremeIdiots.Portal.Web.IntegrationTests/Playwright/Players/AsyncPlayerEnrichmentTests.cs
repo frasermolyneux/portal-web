@@ -1,5 +1,10 @@
 using Microsoft.Playwright;
+using Moq;
+using MX.Api.Abstractions;
+using System.Net;
 using System.Text.Json;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
 
@@ -50,8 +55,10 @@ public sealed class AsyncPlayerEnrichmentTests
         var scenario = new PlayersIndexScenario([unavailable, available]);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var gate = new RequestGate(hold: true);
+        var requests = 0;
         await browser.Page.RouteAsync("**/Players/GetVisibleIntelligence", async route =>
         {
+            Interlocked.Increment(ref requests);
             await gate.WaitAsync();
             await route.FulfillAsync(new RouteFulfillOptions
             {
@@ -105,6 +112,15 @@ public sealed class AsyncPlayerEnrichmentTests
             await Assertions.Expect(unavailableRow).ToContainTextAsync("Risk unavailable");
             var status = browser.Page.Locator("[role='status']").Filter(new LocatorFilterOptions { HasText = "Some IP intelligence is unavailable." });
             await Assertions.Expect(status.GetByRole(AriaRole.Button, new() { Name = "Retry", Exact = true })).ToHaveCountAsync(1);
+
+            var redraw = await browser.Page.RunAndWaitForResponseAsync(
+                () => browser.Page.EvaluateAsync("() => { $('#dataTable').DataTable().order([0, 'asc']).draw(); }"),
+                r => new Uri(r.Url).AbsolutePath == "/Players/GetPlayersAjax");
+            Assert.True(redraw.Ok);
+            await Assertions.Expect(goodRow).ToContainTextAsync("Risk: 80");
+            await Assertions.Expect(unavailableRow).ToContainTextAsync("Risk unavailable");
+            await Assertions.Expect(status.GetByRole(AriaRole.Button, new() { Name = "Retry", Exact = true })).ToHaveCountAsync(1);
+            Assert.Equal(1, Volatile.Read(ref requests));
             browser.AssertNoBrowserErrors();
         }
         finally
@@ -160,5 +176,103 @@ public sealed class AsyncPlayerEnrichmentTests
         {
             gate.Release();
         }
+    }
+
+    [Fact]
+    public async Task CachedPageRestoreResumesInterruptedIpCardsWithoutReplacingAssociatedPlayers()
+    {
+        var player = new PlayerDtoBuilder().Build();
+        var scenario = new PlayersDetailsScenario(player, riskScore: 80);
+        scenario.RepositoryClient.Setup(x => x.Players.V1.GetPlayersWithIpAddress(
+                player.IpAddress, 0, 100, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None))
+            .ReturnsAsync(new ApiResult<CollectionModel<PlayerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([player]))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        await browser.Page.AddInitScriptAsync("""
+            (() => {
+                const originalFetch = window.fetch;
+                let requests = 0;
+                window.fetch = (url, options) => {
+                    if (String(url).includes('/IPAddresses/GetIntelligence')) {
+                        document.documentElement.dataset.testIpRequests = String(++requests);
+                        if (requests === 1) {
+                            return new Promise((resolve, reject) =>
+                                options.signal.addEventListener('abort', () => reject(new DOMException('Paused', 'AbortError')), { once: true }));
+                        }
+                    }
+                    return originalFetch(url, options);
+                };
+            })();
+            """);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/IPAddresses/Details?ipAddress={player.IpAddress}").AbsoluteUri,
+            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await Assertions.Expect(browser.Page.Locator("html")).ToHaveAttributeAsync("data-test-ip-requests", "1");
+        await Assertions.Expect(browser.Page.Locator("#ip-intelligence-content")).ToContainTextAsync("Loading risk assessment");
+        await Assertions.Expect(browser.Page.Locator("#ipPlayersTable")).ToContainTextAsync(player.Username);
+
+        var restored = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.EvaluateAsync("""
+                () => {
+                    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+                    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+                }
+                """),
+            r => new Uri(r.Url).AbsolutePath == "/IPAddresses/GetIntelligence");
+        Assert.True(restored.Ok);
+        await Assertions.Expect(browser.Page.Locator("#ip-intelligence-content")).ToContainTextAsync("Risk Score: 80");
+        await Assertions.Expect(browser.Page.Locator("#ipPlayersTable")).ToContainTextAsync(player.Username);
+        await Assertions.Expect(browser.Page.Locator("html")).ToHaveAttributeAsync("data-test-ip-requests", "2");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task CachedPageRestoreKeepsInactiveHistoryLazyAndResumesInterruptedActiveHistory()
+    {
+        var player = new PlayerDtoBuilder().WithIpAddress("203.0.113.10").Build();
+        var scenario = new PlayersDetailsScenario(player, riskScore: 80);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        await browser.Page.AddInitScriptAsync("""
+            (() => {
+                const originalFetch = window.fetch;
+                let requests = 0;
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.documentElement.dataset.testHistoryRequests = String(requests);
+                }, { once: true });
+                window.fetch = (url, options) => {
+                    if (String(url).includes('/Players/GetIpHistory/')) {
+                        document.documentElement.dataset.testHistoryRequests = String(++requests);
+                        if (requests === 1) {
+                            return new Promise((resolve, reject) =>
+                                options.signal.addEventListener('abort', () => reject(new DOMException('Paused', 'AbortError')), { once: true }));
+                        }
+                    }
+                    return originalFetch(url, options);
+                };
+            })();
+            """);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Players/Details/{player.PlayerId}").AbsoluteUri,
+            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await Assertions.Expect(browser.Page.Locator(".risk-score-gauge .gauge-value")).ToHaveTextAsync("80");
+        await browser.Page.EvaluateAsync("""
+            () => {
+                window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+                window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+            }
+            """);
+        await Assertions.Expect(browser.Page.Locator("html")).ToHaveAttributeAsync("data-test-history-requests", "0");
+
+        await browser.Page.Locator("#ipAddresses-tab").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("html")).ToHaveAttributeAsync("data-test-history-requests", "1");
+        var restored = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.EvaluateAsync("""
+                () => {
+                    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+                    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+                }
+                """),
+            r => new Uri(r.Url).AbsolutePath.StartsWith("/Players/GetIpHistory/", StringComparison.Ordinal));
+        Assert.True(restored.Ok);
+        await Assertions.Expect(browser.Page.Locator("#ipAddressesTable")).ToContainTextAsync("Risk: 80");
+        await Assertions.Expect(browser.Page.Locator("html")).ToHaveAttributeAsync("data-test-history-requests", "2");
     }
 }

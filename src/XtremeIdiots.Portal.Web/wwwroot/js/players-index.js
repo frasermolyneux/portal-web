@@ -175,13 +175,18 @@ $(document).ready(function () {
         if (drawTokenExpires <= Date.now()) { table.ajax.reload(null, false); return; }
         const version = drawVersion;
         const rows = table.rows({ page: 'current' }).data().toArray();
+        let hasCachedUnavailable = false;
         const missing = rows.filter(function (row) {
             const key = JSON.stringify([row.playerId, row.ipAddress]);
             const cached = intelligenceCache.get(key);
-            if (cached && Date.parse(cached.expiresAtUtc) > Date.now()) return false;
+            if (cached && Date.parse(cached.expiresAtUtc) > Date.now()) {
+                hasCachedUnavailable ||= cached.status === 'unavailable';
+                return false;
+            }
             intelligenceCache.delete(key);
             return !!row.ipAddress;
         });
+        if (hasCachedUnavailable) showIntelligenceRetry();
         if (!missing.length) return;
         const controller = new AbortController();
         intelligenceRequest = controller;

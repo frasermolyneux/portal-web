@@ -41,7 +41,13 @@
 
         const history = document.querySelector('[data-ip-history-url]');
         let historyRequest = null;
+        let historyTask = Promise.resolve();
         let historyExpires = 0;
+        function requestHistory() {
+            if (historyRequest) return historyTask;
+            historyTask = loadHistory();
+            return historyTask;
+        }
         async function loadHistory() {
             if (!history || historyRequest || historyExpires > Date.now()) return;
             history.querySelectorAll('[data-intelligence-retry]').forEach(message => message.remove());
@@ -51,7 +57,7 @@
                 const response = await fetch(history.dataset.ipHistoryUrl, { signal: controller.signal });
                 if (!response.ok || response.redirected) throw new Error('IP history unavailable');
                 const json = await response.json();
-                if (!history.isConnected) return;
+                if (controller.signal.aborted || !history.isConnected) return;
                 let expires = Date.now() + 30000;
                 json.data.forEach(function (intel) {
                     expires = Math.min(expires, Date.parse(intel.expiresAtUtc));
@@ -67,18 +73,25 @@
                 });
                 historyExpires = expires;
                 if (json.data.some(intel => intel.status === 'unavailable'))
-                    retryButton(history, function () { historyExpires = 0; return loadHistory(); });
+                    retryButton(history, function () { historyExpires = 0; return requestHistory(); });
             } catch (error) {
-                if (error.name !== 'AbortError') retryButton(history, loadHistory);
+                if (error.name !== 'AbortError') retryButton(history, requestHistory);
             } finally {
                 if (historyRequest === controller) historyRequest = null;
             }
         }
-        document.getElementById('ipAddresses-tab')?.addEventListener('shown.bs.tab', loadHistory);
-        if (history?.classList.contains('active')) void loadHistory();
+        document.getElementById('ipAddresses-tab')?.addEventListener('shown.bs.tab', requestHistory);
+        if (history?.classList.contains('active')) void requestHistory();
 
         const ipSection = document.querySelector('[data-ip-intelligence-url]');
         let ipRequest = null;
+        let ipTask = Promise.resolve();
+        let resumeIpDetails = false;
+        function requestIpDetails() {
+            if (ipRequest) return ipTask;
+            ipTask = loadIpDetails();
+            return ipTask;
+        }
         async function loadIpDetails() {
             if (!ipSection || ipRequest) return;
             ipSection.querySelectorAll('[data-intelligence-retry]').forEach(message => message.remove());
@@ -89,7 +102,7 @@
                 if (!response.ok || response.redirected) throw new Error('IP intelligence unavailable');
                 const html = new DOMParser().parseFromString(await response.text(), 'text/html');
                 const enriched = html.getElementById('ip-intelligence-content');
-                if (!ipSection.isConnected) return;
+                if (controller.signal.aborted || !ipSection.isConnected) return;
                 if (!enriched) throw new Error('IP intelligence unavailable');
                 // Only replace optional intelligence; keep the independently loaded associated-player data.
                 const columns = ipSection.children;
@@ -102,15 +115,29 @@
                 Array.from(newColumns[0].querySelector('.stats-container').children).slice(1)
                     .forEach(element => stats.append(element.cloneNode(true)));
                 initializeMap();
-                if (enriched.dataset.intelligenceStatus === 'unavailable') retryButton(ipSection, loadIpDetails);
+                if (enriched.dataset.intelligenceStatus === 'unavailable') retryButton(ipSection, requestIpDetails);
             } catch (error) {
-                if (error.name !== 'AbortError') retryButton(ipSection, loadIpDetails);
+                if (error.name !== 'AbortError') retryButton(ipSection, requestIpDetails);
             } finally {
                 if (ipRequest === controller) ipRequest = null;
             }
         }
-        void loadIpDetails();
-        window.addEventListener('pagehide', function () { historyRequest?.abort(); ipRequest?.abort(); });
+        void requestIpDetails();
+        window.addEventListener('pagehide', function (event) {
+            resumeIpDetails = event.persisted && ipRequest !== null;
+            historyRequest?.abort();
+            ipRequest?.abort();
+        });
+        window.addEventListener('pageshow', async function (event) {
+            if (!event.persisted) return;
+            const shouldResumeIpDetails = resumeIpDetails;
+            resumeIpDetails = false;
+            await Promise.all([historyTask, ipTask]);
+            await Promise.all([
+                shouldResumeIpDetails && ipSection?.isConnected ? requestIpDetails() : null,
+                history?.isConnected && history.classList.contains('active') ? requestHistory() : null
+            ]);
+        });
         window.addEventListener('load', initializeMap);
     });
 })();

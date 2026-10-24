@@ -11,7 +11,7 @@
     }
 
     function fetchUnreadCount() {
-        if (poller) return poller.refresh();
+        if (poller) return poller.refreshAfterCurrent();
     }
 
     function updateBadge(count) {

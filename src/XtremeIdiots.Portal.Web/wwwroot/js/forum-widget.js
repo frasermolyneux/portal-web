@@ -12,6 +12,8 @@
     var POLL_INTERVAL = 60000;
     var pollTimer = null;
     var refreshActive = false;
+    var refreshDeferred = false;
+    var refreshAgain = false;
     var widgetState = { token: null, portalUrl: '', authenticated: false, filters: {} };
 
     // Action type icons (Unicode)
@@ -271,7 +273,7 @@
             markAllBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 apiPost('/api/external/notifications/read-all', { token: widgetState.token }, function (ok) {
-                    if (ok) refresh();
+                    if (ok) refresh(true);
                 });
             });
         }
@@ -315,10 +317,19 @@
         container.replaceChildren(error);
     }
 
-    function refresh() {
+    function refresh(afterMutation) {
         var container = document.getElementById('portal-notifications-widget');
-        if (!container || refreshActive || document.hidden) return;
+        if (!container || !widgetState.portalUrl) return;
+        if (document.hidden) {
+            refreshDeferred = true;
+            return;
+        }
+        if (refreshActive) {
+            if (afterMutation === true) refreshAgain = true;
+            return;
+        }
 
+        refreshDeferred = false;
         refreshActive = true;
         apiGet('/api/external/notifications?take=20', function (err, data) {
             try {
@@ -332,6 +343,10 @@
                 renderError(container, 'Unable to display notifications');
             } finally {
                 refreshActive = false;
+                if (refreshAgain) {
+                    refreshAgain = false;
+                    refresh();
+                }
             }
         });
     }
@@ -417,6 +432,14 @@
             clearInterval(pollTimer);
             pollTimer = null;
         }
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && refreshDeferred) refresh();
+    });
+    window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+        if (widgetState.token && !pollTimer) pollTimer = setInterval(refresh, POLL_INTERVAL);
+        refresh();
     });
 
     if (document.readyState === 'loading') {
