@@ -1398,7 +1398,7 @@ public class MapRotationsController(
         var runtimeStatus = status.Outcome == OrchestrationStatusQueryOutcome.Found ? status.Result?.RuntimeStatus : null;
         return runtimeStatus is "Terminated" or "Canceled" or nameof(AssignmentOperationStatus.Failed)
             ? (new SyncTriggerResult(true), runtimeStatus == nameof(AssignmentOperationStatus.Failed))
-            : (new SyncTriggerResult(false, Error: "Termination was requested but is not confirmed. Refresh the operation result before retrying; no assignment reset was performed."), false);
+            : (new SyncTriggerResult(false, Error: "Terminal status is not confirmed. Refresh the operation result before retrying; no assignment reset was performed."), false);
     }
 
     private async Task<IActionResult?> CheckFinalizationSource(string instanceId, Guid assignmentId, DateTime operationStartedAt, CancellationToken cancellationToken)
@@ -1408,11 +1408,13 @@ public class MapRotationsController(
 
         var sourceId = Guid.Parse(instanceId[^36..]);
         var operations = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(sourceId, 0, 100, cancellationToken).ConfigureAwait(false);
-        return !operations.IsSuccess || operations.Result?.Data?.Items == null
-            ? StatusCode(502, "Unable to verify the initiating slot's operations. Nothing was terminated or reset.")
-            : operations.Result.Data.Items.Any(o => o.StartedAt > operationStartedAt)
+        if (!operations.IsSuccess || operations.Result?.Data?.Items == null)
+            return StatusCode(502, "Unable to verify the initiating slot's operations. Nothing was terminated or reset.");
+
+        var hasNewerWork = operations.Result.Data.Items.Any(o => o.StartedAt > operationStartedAt);
+        return hasNewerWork
             ? Conflict("The initiating slot has newer work. Refresh its result; this old finalization retry cannot terminate or reset it.")
-            : (IActionResult?)null;
+            : null;
     }
 
     private async Task<IActionResult?> CheckAssignmentInstanceOwnership(string instanceId, MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
