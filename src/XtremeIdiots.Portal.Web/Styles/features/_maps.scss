@@ -66,9 +66,14 @@
     margin-bottom: 1.25rem;
 }
 
+.native-download-context,
+.native-download-status,
+.native-download-size {
+    color: $xi-text;
+}
+
 .native-download-status {
     display: block;
-    color: $xi-text-muted;
     margin-bottom: .75rem;
 }
 
@@ -107,7 +112,6 @@
 }
 
 .native-download-size {
-    color: $xi-text-muted;
     font-size: $font-size-sm;
     white-space: nowrap;
 }

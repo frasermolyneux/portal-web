@@ -38,6 +38,22 @@ public sealed class NativeMapDownloadsBrowserTests
             .ToHaveAttributeAsync("href", "https://maps.xtremeidiots.com/?game=cod4&map=mp_test");
         Assert.True(await browser.Page.Locator("#mapDownloads").EvaluateAsync<bool>(
             "root => root.scrollWidth <= root.clientWidth && root.getBoundingClientRect().width <= 1120"));
+        Assert.True(await browser.Page.EvaluateAsync<bool>("""
+            () => {
+                const luminance = color => {
+                    const [r, g, b] = color.match(/\d+/g).slice(0, 3).map(Number).map(value => {
+                        const channel = value / 255;
+                        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+                    });
+                    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                };
+                return [...document.querySelectorAll('#downloadContext, #downloadStatus, .native-download-size')].every(element => {
+                    const foreground = luminance(getComputedStyle(element).color);
+                    const background = luminance(getComputedStyle(element.closest('.ibox-title, .ibox-content')).backgroundColor);
+                    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05) >= 4.5;
+                });
+            }
+            """));
         if (authenticated)
         {
             var zip = browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" });
@@ -56,6 +72,7 @@ public sealed class NativeMapDownloadsBrowserTests
                 .ToHaveAttributeAsync("href", "/Identity/Login?returnUrl=%2FMapDownloads%3Fgame%3Dcod4%26map%3Dmp_test");
         }
 
+        await browser.Page.Locator("#mapDownloads").EvaluateAsync("async root => await Promise.all(root.getAnimations().map(animation => animation.finished))");
         var screenshot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TestResults", $"native-download-folder-{width}.png"));
         await browser.Page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshot, FullPage = true });
         browser.AssertNoBrowserErrors();
@@ -279,6 +296,34 @@ public sealed class NativeMapDownloadsBrowserTests
         Assert.Contains(fake.Calls, call => call == "Collection:cod2:mods");
         Assert.Contains(fake.Calls, call => call == "Browse:redirect/cod2/extreme");
         Assert.DoesNotContain(fake.Calls, call => call.StartsWith("Manifest:", StringComparison.Ordinal));
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task SearchedModFolders_ShowUnfilteredContents_AndRestoreSearchOnBack()
+    {
+        var folder = new ContentEntry("redirect/cod2/extreme", "extreme", true, 4, DateTimeOffset.UnixEpoch, "v1", null);
+        var file = RedirectDtoFactory.CreateFile(folder.Path + "/mod.iwd", 4);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.GameAdmin, services =>
+            services.AddFakeRedirectApiClient(fake => fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue(folder))));
+        await browser.Page.RouteAsync("**/MapDownloads/Browse?**", route =>
+        {
+            var search = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(route.Request.Url).Query)["search"].ToString();
+            Assert.Empty(search);
+            return Json(route, RedirectDtoFactory.CreateCatalogue(file));
+        });
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads?game=cod2").AbsoluteUri);
+        await browser.Page.Locator("#downloadKind").SelectOptionAsync("mods");
+        await browser.Page.Locator("#downloadQuery").FillAsync("extreme");
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Search", Exact = true }).ClickAsync();
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Browse files" }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadEntries")).ToContainTextAsync("mod.iwd");
+        await Assertions.Expect(browser.Page.Locator("#downloadSearch")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadFolderZip")).ToBeVisibleAsync();
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Back to collection" }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadSearch")).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadQuery")).ToHaveValueAsync("extreme");
+        await Assertions.Expect(browser.Page.Locator("#downloadEntries")).ToContainTextAsync("extreme");
         browser.AssertNoBrowserErrors();
     }
 

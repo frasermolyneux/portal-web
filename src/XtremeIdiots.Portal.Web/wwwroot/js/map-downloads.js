@@ -129,7 +129,7 @@
         if (manifest) return api('Manifest', { game: byId('downloadGame').value, mapName: manifest });
         return api(path ? 'Browse' : 'Collection', {
             game: byId('downloadGame').value, kind: byId('downloadKind').value,
-            path, search: byId('downloadQuery').value, page, version
+            path, search: path ? '' : byId('downloadQuery').value, page, version
         });
     }
     function renderEntry(entry, data) {
