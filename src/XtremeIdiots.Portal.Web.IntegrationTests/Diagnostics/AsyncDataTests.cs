@@ -283,6 +283,53 @@ public sealed class AsyncDataTests
     }
 
     [Fact]
+    public async Task ServerStatus_QueuesFreshMapReadAfterInFlightPoll()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        var reads = 0;
+        var firstReadStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirstRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await page.RouteAsync("**/ServerAdmin/GetCurrentMap/review-server", async route =>
+        {
+            var read = Interlocked.Increment(ref reads);
+            if (read == 1)
+            {
+                firstReadStarted.TrySetResult();
+                await releaseFirstRead.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+
+            var map = read == 1 ? "old-map" : "new-map";
+            await route.FulfillAsync(new()
+            {
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new { success = true, currentMap = map })
+            });
+        });
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.SetContentAsync("<span id=\"currentMapName\"></span>");
+        foreach (var script in new[] { "/lib/jquery/dist/jquery.min.js", "/js/async-data.js", "/js/rcon-utils.js", "/js/rcon-server-status.js" })
+        {
+            await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, script).AbsoluteUri });
+        }
+
+        await page.EvaluateAsync("""
+            () => {
+                RconServerStatus.init({ serverId: 'review-server' });
+                RconServerStatus.start();
+            }
+            """);
+        await firstReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await page.EvaluateAsync("() => { window.afterMapChange = RconServerStatus.load(); }");
+        releaseFirstRead.TrySetResult();
+        await page.EvaluateAsync("async () => { await window.afterMapChange; }");
+        await Assertions.Expect(page.Locator("#currentMapName")).ToHaveTextAsync("new-map");
+        Assert.Equal(2, Volatile.Read(ref reads));
+        await page.EvaluateAsync("() => RconServerStatus.dispose()");
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task Poller_CoalescesRefreshesAndSchedulesOnlyAfterCompletion()
     {
         await using var fixture = await BrowserFixture.CreateAsync();

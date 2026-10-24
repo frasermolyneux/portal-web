@@ -14,6 +14,28 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "HttpIntegration")]
 public sealed class OverviewEndpointTests
 {
+    [Fact]
+    public async Task EmptyAgentStatusDoesNotRenderLoadingPanelOrRequestTelemetry()
+    {
+        var scenario = new MapControlScenario();
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(), GameServerFilter.AgentEnabled,
+                0, 100, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
+
+        using var response = await host.Client.GetAsync("/Status/AgentStatus");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Contains("No agent-enabled servers found.", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Loading agent telemetry", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetOverviewTelemetry", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("overview-panels.js", html, StringComparison.Ordinal);
+        scenario.AgentTelemetry.VerifyNoOtherCalls();
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

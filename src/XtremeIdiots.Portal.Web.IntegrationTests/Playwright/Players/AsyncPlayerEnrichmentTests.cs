@@ -179,6 +179,48 @@ public sealed class AsyncPlayerEnrichmentTests
     }
 
     [Fact]
+    public async Task HistoryBatchEnrichesRowsDetachedByFilteringWhileRequestIsPending()
+    {
+        var player = new PlayerDtoBuilder()
+            .WithIpAddress("203.0.113.10")
+            .WithIpAddress("198.51.100.7")
+            .Build();
+        var scenario = new PlayersDetailsScenario(player, riskScore: 80);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var gate = new RequestGate(hold: true);
+        var requests = 0;
+        await browser.Page.RouteAsync("**/Players/GetIpHistory/**", async route =>
+        {
+            Interlocked.Increment(ref requests);
+            await gate.WaitAsync();
+            await route.ContinueAsync();
+        });
+        try
+        {
+            await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Players/Details/{player.PlayerId}").AbsoluteUri,
+                new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+            await Assertions.Expect(browser.Page.Locator(".risk-score-gauge .gauge-value")).ToHaveTextAsync("80");
+            await browser.Page.Locator("#ipAddresses-tab").ClickAsync();
+            await gate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await browser.Page.EvaluateAsync("() => { $('#ipAddressesTable').DataTable().search('203.0.113.10').draw(); }");
+            await Assertions.Expect(browser.Page.Locator("#ipAddressesTable [data-history-ip='198.51.100.7']")).ToHaveCountAsync(0);
+
+            var response = browser.Page.WaitForResponseAsync(r =>
+                new Uri(r.Url).AbsolutePath.StartsWith("/Players/GetIpHistory/", StringComparison.Ordinal));
+            gate.Release();
+            Assert.True((await response).Ok);
+            await Assertions.Expect(browser.Page.Locator("#ipAddressesTable [data-history-ip='203.0.113.10']")).ToContainTextAsync("Risk: 80");
+            await browser.Page.EvaluateAsync("() => { $('#ipAddressesTable').DataTable().search('').draw(); }");
+            await Assertions.Expect(browser.Page.Locator("#ipAddressesTable [data-history-ip='198.51.100.7']")).ToContainTextAsync("Risk: 80");
+            Assert.Equal(1, Volatile.Read(ref requests));
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    [Fact]
     public async Task CachedPageRestoreResumesInterruptedIpCardsWithoutReplacingAssociatedPlayers()
     {
         var player = new PlayerDtoBuilder().Build();

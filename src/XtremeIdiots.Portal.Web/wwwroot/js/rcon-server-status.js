@@ -33,7 +33,7 @@ var RconServerStatus = (function () {
 
     function load(callback) {
         ensurePoller();
-        return _poller.refresh().then(function () {
+        return _poller.refreshAfterCurrent().then(function () {
             if (typeof callback === 'function') callback();
         });
     }

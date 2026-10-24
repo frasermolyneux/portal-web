@@ -25,9 +25,6 @@
                         </span>
                     </div>
                     <div class="ibox-content">
-                        <div data-overview-url="@Url.Action("GetOverviewTelemetry")">
-                            <p class="text-muted" role="status">Loading agent telemetry…</p>
-                        </div>
                         @if (!Model.Any())
                         {
                             <div class="alert alert-warning">
@@ -36,6 +33,9 @@
                         }
                         else
                         {
+                            <div data-overview-url="@Url.Action("GetOverviewTelemetry")">
+                                <p class="text-muted" role="status">Loading agent telemetry…</p>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover w-100">
                                     <thead>

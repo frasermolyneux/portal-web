@@ -59,16 +59,19 @@
                 const json = await response.json();
                 if (controller.signal.aborted || !history.isConnected) return;
                 let expires = Date.now() + 30000;
+                const dataTable = $.fn.DataTable.isDataTable('#ipAddressesTable') ? $('#ipAddressesTable').DataTable() : null;
+                const cells = dataTable
+                    ? dataTable.column(0, { search: 'none', page: 'all' }).nodes().toArray()
+                    : Array.from(history.querySelectorAll('[data-history-ip]'));
                 json.data.forEach(function (intel) {
                     expires = Math.min(expires, Date.parse(intel.expiresAtUtc));
-                    history.querySelectorAll('[data-history-ip]').forEach(function (cell) {
+                    cells.forEach(function (cell) {
                         if (cell.dataset.historyIp !== intel.address) return;
                         const html = formatIPAddress(intel.address, intel.proxyCheckRiskScore, intel.isProxy,
                             intel.isVpn, intel.proxyType || '', intel.countryCode || '') +
                             (intel.status === 'unavailable' ? ' <small class="text-muted">Risk unavailable</small>' : '');
                         window.PortalAsync.renderHtml(cell, html);
-                        if ($.fn.DataTable.isDataTable('#ipAddressesTable'))
-                            $('#ipAddressesTable').DataTable().cell(cell).invalidate('dom');
+                        if (dataTable) dataTable.cell(cell).invalidate('dom');
                     });
                 });
                 historyExpires = expires;
