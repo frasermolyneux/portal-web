@@ -753,6 +753,79 @@ public sealed class NativeMapDownloadsBrowserTests
         Assert.Equal([9, 9], content);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DelayedZipStatus_CannotResurrectCompletedOrDismissedRecords(bool dismiss)
+    {
+        var fake = ArchiveFake(3, "queued");
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.GameAdmin,
+            services => services.AddSingleton<IRedirectApiClient>(fake));
+        await browser.Page.Clock.InstallAsync(new() { Time = "2026-01-01T00:00:00Z" });
+        await browser.Page.Clock.PauseAtAsync(new DateTime(2026, 1, 1, 0, 0, 1, DateTimeKind.Utc));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads").AbsoluteUri);
+        await browser.Page.EvaluateAsync("window.showSaveFilePicker = undefined");
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP queued");
+        var other = await browser.Page.Context.NewPageAsync();
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = RedirectDtoFactory.CreateArchive(status: "complete") with
+        {
+            Bytes = 3,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(1)
+        };
+        await browser.Page.Context.RouteAsync("**/MapDownloads/ArchiveStatus?**", async route =>
+        {
+            if (route.Request.Frame.Page == other)
+            {
+                pending.TrySetResult();
+                await release.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            }
+
+            await Json(route, ready);
+        });
+        await browser.Page.RouteAsync(DirectUrl, route => route.FulfillAsync(new RouteFulfillOptions
+        {
+            Body = "abc",
+            Headers = new Dictionary<string, string> { ["Content-Disposition"] = "attachment; filename=\"map.ff\"" }
+        }));
+        await other.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads").AbsoluteUri);
+        await pending.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        try
+        {
+            await browser.Page.Clock.FastForwardAsync(2500);
+            var save = browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save ZIP", Exact = true });
+            await Assertions.Expect(save).ToBeVisibleAsync();
+            if (dismiss)
+                await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Dismiss download task" }).ClickAsync();
+            else
+            {
+                await browser.Page.RunAndWaitForDownloadAsync(() => save.ClickAsync());
+                await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("Sent to your browser download manager");
+            }
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+
+        await Assertions.Expect(other.Locator("#downloadTasks")).ToContainTextAsync("completed or was dismissed in another tab");
+        await Assertions.Expect(other.GetByRole(AriaRole.Button, new() { Name = "Save ZIP", Exact = true })).ToHaveCountAsync(0);
+        await other.ReloadAsync();
+        var count = await other.EvaluateAsync<int>("""
+            () => new Promise(resolve => {
+                const open = indexedDB.open('portal-map-downloads', 1);
+                open.onsuccess = () => {
+                    const request = open.result.transaction('tasks').objectStore('tasks').count();
+                    request.onsuccess = () => resolve(request.result);
+                };
+            })
+            """);
+        Assert.Equal(0, count);
+        await Assertions.Expect(other.Locator(".native-download-task")).ToHaveCountAsync(0);
+    }
+
     private static FakeRedirectApiClient ArchiveFake(long bytes, string state)
     {
         var folder = new ContentEntry("redirect/cod4/usermaps/mp_test", "mp_test", true, bytes, DateTimeOffset.UnixEpoch, "v1", null);

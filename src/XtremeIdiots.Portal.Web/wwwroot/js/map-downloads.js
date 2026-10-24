@@ -194,6 +194,7 @@
                     try {
                         // A delayed ZIP status response must not erase another tab's disk checkpoint.
                         const existing = request.result;
+                        if (!existing && task.persisted) { retireTask(task); return; }
                         const value = !handle && existing?.integrity != null
                             ? { ...existing, job, expires }
                             : { id, owner, resource, name, version: fileVersion, offset, total, handle, expires, job, integrity, invalidated };
@@ -244,6 +245,11 @@
     function newTask(data) {
         const task = { id: crypto.randomUUID(), owner: member, offset: 0, ...data };
         tasks.set(task.id, task); renderTask(task); return task;
+    }
+    function retireTask(task) {
+        clearTimeout(task.timer); task.abort?.abort();
+        task.state = 'This task completed or was dismissed in another tab, or its destination was reused. Dismiss this local task.';
+        task.terminal = true; task.busy = false;
     }
     async function createZip(paths) {
         if (!member || paths.length < 1 || paths.length > 15) return;
@@ -381,8 +387,7 @@
         });
         if (!record) {
             if (task.persisted) {
-                task.state = 'This task completed or was dismissed in another tab, or its destination was reused. Dismiss this local task.';
-                task.terminal = true;
+                retireTask(task);
                 throw new Error(task.state);
             }
             return;
@@ -447,7 +452,7 @@
         const records = await readRecords(db);
         await Promise.all(records.map(async record => {
             if (record.id === task.id || !record.handle || !await record.handle.isSameEntry(task.handle)) return;
-            record.invalidated = true;
+            record.invalidated = true; record.persisted = true;
             await store(record);
             const previous = tasks.get(record.id);
             if (previous) {

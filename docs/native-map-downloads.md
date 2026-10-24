@@ -57,6 +57,7 @@ committed prefix through bounded, at-most-4-MiB disk reads before appending; a
 replaced or edited file requires a new save. Selecting the same destination for
 another Portal transfer invalidates earlier checkpoints. Concurrent ZIP status
 updates merge job metadata transactionally, preserving handles, hashes and offsets.
+Polling updates cannot recreate a record completed or dismissed in another tab.
 A longer partially saved file is truncated to the last committed offset on resume;
 a shorter file requires an explicit restart in a new file. Changed versions are
 never appended, even when renewing grants. Revoked permissions and session or
