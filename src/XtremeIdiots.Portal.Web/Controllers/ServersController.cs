@@ -131,16 +131,30 @@ public class ServersController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null || !gameServerApiResponse.Result.Data.ServerListEnabled)
+            if (gameServerApiResponse.IsNotFound)
             {
                 return Json(new { data = Array.Empty<object>() });
             }
+
+            if (!gameServerApiResponse.IsSuccess || gameServerApiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Public server metadata unavailable while reading live players for {ServerId}. API Success: {IsSuccess}",
+                    id, gameServerApiResponse.IsSuccess);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                    new { error = "Live player data is currently unavailable." });
+            }
+
+            if (!gameServerApiResponse.Result.Data.ServerListEnabled)
+                return Json(new { data = Array.Empty<object>() });
 
             var livePlayersResponse = await repositoryApiClient.LiveStatus.V1.GetGameServerLivePlayers(id, cancellationToken).ConfigureAwait(false);
 
             if (!livePlayersResponse.IsSuccess || livePlayersResponse.Result?.Data?.Items is null)
             {
-                return Json(new { data = Array.Empty<object>() });
+                Logger.LogWarning("Live player data unavailable for public server {ServerId}. API Success: {IsSuccess}",
+                    id, livePlayersResponse.IsSuccess);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                    new { error = "Live player data is currently unavailable." });
             }
 
             // Project only public-safe fields — no IPs, GUIDs, risk data, or player profiles

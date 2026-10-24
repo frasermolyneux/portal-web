@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
@@ -14,6 +15,44 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "HttpIntegration")]
 public sealed class OverviewEndpointTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task PublicLivePlayersDistinguishesUpstreamFailureFromSuccessfulEmptySnapshot(bool upstreamUnavailable, bool metadataUnavailable)
+    {
+        var scenario = new MapControlScenario();
+        var properties = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        properties[nameof(GameServerDto.ServerListEnabled)] = true;
+        var publicServer = properties.ToObject<GameServerDto>();
+        var serverResult = metadataUnavailable
+            ? new ApiResult<GameServerDto>(HttpStatusCode.ServiceUnavailable)
+            : new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(publicServer));
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(serverResult);
+        var result = upstreamUnavailable
+            ? new ApiResult<CollectionModel<LivePlayerDto>>(HttpStatusCode.ServiceUnavailable)
+            : new ApiResult<CollectionModel<LivePlayerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<LivePlayerDto>>(new CollectionModel<LivePlayerDto>([])));
+        scenario.RepositoryClient.Setup(r => r.LiveStatus.V1.GetGameServerLivePlayers(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+
+        using var response = await host.Client.GetAsync($"/Servers/GetLivePlayers/{scenario.GameServerId}");
+        var unavailable = upstreamUnavailable || metadataUnavailable;
+        Assert.Equal(unavailable ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK, response.StatusCode);
+        var json = Newtonsoft.Json.Linq.JObject.Parse(await response.Content.ReadAsStringAsync());
+        if (unavailable)
+        {
+            Assert.Equal("Live player data is currently unavailable.", json.Value<string>("error"));
+            Assert.Null(json["data"]);
+        }
+        else
+        {
+            Assert.Empty(Assert.IsType<Newtonsoft.Json.Linq.JArray>(json["data"]));
+        }
+    }
+
     [Fact]
     public async Task EmptyAgentStatusDoesNotRenderLoadingPanelOrRequestTelemetry()
     {
