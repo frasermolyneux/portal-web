@@ -33,6 +33,7 @@ public class MapRotationsController(
 {
     private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty4x, GameType.CallOfDuty5];
     private readonly static string[] assignmentOperationNames = ["apply", "sync", "activate", "deactivate", "remove", "verify"];
+    private const string PendingInstanceKey = "PendingInstanceId";
 
     private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
     {
@@ -930,7 +931,7 @@ public class MapRotationsController(
             var result = await syncApiClient.TriggerApply(assignmentId, cancellationToken).ConfigureAwait(false);
             if (result.Success)
             {
-                TempData["PendingInstanceId"] = $"maprot-apply-{assignmentId}";
+                TempData[PendingInstanceKey] = $"maprot-apply-{assignmentId}";
                 this.AddAlertInfo("Apply rotation queued: repair files and apply this slot and its linked main/AACP slot using the same rotation. Check each target's file and configuration results. No restart is performed and runtime use is not confirmed.");
                 TrackSuccessTelemetry("MapRotationApplyQueued", nameof(ApplyAssignment));
             }
@@ -951,9 +952,10 @@ public class MapRotationsController(
 
         var response = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(
             assignment.MapRotationServerAssignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
-        return !response.IsSuccess || response.Result?.Data?.Items == null
-            ? StatusCode(502, "Unable to check assignment operations. Please retry.")
-            : response.Result.Data.Items.Any(o => o.Status == AssignmentOperationStatus.InProgress)
+        if (!response.IsSuccess || response.Result?.Data?.Items == null)
+            return StatusCode(502, "Unable to check assignment operations. Please retry.");
+        var hasOperationInProgress = response.Result.Data.Items.Any(o => o.Status == AssignmentOperationStatus.InProgress);
+        return hasOperationInProgress
             ? Conflict("An assignment operation is still in progress. Wait for its result or cancel it successfully.")
             : (IActionResult?)null;
     }
@@ -995,7 +997,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertInfo("File repair queued. Configuration is unchanged. Check the file operation result below.");
-                TempData["PendingInstanceId"] = $"maprot-sync-{assignmentId}";
+                TempData[PendingInstanceKey] = $"maprot-sync-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentSynced", nameof(SyncAssignment));
             }
             else
@@ -1044,7 +1046,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertInfo("Configuration application queued. Check the result below; runtime use is not confirmed. Restart only if required by the game/mod configuration, using a separate explicit action.");
-                TempData["PendingInstanceId"] = $"maprot-activate-{assignmentId}";
+                TempData[PendingInstanceKey] = $"maprot-activate-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentActivated", nameof(ActivateAssignment));
 
                 // Auto-promote rotation status to Published if still in Draft or Testing
@@ -1131,7 +1133,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertInfo("Deactivation queued. Wait for successful completion before unassigning.");
-                TempData["PendingInstanceId"] = $"maprot-deactivate-{assignmentId}";
+                TempData[PendingInstanceKey] = $"maprot-deactivate-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentDeactivated", nameof(DeactivateAssignment));
             }
             else
@@ -1180,7 +1182,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 this.AddAlertInfo("File verification queued. Check the result below; this does not confirm runtime use.");
-                TempData["PendingInstanceId"] = $"maprot-verify-{assignmentId}";
+                TempData[PendingInstanceKey] = $"maprot-verify-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentVerified", nameof(VerifyAssignment));
             }
             else
@@ -1283,7 +1285,7 @@ public class MapRotationsController(
             if (termination.CancellationRequested)
             {
                 this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
-                TempData["PendingInstanceId"] = instanceId;
+                TempData[PendingInstanceKey] = instanceId;
                 return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
             }
 
@@ -1396,7 +1398,7 @@ public class MapRotationsController(
             if (terminateResult.CancellationRequested)
             {
                 this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
-                TempData["PendingInstanceId"] = instanceId;
+                TempData[PendingInstanceKey] = instanceId;
             }
             else if (terminateResult.Success)
             {
