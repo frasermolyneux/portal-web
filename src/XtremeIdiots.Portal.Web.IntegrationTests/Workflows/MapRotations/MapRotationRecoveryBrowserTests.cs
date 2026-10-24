@@ -72,11 +72,13 @@ public sealed class MapRotationRecoveryBrowserTests
         await browser.Page.RouteAsync("**/MapRotations/GetMapRotationsAjax**", route => route.FulfillAsync(new RouteFulfillOptions
         {
             ContentType = "application/json",
-            Body = /*lang=json,strict*/ """{"draw":1,"recordsTotal":0,"recordsFiltered":0,"data":[]}"""
+            Body = /*lang=json,strict*/ """{"draw":1,"recordsTotal":1,"recordsFiltered":1,"data":[{"mapRotationId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","gameType":"CallOfDuty4","title":"Synthetic assigned rotation","gameMode":"dm","status":"Published","mapCount":1,"serverCount":1,"updatedAt":"2026-10-24"}]}"""
         }));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations").AbsoluteUri);
         await Assertions.Expect(browser.Page.Locator("#dataTable")).ToBeVisibleAsync();
         await Assertions.Expect(browser.Page.Locator(".ibox-content.datatable-tight")).ToHaveCountAsync(1);
+        await Assertions.Expect(browser.Page.Locator("#dataTable")).ToContainTextAsync("Assigned to 1 server");
+        await Assertions.Expect(browser.Page.Locator("#dataTable")).Not.ToContainTextAsync("Active on");
         browser.AssertNoBrowserErrors();
     }
 }

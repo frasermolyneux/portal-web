@@ -10,7 +10,9 @@ Deploy the coordinated Servers Integration authenticated manifest/file-size repa
 changes, Repository lifecycle/90-day history changes, and Sync V2 Apply and
 cooperative-cancellation changes before using the updated Portal. **Apply rotation**
 calls `POST /api/map-rotations/apply/{assignmentId}`. Deploying Portal alone does
-not provide this service.
+not provide this service. Use the normal Sync deployment that imports the updated
+OpenAPI definition into APIM; an app-only `maps-bootstrap` deployment does not
+publish the new Apply route.
 
 Sign in with deployment permission for the relevant server. In **Map Rotations**,
 open the currently assigned rotation, then **Status** beside the correct server

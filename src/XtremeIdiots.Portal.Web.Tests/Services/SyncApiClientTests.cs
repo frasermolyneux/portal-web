@@ -52,6 +52,22 @@ public class SyncApiClientTests
     }
 
     [Fact]
+    public async Task Status_CompletedBusinessFailure_PreservesFalseOutcomeAndProgressError()
+    {
+        using var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(/*lang=json,strict*/ """{"instanceId":"synthetic","runtimeStatus":"Completed","success":false,"result":{"success":false,"error":"linked target failed"},"progress":{"operation":"Apply","totalMaps":1,"completedMaps":1,"maps":[{"mapName":"configuration","status":"Failed","error":"linked target failed"}]}}""")
+        });
+        using var httpClient = new HttpClient(handler);
+
+        var status = await CreateClient(httpClient).GetOrchestrationStatus("synthetic");
+
+        Assert.Equal(OrchestrationStatusQueryOutcome.Found, status.Outcome);
+        Assert.False(status.Result!.Success);
+        Assert.Equal("linked target failed", Assert.Single(status.Result.Progress!.Maps).Error);
+    }
+
+    [Fact]
     public async Task Apply_ErrorResponse_IsNotSuccess()
     {
         using var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.Conflict));
