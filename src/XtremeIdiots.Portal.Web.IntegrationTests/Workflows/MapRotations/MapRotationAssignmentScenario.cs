@@ -55,15 +55,6 @@ internal sealed class MapRotationAssignmentScenario
             .Setup(x => x.GameServers.V1.GetGameServer(NonPermittedServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(nonPermittedServer)));
 
-        // GetAssignmentOperations — empty for Details page rendering
-        RepositoryClient
-            .Setup(x => x.MapRotations.V1.GetAssignmentOperations(
-                It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<MapRotationAssignmentOperationDto>>(
-                HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<MapRotationAssignmentOperationDto>>(
-                    new CollectionModel<MapRotationAssignmentOperationDto>([]))));
-
         // CreateServerAssignment — records the dto for assertion
         RepositoryClient
             .Setup(x => x.MapRotations.V1.CreateServerAssignment(

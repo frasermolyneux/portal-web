@@ -350,8 +350,6 @@ public class MapRotationsController(
                 }
             }
 
-            // Load game server details and operations for each assignment
-            var assignmentOperations = new Dictionary<Guid, List<MapRotationAssignmentOperationDto>>();
             if (rotation.ServerAssignments?.Count > 0)
             {
                 var gameServerIds = rotation.ServerAssignments
@@ -382,19 +380,6 @@ public class MapRotationsController(
                         }
                     }
                 }
-
-                foreach (var assignment in rotation.ServerAssignments)
-                {
-                    var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(assignment.MapRotationServerAssignmentId, 0, 10, cancellationToken).ConfigureAwait(false);
-                    if (opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null)
-                    {
-                        assignmentOperations[assignment.MapRotationServerAssignmentId] = [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)];
-                    }
-                    else
-                    {
-                        this.AddAlertDanger("Operation history could not be loaded for an assignment. Recovery actions are disabled until its status can be checked.");
-                    }
-                }
             }
 
             // Determine if the user can assign to at least one compatible server (short-circuits on first match)
@@ -404,7 +389,6 @@ public class MapRotationsController(
             {
                 Rotation = rotation,
                 Maps = maps,
-                AssignmentOperations = assignmentOperations,
                 CanAssignServer = canAssignServer
             });
         }, nameof(Details)).ConfigureAwait(false);
@@ -869,24 +853,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var maps = new List<MapDto>();
-            if (rotation.MapRotationMaps?.Count > 0)
-            {
-                var metadata = await mapMetadataService.GetAsync(
-                    rotation.MapRotationMaps.Select(m => m.MapId), cancellationToken).ConfigureAwait(false);
-                foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
-                {
-                    if (metadata.TryGetValue(rotationMap.MapId, out var map))
-                        maps.Add(map);
-                }
-            }
-
             var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(id, 0, 20, cancellationToken).ConfigureAwait(false);
             if (!opsResponse.IsSuccess || opsResponse.Result?.Data?.Items == null)
-                return StatusCode(502, "Unable to load assignment operations. Please retry before starting recovery.");
-            List<MapRotationAssignmentOperationDto> operations = opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null
-                ? [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)]
-                : [];
+                return StatusCode(502, "Unable to load recent activity. Please retry before starting an action.");
+            List<MapRotationAssignmentOperationDto> operations = [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)];
 
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
 
@@ -895,7 +865,6 @@ public class MapRotationsController(
                 Assignment = assignment,
                 Rotation = rotation,
                 GameServer = serverResponse.IsSuccess ? serverResponse.Result?.Data : null,
-                Maps = maps,
                 Operations = operations
             });
         }, nameof(AssignmentStatus)).ConfigureAwait(false);
@@ -932,7 +901,7 @@ public class MapRotationsController(
             if (result.Success)
             {
                 TempData[PendingInstanceKey] = $"maprot-apply-{assignmentId}";
-                this.AddAlertInfo("Apply rotation queued: repair files and apply this slot and its linked main/AACP slot using the same rotation. Check each target's file and configuration results. No restart is performed and runtime use is not confirmed.");
+                this.AddAlertInfo("Apply rotation queued. Follow progress below.");
                 TrackSuccessTelemetry("MapRotationApplyQueued", nameof(ApplyAssignment));
             }
             else
@@ -996,7 +965,7 @@ public class MapRotationsController(
 
             if (result.Success)
             {
-                this.AddAlertInfo("File repair queued. Configuration is unchanged. Check the file operation result below.");
+                this.AddAlertInfo("File repair queued. Configuration is unchanged.");
                 TempData[PendingInstanceKey] = $"maprot-sync-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentSynced", nameof(SyncAssignment));
             }
@@ -1181,7 +1150,7 @@ public class MapRotationsController(
 
             if (result.Success)
             {
-                this.AddAlertInfo("File verification queued. Check the result below; this does not confirm runtime use.");
+                this.AddAlertInfo("File verification queued. Follow progress below.");
                 TempData[PendingInstanceKey] = $"maprot-verify-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentVerified", nameof(VerifyAssignment));
             }
@@ -1299,11 +1268,11 @@ public class MapRotationsController(
         }
         else if (result.Success)
         {
-            this.AddAlertInfo("The orchestration is already terminal. Refresh the recorded Sync outcome; Portal has not changed lifecycle state. Uncertain legacy state needs service-side investigation.");
+            this.AddAlertInfo("This action has finished. Refresh to see its recorded result.");
         }
         else
         {
-            this.AddAlertDanger($"Cancellation failed: {result.Error}. Uncertain legacy state needs service-side investigation; Portal does not reset lifecycle state.");
+            this.AddAlertDanger($"Cancellation failed: {result.Error}. Ask a portal administrator to investigate if the status does not update.");
         }
 
         return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });

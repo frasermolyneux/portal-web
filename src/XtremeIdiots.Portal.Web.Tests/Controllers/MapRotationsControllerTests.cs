@@ -1385,7 +1385,7 @@ public class MapRotationsControllerTests
             Assert.IsType<JsonResult>(await sut.GetSyncProgress(instanceId));
         }
 
-        Assert.Contains("Refresh the recorded Sync outcome", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Refresh to see its recorded result", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("cancelled successfully", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
         VerifyNoCancellationMutation();
     }
@@ -1470,7 +1470,7 @@ public class MapRotationsControllerTests
             .ReturnsAsync(new SyncTriggerResult(true));
         await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId);
         VerifyNoCancellationMutation();
-        Assert.Contains("Portal has not changed lifecycle state", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Refresh to see its recorded result", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

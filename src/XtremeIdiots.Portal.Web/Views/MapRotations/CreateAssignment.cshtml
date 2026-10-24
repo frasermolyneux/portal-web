@@ -45,8 +45,7 @@ ViewData["RotationTitle"] : "");
                                             </button>
                                         }
                                     </div>
-                                    <small class="form-text text-muted">Path to the config file on the game server. Use
-                                        Browse to select a file via the Server File Browser.</small>
+                                    <small class="form-text text-muted">Choose the server's rotation config file.</small>
                                         <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                                     </div>
                                     <div class="mb-3">
@@ -63,19 +62,13 @@ ViewData["RotationTitle"] : "");
                                             </option>
                                             <option value="sv_maprotation_high" label="Load-based: high player count"></option>
                                         </datalist>
-                                        <small class="form-text text-muted">The config variable to write the rotation string to.
-                                            Type a custom name or select a suggestion.</small>
+                                        <small class="form-text text-muted">Select a suggestion or enter a custom slot.</small>
                                             <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
                                         </div>
-                                        <div class="alert alert-info small mb-3">
-                                            <i class="fa-solid fa-fw fa-circle-info"></i>
-                                            <strong>AACP Servers:</strong> If the server uses the Advanced Admin Control Panel
-                                            (OpenWarfare AACP), create two assignments for the same rotation:
-                                            one targeting <code>sv_maprotation</code> in your map rotation config, and another
-                                            targeting <code>scr_aacp_maps_1</code> in advancedacp.cfg.
-                                            Both will be formatted correctly (standard vs semicolon-separated). Activate both
-                                            assignments to keep the AACP map picker in sync.
-                                        </div>
+                                        <details class="mb-3">
+                                            <summary>Using an AACP map picker?</summary>
+                                            <p class="small text-muted mt-2 mb-0">Assign this rotation to both <code>sv_maprotation</code> and <code>scr_aacp_maps_1</code> on the same server. Apply rotation updates the pair together.</p>
+                                        </details>
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
