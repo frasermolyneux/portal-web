@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.Services.Settings;
 
 namespace XtremeIdiots.Portal.Web.ViewComponents;
 
@@ -13,7 +14,9 @@ namespace XtremeIdiots.Portal.Web.ViewComponents;
 /// Initializes a new instance of the GameServerListViewComponent
 /// </remarks>
 /// <param name="repositoryApiClient">Client for repository API operations</param>
-public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClient) : ViewComponent
+public class GameServerListViewComponent(
+    IRepositoryApiClient repositoryApiClient,
+    IGameServerConfigurationReadService configurationReadService) : ViewComponent
 {
 
     /// <summary>
@@ -32,8 +35,8 @@ public class GameServerListViewComponent(IRepositoryApiClient repositoryApiClien
 
         var allServers = gameServersApiResponse.Result.Data.Items.ToList();
 
-        var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
-            repositoryApiClient, allServers.Select(s => s.GameServerId)).ConfigureAwait(false);
+        var serverConfigs = await configurationReadService.GetAsync(
+            allServers.Select(s => s.GameServerId), cancellationToken: HttpContext.RequestAborted).ConfigureAwait(false);
 
         var filtered = allServers
             .Where(s => !string.IsNullOrWhiteSpace(

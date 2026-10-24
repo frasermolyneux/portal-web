@@ -32,6 +32,8 @@ public class MapManagerController(
     IRepositoryApiClient repositoryApiClient,
     IServersApiClient serversApiClient,
     ISyncApiClient syncApiClient,
+    IMapMetadataService mapMetadataService,
+    DependencyReadCoordinator readCoordinator,
     TelemetryClient telemetryClient,
     ILogger<MapManagerController> logger,
     IConfiguration configuration,
@@ -75,15 +77,16 @@ public class MapManagerController(
                     .ToList()
                 : [];
 
+            var rotationResults = await Task.WhenAll(assignments.Select(assignment => assignment.MapRotationId).Distinct().Select(
+                rotationId => readCoordinator.RunAsync(DependencyWorkload.MapMetadata, rotationId.ToString(),
+                    () => repositoryApiClient.MapRotations.V1.GetMapRotation(rotationId, cancellationToken), cancellationToken))).ConfigureAwait(false);
             var rotations = new Dictionary<Guid, MapRotationDto>();
-            foreach (var assignment in assignments)
+            foreach (var rotationResponse in rotationResults)
             {
-                if (!rotations.ContainsKey(assignment.MapRotationId))
-                {
-                    var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.MapRotationId, cancellationToken).ConfigureAwait(false);
-                    if (rotationResponse.IsSuccess && rotationResponse.Result?.Data != null)
-                        rotations[assignment.MapRotationId] = rotationResponse.Result.Data;
-                }
+                if (rotationResponse.IsSuccess && rotationResponse.Result?.Data is { } rotation)
+                    rotations[rotation.MapRotationId] = rotation;
+                else
+                    Logger.LogWarning("Map rotation metadata unavailable with status {StatusCode}", rotationResponse.StatusCode);
             }
 
             // Also fetch map DTOs for maps in the active rotation (they may not be in the RCON set)
@@ -97,12 +100,8 @@ public class MapManagerController(
                     .Where(id => !existingMapIds.Contains(id))
                     .ToList();
 
-                foreach (var mapId in missingMapIds)
-                {
-                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(mapId, cancellationToken).ConfigureAwait(false);
-                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
-                        allMaps.Add(mapResponse.Result.Data);
-                }
+                var missingMaps = await mapMetadataService.GetAsync(missingMapIds, cancellationToken).ConfigureAwait(false);
+                allMaps.AddRange(missingMaps.Values);
             }
 
             var viewModel = new ManageMapsViewModel(gameServerData)

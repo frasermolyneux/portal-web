@@ -32,10 +32,6 @@
     var warningCount = adminActions.Count(a => a.Type == AdminActionType.Warning);
     var observationCount = adminActions.Count(a => a.Type == AdminActionType.Observation);
 
-    // Risk level for gauge
-    var riskScore = Model.Intelligence?.ProxyCheck?.RiskScore ?? 0;
-    var riskLevel = riskScore >= 80 ? "critical" : (riskScore >= 50 ? "high" : (riskScore >= 25 ? "medium" : "low"));
-
 <!-- Player Banner -->
 <div class="row">
     <div class="col-12">
@@ -183,27 +179,10 @@
                         <dt class="detail-label">Current Alias</dt>
                         <dd class="detail-value"><player-name value="@player.Username"></player-name></dd>
                     </div>
-                    @if (Model.Intelligence != null)
-                    {
-                        <div class="detail-field col-sm-12">
-                            <dt class="detail-label">IP Address</dt>
-                            <dd class="detail-value">
-                                <span class="ip-address-container"
-                                      data-ip="@player.IpAddress"
-                                      data-risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)"
-                                      data-is-proxy="@((Model.Intelligence.ProxyCheck?.IsProxy ?? false).ToString().ToLower())"
-                                      data-is-vpn="@((Model.Intelligence.ProxyCheck?.IsVpn ?? false).ToString().ToLower())"
-                                      data-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"
-                                      data-country-code="@(Model.Intelligence.CountryCode ?? "")">
-                                    <ip-address ip="@player.IpAddress" country-code="@Model.Intelligence.CountryCode" risk="@(Model.Intelligence.ProxyCheck?.RiskScore ?? 0)" is-proxy="@(Model.Intelligence.ProxyCheck?.IsProxy ?? false)" is-vpn="@(Model.Intelligence.ProxyCheck?.IsVpn ?? false)" proxy-type="@(Model.Intelligence.ProxyCheck?.ProxyType ?? "")"></ip-address>
-                                </span>
-                            </dd>
-                        </div>
-                        <div class="detail-field col-sm-12">
-                            <dt class="detail-label">Country/City</dt>
-                            <dd class="detail-value"><location-summary intelligence-model="@Model.Intelligence"></location-summary></dd>
-                        </div>
-                    }
+                    <div class="detail-field col-sm-12">
+                        <dt class="detail-label">IP Address</dt>
+                        <dd class="detail-value"><ip-address ip="@player.IpAddress"></ip-address></dd>
+                    </div>
                     <div class="detail-field col-sm-6">
                         <dt class="detail-label">First Seen</dt>
                         <dd class="detail-value"><i class="fa-solid fa-fw fa-clock" aria-hidden="true"></i> <time user-time utc="@player.FirstSeen"></time></dd>
@@ -266,66 +245,8 @@
         <!-- IP Intelligence -->
         <div class="ibox">
             <div class="ibox-title"><h5>IP Intelligence</h5></div>
-            <div class="ibox-content">
-                @if (Model.Intelligence != null)
-                {
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <div class="risk-score-gauge">
-                                <div class="gauge-container">
-                                    <div class="gauge" data-risk-level="@riskLevel">
-                                        <span class="gauge-value">@riskScore</span>
-                                    </div>
-                                </div>
-                                <p class="mt-2"><small class="text-muted">Risk Score</small></p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <dl class="detail-fields mb-0">
-                                @if (Model.Intelligence.ProxyCheck?.IsProxy == true)
-                                {
-                                    <div class="detail-field">
-                                        <dd class="detail-value"><span class="badge bg-danger">Proxy</span></dd>
-                                    </div>
-                                }
-                                @if (Model.Intelligence.ProxyCheck?.IsVpn == true)
-                                {
-                                    <div class="detail-field">
-                                        <dd class="detail-value"><span class="badge bg-warning text-dark">VPN</span></dd>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.ProxyCheck?.ProxyType))
-                                {
-                                    <div class="detail-field">
-                                        <dt class="detail-label">Type</dt>
-                                        <dd class="detail-value">@Model.Intelligence.ProxyCheck.ProxyType</dd>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.CountryCode))
-                                {
-                                    <div class="detail-field">
-                                        <dt class="detail-label">Country</dt>
-                                        <dd class="detail-value">
-                                            <img src="/images/flags/@(Model.Intelligence.CountryCode.ToLower()).png" alt="@Model.Intelligence.CountryCode" />
-                                            @Model.Intelligence.CountryCode
-                                        </dd>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(Model.Intelligence.CityName))
-                                {
-                                    <div class="detail-field">
-                                        <dt class="detail-label">City</dt>
-                                        <dd class="detail-value">@Model.Intelligence.CityName</dd>
-                                    </div>
-                                }
-                            </dl>
-                        </div>
-                    </div>
-                }
-                <div id="map" class="player-location-map"></div>
-                <div class="text-end mt-2">
-                    <small><a target="_blank" href="https://www.geo-location.net/">Powered by geo-location.net</a></small>
-                </div>
+            <div class="ibox-content" data-player-intelligence-url="@Url.Action("GetIntelligence", "Players", new { id = player.PlayerId, ipAddress = player.IpAddress })">
+                <p role="status" class="text-muted">Loading IP intelligence…</p>
             </div>
         </div>
 
@@ -386,7 +307,7 @@
                         </div>
                     </div>
 
-                    <div class="ibox-content tab-pane container fade" id="ipAddresses" role="tabpanel" aria-labelledby="ipAddresses-tab">
+                    <div class="ibox-content tab-pane container fade" id="ipAddresses" role="tabpanel" aria-labelledby="ipAddresses-tab" data-ip-history-url="@Url.Action("GetIpHistory", "Players", new { id = player.PlayerId })">
                         @if (player.IpAddressCount > 10)
                         {
                             <div class="alert alert-info mb-2">
@@ -406,23 +327,17 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model.EnrichedIpAddresses != null)
+                                    @if (player.PlayerIpAddresses != null)
                                     {
-                                        @foreach (var ipAddress in Model.EnrichedIpAddresses)
+                                        @foreach (var ipAddress in player.PlayerIpAddresses.OrderByDescending(x => x.LastUsed).Take(10))
                                         {
                                         <tr>
-                                            <td class="ip-address-container"
-                                              data-ip="@ipAddress.Address"
-                                              data-risk="@ipAddress.RiskScore"
-                                              data-is-proxy="@ipAddress.IsProxy.ToString().ToLower()"
-                                              data-is-vpn="@ipAddress.IsVpn.ToString().ToLower()"
-                                              data-type="@ipAddress.ProxyType"
-                                              data-country-code="@ipAddress.CountryCode">
-                                                <img src="/images/flags/@(ipAddress.CountryCode != "unknown" ? ipAddress.CountryCode.ToLower() : "unknown").png" alt="" /> @ipAddress.Address
+                                            <td data-history-ip="@ipAddress.Address">
+                                                <ip-address ip="@ipAddress.Address"></ip-address>
                                             </td>
-                                            <td><time user-time utc="@ipAddress.IpAddressDto.Added"></time></td>
-                                            <td><time user-time utc="@ipAddress.IpAddressDto.LastUsed"></time></td>
-                                            <td><confidence-label score="@ipAddress.IpAddressDto.ConfidenceScore" last-used="@ipAddress.IpAddressDto.LastUsed"></confidence-label></td>
+                                            <td><time user-time utc="@ipAddress.Added"></time></td>
+                                            <td><time user-time utc="@ipAddress.LastUsed"></time></td>
+                                            <td><confidence-label score="@ipAddress.ConfidenceScore" last-used="@ipAddress.LastUsed"></confidence-label></td>
                                         </tr>
                                         }
                                     }
@@ -669,27 +584,7 @@
 
         // Initialize Google Map with player location
         function initMap() {
-            @if (Model?.Intelligence != null && Model.Intelligence.Latitude.HasValue && Model.Intelligence.Longitude.HasValue)
-            {
-                <text>
-                    var myLatLng = {
-                        lat: @Model.Intelligence.Latitude,
-                        lng: @Model.Intelligence.Longitude
-                    };
-
-                    var map = new google.maps.Map(document.getElementById('map'),
-                        {
-                            zoom: 4,
-                            center: myLatLng
-                        });
-
-                    new google.maps.Marker({
-                        position: myLatLng,
-                        map: map,
-                        title: 'Player Location'
-                    });
-                </text>
-            }
+            document.dispatchEvent(new CustomEvent('portal:maps-ready'));
         }
 
     </script>
@@ -704,6 +599,7 @@
     }
     <script src="~/js/chatlog-index.js" asp-append-version="true"></script>
     <script src="~/js/player-details-tables.js" asp-append-version="true"></script>
+    <script src="~/js/player-intelligence.js" asp-append-version="true"></script>
     <script>
         // Copy to clipboard via data attributes
         document.addEventListener('click', function(e) {
@@ -748,19 +644,6 @@
         }
 
         $(document).ready(function () {
-            // Format all IP addresses with intelligence data
-            $('.ip-address-container').each(function() {
-                var container = $(this);
-                var ip = container.data('ip');
-                var risk = container.data('risk') || 0;
-                var isProxy = container.data('is-proxy') === 'true';
-                var isVpn = container.data('is-vpn') === 'true';
-                var type = container.data('type') || '';
-                var countryCode = container.data('country-code') || '';
-
-                container.html(formatIPAddress(ip, risk, isProxy, isVpn, type, countryCode));
-            });
-
             // Render related players using global helper (renderPlayerName) for consistency
             $('#relatedPlayersTable .player-name').each(function() {
                 var el = $(this);

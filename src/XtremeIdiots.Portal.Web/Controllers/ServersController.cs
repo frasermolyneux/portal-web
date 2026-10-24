@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -22,6 +23,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [AllowAnonymous]
 public class ServersController(
     IRepositoryApiClient repositoryApiClient,
+    IMapMetadataService mapMetadataService,
     TelemetryClient telemetryClient,
     ILogger<ServersController> logger,
     IConfiguration configuration,
@@ -90,14 +92,8 @@ public class ServersController(
                 return NotFound();
             }
 
-            var liveStatusTask = repositoryApiClient.LiveStatus.V1.GetGameServerLiveStatus(gs.GameServerId, cancellationToken);
-            var statsTask = repositoryApiClient.GameServersStats.V1.GetGameServerStatusStats(
-                gs.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken);
-
-            await Task.WhenAll(liveStatusTask, statsTask).ConfigureAwait(false);
-
-            var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
-            var statsResponse = await statsTask.ConfigureAwait(false);
+            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1
+                .GetGameServerLiveStatus(gs.GameServerId, cancellationToken).ConfigureAwait(false);
 
             var viewModel = new ServerInfoViewModel
             {
@@ -105,35 +101,25 @@ public class ServersController(
                 LiveStatus = liveStatusResponse.IsSuccess ? liveStatusResponse.Result?.Data : null
             };
 
-            if (statsResponse.IsSuccess && statsResponse.Result?.Data?.Items is not null)
-            {
-                viewModel.GameServerStats = [.. statsResponse.Result.Data.Items];
-
-                GameServerStatDto? current = null;
-                var orderedStats = statsResponse.Result.Data.Items.OrderBy(s => s.Timestamp).ToList();
-                foreach (var stat in orderedStats)
-                {
-                    if (current is null)
-                    {
-                        current = stat;
-                        continue;
-                    }
-
-                    if (current.MapName != stat.MapName)
-                    {
-                        viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
-                            current.MapName, current.Timestamp, stat.Timestamp));
-                        current = stat;
-                    }
-
-                    if (stat == orderedStats.Last())
-                        viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
-                            current.MapName, current.Timestamp, DateTime.UtcNow));
-                }
-            }
-
             return View(viewModel);
         }, nameof(Details)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewStatistics(
+        Guid id, [FromServices] ServerStatisticsService statistics, string panel = "players",
+        CancellationToken cancellationToken = default)
+    {
+        var response = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data is not { ServerListEnabled: true })
+            return NotFound();
+
+        if (panel is not ("players" or "timeline"))
+            return BadRequest();
+
+        ViewData["ChartId"] = panel == "timeline" ? "si-mapsTimeline" : "si-playerCountChart";
+        ViewData["ChartKind"] = panel;
+        return PartialView("_ServerStatistics", await statistics.GetAsync(id, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -145,16 +131,30 @@ public class ServersController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null || !gameServerApiResponse.Result.Data.ServerListEnabled)
+            if (gameServerApiResponse.IsNotFound)
             {
                 return Json(new { data = Array.Empty<object>() });
             }
+
+            if (!gameServerApiResponse.IsSuccess || gameServerApiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Public server metadata unavailable while reading live players for {ServerId}. API Success: {IsSuccess}",
+                    id, gameServerApiResponse.IsSuccess);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                    new { error = "Live player data is currently unavailable." });
+            }
+
+            if (!gameServerApiResponse.Result.Data.ServerListEnabled)
+                return Json(new { data = Array.Empty<object>() });
 
             var livePlayersResponse = await repositoryApiClient.LiveStatus.V1.GetGameServerLivePlayers(id, cancellationToken).ConfigureAwait(false);
 
             if (!livePlayersResponse.IsSuccess || livePlayersResponse.Result?.Data?.Items is null)
             {
-                return Json(new { data = Array.Empty<object>() });
+                Logger.LogWarning("Live player data unavailable for public server {ServerId}. API Success: {IsSuccess}",
+                    id, livePlayersResponse.IsSuccess);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                    new { error = "Live player data is currently unavailable." });
             }
 
             // Project only public-safe fields — no IPs, GUIDs, risk data, or player profiles
@@ -214,14 +214,12 @@ public class ServersController(
             var rotation = rotationResponse.Result.Data;
             var orderedMaps = rotation.MapRotationMaps.OrderBy(m => m.SortOrder).ToList();
 
-            // Fetch all map details in parallel to avoid N+1
-            var mapTasks = orderedMaps.Select(rotMap =>
-                repositoryApiClient.Maps.V1.GetMap(rotMap.MapId, cancellationToken));
-            var mapResponses = await Task.WhenAll(mapTasks).ConfigureAwait(false);
+            var metadata = await mapMetadataService.GetAsync(
+                orderedMaps.Select(map => map.MapId), cancellationToken).ConfigureAwait(false);
 
-            var enrichedMaps = mapResponses.Select(mapResponse =>
+            var enrichedMaps = orderedMaps.Select(rotationMap =>
             {
-                var mapData = mapResponse.Result?.Data;
+                metadata.TryGetValue(rotationMap.MapId, out var mapData);
                 return new
                 {
                     mapName = mapData?.MapName ?? "Unknown",

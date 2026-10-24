@@ -8,8 +8,10 @@ namespace XtremeIdiots.Portal.Web.Models;
 public record PlayerIntelligenceData
 {
     public string CountryCode { get; init; } = string.Empty;
-    public int ProxyCheckRiskScore { get; init; }
-    public bool IsProxy { get; init; }
-    public bool IsVpn { get; init; }
-    public string ProxyType { get; init; } = string.Empty;
+    public int? ProxyCheckRiskScore { get; init; }
+    public bool? IsProxy { get; init; }
+    public bool? IsVpn { get; init; }
+    public string? ProxyType { get; init; }
+    public string Status { get; init; } = "unavailable";
+    public DateTime ExpiresAtUtc { get; init; } = DateTime.UtcNow.AddSeconds(30);
 }

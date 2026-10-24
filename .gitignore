@@ -376,3 +376,6 @@ terraform.rc
 
 # Shared Copilot configuration checked out during copilot-setup-steps
 .github-copilot/
+
+# Copied from the locked npm dependency during build.
+src/XtremeIdiots.Portal.Web/wwwroot/js/vendor/dompurify.min.js

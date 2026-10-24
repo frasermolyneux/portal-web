@@ -119,11 +119,18 @@ public static class PortalWebApplication
         builder.Services.AddSingleton(_ => new LogsQueryClient(new DefaultAzureCredential()));
         builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
         builder.Services.AddScoped<IAgentTelemetryService, AgentTelemetryService>();
+        builder.Services.AddScoped<ServerStatisticsService>();
+        builder.Services.AddScoped<CachedAgentTelemetryService>();
+        builder.Services.AddScoped<IIpIntelligenceService, IpIntelligenceService>();
+        builder.Services.AddScoped<IPlayerProfileService, PlayerProfileService>();
+        builder.Services.AddSingleton<DependencyReadCoordinator>();
+        builder.Services.AddScoped<IMapMetadataService, MapMetadataService>();
         builder.Services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
         builder.Services.AddScoped<INamespaceSettingsParser, NamespaceSettingsParser>();
         builder.Services.AddScoped<INamespaceSettingsSerializer, NamespaceSettingsSerializer>();
         builder.Services.AddScoped<IGlobalSettingsService, GlobalSettingsService>();
         builder.Services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        builder.Services.AddScoped<IGameServerConfigurationReadService, GameServerConfigurationReadService>();
         builder.Services.AddSingleton<IExternalTokenService, ExternalTokenService>();
 
         builder.Services.AddRepositoryApiClient(clientOptions => clientOptions

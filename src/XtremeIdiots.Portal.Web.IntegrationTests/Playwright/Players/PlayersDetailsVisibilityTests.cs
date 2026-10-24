@@ -9,10 +9,9 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Players;
 /// one of the richest server-rendered surfaces in the portal (778 lines of conditional Razor) and had
 /// no prior UI coverage. Each test shapes a single player DTO via <see cref="PlayerDtoBuilder"/> and a
 /// geo-intelligence response via <see cref="PlayersDetailsScenario"/>, then asserts on the concrete DOM
-/// that the server produced. All assertions target content that is complete at
-/// <see cref="WaitUntilState.DOMContentLoaded"/> (gauges, banners, counts, badges, table rows), so no
-/// client-side data-table / analytics AJAX is required and browser-error assertions are intentionally
-/// avoided (the map and analytics widgets fire best-effort async requests).
+/// that the server produced. Core banners, counts and table rows render immediately; retrying
+/// assertions wait for the optional intelligence fragment's gauges and badges. Browser-error
+/// assertions are intentionally avoided (map and analytics widgets fire best-effort async requests).
 /// </summary>
 [Trait("Category", "Browser")]
 public sealed class PlayersDetailsVisibilityTests

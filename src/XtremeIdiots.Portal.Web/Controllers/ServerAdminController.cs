@@ -47,9 +47,9 @@ public class ServerAdminController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     IServersApiClient serversApiClient,
-    IGeoLocationApiClient geoLocationClient,
+    IIpIntelligenceService ipIntelligenceService,
+    IPlayerProfileService playerProfileService,
     IAdminActionTopics adminActionTopics,
-    IAgentTelemetryService agentTelemetryService,
     IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
     ILogger<ServerAdminController> logger,
@@ -69,7 +69,6 @@ public class ServerAdminController(
         "connection_string"
     ];
     private readonly static ConcurrentDictionary<Guid, SemaphoreSlim> cod4xLifecycleLocks = new();
-    private readonly static SemaphoreSlim playerEnrichmentLock = new(1, 1);
 
     private readonly static JsonSerializerOptions cod4xPluginJsonOptions = new()
     {
@@ -81,7 +80,6 @@ public class ServerAdminController(
     private const string Cod4xArtifactsPrefix = "releases/";
     private const string DefaultCod4xPluginArtifactRoot = "/tmp/portal-cod4x-plugin-artifacts";
     private const string Cod4xPluginArtifactFileName = "portal-cod4x-plugin";
-    private const string EnrichmentUnavailableStatus = "unavailable";
 
     /// <summary>
     /// Displays the main server administration dashboardwith available game servers
@@ -278,87 +276,63 @@ public class ServerAdminController(
                 }
             }
 
-            // Fetch overview data (non-critical — page renders without it)
-            try
-            {
-                var statsTask = repositoryApiClient.GameServersStats.V1.GetGameServerStatusStats(
-                    gs.GameServerId, DateTime.UtcNow.AddDays(-2), cancellationToken);
-
-                var agentTask = Task.Run(async () =>
-                {
-                    try
-                    {
-                        return await agentTelemetryService.GetServerStatusAsync(
-                            gs.GameServerId, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogWarning(ex, "Failed to get agent status for server {ServerId}", id);
-                        return null;
-                    }
-                }, cancellationToken);
-
-                await Task.WhenAll(statsTask, agentTask).ConfigureAwait(false);
-
-                var statsResponse = await statsTask.ConfigureAwait(false);
-                if (statsResponse.IsSuccess && statsResponse.Result?.Data?.Items is not null)
-                {
-                    viewModel.GameServerStats = [.. statsResponse.Result.Data.Items];
-
-                    // Build map timeline
-                    GameServerStatDto? current = null;
-                    var orderedStats = statsResponse.Result.Data.Items.OrderBy(s => s.Timestamp).ToList();
-                    foreach (var stat in orderedStats)
-                    {
-                        if (current is null)
-                        {
-                            current = stat;
-                            continue;
-                        }
-
-                        if (current.MapName != stat.MapName)
-                        {
-                            viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
-                                current.MapName, current.Timestamp, stat.Timestamp));
-                            current = stat;
-                        }
-
-                        if (stat == orderedStats.Last())
-                            viewModel.MapTimelineDataPoints.Add(new MapTimelineDataPoint(
-                                current.MapName, current.Timestamp, DateTime.UtcNow));
-                    }
-                }
-
-                viewModel.AgentStatus = await agentTask.ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to load overview data for server {ServerId}", id);
-            }
-
-            // Load ban file monitors if user has status access
-            if (viewModel.CanViewStatus)
-            {
-                try
-                {
-                    var bfmResponse = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(
-                        null, null, gs.GameServerId, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
-
-                    if (bfmResponse.IsSuccess && bfmResponse.Result?.Data?.Items is not null)
-                    {
-                        viewModel.BanFileMonitors = [.. bfmResponse.Result.Data.Items];
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to load ban file monitors for server {ServerId}", id);
-                }
-            }
-
             Logger.LogInformation("User {UserId} loaded server detail for {ServerId}", User.XtremeIdiotsId(), id);
 
             return View(viewModel);
         }, nameof(ServerDetail)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewStatistics(
+        Guid id, [FromServices] ServerStatisticsService statistics, string panel = "players",
+        CancellationToken cancellationToken = default)
+    {
+        var authorized = await AuthorizeOverviewAsync(id, cancellationToken).ConfigureAwait(false);
+        if (authorized is not null)
+            return authorized;
+        if (panel is not ("players" or "timeline"))
+            return BadRequest();
+        ViewData["ChartId"] = panel == "timeline" ? "sd-mapsTimeline" : "sd-playerCountChart";
+        ViewData["ChartKind"] = panel;
+        return PartialView("_ServerStatistics", await statistics.GetAsync(id, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewTelemetry(
+        Guid id, [FromServices] CachedAgentTelemetryService telemetry, bool detailed = false,
+        CancellationToken cancellationToken = default)
+    {
+        var authorized = await AuthorizeOverviewAsync(id, cancellationToken).ConfigureAwait(false);
+        if (authorized is not null)
+            return authorized;
+        var canReadDetailed = (await authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read).ConfigureAwait(false)).Succeeded;
+        if (detailed && !canReadDetailed)
+            return Forbid();
+        ViewData["Detailed"] = canReadDetailed && detailed;
+        return PartialView("_AgentTelemetry", await telemetry.GetServerAsync(id, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpGet]
+    [Authorize(Policy = AuthPolicies.GameServers_BanFileMonitors_Read)]
+    public async Task<IActionResult> GetOverviewBanFileMonitors(Guid id, CancellationToken cancellationToken = default)
+    {
+        var authorized = await AuthorizeOverviewAsync(id, cancellationToken).ConfigureAwait(false);
+        if (authorized is not null)
+            return authorized;
+        var response = await repositoryApiClient.BanFileMonitors.V1.GetBanFileMonitors(
+            null, null, id, 0, 50, BanFileMonitorOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data?.Items is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable)
+            : PartialView("_OverviewBanFileMonitors", response.Result.Data.Items.ToList());
+    }
+
+    private async Task<IActionResult?> AuthorizeOverviewAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var response = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data is null
+            ? NotFound()
+            : (await authorizationService.AuthorizeAsync(User, response.Result.Data.GameType, AuthPolicies.GameServers_Admin_Read).ConfigureAwait(false)).Succeeded
+            ? null : Forbid();
     }
 
     /// <summary>
@@ -428,121 +402,20 @@ public class ServerAdminController(
                 return NotFound(new { message = "The player is no longer in this slot." });
             }
 
-            var cachedProfile = GetCachedRconProfile(server.GameType, player.Guid ?? string.Empty);
-            var cachedIntelligence = GetCachedRconIpIntelligence(player.IpAddress ?? string.Empty);
-            if (cachedProfile is not null && cachedIntelligence is not null)
-                return Json(ToEnrichmentViewModel(cachedProfile, cachedIntelligence));
-
-            // Serialize cache misses across requests/admins, not just within one browser.
-            await playerEnrichmentLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                var profile = await GetRconProfileAsync(server.GameType, player.Guid ?? string.Empty).ConfigureAwait(false);
-                var intelligence = await GetRconIpIntelligenceAsync(player.IpAddress ?? string.Empty, cancellationToken).ConfigureAwait(false);
-                return Json(ToEnrichmentViewModel(profile, intelligence));
-            }
-            finally
-            {
-                playerEnrichmentLock.Release();
-            }
+            var profileTask = playerProfileService.GetAsync(server.GameType, player.Guid, cancellationToken);
+            var intelligenceTask = ipIntelligenceService.GetAsync(player.IpAddress, cancellationToken);
+            await Task.WhenAll(profileTask, intelligenceTask).ConfigureAwait(false);
+            return Json(ToEnrichmentViewModel(await profileTask.ConfigureAwait(false), await intelligenceTask.ConfigureAwait(false)));
         }, nameof(GetRconPlayerEnrichment)).ConfigureAwait(false);
     }
 
-    private sealed record RconProfile(Guid? PlayerId, string? Username, string Status, DateTime ExpiresAtUtc);
-    private sealed record RconIpIntelligence(
-        string? CountryCode, int? RiskScore, bool? IsProxy, bool? IsVpn, string? ProxyType, string Status, DateTime ExpiresAtUtc);
-
-    private static RconPlayerEnrichmentViewModel ToEnrichmentViewModel(RconProfile profile, RconIpIntelligence intelligence)
+    private static RconPlayerEnrichmentViewModel ToEnrichmentViewModel(PlayerProfileResult profile, IpIntelligenceResult intelligence)
     {
         return new(
             profile.PlayerId, profile.Username, profile.Status,
-            intelligence.CountryCode, intelligence.RiskScore, intelligence.IsProxy,
+            intelligence.Intelligence?.CountryCode, intelligence.RiskScore, intelligence.IsProxy,
             intelligence.IsVpn, intelligence.ProxyType, intelligence.Status,
             profile.ExpiresAtUtc < intelligence.ExpiresAtUtc ? profile.ExpiresAtUtc : intelligence.ExpiresAtUtc);
-    }
-
-    private RconProfile? GetCachedRconProfile(GameType gameType, string playerGuid)
-    {
-        return string.IsNullOrWhiteSpace(playerGuid)
-            ? new(null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10))
-            : memoryCache.Get<RconProfile>($"rcon-profile:{gameType}:{playerGuid}");
-    }
-
-    private RconIpIntelligence? GetCachedRconIpIntelligence(string ipAddress)
-    {
-        return string.IsNullOrWhiteSpace(ipAddress)
-            ? new(null, null, null, null, null, "notApplicable", DateTime.UtcNow.AddMinutes(10))
-            : memoryCache.Get<RconIpIntelligence>($"rcon-intelligence:{ipAddress}");
-    }
-
-    private async Task<RconProfile> GetRconProfileAsync(GameType gameType, string guid)
-    {
-        var key = $"rcon-profile:{gameType}:{guid}";
-        var cached = GetCachedRconProfile(gameType, guid);
-        if (cached is not null)
-            return cached;
-
-        RconProfile result;
-        try
-        {
-            var response = await repositoryApiClient.Players.V1.GetPlayerByGameType(gameType, guid, PlayerEntityOptions.None).ConfigureAwait(false);
-            if (response.IsSuccess && response.Result?.Data is { } player &&
-                player.GameType == gameType && string.Equals(player.Guid, guid, StringComparison.OrdinalIgnoreCase))
-            {
-                result = new(player.PlayerId, player.Username, "available", DateTime.UtcNow.AddMinutes(10));
-            }
-            else if (response.IsNotFound)
-            {
-                result = new(null, null, "notFound", DateTime.UtcNow.AddMinutes(1));
-            }
-            else
-            {
-                Logger.LogWarning("Player profile lookup failed for game {GameType}, status {StatusCode}", gameType, response.StatusCode);
-                result = new(null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Player profile enrichment failed for game {GameType}", gameType);
-            result = new(null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
-        }
-
-        return memoryCache.Set(key, result, result.ExpiresAtUtc);
-    }
-
-    private async Task<RconIpIntelligence> GetRconIpIntelligenceAsync(string ipAddress, CancellationToken cancellationToken)
-    {
-        var key = $"rcon-intelligence:{ipAddress}";
-        var cached = GetCachedRconIpIntelligence(ipAddress);
-        if (cached is not null)
-            return cached;
-
-        RconIpIntelligence result;
-        try
-        {
-            var response = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
-            if (response.IsSuccess && response.Result?.Data is { } intelligence)
-            {
-                var proxy = intelligence.ProxyCheck;
-                result = new(intelligence.CountryCode, proxy?.RiskScore, proxy?.IsProxy, proxy?.IsVpn, proxy?.ProxyType,
-                    proxy is null ? EnrichmentUnavailableStatus : "available",
-                    proxy is null ? DateTime.UtcNow.AddSeconds(30) : DateTime.UtcNow.AddMinutes(10));
-                if (proxy is null)
-                    Logger.LogWarning("IP intelligence response contained no risk assessment");
-            }
-            else
-            {
-                Logger.LogWarning("IP intelligence lookup failed with status {StatusCode}", response.StatusCode);
-                result = new(null, null, null, null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-        {
-            Logger.LogWarning(ex, "IP intelligence enrichment failed");
-            result = new(null, null, null, null, null, EnrichmentUnavailableStatus, DateTime.UtcNow.AddSeconds(30));
-        }
-
-        return memoryCache.Set(key, result, result.ExpiresAtUtc);
     }
 
     /// <summary>

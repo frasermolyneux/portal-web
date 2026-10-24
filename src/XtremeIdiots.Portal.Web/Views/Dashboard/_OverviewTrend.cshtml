@@ -1,0 +1,28 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model DashboardViewModel
+<div class="row mb-4"><div class="col-12"><div class="ibox">
+    <div class="ibox-title"><h5>Moderation Trend <small class="text-muted">(30 days)</small></h5></div>
+    <div class="ibox-content">
+        @if (Model.ModerationTrend.Count > 0)
+        {
+            <div class="table-responsive"><table class="table table-sm table-striped w-100">
+                <thead><tr><th>Date</th><th class="text-center">Bans</th><th class="text-center">TempBans</th><th class="text-center">Kicks</th><th class="text-center">Warnings</th><th class="text-center">Observations</th><th class="text-center">Total</th></tr></thead>
+                <tbody>
+                @foreach (var day in Model.ModerationTrend.OrderByDescending(d => d.Date))
+                {
+                    var total = day.Bans + day.TempBans + day.Kicks + day.Warnings + day.Observations;
+                    <tr>
+                        <td><time user-time utc="@day.Date"></time></td>
+                        <td class="text-center"><span class="badge bg-danger">@day.Bans</span></td>
+                        <td class="text-center"><span class="badge bg-warning text-dark">@day.TempBans</span></td>
+                        <td class="text-center"><span class="badge bg-info">@day.Kicks</span></td>
+                        <td class="text-center"><span class="badge bg-secondary">@day.Warnings</span></td>
+                        <td class="text-center">@day.Observations</td><td class="text-center"><strong>@total</strong></td>
+                    </tr>
+                }
+                </tbody>
+            </table></div>
+        }
+        else { <p class="text-muted">No moderation activity in the last 30 days.</p> }
+    </div>
+</div></div></div>

@@ -17,8 +17,8 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Playwright.Players;
 /// fully-populated player. The player DTO is supplied by <see cref="PlayerDtoBuilder"/> so each test
 /// controls the data shape it wants to exercise (risk score, ban state, counts, related players).
 /// The geo mock returns a deterministic <see cref="IpIntelligenceDto"/> for every IP so the IP
-/// Intelligence panel, risk gauge and proxy/VPN badges render, unless <c>includeIntelligence</c> is
-/// false (which exercises the "no geo data" branch that hides the whole panel).
+/// Intelligence fragment, risk gauge and proxy/VPN badges render asynchronously, unless
+/// <c>includeIntelligence</c> is false (which exercises the unavailable-data branch).
 /// </summary>
 internal sealed class PlayersDetailsScenario
 {

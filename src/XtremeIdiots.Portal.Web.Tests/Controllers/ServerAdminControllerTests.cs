@@ -51,8 +51,8 @@ public class ServerAdminControllerTests
     private readonly Mock<IServersApiClient> mockServersApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly Mock<IGeoLocationApiClient> mockGeoLocationClient = new();
     private readonly Mock<IAdminActionTopics> mockAdminActionTopics = new();
-    private readonly Mock<IAgentTelemetryService> mockAgentTelemetryService = new();
     private readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
+    private readonly DependencyReadCoordinator enrichmentCoordinator = new();
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<ServerAdminController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
@@ -64,9 +64,9 @@ public class ServerAdminControllerTests
             mockAuthorizationService.Object,
             mockRepositoryApiClient.Object,
             mockServersApiClient.Object,
-            mockGeoLocationClient.Object,
+            new IpIntelligenceService(mockGeoLocationClient.Object, memoryCache, enrichmentCoordinator, Mock.Of<ILogger<IpIntelligenceService>>()),
+            new PlayerProfileService(mockRepositoryApiClient.Object, memoryCache, enrichmentCoordinator, Mock.Of<ILogger<PlayerProfileService>>()),
             mockAdminActionTopics.Object,
-            mockAgentTelemetryService.Object,
             memoryCache,
             telemetryClient,
             mockLogger.Object,

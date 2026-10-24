@@ -1,21 +1,17 @@
-﻿@using System.Text.Json
+﻿@using XtremeIdiots.Portal.Web.Services.Settings
+@using XtremeIdiots.Portal.Web.Services
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers
 @model List<GameServerDto>
 
 @{
     Layout = null;
-    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, Dictionary<string, JsonElement>> ?? new Dictionary<Guid, Dictionary<string, JsonElement>>();
+    var serverConfigs = ViewBag.ServerConfigs as Dictionary<Guid, GameServerReadSettings> ?? new Dictionary<Guid, GameServerReadSettings>();
 }
 
 @functions {
-    static string GetCfg(Dictionary<Guid, Dictionary<string, JsonElement>> configs, Guid id, string ns, string prop)
+    static string GetCfg(Dictionary<Guid, GameServerReadSettings> configs, Guid id, string ns, string prop)
     {
-        if (configs.TryGetValue(id, out var nc) &&
-            nc.TryGetValue(ns, out var r) &&
-            r.TryGetProperty(prop, out var v) &&
-            v.ValueKind == JsonValueKind.String)
-            return v.GetString() ?? "";
-        return "";
+        return GameServerConfigHelper.GetConfigValue(configs, id, ns, prop);
     }
 }
 

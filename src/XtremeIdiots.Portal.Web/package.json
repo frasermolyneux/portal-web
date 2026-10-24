@@ -13,6 +13,9 @@
     "watch:css": "sass Styles/app.scss:wwwroot/css/app.css --watch --source-map",
     "build": "npm run build:css"
   },
+  "dependencies": {
+    "dompurify": "3.4.17"
+  },
   "devDependencies": {
     "sass": "^1.83.0"
   }

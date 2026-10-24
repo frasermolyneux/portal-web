@@ -11,6 +11,9 @@
 
     var POLL_INTERVAL = 60000;
     var pollTimer = null;
+    var refreshActive = false;
+    var refreshDeferred = false;
+    var refreshAgain = false;
     var widgetState = { token: null, portalUrl: '', authenticated: false, filters: {} };
 
     // Action type icons (Unicode)
@@ -107,15 +110,19 @@
         }
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
+        xhr.timeout = 30000;
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () {
             if (xhr.status >= 200 && xhr.status < 300) {
-                try { cb(null, JSON.parse(xhr.responseText)); } catch (e) { cb(e, null); }
+                var data;
+                try { data = JSON.parse(xhr.responseText); } catch (e) { cb(e, null); return; }
+                cb(null, data);
             } else {
                 cb(new Error('HTTP ' + xhr.status), null);
             }
         };
         xhr.onerror = function () { cb(new Error('Network error'), null); };
+        xhr.ontimeout = function () { cb(new Error('Notification request timed out'), null); };
         xhr.send();
     }
 
@@ -266,7 +273,7 @@
             markAllBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 apiPost('/api/external/notifications/read-all', { token: widgetState.token }, function (ok) {
-                    if (ok) refresh();
+                    if (ok) refresh(true);
                 });
             });
         }
@@ -303,20 +310,43 @@
 
     // --- Lifecycle ---
 
-    function refresh() {
-        var container = document.getElementById('portal-notifications-widget');
-        if (!container) return;
+    function renderError(container, message) {
+        var error = document.createElement('div');
+        error.className = 'xi-pw-error';
+        error.textContent = message;
+        container.replaceChildren(error);
+    }
 
+    function refresh(afterMutation) {
+        var container = document.getElementById('portal-notifications-widget');
+        if (!container || !widgetState.portalUrl) return;
+        if (document.hidden) {
+            refreshDeferred = true;
+            return;
+        }
+        if (refreshActive) {
+            if (afterMutation === true) refreshAgain = true;
+            return;
+        }
+
+        refreshDeferred = false;
+        refreshActive = true;
         apiGet('/api/external/notifications?take=20', function (err, data) {
-            if (err) {
-                container.innerHTML = '<div class="xi-pw-error">Unable to load notifications</div>';
-                return;
-            }
             try {
+                if (err) {
+                    renderError(container, 'Unable to load notifications');
+                    return;
+                }
                 renderWidget(container, data);
             } catch (e) {
                 console.error('Forum widget render error:', e);
-                container.innerHTML = '<div class="xi-pw-error">Unable to display notifications</div>';
+                renderError(container, 'Unable to display notifications');
+            } finally {
+                refreshActive = false;
+                if (refreshAgain) {
+                    refreshAgain = false;
+                    refresh();
+                }
             }
         });
     }
@@ -402,6 +432,14 @@
             clearInterval(pollTimer);
             pollTimer = null;
         }
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && refreshDeferred) refresh();
+    });
+    window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+        if (widgetState.token && !pollTimer) pollTimer = setInterval(refresh, POLL_INTERVAL);
+        refresh();
     });
 
     if (document.readyState === 'loading') {

@@ -25,6 +25,7 @@ public class MapRotationsController(
     IRepositoryApiClient repositoryApiClient,
     ISyncApiClient syncApiClient,
     IMemoryCache memoryCache,
+    IMapMetadataService mapMetadataService,
     TelemetryClient telemetryClient,
     ILogger<MapRotationsController> logger,
     IConfiguration configuration,
@@ -35,12 +36,11 @@ public class MapRotationsController(
     private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
     {
         var initialMaps = new List<object>();
+        var maps = await mapMetadataService.GetAsync(mapIds, cancellationToken).ConfigureAwait(false);
         foreach (var mapId in mapIds)
         {
-            var mapResponse = await repositoryApiClient.Maps.V1.GetMap(mapId, cancellationToken).ConfigureAwait(false);
-            if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
+            if (maps.TryGetValue(mapId, out var map))
             {
-                var map = mapResponse.Result.Data;
                 initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
             }
         }
@@ -179,21 +179,9 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var initialMaps = new List<object>();
-            if (rotation.MapRotationMaps?.Count > 0)
-            {
-                foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
-                {
-                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
-                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
-                    {
-                        var map = mapResponse.Result.Data;
-                        initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
-                    }
-                }
-            }
-
-            ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
+            await PopulateInitialMapsViewBag(
+                rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? [],
+                cancellationToken).ConfigureAwait(false);
 
             return View("Create", new CreateMapRotationViewModel
             {
@@ -230,21 +218,9 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var initialMaps = new List<object>();
-            if (rotation.MapRotationMaps?.Count > 0)
-            {
-                foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
-                {
-                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
-                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
-                    {
-                        var map = mapResponse.Result.Data;
-                        initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
-                    }
-                }
-            }
-
-            ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
+            await PopulateInitialMapsViewBag(
+                rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? [],
+                cancellationToken).ConfigureAwait(false);
 
             return View(new EditMapRotationViewModel
             {
@@ -357,17 +333,15 @@ public class MapRotationsController(
             if (authResult is not null)
                 return authResult;
 
-            // Load map details for each map in the rotation
             var maps = new List<MapDto>();
             if (rotation.MapRotationMaps?.Count > 0)
             {
+                var metadata = await mapMetadataService.GetAsync(
+                    rotation.MapRotationMaps.Select(m => m.MapId), cancellationToken).ConfigureAwait(false);
                 foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
                 {
-                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
-                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
-                    {
-                        maps.Add(mapResponse.Result.Data);
-                    }
+                    if (metadata.TryGetValue(rotationMap.MapId, out var map))
+                        maps.Add(map);
                 }
             }
 
@@ -910,13 +884,12 @@ public class MapRotationsController(
             var maps = new List<MapDto>();
             if (rotation.MapRotationMaps?.Count > 0)
             {
+                var metadata = await mapMetadataService.GetAsync(
+                    rotation.MapRotationMaps.Select(m => m.MapId), cancellationToken).ConfigureAwait(false);
                 foreach (var rotationMap in rotation.MapRotationMaps.OrderBy(m => m.SortOrder))
                 {
-                    var mapResponse = await repositoryApiClient.Maps.V1.GetMap(rotationMap.MapId, cancellationToken).ConfigureAwait(false);
-                    if (mapResponse.IsSuccess && mapResponse.Result?.Data != null)
-                    {
-                        maps.Add(mapResponse.Result.Data);
-                    }
+                    if (metadata.TryGetValue(rotationMap.MapId, out var map))
+                        maps.Add(map);
                 }
             }
 

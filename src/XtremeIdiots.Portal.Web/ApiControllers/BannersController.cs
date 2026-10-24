@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.Services.Settings;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
@@ -31,13 +32,13 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [Route("Banners")]
 public class BannersController(
     IRepositoryApiClient repositoryApiClient,
+    IGameServerConfigurationReadService configurationReadService,
     IMemoryCache memoryCache,
     TelemetryClient telemetryClient,
     ILogger<BannersController> logger,
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseApiController(telemetryClient, logger, configuration, auditLogger)
 {
-    private const string GameServersListCacheKey = nameof(GameServersListCacheKey);
     private readonly string gameTrackerBannerBaseUrl = (configuration["GameTracker:BannerBaseUrl"] ?? "https://cache.gametracker.com/server_info/").TrimEnd('/') + "/";
 
     /// <summary>
@@ -52,25 +53,9 @@ public class BannersController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            if (memoryCache.TryGetValue(GameServersListCacheKey, out
-            ApiResult<CollectionModel<GameServerDto>>? gameServersApiResponse) && gameServersApiResponse != null)
-            {
-                Logger.LogDebug("Retrieved game servers data from cache for user {UserId}", User.XtremeIdiotsId());
-            }
-            else
-            {
-                Logger.LogDebug("Fetching game servers data from API for user {UserId}", User.XtremeIdiotsId());
-
-                gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                    null, null, GameServerFilter.ServerListEnabled, 0, 50,
-                    GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
-
-                if (gameServersApiResponse != null)
-                {
-                    memoryCache.Set(GameServersListCacheKey, gameServersApiResponse, DateTime.UtcNow.AddMinutes(5));
-                    Logger.LogDebug("Cached game servers data for user {UserId}", User.XtremeIdiotsId());
-                }
-            }
+            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                null, null, GameServerFilter.ServerListEnabled, 0, 50,
+                GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
 
             if (gameServersApiResponse?.IsSuccess != true || gameServersApiResponse.Result?.Data?.Items is null)
             {
@@ -80,8 +65,8 @@ public class BannersController(
 
             var htmlBanners = new List<string?>();
             var serverIds = gameServersApiResponse.Result.Data.Items.Select(gs => gs.GameServerId);
-            var configs = await GameServerConfigHelper.FetchConfigsForServersAsync(
-                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
+            var configs = await configurationReadService.GetAsync(
+                serverIds, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             foreach (var gs in gameServersApiResponse.Result.Data.Items)
             {
