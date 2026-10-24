@@ -52,6 +52,22 @@ public class SyncApiClientTests
     }
 
     [Fact]
+    public async Task Terminate_LegacyHardCancellationConflict_IsSurfacedWithoutSuccess()
+    {
+        using var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.Conflict)
+        {
+            Content = new StringContent(/*lang=json,strict*/ """{"error":"Legacy workflow cancellation is unsafe; service-side investigation required."}""")
+        });
+        using var httpClient = new HttpClient(handler);
+
+        var result = await CreateClient(httpClient).TerminateOrchestration("maprot-sync-synthetic");
+
+        Assert.False(result.Success);
+        Assert.False(result.CancellationRequested);
+        Assert.Contains("service-side investigation", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Status_CompletedBusinessFailure_PreservesFalseOutcomeAndProgressError()
     {
         using var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)

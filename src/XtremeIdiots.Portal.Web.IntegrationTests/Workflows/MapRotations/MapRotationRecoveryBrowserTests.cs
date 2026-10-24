@@ -51,13 +51,16 @@ public sealed class MapRotationRecoveryBrowserTests
     [Theory]
     [InlineData(AssignmentOperationStatus.Cancelled)]
     [InlineData(AssignmentOperationStatus.Failed)]
-    public async Task TerminalOperation_WithPendingStateReset_OffersPortalFinalizationRetry(AssignmentOperationStatus operationStatus)
+    public async Task TerminalOperation_WithUncertainBusyState_RequiresServiceInvestigationWithoutPortalReset(AssignmentOperationStatus operationStatus)
     {
         var scenario = new MapRotationRecoveryScenario(DeploymentState.Syncing, busy: true,
             operationStatus: operationStatus);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Retry operation finalization", Exact = true })).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("Uncertain legacy state needs service-side investigation");
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Retry operation finalization", Exact = true })).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Terminate", Exact = true })).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true })).ToHaveCountAsync(0);
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true })).ToHaveCountAsync(0);
         browser.AssertNoBrowserErrors();
     }

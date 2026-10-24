@@ -126,6 +126,7 @@
                         <h5>Recent Operations (@Model.Operations.Count)</h5>
                     </div>
                     <div class="ibox-content">
+                        <p class="small text-muted">Sync owns operation and assignment lifecycle state. Refresh Status to read its recorded outcome. Uncertain legacy state needs service-side investigation; Portal does not reset state.</p>
                         @if (Model.Operations.Count == 0 && !hasPendingWithNoRow)
                         {
                             <p class="text-muted">No operations recorded for this assignment.</p>
@@ -176,11 +177,6 @@
                                         @foreach (var op in Model.Operations)
                                         {
                                             var isInProgress = op.Status == AssignmentOperationStatus.InProgress;
-                                            var resetPending = op.Status is AssignmentOperationStatus.Cancelled or AssignmentOperationStatus.Failed
-                                                && Model.Operations.FirstOrDefault()?.MapRotationAssignmentOperationId == op.MapRotationAssignmentOperationId
-                                                && (Model.Assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
-                                                    || Model.Assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating)
-                                                && !Model.Operations.Any(o => o.Status == AssignmentOperationStatus.InProgress);
                                             var elapsedMinutes = isInProgress ? (DateTime.UtcNow - op.StartedAt).TotalMinutes : 0;
                                             <tr class="@(op.Status == AssignmentOperationStatus.Failed ? "table-danger" : isInProgress ? "table-info" : "")"
                                                 @if (isInProgress && !string.IsNullOrEmpty(op.DurableFunctionInstanceId))
@@ -240,7 +236,7 @@
                                                     }
                                                 </td>
                                                 <td>
-                                                    @if (isInProgress || resetPending)
+                                                    @if (isInProgress)
                                                     {
                                                         <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="CancelOperation" method="post" class="d-inline">
                                                             @Html.AntiForgeryToken()
@@ -248,18 +244,7 @@
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Request cancellation? The current activity must finish safely before cancellation is confirmed.">
-                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> @(resetPending ? "Retry operation finalization" : "Cancel")
-                                                            </button>
-                                                        </form>
-                                                    }
-                                                    @if (op.Status is AssignmentOperationStatus.Cancelled or AssignmentOperationStatus.Failed && !string.IsNullOrEmpty(op.DurableFunctionInstanceId))
-                                                    {
-                                                        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="TerminateOrchestration" method="post" class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
-                                                            <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
-                                                            <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Request cancellation or termination? Wait for the confirmed result before retrying.">
-                                                                <i class="fa-solid fa-fw fa-skull-crossbones" aria-hidden="true"></i> Terminate
+                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Cancel
                                                             </button>
                                                         </form>
                                                     }

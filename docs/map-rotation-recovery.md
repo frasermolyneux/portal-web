@@ -118,19 +118,25 @@ assuming the full rotation was applied.
 
 **Cancel** may report “Cancellation requested”; an in-flight transfer or config
 activity must finish safely first. Keep watching progress. This acknowledgment is
-not cancellation success, and does not reset database state. Cancellation failure
-or assignment-reset failure is shown explicitly. After uncertain configuration
-cancellation, complete **Deactivate** successfully before **Unassign**. Unassign
-preserves server map files and the rotation library; removed assignment history
-is retained for 90 days.
+not cancellation success, and does not reset database state. Sync alone records
+and finalizes operation/assignment lifecycle state under its server lock. Portal
+only submits requests, displays/polls outcomes and reloads repository data; it
+does not PATCH lifecycle state after a terminal status or cancellation response.
+Dispatch failures do not create optimistic persisted busy state.
 
-If a confirmed terminal operation records **Cancelled** or **Failed** but its assignment reset
-fails, refresh and use **Retry operation finalization** on that latest operation.
-It rechecks ownership and confirmed termination before retrying the pending reset;
-it does not force healthy badges or override a newer/in-progress operation.
-Finalization retries never send another cancellation request. They reject a reused
-instance ID's newer execution and newer work on the initiating linked slot.
-An already-failed orchestration is finalized as **Failed**, never cancellation success.
+Refresh **Status** to read Sync's recorded outcome. If the operation is terminal
+but the assignment remains busy, or legacy activity completion is uncertain,
+stop and request **service-side investigation**. There is no Portal reset or
+finalization fallback. Legacy hard cancellation is rejected with HTTP 409; do not
+bypass that refusal, force healthy badges, connect directly to servers or reset
+SQL state. A Durable terminal badge alone is not proof that legacy activities
+have drained.
+
+Once Sync has finalized a non-busy result, uncertain configuration cancellation
+requires successful **Deactivate** before **Unassign**. Unassign preserves server
+map files and the rotation library; removed assignment history is retained for
+90 days.
+
 For linked main/AACP Apply, either target can request cancellation using its own
-persisted operation; the server, rotation and exact linked-slot relationship are
+persisted in-progress operation; the server, rotation and exact linked-slot relationship are
 verified before contacting Sync.

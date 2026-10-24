@@ -1264,102 +1264,8 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var operationsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(
-                assignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
-            if (!operationsResponse.IsSuccess || operationsResponse.Result?.Data?.Items == null)
-                return StatusCode(502, "Unable to verify operation ownership. Nothing was cancelled.");
-
-            var operation = operationsResponse.Result.Data.Items.FirstOrDefault(o =>
-                o.MapRotationAssignmentOperationId == operationId
-                && o.MapRotationServerAssignmentId == assignmentId
-                && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase));
-            if (operation == null)
-                return BadRequest("The operation and instance do not belong to this assignment.");
-            if (!IsAssignmentInstance(instanceId, assignmentId)
-                && !await IsLinkedApplyInstance(instanceId, assignment, cancellationToken).ConfigureAwait(false))
-                return BadRequest("The instance does not belong to this assignment or its verified linked main/AACP slot.");
-            var retryingFinalization = operation.Status is AssignmentOperationStatus.Cancelled or AssignmentOperationStatus.Failed
-                && (assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
-                    || assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating);
-            if (operation.Status != AssignmentOperationStatus.InProgress && !retryingFinalization)
-                return Conflict("This operation is no longer in progress. Refresh its result.");
-            if (retryingFinalization && operationsResponse.Result.Data.Items.Any(o => o.Status == AssignmentOperationStatus.InProgress))
-                return Conflict("Another operation is in progress. Cancellation finalization cannot reset its assignment state.");
-            if (retryingFinalization && operationsResponse.Result.Data.Items.Any(o => o.StartedAt > operation.StartedAt))
-                return Conflict("A newer operation exists. Refresh its result before retrying cancellation finalization.");
-
-            if (retryingFinalization)
-            {
-                var sourceError = await CheckFinalizationSource(instanceId!, assignmentId, operation.StartedAt, cancellationToken).ConfigureAwait(false);
-                if (sourceError != null)
-                    return sourceError;
-            }
-
-            var (termination, alreadyFailed) = retryingFinalization
-                ? await ConfirmTerminalStatus(instanceId!, operation.StartedAt, cancellationToken).ConfigureAwait(false)
-                : await TerminateAndConfirm(instanceId!, cancellationToken).ConfigureAwait(false);
-            if (termination.CancellationRequested)
-            {
-                this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
-                TempData[PendingInstanceKey] = instanceId;
-                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-            }
-
-            if (!termination.Success)
-            {
-                this.AddAlertDanger($"Cancellation failed; the operation was not marked cancelled: {termination.Error}");
-                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-            }
-
-            if (!retryingFinalization)
-            {
-                var updateResult = await repositoryApiClient.MapRotations.V1.UpdateAssignmentOperation(
-                    operationId, alreadyFailed ? AssignmentOperationStatus.Failed : AssignmentOperationStatus.Cancelled,
-                    alreadyFailed ? "Orchestration failure confirmed during recovery" : "Orchestration terminated by user").ConfigureAwait(false);
-                if (!updateResult.IsSuccess)
-                {
-                    this.AddAlertDanger("Orchestration is terminal, but its operation record could not be finalized. Refresh and retry cancellation/finalization.");
-                    return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-                }
-            }
-
-            var refreshed = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
-            if (!refreshed.IsSuccess || refreshed.Result?.Data == null)
-            {
-                this.AddAlertDanger("Terminal status confirmed, but assignment state could not be reloaded. No reset was performed. Refresh and use Retry operation finalization if its state is still busy.");
-                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-            }
-
-            assignment = refreshed.Result.Data;
-            var deploymentReset = assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
-                ? DeploymentState.Failed
-                : (DeploymentState?)null;
-            var activationReset = assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating
-                ? ActivationState.Failed
-                : (ActivationState?)null;
-            if (deploymentReset.HasValue || activationReset.HasValue)
-            {
-                var resetDto = new UpdateMapRotationServerAssignmentDto(assignmentId)
-                {
-                    DeploymentState = deploymentReset,
-                    ActivationState = activationReset,
-                    LastError = "Operation failed or was cancelled. Configuration may have changed; deactivate successfully before unassigning.",
-                    LastErrorAt = DateTime.UtcNow
-                };
-                var resetResult = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(resetDto, cancellationToken).ConfigureAwait(false);
-                if (!resetResult.IsSuccess)
-                {
-                    this.AddAlertDanger("Orchestration and operation are terminal, but assignment state reset failed. Refresh and use Retry operation finalization.");
-                    return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-                }
-            }
-
-            if (alreadyFailed)
-                this.AddAlertWarning("Failed operation finalized; assignment recovery is available. The operation did not succeed.");
-            else
-                this.AddAlertSuccess("Operation cancelled successfully.");
-            TrackSuccessTelemetry(alreadyFailed ? "MapRotationFailedOperationFinalized" : "MapRotationOperationCancelled", nameof(CancelOperation));
-            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+            var ownershipError = await CheckAssignmentInstanceOwnership(instanceId!, assignment, cancellationToken, operationId).ConfigureAwait(false);
+            return ownershipError ?? await RequestCancellation(instanceId!, assignmentId, cancellationToken).ConfigureAwait(false);
         }, nameof(CancelOperation)).ConfigureAwait(false);
     }
 
@@ -1383,55 +1289,47 @@ public class MapRotationsController(
                 || (source.ConfigVariableName == "scr_aacp_maps_1" && assignment.ConfigVariableName == "sv_maprotation"));
     }
 
-    private async Task<(SyncTriggerResult Result, bool AlreadyFailed)> TerminateAndConfirm(string instanceId, CancellationToken cancellationToken)
+    private async Task<IActionResult> RequestCancellation(string instanceId, Guid assignmentId, CancellationToken cancellationToken)
     {
         var result = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
-        return !result.Success ? ((SyncTriggerResult Result, bool AlreadyFailed))(result, false) : await ConfirmTerminalStatus(instanceId, null, cancellationToken).ConfigureAwait(false);
+        if (result.CancellationRequested)
+        {
+            this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. Sync owns the final outcome; the operation is not yet cancelled.");
+            TempData[PendingInstanceKey] = instanceId;
+        }
+        else if (result.Success)
+        {
+            this.AddAlertInfo("The orchestration is already terminal. Refresh the recorded Sync outcome; Portal has not changed lifecycle state. Uncertain legacy state needs service-side investigation.");
+        }
+        else
+        {
+            this.AddAlertDanger($"Cancellation failed: {result.Error}. Uncertain legacy state needs service-side investigation; Portal does not reset lifecycle state.");
+        }
+
+        return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
     }
 
-    private async Task<(SyncTriggerResult Result, bool AlreadyFailed)> ConfirmTerminalStatus(string instanceId, DateTime? operationStartedAt, CancellationToken cancellationToken)
-    {
-        var status = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
-        if (operationStartedAt.HasValue && status.Result?.CreatedAt > operationStartedAt.Value)
-            return (new SyncTriggerResult(false, Error: "This instance ID belongs to a newer execution. Nothing was terminated or reset; refresh its current operation."), false);
-
-        var runtimeStatus = status.Outcome == OrchestrationStatusQueryOutcome.Found ? status.Result?.RuntimeStatus : null;
-        return runtimeStatus is "Terminated" or "Canceled" or nameof(AssignmentOperationStatus.Failed)
-            ? (new SyncTriggerResult(true), runtimeStatus == nameof(AssignmentOperationStatus.Failed))
-            : (new SyncTriggerResult(false, Error: "Terminal status is not confirmed. Refresh the operation result before retrying; no assignment reset was performed."), false);
-    }
-
-    private async Task<IActionResult?> CheckFinalizationSource(string instanceId, Guid assignmentId, DateTime operationStartedAt, CancellationToken cancellationToken)
-    {
-        if (IsAssignmentInstance(instanceId, assignmentId))
-            return null;
-
-        var sourceId = Guid.Parse(instanceId[^36..]);
-        var operations = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(sourceId, 0, 100, cancellationToken).ConfigureAwait(false);
-        if (!operations.IsSuccess || operations.Result?.Data?.Items == null)
-            return StatusCode(502, "Unable to verify the initiating slot's operations. Nothing was terminated or reset.");
-
-        var hasNewerWork = operations.Result.Data.Items.Any(o => o.StartedAt > operationStartedAt);
-        return hasNewerWork
-            ? Conflict("The initiating slot has newer work. Refresh its result; this old finalization retry cannot terminate or reset it.")
-            : null;
-    }
-
-    private async Task<IActionResult?> CheckAssignmentInstanceOwnership(string instanceId, MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
+    private async Task<IActionResult?> CheckAssignmentInstanceOwnership(string instanceId, MapRotationServerAssignmentDto assignment,
+        CancellationToken cancellationToken, Guid? operationId = null)
     {
         var assignmentId = assignment.MapRotationServerAssignmentId;
-        if (IsAssignmentInstance(instanceId, assignmentId))
-            return null;
-
         var operations = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(assignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
         if (!operations.IsSuccess || operations.Result?.Data?.Items == null)
             return StatusCode(502, "Unable to verify operation ownership. Nothing was cancelled.");
 
-        var persisted = operations.Result.Data.Items.Any(o => o.MapRotationServerAssignmentId == assignmentId
-            && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase));
-        return !persisted || !await IsLinkedApplyInstance(instanceId, assignment, cancellationToken).ConfigureAwait(false)
-            ? BadRequest("The instance does not belong to this assignment or its verified linked main/AACP slot.")
-            : (IActionResult?)null;
+        var persisted = operations.Result.Data.Items.Where(o => o.MapRotationServerAssignmentId == assignmentId
+            && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase)
+            && (!operationId.HasValue || o.MapRotationAssignmentOperationId == operationId.Value)).ToList();
+        if (persisted.Count == 0)
+            return BadRequest("The instance does not have an operation belonging to this assignment.");
+
+        var active = persisted.Any(o => o.Status == AssignmentOperationStatus.InProgress);
+        if (!active)
+            return Conflict("This operation is already terminal. Refresh the Sync outcome; uncertain legacy state needs service-side investigation, not a Portal reset.");
+
+        var related = IsAssignmentInstance(instanceId, assignmentId)
+            || await IsLinkedApplyInstance(instanceId, assignment, cancellationToken).ConfigureAwait(false);
+        return related ? null : BadRequest("The instance does not belong to this assignment or its verified linked main/AACP slot.");
     }
 
     [HttpPost]
@@ -1461,31 +1359,7 @@ public class MapRotationsController(
                 return authResult;
 
             var ownershipError = await CheckAssignmentInstanceOwnership(instanceId, assignmentResponse.Result.Data, cancellationToken).ConfigureAwait(false);
-            if (ownershipError != null)
-                return ownershipError;
-
-            var (terminateResult, alreadyFailed) = await TerminateAndConfirm(instanceId, cancellationToken).ConfigureAwait(false);
-
-            if (terminateResult.CancellationRequested)
-            {
-                this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
-                TempData[PendingInstanceKey] = instanceId;
-            }
-            else if (!terminateResult.Success)
-            {
-                this.AddAlertDanger($"Failed to terminate orchestration '{instanceId}': {terminateResult.Error}");
-            }
-            else if (alreadyFailed)
-            {
-                this.AddAlertWarning("Orchestration has already failed. Use its operation cancellation/finalization action if the assignment is still busy; failure is not cancellation success.");
-            }
-            else
-            {
-                this.AddAlertInfo($"Orchestration '{instanceId}' termination confirmed. Check the operation and assignment states before retrying.");
-                TrackSuccessTelemetry("MapRotationOrchestrationTerminated", nameof(TerminateOrchestration));
-            }
-
-            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+            return ownershipError ?? await RequestCancellation(instanceId, assignmentId, cancellationToken).ConfigureAwait(false);
         }, nameof(TerminateOrchestration)).ConfigureAwait(false);
     }
 
