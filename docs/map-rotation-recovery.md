@@ -130,7 +130,8 @@ stop and request **service-side investigation**. There is no Portal reset or
 finalization fallback. Legacy hard cancellation is rejected with HTTP 409; do not
 bypass that refusal, force healthy badges, connect directly to servers or reset
 SQL state. A Durable terminal badge alone is not proof that legacy activities
-have drained.
+have drained. Historical terminal rows have no Cancel, Terminate or reset control;
+request cooperative **Cancel** only on the current in-progress operation.
 
 Once Sync has finalized a non-busy result, uncertain configuration cancellation
 requires successful **Deactivate** before **Unassign**. Unassign preserves server

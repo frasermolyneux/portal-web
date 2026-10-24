@@ -1343,7 +1343,7 @@ public class MapRotationsControllerTests
         if (permitted)
         {
             Assert.IsType<RedirectToActionResult>(cancellation);
-            Assert.IsType<RedirectToActionResult>(termination);
+            Assert.IsType<ConflictObjectResult>(termination);
         }
         else
         {
@@ -1352,7 +1352,7 @@ public class MapRotationsControllerTests
         }
 
         mockSyncApiClient.Verify(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()),
-            permitted ? Times.Exactly(2) : Times.Never());
+            permitted ? Times.Once() : Times.Never());
         VerifyNoCancellationMutation();
 
         SetOperation(assignment, operationId, $"maprot-apply-{assignment.MapRotationServerAssignmentId}");
@@ -1381,7 +1381,7 @@ public class MapRotationsControllerTests
         for (var attempt = 0; attempt < 2; attempt++)
         {
             Assert.IsType<RedirectToActionResult>(await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId));
-            Assert.IsType<RedirectToActionResult>(await sut.TerminateOrchestration(instanceId, assignment.MapRotationServerAssignmentId));
+            Assert.IsType<ConflictObjectResult>(await sut.TerminateOrchestration(instanceId, assignment.MapRotationServerAssignmentId));
             Assert.IsType<JsonResult>(await sut.GetSyncProgress(instanceId));
         }
 
@@ -1583,7 +1583,7 @@ public class MapRotationsControllerTests
     }
 
     private void SetOperation(MapRotationServerAssignmentDto assignment, Guid operationId, string instanceId,
-        AssignmentOperationStatus status = AssignmentOperationStatus.InProgress, DateTime? startedAt = null)
+        AssignmentOperationStatus status = AssignmentOperationStatus.InProgress)
     {
         var operation = Newtonsoft.Json.JsonConvert.DeserializeObject<MapRotationAssignmentOperationDto>(
             Newtonsoft.Json.JsonConvert.SerializeObject(new
@@ -1592,7 +1592,7 @@ public class MapRotationsControllerTests
                 assignment.MapRotationServerAssignmentId,
                 DurableFunctionInstanceId = instanceId,
                 Status = status,
-                StartedAt = startedAt ?? DateTime.UtcNow
+                StartedAt = DateTime.UtcNow
             }))!;
         mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetAssignmentOperations(
                 assignment.MapRotationServerAssignmentId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))

@@ -1359,7 +1359,7 @@ public class MapRotationsController(
                 return authResult;
 
             var ownershipError = await CheckAssignmentInstanceOwnership(instanceId, assignmentResponse.Result.Data, cancellationToken).ConfigureAwait(false);
-            return ownershipError ?? await RequestCancellation(instanceId, assignmentId, cancellationToken).ConfigureAwait(false);
+            return ownershipError ?? Conflict("The legacy Terminate action is retired. Use Cancel on the current in-progress operation; uncertain legacy state needs service-side investigation.");
         }, nameof(TerminateOrchestration)).ConfigureAwait(false);
     }
 
