@@ -20,7 +20,7 @@ internal sealed class MapRotationRecoveryScenario
     public Mock<IRepositoryApiClient> Repository { get; } = new() { DefaultValue = DefaultValue.Mock };
 
     public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
-        AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress)
+        AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress, DateTime? completedAt = null)
     {
         var serverId = permitted ? Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId) : Guid.NewGuid();
         var assignment = new MapRotationServerAssignmentDto(AssignmentId, RotationId, serverId,
@@ -53,7 +53,8 @@ internal sealed class MapRotationRecoveryScenario
                     MapRotationAssignmentOperationId = Guid.NewGuid(),
                     MapRotationServerAssignmentId = AssignmentId,
                     DurableFunctionInstanceId = $"maprot-apply-{AssignmentId}",
-                    StartedAt = DateTime.UtcNow,
+                    StartedAt = completedAt?.AddMinutes(-2) ?? DateTime.UtcNow,
+                    CompletedAt = completedAt,
                     Status = operationStatus
                 }))!);
         }

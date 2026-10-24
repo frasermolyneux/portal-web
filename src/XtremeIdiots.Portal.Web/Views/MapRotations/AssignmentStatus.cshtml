@@ -115,7 +115,7 @@
                                 <summary>
                                     @if (hasPending || hasRunningOperation)
                                     {
-                                        <text>Current activity</text>
+                                        <text>Current activity and recent results</text>
                                     }
                                     else if (latest != null)
                                     {
@@ -126,7 +126,22 @@
                                             AssignmentOperationStatus.Cancelled => "Cancelled",
                                             _ => "In progress"
                                         };
-                                        <text>@latest.ActionLabel() &mdash; @result</text>
+                                        var resultClass = latest.Status switch
+                                        {
+                                            AssignmentOperationStatus.Succeeded => "bg-success",
+                                            AssignmentOperationStatus.Failed => "bg-danger",
+                                            AssignmentOperationStatus.Cancelled => "bg-secondary",
+                                            _ => "bg-info"
+                                        };
+                                        <span>View recent actions and results</span>
+                                        <span class="d-block mt-1 ms-3">
+                                            Last action: @latest.ActionLabel()
+                                            <span class="badge @resultClass ms-1">@result</span>
+                                            <small class="text-muted ms-2">
+                                                @(latest.CompletedAt.HasValue ? "Finished" : "Started")
+                                                <time user-time utc="@(latest.CompletedAt ?? latest.StartedAt)"></time>
+                                            </small>
+                                        </span>
                                     }
                                 </summary>
                                 <div class="table-responsive mt-3">
