@@ -16,11 +16,11 @@ $(document).ready(function () {
         searchDelay: 800,
         stateSave: true,
         stateSaveParams: function (settings, data) {
-            data._mapRotationsStructureVersion = 4;
+            data._mapRotationsStructureVersion = 5;
             if (data.columns) data.columns.forEach(function (c) { delete c.visible; });
         },
         stateLoadParams: function (settings, data) {
-            if (data._mapRotationsStructureVersion !== 4) {
+            if (data._mapRotationsStructureVersion !== 5) {
                 var key = 'DataTables_dataTable_' + window.location.pathname;
                 try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
                 return false;
@@ -29,7 +29,7 @@ $(document).ready(function () {
         },
         responsive: { details: { type: 'inline', target: 'tr' } },
         autoWidth: false,
-        order: [[1, 'asc']],
+        order: [[5, 'desc']],
         columnDefs: [
             { targets: 0, responsivePriority: 3, width: '30px' },
             { targets: 1, responsivePriority: 1 },
@@ -92,7 +92,7 @@ $(document).ready(function () {
                     }
 
                     var serverLabel = count === 1 ? 'server' : 'servers';
-                    return '<span class="badge bg-secondary">Assigned to ' + count + ' ' + serverLabel + '</span>';
+                    return '<span class="badge bg-info text-dark">Assigned to ' + count + ' ' + serverLabel + '</span>';
                 }
             },
             {
