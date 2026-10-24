@@ -44,6 +44,10 @@ Where File System Access is available in a secure context, a user-selected file
 is written with bounded 4 MiB range responses streamed to disk. Each response must
 be `206`, with the exact expected `Content-Range` and strong version ETag.
 Offsets advance only after a successfully closed write; incomplete writes abort.
+A disk checkpoint groups geometrically growing batches of those bounded ranges,
+so repeatedly copying the committed prefix is linear rather than quadratic in
+file size. An interruption discards the current uncommitted checkpoint and
+resumes from the last closed checkpoint, whose offset is displayed and persisted.
 A longer partially saved file is truncated to the last committed offset on resume;
 a shorter file requires an explicit restart in a new file. Changed versions are
 never appended, even when renewing grants. Revoked permissions and session or
@@ -56,6 +60,9 @@ Another login clears the previous owner's saved tasks when opening this page.
 ZIP jobs automatically poll queued/running states, stop on ownership failures,
 expire visibly, and back off on rate limits/transient failures. Dismiss removes
 local tracking only, not server work. Archive submission is never blindly retried.
+Paused ZIP expiry tracking is restored after reload; returning from the browser's
+back/forward cache restarts suspended tracking without duplicate status requests.
+Completed saves are never replaced by a later ZIP-expiry notification.
 
 Browsers without File System Access use their normal download manager through a
 direct link, without constructing an in-memory Blob. Browser-managed downloads

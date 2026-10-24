@@ -70,12 +70,15 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Grant([FromBody] CreateDownloadGrant request, CancellationToken cancellationToken = default)
     {
-        return request is null ||
-            (string.IsNullOrWhiteSpace(request.ArchiveId)
-                ? string.IsNullOrWhiteSpace(request.Path) || string.IsNullOrWhiteSpace(request.Version)
-                : request.Path is not null || request.Version is not null)
-            ? Task.FromResult<IActionResult>(BadRequest(new { message = "An exact file version or one ZIP identifier is required." }))
-            : request.ArchiveId is not null && User.Identity?.IsAuthenticated != true
+        if (request is null)
+            return Task.FromResult<IActionResult>(BadRequest());
+        var archive = request.ArchiveId is not null;
+        var invalidFile = string.IsNullOrWhiteSpace(request.Path) || string.IsNullOrWhiteSpace(request.Version);
+        var invalidArchive = string.IsNullOrWhiteSpace(request.ArchiveId) || request.Path is not null || request.Version is not null;
+        if (archive ? invalidArchive : invalidFile)
+            return Task.FromResult<IActionResult>(BadRequest(new { message = "An exact file version or one ZIP identifier is required." }));
+        var requiresLogin = archive && User.Identity?.IsAuthenticated != true;
+        return requiresLogin
             ? Task.FromResult<IActionResult>(Unauthorized())
             : Read(client => client.CreateDownloadGrant(request, cancellationToken));
     }

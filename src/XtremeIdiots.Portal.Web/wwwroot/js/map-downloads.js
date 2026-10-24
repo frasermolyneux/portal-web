@@ -6,6 +6,8 @@
     const member = root.dataset.member || '';
     const selected = new Set();
     const tasks = new Map();
+    const chunkSize = 4 * 1024 * 1024;
+    let pageHidden = false;
     const query = new URLSearchParams(location.search);
     const aliases = { CallOfDuty2: 'cod2', CallOfDuty4: 'cod4', CallOfDuty4x: 'cod4', cod4x: 'cod4', CallOfDuty5: 'cod5' };
     const game = query.get('game') || 'cod4';
@@ -18,7 +20,7 @@
     const token = root.querySelector('[name="__RequestVerificationToken"]').value;
     const status = message => { byId('downloadStatus').textContent = message; };
     const bytes = value => {
-        const unit = value >= 1073741824 ? 3 : value >= 1048576 ? 2 : value >= 1024 ? 1 : 0;
+        const unit = [1024, 1048576, 1073741824].filter(threshold => value >= threshold).length;
         return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value / (1024 ** unit)) + ' ' + ['B', 'KiB', 'MiB', 'GiB'][unit];
     };
     const button = (label, action, primary = false) => {
@@ -74,12 +76,7 @@
         entries.setAttribute('aria-busy', 'true');
         status('Loading live files…');
         try {
-            const data = manifest
-                ? await api('Manifest', { game: byId('downloadGame').value, mapName: manifest })
-                : await api(path ? 'Browse' : 'Collection', {
-                    game: byId('downloadGame').value, kind: byId('downloadKind').value,
-                    path, search: byId('downloadQuery').value, page, version
-                });
+            const data = await loadMetadata();
             if (current !== generation) return;
             version = data.version;
             const files = data.files || data.entries;
@@ -93,36 +90,13 @@
                 addFolderTools(tools, folder);
                 entries.append(tools);
             }
-            for (const entry of files) {
-                const row = document.createElement('div');
-                row.className = 'native-download-entry';
-                const label = document.createElement('span');
-                label.className = 'native-download-name';
-                label.textContent = manifest ? entry.path.slice(data.path.length + 1) : entry.name;
-                row.append(label);
-                const size = document.createElement('span');
-                size.textContent = bytes(entry.bytes);
-                row.append(size);
-                const actions = document.createElement('div');
-                actions.className = 'd-flex flex-wrap gap-2 align-items-center';
-                if (entry.isDirectory) {
-                    actions.append(button('Browse files', () => {
-                        path = entry.path;
-                        manifest = /^redirect\/cod[45]\/usermaps\/[^/]+$/.test(path) && byId('downloadKind').value === 'maps'
-                            ? entry.name : null;
-                        page = 1; version = null; load(true);
-                    }));
-                    addFolderTools(actions, entry);
-                } else {
-                    actions.append(button('Save file', () => startFile(entry), true));
-                }
-                row.append(actions);
-                entries.append(row);
-            }
+            files.forEach(entry => entries.append(renderEntry(entry, data)));
             byId('downloadPrevious').disabled = !!manifest || page <= 1;
             byId('downloadNext').disabled = !!manifest || page * data.pageSize >= data.totalCount;
             byId('downloadPage').textContent = manifest ? `${files.length} files` : `Page ${page} · ${data.totalCount} entries`;
-            status(manifest ? `${files.length} live files · ${bytes(data.bytes)} total` : files.length ? 'Live files loaded.' : 'No matching files.');
+            let summary = files.length ? 'Live files loaded.' : 'No matching files.';
+            if (manifest) summary = `${files.length} live files · ${bytes(data.bytes)} total`;
+            status(summary);
             updateSelection();
             if (focus) byId('downloadHeading').focus();
         } catch (error) {
@@ -137,6 +111,37 @@
             if (current === generation) entries.setAttribute('aria-busy', 'false');
         }
     }
+    function loadMetadata() {
+        if (manifest) return api('Manifest', { game: byId('downloadGame').value, mapName: manifest });
+        return api(path ? 'Browse' : 'Collection', {
+            game: byId('downloadGame').value, kind: byId('downloadKind').value,
+            path, search: byId('downloadQuery').value, page, version
+        });
+    }
+    function renderEntry(entry, data) {
+        const row = document.createElement('div');
+        row.className = 'native-download-entry';
+        const label = document.createElement('span');
+        label.className = 'native-download-name';
+        label.textContent = manifest ? entry.path.slice(data.path.length + 1) : entry.name;
+        const size = document.createElement('span');
+        size.textContent = bytes(entry.bytes);
+        const actions = document.createElement('div');
+        actions.className = 'd-flex flex-wrap gap-2 align-items-center';
+        if (entry.isDirectory) {
+            actions.append(button('Browse files', () => {
+                path = entry.path;
+                manifest = /^redirect\/cod[45]\/usermaps\/[^/]+$/.test(path) && byId('downloadKind').value === 'maps'
+                    ? entry.name : null;
+                page = 1; version = null; void load(true);
+            }));
+            addFolderTools(actions, entry);
+        } else {
+            actions.append(button('Save file', () => startFile(entry), true));
+        }
+        row.append(label, size, actions);
+        return row;
+    }
     function addFolderTools(container, entry) {
         if (!member || !selectable(entry)) return;
         const label = document.createElement('label');
@@ -150,14 +155,14 @@
         container.append(label, button('Create folder ZIP', () => createZip([entry.path])));
     }
     root.querySelector('#downloadSearch').addEventListener('submit', event => {
-        event.preventDefault(); page = 1; version = null; path = null; manifest = null; load(true);
+        event.preventDefault(); page = 1; version = null; path = null; manifest = null; void load(true);
     });
     ['downloadGame', 'downloadKind'].forEach(id => byId(id).addEventListener('change', () => {
-        page = 1; version = null; path = null; manifest = null; load(true);
+        page = 1; version = null; path = null; manifest = null; void load(true);
     }));
-    byId('downloadBack').addEventListener('click', () => { path = null; manifest = null; page = 1; version = null; load(true); });
-    byId('downloadPrevious').addEventListener('click', () => { page--; load(true); });
-    byId('downloadNext').addEventListener('click', () => { page++; load(true); });
+    byId('downloadBack').addEventListener('click', () => { path = null; manifest = null; page = 1; version = null; void load(true); });
+    byId('downloadPrevious').addEventListener('click', () => { page--; void load(true); });
+    byId('downloadNext').addEventListener('click', () => { page++; void load(true); });
     byId('downloadClear').addEventListener('click', () => { selected.clear(); updateSelection(); });
     byId('downloadZip').addEventListener('click', () => createZip([...selected]));
 
@@ -200,14 +205,21 @@
         const text = document.createElement('p');
         text.className = 'mb-2';
         text.textContent = task.state + (task.total ? ` · ${bytes(task.offset || 0)} / ${bytes(task.total)}` : '');
+        const actions = taskActions(task);
+        task.element.replaceChildren(heading, text, actions);
+        if (focusedLabel) ([...actions.querySelectorAll('button')].find(action => action.textContent === focusedLabel) || heading).focus();
+    }
+    function taskActions(task) {
         const actions = document.createElement('div');
         actions.className = 'd-flex flex-wrap gap-2';
         if (task.busy) {
             if (task.abort) actions.append(button('Pause download', () => task.abort.abort()));
         } else if (task.resource && !task.terminal) {
-            actions.append(button(task.handle ? 'Resume save' : task.job ? 'Save ZIP' : 'Save file', () => save(task), true));
+            let label = task.job ? 'Save ZIP' : 'Save file';
+            if (task.handle) label = 'Resume save';
+            actions.append(button(label, () => save(task), true));
             if (task.handle) actions.append(button('Restart save in a new file', () => {
-                task.handle = null; task.offset = 0; task.version = null; save(task);
+                task.handle = null; task.offset = 0; task.version = null; void save(task);
             }));
             actions.append(button('Use browser download', () => browserDownload(task)));
         }
@@ -215,8 +227,7 @@
             task.abort?.abort(); clearTimeout(task.timer); tasks.delete(task.id);
             task.element.remove(); byId('downloadTasks').focus(); await store(task, true);
         }));
-        task.element.replaceChildren(heading, text, actions);
-        if (focusedLabel) ([...actions.querySelectorAll('button')].find(action => action.textContent === focusedLabel) || heading).focus();
+        return actions;
     }
     function newTask(data) {
         const task = { id: crypto.randomUUID(), owner: member, offset: 0, ...data };
@@ -248,10 +259,10 @@
             task.name = job.fileName; task.total = job.bytes;
             task.state = 'ZIP ready to save'; task.busy = false;
             await store(task);
-            task.timer = setTimeout(() => expire(task), Math.min(2147483647, Math.max(0, new Date(task.expires) - Date.now())));
+            armExpiry(task);
         } else if (['queued', 'running'].includes(job.status)) {
             task.busy = true; await store(task);
-            task.timer = setTimeout(() => poll(task), 2000);
+            schedulePoll(task, 2000);
         } else {
             task.state = 'ZIP state unavailable. Create a new ZIP.'; task.busy = false; task.terminal = true;
             await store(task, true);
@@ -259,13 +270,30 @@
         renderTask(task);
     }
     function expire(task) {
-        if (!tasks.has(task.id)) return;
+        if (!tasks.has(task.id) || task.terminal) return;
+        clearTimeout(task.timer);
         task.abort?.abort(); task.state = 'ZIP expired. Create a new ZIP.';
-        task.busy = false; task.terminal = true; store(task, true); renderTask(task);
+        task.busy = false; task.terminal = true; void store(task, true); renderTask(task);
+    }
+    function armExpiry(task) {
+        clearTimeout(task.timer);
+        if (!pageHidden && !task.terminal)
+            task.timer = setTimeout(() => expire(task), Math.min(2147483647, Math.max(0, new Date(task.expires) - Date.now())));
+    }
+    function schedulePoll(task, delay) {
+        clearTimeout(task.timer);
+        if (!pageHidden && !task.terminal) task.timer = setTimeout(() => { void poll(task); }, delay);
+    }
+    function trackJob(task) {
+        if (!task.job || task.terminal) return;
+        if (new Date(task.expires) <= new Date()) { expire(task); return; }
+        if (task.resource) armExpiry(task); else void poll(task);
     }
     async function poll(task) {
-        if (!tasks.has(task.id)) return;
+        if (!tasks.has(task.id) || task.terminal || task.polling || pageHidden) return;
         if (new Date(task.expires) <= new Date()) { expire(task); return; }
+        task.polling = true;
+        clearTimeout(task.timer);
         try {
             await acceptJob(task, await api('ArchiveStatus', { id: task.job }));
         } catch (error) {
@@ -275,14 +303,14 @@
                 await store(task, true);
             } else {
                 task.state = 'ZIP status temporarily unavailable; retrying automatically.';
-                task.timer = setTimeout(() => poll(task), error.status === 429 ? 30000 : 10000);
+                schedulePoll(task, error.status === 429 ? 30000 : 10000);
             }
             renderTask(task);
-        }
+        } finally { task.polling = false; }
     }
     function startFile(entry) {
         const task = newTask({ name: entry.name, total: entry.bytes, resource: { path: entry.path, version: entry.version }, state: 'Ready to save' });
-        save(task);
+        void save(task);
     }
     function validateGrant(grant, task) {
         const url = new URL(grant.url);
@@ -303,6 +331,7 @@
             link.href = grant.url; link.download = grant.fileName; link.referrerPolicy = 'no-referrer';
             document.body.append(link); link.click(); link.remove();
             task.state = 'Sent to your browser download manager. Check your browser for progress.';
+            clearTimeout(task.timer);
             task.terminal = true; await store(task, true);
         } catch (error) { task.state = error.message; }
         task.busy = false; renderTask(task);
@@ -321,60 +350,14 @@
             if (!tasks.has(task.id) || task.terminal) return;
             task.version = grant.version; task.total = grant.bytes; task.expires ||= grant.expiresUtc;
             const file = await task.handle.getFile();
+            if (!tasks.has(task.id) || task.terminal) return;
             if (file.size < task.offset) throw new Error('The saved file is shorter than expected. Restart save in a new file.');
             task.abort = new AbortController();
             task.state = 'Saving to disk'; renderTask(task);
-            const chunkSize = 4 * 1024 * 1024;
-            while (task.offset < task.total || task.total === 0) {
-                task.abort.signal.throwIfAborted();
-                if (new Date(grant.expiresUtc) - Date.now() < 30000)
-                    grant = validateGrant(await api('Grant', task.resource, true), task);
-                const end = Math.min(task.total - 1, task.offset + chunkSize - 1);
-                let response;
-                if (task.total > 0) {
-                    response = await fetch(grant.url, {
-                        credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store', redirect: 'error',
-                        headers: { Range: `bytes=${task.offset}-${end}`, 'If-Match': `"${task.version}"` },
-                        signal: task.abort.signal
-                    });
-                    if (response.status === 401 || response.status === 403) {
-                        // Renew only once on resume/user retry; never append an unvalidated response.
-                        throw new Error('The download link expired or access ended. Resume save to request a new link.');
-                    }
-                    const expectedRange = `bytes ${task.offset}-${end}/${task.total}`;
-                    if (response.status !== 206 || response.headers.get('Content-Range') !== expectedRange ||
-                        response.headers.get('ETag') !== `"${task.version}"` || !response.body)
-                        throw new Error('The server could not safely resume this version. Refresh files or restart in a new file.');
-                }
-                const writer = await task.handle.createWritable({ keepExistingData: true });
-                let received = 0;
-                try {
-                    await writer.truncate(task.offset);
-                    await writer.seek(task.offset);
-                    if (response) {
-                        const reader = response.body.getReader();
-                        try {
-                            while (true) {
-                                const { value, done } = await reader.read();
-                                if (done) break;
-                                received += value.byteLength;
-                                if (received > end - task.offset + 1) throw new Error('Invalid download range length.');
-                                await writer.write(value);
-                            }
-                        } finally { await reader.cancel(); reader.releaseLock(); }
-                        if (received !== end - task.offset + 1) throw new Error('Download interrupted. Resume save to continue.');
-                    }
-                    task.abort.signal.throwIfAborted();
-                    await writer.close();
-                } catch (error) {
-                    await writer.abort().catch(() => {});
-                    throw error;
-                }
-                task.offset += received;
-                if (tasks.has(task.id)) await store(task);
-                renderTask(task);
-                if (task.offset === task.total) break;
-            }
+            // Checkpoints grow geometrically so prefix copying stays linear in the file size.
+            do { grant = await saveCheckpoint(task, grant); } while (task.offset < task.total);
+            task.abort.signal.throwIfAborted();
+            clearTimeout(task.timer);
             task.state = 'Saved to disk'; task.terminal = true; await store(task, true);
         } catch (error) {
             if (!task.terminal) task.state = error.name === 'AbortError' ? 'Download paused. Resume save to continue.' : error.message;
@@ -382,6 +365,63 @@
         } finally {
             task.busy = false; task.abort = null; renderTask(task);
         }
+    }
+    async function rangeResponse(task, grant, start, end) {
+        const response = await fetch(grant.url, {
+            credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store', redirect: 'error',
+            headers: { Range: `bytes=${start}-${end}`, 'If-Match': `"${task.version}"` },
+            signal: task.abort.signal
+        });
+        if (response.status === 401 || response.status === 403)
+            throw new Error('The download link expired or access ended. Resume save to request a new link.');
+        if (response.status !== 206 || response.headers.get('Content-Range') !== `bytes ${start}-${end}/${task.total}` ||
+            response.headers.get('ETag') !== `"${task.version}"` || !response.body) {
+            await response.body?.cancel();
+            throw new Error('The server could not safely resume this version. Refresh files or restart in a new file.');
+        }
+        return response;
+    }
+    async function writeRange(response, writer, expected, signal) {
+        let received = 0;
+        const meter = new TransformStream({
+            transform(value, controller) {
+                received += value.byteLength;
+                if (received > expected) throw new Error('Invalid download range length.');
+                controller.enqueue(value);
+            }
+        });
+        await response.body.pipeThrough(meter).pipeTo(writer, { preventClose: true, preventAbort: true, signal });
+        if (received !== expected) throw new Error('Download interrupted. Resume save to continue.');
+    }
+    async function saveCheckpoint(task, grant) {
+        const limit = Math.min(task.total, Math.max(chunkSize, task.offset * 2));
+        let cursor = task.offset, writer;
+        try {
+            do {
+                task.abort.signal.throwIfAborted();
+                if (new Date(grant.expiresUtc) - Date.now() < 30000)
+                    grant = validateGrant(await api('Grant', task.resource, true), task);
+                const end = Math.min(limit - 1, cursor + chunkSize - 1);
+                const response = task.total > 0 ? await rangeResponse(task, grant, cursor, end) : null;
+                if (!writer) {
+                    writer = await task.handle.createWritable({ keepExistingData: task.offset > 0 });
+                    task.abort.signal.throwIfAborted();
+                    await writer.truncate(task.offset);
+                    await writer.seek(task.offset);
+                }
+                if (response) await writeRange(response, writer, end - cursor + 1, task.abort.signal);
+                cursor = end + 1;
+            } while (cursor < limit);
+            task.abort.signal.throwIfAborted();
+            await writer.close();
+        } catch (error) {
+            await writer?.abort().catch(() => {});
+            throw error;
+        }
+        task.offset = cursor;
+        if (tasks.has(task.id) && !task.terminal) await store(task);
+        renderTask(task);
+        return grant;
     }
     async function restore() {
         const db = await database;
@@ -391,15 +431,21 @@
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => resolve([]);
         });
-        for (const record of records) {
+        await Promise.all(records.map(async record => {
             if (record.owner !== member || (record.job && new Date(record.expires) <= new Date())) {
-                await store(record, true); continue;
+                await store(record, true); return;
             }
             const task = newTask({ ...record, state: record.handle ? 'Download paused. Resume save to continue.' : 'Restoring ZIP…' });
-            if (record.job && !record.handle) await poll(task);
-        }
+            trackJob(task);
+        }));
     }
-    window.addEventListener('pagehide', () => tasks.forEach(task => { clearTimeout(task.timer); task.abort?.abort(); }));
-    load();
-    restore();
+    window.addEventListener('pagehide', () => {
+        pageHidden = true;
+        tasks.forEach(task => { clearTimeout(task.timer); task.abort?.abort(); });
+    });
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) { pageHidden = false; tasks.forEach(trackJob); }
+    });
+    void load();
+    void restore();
 })();

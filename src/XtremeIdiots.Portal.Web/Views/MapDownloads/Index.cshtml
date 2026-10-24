@@ -27,7 +27,7 @@
                 </div>
                 <div class="col-sm-2 d-flex align-items-end"><button class="btn btn-primary" type="submit">Search</button></div>
             </form>
-            <p id="downloadStatus" role="status" aria-live="polite"></p>
+            <output id="downloadStatus" class="d-block mb-3" aria-live="polite"></output>
             <h2 id="downloadHeading" class="h5" tabindex="-1">Files</h2>
             <button id="downloadBack" type="button" class="btn btn-outline-secondary btn-sm mb-2" hidden>Back to collection</button>
             <div id="downloadEntries" class="native-download-entries" aria-busy="false"></div>
@@ -38,7 +38,7 @@
             </nav>
         </div>
         <div class="ibox-footer d-flex flex-wrap gap-2 align-items-center">
-            <span id="downloadSelection" role="status">0 of 15 folders selected</span>
+            <output id="downloadSelection">0 of 15 folders selected</output>
             <button id="downloadZip" type="button" class="btn btn-primary" disabled>Create selected ZIP</button>
             <button id="downloadClear" type="button" class="btn btn-outline-secondary" disabled>Clear selection</button>
             @if (User.Identity?.IsAuthenticated != true)
@@ -52,7 +52,7 @@
         <div class="ibox-content">
             <p class="form-text">ZIP preparation updates automatically. Dismiss removes a task from this page, not the server.
                 Supported browsers can save resumable downloads to disk. Other browsers use their normal download manager.</p>
-            <div id="downloadTasks" role="region" aria-label="Downloads and ZIP preparation" tabindex="-1" aria-live="polite" aria-relevant="additions text"></div>
+            <section id="downloadTasks" aria-label="Downloads and ZIP preparation" tabindex="-1" aria-live="polite" aria-relevant="additions text"></section>
         </div>
     </div>
 </div>

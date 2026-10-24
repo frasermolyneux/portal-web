@@ -271,6 +271,185 @@ public sealed class NativeMapDownloadsBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompletedZip_IsNotOverwrittenByItsOldExpiryTimer(bool disk)
+    {
+        var fake = ArchiveFake(3, "complete");
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.GameAdmin,
+            services => services.AddSingleton<IRedirectApiClient>(fake));
+        await using var picker = await InstallDiskPicker(browser.Page);
+        await browser.Page.Clock.InstallAsync();
+        await browser.Page.RouteAsync(DirectUrl, route => route.FulfillAsync(new RouteFulfillOptions
+        {
+            Status = disk ? 206 : 200, Body = "abc", Headers = new Dictionary<string, string>(Cors())
+            {
+                ["ETag"] = "\"test-version\"", ["Content-Range"] = "bytes 0-2/3",
+                ["Content-Disposition"] = "attachment; filename=\"map.ff\""
+            }
+        }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads").AbsoluteUri);
+        if (!disk)
+            await browser.Page.EvaluateAsync("window.showSaveFilePicker = undefined");
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" }).ClickAsync();
+        var save = browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save ZIP", Exact = true });
+        if (disk)
+            await save.ClickAsync();
+        else
+            await browser.Page.RunAndWaitForDownloadAsync(() => save.ClickAsync());
+        var expected = disk ? "Saved to disk" : "Sent to your browser download manager";
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync(expected);
+        await browser.Page.Clock.FastForwardAsync(120000);
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync(expected);
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).Not.ToContainTextAsync("expired");
+    }
+
+    [Fact]
+    public async Task DismissDuringPendingFileRead_DoesNotStartAnUntrackedTransfer()
+    {
+        var file = RedirectDtoFactory.CreateFile(FilePath, 3);
+        var fake = new FakeRedirectApiClient()
+            .WithData("Manifest", RedirectDtoFactory.CreateManifest(files: [file]))
+            .WithData("CreateDownloadGrant", Grant(3));
+        await using var browser = await BrowserFixture.CreateAsync(configureServices: services =>
+            services.AddSingleton<IRedirectApiClient>(fake));
+        await using var picker = await InstallDiskPicker(browser.Page);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads?game=cod4&map=mp_test").AbsoluteUri);
+        await browser.Page.EvaluateAsync("""
+            () => {
+                const getFile = FileSystemFileHandle.prototype.getFile;
+                FileSystemFileHandle.prototype.getFile = function(...args) {
+                    return new Promise(resolve => {
+                        window.finishPendingFile = () => getFile.apply(this, args).then(resolve);
+                    });
+                };
+                const fetch = window.fetch;
+                window.directRequests = 0;
+                window.fetch = (...args) => {
+                    if (String(args[0]).startsWith('https://maps.test.invalid/')) window.directRequests++;
+                    return fetch(...args);
+                };
+            }
+            """);
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save file", Exact = true }).ClickAsync();
+        await browser.Page.WaitForFunctionAsync("typeof window.finishPendingFile === 'function'");
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Dismiss download task" }).ClickAsync();
+        await browser.Page.EvaluateAsync("async () => await window.finishPendingFile()");
+        Assert.Equal(0, await browser.Page.EvaluateAsync<int>("window.directRequests"));
+        await Assertions.Expect(browser.Page.Locator(".native-download-task")).ToHaveCountAsync(0);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task AdaptiveCheckpoints_GroupRangesWithoutReacquiringGrantsOrCopyingEachPrefix()
+    {
+        const int chunk = 4 * 1024 * 1024;
+        const int length = 4 * chunk;
+        var file = RedirectDtoFactory.CreateFile(FilePath, length);
+        var fake = new FakeRedirectApiClient()
+            .WithData("Manifest", RedirectDtoFactory.CreateManifest(files: [file]))
+            .WithData("CreateDownloadGrant", Grant(length));
+        await using var browser = await BrowserFixture.CreateAsync(configureServices: services =>
+            services.AddSingleton<IRedirectApiClient>(fake));
+        await using var picker = await InstallDiskPicker(browser.Page);
+        var ranges = 0;
+        await browser.Page.RouteAsync(DirectUrl, route =>
+        {
+            ranges++;
+            var range = route.Request.Headers["range"]["bytes=".Length..].Split('-');
+            return route.FulfillAsync(new RouteFulfillOptions
+            {
+                Status = 206, BodyBytes = new byte[chunk], Headers = new Dictionary<string, string>(Cors())
+                {
+                    ["ETag"] = "\"test-version\"", ["Content-Range"] = $"bytes {range[0]}-{range[1]}/{length}"
+                }
+            });
+        });
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads?game=cod4&map=mp_test").AbsoluteUri);
+        await browser.Page.EvaluateAsync("""
+            () => {
+                const createWritable = FileSystemFileHandle.prototype.createWritable;
+                window.writerCount = 0;
+                FileSystemFileHandle.prototype.createWritable = function(...args) {
+                    window.writerCount++;
+                    return createWritable.apply(this, args);
+                };
+            }
+            """);
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save file", Exact = true }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("Saved to disk", new() { Timeout = 20000 });
+        Assert.Equal(length, await DiskSize(browser.Page));
+        Assert.Equal(4, ranges);
+        Assert.Equal(3, await browser.Page.EvaluateAsync<int>("window.writerCount"));
+        Assert.Single(fake.Calls, call => call.StartsWith("CreateDownloadGrant:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RestoredPausedZip_RearmsExpiryWithoutLosingItsHandleOrOffset()
+    {
+        const int chunk = 4 * 1024 * 1024;
+        var fake = ArchiveFake(chunk + 3, "complete");
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.GameAdmin,
+            services => services.AddSingleton<IRedirectApiClient>(fake));
+        await using var picker = await InstallDiskPicker(browser.Page);
+        await browser.Page.Clock.InstallAsync();
+        await browser.Page.RouteAsync(DirectUrl, route => route.FulfillAsync(new RouteFulfillOptions
+        {
+            Status = route.Request.Headers["range"].StartsWith("bytes=0-", StringComparison.Ordinal) ? 206 : 403,
+            BodyBytes = new byte[chunk], Headers = new Dictionary<string, string>(Cors())
+            {
+                ["ETag"] = "\"test-version\"", ["Content-Range"] = $"bytes 0-{chunk - 1}/{chunk + 3}"
+            }
+        }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads").AbsoluteUri);
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" }).ClickAsync();
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save ZIP", Exact = true }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("link expired");
+        Assert.Equal(chunk, await DiskSize(browser.Page));
+        await browser.Page.ReloadAsync();
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Resume save", Exact = true })).ToBeVisibleAsync();
+        await browser.Page.Clock.FastForwardAsync(120000);
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP expired");
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Resume save", Exact = true })).ToHaveCountAsync(0);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("ArchiveStatus:", StringComparison.Ordinal));
+        Assert.Equal(chunk, await DiskSize(browser.Page));
+    }
+
+    [Fact]
+    public async Task BackForwardCacheReturn_RestartsZipPollingAndReadyExpiry()
+    {
+        var fake = ArchiveFake(3, "queued").WithData("ArchiveStatus",
+            RedirectDtoFactory.CreateArchive(status: "complete") with { Bytes = 3, ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(1) });
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.GameAdmin,
+            services => services.AddSingleton<IRedirectApiClient>(fake));
+        await browser.Page.Clock.InstallAsync();
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads").AbsoluteUri);
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create folder ZIP" }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP queued");
+        await browser.Page.EvaluateAsync("window.dispatchEvent(new PageTransitionEvent('pagehide', {persisted:true}))");
+        await browser.Page.Clock.FastForwardAsync(5000);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("ArchiveStatus:", StringComparison.Ordinal));
+        await browser.Page.EvaluateAsync("window.dispatchEvent(new PageTransitionEvent('pageshow', {persisted:true}))");
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save ZIP", Exact = true })).ToBeVisibleAsync();
+        Assert.Single(fake.Calls, call => call.StartsWith("ArchiveStatus:", StringComparison.Ordinal));
+        await browser.Page.Clock.FastForwardAsync(120000);
+        await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP expired");
+    }
+
+    private static FakeRedirectApiClient ArchiveFake(long bytes, string state)
+    {
+        var folder = new ContentEntry("redirect/cod4/usermaps/mp_test", "mp_test", true, bytes, DateTimeOffset.UnixEpoch, "v1", null);
+        return new FakeRedirectApiClient()
+            .WithData("Collection", RedirectDtoFactory.CreateCatalogue(folder))
+            .WithData("CreateArchive", RedirectDtoFactory.CreateArchive(status: state) with
+            {
+                Bytes = bytes,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(1)
+            })
+            .WithData("CreateDownloadGrant", Grant(bytes));
+    }
+
     private static DownloadGrant Grant(long bytes)
     {
         return new DownloadGrant(DirectUrl, "map.ff", bytes, "test-version", DateTimeOffset.UtcNow.AddMinutes(15));
