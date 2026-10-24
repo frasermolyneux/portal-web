@@ -147,6 +147,13 @@ XtremeIdiots.Portal.Web.Controllers.IdentityController#IdentityError#GET#Identit
 XtremeIdiots.Portal.Web.Controllers.IdentityController#Login#GET#Identity/Login#(System.String)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.IdentityController#LoginWithXtremeIdiots#POST#Identity/LoginWithXtremeIdiots#(System.String)|StateChange
 XtremeIdiots.Portal.Web.Controllers.IdentityController#Logout#POST#Identity/Logout#(System.String)|StateChange
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#ArchiveStatus#GET#MapDownloads/ArchiveStatus#(System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Browse#GET#MapDownloads/Browse#(System.String,System.String,System.Int32,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Collection#GET#MapDownloads/Collection#(System.String,System.String,System.String,System.Int32,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#CreateArchive#POST#MapDownloads/CreateArchive#(XtremeIdiots.Redirect.Api.Abstractions.V1.CreateArchive)|StateChange
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Grant#POST#MapDownloads/Grant#(XtremeIdiots.Redirect.Api.Abstractions.V1.CreateDownloadGrant)|StateChange
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Index#GET#MapDownloads/Index#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Manifest#GET#MapDownloads/Manifest#(System.String,System.String,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#DeleteMapFromHost#POST#MapManager/DeleteMapFromHost#(XtremeIdiots.Portal.Web.ViewModels.DeleteMapFromHostModel)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#Manage#GET#MapManager/Manage#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#PushMapToRemote#POST#MapManager/PushMapToRemote#(XtremeIdiots.Portal.Web.ViewModels.PushMapToRemoteViewModel)|StateChange

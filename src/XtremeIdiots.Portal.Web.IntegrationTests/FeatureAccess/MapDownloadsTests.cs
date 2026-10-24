@@ -8,7 +8,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 public sealed class MapDownloadsTests
 {
     [Fact]
-    public async Task PublicMapDownloads_LinkToTheManagerAndRenderDelegatedNamesAsText()
+    public async Task PublicMapDownloads_LinkToNativeFilesAndKeepSecondaryManagerAndLegacyLinks()
     {
         await using var browser = await BrowserFixture.CreateAsync();
         const string mapName = "mp_\"><img src=x onerror=\"window.redirectInjection=true\">";
@@ -52,7 +52,10 @@ public sealed class MapDownloadsTests
         var row = browser.Page.Locator("#dataTable tbody tr");
         await Assertions.Expect(row).ToHaveCountAsync(1);
         await Assertions.Expect(row.Locator("td").Nth(1)).ToHaveTextAsync(mapName);
-        await Assertions.Expect(row.GetByRole(AriaRole.Link, new() { Name = "Browse / ZIP" })).ToHaveAttributeAsync("href", managerUrl);
+        var nativeLink = row.GetByRole(AriaRole.Link, new() { Name = "Download files / ZIP" });
+        Assert.Equal(mapName, await nativeLink.EvaluateAsync<string>("link => new URL(link.href).searchParams.get('map')"));
+        Assert.Equal("/MapDownloads", await nativeLink.EvaluateAsync<string>("link => new URL(link.href).pathname"));
+        await Assertions.Expect(row.GetByRole(AriaRole.Link, new() { Name = "Open in Maps Manager" })).ToHaveAttributeAsync("href", managerUrl);
         await Assertions.Expect(row.Locator(".map-files a")).ToHaveCountAsync(1);
         await Assertions.Expect(row.Locator(".map-files a")).ToHaveTextAsync(fileName);
         await Assertions.Expect(row.Locator(".map-files span")).ToHaveTextAsync("unsafe.ff (download unavailable)");
