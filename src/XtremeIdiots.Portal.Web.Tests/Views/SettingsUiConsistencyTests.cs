@@ -346,7 +346,7 @@ public class SettingsUiConsistencyTests
         var scriptMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/wwwroot/js/map-rotations-index.js");
 
         Assert.Contains("<span class=\"badge bg-secondary\">Unassigned</span>", scriptMarkup);
-        Assert.Contains("<span class=\"badge bg-secondary\">Assigned to ", scriptMarkup);
+        Assert.Contains("<span class=\"badge bg-info text-dark\">Assigned to ", scriptMarkup);
         Assert.DoesNotContain("Active on ", scriptMarkup);
     }
 

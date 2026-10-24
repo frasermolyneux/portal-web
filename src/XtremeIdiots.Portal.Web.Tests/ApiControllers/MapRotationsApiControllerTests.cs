@@ -52,11 +52,23 @@ public class MapRotationsApiControllerTests
         return controller;
     }
 
-    [Fact]
-    public async Task GetMapRotationsAjax_WhenRotationIsPublished_ReturnsPublishedStatusToken()
+    [Theory]
+    [InlineData(null, null, MapRotationsOrder.ServerCountDesc)]
+    [InlineData("serverCount", "desc", MapRotationsOrder.ServerCountDesc)]
+    [InlineData("title", "asc", MapRotationsOrder.TitleAsc)]
+    public async Task GetMapRotationsAjax_UsesRequestedOrDefaultOrderingAndReturnsPublishedStatus(
+        string? sortColumn, string? sortDirection, MapRotationsOrder expectedOrder)
     {
         // Arrange
         var mapRotationId = Guid.NewGuid();
+        var serverId = Guid.NewGuid();
+        MapRotationServerAssignmentDto Assignment(Guid id, DeploymentState state)
+        {
+            return new(Guid.NewGuid(), mapRotationId, id, state, ActivationState.Inactive,
+                null, null, "server.cfg", "sv_maprotation", null, null,
+                DateTime.UtcNow, DateTime.UtcNow, null);
+        }
+
         var rotation = new MapRotationDto(
             mapRotationId,
             GameType.CallOfDuty4,
@@ -68,7 +80,12 @@ public class MapRotationsApiControllerTests
             createdAt: DateTime.UtcNow.AddDays(-1),
             updatedAt: DateTime.UtcNow.AddHours(-1),
             mapRotationMaps: [],
-            serverAssignments: [])
+            serverAssignments:
+            [
+                Assignment(serverId, DeploymentState.Synced),
+                Assignment(serverId, DeploymentState.Pending),
+                Assignment(Guid.NewGuid(), DeploymentState.Removed)
+            ])
         {
             Status = MapRotationStatus.Published
         };
@@ -99,7 +116,7 @@ public class MapRotationsApiControllerTests
                 new
                 {
                     data = "title",
-                    name = "title",
+                    name = sortColumn ?? "title",
                     searchable = "true",
                     orderable = "true",
                     search = new
@@ -126,12 +143,12 @@ public class MapRotationsApiControllerTests
                 value = string.Empty,
                 regex = "false"
             },
-            order = new[]
+            order = sortColumn is null ? [] : new[]
             {
                 new
                 {
                     column = 0,
-                    dir = "asc"
+                    dir = sortDirection
                 }
             }
         });
@@ -147,5 +164,9 @@ public class MapRotationsApiControllerTests
         var status = payload["data"]?[0]?["status"]?.Value<string>();
 
         Assert.Equal("Published", status);
+        Assert.Equal(1, payload["data"]?[0]?["serverCount"]?.Value<int>());
+        repositoryApiClient.Verify(x => x.MapRotations.V1.GetMapRotations(
+            It.IsAny<GameType[]?>(), null, null, null, null, null, 0, 10, expectedOrder,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

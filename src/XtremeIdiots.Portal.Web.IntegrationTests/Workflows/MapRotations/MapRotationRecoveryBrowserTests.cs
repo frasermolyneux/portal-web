@@ -56,6 +56,31 @@ public sealed class MapRotationRecoveryBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
+    [Theory]
+    [InlineData(AssignmentOperationStatus.Succeeded, true, "Completed", "bg-success")]
+    [InlineData(AssignmentOperationStatus.Failed, false, "Failed", "bg-danger")]
+    [InlineData(AssignmentOperationStatus.Cancelled, true, "Cancelled", "bg-secondary")]
+    public async Task CompletedActivity_SummarizesActionResultAndTimeBeforeExpanding(
+        AssignmentOperationStatus status, bool hasCompletionTime, string result, string colour)
+    {
+        DateTime? completedAt = hasCompletionTime ? new DateTime(2026, 10, 24, 19, 45, 0, DateTimeKind.Utc) : null;
+        var scenario = new MapRotationRecoveryScenario(busy: true, operationStatus: status, completedAt: completedAt);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
+        var summary = browser.Page.Locator("#operation-history > summary");
+        await Assertions.Expect(summary).ToContainTextAsync("View recent actions and results");
+        await Assertions.Expect(summary).ToContainTextAsync("Last action: Apply rotation: files");
+        await Assertions.Expect(summary.Locator(".badge." + colour)).ToHaveTextAsync(result);
+        await Assertions.Expect(summary).ToContainTextAsync(hasCompletionTime ? "Finished" : "Started");
+        await Assertions.Expect(summary.Locator("time")).ToBeVisibleAsync();
+        if (completedAt.HasValue)
+            await Assertions.Expect(summary.Locator("time")).ToHaveAttributeAsync("datetime", completedAt.Value.ToString("o"));
+        await Assertions.Expect(browser.Page.Locator("#operationsTable")).Not.ToBeVisibleAsync();
+        await summary.ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#operationsTable")).ToBeVisibleAsync();
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task RotationDetails_LinksToSingleServerActionPageWithoutLoadingActivity()
     {
@@ -171,16 +196,41 @@ public sealed class MapRotationRecoveryBrowserTests
         await browser.Page.RouteAsync("**/MapRotations/GetMapRotationsAjax**", route => route.FulfillAsync(new RouteFulfillOptions
         {
             ContentType = "application/json",
-            Body = /*lang=json,strict*/ """{"draw":1,"recordsTotal":1,"recordsFiltered":1,"data":[{"mapRotationId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","gameType":"CallOfDuty4","title":"Synthetic assigned rotation","gameMode":"dm","status":"Published","mapCount":1,"serverCount":1,"updatedAt":"2026-10-24","createdByDisplayName":"<img src=x onerror='window.rotationAuthorExecuted=true'>"}]}"""
+            Body = /*lang=json,strict*/ """
+                {"draw":1,"recordsTotal":2,"recordsFiltered":2,"data":[
+                  {"mapRotationId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","gameType":"CallOfDuty4","title":"Z assigned rotation","gameMode":"dm","status":"Published","mapCount":1,"serverCount":1,"updatedAt":"2026-10-24","createdByDisplayName":"<img src=x onerror='window.rotationAuthorExecuted=true'>"},
+                  {"mapRotationId":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","gameType":"CallOfDuty4","title":"A unassigned rotation","gameMode":"dm","status":"Published","mapCount":1,"serverCount":0,"updatedAt":"2026-10-24"}
+                ]}
+                """
         }));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations").AbsoluteUri);
         await Assertions.Expect(browser.Page.Locator("#dataTable")).ToBeVisibleAsync();
         await Assertions.Expect(browser.Page.Locator(".ibox-content.datatable-tight")).ToHaveCountAsync(1);
         await Assertions.Expect(browser.Page.Locator("#dataTable")).ToContainTextAsync("Assigned to 1 server");
         await Assertions.Expect(browser.Page.Locator("#dataTable")).Not.ToContainTextAsync("Active on");
-        await Assertions.Expect(browser.Page.Locator("#dataTable tbody a.btn")).ToHaveCountAsync(1);
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Open", Exact = true })).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#dataTable .badge.bg-info").Filter(new() { HasText = "Assigned to 1 server" })).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#dataTable .badge.bg-secondary").Filter(new() { HasText = "Unassigned" })).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#dataTable tbody a.btn")).ToHaveCountAsync(2);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Open", Exact = true }).First).ToBeVisibleAsync();
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Columnheader, new() { Name = "Author", Exact = true })).ToHaveCountAsync(0);
+        var order = await browser.Page.EvaluateAsync<string>("() => JSON.stringify($('#dataTable').DataTable().order())");
+        Assert.Equal("[[5,\"desc\"]]", order);
+        await browser.Page.EvaluateAsync("""
+            () => {
+                const state = $('#dataTable').DataTable().state();
+                state._mapRotationsStructureVersion = 4;
+                state.order = [[1, 'asc']];
+                localStorage.setItem('DataTables_dataTable_' + location.pathname, JSON.stringify(state));
+            }
+            """);
+        var reloadRequest = await browser.Page.RunAndWaitForRequestAsync(
+            () => browser.Page.ReloadAsync(),
+            request => request.Method == "POST" && new Uri(request.Url).AbsolutePath == "/MapRotations/GetMapRotationsAjax");
+        using var reloadPayload = System.Text.Json.JsonDocument.Parse(reloadRequest.PostData!);
+        var defaultOrder = reloadPayload.RootElement.GetProperty("order")[0];
+        Assert.Equal(5, defaultOrder.GetProperty("column").GetInt32());
+        Assert.Equal("desc", defaultOrder.GetProperty("dir").GetString());
+        await Assertions.Expect(browser.Page.Locator("#dataTable")).ToContainTextAsync("Assigned to 1 server");
         var authorHtml = await browser.Page.EvaluateAsync<string>("() => $('#dataTable').DataTable().cell(0, 'createdBy:name').node().innerHTML");
         Assert.Contains("&lt;img", authorHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("<img", authorHtml, StringComparison.Ordinal);

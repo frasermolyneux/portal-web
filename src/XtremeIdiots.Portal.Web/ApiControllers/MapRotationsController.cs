@@ -37,7 +37,7 @@ public class MapRotationsApiController(
                 return BadRequest("Invalid request data");
             }
 
-            var order = MapRotationsOrder.TitleAsc;
+            var order = MapRotationsOrder.ServerCountDesc;
 
             if (model.Order is not null && model.Order.Count != 0)
             {
@@ -102,7 +102,11 @@ public class MapRotationsApiController(
                     category = r.Category,
                     sequenceOrder = r.SequenceOrder,
                     mapCount = r.MapRotationMaps?.Count ?? 0,
-                    serverCount = r.ServerAssignments?.Count ?? 0,
+                    serverCount = r.ServerAssignments?
+                        .Where(a => a.DeploymentState != DeploymentState.Removed)
+                        .Select(a => a.GameServerId)
+                        .Distinct()
+                        .Count() ?? 0,
                     version = r.Version,
                     createdByDisplayName = r.CreatedByDisplayName,
                     lastModifiedByDisplayName = r.LastModifiedByDisplayName,
