@@ -52,6 +52,11 @@ A Web Lock permits one Portal disk save at a time across tabs. Resume reconciles
 the latest persisted checkpoint while holding that lock; another tab's active or
 completed save cannot be replayed against stale offsets. Browsers without Web
 Locks use normal browser-managed downloads instead.
+Each committed block also records SHA-256 integrity. Resume verifies the entire
+committed prefix through bounded, at-most-4-MiB disk reads before appending; a
+replaced or edited file requires a new save. Selecting the same destination for
+another Portal transfer invalidates earlier checkpoints. Concurrent ZIP status
+updates merge job metadata transactionally, preserving handles, hashes and offsets.
 A longer partially saved file is truncated to the last committed offset on resume;
 a shorter file requires an explicit restart in a new file. Changed versions are
 never appended, even when renewing grants. Revoked permissions and session or

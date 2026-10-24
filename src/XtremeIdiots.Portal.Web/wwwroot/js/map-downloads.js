@@ -180,15 +180,26 @@
     async function store(task, remove = false) {
         const db = await database;
         if (!db) return;
-        const { id, owner, resource, name, version: fileVersion, offset, total, handle, expires, job } = task;
+        const { id, owner, resource, name, version: fileVersion, offset, total, handle, expires, job, invalidated } = task;
+        const integrity = handle ? task.integrity || [] : undefined;
         try {
             await new Promise(resolve => {
                 const transaction = db.transaction('tasks', 'readwrite');
                 const objectStore = transaction.objectStore('tasks');
-                if (remove) objectStore.delete(id);
-                else objectStore.put({ id, owner, resource, name, version: fileVersion, offset, total, handle, expires, job });
                 transaction.oncomplete = () => { task.persisted = !remove; resolve(); };
                 transaction.onerror = transaction.onabort = resolve;
+                if (remove) { objectStore.delete(id); return; }
+                const request = objectStore.get(id);
+                request.onsuccess = () => {
+                    try {
+                        // A delayed ZIP status response must not erase another tab's disk checkpoint.
+                        const existing = request.result;
+                        const value = !handle && existing?.integrity != null
+                            ? { ...existing, job, expires }
+                            : { id, owner, resource, name, version: fileVersion, offset, total, handle, expires, job, integrity, invalidated };
+                        objectStore.put(value);
+                    } catch { transaction.abort(); }
+                };
             });
         } catch { /* Private browsing/storage policy may prevent persisting file handles. Saving still works. */ }
     }
@@ -220,7 +231,7 @@
             if (task.handle) label = 'Resume save';
             actions.append(button(label, () => save(task), true));
             if (task.handle) actions.append(button('Restart save in a new file', () => {
-                task.handle = null; task.offset = 0; task.version = null; task.restart = true; void save(task);
+                task.handle = null; task.offset = 0; task.version = null; task.integrity = []; task.restart = true; void save(task);
             }));
             actions.append(button('Use browser download', () => browserDownload(task)));
         }
@@ -339,7 +350,7 @@
     }
     async function save(task) {
         if (task.busy) return;
-        if (!window.showSaveFilePicker || !window.isSecureContext || !navigator.locks) { await browserDownload(task); return; }
+        if (!window.showSaveFilePicker || !window.isSecureContext || !navigator.locks || !window.crypto?.subtle) { await browserDownload(task); return; }
         task.busy = true; task.state = 'Choose a save location…'; renderTask(task);
         try {
             // Invoke the picker before asynchronous work so browser user activation is retained.
@@ -370,17 +381,22 @@
         });
         if (!record) {
             if (task.persisted) {
-                task.state = 'This task completed or was dismissed in another tab. Dismiss this local task.';
+                task.state = 'This task completed or was dismissed in another tab, or its destination was reused. Dismiss this local task.';
                 task.terminal = true;
                 throw new Error(task.state);
             }
             return;
         }
+        if (record.invalidated) {
+            task.state = 'The destination was reused by another download. Dismiss this task and start a new save.';
+            task.terminal = true;
+            throw new Error(task.state);
+        }
         if (record.owner !== member ||
             record.resource?.path !== task.resource.path || record.resource?.archiveId !== task.resource.archiveId ||
             (record.handle && !await record.handle.isSameEntry(task.handle)))
             throw new Error('The saved resource or location changed in another tab. Restart save in a new file.');
-        task.offset = record.offset ?? 0; task.version = record.version; task.total = record.total;
+        task.offset = record.offset ?? 0; task.version = record.version; task.total = record.total; task.integrity = record.integrity;
     }
     async function transfer(task) {
         await reconcileCheckpoint(task);
@@ -391,10 +407,13 @@
             task.version = grant.version; task.total = grant.bytes; task.expires ||= grant.expiresUtc;
             if (!Number.isSafeInteger(task.offset) || task.offset < 0 || task.offset > task.total)
                 throw new Error('The saved offset is invalid. Restart save in a new file.');
+            task.abort = new AbortController();
+            task.state = 'Verifying saved bytes…'; renderTask(task);
             const file = await task.handle.getFile();
             if (!tasks.has(task.id) || task.terminal) return;
+            task.abort.signal.throwIfAborted();
             if (file.size < task.offset) throw new Error('The saved file is shorter than expected. Restart save in a new file.');
-            task.abort = new AbortController();
+            await verifyCheckpoint(task, file);
             task.state = 'Saving to disk'; renderTask(task);
             // Checkpoints grow geometrically so prefix copying stays linear in the file size.
             do { grant = await saveCheckpoint(task, grant); } while (task.offset < task.total);
@@ -405,6 +424,38 @@
             if (tasks.has(task.id) && task.handle && !task.terminal) await store(task);
             throw error;
         }
+    }
+    async function checksumBlock(file, start, end) {
+        const data = await file.slice(start, end).arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+    }
+    async function verifyCheckpoint(task, file) {
+        if (task.offset === 0) { task.integrity = []; return; }
+        if (!Array.isArray(task.integrity) || task.integrity.length !== Math.ceil(task.offset / chunkSize))
+            throw new Error('Checkpoint integrity is unavailable. Restart save in a new file.');
+        for (let index = 0; index < task.integrity.length; index++) {
+            task.abort.signal.throwIfAborted();
+            const digest = await checksumBlock(file, index * chunkSize, Math.min(task.offset, (index + 1) * chunkSize));
+            if (digest !== task.integrity[index])
+                throw new Error('The saved file was changed or replaced. Restart save in a new file.');
+        }
+    }
+    async function invalidateDestinations(task) {
+        const db = await database;
+        if (!db) return;
+        const records = await readRecords(db);
+        await Promise.all(records.map(async record => {
+            if (record.id === task.id || !record.handle || !await record.handle.isSameEntry(task.handle)) return;
+            record.invalidated = true;
+            await store(record);
+            const previous = tasks.get(record.id);
+            if (previous) {
+                clearTimeout(previous.timer);
+                previous.state = 'The destination was selected for another download. Dismiss this task and start a new save.';
+                previous.terminal = true; renderTask(previous);
+            }
+        }));
     }
     async function rangeResponse(task, grant, start, end) {
         const response = await fetch(grant.url, {
@@ -444,6 +495,7 @@
                 const end = Math.min(limit - 1, cursor + chunkSize - 1);
                 const response = cursor < task.total ? await rangeResponse(task, grant, cursor, end) : null;
                 if (!writer) {
+                    if (task.offset === 0) await invalidateDestinations(task);
                     writer = await task.handle.createWritable({ keepExistingData: task.offset > 0 });
                     task.abort.signal.throwIfAborted();
                     await writer.truncate(task.offset);
@@ -454,6 +506,13 @@
             } while (cursor < limit);
             task.abort.signal.throwIfAborted();
             await writer.close();
+            const file = await task.handle.getFile();
+            const integrity = [...task.integrity];
+            for (let start = task.offset; start < cursor; start += chunkSize) {
+                task.abort.signal.throwIfAborted();
+                integrity.push(await checksumBlock(file, start, Math.min(cursor, start + chunkSize)));
+            }
+            task.integrity = integrity;
         } catch (error) {
             await writer?.abort().catch(() => {});
             throw error;
@@ -463,19 +522,24 @@
         renderTask(task);
         return grant;
     }
-    async function restore() {
-        const db = await database;
-        if (!db) return;
-        const records = await new Promise(resolve => {
+    function readRecords(db) {
+        return new Promise(resolve => {
             const request = db.transaction('tasks').objectStore('tasks').getAll();
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => resolve([]);
         });
+    }
+    async function restore() {
+        const db = await database;
+        if (!db) return;
+        const records = await readRecords(db);
         await Promise.all(records.map(async record => {
             if (record.owner !== member || (record.job && new Date(record.expires) <= new Date())) {
                 await store(record, true); return;
             }
-            const task = newTask({ ...record, persisted: true, state: record.handle ? 'Download paused. Resume save to continue.' : 'Restoring ZIP…' });
+            let state = record.handle ? 'Download paused. Resume save to continue.' : 'Restoring ZIP…';
+            if (record.invalidated) state = 'The destination was reused by another download. Dismiss this task and start a new save.';
+            const task = newTask({ ...record, persisted: true, terminal: !!record.invalidated, state });
             trackJob(task);
         }));
     }
