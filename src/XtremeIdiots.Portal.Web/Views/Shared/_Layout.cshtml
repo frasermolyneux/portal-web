@@ -9,7 +9,7 @@
         var analyticsId = Configuration["Google:AnalyticsId"];
         var isValidAnalyticsId = !string.IsNullOrEmpty(analyticsId) && System.Text.RegularExpressions.Regex.IsMatch(analyticsId, @"^G-[A-Z0-9]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
     }
-    @if (isValidAnalyticsId)
+    @if (isValidAnalyticsId && ViewData["DisableClientTelemetry"] is not true)
     {
         <script async src="https://www.googletagmanager.com/gtag/js?id=@analyticsId"></script>
         <script>
@@ -57,7 +57,7 @@
         <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
     </environment>
 
-    @if (Configuration.GetValue("ApplicationInsights:EnableClientTelemetry", true))
+    @if (Configuration.GetValue("ApplicationInsights:EnableClientTelemetry", true) && ViewData["DisableClientTelemetry"] is not true)
     {
         @Html.Raw(JavaScriptSnippet.FullScript)
     }

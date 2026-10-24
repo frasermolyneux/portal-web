@@ -14,6 +14,8 @@ internal static class PortalTestConfiguration
         ["GeoLocationApi:BaseUrl"] = "https://geolocation.test.invalid",
         ["RepositoryApi:ApplicationAudience"] = "api://repository-test",
         ["RepositoryApi:BaseUrl"] = "https://repository.test.invalid",
+        ["RedirectApi:BaseUrl"] = "https://maps.test.invalid",
+        ["RedirectApi:ApplicationAudience"] = "api://maps-test",
         ["ServersIntegrationApi:ApplicationAudience"] = "api://servers-test",
         ["ServersIntegrationApi:BaseUrl"] = "https://servers.test.invalid",
         ["SyncApi:ApplicationAudience"] = string.Empty,

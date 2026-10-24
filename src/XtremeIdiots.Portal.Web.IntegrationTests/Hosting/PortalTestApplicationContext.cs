@@ -17,6 +17,8 @@ using XtremeIdiots.Portal.Web;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
+using XtremeIdiots.Redirect.Api.Abstractions.V1;
+using XtremeIdiots.Redirect.Api.Client.Testing;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
@@ -118,6 +120,8 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
         services.RemoveAll<IServersApiClient>();
         services.RemoveAll<IGeoLocationApiClient>();
         services.RemoveAll<IInvisionApiClient>();
+        services.RemoveAll<IRedirectApiClient>();
+        services.AddFakeRedirectApiClient();
 
         services.AddSingleton(new Mock<IRepositoryApiClient>(MockBehavior.Default)
         {

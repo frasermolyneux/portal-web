@@ -32,9 +32,11 @@
             </div>
         </div>
         <div class="ibox-content">
-            @if (Model.GameServer.GameType.RedirectManagerUrl() is { } redirectManagerUrl)
+            @if (Model.GameServer.GameType is GameType.CallOfDuty2 or GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5)
             {
-                <p><a href="@redirectManagerUrl" target="_blank" rel="noopener">Browse redirect maps and download ZIP collections <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></p>
+                var redirectManagerUrl = Model.GameServer.GameType.RedirectManagerUrl() ?? "https://maps.xtremeidiots.com/?game=cod2";
+                <p><a asp-controller="MapDownloads" asp-action="Index" asp-route-game="@Model.GameServer.GameType" class="btn btn-primary btn-sm">Map and mod downloads</a>
+                    <a href="@redirectManagerUrl" target="_blank" rel="noopener noreferrer" class="ms-2">Open in Maps Manager</a></p>
             }
             <ul class="nav nav-tabs" id="mapManagerTabs" role="tablist">
                 <li class="nav-item" role="presentation">

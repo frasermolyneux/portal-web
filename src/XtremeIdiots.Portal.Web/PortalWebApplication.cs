@@ -20,6 +20,7 @@ using XtremeIdiots.Portal.Web.Areas.Identity.Data;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.Services.Settings;
+using XtremeIdiots.Redirect.Api.Client.V1;
 
 namespace XtremeIdiots.Portal.Web;
 
@@ -136,6 +137,9 @@ public static class PortalWebApplication
         builder.Services.AddRepositoryApiClient(clientOptions => clientOptions
             .WithBaseUrl(GetConfigValue(builder.Configuration, "RepositoryApi:BaseUrl", "RepositoryApi:BaseUrl configuration is required"))
             .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "RepositoryApi:ApplicationAudience", "RepositoryApi:ApplicationAudience configuration is required")));
+        builder.Services.AddRedirectApiClient(clientOptions => clientOptions
+            .WithBaseUrl(GetConfigValue(builder.Configuration, "RedirectApi:BaseUrl", "RedirectApi:BaseUrl configuration is required"))
+            .WithEntraIdAuthentication(GetConfigValue(builder.Configuration, "RedirectApi:ApplicationAudience", "RedirectApi:ApplicationAudience configuration is required")));
         // NOTE (Repository client 4.2.22 / MX.Api.Client 2.3.77): client 4.2.22 fixed the
         // cross-sub-API cache-scoping crash at the source via a reflection-free
         // SharedCacheConfiguration, so opting into .WithCaching(c => c.UseLibraryDefaults())

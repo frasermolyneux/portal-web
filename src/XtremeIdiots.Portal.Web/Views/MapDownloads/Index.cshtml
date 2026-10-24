@@ -1,0 +1,61 @@
+@using XtremeIdiots.Portal.Web.Extensions
+@{
+    ViewData["Title"] = "Map and mod downloads";
+    ViewData["DisableClientTelemetry"] = true;
+}
+<div class="wrapper wrapper-content animated fadeInRight" id="mapDownloads"
+     data-member="@(User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : "")">
+    <div class="ibox">
+        <div class="ibox-title"><h5>Map and mod downloads</h5></div>
+        <div class="ibox-content">
+            <p>Browse live map and mod files. Downloads go directly from Maps Manager to your device.</p>
+            <p><a href="https://maps.xtremeidiots.com/" target="_blank" rel="noopener noreferrer">Open in Maps Manager</a></p>
+            <form id="downloadSearch" class="row g-2 mb-3">
+                @Html.AntiForgeryToken()
+                <div class="col-sm-3"><label for="downloadGame" class="form-label">Game</label>
+                    <select id="downloadGame" class="form-select">
+                        <option value="cod4">Call of Duty 4 / COD4x</option>
+                        <option value="cod5">Call of Duty 5</option>
+                        <option value="cod2">Call of Duty 2</option>
+                    </select>
+                </div>
+                <div class="col-sm-3"><label for="downloadKind" class="form-label">Collection</label>
+                    <select id="downloadKind" class="form-select"><option value="maps">Maps</option><option value="mods">Mods</option></select>
+                </div>
+                <div class="col-sm-4"><label for="downloadQuery" class="form-label">Search</label>
+                    <input id="downloadQuery" class="form-control" type="search" maxlength="200" />
+                </div>
+                <div class="col-sm-2 d-flex align-items-end"><button class="btn btn-primary" type="submit">Search</button></div>
+            </form>
+            <output id="downloadStatus" class="d-block mb-3" aria-live="polite"></output>
+            <h2 id="downloadHeading" class="h5" tabindex="-1">Files</h2>
+            <button id="downloadBack" type="button" class="btn btn-outline-secondary btn-sm mb-2" hidden>Back to collection</button>
+            <div id="downloadEntries" class="native-download-entries" aria-busy="false"></div>
+            <nav aria-label="Download pages" class="d-flex gap-2 mt-3">
+                <button id="downloadPrevious" type="button" class="btn btn-outline-secondary btn-sm" disabled>Previous</button>
+                <span id="downloadPage"></span>
+                <button id="downloadNext" type="button" class="btn btn-outline-secondary btn-sm" disabled>Next</button>
+            </nav>
+        </div>
+        <div class="ibox-footer d-flex flex-wrap gap-2 align-items-center">
+            <output id="downloadSelection">0 of 15 folders selected</output>
+            <button id="downloadZip" type="button" class="btn btn-primary" disabled>Create selected ZIP</button>
+            <button id="downloadClear" type="button" class="btn btn-outline-secondary" disabled>Clear selection</button>
+            @if (User.Identity?.IsAuthenticated != true)
+            {
+                <a asp-controller="Identity" asp-action="Login" asp-route-returnUrl="/MapDownloads">Sign in to Portal for ZIP downloads</a>
+            }
+        </div>
+    </div>
+    <div class="ibox">
+        <div class="ibox-title"><h5>Downloads and ZIP preparation</h5></div>
+        <div class="ibox-content">
+            <p class="form-text">ZIP preparation updates automatically. Dismiss removes a task from this page, not the server.
+                Supported browsers can save resumable downloads to disk. Other browsers use their normal download manager.</p>
+            <section id="downloadTasks" aria-label="Downloads and ZIP preparation" tabindex="-1" aria-live="polite" aria-relevant="additions text"></section>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script src="~/js/map-downloads.js" asp-append-version="true"></script>
+}

@@ -35,6 +35,7 @@
                 <div class="ibox-title">
                     <h5>@ViewData["Title"]</h5>
                     <div class="ibox-tools">
+                        <a asp-controller="MapDownloads" asp-action="Index" class="btn btn-primary btn-sm">Map and mod downloads</a>
                         <a asp-controller="Maps" asp-action="VoteLog" class="btn btn-outline-primary btn-sm">
                             <i class="fa fa-list-alt"></i> Vote Log
                         </a>
@@ -65,4 +66,3 @@
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
     <script src="~/js/maps-index.js" asp-append-version="true"></script>
 }
-
