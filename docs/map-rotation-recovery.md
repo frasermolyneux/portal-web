@@ -120,7 +120,11 @@ cancellation, complete **Deactivate** successfully before **Unassign**. Unassign
 preserves server map files and the rotation library; removed assignment history
 is retained for 90 days.
 
-If a confirmed legacy cancellation records **Cancelled** but its assignment reset
-fails, refresh and use **Retry cancellation finalization** on that latest operation.
+If a confirmed terminal operation records **Cancelled** or **Failed** but its assignment reset
+fails, refresh and use **Retry operation finalization** on that latest operation.
 It rechecks ownership and confirmed termination before retrying the pending reset;
 it does not force healthy badges or override a newer/in-progress operation.
+An already-failed orchestration is finalized as **Failed**, never cancellation success.
+For linked main/AACP Apply, either target can request cancellation using its own
+persisted operation; the server, rotation and exact linked-slot relationship are
+verified before contacting Sync.

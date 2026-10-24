@@ -176,7 +176,7 @@
                                         @foreach (var op in Model.Operations)
                                         {
                                             var isInProgress = op.Status == AssignmentOperationStatus.InProgress;
-                                            var resetPending = op.Status == AssignmentOperationStatus.Cancelled
+                                            var resetPending = op.Status is AssignmentOperationStatus.Cancelled or AssignmentOperationStatus.Failed
                                                 && Model.Operations.FirstOrDefault()?.MapRotationAssignmentOperationId == op.MapRotationAssignmentOperationId
                                                 && (Model.Assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
                                                     || Model.Assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating)
@@ -248,7 +248,7 @@
                                                             <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
                                                             <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Request cancellation? The current activity must finish safely before cancellation is confirmed.">
-                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> @(resetPending ? "Retry cancellation finalization" : "Cancel")
+                                                                <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> @(resetPending ? "Retry operation finalization" : "Cancel")
                                                             </button>
                                                         </form>
                                                     }

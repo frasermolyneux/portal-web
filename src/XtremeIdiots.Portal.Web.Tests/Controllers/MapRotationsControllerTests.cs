@@ -1316,6 +1316,85 @@ public class MapRotationsControllerTests
     }
 
     [Theory]
+    [InlineData(true, true, "scr_aacp_maps_1", true)]
+    [InlineData(false, true, "scr_aacp_maps_1", false)]
+    [InlineData(true, false, "scr_aacp_maps_1", false)]
+    [InlineData(true, true, "scr_aacp_maps_2", false)]
+    [InlineData(true, true, "sv_maprotation", false)]
+    public async Task LinkedApply_CancellationAndTermination_RequirePersistedOperationAndExactSameServerRotationPair(
+        bool sameServer, bool sameRotation, string sourceVariable, bool permitted)
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.Syncing);
+        var source = CreateAssignment(Guid.NewGuid(),
+            sameRotation ? assignment.MapRotationId : Guid.NewGuid(),
+            sameServer ? assignment.GameServerId : Guid.NewGuid());
+        SetDtoProperty(source, nameof(source.ConfigVariableName), sourceVariable);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetServerAssignment(source.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(source)));
+        var instanceId = $"maprot-apply-{source.MapRotationServerAssignmentId}";
+        var operationId = Guid.NewGuid();
+        SetOperation(assignment, operationId, instanceId);
+        mockSyncApiClient.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(false, CancellationRequested: true));
+
+        var cancellation = await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId);
+        var termination = await sut.TerminateOrchestration(instanceId, assignment.MapRotationServerAssignmentId);
+
+        if (permitted)
+        {
+            Assert.IsType<RedirectToActionResult>(cancellation);
+            Assert.IsType<RedirectToActionResult>(termination);
+        }
+        else
+        {
+            Assert.IsType<BadRequestObjectResult>(cancellation);
+            Assert.IsType<BadRequestObjectResult>(termination);
+        }
+
+        mockSyncApiClient.Verify(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()),
+            permitted ? Times.Exactly(2) : Times.Never());
+        VerifyNoCancellationMutation();
+
+        SetOperation(assignment, operationId, $"maprot-apply-{assignment.MapRotationServerAssignmentId}");
+        Assert.IsType<BadRequestObjectResult>(await sut.TerminateOrchestration(instanceId, assignment.MapRotationServerAssignmentId));
+    }
+
+    [Theory]
+    [InlineData(AssignmentOperationStatus.InProgress)]
+    [InlineData(AssignmentOperationStatus.Failed)]
+    public async Task CancelOperation_ConfirmedFailedOrchestration_FinalizesAsFailedAndAllowsRetry(
+        AssignmentOperationStatus operationStatus)
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.Syncing, ActivationState.Activating);
+        var operationId = Guid.NewGuid();
+        var instanceId = $"maprot-apply-{assignment.MapRotationServerAssignmentId}";
+        SetOperation(assignment, operationId, instanceId, operationStatus);
+        mockSyncApiClient.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.GetOrchestrationStatus(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found,
+                new OrchestrationStatusResult(instanceId, "Failed", DateTime.UtcNow, DateTime.UtcNow, null)));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateAssignmentOperation(operationId,
+                AssignmentOperationStatus.Failed, It.IsAny<string>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+
+        Assert.IsType<RedirectToActionResult>(await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId));
+
+        Assert.Contains("Failed operation finalized", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("cancelled successfully", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateAssignmentOperation(
+            operationId, AssignmentOperationStatus.Failed, It.IsAny<string>()),
+            operationStatus == AssignmentOperationStatus.InProgress ? Times.Once() : Times.Never());
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateAssignmentOperation(
+            operationId, AssignmentOperationStatus.Cancelled, It.IsAny<string>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.ActivationState == ActivationState.Failed
+                && dto.DeploymentState == DeploymentState.Failed), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Unassign_ActiveOrUncertainConfiguration_IsBlockedEvenWhenForced(bool force)

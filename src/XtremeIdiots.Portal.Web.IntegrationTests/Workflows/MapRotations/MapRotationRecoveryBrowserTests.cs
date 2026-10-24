@@ -48,14 +48,16 @@ public sealed class MapRotationRecoveryBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
-    [Fact]
-    public async Task CancelledOperation_WithPendingStateReset_OffersPortalFinalizationRetry()
+    [Theory]
+    [InlineData(AssignmentOperationStatus.Cancelled)]
+    [InlineData(AssignmentOperationStatus.Failed)]
+    public async Task TerminalOperation_WithPendingStateReset_OffersPortalFinalizationRetry(AssignmentOperationStatus operationStatus)
     {
         var scenario = new MapRotationRecoveryScenario(DeploymentState.Syncing, busy: true,
-            operationStatus: AssignmentOperationStatus.Cancelled);
+            operationStatus: operationStatus);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Retry cancellation finalization", Exact = true })).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Retry operation finalization", Exact = true })).ToBeVisibleAsync();
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true })).ToHaveCountAsync(0);
         browser.AssertNoBrowserErrors();
     }
