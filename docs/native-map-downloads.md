@@ -48,6 +48,10 @@ A disk checkpoint groups geometrically growing batches of those bounded ranges,
 so repeatedly copying the committed prefix is linear rather than quadratic in
 file size. An interruption discards the current uncommitted checkpoint and
 resumes from the last closed checkpoint, whose offset is displayed and persisted.
+A Web Lock permits one Portal disk save at a time across tabs. Resume reconciles
+the latest persisted checkpoint while holding that lock; another tab's active or
+completed save cannot be replayed against stale offsets. Browsers without Web
+Locks use normal browser-managed downloads instead.
 A longer partially saved file is truncated to the last committed offset on resume;
 a shorter file requires an explicit restart in a new file. Changed versions are
 never appended, even when renewing grants. Revoked permissions and session or

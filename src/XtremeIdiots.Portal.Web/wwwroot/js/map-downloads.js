@@ -187,7 +187,8 @@
                 const objectStore = transaction.objectStore('tasks');
                 if (remove) objectStore.delete(id);
                 else objectStore.put({ id, owner, resource, name, version: fileVersion, offset, total, handle, expires, job });
-                transaction.oncomplete = transaction.onerror = transaction.onabort = resolve;
+                transaction.oncomplete = () => { task.persisted = !remove; resolve(); };
+                transaction.onerror = transaction.onabort = resolve;
             });
         } catch { /* Private browsing/storage policy may prevent persisting file handles. Saving still works. */ }
     }
@@ -219,7 +220,7 @@
             if (task.handle) label = 'Resume save';
             actions.append(button(label, () => save(task), true));
             if (task.handle) actions.append(button('Restart save in a new file', () => {
-                task.handle = null; task.offset = 0; task.version = null; void save(task);
+                task.handle = null; task.offset = 0; task.version = null; task.restart = true; void save(task);
             }));
             actions.append(button('Use browser download', () => browserDownload(task)));
         }
@@ -239,7 +240,7 @@
         try {
             const job = await api('CreateArchive', { paths }, true);
             if (!tasks.has(task.id)) return;
-            selected.clear(); updateSelection();
+            paths.forEach(value => selected.delete(value)); updateSelection();
             task.job = job.id; task.expires = job.expiresUtc;
             await acceptJob(task, job);
         } catch (error) {
@@ -338,7 +339,7 @@
     }
     async function save(task) {
         if (task.busy) return;
-        if (!window.showSaveFilePicker || !window.isSecureContext) { await browserDownload(task); return; }
+        if (!window.showSaveFilePicker || !window.isSecureContext || !navigator.locks) { await browserDownload(task); return; }
         task.busy = true; task.state = 'Choose a save location…'; renderTask(task);
         try {
             // Invoke the picker before asynchronous work so browser user activation is retained.
@@ -346,9 +347,50 @@
             if (await task.handle.requestPermission({ mode: 'readwrite' }) !== 'granted')
                 throw new Error('Save permission was revoked. Choose a new file or use browser download.');
             if (!tasks.has(task.id) || task.terminal) return;
+            await navigator.locks.request('portal-native-download-writer', { ifAvailable: true }, lock => {
+                if (!lock) throw new Error('Another Portal save is running. Pause it before starting or resuming this download.');
+                return transfer(task);
+            });
+        } catch (error) {
+            if (!task.terminal) task.state = error.name === 'AbortError' ? 'Download paused. Resume save to continue.' : error.message;
+        } finally {
+            task.busy = false; task.abort = null; renderTask(task);
+        }
+    }
+    async function reconcileCheckpoint(task) {
+        if (task.restart) {
+            await store(task, true); task.restart = false; return;
+        }
+        const db = await database;
+        if (!db) return;
+        const record = await new Promise(resolve => {
+            const request = db.transaction('tasks').objectStore('tasks').get(task.id);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+        });
+        if (!record) {
+            if (task.persisted) {
+                task.state = 'This task completed or was dismissed in another tab. Dismiss this local task.';
+                task.terminal = true;
+                throw new Error(task.state);
+            }
+            return;
+        }
+        if (record.owner !== member ||
+            record.resource?.path !== task.resource.path || record.resource?.archiveId !== task.resource.archiveId ||
+            (record.handle && !await record.handle.isSameEntry(task.handle)))
+            throw new Error('The saved resource or location changed in another tab. Restart save in a new file.');
+        task.offset = record.offset ?? 0; task.version = record.version; task.total = record.total;
+    }
+    async function transfer(task) {
+        await reconcileCheckpoint(task);
+        if (!tasks.has(task.id) || task.terminal) return;
+        try {
             let grant = validateGrant(await api('Grant', task.resource, true), task);
             if (!tasks.has(task.id) || task.terminal) return;
             task.version = grant.version; task.total = grant.bytes; task.expires ||= grant.expiresUtc;
+            if (!Number.isSafeInteger(task.offset) || task.offset < 0 || task.offset > task.total)
+                throw new Error('The saved offset is invalid. Restart save in a new file.');
             const file = await task.handle.getFile();
             if (!tasks.has(task.id) || task.terminal) return;
             if (file.size < task.offset) throw new Error('The saved file is shorter than expected. Restart save in a new file.');
@@ -360,10 +402,8 @@
             clearTimeout(task.timer);
             task.state = 'Saved to disk'; task.terminal = true; await store(task, true);
         } catch (error) {
-            if (!task.terminal) task.state = error.name === 'AbortError' ? 'Download paused. Resume save to continue.' : error.message;
             if (tasks.has(task.id) && task.handle && !task.terminal) await store(task);
-        } finally {
-            task.busy = false; task.abort = null; renderTask(task);
+            throw error;
         }
     }
     async function rangeResponse(task, grant, start, end) {
@@ -402,7 +442,7 @@
                 if (new Date(grant.expiresUtc) - Date.now() < 30000)
                     grant = validateGrant(await api('Grant', task.resource, true), task);
                 const end = Math.min(limit - 1, cursor + chunkSize - 1);
-                const response = task.total > 0 ? await rangeResponse(task, grant, cursor, end) : null;
+                const response = cursor < task.total ? await rangeResponse(task, grant, cursor, end) : null;
                 if (!writer) {
                     writer = await task.handle.createWritable({ keepExistingData: task.offset > 0 });
                     task.abort.signal.throwIfAborted();
@@ -435,7 +475,7 @@
             if (record.owner !== member || (record.job && new Date(record.expires) <= new Date())) {
                 await store(record, true); return;
             }
-            const task = newTask({ ...record, state: record.handle ? 'Download paused. Resume save to continue.' : 'Restoring ZIP…' });
+            const task = newTask({ ...record, persisted: true, state: record.handle ? 'Download paused. Resume save to continue.' : 'Restoring ZIP…' });
             trackJob(task);
         }));
     }
