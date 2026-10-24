@@ -13,7 +13,7 @@ public sealed class MapDownloadsTests
         await using var browser = await BrowserFixture.CreateAsync();
         const string mapName = "mp_\"><img src=x onerror=\"window.redirectInjection=true\">";
         const string fileName = "<img src=x onerror=\"window.redirectInjection=true\">.ff";
-        const string managerUrl = "https://maps.xtremeidiots.net/?game=cod4&map=mp_custom";
+        const string managerUrl = "https://maps.xtremeidiots.com/?game=cod4&map=mp_custom";
         var body = JsonSerializer.Serialize(new
         {
             draw = 1,
