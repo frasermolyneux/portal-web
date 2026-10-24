@@ -1,6 +1,7 @@
 @use '../tokens/colors' as *;
 @use '../tokens/spacing' as *;
 @use '../tokens/typography' as *;
+@use '../layout/responsive' as *;
 
 // Maps Feature Styles
 
@@ -35,22 +36,116 @@
     margin-bottom: 1.5rem;
 }
 
-.native-download-entry {
+#mapDownloads {
+    max-width: 1120px;
+    margin-inline: auto;
+
+    [hidden] {
+        display: none !important;
+    }
+}
+
+.native-download-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+
+    h5 {
+        margin: 0;
+        font-size: 1.35rem;
+        overflow-wrap: anywhere;
+    }
+}
+
+.native-download-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, .7fr) minmax(0, 1fr) auto;
+    align-items: end;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.native-download-context,
+.native-download-status,
+.native-download-size {
+    color: $xi-text;
+}
+
+.native-download-status {
+    display: block;
+    margin-bottom: .75rem;
+}
+
+.native-download-toolbar,
+.native-download-pagination {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: .75rem;
+}
+
+.native-download-pagination {
+    margin-top: 1rem;
+}
+
+.native-download-manager {
+    margin-left: auto;
+}
+
+.native-download-entry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 1rem;
     padding: .75rem 0;
-    border-bottom: 1px solid var(--bs-border-color);
+    border-bottom: 1px solid $border-color;
+
+    &:last-child {
+        border-bottom: 0;
+    }
 }
 
 .native-download-name {
-    flex: 1 1 15rem;
+    min-width: 0;
     overflow-wrap: anywhere;
+}
+
+.native-download-size {
+    font-size: $font-size-sm;
+    white-space: nowrap;
 }
 
 .native-download-task {
     padding: 1rem 0;
     border-bottom: 1px solid var(--bs-border-color);
     overflow-wrap: anywhere;
+}
+
+@include media-max-md {
+    .native-download-header,
+    .native-download-toolbar {
+        align-items: flex-start;
+    }
+
+    .native-download-header {
+        flex-wrap: wrap;
+    }
+
+    .native-download-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .native-download-entry {
+        grid-template-columns: minmax(0, 1fr) auto;
+
+        > div {
+            grid-column: 1 / -1;
+            justify-content: flex-end;
+        }
+    }
+
+    .native-download-manager {
+        margin-left: 0;
+    }
 }

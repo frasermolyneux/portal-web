@@ -63,19 +63,18 @@ $(document).ready(function () {
     function renderMapFiles(data, row) {
         const container = document.createElement('div');
         const games = { CallOfDuty2: 'cod2', CallOfDuty4: 'cod4', CallOfDuty4x: 'cod4', CallOfDuty5: 'cod5' };
-        if (games[row?.gameType] && !row?.builtIn) {
+        const files = Array.isArray(data) ? data.filter(file => file?.fileName && safeUrl(file.url)) : [];
+        if (files.length && games[row?.gameType] && !row?.builtIn) {
             const native = document.createElement('a');
             native.href = '/MapDownloads?' + new URLSearchParams({ game: games[row.gameType], map: row.mapName });
-            native.textContent = 'Download files / ZIP';
-            native.className = 'btn btn-primary btn-sm mb-1';
+            native.textContent = 'Download';
+            native.className = 'btn btn-outline-secondary btn-sm';
             container.append(native);
-        }
-        if (safeUrl(row?.redirectManagerUrl)) {
-            const manager = document.createElement('a');
-            manager.href = row.redirectManagerUrl;
-            manager.textContent = 'Open in Maps Manager';
-            manager.className = 'small d-block mb-1';
-            container.append(manager);
+            const count = document.createElement('span');
+            count.className = 'small text-muted ms-2';
+            count.textContent = `${files.length} ${files.length === 1 ? 'file' : 'files'}`;
+            container.append(count);
+            return container.innerHTML;
         }
         if (data && data.length) {
             const list = document.createElement('ul');

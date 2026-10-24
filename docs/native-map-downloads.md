@@ -3,9 +3,14 @@
 `/MapDownloads` provides live files, recursive map manifests, map/mod collections,
 individual saves, and ZIP preparation without leaving Portal. COD4x uses COD4;
 COD5 and COD2 are supported. COD2 maps use the collection's plain files rather
-than treating `main` as an archive folder. Only supported games receive native
-links; existing static links, voting, map management and SFTP remain unchanged.
-The standalone **Open in Maps Manager** link remains available.
+than treating `main` as an archive folder. Map rows show one native download
+action only for supported games with downloadable files. Direct static URLs,
+voting, map management and SFTP remain unchanged. The standalone
+**Open in Maps Manager** link remains available on the downloads page.
+
+Folder details show the file list and a single folder ZIP action, without
+collection filters or selection controls. Multi-folder selection stays in the
+collection view. Pagination and the downloads panel appear only when needed.
 
 ## Trust and deployment
 

@@ -8,7 +8,7 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 public sealed class MapDownloadsTests
 {
     [Fact]
-    public async Task PublicMapDownloads_LinkToNativeFilesAndKeepSecondaryManagerAndLegacyLinks()
+    public async Task PublicMapDownloads_OfferOneNativeActionWithoutDuplicateManagerOrFileLinks()
     {
         await using var browser = await BrowserFixture.CreateAsync();
         const string mapName = "mp_\"><img src=x onerror=\"window.redirectInjection=true\">";
@@ -52,17 +52,39 @@ public sealed class MapDownloadsTests
         var row = browser.Page.Locator("#dataTable tbody tr");
         await Assertions.Expect(row).ToHaveCountAsync(1);
         await Assertions.Expect(row.Locator("td").Nth(1)).ToHaveTextAsync(mapName);
-        var nativeLink = row.GetByRole(AriaRole.Link, new() { Name = "Download files / ZIP" });
+        var nativeLink = row.GetByRole(AriaRole.Link, new() { Name = "Download", Exact = true });
         Assert.Equal(mapName, await nativeLink.EvaluateAsync<string>("link => new URL(link.href).searchParams.get('map')"));
         Assert.Equal("/MapDownloads", await nativeLink.EvaluateAsync<string>("link => new URL(link.href).pathname"));
-        await Assertions.Expect(row.GetByRole(AriaRole.Link, new() { Name = "Open in Maps Manager" })).ToHaveAttributeAsync("href", managerUrl);
-        await Assertions.Expect(row.Locator(".map-files a")).ToHaveCountAsync(1);
-        await Assertions.Expect(row.Locator(".map-files a")).ToHaveTextAsync(fileName);
-        await Assertions.Expect(row.Locator(".map-files span")).ToHaveTextAsync("unsafe.ff (download unavailable)");
+        await Assertions.Expect(row.GetByRole(AriaRole.Link)).ToHaveCountAsync(1);
+        await Assertions.Expect(row.Locator("td").Nth(2)).ToContainTextAsync("1 file");
         await Assertions.Expect(row.Locator(".map-files img")).ToHaveCountAsync(0);
         await Assertions.Expect(row.Locator("td").Nth(1).Locator("img")).ToHaveCountAsync(0);
         await Assertions.Expect(row.Locator("img.map-image")).ToHaveAttributeAsync("alt", "Map image for " + mapName);
         Assert.False(await browser.Page.EvaluateAsync<bool>("() => window.redirectInjection === true"));
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task MapsWithoutDownloadableFiles_DoNotOfferDownloadLinks()
+    {
+        await using var browser = await BrowserFixture.CreateAsync();
+        var rows = new[]
+        {
+            new { gameType = "CallOfDuty4", mapName = "empty", mapFiles = Array.Empty<object>(), builtIn = false },
+            new { gameType = "CallOfDuty2", mapName = "invalid", mapFiles = new object[] { new { fileName = "unsafe.iwd", url = "javascript:alert(1)" } }, builtIn = false },
+            new { gameType = "CallOfDuty2", mapName = "stock", mapFiles = Array.Empty<object>(), builtIn = true }
+        };
+        await browser.Page.RouteAsync("**/Maps/GetMapListAjax**", route => route.FulfillAsync(new RouteFulfillOptions
+        {
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new { draw = 1, recordsTotal = rows.Length, recordsFiltered = rows.Length, data = rows })
+        }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Maps").AbsoluteUri);
+        var tableRows = browser.Page.Locator("#dataTable tbody tr");
+        await Assertions.Expect(tableRows).ToHaveCountAsync(3);
+        await Assertions.Expect(tableRows.GetByRole(AriaRole.Link)).ToHaveCountAsync(0);
+        await Assertions.Expect(tableRows.Nth(0).Locator("td").Nth(2)).ToHaveTextAsync("No Map Files");
+        await Assertions.Expect(tableRows.Nth(2).Locator("td").Nth(2)).ToHaveTextAsync("Built-in");
         browser.AssertNoBrowserErrors();
     }
 }
