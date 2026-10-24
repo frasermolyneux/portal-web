@@ -16,10 +16,14 @@ publish the new Apply route.
 
 No production SQL reset or migration is needed to recover the nine observed
 assignments. Leave their correct configuration values alone. Before the first
-post-deployment repair on a server, wait for any pre-deployment legacy operation
-on that server to finish. Legacy histories remain replayable, but cannot
-retroactively join the new V2 server lock. Never force-reset state badges or
-infer safe cancellation from an acknowledgment.
+post-deployment repair, let pre-deployment legacy rotation/map-push work finish.
+The service's fail-closed rollout gate can block new work even when the legacy
+operation is on another server. Legacy histories remain replayable, but cannot
+retroactively join the new V2 server lock. Failed/Terminated legacy status alone
+does not prove its scheduled activities have stopped: unexplained outstanding
+activities require service-side investigation. Do not hard-cancel running legacy
+work, connect directly to servers, or manufacture healthy SQL/state badges.
+Never infer safe cancellation from an acknowledgment.
 
 Sign in with deployment permission for the relevant server. In **Map Rotations**,
 open the currently assigned rotation, then **Status** beside the correct server
