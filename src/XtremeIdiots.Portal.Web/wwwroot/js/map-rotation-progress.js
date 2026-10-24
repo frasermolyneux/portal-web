@@ -1,3 +1,10 @@
+function mapRotationTerminalMessage(data, failedMaps) {
+    if (data.runtimeStatus !== 'Completed') return 'Orchestration ' + data.runtimeStatus.toLowerCase();
+    if (data.success === false || failedMaps) return 'Operation failed — review the error and recorded results.';
+    if (data.success === true) return 'Operation succeeded — runtime use is not confirmed.';
+    return 'Orchestration finished — review recorded file and configuration results.';
+}
+
 $(document).ready(function () {
     var $container = $('#operationsContainer');
     if ($container.length === 0) return;
@@ -126,13 +133,6 @@ $(document).ready(function () {
         $orchStatus.html(html);
     }
 
-    function terminalMessage(data, failedMaps) {
-        if (data.runtimeStatus !== 'Completed') return 'Orchestration ' + data.runtimeStatus.toLowerCase();
-        if (data.success === false || failedMaps) return 'Operation failed — review the error and recorded results.';
-        if (data.success === true) return 'Operation succeeded — runtime use is not confirmed.';
-        return 'Orchestration finished — review recorded file and configuration results.';
-    }
-
     function updateProgress(instanceId, data) {
         var ctx = activePolls[instanceId];
         if (!ctx) return;
@@ -181,7 +181,7 @@ $(document).ready(function () {
 
         if (!data.progress) {
             if (isTerminal) {
-                $label.text(terminalMessage(data, false));
+                $label.text(mapRotationTerminalMessage(data, false));
                 $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' && data.success !== false ? 'bg-secondary' : 'bg-danger');
                 $bar.css('width', '100%');
                 ctx.terminal = true;
@@ -202,7 +202,7 @@ $(document).ready(function () {
         if (isTerminal) {
             var failedMaps = p.maps?.some(function (map) { return map.status === 'Failed'; });
             $bar.removeClass('progress-bar-animated bg-info').addClass(data.runtimeStatus === 'Completed' && data.success !== false && !failedMaps ? 'bg-secondary' : 'bg-danger');
-            $label.text(terminalMessage(data, failedMaps));
+            $label.text(mapRotationTerminalMessage(data, failedMaps));
             ctx.terminal = true;
         }
 
