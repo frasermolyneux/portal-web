@@ -1207,8 +1207,8 @@ public class MapRotationsController(
         if (!rotation.IsSuccess || rotation.Result?.Data == null)
             return StatusCode(502, "Unable to resolve the rotation for progress.");
         var authResult = await CheckAuthorizationAsync(authorizationService,
-            (rotation.Result.Data.GameType, assignment.Result.Data.GameServerId),
-            AuthPolicies.MapRotations_Deploy, nameof(GetSyncProgress), "MapRotation").ConfigureAwait(false);
+            rotation.Result.Data.GameType,
+            AuthPolicies.MapRotations_Read, nameof(GetSyncProgress), "MapRotation").ConfigureAwait(false);
         if (authResult != null)
             return authResult;
 
@@ -1224,7 +1224,7 @@ public class MapRotationsController(
                 lastUpdatedAt = queryResult.Result.LastUpdatedAt,
                 progress = queryResult.Result.Progress,
                 success = queryResult.Result.Success,
-                error = queryResult.Result.Error
+                error = queryResult.Result.Error ?? queryResult.Result.Progress?.Maps?.FirstOrDefault(m => m.Status == "Failed")?.Error
             }),
             OrchestrationStatusQueryOutcome.NotFound => Json(new { status = "not_found" }),
             OrchestrationStatusQueryOutcome.Error => Json(new { status = "error" }),

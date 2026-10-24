@@ -166,7 +166,7 @@ $(document).ready(function () {
         renderOrchestrationStatus(ctx, data);
         updateStaleIndicator(ctx, data);
         if (data.error) {
-            ctx.$row.find('td:eq(6)').text(data.error).addClass('text-danger');
+            ctx.$row.find('.operation-error').text(data.error).addClass('text-danger');
         }
 
         var isTerminal = data.runtimeStatus === 'Completed' || data.runtimeStatus === 'Failed' ||

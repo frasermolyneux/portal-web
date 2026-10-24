@@ -14,6 +14,13 @@ not provide this service. Use the normal Sync deployment that imports the update
 OpenAPI definition into APIM; an app-only `maps-bootstrap` deployment does not
 publish the new Apply route.
 
+No production SQL reset or migration is needed to recover the nine observed
+assignments. Leave their correct configuration values alone. Before the first
+post-deployment repair on a server, wait for any pre-deployment legacy operation
+on that server to finish. Legacy histories remain replayable, but cannot
+retroactively join the new V2 server lock. Never force-reset state badges or
+infer safe cancellation from an acknowledgment.
+
 Sign in with deployment permission for the relevant server. In **Map Rotations**,
 open the currently assigned rotation, then **Status** beside the correct server
 and configuration target. Record the rotation version, file deployment,
@@ -95,6 +102,11 @@ assignments. Busy/removing/removed assignments cannot start another action.
 No action automatically restarts a server. Only use an explicit, separately
 authorized Server Admin restart if the game/mod actually requires one for a
 deliberate configuration change. Configuration activation is not runtime proof.
+V2 stages configuration writes and reads the exact variable back from the file;
+RCON commands are acknowledged, but running values are not independently queried.
+Standard rotations over 1024 characters now fail explicitly rather than reporting
+success through unreferenced suffix variables. Review that error instead of
+assuming the full rotation was applied.
 
 **Cancel** may report “Cancellation requested”; an in-flight transfer or config
 activity must finish safely first. Keep watching progress. This acknowledgment is

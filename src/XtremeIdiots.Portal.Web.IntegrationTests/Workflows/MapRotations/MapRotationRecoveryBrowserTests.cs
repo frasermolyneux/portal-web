@@ -65,6 +65,24 @@ public sealed class MapRotationRecoveryBrowserTests
     }
 
     [Fact]
+    public async Task PendingApply_ErrorIsVisibleBeforeRepositoryOperationRowExists()
+    {
+        var scenario = new MapRotationRecoveryScenario();
+        scenario.Sync.Setup(x => x.GetOrchestrationStatus(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found,
+                new OrchestrationStatusResult($"maprot-apply-{scenario.AssignmentId}", "Completed",
+                    DateTime.UtcNow, DateTime.UtcNow,
+                    new OrchestrationProgressDto("Apply", 1, 1, [new MapProgressDto("configuration", "Failed", "Synthetic bootstrap failure")]),
+                    Success: false)));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row .operation-error")).ToHaveTextAsync("Synthetic bootstrap failure");
+        await Assertions.Expect(browser.Page.Locator(".progress-bar.bg-danger")).ToHaveCountAsync(1);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task Index_InitializesTightTableWithoutJQueryClassListError()
     {
         var scenario = new MapRotationRecoveryScenario();

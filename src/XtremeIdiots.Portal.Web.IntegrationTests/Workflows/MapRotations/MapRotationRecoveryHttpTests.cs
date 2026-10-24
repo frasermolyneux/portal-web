@@ -44,6 +44,20 @@ public sealed partial class MapRotationRecoveryHttpTests
         scenario.Sync.Verify(x => x.TriggerApply(scenario.AssignmentId, It.IsAny<CancellationToken>()), permitted ? Times.Once : Times.Never);
     }
 
+    [Fact]
+    public async Task AssignmentReaderWithoutDeployPermission_CanReadLiveProgress()
+    {
+        var scenario = new MapRotationRecoveryScenario(busy: true);
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationReader);
+        using var page = await host.Client.GetAsync($"/MapRotations/AssignmentStatus/{scenario.AssignmentId}");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        using var progress = await host.Client.GetAsync($"/MapRotations/GetSyncProgress?instanceId=maprot-apply-{scenario.AssignmentId}");
+        Assert.Equal(HttpStatusCode.OK, progress.StatusCode);
+        Assert.Contains("\"runtimeStatus\":\"Running\"", await progress.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        scenario.Sync.Verify(x => x.TriggerApply(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"")]
     private static partial Regex AntiforgeryToken();
 }

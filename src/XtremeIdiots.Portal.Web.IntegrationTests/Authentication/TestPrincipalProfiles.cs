@@ -27,6 +27,7 @@ internal static class TestPrincipalProfiles
     public const string HeadAdminCod5 = "head-admin-cod5";
     public const string Cod4xLifecycleManager = "cod4x-lifecycle-manager";
     public const string MapRotationDeployer = "map-rotation-deployer";
+    public const string MapRotationReader = "map-rotation-reader";
     public const string CredentialFileTransportReader = "credential-file-transport-reader";
     public const string CredentialRconReader = "credential-rcon-reader";
     public const string LiveServerMap = "live-server-map";
@@ -47,6 +48,10 @@ internal static class TestPrincipalProfiles
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4x.ToString()));
+        }
+        else if (profile == MapRotationReader)
+        {
+            claims.Add(new Claim(AuthPolicies.MapRotations_Read, GameType.CallOfDuty4.ToString()));
         }
         else if (profile == MapRotationDeployer)
         {
