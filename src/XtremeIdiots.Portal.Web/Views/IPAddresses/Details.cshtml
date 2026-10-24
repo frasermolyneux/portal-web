@@ -12,7 +12,7 @@
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
-    <div class="row">
+    <div class="row" id="ip-intelligence-content" data-intelligence-status="@(ViewData["IntelligenceStatus"] ?? "pending")" data-ip-intelligence-url="@Url.Action("GetIntelligence", "IPAddresses", new { ipAddress = Model.IpAddress })">
         <!-- IP Address Summary Card -->
         <div class="col-lg-4">
             <div class="ibox">
@@ -21,7 +21,7 @@
                 </div>
                 <div class="ibox-content">
                     <div class="text-center m-b-md">
-                        <h2><ip-address ip="@Model.IpAddress" country-code="@Model.Intelligence?.CountryCode" risk="@Model.Intelligence?.ProxyCheck?.RiskScore" is-proxy="@Model.Intelligence?.ProxyCheck?.IsProxy" is-vpn="@Model.Intelligence?.ProxyCheck?.IsVpn" proxy-type="@Model.Intelligence?.ProxyCheck?.ProxyType" link-to-details="false"></ip-address></h2>
+                        <h2><ip-address ip="@Model.IpAddress" country-code="@Model.Intelligence?.CountryCode" risk="@(hasProxyCheck ? Model.Intelligence?.ProxyCheck?.RiskScore : null)" is-proxy="@(hasProxyCheck ? Model.Intelligence?.ProxyCheck?.IsProxy : null)" is-vpn="@(hasProxyCheck ? Model.Intelligence?.ProxyCheck?.IsVpn : null)" proxy-type="@(hasProxyCheck ? Model.Intelligence?.ProxyCheck?.ProxyType : null)" link-to-details="false"></ip-address></h2>
                     </div>
                     <div class="stats-container">
                         <div class="stat-item">
@@ -112,7 +112,7 @@
                                 </tbody>
                             </table>
 
-                            <div id="map" style="height: 250px; width: 100%; margin-top: 15px;"></div>
+                            <div id="map" data-latitude="@(Model.Intelligence.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))" data-longitude="@(Model.Intelligence.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))" style="height: 250px; width: 100%; margin-top: 15px;"></div>
                             <a href="https://www.geo-location.net/Home/LookupAddress/@Model.IpAddress" target="_blank" class="btn btn-outline btn-primary btn-sm mt-2" data-testid="ipaddress-details-geolocation-link">
                                 <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i>View on geo-location.net
                             </a>
@@ -121,7 +121,7 @@
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa-solid fa-fw fa-circle-info"></i> No GeoLocation data available for this IP address.
+                            <i class="fa-solid fa-fw fa-circle-info"></i> @(ViewData["IntelligenceStatus"] is null ? "Loading GeoLocation data…" : "No GeoLocation data available for this IP address.")
                         </div>
                     }
                 </div>
@@ -211,7 +211,7 @@
                     else
                     {
                         <div class="alert alert-info">
-                            <i class="fa-solid fa-fw fa-circle-info"></i> No risk assessment data available for this IP address.
+                            <i class="fa-solid fa-fw fa-circle-info"></i> @(ViewData["IntelligenceStatus"] is null ? "Loading risk assessment…" : "No risk assessment data available for this IP address.")
                         </div>
                     }
                 </div>
@@ -299,33 +299,19 @@
 
 
 @section Scripts {
+    <script src="~/js/player-intelligence.js" asp-append-version="true"></script>
     @{
         var mapsApiKey = Configuration["Google:MapsApiKey"];
         var isValidMapsApiKey = !string.IsNullOrEmpty(mapsApiKey) && System.Text.RegularExpressions.Regex.IsMatch(mapsApiKey, @"^[A-Za-z0-9_-]+$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
     }
-    @if (hasGeo && Model.Intelligence!.Latitude.HasValue && Model.Intelligence.Longitude.HasValue
-        && (Model.Intelligence.Latitude.Value != 0 || Model.Intelligence.Longitude.Value != 0) && isValidMapsApiKey)
+    @if (isValidMapsApiKey)
     {
         <script type="text/javascript">
             function initMap() {
-                var myLatLng = {
-                    lat: @Model.Intelligence.Latitude,
-                    lng: @Model.Intelligence.Longitude
-                };
-
-                var map = new google.maps.Map(document.getElementById('map'), {
-                    zoom: 4,
-                    center: myLatLng
-                });
-
-                new google.maps.Marker({
-                    position: myLatLng,
-                    map: map,
-                    title: 'IP Location'
-                });
+                document.dispatchEvent(new CustomEvent('portal:maps-ready'));
             }
         </script>
         <script async defer src="https://maps.googleapis.com/maps/api/js?key=@mapsApiKey&signed_in=false&callback=initMap"></script>
-        <script src="~/js/ip-address-details.js" asp-append-version="true"></script>
     }
+    <script src="~/js/ip-address-details.js" asp-append-version="true"></script>
 }

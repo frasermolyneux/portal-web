@@ -9,14 +9,17 @@ using Moq;
 using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
+using Newtonsoft.Json;
 using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
@@ -24,7 +27,7 @@ namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 public class PlayersControllerTests
 {
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
-    private readonly Mock<IGeoLocationApiClient> mockGeoLocationClient = new();
+    private readonly Mock<IIpIntelligenceService> mockIpIntelligenceService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new();
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<PlayersController>> mockLogger = new();
@@ -45,7 +48,7 @@ public class PlayersControllerTests
     {
         var controller = new PlayersController(
             mockAuthorizationService.Object,
-            mockGeoLocationClient.Object,
+            mockIpIntelligenceService.Object,
             mockRepositoryApiClient.Object,
             telemetryClient,
             mockLogger.Object,
@@ -69,6 +72,50 @@ public class PlayersControllerTests
 
         // Assert
         Assert.NotNull(sut);
+    }
+
+    [Fact]
+    public async Task DetailsRendersCorePlayerWithoutCallingOptionalIntelligence()
+    {
+        var player = SetupPlayer();
+
+        var result = Assert.IsType<ViewResult>(await CreateSut().Details(player.PlayerId));
+        var model = Assert.IsType<PlayerDetailsViewModel>(result.Model);
+
+        Assert.Same(player, model.Player);
+        Assert.Null(model.Intelligence);
+        Assert.Empty(model.EnrichedIpAddresses);
+        mockIpIntelligenceService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task IntelligenceRejectsChangedIpBeforeOptionalLookup()
+    {
+        var player = SetupPlayer();
+
+        Assert.IsType<NotFoundResult>(await CreateSut().GetIntelligence(player.PlayerId, "203.0.113.11"));
+        mockIpIntelligenceService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task IntelligenceRequiresCurrentPlayerGameAuthorization()
+    {
+        var player = SetupPlayer();
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(), player.GameType, AuthPolicies.Players_Read)).ReturnsAsync(AuthorizationResult.Failed());
+
+        Assert.IsType<UnauthorizedResult>(await CreateSut().GetIntelligence(player.PlayerId, player.IpAddress));
+        mockIpIntelligenceService.VerifyNoOtherCalls();
+    }
+
+    private PlayerDto SetupPlayer()
+    {
+        var player = JsonConvert.DeserializeObject<PlayerDto>(
+                                 /*lang=json,strict*/
+                                 """{"playerId":"99999999-9999-9999-9999-999999999999","gameType":"CallOfDuty4","username":"Core player","guid":"guid","ipAddress":"203.0.113.10"}""")!;
+        mockRepositoryApiClient.Setup(x => x.Players.V1.GetPlayer(player.PlayerId, It.IsAny<PlayerEntityOptions>()))
+            .ReturnsAsync(new ApiResult<PlayerDto>(HttpStatusCode.OK, new ApiResponse<PlayerDto>(player)));
+        return player;
     }
 
     [Fact]

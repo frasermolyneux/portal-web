@@ -15,6 +15,7 @@ using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -28,6 +29,7 @@ public class MapRotationsControllerTests
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly Mock<ISyncApiClient> mockSyncApiClient = new();
+    private readonly Mock<IMapMetadataService> mockMapMetadataService = new();
     private readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<MapRotationsController>> mockLogger = new();
@@ -36,11 +38,14 @@ public class MapRotationsControllerTests
 
     private MapRotationsController CreateSut(ClaimsPrincipal? user = null)
     {
+        mockMapMetadataService.Setup(x => x.GetAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, MapDto>());
         var controller = new MapRotationsController(
             mockAuthorizationService.Object,
             mockRepositoryApiClient.Object,
             mockSyncApiClient.Object,
             memoryCache,
+            mockMapMetadataService.Object,
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,

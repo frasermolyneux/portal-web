@@ -1,0 +1,31 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model DashboardViewModel
+<div class="row mb-4"><div class="col-12"><div class="ibox">
+    <div class="ibox-title"><h5>Server Utilization <small class="text-muted">(last 24h)</small></h5>
+        <span class="float-end"><small class="text-muted">Avg: @Model.ServerUtilization?.TotalAvgPlayers players | Peak: @Model.ServerUtilization?.TotalPeakPlayers players</small></span>
+    </div>
+    <div class="ibox-content">
+        @if (Model.ServerUtilization?.Servers?.Any() == true)
+        {
+            <div class="table-responsive"><table class="table table-striped table-sm w-100">
+                <thead><tr><th>Server</th><th>Game</th><th class="text-center">Avg Players</th><th class="text-center">Peak</th><th class="text-center">Max</th><th>Utilization</th></tr></thead>
+                <tbody>
+                @foreach (var server in Model.ServerUtilization.Servers.OrderByDescending(s => s.Utilization))
+                {
+                    var pct = (int)(server.Utilization * 100);
+                    var bar = pct switch { > 75 => "bg-success", > 40 => "bg-info", > 10 => "bg-warning", _ => "bg-secondary" };
+                    <tr>
+                        <td><a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
+                            @if (Enum.TryParse<GameType>(server.GameType, out var game)) { <game-type-icon game="@game"></game-type-icon> }
+                            <server-name title="@server.Title"></server-name>
+                        </a></td>
+                        <td><small>@server.GameType</small></td><td class="text-center">@server.AvgPlayers</td><td class="text-center">@server.PeakPlayers</td><td class="text-center">@server.MaxPlayers</td>
+                        <td><div class="progress" style="height: 18px;"><div class="progress-bar @bar" role="progressbar" style="width: @pct%" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100">@pct%</div></div></td>
+                    </tr>
+                }
+                </tbody>
+            </table></div>
+        }
+        else { <p class="text-muted">No server utilization recorded.</p> }
+    </div>
+</div></div></div>

@@ -1,15 +1,17 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
-using MX.GeoLocation.Api.Client.V1;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using System.Security.Cryptography;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Models;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
@@ -21,7 +23,8 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 public class PlayersController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
-    IGeoLocationApiClient geoLocationClient,
+    IIpIntelligenceService ipIntelligenceService,
+    IDataProtectionProvider dataProtectionProvider,
     TelemetryClient telemetryClient,
     ILogger<PlayersController> logger,
     IConfiguration configuration,
@@ -89,7 +92,7 @@ public class PlayersController(
                 effectiveFilter,
                 filterString,
                 model.Start,
-                model.Length,
+                Math.Clamp(model.Length, 1, 100),
                 order,
                 PlayerEntityOptions.Tags).ConfigureAwait(false);
 
@@ -100,13 +103,9 @@ public class PlayersController(
                 return StatusCode(500, "Failed to retrieve players data");
             }
 
-            var intelligenceData = await playerCollectionApiResponse.Result.Data.Items
-                .GetIntelligenceDataAsync(geoLocationClient, Logger, cancellationToken).ConfigureAwait(false);
-
-            var playerData = playerCollectionApiResponse.Result.Data.Items.Select(player =>
-            {
-                var intel = intelligenceData.TryGetValue(player.PlayerId, out var d) ? d : new PlayerIntelligenceData();
-                return new
+            var visiblePlayers = playerCollectionApiResponse.Result.Data.Items.Take(100).ToArray();
+            var playerData = visiblePlayers.Select(player =>
+                new
                 {
                     player.PlayerId,
                     gameType = player.GameType.ToString(),
@@ -122,25 +121,89 @@ public class PlayersController(
                     }),
                     player.FirstSeen,
                     player.LastSeen,
-                    intel.ProxyCheckRiskScore,
-                    intel.IsProxy,
-                    intel.IsVpn,
-                    intel.ProxyType,
-                    intel.CountryCode
-                };
-            }).ToList();
+                    proxyCheckRiskScore = (int?)null,
+                    isProxy = (bool?)null,
+                    isVpn = (bool?)null,
+                    proxyType = (string?)null,
+                    countryCode = (string?)null
+                }).ToList();
 
             Logger.LogInformation("Successfully retrieved {Count} players for user {UserId} with filter {Filter}",
                 playerData.Count, User.XtremeIdiotsId(), filter);
 
+            var enrichmentExpiresAtUtc = DateTime.UtcNow.AddMinutes(2);
             return Ok(new
             {
                 model.Draw,
+                enrichmentExpiresAtUtc,
+                enrichmentToken = dataProtectionProvider.CreateProtector("Players.VisibleIntelligence.v1").Protect(
+                    JsonConvert.SerializeObject(new VisiblePlayersSnapshot(
+                        User.XtremeIdiotsId(), enrichmentExpiresAtUtc,
+                        [.. visiblePlayers
+                            .Select(p => new VisiblePlayer(p.PlayerId, p.GameType, p.IpAddress))]))),
                 recordsTotal = playerCollectionApiResponse.Result?.Pagination?.TotalCount,
                 recordsFiltered = playerCollectionApiResponse.Result?.Pagination?.FilteredCount,
                 data = playerData
             });
         }, nameof(GetPlayersAjax)).ConfigureAwait(false);
+    }
+
+    public sealed record VisiblePlayer(Guid PlayerId, GameType GameType, string? IpAddress);
+    public sealed record VisiblePlayersSnapshot(string? UserId, DateTime ExpiresAtUtc, VisiblePlayer[] Players);
+    public sealed record IntelligenceBatchRequest(string Token, Guid[] PlayerIds);
+
+    [HttpPost("GetVisibleIntelligence")]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetVisibleIntelligence([FromBody] IntelligenceBatchRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request is null || string.IsNullOrEmpty(request.Token) || request.Token.Length > 100_000 ||
+            request.PlayerIds is null || request.PlayerIds.Length is < 1 or > 100)
+            return BadRequest();
+
+        VisiblePlayersSnapshot? snapshot;
+        try
+        {
+            snapshot = JsonConvert.DeserializeObject<VisiblePlayersSnapshot>(
+                dataProtectionProvider.CreateProtector("Players.VisibleIntelligence.v1").Unprotect(request.Token));
+        }
+        catch (Exception ex) when (ex is CryptographicException or JsonException)
+        {
+            return BadRequest();
+        }
+
+        if (snapshot is null || snapshot.Players is null || snapshot.Players.Length > 100 ||
+            snapshot.ExpiresAtUtc <= DateTime.UtcNow || snapshot.UserId != User.XtremeIdiotsId())
+            return BadRequest();
+
+        var ids = request.PlayerIds.ToHashSet();
+        var players = snapshot.Players.Where(p => ids.Contains(p.PlayerId)).ToArray();
+        if (players.Select(p => p.PlayerId).Distinct().Count() != ids.Count)
+            return BadRequest();
+
+        foreach (var game in players.Select(p => p.GameType).Distinct())
+        {
+            if (!(await authorizationService.AuthorizeAsync(User, game, AuthPolicies.Players_Read).ConfigureAwait(false)).Succeeded)
+                return Forbid();
+        }
+
+        var data = await Task.WhenAll(players.Select(async p =>
+        {
+            var intelligence = await ipIntelligenceService.GetAsync(p.IpAddress, cancellationToken).ConfigureAwait(false);
+            return new
+            {
+                p.PlayerId,
+                p.IpAddress,
+                countryCode = intelligence.Intelligence?.CountryCode,
+                proxyCheckRiskScore = intelligence.RiskScore,
+                intelligence.IsProxy,
+                intelligence.IsVpn,
+                intelligence.ProxyType,
+                intelligence.Status,
+                intelligence.ExpiresAtUtc
+            };
+        })).ConfigureAwait(false);
+        return Ok(new { data });
     }
 
     private static PlayersOrder GetPlayersOrderFromDataTable(DataTableAjaxPostModel model)

@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -17,7 +18,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.Players_Read)]
 public class IPAddressesController(
     IAuthorizationService authorizationService,
-    IGeoLocationApiClient geoLocationClient,
+    IIpIntelligenceService ipIntelligenceService,
     IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<IPAddressesController> logger,
@@ -36,7 +37,7 @@ public class IPAddressesController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            if (string.IsNullOrWhiteSpace(ipAddress))
+            if (!System.Net.IPAddress.TryParse(ipAddress, out _))
             {
                 Logger.LogWarning("User {UserId} attempted to view IP address details with null or empty IP address",
                     User.XtremeIdiotsId());
@@ -61,30 +62,50 @@ public class IPAddressesController(
         }, "ViewIPAddressDetails").ConfigureAwait(false);
     }
 
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetIntelligence(string ipAddress, CancellationToken cancellationToken = default)
+    {
+        if (!System.Net.IPAddress.TryParse(ipAddress, out _))
+            return NotFound();
+        var authResult = await CheckAuthorizationAsync(
+            authorizationService, ipAddress, AuthPolicies.Players_Read,
+            nameof(GetIntelligence), nameof(IPAddressesController), $"IpAddress:{ipAddress}", ipAddress).ConfigureAwait(false);
+        if (authResult is not null)
+            return authResult;
+
+        var associated = await repositoryApiClient.Players.V1.GetPlayersWithIpAddress(
+            ipAddress, 0, 100, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);
+        if (!associated.IsSuccess || associated.Result?.Data?.Items is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        var players = associated.Result.Data.Items;
+        if (!players.Any())
+            return NotFound();
+
+        var canReadAssociation = false;
+        foreach (var gameType in players.Select(p => p.GameType).Distinct())
+        {
+            if ((await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.Players_Read).ConfigureAwait(false)).Succeeded)
+            {
+                canReadAssociation = true;
+                break;
+            }
+        }
+
+        if (!canReadAssociation)
+            return Forbid();
+
+        var result = await ipIntelligenceService.GetAsync(ipAddress, cancellationToken).ConfigureAwait(false);
+        ViewData["IntelligenceStatus"] = result.Status;
+        return PartialView("Details", new IPAddressDetailsViewModel { IpAddress = ipAddress, Intelligence = result.Intelligence });
+    }
+
     private async Task<IPAddressDetailsViewModel> BuildIPAddressDetailsViewModelAsync(string ipAddress, CancellationToken cancellationToken)
     {
         var viewModel = new IPAddressDetailsViewModel
         {
             IpAddress = ipAddress
         };
-
-        try
-        {
-            var intelligenceResult = await geoLocationClient.GeoLookup.V1_1.GetIpIntelligence(ipAddress, cancellationToken).ConfigureAwait(false);
-            if (intelligenceResult.IsSuccess && intelligenceResult.Result?.Data is not null)
-            {
-                viewModel.Intelligence = intelligenceResult.Result.Data;
-                Logger.LogDebug("Successfully retrieved intelligence data for IP address {IpAddress}", ipAddress);
-            }
-            else
-            {
-                Logger.LogDebug("No intelligence data available for IP address {IpAddress}", ipAddress);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to retrieve intelligence data for IP address {IpAddress}", ipAddress);
-        }
 
         var playersResponse = await repositoryApiClient.Players.V1.GetPlayersWithIpAddress(
             ipAddress, 0, 100, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None).ConfigureAwait(false);

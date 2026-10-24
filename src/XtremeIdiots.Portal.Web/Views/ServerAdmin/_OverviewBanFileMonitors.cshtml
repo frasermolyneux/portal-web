@@ -1,0 +1,26 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.BanFileMonitors
+@model List<BanFileMonitorDto>
+@if (Model.Count == 0)
+{
+    <p class="text-muted mb-0">No ban file monitors configured for this server.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm w-100">
+            <thead><tr><th>Watching</th><th>Last Check</th><th>Last Push</th></tr></thead>
+            <tbody>
+                @foreach (var monitor in Model)
+                {
+                    var elapsed = monitor.LastCheckUtc.HasValue ? DateTime.UtcNow - monitor.LastCheckUtc.Value : TimeSpan.MaxValue;
+                    var checkClass = elapsed.TotalMinutes < 15 ? "text-success" : elapsed.TotalHours < 1 ? "text-warning" : "text-danger";
+                    <tr>
+                        <td><small>@(monitor.RemoteFilePath ?? "(awaiting first check)")</small></td>
+                        <td><small class="@(monitor.LastCheckUtc.HasValue ? checkClass : "text-muted")">@(monitor.LastCheckUtc?.ToString("dd MMM HH:mm") ?? "Never")</small></td>
+                        <td><small>@(monitor.LastPushUtc?.ToString("dd MMM HH:mm") ?? "Never")</small></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

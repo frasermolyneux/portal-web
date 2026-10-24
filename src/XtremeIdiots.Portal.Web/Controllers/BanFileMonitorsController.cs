@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -27,6 +28,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 public class BanFileMonitorsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
+    IGameServerConfigurationReadService configurationReadService,
     TelemetryClient telemetryClient,
     ILogger<BanFileMonitorsController> logger,
     IConfiguration configuration,
@@ -116,8 +118,8 @@ public class BanFileMonitorsController(
             }).ToList();
 
             var serverIds = monitors.Where(m => m.GameServer is not null).Select(m => m.GameServerId).Distinct();
-            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
-                repositoryApiClient, serverIds, Logger, cancellationToken).ConfigureAwait(false);
+            var serverConfigs = await configurationReadService.GetAsync(
+                serverIds, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             var viewModel = new BanFileMonitorsDashboardViewModel
             {
@@ -148,8 +150,8 @@ public class BanFileMonitorsController(
             if (actionResult is not null)
                 return actionResult;
 
-            var serverConfigs = await GameServerConfigHelper.FetchConfigsForServersAsync(
-                repositoryApiClient, [banFileMonitorData!.GameServerId], Logger, cancellationToken).ConfigureAwait(false);
+            var serverConfigs = await configurationReadService.GetAsync(
+                [banFileMonitorData!.GameServerId], true, cancellationToken).ConfigureAwait(false);
             ViewBag.ServerConfigs = serverConfigs;
 
             // Pull the live status so the Details page can also call out a mod mismatch.

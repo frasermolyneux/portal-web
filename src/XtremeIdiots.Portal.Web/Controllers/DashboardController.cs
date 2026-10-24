@@ -3,130 +3,101 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
-using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
-using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
-/// <summary>
-/// Controller for the admin dashboard, providing an at-a-glance operational overview.
-/// </summary>
 [Authorize(Policy = AuthPolicies.Dashboard_Read)]
 public class DashboardController(
     IRepositoryApiClient repositoryApiClient,
-    IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<DashboardController> logger,
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
-    /// <summary>
-    /// Displays the admin dashboard with summary cards, server health, moderation trends, and admin leaderboard.
-    /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    public IActionResult Index(CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
+        return View(new DashboardViewModel());
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewSummary(CancellationToken cancellationToken = default)
+    {
+        var response = await repositoryApiClient.Dashboard.V1.GetDashboardSummary(cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable)
+            : PartialView("_OverviewSummary", new DashboardViewModel { Summary = response.Result.Data });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewLeaderboard(CancellationToken cancellationToken = default)
+    {
+        var response = await repositoryApiClient.Dashboard.V1.GetAdminLeaderboard(30, cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data?.Items is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable)
+            : PartialView("_OverviewLeaderboard", new DashboardViewModel { AdminLeaderboard = [.. response.Result.Data.Items] });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewTrend(CancellationToken cancellationToken = default)
+    {
+        var response = await repositoryApiClient.Dashboard.V1.GetModerationTrend(30, cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data?.Items is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable)
+            : PartialView("_OverviewTrend", new DashboardViewModel { ModerationTrend = [.. response.Result.Data.Items] });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewUtilization(CancellationToken cancellationToken = default)
+    {
+        var response = await repositoryApiClient.Dashboard.V1.GetServerUtilization(cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable)
+            : PartialView("_OverviewUtilization", new DashboardViewModel { ServerUtilization = response.Result.Data });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewTelemetry(
+        [FromServices] CachedAgentTelemetryService telemetry, CancellationToken cancellationToken = default)
+    {
+        var serversTask = repositoryApiClient.GameServers.V1.GetGameServers(
+            null, null, GameServerFilter.AgentEnabled, 0, 100, GameServerOrder.ServerListPosition, cancellationToken);
+        var liveTask = repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
+        await Task.WhenAll(serversTask, liveTask).ConfigureAwait(false);
+        var serversResponse = await serversTask.ConfigureAwait(false);
+        if (!serversResponse.IsSuccess || serversResponse.Result?.Data?.Items is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        var liveResponse = await liveTask.ConfigureAwait(false);
+        var liveLookup = liveResponse.IsSuccess && liveResponse.Result?.Data?.Items is not null
+            ? liveResponse.Result.Data.Items.GroupBy(s => s.ServerId).ToDictionary(g => g.Key, g => g.First())
+            : [];
+        var result = await telemetry.GetAllAsync(cancellationToken).ConfigureAwait(false);
+        var lookup = result.Data?.GroupBy(s => s.ServerId).ToDictionary(g => g.Key, g => g.First());
+        var models = serversResponse.Result.Data.Items.Select(gs =>
         {
-            var viewModel = new DashboardViewModel();
-
-            // Fetch all data sources in parallel
-            var summaryTask = repositoryApiClient.Dashboard.V1.GetDashboardSummary(cancellationToken);
-            var leaderboardTask = repositoryApiClient.Dashboard.V1.GetAdminLeaderboard(30, cancellationToken);
-            var trendTask = repositoryApiClient.Dashboard.V1.GetModerationTrend(30, cancellationToken);
-            var utilizationTask = repositoryApiClient.Dashboard.V1.GetServerUtilization(cancellationToken);
-
-            await Task.WhenAll(summaryTask, leaderboardTask, trendTask, utilizationTask).ConfigureAwait(false);
-
-            // Summary
-            var summaryResponse = await summaryTask.ConfigureAwait(false);
-            if (summaryResponse.IsSuccess && summaryResponse.Result?.Data is not null)
+            var summary = lookup?.GetValueOrDefault(gs.GameServerId);
+            liveLookup.TryGetValue(gs.GameServerId, out var live);
+            return (summary ?? new AgentServerSummary
             {
-                viewModel.Summary = summaryResponse.Result.Data;
-            }
-
-            // Admin leaderboard
-            var leaderboardResponse = await leaderboardTask.ConfigureAwait(false);
-            if (leaderboardResponse.IsSuccess && leaderboardResponse.Result?.Data?.Items is not null)
+                ServerId = gs.GameServerId,
+                ActivityStatus = AgentActivityStatus.Offline
+            }) with
             {
-                viewModel.AdminLeaderboard = [.. leaderboardResponse.Result.Data.Items];
-            }
-
-            // Moderation trend
-            var trendResponse = await trendTask.ConfigureAwait(false);
-            if (trendResponse.IsSuccess && trendResponse.Result?.Data?.Items is not null)
-            {
-                viewModel.ModerationTrend = [.. trendResponse.Result.Data.Items];
-            }
-
-            // Server utilization
-            var utilizationResponse = await utilizationTask.ConfigureAwait(false);
-            if (utilizationResponse.IsSuccess && utilizationResponse.Result?.Data is not null)
-            {
-                viewModel.ServerUtilization = utilizationResponse.Result.Data;
-            }
-
-            // Agent telemetry (non-critical — dashboard renders without it)
-            try
-            {
-                var telemetryTask = agentTelemetryService.GetAllServersStatusAsync(cancellationToken);
-                var gameServersTask = repositoryApiClient.GameServers.V1.GetGameServers(
-                    null, null, GameServerFilter.AgentEnabled, 0, 100,
-                    GameServerOrder.ServerListPosition, cancellationToken);
-                var liveStatusTask = repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
-
-                await Task.WhenAll(telemetryTask, gameServersTask, liveStatusTask).ConfigureAwait(false);
-
-                var telemetry = await telemetryTask.ConfigureAwait(false);
-                var gameServersResponse = await gameServersTask.ConfigureAwait(false);
-                var liveStatusResponse = await liveStatusTask.ConfigureAwait(false);
-
-                var serverLookup = gameServersResponse.IsSuccess && gameServersResponse.Result?.Data?.Items is not null
-                    ? gameServersResponse.Result.Data.Items
-                        .GroupBy(gs => gs.GameServerId)
-                        .ToDictionary(g => g.Key, g => g.First())
-                    : [];
-
-                var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
-                    ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
-                    : [];
-
-                // Enrich telemetry with server names from the repository API
-                var telemetryByServer = telemetry
-                    .GroupBy(t => t.ServerId)
-                    .ToDictionary(g => g.Key, g => g.First());
-                viewModel.AgentStatuses = serverLookup.Values.Select(gs =>
-                {
-                    telemetryByServer.TryGetValue(gs.GameServerId, out var summary);
-                    liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
-
-                    return new AgentServerSummary
-                    {
-                        ServerId = gs.GameServerId,
-                        ServerTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title,
-                        GameType = gs.GameType.ToString(),
-                        LastEventReceived = summary?.LastEventReceived,
-                        EventsLastHour = summary?.EventsLastHour ?? 0,
-                        PlayerCount = summary?.PlayerCount ?? 0,
-                        CurrentMap = summary?.CurrentMap ?? liveStatus?.Map,
-                        IsAgentActive = summary?.IsAgentActive ?? false,
-                        ActivityStatus = summary?.ActivityStatus ?? AgentActivityStatus.Offline
-                    };
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to retrieve agent telemetry for dashboard");
-                viewModel.AgentTelemetryUnavailable = true;
-            }
-
-            Logger.LogInformation("User {UserId} loaded admin dashboard", User.XtremeIdiotsId());
-
-            return View(viewModel);
-        }, nameof(Index)).ConfigureAwait(false);
+                ServerTitle = string.IsNullOrWhiteSpace(live?.Title) ? gs.Title : live.Title,
+                GameType = gs.GameType.ToString(),
+                CurrentMap = summary?.CurrentMap ?? live?.Map,
+                TelemetryState = result.State
+            };
+        }).ToList();
+        return PartialView("_OverviewTelemetry", new DashboardViewModel
+        {
+            AgentStatuses = models,
+            AgentTelemetryUnavailable = result.State == OptionalDataState.Unavailable,
+            AgentTelemetryStale = result.State == OptionalDataState.Stale
+        });
     }
 }

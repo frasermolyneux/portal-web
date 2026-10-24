@@ -1,0 +1,18 @@
+@using XtremeIdiots.Portal.Web.ViewModels
+@model DashboardViewModel
+@if (Model.AdminLeaderboard.Count == 0)
+{
+    <p class="text-muted">No admin activity in the last 30 days.</p>
+}
+else
+{
+    <div class="table-responsive"><table class="table table-sm w-100">
+        <thead><tr><th>Admin</th><th class="text-center">Actions</th><th class="text-center">Bans</th></tr></thead>
+        <tbody>
+        @foreach (var entry in Model.AdminLeaderboard.Take(10))
+        {
+            <tr><td>@entry.DisplayName</td><td class="text-center"><span class="badge bg-primary">@entry.Total</span></td><td class="text-center"><span class="badge bg-danger">@(entry.Bans + entry.TempBans)</span></td></tr>
+        }
+        </tbody>
+    </table></div>
+}

@@ -67,6 +67,8 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\images\service-icons\" />
+    <Content Remove="wwwroot\js\vendor\dompurify.min.js" />
+    <Content Include="wwwroot\js\vendor\dompurify.min.js" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Custom target to validate Razor views without runtime compilation -->
@@ -88,6 +90,12 @@
     <Message Text="Compiling SCSS to CSS..." Importance="high" />
     <Exec Command="npm run build:css" Condition="'$(Configuration)' == 'Release'" />
     <Exec Command="npm run build:css:dev" Condition="'$(Configuration)' != 'Release'" />
+  </Target>
+
+  <Target Name="PrepareFrontendScripts" BeforeTargets="PrepareForBuild" DependsOnTargets="NpmInstall">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\node_modules\dompurify\dist\purify.min.js"
+          DestinationFiles="$(MSBuildProjectDirectory)\wwwroot\js\vendor\dompurify.min.js"
+          SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

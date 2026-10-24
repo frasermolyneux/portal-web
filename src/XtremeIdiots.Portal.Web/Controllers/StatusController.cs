@@ -20,7 +20,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [Authorize(Policy = AuthPolicies.GameServers_BanFileMonitors_Read)]
 public class StatusController(
     IRepositoryApiClient repositoryApiClient,
-    IAgentTelemetryService agentTelemetryService,
     TelemetryClient telemetryClient,
     ILogger<StatusController> logger,
     IConfiguration configuration,
@@ -60,21 +59,8 @@ public class StatusController(
                 ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
                 : [];
 
-            IReadOnlyList<AgentServerSummary> telemetry = Array.Empty<AgentServerSummary>();
-            try
-            {
-                telemetry = await agentTelemetryService.GetAllServersStatusAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to retrieve agent telemetry for status page");
-            }
-
-            var telemetryByServer = telemetry.ToDictionary(t => t.ServerId);
-
             var models = servers.Select(gs =>
             {
-                telemetryByServer.TryGetValue(gs.GameServerId, out var summary);
                 liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
 
                 return new AgentServerSummary
@@ -82,12 +68,9 @@ public class StatusController(
                     ServerId = gs.GameServerId,
                     ServerTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title,
                     GameType = gs.GameType.ToString(),
-                    LastEventReceived = summary?.LastEventReceived,
-                    EventsLastHour = summary?.EventsLastHour ?? 0,
-                    PlayerCount = summary?.PlayerCount ?? 0,
-                    CurrentMap = summary?.CurrentMap ?? liveStatus?.Map,
-                    IsAgentActive = summary?.IsAgentActive ?? false,
-                    ActivityStatus = summary?.ActivityStatus ?? AgentActivityStatus.Offline
+                    PlayerCount = liveStatus?.CurrentPlayers ?? 0,
+                    CurrentMap = liveStatus?.Map,
+                    TelemetryState = OptionalDataState.Unavailable
                 };
             }).ToList();
 
@@ -96,5 +79,15 @@ public class StatusController(
 
             return View(models);
         }, nameof(AgentStatus)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOverviewTelemetry(
+        [FromServices] CachedAgentTelemetryService telemetry, CancellationToken cancellationToken = default)
+    {
+        var result = await telemetry.GetAllAsync(cancellationToken).ConfigureAwait(false);
+        return result.State == OptionalDataState.Unavailable
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable)
+            : PartialView("_AgentStatusTelemetry", result);
     }
 }
