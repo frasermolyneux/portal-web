@@ -18,7 +18,7 @@ public class RedirectManagerLinksTests
         var query = QueryHelpers.ParseQuery(uri.Query);
 
         Assert.Equal("https", uri.Scheme);
-        Assert.Equal("maps.xtremeidiots.net", uri.Host);
+        Assert.Equal("maps.xtremeidiots.com", uri.Host);
         Assert.Equal(expectedGame, query["game"]);
         Assert.Equal(mapName, query["map"]);
         Assert.Equal(2, query.Count);

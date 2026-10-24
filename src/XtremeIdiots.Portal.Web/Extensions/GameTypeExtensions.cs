@@ -16,7 +16,7 @@ public static class GameTypeExtensions
         var query = new Dictionary<string, string?> { ["game"] = game };
         if (!string.IsNullOrWhiteSpace(mapName))
             query["map"] = mapName;
-        return QueryHelpers.AddQueryString("https://maps.xtremeidiots.net/", query);
+        return QueryHelpers.AddQueryString("https://maps.xtremeidiots.com/", query);
     }
 
     public static string ToDisplayName(this GameType gameType)
