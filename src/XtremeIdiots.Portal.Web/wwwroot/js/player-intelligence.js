@@ -8,7 +8,8 @@
         if (!Number.isFinite(position.lat) || !Number.isFinite(position.lng)) return;
         element.dataset.portalMapInitialized = 'true';
         const map = new google.maps.Map(element, { zoom: 4, center: position });
-        new google.maps.Marker({ position: position, map: map, title: 'IP Location' });
+        const marker = new google.maps.Marker({ position: position, title: 'IP Location' });
+        marker.setMap(map);
     }
     document.addEventListener('portal:maps-ready', initializeMap);
 
@@ -23,7 +24,7 @@
         button.type = 'button';
         button.className = 'btn btn-outline-secondary btn-sm';
         button.textContent = 'Retry';
-        button.addEventListener('click', function () { message.remove(); retry(); });
+        button.addEventListener('click', async function () { message.remove(); await retry(); });
         message.append(button);
         element.append(message);
     }
@@ -31,10 +32,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         const current = document.querySelector('[data-player-intelligence-url]');
         if (current) {
-            window.PortalAsync.loadSection(current, current.dataset.playerIntelligenceUrl, { onLoaded: initializeMap });
+            void window.PortalAsync.loadSection(current, current.dataset.playerIntelligenceUrl, { onLoaded: initializeMap });
             current.addEventListener('click', function (event) {
                 if (event.target.closest('[data-retry-player-intelligence]'))
-                    window.PortalAsync.loadSection(current, current.dataset.playerIntelligenceUrl, { onLoaded: initializeMap });
+                    void window.PortalAsync.loadSection(current, current.dataset.playerIntelligenceUrl, { onLoaded: initializeMap });
             });
         }
 
@@ -66,7 +67,7 @@
                 });
                 historyExpires = expires;
                 if (json.data.some(intel => intel.status === 'unavailable'))
-                    retryButton(history, function () { historyExpires = 0; loadHistory(); });
+                    retryButton(history, function () { historyExpires = 0; return loadHistory(); });
             } catch (error) {
                 if (error.name !== 'AbortError') retryButton(history, loadHistory);
             } finally {
@@ -74,7 +75,7 @@
             }
         }
         document.getElementById('ipAddresses-tab')?.addEventListener('shown.bs.tab', loadHistory);
-        if (history?.classList.contains('active')) loadHistory();
+        if (history?.classList.contains('active')) void loadHistory();
 
         const ipSection = document.querySelector('[data-ip-intelligence-url]');
         let ipRequest = null;
@@ -108,7 +109,7 @@
                 if (ipRequest === controller) ipRequest = null;
             }
         }
-        loadIpDetails();
+        void loadIpDetails();
         window.addEventListener('pagehide', function () { historyRequest?.abort(); ipRequest?.abort(); });
         window.addEventListener('load', initializeMap);
     });

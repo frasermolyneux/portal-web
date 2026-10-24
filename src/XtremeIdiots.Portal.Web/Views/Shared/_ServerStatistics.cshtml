@@ -26,7 +26,7 @@
             {
                 <div id="@ViewData["ChartId"]" data-overview-chart="@(timeline ? "timeline" : "players")"
                      style="height: @(timeline ? Model.Data.MapTimeline.Select(p => p.MapName).Distinct().Count() * 41 + 50 : 300)px; width: 100%;">
-                    <script type="application/json" data-chart-data>@Html.Raw(JsonSerializer.Serialize(Model.Data, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
+                    <div hidden data-chart-data>@JsonSerializer.Serialize(Model.Data, new JsonSerializerOptions(JsonSerializerDefaults.Web))</div>
                 </div>
             }
             else

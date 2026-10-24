@@ -79,16 +79,28 @@
             retry.className = 'btn btn-sm btn-outline-secondary mt-2';
             retry.textContent = 'Retry';
             retry.addEventListener('click', function () {
-                window.PortalAsync.loadSection(element, element.dataset.overviewUrl, { onLoaded: loaded }).then(function () {
-                    if (document.getElementById('agent-status-counts') && !element.querySelector('[data-agent-status-data]')) {
-                        document.querySelectorAll('[data-agent-field="status"]').forEach(function (cell) {
-                            cell.textContent = 'Unavailable';
-                        });
-                    }
-                });
+                loadOverview(element);
             });
             element.append(retry);
         }
+    }
+
+    function agentStatusUnavailable() {
+        var counts = document.getElementById('agent-status-counts');
+        if (!counts) return;
+        counts.replaceChildren();
+        document.querySelectorAll('[data-agent-server]').forEach(function (row) {
+            row.querySelector('[data-agent-field="status"]').textContent = 'Unavailable';
+            row.querySelector('[data-agent-field="events"]').textContent = '—';
+            row.querySelector('[data-agent-field="lastEvent"]').textContent = '—';
+        });
+    }
+
+    function loadOverview(element) {
+        return window.PortalAsync.loadSection(element, element.dataset.overviewUrl, {
+            onLoaded: loaded,
+            onError: agentStatusUnavailable
+        });
     }
 
     function loadVisible() {
@@ -96,7 +108,7 @@
             var tab = element.closest('.tab-pane');
             if (element.dataset.overviewStarted || (tab && !tab.classList.contains('active'))) return;
             element.dataset.overviewStarted = 'true';
-            window.PortalAsync.loadSection(element, element.dataset.overviewUrl, { onLoaded: loaded });
+            loadOverview(element);
         });
     }
 

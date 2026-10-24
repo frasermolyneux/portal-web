@@ -3,6 +3,11 @@
 
     function renderHtml(element, html) {
         element.replaceChildren(DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true, ADD_ATTR: ['target'] }));
+        enhanceDates(element);
+    }
+
+    function enhanceDates(element) {
+        if (window.portalDate) window.portalDate.enhanceDateElements(element);
     }
 
     function createPoller(options) {
@@ -11,18 +16,20 @@
         var controller = null;
         var running = false;
         var disposed = false;
+        var suspended = false;
+        var resumeOnShow = false;
         var failures = 0;
         var interval = options.intervalMs || 10000;
 
         function schedule() {
             clearTimeout(timer);
-            if (!running || disposed || document.hidden) return;
+            if (!running || disposed || suspended || document.hidden) return;
             var delay = Math.min(interval * Math.pow(2, failures), options.maxBackoffMs || interval * 8);
             timer = setTimeout(refresh, delay);
         }
 
         function refresh() {
-            if (disposed || document.hidden) return Promise.resolve();
+            if (disposed || suspended || document.hidden) return Promise.resolve();
             if (active) return active;
             clearTimeout(timer);
             controller = new AbortController();
@@ -56,6 +63,7 @@
 
         function stop() {
             running = false;
+            resumeOnShow = false;
             clearTimeout(timer);
             if (controller) controller.abort();
         }
@@ -64,11 +72,36 @@
             disposed = true;
             stop();
             document.removeEventListener('visibilitychange', visibilityChanged);
-            window.removeEventListener('pagehide', dispose);
+            window.removeEventListener('pagehide', pageHidden);
+            window.removeEventListener('pageshow', pageShown);
+        }
+
+        function pageHidden(event) {
+            if (!event.persisted) {
+                dispose();
+                return;
+            }
+            suspended = true;
+            resumeOnShow = running;
+            running = false;
+            clearTimeout(timer);
+            if (controller) controller.abort();
+        }
+
+        function pageShown(event) {
+            if (!event.persisted || !suspended || disposed) return;
+            suspended = false;
+            var resume = resumeOnShow;
+            resumeOnShow = false;
+            if (!resume) return;
+            running = true;
+            if (active) void active.then(function () { if (running && !disposed) refresh(); });
+            else refresh();
         }
 
         document.addEventListener('visibilitychange', visibilityChanged);
-        window.addEventListener('pagehide', dispose);
+        window.addEventListener('pagehide', pageHidden);
+        window.addEventListener('pageshow', pageShown);
         return {
             start: function () {
                 if (disposed) return;
@@ -92,7 +125,16 @@
             timedOut = true;
             controller.abort();
         }, options.timeoutMs || 30000);
-        function abort() { controller.abort(); }
+        function abort(event) {
+            controller.abort();
+            if (event.persisted) {
+                window.addEventListener('pageshow', function () {
+                    void Promise.resolve(element.portalSectionRequest).then(function () {
+                        if (element.isConnected) loadSection(element, url, options);
+                    });
+                }, { once: true });
+            }
+        }
         window.addEventListener('pagehide', abort, { once: true });
         element.setAttribute('aria-busy', 'true');
         element.portalSectionRequest = fetch(url, {
@@ -104,7 +146,10 @@
             return options.render ? response.json() : response.text();
         }).then(function (payload) {
             if (controller.signal.aborted) return;
-            if (options.render) options.render(element, payload);
+            if (options.render) {
+                options.render(element, payload);
+                enhanceDates(element);
+            }
             else renderHtml(element, payload);
             if (options.onLoaded) options.onLoaded(element);
             element.dispatchEvent(new CustomEvent('portal:section-loaded', { bubbles: true }));
@@ -121,6 +166,7 @@
             retry.textContent = 'Retry';
             retry.addEventListener('click', function () { loadSection(element, url, options); });
             element.append(message, retry);
+            if (options.onError) options.onError(error, element);
         }).finally(function () {
             clearTimeout(deadline);
             element.removeAttribute('aria-busy');

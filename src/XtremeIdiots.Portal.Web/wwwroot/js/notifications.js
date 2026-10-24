@@ -95,23 +95,7 @@
             type: 'POST',
             headers: headers,
             success: function () {
-                poller = PortalAsync.createPoller({
-                    intervalMs: POLL_INTERVAL,
-                    load: async function (signal) {
-                        var response = await fetch('/api/notifications/unread-count', { credentials: 'same-origin', signal: signal });
-                        if (!response.ok || response.redirected) throw new Error('Notification count unavailable (' + response.status + ')');
-                        var data = await response.json();
-                        if (!signal.aborted) {
-                            updateBadge(data.count);
-                            bell.removeAttribute('data-refresh-unavailable');
-                        }
-                    },
-                    onError: function (error) {
-                        console.warn('Notification count unavailable:', error);
-                        bell.setAttribute('data-refresh-unavailable', 'true');
-                    }
-                });
-                poller.start();
+                fetchUnreadCount();
                 fetchRecentNotifications();
             }
         });
@@ -119,10 +103,25 @@
 
     function init() {
         var bell = document.getElementById('notificationBell');
-        if (!bell) return;
+        if (!bell || poller) return;
 
-        // Fetch unread count on load
-        fetchUnreadCount();
+        poller = PortalAsync.createPoller({
+            intervalMs: POLL_INTERVAL,
+            load: async function (signal) {
+                var response = await fetch('/api/notifications/unread-count', { credentials: 'same-origin', signal: signal });
+                if (!response.ok || response.redirected) throw new Error('Notification count unavailable (' + response.status + ')');
+                var data = await response.json();
+                if (!signal.aborted) {
+                    updateBadge(data.count);
+                    bell.removeAttribute('data-refresh-unavailable');
+                }
+            },
+            onError: function (error) {
+                console.warn('Notification count unavailable:', error);
+                bell.setAttribute('data-refresh-unavailable', 'true');
+            }
+        });
+        poller.start();
 
         // Load notifications when dropdown opens
         var dropdown = document.getElementById('notificationDropdown');

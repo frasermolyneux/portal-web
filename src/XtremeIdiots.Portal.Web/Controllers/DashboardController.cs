@@ -81,7 +81,11 @@ public class DashboardController(
         {
             var summary = lookup?.GetValueOrDefault(gs.GameServerId);
             liveLookup.TryGetValue(gs.GameServerId, out var live);
-            return (summary ?? new AgentServerSummary { ServerId = gs.GameServerId }) with
+            return (summary ?? new AgentServerSummary
+            {
+                ServerId = gs.GameServerId,
+                ActivityStatus = AgentActivityStatus.Offline
+            }) with
             {
                 ServerTitle = string.IsNullOrWhiteSpace(live?.Title) ? gs.Title : live.Title,
                 GameType = gs.GameType.ToString(),

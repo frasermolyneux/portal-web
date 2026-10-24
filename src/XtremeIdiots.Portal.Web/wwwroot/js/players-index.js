@@ -208,8 +208,8 @@ $(document).ready(function () {
                     if (row.playerId === intel.playerId && row.ipAddress === intel.ipAddress)
                         this.data({ ...row, ...intel });
                 });
-                if (json.data.some(intel => intel.status === 'unavailable')) showIntelligenceRetry();
             });
+            if (json.data.some(intel => intel.status === 'unavailable')) showIntelligenceRetry();
         } catch (error) {
             if (error.name !== 'AbortError' && version === drawVersion) {
                 table.rows({ page: 'current' }).every(function () {
@@ -217,25 +217,25 @@ $(document).ready(function () {
                 });
                 showIntelligenceRetry();
             }
-            function showIntelligenceRetry() {
-                enrichmentStatus.replaceChildren();
-                enrichmentStatus.append(document.createTextNode('Some IP intelligence is unavailable. '));
-                const retry = document.createElement('button');
-                retry.type = 'button';
-                retry.className = 'btn btn-outline-secondary btn-sm';
-                retry.textContent = 'Retry';
-                retry.addEventListener('click', function () {
-                    intelligenceCache.clear();
-                    table.ajax.reload(null, false);
-                });
-                enrichmentStatus.append(retry);
-            }
         } finally {
             if (intelligenceRequest === controller) intelligenceRequest = null;
         }
     }
+    function showIntelligenceRetry() {
+        enrichmentStatus.replaceChildren();
+        enrichmentStatus.append(document.createTextNode('Some IP intelligence is unavailable. '));
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn btn-outline-secondary btn-sm';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', function () {
+            intelligenceCache.clear();
+            table.ajax.reload(null, false);
+        });
+        enrichmentStatus.append(retry);
+    }
     table.on('draw.dt', enrichVisibleRows);
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) enrichVisibleRows(); });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) void enrichVisibleRows(); });
     window.addEventListener('pagehide', function () { intelligenceRequest?.abort(); intelligenceCache.clear(); });
 
     function escapeHtml(value) {

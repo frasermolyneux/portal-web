@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using System.Text.Json;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
 
@@ -33,6 +34,77 @@ public sealed class AsyncPlayerEnrichmentTests
             gate.Release();
             Assert.True((await response).Ok);
             await Assertions.Expect(row).ToContainTextAsync("Risk: 80");
+            browser.AssertNoBrowserErrors();
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    [Fact]
+    public async Task MixedIntelligenceBatchRetainsSuccessfulRowsAndShowsOneRetry()
+    {
+        var unavailable = new PlayerDtoBuilder { Username = "Missing risk lookup", IpAddress = "203.0.113.11" }.Build();
+        var available = new PlayerDtoBuilder { Username = "Successful lookup", IpAddress = "203.0.113.12" }.Build();
+        var scenario = new PlayersIndexScenario([unavailable, available]);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var gate = new RequestGate(hold: true);
+        await browser.Page.RouteAsync("**/Players/GetVisibleIntelligence", async route =>
+        {
+            await gate.WaitAsync();
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new
+                {
+                    data = new[]
+                    {
+                        new
+                        {
+                            playerId = unavailable.PlayerId,
+                            ipAddress = unavailable.IpAddress,
+                            proxyCheckRiskScore = (int?)null,
+                            isProxy = false,
+                            isVpn = false,
+                            proxyType = "",
+                            countryCode = "",
+                            status = "unavailable",
+                            expiresAtUtc = DateTime.UtcNow.AddSeconds(30)
+                        },
+                        new
+                        {
+                            playerId = available.PlayerId,
+                            ipAddress = available.IpAddress,
+                            proxyCheckRiskScore = (int?)80,
+                            isProxy = true,
+                            isVpn = false,
+                            proxyType = "Hosting",
+                            countryCode = "GB",
+                            status = "available",
+                            expiresAtUtc = DateTime.UtcNow.AddSeconds(30)
+                        }
+                    }
+                })
+            });
+        });
+        try
+        {
+            await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Players/Index").AbsoluteUri,
+                new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+            await gate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            var goodRow = browser.Page.Locator("#dataTable tbody tr").Filter(new LocatorFilterOptions { HasText = available.Username });
+            await Assertions.Expect(goodRow).ToContainTextAsync("Risk pending");
+
+            var response = browser.Page.WaitForResponseAsync(r => new Uri(r.Url).AbsolutePath == "/Players/GetVisibleIntelligence");
+            gate.Release();
+            Assert.True((await response).Ok);
+            await Assertions.Expect(goodRow).ToContainTextAsync("Risk: 80");
+            await Assertions.Expect(goodRow).Not.ToContainTextAsync("Risk unavailable");
+            var unavailableRow = browser.Page.Locator("#dataTable tbody tr").Filter(new LocatorFilterOptions { HasText = unavailable.Username });
+            await Assertions.Expect(unavailableRow).ToContainTextAsync("Risk unavailable");
+            var status = browser.Page.Locator("[role='status']").Filter(new LocatorFilterOptions { HasText = "Some IP intelligence is unavailable." });
+            await Assertions.Expect(status.GetByRole(AriaRole.Button, new() { Name = "Retry", Exact = true })).ToHaveCountAsync(1);
             browser.AssertNoBrowserErrors();
         }
         finally

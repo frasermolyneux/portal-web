@@ -1,5 +1,9 @@
 using Microsoft.Playwright;
 using Moq;
+using MX.Api.Abstractions;
+using System.Net;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
@@ -10,6 +14,57 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "Browser")]
 public sealed class OverviewPanelTests
 {
+    [Fact]
+    public async Task AgentStatusFailureMarksRowsUnavailableAndRetryCanRecover()
+    {
+        var scenario = new MapControlScenario();
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(), GameServerFilter.AgentEnabled,
+                0, 100, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([scenario.GameServer]))));
+        scenario.AgentTelemetry.Setup(t => t.GetAllServersStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new AgentServerSummary
+            {
+                ServerId = scenario.GameServerId,
+                ActivityStatus = AgentActivityStatus.Active,
+                EventsLastHour = 17
+            }]);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var requests = 0;
+        await browser.Page.RouteAsync("**/Status/GetOverviewTelemetry", async route =>
+        {
+            var failure = Interlocked.Increment(ref requests) < 3;
+            if (failure)
+            {
+                await route.FulfillAsync(new() { Status = 503, ContentType = "text/html", Body = "" });
+            }
+            else
+            {
+                await route.ContinueAsync();
+            }
+        });
+
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Status/AgentStatus").AbsoluteUri,
+            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        Assert.True(response?.Ok);
+        var row = browser.Page.Locator($"[data-agent-server='{scenario.GameServerId}']");
+        var status = row.Locator("[data-agent-field='status']");
+        var panel = browser.Page.Locator("[data-overview-url*='GetOverviewTelemetry']");
+        await Assertions.Expect(status).ToHaveTextAsync("Unavailable");
+        await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("—");
+        await Assertions.Expect(browser.Page.Locator("#agent-status-counts")).ToBeEmptyAsync();
+
+        await panel.GetByRole(AriaRole.Button, new() { Name = "Retry" }).ClickAsync();
+        await Assertions.Expect(panel).Not.ToHaveAttributeAsync("aria-busy", "true");
+        await Assertions.Expect(status).ToHaveTextAsync("Unavailable");
+        await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("—");
+        await panel.GetByRole(AriaRole.Button, new() { Name = "Retry" }).ClickAsync();
+        await Assertions.Expect(status).ToHaveTextAsync("Active");
+        await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("17");
+        await Assertions.Expect(browser.Page.Locator("#agent-status-counts")).ToContainTextAsync("1 Active");
+    }
+
     [Fact]
     public async Task ServerControlsAndPlayersRenderWhileTelemetryIsGatedAndStatisticsFailIndependently()
     {

@@ -2,6 +2,7 @@ using Moq;
 using MX.Api.Abstractions;
 using Newtonsoft.Json;
 using System.Net;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
@@ -13,6 +14,43 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "HttpIntegration")]
 public sealed class OverviewEndpointTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DashboardDoesNotReportMissingOrUnavailableTelemetryAsActive(bool queryFails)
+    {
+        var scenario = new MapControlScenario();
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(), GameServerFilter.AgentEnabled,
+                0, 100, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([scenario.GameServer]))));
+        var query = scenario.AgentTelemetry.Setup(t => t.GetAllServersStatusAsync(It.IsAny<CancellationToken>()));
+        if (queryFails)
+            query.ThrowsAsync(new InvalidOperationException("Telemetry unavailable"));
+        else
+            query.ReturnsAsync(Array.Empty<AgentServerSummary>());
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
+
+        using var response = await host.Client.GetAsync("/Dashboard/GetOverviewTelemetry");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var html = await response.Content.ReadAsStringAsync();
+        if (queryFails)
+        {
+            Assert.Contains("Unavailable", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("Offline", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("Active", html, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Contains("0 Active", html, StringComparison.Ordinal);
+            Assert.Contains("1 Offline", html, StringComparison.Ordinal);
+            Assert.Contains("bg-danger", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("Unavailable", html, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task ServerShellDoesNotCallTelemetryAndStillRendersDuringPendingPanelRequest()
     {
@@ -112,5 +150,52 @@ public sealed class OverviewEndpointTests
         }
 
         scenario.AgentTelemetry.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(TestPrincipalProfiles.LiveServerKick, false)]
+    [InlineData(TestPrincipalProfiles.SeniorAdmin, true)]
+    public async Task DetailedTelemetryAlwaysRequiresPermissionEvenAfterBasicCacheWarm(string principal, bool canReadDetailed)
+    {
+        var scenario = new MapControlScenario();
+        scenario.AgentTelemetry.Setup(t => t.GetServerStatusAsync(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AgentServerStatus
+            {
+                ActivityStatus = AgentActivityStatus.Active,
+                PlayersConnectedLastHour = 123,
+                BansDetectedLast24h = 42,
+                ModerationTriggersLast24h = 57,
+                LastMapName = "restricted-telemetry-map"
+            });
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, principal);
+
+        using var basic = await host.Client.GetAsync($"/ServerAdmin/GetOverviewTelemetry/{scenario.GameServerId}?detailed=false");
+        Assert.Equal(HttpStatusCode.OK, basic.StatusCode);
+        var basicHtml = await basic.Content.ReadAsStringAsync();
+        Assert.Contains("Active", basicHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Players Connected/Hour", basicHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bans Detected", basicHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Moderation Triggers", basicHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("restricted-telemetry-map", basicHtml, StringComparison.Ordinal);
+
+        using var detailed = await host.Client.GetAsync($"/ServerAdmin/GetOverviewTelemetry/{scenario.GameServerId}?detailed=true");
+        if (canReadDetailed)
+        {
+            Assert.Equal(HttpStatusCode.OK, detailed.StatusCode);
+            var html = await detailed.Content.ReadAsStringAsync();
+            Assert.Contains("Players Connected/Hour", html, StringComparison.Ordinal);
+            Assert.Contains("Bans Detected", html, StringComparison.Ordinal);
+            Assert.Contains("Moderation Triggers", html, StringComparison.Ordinal);
+            Assert.Contains("restricted-telemetry-map", html, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Equal(HttpStatusCode.Redirect, detailed.StatusCode);
+            Assert.Equal("/Errors/Display/403", detailed.Headers.Location?.ToString());
+            Assert.DoesNotContain("restricted-telemetry-map", await detailed.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+
+        scenario.AgentTelemetry.Verify(t => t.GetServerStatusAsync(scenario.GameServerId, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

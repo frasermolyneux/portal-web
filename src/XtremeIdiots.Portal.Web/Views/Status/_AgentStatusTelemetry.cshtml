@@ -5,4 +5,4 @@
 {
     <p class="text-warning" role="status">Showing cached telemetry from @Model.ObservedAt?.ToString("u").</p>
 }
-<script type="application/json" data-agent-status-data>@Html.Raw(JsonSerializer.Serialize(Model.Data, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
+<div hidden data-agent-status-data>@JsonSerializer.Serialize(Model.Data, new JsonSerializerOptions(JsonSerializerDefaults.Web))</div>

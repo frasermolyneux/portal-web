@@ -305,9 +305,10 @@ public class ServerAdminController(
         var authorized = await AuthorizeOverviewAsync(id, cancellationToken).ConfigureAwait(false);
         if (authorized is not null)
             return authorized;
-        if (detailed && !(await authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read).ConfigureAwait(false)).Succeeded)
+        var canReadDetailed = (await authorizationService.AuthorizeAsync(User, AuthPolicies.GameServers_BanFileMonitors_Read).ConfigureAwait(false)).Succeeded;
+        if (detailed && !canReadDetailed)
             return Forbid();
-        ViewData["Detailed"] = detailed;
+        ViewData["Detailed"] = canReadDetailed && detailed;
         return PartialView("_AgentTelemetry", await telemetry.GetServerAsync(id, cancellationToken).ConfigureAwait(false));
     }
 
