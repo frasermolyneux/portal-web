@@ -32,6 +32,7 @@ public class MapRotationsController(
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty4x, GameType.CallOfDuty5];
+    private readonly static string[] assignmentOperationNames = ["apply", "sync", "activate", "deactivate", "remove", "verify"];
 
     private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
     {
@@ -59,6 +60,9 @@ public class MapRotationsController(
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.GetMapRotations(
                 gameTypes, null, null, 0, 100, MapRotationsOrder.TitleAsc, cancellationToken).ConfigureAwait(false);
+
+            if (!apiResponse.IsSuccess || apiResponse.Result?.Data?.Items == null)
+                return StatusCode(502, "Unable to load map rotations. Please retry.");
 
             var rotations = apiResponse.IsSuccess && apiResponse.Result?.Data?.Items != null
                 ? apiResponse.Result.Data.Items.ToList()
@@ -384,6 +388,10 @@ public class MapRotationsController(
                     if (opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null)
                     {
                         assignmentOperations[assignment.MapRotationServerAssignmentId] = [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)];
+                    }
+                    else
+                    {
+                        this.AddAlertDanger("Operation history could not be loaded for an assignment. Recovery actions are disabled until its status can be checked.");
                     }
                 }
             }
@@ -803,48 +811,27 @@ public class MapRotationsController(
 
             if (assignment.DeploymentState == DeploymentState.Removed)
             {
-                this.AddAlertInfo("This assignment is already unassigned. Removed assignments are retained for 48 hours and then purged automatically.");
+                this.AddAlertInfo("This assignment is already unassigned. Removed assignments are retained for 90 days before automatic cleanup.");
                 return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
             }
 
-            if (force)
+            if (assignment.ActivationState != ActivationState.Inactive)
+                return BadRequest("Deactivate this assignment successfully before unassigning it. Server map files will be preserved.");
+
+            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+
+            var result = await repositoryApiClient.MapRotations.V1.DeleteServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsSuccess)
             {
-                var forceUpdate = new UpdateMapRotationServerAssignmentDto(assignmentId)
-                {
-                    DeploymentState = DeploymentState.Removed,
-                    ActivationState = ActivationState.Inactive,
-                    UnassignedAt = DateTime.UtcNow,
-                    LastError = "Force unassigned by operator",
-                    LastErrorAt = DateTime.UtcNow
-                };
-
-                var updateResponse = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(forceUpdate, cancellationToken).ConfigureAwait(false);
-
-                if (!updateResponse.IsSuccess)
-                {
-                    this.AddAlertDanger("Failed to force unassign this assignment. Please try again.");
-                }
-                else
-                {
-                    this.AddAlertWarning("Force unassign completed. This assignment is now marked as removed and will be purged automatically after 48 hours.");
-                    TrackSuccessTelemetry("MapRotationAssignmentForceUnassigned", nameof(DeleteAssignment));
-                }
-
-                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
-            }
-
-            // Trigger the Remove orchestration to clean up maps from the server
-            var result = await syncApiClient.TriggerRemove(assignmentId, cancellationToken).ConfigureAwait(false);
-
-            if (result.Success)
-            {
-                this.AddAlertSuccess("Unassign started. Maps are being removed from the server now. Once completed, this assignment will remain visible for 48 hours before automatic purge.");
-                TempData["PendingInstanceId"] = $"maprot-remove-{assignmentId}";
+                this.AddAlertInfo("Assignment unassigned. Server map files were preserved. Removed assignments are retained for 90 days.");
                 TrackSuccessTelemetry("MapRotationAssignmentDeleted", nameof(DeleteAssignment));
             }
             else
             {
-                this.AddAlertDanger($"Failed to trigger unassign: {result.Error}");
+                this.AddAlertDanger("Failed to unassign. Refresh the assignment and ensure deactivation and other operations have completed successfully.");
             }
 
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
@@ -894,6 +881,8 @@ public class MapRotationsController(
             }
 
             var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(id, 0, 20, cancellationToken).ConfigureAwait(false);
+            if (!opsResponse.IsSuccess || opsResponse.Result?.Data?.Items == null)
+                return StatusCode(502, "Unable to load assignment operations. Please retry before starting recovery.");
             List<MapRotationAssignmentOperationDto> operations = opsResponse.IsSuccess && opsResponse.Result?.Data?.Items != null
                 ? [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)]
                 : [];
@@ -909,6 +898,64 @@ public class MapRotationsController(
                 Operations = operations
             });
         }, nameof(AssignmentStatus)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var response = await repositoryApiClient.MapRotations.V1.GetMapRotation(mapRotationId, cancellationToken).ConfigureAwait(false);
+            if (response.IsNotFound || response.Result?.Data is null)
+                return NotFound();
+
+            var rotation = response.Result.Data;
+            var assignment = rotation.ServerAssignments?.FirstOrDefault(a => a.MapRotationServerAssignmentId == assignmentId);
+            if (assignment == null)
+                return BadRequest("The specified assignment does not belong to this rotation.");
+
+            var authResult = await CheckAuthorizationAsync(authorizationService,
+                (rotation.GameType, assignment.GameServerId), AuthPolicies.MapRotations_Deploy,
+                nameof(ApplyAssignment), "MapRotation").ConfigureAwait(false);
+            if (authResult != null)
+                return authResult;
+
+            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+            if (string.IsNullOrWhiteSpace(assignment.ConfigFilePath) || string.IsNullOrWhiteSpace(assignment.ConfigVariableName))
+                return BadRequest("A configuration target is required to apply a rotation.");
+
+            var result = await syncApiClient.TriggerApply(assignmentId, cancellationToken).ConfigureAwait(false);
+            if (result.Success)
+            {
+                TempData["PendingInstanceId"] = $"maprot-apply-{assignmentId}";
+                this.AddAlertInfo("Apply rotation queued: repair files and apply this slot and its linked main/AACP slot using the same rotation. Check each target's file and configuration results. No restart is performed and runtime use is not confirmed.");
+                TrackSuccessTelemetry("MapRotationApplyQueued", nameof(ApplyAssignment));
+            }
+            else
+            {
+                this.AddAlertDanger($"Failed to queue Apply rotation: {result.Error}");
+            }
+
+            return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+        }, nameof(ApplyAssignment)).ConfigureAwait(false);
+    }
+
+    private async Task<IActionResult?> CheckOperationAvailable(MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
+    {
+        if (assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing or DeploymentState.Removed
+            || assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating)
+            return Conflict("This assignment is busy or removed. Wait for the operation result or resolve cancellation before retrying.");
+
+        var response = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(
+            assignment.MapRotationServerAssignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
+        return !response.IsSuccess || response.Result?.Data?.Items == null
+            ? StatusCode(502, "Unable to check assignment operations. Please retry.")
+            : response.Result.Data.Items.Any(o => o.Status == AssignmentOperationStatus.InProgress)
+            ? Conflict("An assignment operation is still in progress. Wait for its result or cancel it successfully.")
+            : (IActionResult?)null;
     }
 
     [HttpPost]
@@ -939,11 +986,15 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+
             var result = await syncApiClient.TriggerSync(assignmentId, cancellationToken).ConfigureAwait(false);
 
             if (result.Success)
             {
-                this.AddAlertSuccess("Sync triggered successfully.");
+                this.AddAlertInfo("File repair queued. Configuration is unchanged. Check the file operation result below.");
                 TempData["PendingInstanceId"] = $"maprot-sync-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentSynced", nameof(SyncAssignment));
             }
@@ -984,13 +1035,16 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+
             var result = await syncApiClient.TriggerActivate(assignmentId, cancellationToken).ConfigureAwait(false);
 
             if (result.Success)
             {
-                this.AddAlertSuccess("Activation triggered successfully.");
+                this.AddAlertInfo("Configuration application queued. Check the result below; runtime use is not confirmed. Restart only if required by the game/mod configuration, using a separate explicit action.");
                 TempData["PendingInstanceId"] = $"maprot-activate-{assignmentId}";
-                TempData["ShowActivationRestartReminder"] = true;
                 TrackSuccessTelemetry("MapRotationAssignmentActivated", nameof(ActivateAssignment));
 
                 // Auto-promote rotation status to Published if still in Draft or Testing
@@ -1025,6 +1079,7 @@ public class MapRotationsController(
                             else
                             {
                                 Logger.LogWarning("Failed to auto-promote rotation {RotationId} status to Published", mapRotationId);
+                                this.AddAlertWarning("Configuration was queued, but the rotation status could not be promoted to Published.");
                             }
                         }
                     }
@@ -1067,11 +1122,15 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+
             var result = await syncApiClient.TriggerDeactivate(assignmentId, cancellationToken).ConfigureAwait(false);
 
             if (result.Success)
             {
-                this.AddAlertSuccess("Deactivation triggered successfully.");
+                this.AddAlertInfo("Deactivation queued. Wait for successful completion before unassigning.");
                 TempData["PendingInstanceId"] = $"maprot-deactivate-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentDeactivated", nameof(DeactivateAssignment));
             }
@@ -1112,11 +1171,15 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+
             var result = await syncApiClient.TriggerVerify(assignmentId, cancellationToken).ConfigureAwait(false);
 
             if (result.Success)
             {
-                this.AddAlertSuccess("Verification triggered successfully.");
+                this.AddAlertInfo("File verification queued. Check the result below; this does not confirm runtime use.");
                 TempData["PendingInstanceId"] = $"maprot-verify-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentVerified", nameof(VerifyAssignment));
             }
@@ -1132,6 +1195,23 @@ public class MapRotationsController(
     [HttpGet]
     public async Task<IActionResult> GetSyncProgress(string instanceId, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(instanceId) || instanceId.Length < 36
+            || !Guid.TryParse(instanceId[^36..], out var assignmentId)
+            || !IsAssignmentInstance(instanceId, assignmentId))
+            return BadRequest("Invalid assignment instance ID.");
+
+        var assignment = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+        if (!assignment.IsSuccess || assignment.Result?.Data == null)
+            return StatusCode(502, "Unable to resolve the assignment for progress.");
+        var rotation = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.Result.Data.MapRotationId, cancellationToken).ConfigureAwait(false);
+        if (!rotation.IsSuccess || rotation.Result?.Data == null)
+            return StatusCode(502, "Unable to resolve the rotation for progress.");
+        var authResult = await CheckAuthorizationAsync(authorizationService,
+            (rotation.Result.Data.GameType, assignment.Result.Data.GameServerId),
+            AuthPolicies.MapRotations_Deploy, nameof(GetSyncProgress), "MapRotation").ConfigureAwait(false);
+        if (authResult != null)
+            return authResult;
+
         var queryResult = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
         return queryResult.Outcome switch
         {
@@ -1142,7 +1222,9 @@ public class MapRotationsController(
                 runtimeStatus = queryResult.Result.RuntimeStatus,
                 createdAt = queryResult.Result.CreatedAt,
                 lastUpdatedAt = queryResult.Result.LastUpdatedAt,
-                progress = queryResult.Result.Progress
+                progress = queryResult.Result.Progress,
+                success = queryResult.Result.Success,
+                error = queryResult.Result.Error
             }),
             OrchestrationStatusQueryOutcome.NotFound => Json(new { status = "not_found" }),
             OrchestrationStatusQueryOutcome.Error => Json(new { status = "error" }),
@@ -1180,37 +1262,56 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            if (!IsAssignmentInstance(instanceId, assignmentId))
+                return BadRequest("The instance ID does not belong to the specified assignment.");
+
+            var operationsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(
+                assignmentId, 0, 100, cancellationToken).ConfigureAwait(false);
+            if (!operationsResponse.IsSuccess || operationsResponse.Result?.Data?.Items == null)
+                return StatusCode(502, "Unable to verify operation ownership. Nothing was cancelled.");
+
+            var operation = operationsResponse.Result.Data.Items.FirstOrDefault(o =>
+                o.MapRotationAssignmentOperationId == operationId
+                && o.MapRotationServerAssignmentId == assignmentId
+                && string.Equals(o.DurableFunctionInstanceId, instanceId, StringComparison.OrdinalIgnoreCase));
+            if (operation == null)
+                return BadRequest("The operation and instance do not belong to this assignment.");
+            if (operation.Status != AssignmentOperationStatus.InProgress)
+                return Conflict("This operation is no longer in progress. Refresh its result.");
+
+            var termination = await TerminateAndConfirm(instanceId!, cancellationToken).ConfigureAwait(false);
+            if (termination.CancellationRequested)
+            {
+                this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
+                TempData["PendingInstanceId"] = instanceId;
+                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+            }
+
+            if (!termination.Success)
+            {
+                this.AddAlertDanger($"Cancellation failed; the operation was not marked cancelled: {termination.Error}");
+                return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+            }
+
             var updateResult = await repositoryApiClient.MapRotations.V1.UpdateAssignmentOperation(
-                operationId, AssignmentOperationStatus.Cancelled, "Manually cancelled by user").ConfigureAwait(false);
+                operationId, AssignmentOperationStatus.Cancelled, "Orchestration terminated by user").ConfigureAwait(false);
 
             if (updateResult.IsSuccess)
             {
-                // Terminate the durable function orchestration so a new one can be started
-                if (!string.IsNullOrEmpty(instanceId))
+                var refreshed = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
+                if (!refreshed.IsSuccess || refreshed.Result?.Data == null)
                 {
-                    // Validate the instance ID belongs to this assignment
-                    var allowedPrefixes = new[]
-                    {
-                        $"maprot-sync-{assignmentId}",
-                        $"maprot-activate-{assignmentId}",
-                        $"maprot-deactivate-{assignmentId}",
-                        $"maprot-remove-{assignmentId}",
-                        $"maprot-verify-{assignmentId}"
-                    };
-
-                    if (allowedPrefixes.Any(p => string.Equals(instanceId, p, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
-                    }
+                    this.AddAlertDanger("Termination confirmed, but assignment state could not be reloaded. No reset was performed.");
+                    return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
                 }
 
-                // Also reset the assignment state so the user can retry
+                assignment = refreshed.Result.Data;
                 var deploymentReset = assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
                     ? DeploymentState.Failed
                     : (DeploymentState?)null;
 
                 var activationReset = assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating
-                    ? ActivationState.Inactive
+                    ? ActivationState.Failed
                     : (ActivationState?)null;
 
                 if (deploymentReset.HasValue || activationReset.HasValue)
@@ -1219,11 +1320,16 @@ public class MapRotationsController(
                     {
                         DeploymentState = deploymentReset,
                         ActivationState = activationReset,
-                        LastError = "Operation cancelled by user",
+                        LastError = "Operation cancelled by user. Configuration may have changed; deactivate successfully before unassigning.",
                         LastErrorAt = DateTime.UtcNow
                     };
 
-                    await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(resetDto, cancellationToken).ConfigureAwait(false);
+                    var resetResult = await repositoryApiClient.MapRotations.V1.UpdateServerAssignment(resetDto, cancellationToken).ConfigureAwait(false);
+                    if (!resetResult.IsSuccess)
+                    {
+                        this.AddAlertDanger("Orchestration terminated and operation marked cancelled, but assignment state reset failed. Refresh and resolve its state before retrying.");
+                        return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
+                    }
                 }
 
                 this.AddAlertSuccess("Operation cancelled successfully.");
@@ -1231,11 +1337,29 @@ public class MapRotationsController(
             }
             else
             {
-                this.AddAlertDanger("Failed to cancel operation. Please try again.");
+                this.AddAlertDanger("Orchestration terminated, but the operation record could not be marked cancelled. Refresh and resolve its state before retrying.");
             }
 
             return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
         }, nameof(CancelOperation)).ConfigureAwait(false);
+    }
+
+    private static bool IsAssignmentInstance(string? instanceId, Guid assignmentId)
+    {
+        return assignmentOperationNames
+            .Any(operation => string.Equals(instanceId, $"maprot-{operation}-{assignmentId}", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task<SyncTriggerResult> TerminateAndConfirm(string instanceId, CancellationToken cancellationToken)
+    {
+        var result = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
+        if (!result.Success)
+            return result;
+        var status = await syncApiClient.GetOrchestrationStatus(instanceId, cancellationToken).ConfigureAwait(false);
+        return status.Outcome == OrchestrationStatusQueryOutcome.Found
+            && status.Result?.RuntimeStatus is "Terminated" or "Canceled"
+            ? new SyncTriggerResult(true)
+            : new SyncTriggerResult(false, Error: "Termination was requested but is not confirmed. Refresh the operation result before retrying; no assignment reset was performed.");
     }
 
     [HttpPost]
@@ -1244,17 +1368,7 @@ public class MapRotationsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            // Validate the instance ID belongs to this assignment
-            var allowedPrefixes = new[]
-            {
-                $"maprot-sync-{assignmentId}",
-                $"maprot-activate-{assignmentId}",
-                $"maprot-deactivate-{assignmentId}",
-                $"maprot-remove-{assignmentId}",
-                $"maprot-verify-{assignmentId}"
-            };
-
-            if (!allowedPrefixes.Any(p => string.Equals(instanceId, p, StringComparison.OrdinalIgnoreCase)))
+            if (!IsAssignmentInstance(instanceId, assignmentId))
                 return BadRequest("The instance ID does not belong to the specified assignment.");
 
             var assignmentResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(assignmentId, cancellationToken).ConfigureAwait(false);
@@ -1277,11 +1391,16 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var terminateResult = await syncApiClient.TerminateOrchestration(instanceId, cancellationToken).ConfigureAwait(false);
+            var terminateResult = await TerminateAndConfirm(instanceId, cancellationToken).ConfigureAwait(false);
 
-            if (terminateResult.Success)
+            if (terminateResult.CancellationRequested)
             {
-                this.AddAlertSuccess($"Orchestration '{instanceId}' terminated. You can now re-trigger the operation.");
+                this.AddAlertInfo("Cancellation requested; waiting for the current transfer or configuration activity to finish safely. The operation is not yet cancelled.");
+                TempData["PendingInstanceId"] = instanceId;
+            }
+            else if (terminateResult.Success)
+            {
+                this.AddAlertInfo($"Orchestration '{instanceId}' termination confirmed. Check the operation and assignment states before retrying.");
                 TrackSuccessTelemetry("MapRotationOrchestrationTerminated", nameof(TerminateOrchestration));
             }
             else

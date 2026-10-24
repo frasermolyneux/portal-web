@@ -1,7 +1,14 @@
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+
 namespace XtremeIdiots.Portal.Web.Services;
 
 public class NoOpSyncApiClient : ISyncApiClient
 {
+    public Task<SyncTriggerResult> TriggerApply(Guid assignmentId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new SyncTriggerResult(false, Error: "Sync API not configured"));
+    }
+
     public Task<SyncTriggerResult> TriggerSync(Guid assignmentId, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(new SyncTriggerResult(false, Error: "Sync API not configured"));
@@ -27,7 +34,7 @@ public class NoOpSyncApiClient : ISyncApiClient
         return Task.FromResult(new SyncTriggerResult(false, Error: "Sync API not configured"));
     }
 
-    public Task<SyncTriggerResult> TriggerPushMap(Guid gameServerId, string mapName, CancellationToken cancellationToken = default)
+    public Task<SyncTriggerResult> TriggerPushMap(Guid gameServerId, GameType gameType, string mapName, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(new SyncTriggerResult(false, Error: "Sync API not configured"));
     }

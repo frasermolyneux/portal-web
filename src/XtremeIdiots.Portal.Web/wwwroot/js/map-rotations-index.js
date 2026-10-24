@@ -229,6 +229,6 @@ $(document).ready(function () {
 
     applyGameColumnVisibility();
 
-    var iboxContent = tableEl.closest('.ibox-content');
+    var iboxContent = tableEl.closest('.ibox-content')[0];
     if (iboxContent) iboxContent.classList.add('datatable-tight');
 });

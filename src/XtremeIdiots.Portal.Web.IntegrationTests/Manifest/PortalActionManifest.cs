@@ -28,7 +28,7 @@ internal static class PortalActionManifest
             [PortalActionKind.DownloadOrStream] = 3,
             [PortalActionKind.ExternalCallback] = 1,
             [PortalActionKind.HttpEndpoint] = 111,
-            [PortalActionKind.StateChange] = 66,
+            [PortalActionKind.StateChange] = 67,
         };
 
     private readonly static string[] downloadActionNames =

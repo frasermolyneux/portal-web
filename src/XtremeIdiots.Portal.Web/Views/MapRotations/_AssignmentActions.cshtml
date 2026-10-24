@@ -1,0 +1,68 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations
+@model (MapRotationServerAssignmentDto Assignment, GameType GameType, Guid RotationId, bool Busy)
+@{
+    var assignment = Model.Assignment;
+    var resource = (Model.GameType, assignment.GameServerId);
+    var available = !Model.Busy
+        && assignment.DeploymentState is not DeploymentState.Syncing and not DeploymentState.Removing and not DeploymentState.Removed
+        && assignment.ActivationState is not ActivationState.Activating and not ActivationState.Deactivating;
+    var hasConfig = !string.IsNullOrWhiteSpace(assignment.ConfigFilePath) && !string.IsNullOrWhiteSpace(assignment.ConfigVariableName);
+}
+@if (available)
+{
+    @if (hasConfig)
+    {
+        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="ApplyAssignment" method="post" class="d-inline">
+            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+            <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
+            <button type="submit" class="btn btn-primary btn-sm me-1" title="Repair files and apply this slot and its linked main/AACP slot using the same rotation. No automatic restart.">
+                <i class="fa-solid fa-fw fa-play" aria-hidden="true"></i> Apply rotation
+            </button>
+        </form>
+    }
+    <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="SyncAssignment" method="post" class="d-inline">
+        <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+        <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
+        <button type="submit" class="btn btn-outline-success btn-sm me-1" title="Repair missing or wrong-sized files without changing configuration.">
+            <i class="fa-solid fa-fw fa-arrows-rotate" aria-hidden="true"></i> Repair files
+        </button>
+    </form>
+    <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="VerifyAssignment" method="post" class="d-inline">
+        <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+        <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
+        <button type="submit" class="btn btn-outline-info btn-sm me-1">
+            <i class="fa-solid fa-fw fa-clipboard-check" aria-hidden="true"></i> Verify files
+        </button>
+    </form>
+    @if (hasConfig)
+    {
+        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="ActivateAssignment" method="post" class="d-inline">
+            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+            <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
+            <button type="submit" class="btn btn-outline-primary btn-sm me-1" title="Apply only this configuration target; use Apply rotation if file repair is also needed.">
+                <i class="fa-solid fa-fw fa-file-pen" aria-hidden="true"></i> Reapply configuration
+            </button>
+        </form>
+    }
+    @if (assignment.ActivationState != ActivationState.Inactive)
+    {
+        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="DeactivateAssignment" method="post" class="d-inline">
+            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+            <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
+            <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
+                <i class="fa-solid fa-fw fa-stop" aria-hidden="true"></i> Deactivate
+            </button>
+        </form>
+    }
+    else
+    {
+        <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="DeleteAssignment" method="post" class="d-inline">
+            <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
+            <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
+            <button type="submit" class="btn btn-outline-danger btn-sm me-1" data-confirm="Unassign this inactive assignment? Server map files and the rotation library are preserved. History is retained for 90 days.">
+                <i class="fa-solid fa-fw fa-unlink" aria-hidden="true"></i> Unassign
+            </button>
+        </form>
+    }
+}

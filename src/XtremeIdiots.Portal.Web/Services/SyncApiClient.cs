@@ -1,15 +1,21 @@
 using Azure.Core;
 using Azure.Identity;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 
 namespace XtremeIdiots.Portal.Web.Services;
 
-public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<SyncApiClient> logger) : ISyncApiClient
+public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<SyncApiClient> logger, TokenCredential? credential = null) : ISyncApiClient
 {
     private readonly static TokenCredential sharedCredential = new DefaultAzureCredential();
     private readonly static System.Text.Json.JsonSerializerOptions jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly string baseUrl = configuration["SyncApi:BaseUrl"] ?? throw new InvalidOperationException("SyncApi:BaseUrl is required");
     private readonly string applicationAudience = (configuration["SyncApi:ApplicationAudience"] ?? throw new InvalidOperationException("SyncApi:ApplicationAudience is required")).TrimEnd('/');
+
+    public Task<SyncTriggerResult> TriggerApply(Guid assignmentId, CancellationToken cancellationToken = default)
+    {
+        return TriggerOrchestration($"/api/map-rotations/apply/{assignmentId}", cancellationToken);
+    }
 
     public Task<SyncTriggerResult> TriggerSync(Guid assignmentId, CancellationToken cancellationToken = default)
     {
@@ -36,22 +42,22 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
         return TriggerOrchestration($"/api/map-rotations/verify/{assignmentId}", cancellationToken);
     }
 
-    public Task<SyncTriggerResult> TriggerPushMap(Guid gameServerId, string mapName, CancellationToken cancellationToken = default)
+    public Task<SyncTriggerResult> TriggerPushMap(Guid gameServerId, GameType gameType, string mapName, CancellationToken cancellationToken = default)
     {
-        return TriggerOrchestration($"/api/maps/push/{gameServerId}/{Uri.EscapeDataString(mapName)}", cancellationToken);
+        return TriggerOrchestration($"/api/maps/push/{gameServerId}/{gameType}/{Uri.EscapeDataString(mapName)}", cancellationToken);
     }
 
     public async Task<OrchestrationStatusQueryResult> GetOrchestrationStatus(string instanceId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var tokenResult = await sharedCredential.GetTokenAsync(
+            var tokenResult = await (credential ?? sharedCredential).GetTokenAsync(
                 new TokenRequestContext([applicationAudience + "/.default"]), cancellationToken).ConfigureAwait(false);
 
             using var request = new HttpRequestMessage(HttpMethod.Get, baseUrl.TrimEnd('/') + $"/api/map-rotations/status/{instanceId}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Token);
 
-            var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.NotFound);
@@ -64,7 +70,9 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             var result = System.Text.Json.JsonSerializer.Deserialize<OrchestrationStatusResult>(json, jsonOptions);
-            return new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found, result);
+            return result == null
+                ? new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Error)
+                : new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found, result);
         }
         catch (Exception ex)
         {
@@ -77,13 +85,16 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
     {
         try
         {
-            var tokenResult = await sharedCredential.GetTokenAsync(
+            var tokenResult = await (credential ?? sharedCredential).GetTokenAsync(
                 new TokenRequestContext([applicationAudience + "/.default"]), cancellationToken).ConfigureAwait(false);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + $"/api/map-rotations/terminate/{instanceId}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Token);
 
-            var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
+                return new SyncTriggerResult(false, CancellationRequested: true);
 
             if (response.IsSuccessStatusCode)
             {
@@ -106,13 +117,13 @@ public class SyncApiClient(HttpClient httpClient, IConfiguration configuration, 
     {
         try
         {
-            var tokenResult = await sharedCredential.GetTokenAsync(
+            var tokenResult = await (credential ?? sharedCredential).GetTokenAsync(
                 new TokenRequestContext([applicationAudience + "/.default"]), cancellationToken).ConfigureAwait(false);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + path);
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Token);
 
-            var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {

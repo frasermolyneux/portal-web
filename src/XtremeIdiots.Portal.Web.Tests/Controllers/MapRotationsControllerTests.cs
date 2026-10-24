@@ -36,6 +36,14 @@ public class MapRotationsControllerTests
     private readonly Mock<IConfiguration> mockConfiguration = new();
     private readonly IAuditLogger auditLogger = new Mock<IAuditLogger>().Object;
 
+    public MapRotationsControllerTests()
+    {
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetAssignmentOperations(
+                It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapRotationAssignmentOperationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapRotationAssignmentOperationDto>>(new CollectionModel<MapRotationAssignmentOperationDto>([]))));
+    }
+
     private MapRotationsController CreateSut(ClaimsPrincipal? user = null)
     {
         mockMapMetadataService.Setup(x => x.GetAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
@@ -1256,6 +1264,211 @@ public class MapRotationsControllerTests
                 It.Is<GameType[]>(gt => gt.Contains(GameType.CallOfDuty4) && gt.Contains(GameType.CallOfDuty4x)),
                 null, null, 0, 100, null, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Theory]
+    [InlineData(DeploymentState.Pending, ActivationState.Inactive)]
+    [InlineData(DeploymentState.Synced, ActivationState.Active)]
+    [InlineData(DeploymentState.Failed, ActivationState.Failed)]
+    [InlineData(DeploymentState.PartiallyDeployed, ActivationState.Active)]
+    public async Task ApplyAssignment_RecoveryStates_QueueServerScopedApplyWithoutOtherActions(
+        DeploymentState deployment, ActivationState activation)
+    {
+        var (sut, assignment) = SetupRecovery(deployment, activation);
+        mockSyncApiClient.Setup(x => x.TriggerApply(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
+
+        var result = await sut.ApplyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal($"maprot-apply-{assignment.MapRotationServerAssignmentId}", sut.TempData["PendingInstanceId"]);
+        Assert.Contains("queued", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockSyncApiClient.Verify(x => x.TriggerActivate(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSyncApiClient.Verify(x => x.TriggerDeactivate(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ApplyAssignment_FailureOrWrongRelationship_DoesNotReportQueuedSuccess()
+    {
+        var (sut, assignment) = SetupRecovery();
+        mockSyncApiClient.Setup(x => x.TriggerApply(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(false, Error: "synthetic failure"));
+
+        Assert.IsType<BadRequestObjectResult>(await sut.ApplyAssignment(Guid.NewGuid(), assignment.MapRotationId));
+        Assert.IsType<RedirectToActionResult>(await sut.ApplyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        Assert.Null(sut.TempData["PendingInstanceId"]);
+        Assert.Contains("synthetic failure", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(DeploymentState.Syncing, ActivationState.Active)]
+    [InlineData(DeploymentState.Removing, ActivationState.Inactive)]
+    [InlineData(DeploymentState.Removed, ActivationState.Inactive)]
+    [InlineData(DeploymentState.Synced, ActivationState.Activating)]
+    public async Task RecoveryActions_BusyOrRemoved_DoNotQueue(DeploymentState deployment, ActivationState activation)
+    {
+        var (sut, assignment) = SetupRecovery(deployment, activation);
+        Assert.IsType<ConflictObjectResult>(await sut.ApplyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        Assert.IsType<ConflictObjectResult>(await sut.SyncAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        Assert.IsType<ConflictObjectResult>(await sut.VerifyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        Assert.IsType<ConflictObjectResult>(await sut.ActivateAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        mockSyncApiClient.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Unassign_ActiveOrUncertainConfiguration_IsBlockedEvenWhenForced(bool force)
+    {
+        var (sut, assignment) = SetupRecovery(activation: ActivationState.Failed);
+        Assert.IsType<BadRequestObjectResult>(await sut.DeleteAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId, force));
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.DeleteServerAssignment(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RepairAndVerify_StaleActiveAssignment_DoNotRewriteConfiguration()
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.PartiallyDeployed, ActivationState.Active);
+        mockSyncApiClient.Setup(x => x.TriggerSync(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.TriggerVerify(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
+
+        Assert.IsType<RedirectToActionResult>(await sut.SyncAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        Assert.IsType<RedirectToActionResult>(await sut.VerifyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        mockSyncApiClient.Verify(x => x.TriggerActivate(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSyncApiClient.Verify(x => x.TriggerDeactivate(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSyncApiClient.Verify(x => x.TriggerApply(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Unassign_InactiveAssignment_UsesMetadataOnlyDeleteAndPreservesFiles()
+    {
+        var (sut, assignment) = SetupRecovery();
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.DeleteServerAssignment(
+                assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+
+        Assert.IsType<RedirectToActionResult>(await sut.DeleteAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
+        Assert.Contains("Server map files were preserved", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockSyncApiClient.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CancelOperation_MismatchedOperation_IsRejectedBeforeTermination()
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.Syncing);
+        var operationId = Guid.NewGuid();
+        var instanceId = $"maprot-apply-{assignment.MapRotationServerAssignmentId}";
+        SetOperation(assignment, Guid.NewGuid(), instanceId);
+
+        Assert.IsType<BadRequestObjectResult>(await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId));
+        mockSyncApiClient.VerifyNoOtherCalls();
+        VerifyNoCancellationMutation();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelOperation_FailedOrRequestedTermination_DoesNotMutateAssignmentOrOperation(bool requested)
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.Syncing);
+        var operationId = Guid.NewGuid();
+        var instanceId = $"maprot-apply-{assignment.MapRotationServerAssignmentId}";
+        SetOperation(assignment, operationId, instanceId);
+        mockSyncApiClient.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(false, Error: "synthetic refusal", CancellationRequested: requested));
+
+        Assert.IsType<RedirectToActionResult>(await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId));
+        VerifyNoCancellationMutation();
+        Assert.Contains(requested ? "Cancellation requested" : "Cancellation failed", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CancelOperation_AcknowledgedButStillRunning_DoesNotMarkCancelled()
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.Syncing);
+        var operationId = Guid.NewGuid();
+        var instanceId = $"maprot-apply-{assignment.MapRotationServerAssignmentId}";
+        SetOperation(assignment, operationId, instanceId);
+        mockSyncApiClient.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.GetOrchestrationStatus(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found,
+                new OrchestrationStatusResult(instanceId, "Running", DateTime.UtcNow, DateTime.UtcNow, null)));
+
+        await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId);
+        VerifyNoCancellationMutation();
+        Assert.Contains("not confirmed", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CancelOperation_ConfirmedTermination_ResetFailureIsVisibleAndNeverInactive()
+    {
+        var (sut, assignment) = SetupRecovery(DeploymentState.Syncing, ActivationState.Activating);
+        var operationId = Guid.NewGuid();
+        var instanceId = $"maprot-apply-{assignment.MapRotationServerAssignmentId}";
+        SetOperation(assignment, operationId, instanceId);
+        mockSyncApiClient.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.GetOrchestrationStatus(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrchestrationStatusQueryResult(OrchestrationStatusQueryOutcome.Found,
+                new OrchestrationStatusResult(instanceId, "Terminated", DateTime.UtcNow, DateTime.UtcNow, null)));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateAssignmentOperation(operationId,
+                AssignmentOperationStatus.Cancelled, It.IsAny<string>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.InternalServerError));
+
+        await sut.CancelOperation(operationId, assignment.MapRotationServerAssignmentId, instanceId);
+
+        Assert.Contains("state reset failed", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("cancelled successfully", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.ActivationState == ActivationState.Failed
+                && dto.DeploymentState == DeploymentState.Failed), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private void VerifyNoCancellationMutation()
+    {
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateAssignmentOperation(It.IsAny<Guid>(),
+            It.IsAny<AssignmentOperationStatus>(), It.IsAny<string>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private (MapRotationsController Controller, MapRotationServerAssignmentDto Assignment) SetupRecovery(
+        DeploymentState deployment = DeploymentState.Synced, ActivationState activation = ActivationState.Inactive)
+    {
+        var assignment = CreateAssignment(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), deployment);
+        SetDtoProperty(assignment, nameof(assignment.ActivationState), activation);
+        var rotation = CreateRotation(assignment.MapRotationId, GameType.CallOfDuty4, serverAssignments: [assignment]);
+        SetDtoProperty(rotation, nameof(rotation.Version), 2);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(rotation.MapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetServerAssignment(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(assignment)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(),
+                It.Is<object?>(r => IsServerTuple(r, assignment.GameServerId)), AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Success());
+        return (CreateSut(), assignment);
+    }
+
+    private void SetOperation(MapRotationServerAssignmentDto assignment, Guid operationId, string instanceId)
+    {
+        var operation = Newtonsoft.Json.JsonConvert.DeserializeObject<MapRotationAssignmentOperationDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                MapRotationAssignmentOperationId = operationId,
+                assignment.MapRotationServerAssignmentId,
+                DurableFunctionInstanceId = instanceId,
+                Status = AssignmentOperationStatus.InProgress,
+                StartedAt = DateTime.UtcNow
+            }))!;
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetAssignmentOperations(
+                assignment.MapRotationServerAssignmentId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapRotationAssignmentOperationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapRotationAssignmentOperationDto>>(new CollectionModel<MapRotationAssignmentOperationDto>([operation]))));
     }
 
     #region Helpers

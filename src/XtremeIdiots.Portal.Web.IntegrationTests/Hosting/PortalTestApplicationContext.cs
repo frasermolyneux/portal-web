@@ -9,9 +9,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MX.Api.Abstractions;
 using MX.GeoLocation.Api.Client.V1;
 using MX.InvisionCommunity.Api.Abstractions;
+using System.Net;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
@@ -123,10 +127,15 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
         services.RemoveAll<IRedirectApiClient>();
         services.AddFakeRedirectApiClient();
 
-        services.AddSingleton(new Mock<IRepositoryApiClient>(MockBehavior.Default)
+        var repository = new Mock<IRepositoryApiClient>(MockBehavior.Default)
         {
             DefaultValue = DefaultValue.Mock,
-        }.Object);
+        };
+        repository.Setup(x => x.MapRotations.V1.GetMapRotations(
+                It.IsAny<GameType[]>(), null, null, 0, 100, MapRotationsOrder.TitleAsc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapRotationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapRotationDto>>(new CollectionModel<MapRotationDto>([]))));
+        services.AddSingleton(repository.Object);
         services.AddSingleton(new Mock<IServersApiClient>(MockBehavior.Default)
         {
             DefaultValue = DefaultValue.Mock,
