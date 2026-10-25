@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Evaluate Dependabot policy
         id: evaluate
-        uses: frasermolyneux/actions/dependabot-policy@dependabot-policy/v1.1
+        uses: frasermolyneux/actions/dependabot-policy@dependabot-policy/v1.2.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
   dependabot:

@@ -1,0 +1,50 @@
+name: Terraform Toolchain
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-toolchain.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-toolchain-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-terraform:
+    name: Verify terraform toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: frasermolyneux/actions/terraform-setup@terraform-setup/v1.0.0
+        id: setup
+        with:
+          terraform-folder: terraform
+          terraform_wrapper: "false"
+      - name: Check formatting and validate without backend access
+        id: validation
+        shell: bash
+        env:
+          TF_ROOT: terraform
+        run: |
+          set -euo pipefail
+          terraform -chdir="$TF_ROOT" fmt -check -recursive
+          terraform -chdir="$TF_ROOT" init -backend=false -input=false -lockfile=readonly
+          terraform -chdir="$TF_ROOT" validate
+          git diff --exit-code -- "$TF_ROOT/.terraform.lock.hcl" "$TF_ROOT/.terraform-version"
+      - name: Retain bounded validation execution evidence
+        if: always() && !cancelled() && steps.setup.outcome == 'success'
+        uses: frasermolyneux/actions/terraform-receipt@terraform-receipt/v1.0.0
+        with:
+          context-directory: ${{ steps.setup.outputs.directory }}
+          operation: validate
+          outcome: ${{ steps.validation.outcome == 'success' && 'success' || 'failure' }}
+
