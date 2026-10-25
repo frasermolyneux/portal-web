@@ -46,14 +46,19 @@ public class NamespaceSettingsParserTests
         var rule = Assert.Single(model.VpnProtection.Rules);
         Assert.Equal("vpn", rule.Id);
         Assert.Equal(VpnProtectionAction.Ban, rule.Action);
+        Assert.True(rule.PostObservationToForums);
         Assert.Equal("Trusted VPN", model.VpnProtection.ExcludedPlayerTagsCsv);
     }
 
-    [Fact]
-    public void PopulateGameServerSettingsViewModel_VpnProtection_MapsOverridesAndLocalRules()
+    [Theory]
+    [InlineData("null", null)]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public void PopulateGameServerSettingsViewModel_VpnProtection_MapsOverridesAndLocalRules(
+        string publicationOverride, bool? expectedOverride)
     {
         var model = new GameServerEditViewModel();
-        var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
+        var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, $$"""
         {
           "schemaVersion": 1,
           "enabled": false,
@@ -64,11 +69,12 @@ public class NamespaceSettingsParserTests
               "signal": "MaxMindIsTorExitNode",
               "operator": "Equal",
               "expectedValue": "true",
-              "action": "Kick"
+              "action": "Observation",
+              "postObservationToForums": false
             }
           ],
           "ruleOverrides": [
-            { "id": "vpn", "action": "Observation" }
+            { "id": "vpn", "action": "Observation", "postObservationToForums": {{publicationOverride}} }
           ],
           "excludedPlayerTags": ["Server Exempt"]
         }
@@ -78,9 +84,24 @@ public class NamespaceSettingsParserTests
 
         Assert.False(model.VpnProtection.Enabled);
         Assert.True(model.VpnProtection.InheritGlobalRules);
-        Assert.Single(model.VpnProtection.LocalRules);
+        Assert.False(Assert.Single(model.VpnProtection.LocalRules).PostObservationToForums);
         Assert.Equal(VpnProtectionAction.Observation, Assert.Single(model.VpnProtection.RuleOverrides).Action);
+        Assert.Equal(expectedOverride, Assert.Single(model.VpnProtection.RuleOverrides).PostObservationToForums);
         Assert.Equal("Server Exempt", model.VpnProtection.ExcludedPlayerTagsCsv);
+    }
+
+    [Fact]
+    public void PopulateGlobalSettingsViewModel_VpnProtection_PreservesPortalOnlyObservation()
+    {
+        var model = new GlobalSettingsViewModel();
+        var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, """
+            {"enabled":true,"rules":[{"id":"vpn","signal":"ProxyCheckIsVpn",
+            "operator":"Equal","expectedValue":"true","action":"Observation","postObservationToForums":false}]}
+            """);
+
+        parser.PopulateGlobalSettingsViewModel(model, configuration, logger);
+
+        Assert.False(Assert.Single(model.VpnProtection.Rules).PostObservationToForums);
     }
 
     [Fact]
