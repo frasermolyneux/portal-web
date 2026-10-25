@@ -8,7 +8,7 @@ server-rendered Razor views, EF Core, Application Insights, Azure App
 Configuration, typed API clients, and SCSS compiled with Sass. Azure
 infrastructure is defined with Terraform.
 
-`global.json` pins .NET SDK `10.0.400`. Projects target `net10.0`; Terraform requires
+`global.json` pins .NET SDK `10.0.402`. Projects target `net10.0`; Terraform requires
 version `1.15.6` or later.
 
 ## Layout
