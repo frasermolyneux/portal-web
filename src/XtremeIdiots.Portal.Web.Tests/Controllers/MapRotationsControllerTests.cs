@@ -1434,12 +1434,16 @@ public class MapRotationsControllerTests
         mockSyncApiClient.VerifyNoOtherCalls();
     }
 
-    [Fact]
-    public void AssignmentGroups_OnlyCombineExactCurrentStandardPair()
+    [Theory]
+    [InlineData("sv_maprotation", "scr_aacp_maps_1")]
+    [InlineData("SV_MAPROTATION", "SCR_AACP_MAPS_1")]
+    [InlineData("Sv_MapRotation", "Scr_Aacp_Maps_1")]
+    public void AssignmentGroups_OnlyCombineExactCurrentStandardPair(string mainVariable, string pickerVariable)
     {
         var main = CreateAssignment(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        SetDtoProperty(main, nameof(main.ConfigVariableName), mainVariable);
         var picker = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
-        SetDtoProperty(picker, nameof(picker.ConfigVariableName), "scr_aacp_maps_1");
+        SetDtoProperty(picker, nameof(picker.ConfigVariableName), pickerVariable);
         var custom = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
         SetDtoProperty(custom, nameof(custom.ConfigVariableName), "scr_aacp_maps_dm3");
         var otherRotation = CreateAssignment(Guid.NewGuid(), Guid.NewGuid(), main.GameServerId);
@@ -1477,7 +1481,7 @@ public class MapRotationsControllerTests
     {
         var (sut, main, picker) = SetupCombined();
         var duplicate = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
-        SetDtoProperty(duplicate, nameof(duplicate.ConfigVariableName), "scr_aacp_maps_1");
+        SetDtoProperty(duplicate, nameof(duplicate.ConfigVariableName), "SCR_AACP_MAPS_1");
         var rotation = CreateRotation(main.MapRotationId, GameType.CallOfDuty4, serverAssignments: [main, picker, duplicate]);
         mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(main.MapRotationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
@@ -1552,6 +1556,34 @@ public class MapRotationsControllerTests
         Assert.IsType<ViewResult>(result);
         Assert.Contains("Deactivate first", sut.ModelState[nameof(EditMapRotationAssignmentViewModel.AacpEnabled)]!.Errors[0].ErrorMessage, StringComparison.Ordinal);
         VerifyNoCancellationMutation();
+    }
+
+    [Fact]
+    public async Task CombinedEdit_MixedCaseExistingTargets_LoadsEnabledMainOwnerAndAcceptsOptions()
+    {
+        var (sut, main, picker) = SetupCombined();
+        SetDtoProperty(main, nameof(main.ConfigVariableName), "SV_MAPROTATION");
+        SetDtoProperty(picker, nameof(picker.ConfigVariableName), "SCR_AACP_MAPS_1");
+        var view = Assert.IsType<ViewResult>(await sut.EditAssignment(main.MapRotationServerAssignmentId));
+        var model = Assert.IsType<EditMapRotationAssignmentViewModel>(view.Model);
+        Assert.True(model.CanConfigureAacp);
+        Assert.True(model.AacpEnabled);
+        Assert.Equal(picker.ConfigFilePath, model.AacpConfigFilePath);
+        Assert.Empty(model.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(model)));
+        var createModel = new CreateMapRotationAssignmentViewModel
+        {
+            ConfigVariableName = "SV_MAPROTATION",
+            AacpEnabled = true,
+            AacpConfigFilePath = "aacp.cfg"
+        };
+        Assert.Empty(createModel.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(createModel)));
+
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        Assert.IsType<RedirectToActionResult>(await sut.EditAssignment(model));
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.ConfigVariableName == "sv_maprotation"
+                && dto.AacpEnabled == true && dto.AacpConfigFilePath == picker.ConfigFilePath), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Theory]
