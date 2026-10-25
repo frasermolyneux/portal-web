@@ -30,6 +30,9 @@ public sealed class VpnProtectionRuleViewModel
     [DisplayName("Action")]
     public VpnProtectionAction Action { get; set; }
 
+    [DisplayName("Post observations to forums")]
+    public bool PostObservationToForums { get; set; } = true;
+
     [DisplayName("Reason Template")]
     [MaxLength(VpnProtectionSettingsConstants.MaxReasonTemplateLength)]
     public string? ReasonTemplate { get; set; }
@@ -57,6 +60,9 @@ public sealed class VpnProtectionRuleOverrideViewModel
 
     [DisplayName("Action Override")]
     public VpnProtectionAction? Action { get; set; }
+
+    [DisplayName("Post observations to forums override")]
+    public bool? PostObservationToForums { get; set; }
 
     [DisplayName("Reason Template Override")]
     [MaxLength(VpnProtectionSettingsConstants.MaxReasonTemplateLength)]
@@ -245,6 +251,7 @@ internal static class VpnProtectionSettingsJsonMapper
             Operator = rule.Operator,
             ExpectedValue = rule.ExpectedValue,
             Action = rule.Action,
+            PostObservationToForums = rule.PostObservationToForums,
             ReasonTemplate = rule.ReasonTemplate
         };
     }
@@ -259,6 +266,7 @@ internal static class VpnProtectionSettingsJsonMapper
             Operator = ruleOverride.Operator,
             ExpectedValue = ruleOverride.ExpectedValue,
             Action = ruleOverride.Action,
+            PostObservationToForums = ruleOverride.PostObservationToForums,
             ReasonTemplate = ruleOverride.ReasonTemplate
         };
     }
@@ -273,6 +281,7 @@ internal static class VpnProtectionSettingsJsonMapper
             Operator = rule.Operator,
             ExpectedValue = rule.ExpectedValue?.Trim() ?? string.Empty,
             Action = rule.Action,
+            PostObservationToForums = rule.PostObservationToForums,
             ReasonTemplate = NormalizeOptional(rule.ReasonTemplate)
         };
     }
@@ -287,6 +296,7 @@ internal static class VpnProtectionSettingsJsonMapper
             Operator = ruleOverride.Operator,
             ExpectedValue = NormalizeOptional(ruleOverride.ExpectedValue),
             Action = ruleOverride.Action,
+            PostObservationToForums = ruleOverride.PostObservationToForums,
             ReasonTemplate = NormalizeOptional(ruleOverride.ReasonTemplate)
         };
     }

@@ -20,6 +20,28 @@ This document describes the current settings architecture used by `portal-web` a
 
 ## Troubleshooting Runbook
 
+### VPN observation forum posting
+
+VPN rules expose `postObservationToForums` through **Post observations to forums** in
+the global and server-local rule editors. Set it to `false` to retain the portal
+observation, automation deduplication, server event, and audit without creating or
+linking a forum topic. Missing values default to `true` for backward compatibility.
+Server rule overrides use `null` to inherit and `true`/`false` to override.
+
+The strongest matching action wins (Ban, Kick, Observation); ties use rule order.
+The winning rule supplies the observation publication preference. Kick and Ban
+always retain forum publication regardless of this observation-only setting.
+Existing observations and forum topics are not changed or backfilled.
+
+Release the updated `XtremeIdiots.Portal.Settings.Contracts.V1` package from
+`portal-repository` before deploying its consumers. The consumer changes target
+`4.2.70`; align that pin with the actual generated release version if necessary.
+Deploy `portal-server-events` before `portal-web` so the processor understands the
+setting before operators can save it. Then disable forum posting on the desired
+production observation rules; existing rules otherwise continue posting.
+
+### Settings loading and runtime behavior
+
 1. A settings page fails to load expected values.
    - Confirm namespace payload exists in repository APIs.
    - Confirm parser path uses typed contracts (`NamespaceSettingsParser`) for the namespace.

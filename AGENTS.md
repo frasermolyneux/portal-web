@@ -16,7 +16,7 @@ Terraform for Azure infrastructure.
 
 ## Bootstrap and validation
 
-The required SDK is pinned by `global.json` to .NET SDK `10.0.400`. Test setup also
+The required SDK is pinned by `global.json` to .NET SDK `10.0.402`. Test setup also
 requires Node.js 22.x (`.node-version`), npm >=10, and PowerShell >=7.2. NuGet
 packages come from nuget.org. The web project runs `npm ci` when its locked
 dependencies need installing and compiles SCSS during `dotnet build`.

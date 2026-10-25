@@ -13,7 +13,10 @@
             <input type="hidden" name="VpnProtection.Enabled" value="false" />
             <label class="form-check-label" for="VpnProtection_Enabled">Enabled by default</label>
             <small class="form-text text-muted d-block">Rules run independently. If several rules match, Ban takes
-                priority over Kick, then Observation. Missing provider data does not match a rule.</small>
+                priority over Kick, then Observation. Missing provider data does not match a rule.
+                Disable "Post observations to forums" to keep observations in the portal only.
+                Kick and Ban always retain forum posting. The winning rule controls observation posting;
+                equal-priority matches use the first rule.</small>
             </div>
 
             @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml",
@@ -121,6 +124,17 @@
                                         </div>
                                     </div>
                                     <div class="row align-items-end">
+                                        <div class="col-12 mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="true"
+                                                       id="VpnProtection_Rules_@(i)_PostObservationToForums"
+                                                       data-property="PostObservationToForums" checked="@(rule.PostObservationToForums ? "checked" : null)" />
+                                                <input type="hidden" value="false" data-property="PostObservationToForums"
+                                                       data-checkbox-hidden="PostObservationToForums" />
+                                                <label class="form-check-label" for="VpnProtection_Rules_@(i)_PostObservationToForums"
+                                                       data-label-for="PostObservationToForums">Post observations to forums</label>
+                                            </div>
+                                        </div>
                                         <div class="col-lg-8">
                                             <div class="mb-3">
                                                 <label class="form-label" asp-for="VpnProtection.Rules[i].ReasonTemplate"
@@ -220,6 +234,17 @@
                                             </div>
                                         </div>
                                         <div class="row align-items-end">
+                                            <div class="col-12 mb-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" value="true"
+                                                           id="global-vpn-rule-post-observation-to-forums"
+                                                           data-property="PostObservationToForums" checked="checked" />
+                                                    <input type="hidden" value="false" data-property="PostObservationToForums"
+                                                           data-checkbox-hidden="PostObservationToForums" />
+                                                    <label class="form-check-label" for="global-vpn-rule-post-observation-to-forums"
+                                                           data-label-for="PostObservationToForums">Post observations to forums</label>
+                                                </div>
+                                            </div>
                                             <div class="col-lg-8 mb-3">
                                                 <label class="form-label" data-label-for="ReasonTemplate">Reason Template</label>
                                                 <input class="form-control" data-property="ReasonTemplate"

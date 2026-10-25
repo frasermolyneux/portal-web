@@ -128,7 +128,7 @@ public static class VpnProtectionRuleEditorOptions
     {
         return action switch
         {
-            VpnProtectionAction.Observation => "Observation (record only)",
+            VpnProtectionAction.Observation => "Observation (no enforcement)",
             VpnProtectionAction.Kick => "Kick (disconnect player)",
             VpnProtectionAction.Ban => "Ban (ban and disconnect)",
             VpnProtectionAction.Unknown => "Select an action",
