@@ -94,7 +94,7 @@ public class NamespaceSettingsParserTests
     public void PopulateGlobalSettingsViewModel_VpnProtection_PreservesPortalOnlyObservation()
     {
         var model = new GlobalSettingsViewModel();
-        var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, """
+        var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
             {"enabled":true,"rules":[{"id":"vpn","signal":"ProxyCheckIsVpn",
             "operator":"Equal","expectedValue":"true","action":"Observation","postObservationToForums":false}]}
             """);
