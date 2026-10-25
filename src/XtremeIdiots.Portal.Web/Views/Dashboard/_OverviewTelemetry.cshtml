@@ -12,9 +12,9 @@ else
         <p class="text-warning" role="status">Showing cached agent telemetry; the latest refresh failed.</p>
     }
     <p>
-        <span class="badge bg-success">@Model.AgentStatuses.Count(s => s.ActivityStatus == AgentActivityStatus.Active) Active</span>
-        <span class="badge bg-info">@Model.AgentStatuses.Count(s => s.ActivityStatus == AgentActivityStatus.Idle) Idle</span>
-        <span class="badge bg-danger">@Model.AgentStatuses.Count(s => s.ActivityStatus == AgentActivityStatus.Offline) Offline</span>
+        <span class="badge bg-success">@Model.AgentStatuses.Count(s => s.ActivityStatus == AgentActivityStatus.Active) Healthy</span>
+        <span class="badge bg-warning text-dark">@Model.AgentStatuses.Count(s => s.ActivityStatus == AgentActivityStatus.Offline) Heartbeat overdue</span>
+        <span class="badge bg-secondary">@Model.AgentStatuses.Count(s => s.ActivityStatus == AgentActivityStatus.Unknown) Unknown</span>
     </p>
 }
 @if (Model.AgentStatuses.Count == 0)
@@ -24,11 +24,12 @@ else
 else
 {
     <div class="table-responsive"><table class="table table-striped table-hover table-sm w-100">
-        <thead><tr><th>Server</th><th>Status</th><th>Players</th><th>Map</th><th>Last Event</th></tr></thead>
+        <thead><tr><th>Server</th><th>Status</th><th>Players</th><th>Map</th><th>Last Heartbeat</th><th>Last Event</th></tr></thead>
         <tbody>
         @foreach (var server in Model.AgentStatuses)
         {
-            var badge = server.ActivityStatus switch { AgentActivityStatus.Active => "bg-success", AgentActivityStatus.Idle => "bg-info", _ => "bg-danger" };
+            var badge = server.ActivityStatus switch { AgentActivityStatus.Active => "bg-success", AgentActivityStatus.Idle => "bg-info", AgentActivityStatus.Offline => "bg-warning text-dark", _ => "bg-secondary" };
+            var statusLabel = server.ActivityStatus switch { AgentActivityStatus.Active => "Healthy", AgentActivityStatus.Offline => "Heartbeat overdue", _ => server.ActivityStatus.ToString() };
             <tr>
                 <td><a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.ServerId">
                     @if (Enum.TryParse<GameType>(server.GameType, out var game))
@@ -37,9 +38,16 @@ else
                     }
                     <server-name title="@server.ServerTitle"></server-name>
                 </a></td>
-                <td><span class="badge @(Model.AgentTelemetryUnavailable ? "bg-secondary" : badge)">@(Model.AgentTelemetryUnavailable ? "Unavailable" : server.ActivityStatus.ToString())</span></td>
+                <td><span class="badge @(Model.AgentTelemetryUnavailable ? "bg-secondary" : badge)">@(Model.AgentTelemetryUnavailable ? "Unavailable" : statusLabel)</span></td>
                 <td>@(Model.AgentTelemetryUnavailable ? "—" : server.PlayerCount.ToString())</td>
                 <td><small>@server.CurrentMap</small></td>
+                <td>
+                    @if (!Model.AgentTelemetryUnavailable && server.LastHeartbeatReceived.HasValue)
+                    {
+                        <time time-ago utc="@server.LastHeartbeatReceived.Value" show-absolute="false"></time>
+                    }
+                    else { <span class="text-muted">Not observed</span> }
+                </td>
                 <td>
                     @if (!Model.AgentTelemetryUnavailable && server.LastEventReceived.HasValue)
                     {

@@ -8,8 +8,9 @@
 <div class="wrapper wrapper-content animated fadeInRight">
 
     <div class="alert alert-primary" role="alert">
-        <i class="fa-solid fa-fw fa-circle-info"></i> This page shows the current status of game server agents, based on
-        telemetry events received in Application Insights.
+        <i class="fa-solid fa-fw fa-circle-info"></i> Agent health uses an operational heartbeat, independent of players
+        and game events. Unknown means no heartbeat is available. An overdue heartbeat requires checking the agent's
+        transport and lease logs; a quiet game alone is not a fault.
     </div>
 
     <div class="row">
@@ -43,6 +44,7 @@
                                             <th>Server</th>
                                             <th>Game</th>
                                             <th>Status</th>
+                                            <th>Last Heartbeat</th>
                                             <th>Last Event</th>
                                             <th>Events (1h)</th>
                                             <th>Players</th>
@@ -60,6 +62,7 @@
                                                 </td>
                                                 <td>@server.GameType</td>
                                                 <td data-agent-field="status"><span class="badge bg-secondary">Loading</span></td>
+                                                <td data-agent-field="heartbeat">—</td>
                                                 <td data-agent-field="lastEvent">—</td>
                                                 <td data-agent-field="events">—</td>
                                                 <td>@server.PlayerCount</td>

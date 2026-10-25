@@ -104,7 +104,8 @@ public sealed class OverviewPanelTests
             {
                 ServerId = scenario.GameServerId,
                 ActivityStatus = AgentActivityStatus.Active,
-                EventsLastHour = 17
+                LastHeartbeatReceived = DateTime.UtcNow,
+                EventsLastHour = 0
             }]);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var requests = 0;
@@ -129,6 +130,7 @@ public sealed class OverviewPanelTests
         var panel = browser.Page.Locator("[data-overview-url*='GetOverviewTelemetry']");
         await Assertions.Expect(status).ToHaveTextAsync("Unavailable");
         await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("—");
+        await Assertions.Expect(row.Locator("[data-agent-field='heartbeat']")).ToHaveTextAsync("—");
         await Assertions.Expect(browser.Page.Locator("#agent-status-counts")).ToBeEmptyAsync();
 
         await panel.GetByRole(AriaRole.Button, new() { Name = "Retry" }).ClickAsync();
@@ -136,9 +138,34 @@ public sealed class OverviewPanelTests
         await Assertions.Expect(status).ToHaveTextAsync("Unavailable");
         await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("—");
         await panel.GetByRole(AriaRole.Button, new() { Name = "Retry" }).ClickAsync();
-        await Assertions.Expect(status).ToHaveTextAsync("Active");
-        await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("17");
-        await Assertions.Expect(browser.Page.Locator("#agent-status-counts")).ToContainTextAsync("1 Active");
+        await Assertions.Expect(status).ToHaveTextAsync("Healthy");
+        await Assertions.Expect(row.Locator("[data-agent-field='events']")).ToHaveTextAsync("0");
+        await Assertions.Expect(row.Locator("[data-agent-field='heartbeat']")).Not.ToHaveTextAsync("Not observed");
+        await Assertions.Expect(row.Locator("[data-agent-field='lastEvent']")).ToHaveTextAsync("—");
+        await Assertions.Expect(browser.Page.Locator("#agent-status-counts")).ToContainTextAsync("1 Healthy");
+    }
+
+    [Fact]
+    public async Task AgentStatusWithoutHeartbeatShowsUnknownRatherThanOffline()
+    {
+        var scenario = new MapControlScenario();
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServers(
+                It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(), GameServerFilter.AgentEnabled,
+                0, 100, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([scenario.GameServer]))));
+        scenario.AgentTelemetry.Setup(t => t.GetAllServersStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Status/AgentStatus").AbsoluteUri);
+
+        Assert.True(response?.Ok);
+        var row = browser.Page.Locator($"[data-agent-server='{scenario.GameServerId}']");
+        await Assertions.Expect(row.Locator("[data-agent-field='status']")).ToHaveTextAsync("Unknown");
+        await Assertions.Expect(row.Locator("[data-agent-field='heartbeat']")).ToHaveTextAsync("Not observed");
+        await Assertions.Expect(browser.Page.Locator("#agent-status-counts")).ToContainTextAsync("1 Unknown");
+        browser.AssertNoBrowserErrors();
     }
 
     [Fact]
@@ -167,7 +194,7 @@ public sealed class OverviewPanelTests
             await Assertions.Expect(statistics.GetByRole(AriaRole.Button, new() { Name = "Retry" })).ToBeVisibleAsync();
 
             telemetryGate.Release();
-            await Assertions.Expect(telemetry).ToContainTextAsync("Active");
+            await Assertions.Expect(telemetry).ToContainTextAsync("Healthy");
             await Assertions.Expect(telemetry).ToContainTextAsync("17");
             await Assertions.Expect(browser.Page.GetByTestId("player-kick")).ToBeEnabledAsync();
             browser.AssertNoBrowserErrors();
