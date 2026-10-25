@@ -187,7 +187,8 @@ public class NamespaceSettingsSerializerTests
                         Signal = VpnProtectionSignal.ProxyCheckIsVpn,
                         Operator = VpnProtectionComparisonOperator.Equal,
                         ExpectedValue = "true",
-                        Action = VpnProtectionAction.Ban
+                        Action = VpnProtectionAction.Observation,
+                        PostObservationToForums = false
                     }
                 ]
             }
@@ -201,11 +202,15 @@ public class NamespaceSettingsSerializerTests
 
         Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
         Assert.Equal("vpn", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
+        Assert.False(document.RootElement.GetProperty("rules")[0].GetProperty("postObservationToForums").GetBoolean());
         Assert.Equal(2, document.RootElement.GetProperty("excludedPlayerTags").GetArrayLength());
     }
 
-    [Fact]
-    public void BuildGameServerConfigurations_VpnProtectionOverride_SerializesThenDeletesWhenInherited()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BuildGameServerConfigurations_VpnProtectionOverride_SerializesThenDeletesWhenInherited(bool? postObservationToForums)
     {
         var model = BuildDefaultModel();
         model.VpnProtection.Enabled = true;
@@ -214,7 +219,20 @@ public class NamespaceSettingsSerializerTests
             new VpnProtectionRuleOverrideViewModel
             {
                 Id = "vpn",
-                Action = VpnProtectionAction.Kick
+                Action = VpnProtectionAction.Observation,
+                PostObservationToForums = postObservationToForums
+            }
+        ];
+        model.VpnProtection.LocalRules =
+        [
+            new VpnProtectionRuleViewModel
+            {
+                Id = "local",
+                Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                Operator = VpnProtectionComparisonOperator.Equal,
+                ExpectedValue = "true",
+                Action = VpnProtectionAction.Observation,
+                PostObservationToForums = false
             }
         ];
 
@@ -228,7 +246,10 @@ public class NamespaceSettingsSerializerTests
             static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
         using var document = JsonDocument.Parse(json);
         Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
-        Assert.Equal("Kick", document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("action").GetString());
+        Assert.Equal("Observation", document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("action").GetString());
+        var publicationOverride = document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("postObservationToForums");
+        Assert.Equal(postObservationToForums, publicationOverride.ValueKind == JsonValueKind.Null ? null : publicationOverride.GetBoolean());
+        Assert.False(document.RootElement.GetProperty("rules")[0].GetProperty("postObservationToForums").GetBoolean());
 
         model.VpnProtection = new VpnProtectionServerSettingsViewModel();
         configurations = serializer.BuildGameServerConfigurations(

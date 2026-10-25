@@ -54,6 +54,7 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                 <th>Rule</th>
                                 <th>Condition</th>
                                 <th>Action</th>
+                                <th>Observation forum posting</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -68,6 +69,7 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                         @VpnProtectionRuleEditorOptions.GetOperatorLabel(rule.Operator).ToLowerInvariant()
                                         <strong>@rule.ExpectedValue</strong></td>
                                         <td>@VpnProtectionRuleEditorOptions.GetActionLabel(rule.Action)</td>
+                                        <td>@(rule.PostObservationToForums ? "Enabled" : "Disabled")</td>
                                         <td>@if (destructiveInactive){
                                             <span class="badge text-bg-secondary">Inactive for this
                                                 game</span>
@@ -97,7 +99,9 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                         class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> Add Local Rule</button>
                     </div>
                     <p class="form-text text-muted">Local rules apply only to this server. Each rule is independent; the strongest
-                        matching action wins.</p>
+                        matching action wins. Disable "Post observations to forums" to keep observations in the portal only.
+                        Kick and Ban always retain forum posting. The winning rule controls observation posting;
+                        equal-priority matches use the first rule.</p>
                         <div id="server-vpn-rules" data-vpn-rules-container data-field-prefix="VpnProtection.LocalRules"
                              data-template-id="server-vpn-rule-template" data-add-button-id="add-server-vpn-rule">
                             @for (var i = 0; i < Model.VpnProtection.LocalRules.Count; i++)
@@ -169,6 +173,17 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                 Unsupported saved actions remain visible but must be changed before saving.</small></div>
                             </div>
                             <div class="row align-items-end">
+                                <div class="col-12 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true"
+                                               id="VpnProtection_LocalRules_@(i)_PostObservationToForums"
+                                               data-property="PostObservationToForums" checked="@(rule.PostObservationToForums ? "checked" : null)" />
+                                        <input type="hidden" value="false" data-property="PostObservationToForums"
+                                               data-checkbox-hidden="PostObservationToForums" />
+                                        <label class="form-check-label" for="VpnProtection_LocalRules_@(i)_PostObservationToForums"
+                                               data-label-for="PostObservationToForums">Post observations to forums</label>
+                                    </div>
+                                </div>
                                 <div class="col-lg-8 mb-3"><label class="form-label"
                                                                       asp-for="VpnProtection.LocalRules[i].ReasonTemplate"
                                                                       data-label-for="ReasonTemplate"></label><input class="form-control"
@@ -298,6 +313,16 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                                     </div>
                                                 </div>
                                                 <div class="row align-items-end">
+                                                    <div class="col-12 mb-3">
+                                                        <label class="form-label" asp-for="VpnProtection.RuleOverrides[i].PostObservationToForums"
+                                                               data-label-for="PostObservationToForums"></label>
+                                                        <select class="form-select" asp-for="VpnProtection.RuleOverrides[i].PostObservationToForums"
+                                                                data-property="PostObservationToForums">
+                                                            <option value="">Inherit</option>
+                                                            <option value="true">Enabled</option>
+                                                            <option value="false">Disabled (portal only)</option>
+                                                        </select>
+                                                    </div>
                                                     <div class="col-lg-3 mb-3"><label class="form-label" asp-for="VpnProtection.RuleOverrides[i].Action"
                                                                                           data-label-for="Action"></label><select class="form-select"
                                                                                             asp-for="VpnProtection.RuleOverrides[i].Action" data-property="Action">
@@ -389,6 +414,17 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                                                 player.</small></div>
                                                             </div>
                                                             <div class="row align-items-end">
+                                                                <div class="col-12 mb-3">
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox" value="true"
+                                                                               id="server-vpn-rule-post-observation-to-forums"
+                                                                               data-property="PostObservationToForums" checked="checked" />
+                                                                        <input type="hidden" value="false" data-property="PostObservationToForums"
+                                                                               data-checkbox-hidden="PostObservationToForums" />
+                                                                        <label class="form-check-label" for="server-vpn-rule-post-observation-to-forums"
+                                                                               data-label-for="PostObservationToForums">Post observations to forums</label>
+                                                                    </div>
+                                                                </div>
                                                                 <div class="col-lg-8 mb-3"><label class="form-label" data-label-for="ReasonTemplate">Reason
                                                                     Template</label><input class="form-control" data-property="ReasonTemplate"
                                                                                            placeholder="@VpnProtectionSettingsConstants.DefaultReasonTemplate"
@@ -472,6 +508,16 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                                                                     first.</small></div>
                                                                                 </div>
                                                                                 <div class="row align-items-end">
+                                                                                    <div class="col-12 mb-3">
+                                                                                        <label class="form-label" for="server-vpn-override-post-observation-to-forums"
+                                                                                               data-label-for="PostObservationToForums">Post observations to forums override</label>
+                                                                                        <select class="form-select" id="server-vpn-override-post-observation-to-forums"
+                                                                                                data-property="PostObservationToForums">
+                                                                                            <option value="">Inherit</option>
+                                                                                            <option value="true">Enabled</option>
+                                                                                            <option value="false">Disabled (portal only)</option>
+                                                                                        </select>
+                                                                                    </div>
                                                                                     <div class="col-lg-3 mb-3"><label class="form-label" data-label-for="Action">Action
                                                                                         Override</label><select class="form-select" data-property="Action">
                                                                                         <option value="">Inherit</option>@foreach (var action in

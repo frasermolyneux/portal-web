@@ -12,9 +12,9 @@ Install:
   `origin` when the checkout is shallow, because Nerdbank.GitVersioning needs
   earlier commits. This also handles coding-agent checkouts that override
   `fetch-depth: 0`; a fetch failure stops setup with an actionable error.
-- The .NET SDK required by [global.json](../global.json), currently 10.0.400. Its
-  `latestPatch` policy permits servicing patches within that feature band, not
-  older SDKs such as 10.0.303.
+- The .NET SDK required by [global.json](../global.json), currently 10.0.402.
+  SDK roll-forward is disabled so local builds and CI use the same available
+  patch without resolving a floating Microsoft download channel.
 - Node.js 22.x, selected by [.node-version](../.node-version), and npm >=10.
   Servicing updates within Node.js 22 are supported; npm package versions are
   fixed by the committed lockfile.
