@@ -83,3 +83,7 @@ in `AGENTS.md` and their focused guides.
 - [Platform settings contracts](../docs/platform-settings-contracts.md)
 - [DataTables implementation](../docs/DATATABLE-IMPLEMENTATION-GUIDE.md)
 - [Development workflows](../docs/development-workflows.md)
+
+## Terraform toolchain
+
+Commit each root's `.terraform-version` and `.terraform.lock.hcl`. Select the exact root CLI pin before invoking Terraform; normal initialization uses `-lockfile=readonly`. Regenerate provider selections only in a reviewed dependency-update PR; never commit state, plans, or `.terraform/`.
