@@ -1609,6 +1609,30 @@ public class MapRotationsControllerTests
                 && dto.AacpConfigFilePath == (normalOwner ? "aacp.cfg" : null)), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData("sv_maprotation", "sv_maprotation_low")]
+    [InlineData("SV_MAPROTATION", "SV_MAPROTATION_LOW")]
+    public async Task AssignmentEdit_UnpairedMainToCustom_DoesNotSendAacpOptions(string existingVariable, string submittedVariable)
+    {
+        var (sut, assignment) = SetupRecovery();
+        SetDtoProperty(assignment, nameof(assignment.ConfigVariableName), existingVariable);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+
+        Assert.IsType<RedirectToActionResult>(await sut.EditAssignment(new EditMapRotationAssignmentViewModel
+        {
+            MapRotationServerAssignmentId = assignment.MapRotationServerAssignmentId,
+            ConfigFilePath = assignment.ConfigFilePath,
+            ConfigVariableName = submittedVariable,
+            AacpEnabled = false,
+            AacpConfigFilePath = "previously-entered-aacp.cfg"
+        }));
+
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => string.Equals(dto.ConfigVariableName, submittedVariable, StringComparison.OrdinalIgnoreCase)
+                && dto.AacpEnabled == null && dto.AacpConfigFilePath == null), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private (MapRotationsController Controller, MapRotationServerAssignmentDto Main, MapRotationServerAssignmentDto Picker) SetupCombined()
     {
         var (sut, main) = SetupRecovery();

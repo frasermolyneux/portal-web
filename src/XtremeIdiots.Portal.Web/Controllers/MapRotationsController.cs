@@ -745,12 +745,14 @@ public class MapRotationsController(
                 return modelValidationResult;
             }
 
+            var canUpdateAacp = assignment.IsMainRotation()
+                && string.Equals(model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase);
             var updateDto = new UpdateMapRotationServerAssignmentDto(model.MapRotationServerAssignmentId)
             {
                 ConfigFilePath = model.ConfigFilePath,
                 ConfigVariableName = model.ConfigVariableName?.ToLowerInvariant(),
-                AacpEnabled = assignment.IsMainRotation() ? model.AacpEnabled : null,
-                AacpConfigFilePath = assignment.IsMainRotation() && model.AacpEnabled ? model.AacpConfigFilePath : null,
+                AacpEnabled = canUpdateAacp ? model.AacpEnabled : null,
+                AacpConfigFilePath = canUpdateAacp && model.AacpEnabled ? model.AacpConfigFilePath : null,
                 PlayerCountMin = model.PlayerCountMin,
                 PlayerCountMax = model.PlayerCountMax
             };

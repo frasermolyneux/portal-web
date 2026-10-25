@@ -120,6 +120,29 @@ public sealed class MapRotationRecoveryBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
+    [Fact]
+    public async Task CombinedEdit_RejectedVariableChange_KeepsAdvancedExplanationVisible()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/EditAssignment/{scenario.AssignmentId}").AbsoluteUri);
+        var advanced = browser.Page.Locator("#assignment-advanced");
+        await Assertions.Expect(advanced.Locator("[data-valmsg-for='ConfigVariableName']")).Not.ToBeVisibleAsync();
+        await advanced.Locator("summary").ClickAsync();
+        await browser.Page.GetByLabel("Config Variable", new() { Exact = true }).FillAsync("sv_maprotation_low");
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save Changes", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == $"/MapRotations/EditAssignment/{scenario.AssignmentId}");
+        Assert.Equal(200, response.Status);
+        var explanation = advanced.Locator("[data-valmsg-for='ConfigVariableName']");
+        await Assertions.Expect(explanation).ToBeVisibleAsync();
+        await Assertions.Expect(explanation).ToContainTextAsync("sv_maprotation");
+        await Assertions.Expect(advanced.Locator("#ConfigVariableName")).ToHaveValueAsync("sv_maprotation_low");
+        scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.IsAny<Repository.Abstractions.Models.V1.MapRotations.UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        browser.AssertNoBrowserErrors();
+    }
+
     [Theory]
     [InlineData(DeploymentState.Pending)]
     [InlineData(DeploymentState.Synced)]
