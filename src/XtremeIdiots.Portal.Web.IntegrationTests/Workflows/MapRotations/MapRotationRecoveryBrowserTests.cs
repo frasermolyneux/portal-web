@@ -57,7 +57,7 @@ public sealed class MapRotationRecoveryBrowserTests
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true })).ToHaveCountAsync(0);
-        await Assertions.Expect(browser.Page.Locator("#operation-history")).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(browser.Page.Locator("#operation-history[open]")).ToHaveCountAsync(1);
         var cancel = browser.Page.Locator("form[action='/MapRotations/CancelOperation']");
         await Assertions.Expect(cancel.Locator("input[name='assignmentId']")).ToHaveValueAsync(scenario.ChildAssignmentId.ToString());
         browser.Page.Dialog += async (_, dialog) => await dialog.AcceptAsync();

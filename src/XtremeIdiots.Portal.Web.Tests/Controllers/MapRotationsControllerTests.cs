@@ -1453,7 +1453,7 @@ public class MapRotationsControllerTests
         var groups = new[] { picker, custom, main, otherRotation, removed }.AssignmentGroups();
 
         Assert.Equal(4, groups.Count);
-        var combined = Assert.Single(groups.Where(g => g.IsCombined));
+        var combined = Assert.Single(groups, g => g.IsCombined);
         Assert.Same(main, combined.Primary);
         Assert.Equal(new[] { main, picker }, combined.Targets);
         Assert.Contains(groups, g => g.Primary == removed && !g.IsCombined);
@@ -1604,7 +1604,7 @@ public class MapRotationsControllerTests
             AacpConfigFilePath = normalOwner ? "aacp.cfg" : null
         }));
         mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
-            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.AacpEnabled == (normalOwner ? true : (bool?)null)
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.AacpEnabled == (normalOwner ? true : null)
                 && dto.AacpConfigFilePath == (normalOwner ? "aacp.cfg" : null)), It.IsAny<CancellationToken>()), Times.Once);
     }
 

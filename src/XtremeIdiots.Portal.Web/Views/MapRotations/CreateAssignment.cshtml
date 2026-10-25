@@ -19,7 +19,7 @@ ViewData["RotationTitle"] : "");
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                             <div class="mb-3">
-                                <label asp-for="@Model.GameServerId" class="form-label"></label>
+                                <label asp-for="@Model.GameServerId" for="GameServerIdSelect" class="form-label"></label>
                                 <select asp-for="@Model.GameServerId" class="form-select" id="GameServerIdSelect" data-testid="server-select">
                                     <option value="">-- Select Server --</option>
                                     @foreach (var server in Model.AvailableServers)
@@ -33,7 +33,7 @@ ViewData["RotationTitle"] : "");
                                     <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
                                 </div>
                                 <div class="mb-3">
-                                    <label asp-for="@Model.ConfigFilePath" class="form-label"></label>
+                                    <label asp-for="@Model.ConfigFilePath" for="ConfigFilePathInput" class="form-label"></label>
                                     <div class="input-group">
                                         <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                                placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
@@ -64,7 +64,7 @@ ViewData["RotationTitle"] : "");
                                     <details class="mb-3" open="@(!string.Equals(Model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase) ? "open" : null)">
                                         <summary>Advanced: standalone or custom configuration slot</summary>
                                     <div class="mb-3 mt-2">
-                                        <label asp-for="@Model.ConfigVariableName" class="form-label"></label>
+                                        <label asp-for="@Model.ConfigVariableName" for="ConfigVariableNameInput" class="form-label"></label>
                                         <input asp-for="@Model.ConfigVariableName" class="form-control"
                                                id="ConfigVariableNameInput" list="configVariableSuggestions"
                                                placeholder="e.g. sv_maprotation" />
