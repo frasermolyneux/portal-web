@@ -5,6 +5,7 @@
 
 @{
     ViewData["Title"] = "Map Rotation - " + Model.Rotation.Title;
+    var assignmentGroups = Model.Rotation.ServerAssignments?.AssignmentGroups() ?? [];
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -149,7 +150,7 @@
 
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5>Servers (@(Model.Rotation.ServerAssignments?.Count ?? 0))</h5>
+                        <h5>Servers (@assignmentGroups.Count)</h5>
                         <div class="ibox-tools">
                             @if (Model.CanAssignServer)
                             {
@@ -181,11 +182,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var assignment in Model.Rotation.ServerAssignments)
+                                        @foreach (var group in assignmentGroups)
                                         {
+                                            var assignment = group.Primary;
                                             var server = ViewData[$"Server_{assignment.GameServerId}"] as GameServerDto;
-                                            var isStale = assignment.DeployedVersion.HasValue && assignment.DeployedVersion < Model.Rotation.Version;
-                                            var isActivationStale = assignment.ActivatedVersion.HasValue && assignment.ActivatedVersion < Model.Rotation.Version;
                                             <tr class="@(assignment.DeploymentState == DeploymentState.Removed ? "table-secondary opacity-75" : "")">
                                                 <td>
                                                     @(server?.Title ?? assignment.GameServerId.ToString())
@@ -195,10 +195,17 @@
                                                         <small class="text-muted d-block">Removed @((int)hoursAgo)h ago</small>
                                                     }
                                                 </td>
-                                                <td>@assignment.SlotLabel()</td>
+                                                <td>@group.Label</td>
                                                 <td>
-                                                    @await Html.PartialAsync("_AssignmentStatusBadge", isStale && assignment.DeploymentState == DeploymentState.Synced ? "UpdateNeeded" : assignment.DeploymentState.ToString())
-                                                    @if (!string.IsNullOrEmpty(assignment.LastError))
+                                                    @foreach (var target in group.Targets)
+                                                    {
+                                                        var targetStale = target.DeployedVersion.HasValue && target.DeployedVersion < Model.Rotation.Version;
+                                                        <div>
+                                                            @if (group.IsCombined) { <small>@target.SlotLabel(): </small> }
+                                                            @await Html.PartialAsync("_AssignmentStatusBadge", targetStale && target.DeploymentState == DeploymentState.Synced ? "UpdateNeeded" : target.DeploymentState.ToString())
+                                                        </div>
+                                                    }
+                                                    @if (group.NeedsAttention)
                                                     {
                                                         <div class="text-danger small mt-1">
                                                             Needs attention
@@ -206,7 +213,14 @@
                                                     }
                                                 </td>
                                                 <td>
-                                                    @await Html.PartialAsync("_AssignmentStatusBadge", isActivationStale && assignment.ActivationState == ActivationState.Active ? "UpdateNeeded" : assignment.ActivationState.ToString())
+                                                    @foreach (var target in group.Targets)
+                                                    {
+                                                        var targetStale = target.ActivatedVersion.HasValue && target.ActivatedVersion < Model.Rotation.Version;
+                                                        <div>
+                                                            @if (group.IsCombined) { <small>@target.SlotLabel(): </small> }
+                                                            @await Html.PartialAsync("_AssignmentStatusBadge", targetStale && target.ActivationState == ActivationState.Active ? "UpdateNeeded" : target.ActivationState.ToString())
+                                                        </div>
+                                                    }
                                                 </td>
                                                 <td>
                                                     <a asp-action="AssignmentStatus" asp-route-id="@assignment.MapRotationServerAssignmentId" class="btn btn-outline-secondary btn-sm">

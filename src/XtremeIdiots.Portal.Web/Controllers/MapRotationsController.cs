@@ -470,6 +470,7 @@ public class MapRotationsController(
             return View(new CreateMapRotationAssignmentViewModel
             {
                 MapRotationId = mapRotationId,
+                ConfigVariableName = "sv_maprotation",
                 AvailableServers = authorizedServers,
                 CanBrowseServerFiles = authorizedServers.Any(server => server.FileTransportEnabled)
             });
@@ -558,6 +559,7 @@ public class MapRotationsController(
             {
                 ConfigFilePath = model.ConfigFilePath,
                 ConfigVariableName = normalizedConfigVariableName,
+                AacpConfigFilePath = model.AacpEnabled ? model.AacpConfigFilePath : null,
                 PlayerCountMin = model.PlayerCountMin,
                 PlayerCountMax = model.PlayerCountMax
             };
@@ -645,6 +647,12 @@ public class MapRotationsController(
             var server = serverResponse.IsSuccess ? serverResponse.Result?.Data : null;
 
             var fileTransportType = server?.FileTransportType ?? FileTransportType.Unknown;
+            var group = rotation.AssignmentGroup(assignment);
+            if (group.Primary.MapRotationServerAssignmentId != id)
+                return RedirectToAction(nameof(EditAssignment), new { id = group.Primary.MapRotationServerAssignmentId });
+            if (group.IsAmbiguous)
+                return Conflict("Multiple standard configuration targets exist. Ask a portal administrator to resolve the assignment before editing.");
+            var aacp = group.Targets.FirstOrDefault(a => a.IsAacpMapPicker());
 
             ViewData["RotationTitle"] = rotation.Title;
 
@@ -656,6 +664,10 @@ public class MapRotationsController(
                 GameServerTitle = server?.Title ?? assignment.GameServerId.ToString(),
                 ConfigFilePath = assignment.ConfigFilePath,
                 ConfigVariableName = assignment.ConfigVariableName,
+                CanConfigureAacp = assignment.IsMainRotation(),
+                AacpEnabled = group.IsCombined,
+                AacpConfigFilePath = aacp?.ConfigFilePath,
+                AacpRequiresDeactivation = aacp != null && aacp.ActivationState != ActivationState.Inactive,
                 PlayerCountMin = assignment.PlayerCountMin,
                 PlayerCountMax = assignment.PlayerCountMax,
                 CanBrowseServerFiles = server?.FileTransportEnabled == true,
@@ -703,7 +715,28 @@ public class MapRotationsController(
 
                 m.CanBrowseServerFiles = server?.FileTransportEnabled == true;
                 m.FileTransportType = server?.FileTransportType ?? FileTransportType.Unknown;
+                m.CanConfigureAacp = assignment.IsMainRotation();
+                m.AacpRequiresDeactivation = rotation.AssignmentGroup(assignment).Targets
+                    .Any(a => a.IsAacpMapPicker() && a.ActivationState != ActivationState.Inactive);
             }
+
+            model.MapRotationId = assignment.MapRotationId;
+            model.GameServerId = assignment.GameServerId;
+            var group = rotation.AssignmentGroup(assignment);
+            if (group.IsAmbiguous)
+                return Conflict("Multiple standard configuration targets exist. Ask a portal administrator to resolve the assignment before editing.");
+            if (group.Primary.MapRotationServerAssignmentId != assignment.MapRotationServerAssignmentId)
+                return BadRequest("Edit the main server assignment to change combined settings.");
+            if (assignment.IsMainRotation() && group.IsCombined)
+            {
+                if (!string.Equals(model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError(nameof(model.ConfigVariableName), "Keep sv_maprotation while an AACP map picker is linked.");
+                if (!model.AacpEnabled && group.Targets.Any(a => a.IsAacpMapPicker() && a.ActivationState != ActivationState.Inactive))
+                    ModelState.AddModelError(nameof(model.AacpEnabled), "Deactivate first before disabling the AACP map picker. Active configuration will not be cleared by saving settings.");
+            }
+
+            if (!assignment.IsMainRotation() && model.AacpEnabled)
+                ModelState.AddModelError(nameof(model.AacpEnabled), "Only the main sv_maprotation assignment can configure the AACP map picker.");
 
             var modelValidationResult = await CheckModelStateAsync(model, RepopulateAssignmentForm).ConfigureAwait(false);
             if (modelValidationResult != null)
@@ -712,10 +745,14 @@ public class MapRotationsController(
                 return modelValidationResult;
             }
 
+            var canUpdateAacp = assignment.IsMainRotation()
+                && string.Equals(model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase);
             var updateDto = new UpdateMapRotationServerAssignmentDto(model.MapRotationServerAssignmentId)
             {
                 ConfigFilePath = model.ConfigFilePath,
                 ConfigVariableName = model.ConfigVariableName?.ToLowerInvariant(),
+                AacpEnabled = canUpdateAacp ? model.AacpEnabled : null,
+                AacpConfigFilePath = canUpdateAacp && model.AacpEnabled ? model.AacpConfigFilePath : null,
                 PlayerCountMin = model.PlayerCountMin,
                 PlayerCountMax = model.PlayerCountMax
             };
@@ -800,10 +837,13 @@ public class MapRotationsController(
                 return RedirectToAction(nameof(AssignmentStatus), new { id = assignmentId });
             }
 
-            if (assignment.ActivationState != ActivationState.Inactive)
+            var group = rotation.AssignmentGroup(assignment);
+            assignment = group.Primary;
+            assignmentId = assignment.MapRotationServerAssignmentId;
+            if (!group.IsInactive)
                 return BadRequest("Deactivate this assignment successfully before unassigning it. Server map files will be preserved.");
 
-            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
 
@@ -853,10 +893,23 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(id, 0, 20, cancellationToken).ConfigureAwait(false);
-            if (!opsResponse.IsSuccess || opsResponse.Result?.Data?.Items == null)
-                return StatusCode(502, "Unable to load recent activity. Please retry before starting an action.");
-            List<MapRotationAssignmentOperationDto> operations = [.. opsResponse.Result.Data.Items.OrderByDescending(o => o.StartedAt)];
+            var group = rotation.AssignmentGroup(assignment);
+            if (group.Primary.MapRotationServerAssignmentId != id)
+            {
+                TempData.Keep(PendingInstanceKey);
+                return RedirectToAction(nameof(AssignmentStatus), new { id = group.Primary.MapRotationServerAssignmentId });
+            }
+
+            var operations = new List<MapRotationAssignmentOperationDto>();
+            foreach (var target in group.Targets)
+            {
+                var opsResponse = await repositoryApiClient.MapRotations.V1.GetAssignmentOperations(target.MapRotationServerAssignmentId, 0, 20, cancellationToken).ConfigureAwait(false);
+                if (!opsResponse.IsSuccess || opsResponse.Result?.Data?.Items == null)
+                    return StatusCode(502, "Unable to load recent activity. Please retry before starting an action.");
+                operations.AddRange(opsResponse.Result.Data.Items);
+            }
+
+            operations = [.. operations.OrderByDescending(o => o.StartedAt).ThenByDescending(o => o.Status == AssignmentOperationStatus.Failed)];
 
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
 
@@ -891,7 +944,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            var group = rotation.AssignmentGroup(assignment);
+            assignment = group.Primary;
+            assignmentId = assignment.MapRotationServerAssignmentId;
+            var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
             if (string.IsNullOrWhiteSpace(assignment.ConfigFilePath) || string.IsNullOrWhiteSpace(assignment.ConfigVariableName))
@@ -929,6 +985,20 @@ public class MapRotationsController(
             : (IActionResult?)null;
     }
 
+    private async Task<IActionResult?> CheckGroupOperationAvailable(MapRotationAssignmentGroup group, CancellationToken cancellationToken)
+    {
+        if (group.IsAmbiguous)
+            return Conflict("Multiple standard configuration targets exist. Ask a portal administrator to resolve the assignment before starting an action.");
+        foreach (var target in group.Targets)
+        {
+            var blocked = await CheckOperationAvailable(target, cancellationToken).ConfigureAwait(false);
+            if (blocked != null)
+                return blocked;
+        }
+
+        return null;
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncAssignment(Guid assignmentId, Guid mapRotationId, CancellationToken cancellationToken = default)
@@ -957,7 +1027,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            var group = rotation.AssignmentGroup(assignment);
+            assignment = group.Primary;
+            assignmentId = assignment.MapRotationServerAssignmentId;
+            var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
 
@@ -1006,7 +1079,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            var group = rotation.AssignmentGroup(assignment);
+            assignment = group.Primary;
+            assignmentId = assignment.MapRotationServerAssignmentId;
+            var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
 
@@ -1093,7 +1169,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            var group = rotation.AssignmentGroup(assignment);
+            assignment = group.Primary;
+            assignmentId = assignment.MapRotationServerAssignmentId;
+            var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
 
@@ -1142,7 +1221,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            var blocked = await CheckOperationAvailable(assignment, cancellationToken).ConfigureAwait(false);
+            var group = rotation.AssignmentGroup(assignment);
+            assignment = group.Primary;
+            assignmentId = assignment.MapRotationServerAssignmentId;
+            var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
 
@@ -1244,18 +1326,18 @@ public class MapRotationsController(
             .Any(operation => string.Equals(instanceId, $"maprot-{operation}-{assignmentId}", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<bool> IsLinkedApplyInstance(string? instanceId, MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
+    private async Task<bool> IsLinkedAssignmentInstance(string? instanceId, MapRotationServerAssignmentDto assignment, CancellationToken cancellationToken)
     {
-        const string prefix = "maprot-apply-";
-        if (instanceId == null || !instanceId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            || !Guid.TryParseExact(instanceId[prefix.Length..], "D", out var initiatingAssignmentId))
+        if (instanceId == null || instanceId.Length < 36
+            || !Guid.TryParseExact(instanceId[^36..], "D", out var initiatingAssignmentId)
+            || !IsAssignmentInstance(instanceId, initiatingAssignmentId))
             return false;
 
         var sourceResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(initiatingAssignmentId, cancellationToken).ConfigureAwait(false);
         return sourceResponse.IsSuccess && sourceResponse.Result?.Data is { } source && source.GameServerId == assignment.GameServerId
             && source.MapRotationId == assignment.MapRotationId
-            && ((source.ConfigVariableName == "sv_maprotation" && assignment.ConfigVariableName == "scr_aacp_maps_1")
-                || (source.ConfigVariableName == "scr_aacp_maps_1" && assignment.ConfigVariableName == "sv_maprotation"));
+            && ((source.IsMainRotation() && assignment.IsAacpMapPicker())
+                || (source.IsAacpMapPicker() && assignment.IsMainRotation()));
     }
 
     private async Task<IActionResult> RequestCancellation(string instanceId, Guid assignmentId, CancellationToken cancellationToken)
@@ -1297,7 +1379,7 @@ public class MapRotationsController(
             return Conflict("This operation is already terminal. Refresh the Sync outcome; uncertain legacy state needs service-side investigation, not a Portal reset.");
 
         var related = IsAssignmentInstance(instanceId, assignmentId)
-            || await IsLinkedApplyInstance(instanceId, assignment, cancellationToken).ConfigureAwait(false);
+            || await IsLinkedAssignmentInstance(instanceId, assignment, cancellationToken).ConfigureAwait(false);
         return related ? null : BadRequest("The instance does not belong to this assignment or its verified linked main/AACP slot.");
     }
 

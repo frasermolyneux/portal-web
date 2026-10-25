@@ -2,14 +2,13 @@
 @model XtremeIdiots.Portal.Web.ViewModels.AssignmentStatusViewModel
 
 @{
-    ViewData["Title"] = Model.GameServerDisplayName + " - " + Model.Assignment.SlotLabel();
+    ViewData["Title"] = Model.GameServerDisplayName + " - " + Model.Group.Label;
     var pendingInstanceId = TempData["PendingInstanceId"] as string;
     var hasPending = !string.IsNullOrEmpty(pendingInstanceId);
     var hasRunningOperation = Model.Operations.Any(o => o.Status == AssignmentOperationStatus.InProgress);
     var hasPendingWithNoRow = hasPending && !Model.Operations.Any(o =>
         o.Status == AssignmentOperationStatus.InProgress && o.DurableFunctionInstanceId == pendingInstanceId);
-    var busy = Model.Assignment.DeploymentState is DeploymentState.Syncing or DeploymentState.Removing
-        || Model.Assignment.ActivationState is ActivationState.Activating or ActivationState.Deactivating;
+    var busy = Model.Group.IsBusy;
     var deployResource = (Model.Rotation.GameType, Model.Assignment.GameServerId);
     var latest = Model.Operations.FirstOrDefault();
 }
@@ -26,7 +25,7 @@
 
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5>@Model.GameServerDisplayName &mdash; @Model.Assignment.SlotLabel()</h5>
+                        <h5>@Model.GameServerDisplayName &mdash; @Model.Group.Label</h5>
                     </div>
                     <div class="ibox-content">
                         <dl class="detail-fields row mb-0">
@@ -37,22 +36,34 @@
                             <div class="detail-field col-sm-3">
                                 <dt class="detail-label">Files</dt>
                                 <dd class="detail-value">
-                                    @await Html.PartialAsync("_AssignmentStatusBadge", Model.IsStale && Model.Assignment.DeploymentState == DeploymentState.Synced ? "UpdateNeeded" : Model.Assignment.DeploymentState.ToString())
+                                    @foreach (var target in Model.Group.Targets)
+                                    {
+                                        <div>
+                                            @if (Model.Group.IsCombined) { <small>@target.SlotLabel(): </small> }
+                                            @await Html.PartialAsync("_AssignmentStatusBadge", target.DeployedVersion < Model.Rotation.Version && target.DeploymentState == DeploymentState.Synced ? "UpdateNeeded" : target.DeploymentState.ToString())
+                                        </div>
+                                    }
                                 </dd>
                             </div>
                             <div class="detail-field col-sm-3">
                                 <dt class="detail-label">Configuration</dt>
                                 <dd class="detail-value">
-                                    @await Html.PartialAsync("_AssignmentStatusBadge", Model.IsActivationStale && Model.Assignment.ActivationState == ActivationState.Active ? "UpdateNeeded" : Model.Assignment.ActivationState.ToString())
+                                    @foreach (var target in Model.Group.Targets)
+                                    {
+                                        <div>
+                                            @if (Model.Group.IsCombined) { <small>@target.SlotLabel(): </small> }
+                                            @await Html.PartialAsync("_AssignmentStatusBadge", target.ActivatedVersion < Model.Rotation.Version && target.ActivationState == ActivationState.Active ? "UpdateNeeded" : target.ActivationState.ToString())
+                                        </div>
+                                    }
                                 </dd>
                             </div>
                         </dl>
 
-                        @if (!string.IsNullOrEmpty(Model.Assignment.LastError))
+                        @foreach (var target in Model.Group.Targets.Where(a => !string.IsNullOrEmpty(a.LastError)))
                         {
                             <div class="alert alert-danger mt-3 mb-0">
-                                <strong>Action needed</strong>
-                                <p class="mb-0 mt-1">@Model.Assignment.LastError</p>
+                                <strong>Action needed@(Model.Group.IsCombined ? " — " + target.SlotLabel() : "")</strong>
+                                <p class="mb-0 mt-1">@target.LastError</p>
                             </div>
                         }
                         @if (busy && !hasRunningOperation && !hasPending)
@@ -61,25 +72,31 @@
                                 Status needs attention. Ask a portal administrator to investigate before retrying.
                             </div>
                         }
+                        @if (Model.Group.IsAmbiguous)
+                        {
+                            <div class="alert alert-warning mt-3 mb-0">Multiple standard configuration targets exist. Ask a portal administrator to resolve this assignment before starting an action.</div>
+                        }
 
                         <details class="mt-3" id="assignment-details">
                             <summary>Technical details</summary>
+                            @foreach (var target in Model.Group.Targets)
+                            {
                             <dl class="detail-fields row mt-3 mb-0">
                                 <div class="detail-field col-sm-6">
                                     <dt class="detail-label">Config file</dt>
-                                    <dd class="detail-value"><code>@(Model.Assignment.ConfigFilePath ?? "Not set")</code></dd>
+                                    <dd class="detail-value">@target.SlotLabel(): <code>@(target.ConfigFilePath ?? "Not set")</code></dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
                                     <dt class="detail-label">Config variable</dt>
-                                    <dd class="detail-value"><code>@(Model.Assignment.ConfigVariableName ?? "Not set")</code></dd>
+                                    <dd class="detail-value"><code>@(target.ConfigVariableName ?? "Not set")</code></dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
                                     <dt class="detail-label">Created</dt>
-                                    <dd class="detail-value"><time user-time utc="@Model.Assignment.CreatedAt"></time></dd>
+                                    <dd class="detail-value"><time user-time utc="@target.CreatedAt"></time></dd>
                                 </div>
                                 <div class="detail-field col-sm-6">
                                     <dt class="detail-label">Updated</dt>
-                                    <dd class="detail-value"><time user-time utc="@Model.Assignment.UpdatedAt"></time></dd>
+                                    <dd class="detail-value"><time user-time utc="@target.UpdatedAt"></time></dd>
                                 </div>
                                 @if (Model.Assignment.UnassignedAt.HasValue)
                                 {
@@ -89,11 +106,12 @@
                                     </div>
                                 }
                             </dl>
+                            }
                         </details>
                     </div>
                     <div class="ibox-footer">
                         <p class="small text-muted">Apply updates files and configuration, including a matching main/map-picker slot. No server restart.</p>
-                        @await Html.PartialAsync("_AssignmentActions", (Model.Assignment, Model.Rotation.GameType, Model.Rotation.MapRotationId, hasPending || hasRunningOperation))
+                        @await Html.PartialAsync("_AssignmentActions", (Model.Assignment, Model.Rotation.GameType, Model.Rotation.MapRotationId, hasPending || hasRunningOperation || busy || Model.Group.IsAmbiguous, Model.Group.IsInactive))
                     </div>
                 </div>
 
@@ -133,6 +151,11 @@
                                             AssignmentOperationStatus.Cancelled => "bg-secondary",
                                             _ => "bg-info"
                                         };
+                                        if (latest.Status == AssignmentOperationStatus.Succeeded && Model.Group.IsCombined && Model.ActivityNeedsAttention)
+                                        {
+                                            result = "Needs attention";
+                                            resultClass = "bg-danger";
+                                        }
                                         <span>View recent actions and results</span>
                                         <span class="d-block mt-1 ms-3">
                                             Last action: @latest.ActionLabel()
@@ -189,7 +212,13 @@
                                                     {
                                                         <text>data-instance-id="@op.DurableFunctionInstanceId"</text>
                                                     }>
-                                                    <td>@op.ActionLabel()</td>
+                                                    <td>
+                                                        @op.ActionLabel()
+                                                        @if (Model.Group.IsCombined)
+                                                        {
+                                                            <small class="text-muted d-block">@Model.Group.Targets.FirstOrDefault(a => a.MapRotationServerAssignmentId == op.MapRotationServerAssignmentId)?.SlotLabel()</small>
+                                                        }
+                                                    </td>
                                                     <td>
                                                         @switch (op.Status)
                                                         {
@@ -235,7 +264,7 @@
                                                         {
                                                             <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource" asp-action="CancelOperation" method="post">
                                                                 <input type="hidden" name="operationId" value="@op.MapRotationAssignmentOperationId" />
-                                                                <input type="hidden" name="assignmentId" value="@Model.Assignment.MapRotationServerAssignmentId" />
+                                                                <input type="hidden" name="assignmentId" value="@op.MapRotationServerAssignmentId" />
                                                                 <input type="hidden" name="instanceId" value="@op.DurableFunctionInstanceId" />
                                                                 <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Request cancellation? The current step must finish safely first.">
                                                                     <i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Cancel

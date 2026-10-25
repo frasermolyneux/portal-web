@@ -19,6 +19,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
+using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -1316,13 +1317,17 @@ public class MapRotationsControllerTests
     }
 
     [Theory]
-    [InlineData(true, true, "scr_aacp_maps_1", true)]
-    [InlineData(false, true, "scr_aacp_maps_1", false)]
-    [InlineData(true, false, "scr_aacp_maps_1", false)]
-    [InlineData(true, true, "scr_aacp_maps_2", false)]
-    [InlineData(true, true, "sv_maprotation", false)]
+    [InlineData(true, true, "scr_aacp_maps_1", true, "apply")]
+    [InlineData(false, true, "scr_aacp_maps_1", false, "apply")]
+    [InlineData(true, false, "scr_aacp_maps_1", false, "apply")]
+    [InlineData(true, true, "scr_aacp_maps_2", false, "apply")]
+    [InlineData(true, true, "sv_maprotation", false, "apply")]
+    [InlineData(true, true, "scr_aacp_maps_1", true, "verify")]
+    [InlineData(true, true, "scr_aacp_maps_1", true, "sync")]
+    [InlineData(true, true, "scr_aacp_maps_1", true, "activate")]
+    [InlineData(true, true, "scr_aacp_maps_1", true, "deactivate")]
     public async Task LinkedApply_CancellationAndTermination_RequirePersistedOperationAndExactSameServerRotationPair(
-        bool sameServer, bool sameRotation, string sourceVariable, bool permitted)
+        bool sameServer, bool sameRotation, string sourceVariable, bool permitted, string operation)
     {
         var (sut, assignment) = SetupRecovery(DeploymentState.Syncing);
         var source = CreateAssignment(Guid.NewGuid(),
@@ -1331,7 +1336,7 @@ public class MapRotationsControllerTests
         SetDtoProperty(source, nameof(source.ConfigVariableName), sourceVariable);
         mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetServerAssignment(source.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(source)));
-        var instanceId = $"maprot-apply-{source.MapRotationServerAssignmentId}";
+        var instanceId = $"maprot-{operation}-{source.MapRotationServerAssignmentId}";
         var operationId = Guid.NewGuid();
         SetOperation(assignment, operationId, instanceId);
         mockSyncApiClient.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
@@ -1427,6 +1432,223 @@ public class MapRotationsControllerTests
         Assert.IsType<RedirectToActionResult>(await sut.DeleteAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
         Assert.Contains("Server map files were preserved", sut.TempData["Alerts"]?.ToString(), StringComparison.Ordinal);
         mockSyncApiClient.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("sv_maprotation", "scr_aacp_maps_1")]
+    [InlineData("SV_MAPROTATION", "SCR_AACP_MAPS_1")]
+    [InlineData("Sv_MapRotation", "Scr_Aacp_Maps_1")]
+    public void AssignmentGroups_OnlyCombineExactCurrentStandardPair(string mainVariable, string pickerVariable)
+    {
+        var main = CreateAssignment(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        SetDtoProperty(main, nameof(main.ConfigVariableName), mainVariable);
+        var picker = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
+        SetDtoProperty(picker, nameof(picker.ConfigVariableName), pickerVariable);
+        var custom = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
+        SetDtoProperty(custom, nameof(custom.ConfigVariableName), "scr_aacp_maps_dm3");
+        var otherRotation = CreateAssignment(Guid.NewGuid(), Guid.NewGuid(), main.GameServerId);
+        SetDtoProperty(otherRotation, nameof(otherRotation.ConfigVariableName), "scr_aacp_maps_1");
+        var removed = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId, DeploymentState.Removed);
+        SetDtoProperty(removed, nameof(removed.ConfigVariableName), "scr_aacp_maps_1");
+        var groups = new[] { picker, custom, main, otherRotation, removed }.AssignmentGroups();
+
+        Assert.Equal(4, groups.Count);
+        var combined = Assert.Single(groups, g => g.IsCombined);
+        Assert.Same(main, combined.Primary);
+        Assert.Equal(new[] { main, picker }, combined.Targets);
+        Assert.Contains(groups, g => g.Primary == removed && !g.IsCombined);
+    }
+
+    [Fact]
+    public async Task CombinedStatus_ChildRedirectsToMain_CombinesHistoriesAndFailureTruth()
+    {
+        var (sut, main, picker) = SetupCombined();
+        SetOperation(main, Guid.NewGuid(), $"maprot-apply-{main.MapRotationServerAssignmentId}", AssignmentOperationStatus.Succeeded);
+        SetOperation(picker, Guid.NewGuid(), $"maprot-apply-{main.MapRotationServerAssignmentId}", AssignmentOperationStatus.Failed);
+        var redirect = Assert.IsType<RedirectToActionResult>(await sut.AssignmentStatus(picker.MapRotationServerAssignmentId));
+        Assert.Equal(main.MapRotationServerAssignmentId, redirect.RouteValues!["id"]);
+        var view = Assert.IsType<ViewResult>(await sut.AssignmentStatus(main.MapRotationServerAssignmentId));
+        var model = Assert.IsType<AssignmentStatusViewModel>(view.Model);
+        Assert.True(model.Group.IsCombined);
+        Assert.Equal(2, model.Operations.Count);
+        Assert.True(model.ActivityNeedsAttention);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.GetAssignmentOperations(
+            picker.MapRotationServerAssignmentId, 0, 20, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AmbiguousStandardTargets_BlockActionsWithoutGuessing()
+    {
+        var (sut, main, picker) = SetupCombined();
+        var duplicate = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
+        SetDtoProperty(duplicate, nameof(duplicate.ConfigVariableName), "SCR_AACP_MAPS_1");
+        var rotation = CreateRotation(main.MapRotationId, GameType.CallOfDuty4, serverAssignments: [main, picker, duplicate]);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(main.MapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        Assert.All(rotation.ServerAssignments.AssignmentGroups(), g => Assert.True(g.IsAmbiguous));
+        Assert.IsType<ConflictObjectResult>(await sut.ApplyAssignment(main.MapRotationServerAssignmentId, main.MapRotationId));
+        Assert.IsType<ConflictObjectResult>(await sut.DeleteAssignment(main.MapRotationServerAssignmentId, main.MapRotationId));
+        mockSyncApiClient.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("apply")]
+    [InlineData("sync")]
+    [InlineData("verify")]
+    [InlineData("activate")]
+    [InlineData("deactivate")]
+    [InlineData("remove")]
+    public async Task CombinedActions_FromChild_QueueExactlyOnePrimaryRequest(string action)
+    {
+        var (sut, main, picker) = SetupCombined();
+        mockSyncApiClient.Setup(x => x.TriggerApply(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>())).ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.TriggerSync(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>())).ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.TriggerVerify(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>())).ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.TriggerActivate(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>())).ReturnsAsync(new SyncTriggerResult(true));
+        mockSyncApiClient.Setup(x => x.TriggerDeactivate(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>())).ReturnsAsync(new SyncTriggerResult(true));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.DeleteServerAssignment(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>())).ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        var result = action switch
+        {
+            "apply" => await sut.ApplyAssignment(picker.MapRotationServerAssignmentId, main.MapRotationId),
+            "sync" => await sut.SyncAssignment(picker.MapRotationServerAssignmentId, main.MapRotationId),
+            "verify" => await sut.VerifyAssignment(picker.MapRotationServerAssignmentId, main.MapRotationId),
+            "activate" => await sut.ActivateAssignment(picker.MapRotationServerAssignmentId, main.MapRotationId),
+            "deactivate" => await sut.DeactivateAssignment(picker.MapRotationServerAssignmentId, main.MapRotationId),
+            _ => await sut.DeleteAssignment(picker.MapRotationServerAssignmentId, main.MapRotationId)
+        };
+        Assert.Equal(main.MapRotationServerAssignmentId, Assert.IsType<RedirectToActionResult>(result).RouteValues!["id"]);
+        if (action == "remove")
+        {
+            mockSyncApiClient.VerifyNoOtherCalls();
+            mockRepositoryApiClient.Verify(x => x.MapRotations.V1.DeleteServerAssignment(main.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+        else
+        {
+            var invocation = Assert.Single(mockSyncApiClient.Invocations);
+            Assert.Equal(main.MapRotationServerAssignmentId, invocation.Arguments[0]);
+        }
+
+        VerifyNoCancellationMutation();
+    }
+
+    [Fact]
+    public async Task CombinedChildBusyOrActive_BlocksNewActionsAndUnassign()
+    {
+        var (sut, main, picker) = SetupCombined();
+        SetOperation(picker, Guid.NewGuid(), $"maprot-verify-{picker.MapRotationServerAssignmentId}");
+        Assert.IsType<ConflictObjectResult>(await sut.ApplyAssignment(main.MapRotationServerAssignmentId, main.MapRotationId));
+        Assert.IsType<ConflictObjectResult>(await sut.DeleteAssignment(main.MapRotationServerAssignmentId, main.MapRotationId));
+        SetDtoProperty(picker, nameof(picker.ActivationState), ActivationState.Active);
+        Assert.IsType<BadRequestObjectResult>(await sut.DeleteAssignment(main.MapRotationServerAssignmentId, main.MapRotationId));
+        mockSyncApiClient.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CombinedEdit_ActiveUncheckIsValidationError_NotConfigurationDeletion()
+    {
+        var (sut, main, picker) = SetupCombined();
+        SetDtoProperty(picker, nameof(picker.ActivationState), ActivationState.Active);
+        var result = await sut.EditAssignment(new EditMapRotationAssignmentViewModel
+        {
+            MapRotationServerAssignmentId = main.MapRotationServerAssignmentId,
+            ConfigVariableName = "sv_maprotation",
+            AacpEnabled = false
+        });
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains("Deactivate first", sut.ModelState[nameof(EditMapRotationAssignmentViewModel.AacpEnabled)]!.Errors[0].ErrorMessage, StringComparison.Ordinal);
+        VerifyNoCancellationMutation();
+    }
+
+    [Fact]
+    public async Task CombinedEdit_MixedCaseExistingTargets_LoadsEnabledMainOwnerAndAcceptsOptions()
+    {
+        var (sut, main, picker) = SetupCombined();
+        SetDtoProperty(main, nameof(main.ConfigVariableName), "SV_MAPROTATION");
+        SetDtoProperty(picker, nameof(picker.ConfigVariableName), "SCR_AACP_MAPS_1");
+        var view = Assert.IsType<ViewResult>(await sut.EditAssignment(main.MapRotationServerAssignmentId));
+        var model = Assert.IsType<EditMapRotationAssignmentViewModel>(view.Model);
+        Assert.True(model.CanConfigureAacp);
+        Assert.True(model.AacpEnabled);
+        Assert.Equal(picker.ConfigFilePath, model.AacpConfigFilePath);
+        Assert.Empty(model.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(model)));
+        var createModel = new CreateMapRotationAssignmentViewModel
+        {
+            ConfigVariableName = "SV_MAPROTATION",
+            AacpEnabled = true,
+            AacpConfigFilePath = "aacp.cfg"
+        };
+        Assert.Empty(createModel.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(createModel)));
+
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        Assert.IsType<RedirectToActionResult>(await sut.EditAssignment(model));
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.ConfigVariableName == "sv_maprotation"
+                && dto.AacpEnabled == true && dto.AacpConfigFilePath == picker.ConfigFilePath), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AssignmentEdit_OnlyNormalOwnerSendsAacpOptions(bool normalOwner)
+    {
+        var (sut, assignment) = SetupRecovery();
+        if (!normalOwner)
+            SetDtoProperty(assignment, nameof(assignment.ConfigVariableName), "scr_aacp_maps_dm3");
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        Assert.IsType<RedirectToActionResult>(await sut.EditAssignment(new EditMapRotationAssignmentViewModel
+        {
+            MapRotationServerAssignmentId = assignment.MapRotationServerAssignmentId,
+            ConfigVariableName = assignment.ConfigVariableName,
+            AacpEnabled = normalOwner,
+            AacpConfigFilePath = normalOwner ? "aacp.cfg" : null
+        }));
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => dto.AacpEnabled == (normalOwner ? true : null)
+                && dto.AacpConfigFilePath == (normalOwner ? "aacp.cfg" : null)), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("sv_maprotation", "sv_maprotation_low")]
+    [InlineData("SV_MAPROTATION", "SV_MAPROTATION_LOW")]
+    public async Task AssignmentEdit_UnpairedMainToCustom_DoesNotSendAacpOptions(string existingVariable, string submittedVariable)
+    {
+        var (sut, assignment) = SetupRecovery();
+        SetDtoProperty(assignment, nameof(assignment.ConfigVariableName), existingVariable);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+
+        Assert.IsType<RedirectToActionResult>(await sut.EditAssignment(new EditMapRotationAssignmentViewModel
+        {
+            MapRotationServerAssignmentId = assignment.MapRotationServerAssignmentId,
+            ConfigFilePath = assignment.ConfigFilePath,
+            ConfigVariableName = submittedVariable,
+            AacpEnabled = false,
+            AacpConfigFilePath = "previously-entered-aacp.cfg"
+        }));
+
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.Is<UpdateMapRotationServerAssignmentDto>(dto => string.Equals(dto.ConfigVariableName, submittedVariable, StringComparison.OrdinalIgnoreCase)
+                && dto.AacpEnabled == null && dto.AacpConfigFilePath == null), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private (MapRotationsController Controller, MapRotationServerAssignmentDto Main, MapRotationServerAssignmentDto Picker) SetupCombined()
+    {
+        var (sut, main) = SetupRecovery();
+        var picker = CreateAssignment(Guid.NewGuid(), main.MapRotationId, main.GameServerId);
+        SetDtoProperty(picker, nameof(picker.ConfigVariableName), "scr_aacp_maps_1");
+        var rotation = CreateRotation(main.MapRotationId, GameType.CallOfDuty4, serverAssignments: [picker, main]);
+        SetDtoProperty(rotation, nameof(rotation.Status), MapRotationStatus.Published);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(main.MapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetServerAssignment(picker.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(picker)));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(main.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServer(main.GameServerId, GameType.CallOfDuty4))));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), AuthPolicies.MapRotations_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+        return (sut, main, picker);
     }
 
     [Fact]

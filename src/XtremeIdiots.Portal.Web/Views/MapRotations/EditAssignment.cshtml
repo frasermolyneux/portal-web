@@ -21,12 +21,32 @@
                         </div>
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            @if (Model.CanConfigureAacp)
+                            {
+                                <div class="mb-3" id="aacp-option">
+                                    <div class="form-check">
+                                        <input asp-for="AacpEnabled" class="form-check-input" />
+                                        <label asp-for="AacpEnabled" class="form-check-label"></label>
+                                    </div>
+                                    <span asp-validation-for="AacpEnabled" class="text-danger"></span>
+                                    @if (Model.AacpRequiresDeactivation)
+                                    {
+                                        <p class="small text-muted">Deactivate first before disabling the AACP map picker. Saving settings never clears active configuration.</p>
+                                    }
+                                    <div id="aacp-config" class="mt-2" hidden="@(!Model.AacpEnabled)">
+                                        <label asp-for="AacpConfigFilePath" class="form-label"></label>
+                                        <input asp-for="AacpConfigFilePath" class="form-control" required="@Model.AacpEnabled" />
+                                        <span asp-validation-for="AacpConfigFilePath" class="text-danger"></span>
+                                        <small class="form-text text-muted">Updates the map picker together with the main rotation on this server.</small>
+                                    </div>
+                                </div>
+                            }
                             <div class="mb-3">
                                 <label class="form-label">Game Server</label>
                                 <input type="text" class="form-control" value="@Model.GameServerTitle" disabled />
                             </div>
                             <div class="mb-3">
-                                <label asp-for="@Model.ConfigFilePath" class="form-label"></label>
+                                <label asp-for="@Model.ConfigFilePath" for="ConfigFilePathInput" class="form-label"></label>
                                 <div class="input-group">
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
                                            placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
@@ -43,7 +63,9 @@
                                 <small class="form-text text-muted">Path to the config file on the game server.</small>
                                 <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                             </div>
-                            <div class="mb-3">
+                            <details class="mb-3" id="assignment-advanced" open="@(!Model.CanConfigureAacp || ViewData.ModelState[nameof(Model.ConfigVariableName)]?.Errors.Count > 0 ? "open" : null)">
+                                <summary>Advanced: configuration slot</summary>
+                            <div class="mb-3 mt-2">
                                 <label asp-for="@Model.ConfigVariableName" class="form-label"></label>
                                 <input asp-for="@Model.ConfigVariableName" class="form-control"
                                        list="configVariableSuggestions" placeholder="e.g. sv_maprotation" />
@@ -60,6 +82,7 @@
                                     to.</small>
                                 <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
                                 </div>
+                            </details>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
@@ -95,6 +118,7 @@
     }
 
     @section Scripts {
+        <script src="~/js/map-rotation-assignment.js" asp-append-version="true"></script>
         @if (Model.CanBrowseServerFiles && Model.FileTransportType != FileTransportType.Unknown)
         {
             <script src="~/js/file-browse.js" asp-append-version="true"></script>
