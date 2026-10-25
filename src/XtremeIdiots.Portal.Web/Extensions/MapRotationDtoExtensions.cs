@@ -42,6 +42,7 @@ public static class MapRotationDtoExtensions
                     && (row.IsMainRotation() || row.IsAacpMapPicker())
                     && (candidates.Count(a => a.IsMainRotation()) > 1 || candidates.Count(a => a.IsAacpMapPicker()) > 1)));
         }
+
         return groups;
     }
 

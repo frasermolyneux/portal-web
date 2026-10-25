@@ -1527,6 +1527,7 @@ public class MapRotationsControllerTests
             var invocation = Assert.Single(mockSyncApiClient.Invocations);
             Assert.Equal(main.MapRotationServerAssignmentId, invocation.Arguments[0]);
         }
+
         VerifyNoCancellationMutation();
     }
 

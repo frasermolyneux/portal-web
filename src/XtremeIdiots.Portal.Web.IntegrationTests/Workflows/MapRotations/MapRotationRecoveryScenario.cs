@@ -85,6 +85,7 @@ internal sealed class MapRotationRecoveryScenario
                     Error = childFailed ? "Synthetic child operation failed" : null
                 }))!);
         }
+
         Repository.Setup(x => x.MapRotations.V1.GetAssignmentOperations(
                 ChildAssignmentId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<MapRotationAssignmentOperationDto>>(HttpStatusCode.OK,

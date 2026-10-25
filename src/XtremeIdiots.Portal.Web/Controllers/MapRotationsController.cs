@@ -734,6 +734,7 @@ public class MapRotationsController(
                 if (!model.AacpEnabled && group.Targets.Any(a => a.IsAacpMapPicker() && a.ActivationState != ActivationState.Inactive))
                     ModelState.AddModelError(nameof(model.AacpEnabled), "Deactivate first before disabling the AACP map picker. Active configuration will not be cleared by saving settings.");
             }
+
             if (!assignment.IsMainRotation() && model.AacpEnabled)
                 ModelState.AddModelError(nameof(model.AacpEnabled), "Only the main sv_maprotation assignment can configure the AACP map picker.");
 
@@ -896,6 +897,7 @@ public class MapRotationsController(
                 TempData.Keep(PendingInstanceKey);
                 return RedirectToAction(nameof(AssignmentStatus), new { id = group.Primary.MapRotationServerAssignmentId });
             }
+
             var operations = new List<MapRotationAssignmentOperationDto>();
             foreach (var target in group.Targets)
             {
@@ -904,6 +906,7 @@ public class MapRotationsController(
                     return StatusCode(502, "Unable to load recent activity. Please retry before starting an action.");
                 operations.AddRange(opsResponse.Result.Data.Items);
             }
+
             operations = [.. operations.OrderByDescending(o => o.StartedAt).ThenByDescending(o => o.Status == AssignmentOperationStatus.Failed)];
 
             var serverResponse = await repositoryApiClient.GameServers.V1.GetGameServer(assignment.GameServerId, cancellationToken).ConfigureAwait(false);
@@ -990,6 +993,7 @@ public class MapRotationsController(
             if (blocked != null)
                 return blocked;
         }
+
         return null;
     }
 

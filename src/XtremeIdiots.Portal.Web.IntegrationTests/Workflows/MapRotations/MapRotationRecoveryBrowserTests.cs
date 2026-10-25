@@ -116,7 +116,7 @@ public sealed class MapRotationRecoveryBrowserTests
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save Changes", Exact = true }).ClickAsync();
         await Assertions.Expect(browser.Page.Locator("[data-valmsg-for='AacpEnabled']")).ToContainTextAsync("Deactivate first");
         scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
-            It.IsAny<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Repository.Abstractions.Models.V1.MapRotations.UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
         browser.AssertNoBrowserErrors();
     }
 
