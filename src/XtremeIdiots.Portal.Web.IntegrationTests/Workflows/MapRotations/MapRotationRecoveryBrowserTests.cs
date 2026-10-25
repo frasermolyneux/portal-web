@@ -10,6 +10,116 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "Browser")]
 public sealed class MapRotationRecoveryBrowserTests
 {
+    [Fact]
+    public async Task CombinedAssignment_OneServerRowAndHub_ChildNavigationAndPrimaryAction()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/Details/{scenario.RotationId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Manage", Exact = true })).ToHaveCountAsync(1);
+        await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("Main rotation + AACP map picker");
+
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.ChildAssignmentId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page).ToHaveURLAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true })).ToHaveCountAsync(1);
+        await Assertions.Expect(browser.Page.Locator(".ibox-content > dl .detail-value").Filter(new() { HasText = "Map picker:" })).ToHaveCountAsync(2);
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/ApplyAssignment");
+        Assert.Equal(302, response.Status);
+        scenario.Sync.Verify(x => x.TriggerApply(scenario.AssignmentId, It.IsAny<CancellationToken>()), Times.Once);
+        scenario.Sync.Verify(x => x.TriggerApply(scenario.ChildAssignmentId, It.IsAny<CancellationToken>()), Times.Never);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task CombinedAssignment_ChildFailureIsNotHiddenByPrimarySuccess()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true, childFailed: true, busy: true,
+            operationStatus: AssignmentOperationStatus.Succeeded, completedAt: DateTime.UtcNow);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator(".alert-danger")).ToContainTextAsync("Synthetic AACP configuration failure");
+        await Assertions.Expect(browser.Page.Locator("#operation-history > summary .badge.bg-danger")).ToHaveTextAsync("Needs attention");
+        await browser.Page.Locator("#operation-history > summary").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#operationsTable")).ToContainTextAsync("Synthetic child operation failed");
+        await Assertions.Expect(browser.Page.Locator("#operationsTable tbody > tr")).ToHaveCountAsync(2);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task CombinedAssignment_ChildRunningHistory_CancelsVerifiedSharedInstanceWithoutFinalizing()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true, childBusy: true);
+        var instanceId = $"maprot-apply-{scenario.AssignmentId}";
+        scenario.Sync.Setup(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(false, CancellationRequested: true));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true })).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.Locator("#operation-history")).ToHaveAttributeAsync("open", "");
+        var cancel = browser.Page.Locator("form[action='/MapRotations/CancelOperation']");
+        await Assertions.Expect(cancel.Locator("input[name='assignmentId']")).ToHaveValueAsync(scenario.ChildAssignmentId.ToString());
+        browser.Page.Dialog += async (_, dialog) => await dialog.AcceptAsync();
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => cancel.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/CancelOperation");
+        Assert.Equal(302, response.Status);
+        await Assertions.Expect(browser.Page.Locator("#operationsContainer")).ToHaveAttributeAsync("data-pending-instance-id", instanceId);
+        scenario.Sync.Verify(x => x.TerminateOrchestration(instanceId, It.IsAny<CancellationToken>()), Times.Once);
+        scenario.Repository.Verify(x => x.MapRotations.V1.UpdateAssignmentOperation(
+            It.IsAny<Guid>(), It.IsAny<AssignmentOperationStatus>(), It.IsAny<string>()), Times.Never);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task AssignmentForms_AacpToggleRequiresPathAndPostsOneAtomicCreate()
+    {
+        var scenario = new MapRotationAssignmentScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}").AbsoluteUri);
+        var checkbox = browser.Page.GetByLabel("Also update AACP map picker", new() { Exact = true });
+        var path = browser.Page.GetByLabel("AACP config file", new() { Exact = true });
+        await Assertions.Expect(path).Not.ToBeVisibleAsync();
+        await checkbox.CheckAsync();
+        await Assertions.Expect(path).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#AacpConfigFilePath[required]")).ToHaveCountAsync(1);
+        Assert.False(await path.EvaluateAsync<bool>("input => input.checkValidity()"));
+        await path.FillAsync("aacp.cfg");
+        await checkbox.UncheckAsync();
+        await Assertions.Expect(browser.Page.Locator("#AacpConfigFilePath[required]")).ToHaveCountAsync(0);
+        await checkbox.CheckAsync();
+        await Assertions.Expect(path).ToHaveValueAsync("aacp.cfg");
+        await browser.Page.GetByTestId("server-select").SelectOptionAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        await browser.Page.GetByLabel("Config File", new() { Exact = true }).FillAsync("server.cfg");
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByTestId("assign-server-submit").ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/CreateAssignment");
+        Assert.Equal(302, response.Status);
+        var created = Assert.Single(scenario.CreatedAssignments);
+        Assert.Equal("aacp.cfg", created.AacpConfigFilePath);
+        Assert.Equal("sv_maprotation", created.ConfigVariableName);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task CombinedEdit_FromChild_LoadsCheckedAacpAndRejectsActiveUncheck()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/EditAssignment/{scenario.ChildAssignmentId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page).ToHaveURLAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/EditAssignment/{scenario.AssignmentId}").AbsoluteUri);
+        var checkbox = browser.Page.GetByLabel("Also update AACP map picker", new() { Exact = true });
+        await Assertions.Expect(checkbox).ToBeCheckedAsync();
+        await Assertions.Expect(browser.Page.GetByLabel("AACP config file", new() { Exact = true })).ToHaveValueAsync("aacp.cfg");
+        await checkbox.UncheckAsync();
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save Changes", Exact = true }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("[data-valmsg-for='AacpEnabled']")).ToContainTextAsync("Deactivate first");
+        scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.IsAny<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        browser.AssertNoBrowserErrors();
+    }
+
     [Theory]
     [InlineData(DeploymentState.Pending)]
     [InlineData(DeploymentState.Synced)]

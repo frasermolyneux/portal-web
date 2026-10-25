@@ -5,6 +5,7 @@
 
 @{
     ViewData["Title"] = "Map Manager";
+    var assignmentGroups = Model.RotationAssignments.AssignmentGroups();
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -59,7 +60,7 @@
                         data-bs-target="#assignments-tab" type="button" role="tab"
                         aria-controls="assignments-tab" aria-selected="false">
                         <i class="fa-solid fa-fw fa-list me-1"></i>Map Rotations
-                        <span class="badge bg-secondary ms-1">@Model.RotationAssignments.Count</span>
+                        <span class="badge bg-secondary ms-1">@assignmentGroups.Count</span>
                     </button>
                 </li>
             </ul>
@@ -396,8 +397,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var assignment in Model.RotationAssignments)
+                                    @foreach (var group in assignmentGroups)
                                     {
+                                        var assignment = group.Primary;
                                         Model.Rotations.TryGetValue(assignment.MapRotationId, out var rotation);
                                         <tr>
                                             <td>
@@ -406,7 +408,7 @@
                                                 </a>
                                                 <br />
                                                 <small class="text-muted">
-                                                    <code>@assignment.ConfigVariableName</code>
+                                                    @group.Label
                                                     @if (rotation?.MapRotationMaps != null)
                                                     {
                                                         <span>· @rotation.MapRotationMaps.Count maps</span>
@@ -433,24 +435,36 @@
                                                 }
                                             </td>
                                             <td>
-                                                @switch (assignment.DeploymentState)
+                                                @foreach (var target in group.Targets)
+                                                {
+                                                <div>
+                                                @if (group.IsCombined) { <small>@target.SlotLabel(): </small> }
+                                                @switch (target.DeploymentState)
                                                 {
                                                     case DeploymentState.Pending: <span class="badge bg-warning text-dark">Pending</span> break;
                                                     case DeploymentState.Syncing: <span class="badge bg-info">Syncing</span> break;
                                                     case DeploymentState.Synced: <span class="badge bg-success">Synced</span> break;
                                                     case DeploymentState.PartiallyDeployed: <span class="badge bg-warning text-dark">Partially Deployed</span> break;
                                                     case DeploymentState.Failed: <span class="badge bg-danger">Failed</span> break;
-                                                    default: <span class="badge bg-secondary">@assignment.DeploymentState</span> break;
+                                                    default: <span class="badge bg-secondary">@target.DeploymentState</span> break;
+                                                }
+                                                </div>
                                                 }
                                             </td>
                                             <td>
-                                                @switch (assignment.ActivationState)
+                                                @foreach (var target in group.Targets)
+                                                {
+                                                <div>
+                                                @if (group.IsCombined) { <small>@target.SlotLabel(): </small> }
+                                                @switch (target.ActivationState)
                                                 {
                                                     case ActivationState.Active: <span class="badge bg-success">Active</span> break;
                                                     case ActivationState.Activating: <span class="badge bg-info">Activating</span> break;
                                                     case ActivationState.Inactive: <span class="badge bg-secondary">Inactive</span> break;
                                                     case ActivationState.Failed: <span class="badge bg-danger">Failed</span> break;
-                                                    default: <span class="badge bg-secondary">@assignment.ActivationState</span> break;
+                                                    default: <span class="badge bg-secondary">@target.ActivationState</span> break;
+                                                }
+                                                </div>
                                                 }
                                             </td>
                                             <td>

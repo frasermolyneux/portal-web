@@ -1,6 +1,6 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations
-@model (MapRotationServerAssignmentDto Assignment, GameType GameType, Guid RotationId, bool Busy)
+@model (MapRotationServerAssignmentDto Assignment, GameType GameType, Guid RotationId, bool Busy, bool Inactive)
 @{
     var assignment = Model.Assignment;
     var resource = (Model.GameType, assignment.GameServerId);
@@ -48,17 +48,17 @@
                 <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="ActivateAssignment" method="post">
                     <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                     <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
-                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Update only this slot's configuration. Files are unchanged.">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Update the assignment's configuration targets. Files are unchanged.">
                         <i class="fa-solid fa-fw fa-file-pen" aria-hidden="true"></i> Reapply configuration
                     </button>
                 </form>
             }
-            @if (assignment.ActivationState != ActivationState.Inactive)
+            @if (!Model.Inactive)
             {
                 <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="DeactivateAssignment" method="post">
                     <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                     <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
-                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="Deactivate this slot? Its rotation configuration will be cleared. Map files are kept.">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="Deactivate this server assignment? All linked rotation configuration will be cleared. Map files are kept.">
                         <i class="fa-solid fa-fw fa-stop" aria-hidden="true"></i> Deactivate
                     </button>
                 </form>
@@ -68,7 +68,7 @@
                 <form policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@resource" asp-action="DeleteAssignment" method="post">
                     <input type="hidden" name="assignmentId" value="@assignment.MapRotationServerAssignmentId" />
                     <input type="hidden" name="mapRotationId" value="@Model.RotationId" />
-                    <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Unassign this inactive slot? Map files and the rotation library are kept.">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Unassign this inactive server assignment and linked targets? Map files and the rotation library are kept.">
                         <i class="fa-solid fa-fw fa-unlink" aria-hidden="true"></i> Unassign
                     </button>
                 </form>

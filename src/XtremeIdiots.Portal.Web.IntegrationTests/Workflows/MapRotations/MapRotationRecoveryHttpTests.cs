@@ -9,6 +9,70 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "HttpIntegration")]
 public sealed partial class MapRotationRecoveryHttpTests
 {
+    [Fact]
+    public async Task CombinedChildUrl_RedirectsToHub_ChildPostDispatchesOnlyPrimary()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true);
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationDeployer);
+        using var child = await host.Client.GetAsync($"/MapRotations/AssignmentStatus/{scenario.ChildAssignmentId}");
+        Assert.Equal(HttpStatusCode.Redirect, child.StatusCode);
+        Assert.Equal($"/MapRotations/AssignmentStatus/{scenario.AssignmentId}", child.Headers.Location?.OriginalString);
+        using var page = await host.Client.GetAsync(child.Headers.Location);
+        var token = AntiforgeryToken().Match(await page.Content.ReadAsStringAsync()).Groups[1].Value;
+        Assert.NotEmpty(token);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/MapRotations/ApplyAssignment")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["assignmentId"] = scenario.ChildAssignmentId.ToString(),
+                ["mapRotationId"] = scenario.RotationId.ToString(),
+                ["__RequestVerificationToken"] = token
+            })
+        };
+        request.Headers.Add("Cookie", string.Join("; ", page.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])));
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal($"/MapRotations/AssignmentStatus/{scenario.AssignmentId}", response.Headers.Location?.OriginalString);
+        scenario.Sync.Verify(x => x.TriggerApply(scenario.AssignmentId, It.IsAny<CancellationToken>()), Times.Once);
+        scenario.Sync.Verify(x => x.TriggerApply(scenario.ChildAssignmentId, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AssignmentCreate_RequiresAacpPathOnlyWhenEnabled_EvenWithoutJavascript(bool enabled)
+    {
+        var scenario = new MapRotationAssignmentScenario();
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationDeployer);
+        using var page = await host.Client.GetAsync($"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}");
+        var token = AntiforgeryToken().Match(await page.Content.ReadAsStringAsync()).Groups[1].Value;
+        Assert.NotEmpty(token);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/MapRotations/CreateAssignment")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["MapRotationId"] = MapRotationAssignmentScenario.RotationId.ToString(),
+                ["GameServerId"] = MapRotationAssignmentScenario.PermittedServerId.ToString(),
+                ["ConfigFilePath"] = "server.cfg",
+                ["ConfigVariableName"] = "sv_maprotation",
+                ["AacpEnabled"] = enabled.ToString(),
+                ["__RequestVerificationToken"] = token
+            })
+        };
+        request.Headers.Add("Cookie", string.Join("; ", page.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])));
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(enabled ? HttpStatusCode.OK : HttpStatusCode.Redirect, response.StatusCode);
+        if (enabled)
+        {
+            Assert.Contains("Choose the AACP config file.", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            Assert.Empty(scenario.CreatedAssignments);
+        }
+        else
+            Assert.Null(Assert.Single(scenario.CreatedAssignments).AacpConfigFilePath);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
