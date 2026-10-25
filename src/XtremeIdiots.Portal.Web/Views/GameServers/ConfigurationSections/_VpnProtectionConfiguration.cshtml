@@ -176,10 +176,12 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                 <div class="col-12 mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" value="true"
+                                               id="VpnProtection_LocalRules_@(i)_PostObservationToForums"
                                                data-property="PostObservationToForums" checked="@(rule.PostObservationToForums ? "checked" : null)" />
                                         <input type="hidden" value="false" data-property="PostObservationToForums"
                                                data-checkbox-hidden="PostObservationToForums" />
-                                        <label class="form-check-label" data-label-for="PostObservationToForums">Post observations to forums</label>
+                                        <label class="form-check-label" for="VpnProtection_LocalRules_@(i)_PostObservationToForums"
+                                               data-label-for="PostObservationToForums">Post observations to forums</label>
                                     </div>
                                 </div>
                                 <div class="col-lg-8 mb-3"><label class="form-label"
@@ -415,10 +417,12 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                                                 <div class="col-12 mb-3">
                                                                     <div class="form-check">
                                                                         <input class="form-check-input" type="checkbox" value="true"
+                                                                               id="server-vpn-rule-post-observation-to-forums"
                                                                                data-property="PostObservationToForums" checked="checked" />
                                                                         <input type="hidden" value="false" data-property="PostObservationToForums"
                                                                                data-checkbox-hidden="PostObservationToForums" />
-                                                                        <label class="form-check-label" data-label-for="PostObservationToForums">Post observations to forums</label>
+                                                                        <label class="form-check-label" for="server-vpn-rule-post-observation-to-forums"
+                                                                               data-label-for="PostObservationToForums">Post observations to forums</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-lg-8 mb-3"><label class="form-label" data-label-for="ReasonTemplate">Reason
@@ -505,8 +509,10 @@ GameType.CallOfDuty5 or GameType.CallOfDuty4x;
                                                                                 </div>
                                                                                 <div class="row align-items-end">
                                                                                     <div class="col-12 mb-3">
-                                                                                        <label class="form-label" data-label-for="PostObservationToForums">Post observations to forums override</label>
-                                                                                        <select class="form-select" data-property="PostObservationToForums">
+                                                                                        <label class="form-label" for="server-vpn-override-post-observation-to-forums"
+                                                                                               data-label-for="PostObservationToForums">Post observations to forums override</label>
+                                                                                        <select class="form-select" id="server-vpn-override-post-observation-to-forums"
+                                                                                                data-property="PostObservationToForums">
                                                                                             <option value="">Inherit</option>
                                                                                             <option value="true">Enabled</option>
                                                                                             <option value="false">Disabled (portal only)</option>

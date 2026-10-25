@@ -127,10 +127,12 @@
                                         <div class="col-12 mb-3">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" value="true"
+                                                       id="VpnProtection_Rules_@(i)_PostObservationToForums"
                                                        data-property="PostObservationToForums" checked="@(rule.PostObservationToForums ? "checked" : null)" />
                                                 <input type="hidden" value="false" data-property="PostObservationToForums"
                                                        data-checkbox-hidden="PostObservationToForums" />
-                                                <label class="form-check-label" data-label-for="PostObservationToForums">Post observations to forums</label>
+                                                <label class="form-check-label" for="VpnProtection_Rules_@(i)_PostObservationToForums"
+                                                       data-label-for="PostObservationToForums">Post observations to forums</label>
                                             </div>
                                         </div>
                                         <div class="col-lg-8">
@@ -235,10 +237,12 @@
                                             <div class="col-12 mb-3">
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox" value="true"
+                                                           id="global-vpn-rule-post-observation-to-forums"
                                                            data-property="PostObservationToForums" checked="checked" />
                                                     <input type="hidden" value="false" data-property="PostObservationToForums"
                                                            data-checkbox-hidden="PostObservationToForums" />
-                                                    <label class="form-check-label" data-label-for="PostObservationToForums">Post observations to forums</label>
+                                                    <label class="form-check-label" for="global-vpn-rule-post-observation-to-forums"
+                                                           data-label-for="PostObservationToForums">Post observations to forums</label>
                                                 </div>
                                             </div>
                                             <div class="col-lg-8 mb-3">
