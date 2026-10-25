@@ -84,12 +84,12 @@ public class DashboardController(
             return (summary ?? new AgentServerSummary
             {
                 ServerId = gs.GameServerId,
-                ActivityStatus = AgentActivityStatus.Offline
+                ActivityStatus = AgentActivityStatus.Unknown
             }) with
             {
                 ServerTitle = string.IsNullOrWhiteSpace(live?.Title) ? gs.Title : live.Title,
                 GameType = gs.GameType.ToString(),
-                CurrentMap = summary?.CurrentMap ?? live?.Map,
+                CurrentMap = string.IsNullOrWhiteSpace(summary?.CurrentMap) ? live?.Map : summary.CurrentMap,
                 TelemetryState = result.State
             };
         }).ToList();

@@ -44,17 +44,20 @@
         if (!payload) return;
         var summaries = JSON.parse(payload.textContent) || [];
         var lookup = new Map(summaries.map(function (item) { return [item.serverId.toLowerCase(), item]; }));
-        var counts = [0, 0, 0];
+        var counts = [0, 0, 0, 0];
+        var classes = ['bg-success', 'bg-info', 'bg-warning text-dark', 'bg-secondary'];
+        var labels = ['Healthy', 'Idle', 'Heartbeat overdue', 'Unknown'];
         document.querySelectorAll('[data-agent-server]').forEach(function (row) {
             var summary = lookup.get(row.dataset.agentServer.toLowerCase());
-            // A successful query with no events for this server is an observed offline state.
-            var activity = summary ? summary.activityStatus : 2;
+            var activity = summary ? summary.activityStatus : 3;
             counts[activity]++;
             var badge = document.createElement('span');
-            badge.className = 'badge ' + ['bg-success', 'bg-info', 'bg-danger'][activity];
-            badge.textContent = ['Active', 'Idle', 'Offline'][activity];
+            badge.className = 'badge ' + classes[activity];
+            badge.textContent = labels[activity];
             row.querySelector('[data-agent-field="status"]').replaceChildren(badge);
             row.querySelector('[data-agent-field="events"]').textContent = summary ? summary.eventsLastHour : 0;
+            var heartbeat = summary && summary.lastHeartbeatReceived;
+            row.querySelector('[data-agent-field="heartbeat"]').textContent = heartbeat ? utcDate(heartbeat).toLocaleString() : 'Not observed';
             var last = summary && summary.lastEventReceived;
             row.querySelector('[data-agent-field="lastEvent"]').textContent = last ? utcDate(last).toLocaleString() : '—';
         });
@@ -63,8 +66,8 @@
             total.replaceChildren();
             counts.forEach(function (count, index) {
                 var badge = document.createElement('span');
-                badge.className = 'badge me-1 ' + ['bg-success', 'bg-info', 'bg-danger'][index];
-                badge.textContent = count + ' ' + ['Active', 'Idle', 'Offline'][index];
+                badge.className = 'badge me-1 ' + classes[index];
+                badge.textContent = count + ' ' + labels[index];
                 total.append(badge);
             });
         }
@@ -93,6 +96,7 @@
             row.querySelector('[data-agent-field="status"]').textContent = 'Unavailable';
             row.querySelector('[data-agent-field="events"]').textContent = '—';
             row.querySelector('[data-agent-field="lastEvent"]').textContent = '—';
+            row.querySelector('[data-agent-field="heartbeat"]').textContent = '—';
         });
     }
 

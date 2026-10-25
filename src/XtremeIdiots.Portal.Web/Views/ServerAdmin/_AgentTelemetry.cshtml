@@ -11,8 +11,14 @@ else
     {
         AgentActivityStatus.Active => "bg-success",
         AgentActivityStatus.Idle => "bg-info",
-        AgentActivityStatus.Offline => "bg-danger",
+        AgentActivityStatus.Offline => "bg-warning text-dark",
         _ => "bg-secondary"
+    };
+    var statusLabel = status.ActivityStatus switch
+    {
+        AgentActivityStatus.Active => "Healthy",
+        AgentActivityStatus.Offline => "Heartbeat overdue",
+        _ => status.ActivityStatus.ToString()
     };
     @if (Model.State == OptionalDataState.Stale)
     {
@@ -20,7 +26,18 @@ else
     }
     <dl class="row mb-0">
         <dt class="col-6">Status</dt>
-        <dd class="col-6"><span class="badge @statusClass">@status.ActivityStatus</span></dd>
+        <dd class="col-6"><span class="badge @statusClass">@statusLabel</span></dd>
+        <dt class="col-6">Last Heartbeat</dt>
+        <dd class="col-6">
+            @if (status.LastHeartbeatReceived.HasValue)
+            {
+                <time time-ago utc="@status.LastHeartbeatReceived.Value" show-absolute="false"></time>
+            }
+            else
+            {
+                <span class="text-muted">Not observed</span>
+            }
+        </dd>
         <dt class="col-6">Events/Hour</dt><dd class="col-6">@status.EventsLastHour</dd>
         <dt class="col-6">Chat/Hour</dt><dd class="col-6">@status.ChatMessagesLastHour</dd>
         @if (status.LastEventReceived.HasValue)

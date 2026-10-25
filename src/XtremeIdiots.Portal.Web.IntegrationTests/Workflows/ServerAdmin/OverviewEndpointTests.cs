@@ -105,9 +105,9 @@ public sealed class OverviewEndpointTests
         }
         else
         {
-            Assert.Contains("0 Active", html, StringComparison.Ordinal);
-            Assert.Contains("1 Offline", html, StringComparison.Ordinal);
-            Assert.Contains("bg-danger", html, StringComparison.Ordinal);
+            Assert.Contains("0 Healthy", html, StringComparison.Ordinal);
+            Assert.Contains("1 Unknown", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("1 Heartbeat overdue", html, StringComparison.Ordinal);
             Assert.DoesNotContain("Unavailable", html, StringComparison.Ordinal);
         }
     }
@@ -146,7 +146,7 @@ public sealed class OverviewEndpointTests
 
         using var telemetry = await panel;
         Assert.Equal(HttpStatusCode.OK, telemetry.StatusCode);
-        Assert.Contains("Active", await telemetry.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Contains("Healthy", await telemetry.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class OverviewEndpointTests
         using var basic = await host.Client.GetAsync($"/ServerAdmin/GetOverviewTelemetry/{scenario.GameServerId}?detailed=false");
         Assert.Equal(HttpStatusCode.OK, basic.StatusCode);
         var basicHtml = await basic.Content.ReadAsStringAsync();
-        Assert.Contains("Active", basicHtml, StringComparison.Ordinal);
+        Assert.Contains("Healthy", basicHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Players Connected/Hour", basicHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Bans Detected", basicHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Moderation Triggers", basicHtml, StringComparison.Ordinal);
