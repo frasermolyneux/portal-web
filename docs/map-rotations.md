@@ -22,6 +22,10 @@ map picker** and supply the **AACP config file** to maintain `scr_aacp_maps_1`
 alongside `sv_maprotation`. The option belongs to this server assignment, not to
 the rotation library. Both configuration targets are saved atomically.
 
+Saving a server assignment automatically marks a **Draft** or **Testing** library
+entry as **Published**. Published and Archived entries are left unchanged. This
+does not apply configuration or upload maps; run **Apply rotation** for that.
+
 A matching normal/map-picker pair is shown as one server row and one Manage
 page, only when both rows have the same rotation ID and server ID. All actions
 operate on this pair with one request. Files are shared: Apply/Repair do not

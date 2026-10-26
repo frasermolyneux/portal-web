@@ -95,83 +95,22 @@ public class MapRotationsControllerTests
         Assert.Equal(MapRotationStatus.Draft, model.Status);
     }
 
-    [Fact]
-    public async Task ActivateAssignment_WhenActivationSucceedsAndRotationIsDraft_AddsPublishedPromotionAlert()
+    [Theory]
+    [InlineData(MapRotationStatus.Draft)]
+    [InlineData(MapRotationStatus.Testing)]
+    public async Task ActivateAssignment_QueuesConfigurationWithoutChangingLibraryStatus(MapRotationStatus status)
     {
-        // Arrange
-        var assignmentId = Guid.NewGuid();
-        var mapRotationId = Guid.NewGuid();
-        var gameServerId = Guid.NewGuid();
-        var userProfileId = Guid.NewGuid();
-
-        var user = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim(UserProfileClaimType.UserProfileId, userProfileId.ToString())
-        ], "TestAuth"));
-
-        var initialRotation = new MapRotationDto(
-            mapRotationId,
-            GameType.CallOfDuty4,
-            "Rotation A",
-            "desc",
-            "tdm",
-            version: 1,
-            contentHash: null,
-            createdAt: DateTime.UtcNow.AddDays(-1),
-            updatedAt: DateTime.UtcNow.AddHours(-1),
-            mapRotationMaps: [],
-            serverAssignments: [
-                new MapRotationServerAssignmentDto(
-                    assignmentId,
-                    mapRotationId,
-                    gameServerId,
-                    DeploymentState.Synced,
-                    ActivationState.Inactive,
-                    deployedVersion: 1,
-                    activatedVersion: null,
-                    configFilePath: "maps/mp.cfg",
-                    configVariableName: "sv_mapRotationCurrent",
-                    lastError: null,
-                    lastErrorAt: null,
-                    createdAt: DateTime.UtcNow.AddDays(-1),
-                    updatedAt: DateTime.UtcNow.AddHours(-1),
-                    unassignedAt: null)
-            ])
+        var (sut, assignment) = SetupRecovery();
+        var rotation = CreateRotation(assignment.MapRotationId, GameType.CallOfDuty4, serverAssignments: [assignment]) with
         {
-            Status = MapRotationStatus.Draft
+            Status = status
         };
-
-        var freshRotation = new MapRotationDto(
-            mapRotationId,
-            GameType.CallOfDuty4,
-            "Rotation A",
-            "desc",
-            "tdm",
-            version: 1,
-            contentHash: null,
-            createdAt: DateTime.UtcNow.AddDays(-1),
-            updatedAt: DateTime.UtcNow.AddHours(-1),
-            mapRotationMaps: [],
-            serverAssignments: [])
-        {
-            Status = MapRotationStatus.Draft
-        };
-
         mockRepositoryApiClient
-            .SetupSequence(x => x.MapRotations.V1.GetMapRotation(mapRotationId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(initialRotation)))
-            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(freshRotation)));
-
+            .Setup(x => x.MapRotations.V1.GetMapRotation(assignment.MapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
         mockSyncApiClient
-            .Setup(x => x.TriggerActivate(assignmentId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SyncTriggerResult(true, $"maprot-activate-{assignmentId}"));
-
-        mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<ClaimsPrincipal>(),
-                It.IsAny<object?>(),
-                AuthPolicies.MapRotations_Deploy))
-            .ReturnsAsync(AuthorizationResult.Success());
-
+            .Setup(x => x.TriggerActivate(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncTriggerResult(true));
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(
                 It.IsAny<ClaimsPrincipal>(),
@@ -179,24 +118,16 @@ public class MapRotationsControllerTests
                 AuthPolicies.MapRotations_Write))
             .ReturnsAsync(AuthorizationResult.Success());
 
-        mockRepositoryApiClient
-            .Setup(x => x.MapRotations.V1.UpdateMapRotation(
-                It.Is<UpdateMapRotationDto>(dto => dto.MapRotationId == mapRotationId && dto.Status == MapRotationStatus.Published),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(freshRotation)));
+        var result = await sut.ActivateAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId);
 
-        var sut = CreateSut(user);
-
-        // Act
-        var result = await sut.ActivateAssignment(assignmentId, mapRotationId);
-
-        // Assert
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MapRotationsController.AssignmentStatus), redirectResult.ActionName);
-        Assert.Equal(assignmentId, redirectResult.RouteValues?["id"]);
-
+        Assert.Equal(assignment.MapRotationServerAssignmentId, redirectResult.RouteValues?["id"]);
+        mockSyncApiClient.Verify(x => x.TriggerActivate(assignment.MapRotationServerAssignmentId, It.IsAny<CancellationToken>()), Times.Once);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateMapRotation(
+            It.IsAny<UpdateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
         var alertsJson = sut.TempData["Alerts"]?.ToString() ?? string.Empty;
-        Assert.Contains("Rotation status automatically promoted to Published.", alertsJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("promoted to Published", alertsJson, StringComparison.Ordinal);
     }
 
     [Fact]
