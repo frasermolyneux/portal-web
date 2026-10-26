@@ -32,7 +32,15 @@ internal sealed class MapRotationImportScenario
             .ReturnsAsync(new ApiResult<CollectionModel<MapRotationDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<MapRotationDto>>(new CollectionModel<MapRotationDto>([]))));
 
-        var bytes = Encoding.UTF8.GetBytes("// set rcon_password \"synthetic-secret\"\n// Rotation #4 by syntheticAuthor 2026-10-26\nset sv_maprotation \"gametype dm map mp_alpha map mp_beta\"");
+        var bytes = Encoding.UTF8.GetBytes("""
+            set sv_mapRotationLoadBased "1"
+            set sv_mapRotationScramble "1"
+            // set sv_mapRotation "gametype gametype map map"
+            set sv_mapRotation ""
+            // set rcon_password "synthetic-secret"
+            // Rotation #4 by syntheticAuthor 2026-10-26
+            set sv_maprotation "gametype dm map mp_alpha map map mp_beta"
+            """);
         Servers.Setup(x => x.Files.V1.GetMetadata(MapRotationAssignmentScenario.PermittedServerId,
             It.Is<GetEntryMetadataQueryDto>(q => q.Path == ConfigPath), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<FileEntryMetadataDto>(HttpStatusCode.OK, new ApiResponse<FileEntryMetadataDto>(

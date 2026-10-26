@@ -102,6 +102,36 @@ public class MapRotationsControllerTests
     }
 
     [Theory]
+    [InlineData("server")]
+    [InlineData("upload")]
+    [InlineData("paste")]
+    public async Task Import_AllSources_ExcludeControlsEmptyExamplesAndDirectiveMapNames(string source)
+    {
+        const string cfg = """
+            set sv_mapRotationLoadBased "1"
+            set sv_mapRotationScramble "1"
+            // set sv_mapRotation "blah blah blah..."
+            // set sv_mapRotation "gametype gametype map map"
+            set sv_mapRotation ""
+            set sv_mapRotation "gametype dm map mp_alpha map map mp_beta"
+            """;
+        var bytes = Encoding.UTF8.GetBytes(cfg);
+        var (_, model) = SetupServerImport(bytes);
+        model.FromGameServer = source == "server";
+        model.CfgContent = source == "paste" ? cfg : null;
+        using var stream = new MemoryStream(bytes);
+        if (source == "upload")
+            model.CfgFile = new FormFile(stream, 0, stream.Length, "CfgFile", "maprotation.cfg");
+
+        var view = Assert.IsType<ViewResult>(await CreateSut().Import(model));
+        var preview = Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model);
+
+        Assert.Equal("ImportPreview", view.ViewName);
+        Assert.Equal(["mp_alpha", "mp_beta"], Assert.Single(preview.Rotations).MapNames);
+        Assert.Equal(["mp_alpha", "mp_beta"], preview.NewMapNames);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Import_FromServer_RejectsOversizedOrGrowingFilesWithoutPreview(bool grows)
