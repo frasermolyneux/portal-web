@@ -35,9 +35,20 @@
                                     }
                                     <div id="aacp-config" class="mt-2" hidden="@(!Model.AacpEnabled)">
                                         <label asp-for="AacpConfigFilePath" class="form-label"></label>
-                                        <input asp-for="AacpConfigFilePath" class="form-control" required="@Model.AacpEnabled" />
+                                        <div class="input-group">
+                                            <input asp-for="AacpConfigFilePath" class="form-control" required="@Model.AacpEnabled"
+                                                   aria-describedby="AacpConfigFilePathHelp" />
+                                            @if (Model.CanBrowseServerFiles && Model.FileTransportType != FileTransportType.Unknown)
+                                            {
+                                                <button class="btn btn-outline-secondary" type="button" id="AacpConfigFilePathBrowseBtn"
+                                                        title="Browse AACP config files"
+                                                        onclick="openServerFileBrowser('@Model.GameServerId', 'AacpConfigFilePath', 'map-rotation-assignment', '.cfg')">
+                                                    <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
+                                                </button>
+                                            }
+                                        </div>
                                         <span asp-validation-for="AacpConfigFilePath" class="text-danger"></span>
-                                        <small class="form-text text-muted">Updates the map picker together with the main rotation on this server.</small>
+                                        <small class="form-text text-muted" id="AacpConfigFilePathHelp">Uses <code>scr_aacp_maps_1</code> automatically; the main rotation stays on <code>sv_maprotation</code>.</small>
                                     </div>
                                 </div>
                             }

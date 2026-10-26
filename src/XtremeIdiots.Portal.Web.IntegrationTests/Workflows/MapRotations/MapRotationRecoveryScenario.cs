@@ -22,7 +22,7 @@ internal sealed class MapRotationRecoveryScenario
 
     public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
         AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress, DateTime? completedAt = null,
-        bool combined = false, bool childFailed = false, bool childBusy = false)
+        bool combined = false, bool childFailed = false, bool childBusy = false, bool fileTransportEnabled = false)
     {
         var serverId = permitted ? Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId) : Guid.NewGuid();
         var assignment = new MapRotationServerAssignmentDto(AssignmentId, RotationId, serverId,
@@ -41,7 +41,14 @@ internal sealed class MapRotationRecoveryScenario
         Repository.Setup(x => x.MapRotations.V1.GetServerAssignment(ChildAssignmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(HttpStatusCode.OK, new ApiResponse<MapRotationServerAssignmentDto>(picker)));
         Repository.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(new GameServerDto())));
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(
+                Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(Newtonsoft.Json.JsonConvert.SerializeObject(new
+                {
+                    GameServerId = serverId,
+                    GameType = GameType.CallOfDuty4,
+                    FileTransportEnabled = fileTransportEnabled,
+                    FileTransportType = fileTransportEnabled ? FileTransportType.Sftp : FileTransportType.Unknown
+                }))!)));
         Repository.Setup(x => x.GameServers.V1.GetGameServers(
                 It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(),
                 It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))

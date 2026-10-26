@@ -102,6 +102,102 @@ public sealed class MapRotationRecoveryBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssignmentForms_AacpBrowseSelectsOnlyItsConfigAndExplainsAutomaticVariable(bool edit)
+    {
+        var create = new MapRotationAssignmentScenario(fileTransportEnabled: true);
+        var recovery = new MapRotationRecoveryScenario(combined: true, fileTransportEnabled: true);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer,
+            edit ? recovery.ConfigureServices : create.ConfigureServices);
+        var endpoint = $"/api/file-browse/{MapRotationAssignmentScenario.PermittedServerId}/browse";
+        await browser.Page.RouteAsync("**" + endpoint + "?**", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = /*lang=json,strict*/ """
+                {"currentPath":"/","parentPath":null,"items":[
+                    {"name":"advancedacp.cfg","fullPath":"/configs/advancedacp.cfg","type":"File","size":100},
+                    {"name":"mapcontrol.cfg","fullPath":"/configs/mapcontrol.cfg","type":"File","size":100},
+                    {"name":"server.log","fullPath":"/logs/server.log","type":"File","size":200}
+                ]}
+                """
+        }));
+        var url = edit ? $"/MapRotations/EditAssignment/{recovery.AssignmentId}"
+            : $"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, url).AbsoluteUri);
+        await browser.Page.GetByLabel("Also update AACP map picker", new() { Exact = true }).CheckAsync();
+        var browse = browser.Page.Locator("#AacpConfigFilePathBrowseBtn");
+        var mainBrowse = browser.Page.Locator("#ConfigFilePathBrowseBtn");
+        if (!edit)
+        {
+            await Assertions.Expect(browse).Not.ToBeVisibleAsync();
+            await Assertions.Expect(mainBrowse).Not.ToBeVisibleAsync();
+            await browser.Page.GetByTestId("server-select").SelectOptionAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        }
+
+        await Assertions.Expect(browse).ToBeVisibleAsync();
+        await Assertions.Expect(mainBrowse).ToBeVisibleAsync();
+        var pointer = browser.Page.Locator("#AacpConfigFilePathHelp");
+        await Assertions.Expect(pointer).ToBeVisibleAsync();
+        await Assertions.Expect(pointer).ToContainTextAsync("scr_aacp_maps_1");
+        await Assertions.Expect(pointer).ToContainTextAsync("sv_maprotation");
+        var main = browser.Page.GetByLabel("Config File", new() { Exact = true });
+        await main.FillAsync("/configs/original.cfg");
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browse.ClickAsync(),
+            response => response.Request.Method == "GET" && new Uri(response.Url).AbsolutePath == endpoint);
+        Assert.Contains("purpose=map-rotation-assignment", new Uri(response.Url).Query, StringComparison.Ordinal);
+        await Assertions.Expect(browser.Page.Locator("#fileBrowseModal")).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#fileBrowseListingBody tr").Filter(new() { HasText = "server.log" }))
+            .ToHaveClassAsync("opacity-50");
+        await browser.Page.Locator("#fileBrowseListingBody tr").Filter(new() { HasText = "advancedacp.cfg" }).ClickAsync();
+        await browser.Page.Locator("#fileBrowseSelectBtn").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#fileBrowseModal")).Not.ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.GetByLabel("AACP config file", new() { Exact = true }))
+            .ToHaveValueAsync("/configs/advancedacp.cfg");
+        await Assertions.Expect(main).ToHaveValueAsync("/configs/original.cfg");
+        await Assertions.Expect(browser.Page.GetByLabel("Config Variable", new() { Exact = true })).ToHaveValueAsync("sv_maprotation");
+        await browser.Page.RunAndWaitForResponseAsync(
+            () => mainBrowse.ClickAsync(),
+            response => response.Request.Method == "GET" && new Uri(response.Url).AbsolutePath == endpoint);
+        await browser.Page.Locator("#fileBrowseListingBody tr").Filter(new() { HasText = "mapcontrol.cfg" }).ClickAsync();
+        await browser.Page.Locator("#fileBrowseSelectBtn").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#fileBrowseModal")).Not.ToBeVisibleAsync();
+        await Assertions.Expect(main).ToHaveValueAsync("/configs/mapcontrol.cfg");
+        await Assertions.Expect(browser.Page.GetByLabel("AACP config file", new() { Exact = true }))
+            .ToHaveValueAsync("/configs/advancedacp.cfg");
+        if (!edit)
+        {
+            await browser.Page.GetByTestId("server-select").SelectOptionAsync("");
+            await Assertions.Expect(browse).Not.ToBeVisibleAsync();
+            await Assertions.Expect(mainBrowse).Not.ToBeVisibleAsync();
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssignmentForms_WithoutFileTransport_KeepManualAacpEntryWithoutBrowse(bool edit)
+    {
+        var create = new MapRotationAssignmentScenario();
+        var recovery = new MapRotationRecoveryScenario(combined: true);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer,
+            edit ? recovery.ConfigureServices : create.ConfigureServices);
+        var url = edit ? $"/MapRotations/EditAssignment/{recovery.AssignmentId}"
+            : $"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, url).AbsoluteUri);
+        await browser.Page.GetByLabel("Also update AACP map picker", new() { Exact = true }).CheckAsync();
+        await Assertions.Expect(browser.Page.Locator("#AacpConfigFilePathBrowseBtn")).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.Locator("#ConfigFilePathBrowseBtn")).ToHaveCountAsync(0);
+        var path = browser.Page.GetByLabel("AACP config file", new() { Exact = true });
+        await path.FillAsync("/configs/advancedacp.cfg");
+        await Assertions.Expect(path).ToHaveValueAsync("/configs/advancedacp.cfg");
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task CombinedEdit_FromChild_LoadsCheckedAacpAndRejectsActiveUncheck()
     {
