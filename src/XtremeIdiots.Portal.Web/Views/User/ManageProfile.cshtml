@@ -74,6 +74,11 @@
                                             </div>
                                         </dl>
                                     </div>
+                                    <div class="ibox-footer" policy="@AuthPolicies.Users_Archive" policy-resource="@Model.Profile">
+                                        <a asp-action="Archive" asp-route-id="@Model.Profile.UserProfileId" class="btn btn-outline-danger">
+                                            <i class="fa-solid fa-fw fa-box-archive" aria-hidden="true"></i> Archive Portal Profile
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 
