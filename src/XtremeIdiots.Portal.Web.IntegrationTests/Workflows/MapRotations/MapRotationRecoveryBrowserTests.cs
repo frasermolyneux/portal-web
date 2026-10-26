@@ -1,5 +1,6 @@
 using Microsoft.Playwright;
 using Moq;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -10,6 +11,104 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "Browser")]
 public sealed class MapRotationRecoveryBrowserTests
 {
+    [Fact]
+    public async Task Import_ServerPickerUsesScopedBrowseAndExistingPreviewWithoutExposingOtherConfig()
+    {
+        var scenario = new MapRotationImportScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        var endpoint = $"/api/file-browse/{MapRotationAssignmentScenario.PermittedServerId}/browse";
+        await browser.Page.RouteAsync("**" + endpoint + "?**", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = /*lang=json,strict*/ """
+                {"currentPath":"/","parentPath":null,"items":[
+                    {"name":"maprotation.cfg","fullPath":"/configs/maprotation.cfg","type":"File","size":100},
+                    {"name":"server.log","fullPath":"/server.log","type":"File","size":100}
+                ]}
+                """
+        }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations/Import").AbsoluteUri);
+        var source = browser.Page.GetByLabel("Read config from a game server", new() { Exact = true });
+        var local = browser.Page.GetByLabel("Config Content", new() { Exact = true });
+        await Assertions.Expect(local).ToBeVisibleAsync();
+        await source.CheckAsync();
+        await Assertions.Expect(local).Not.ToBeVisibleAsync();
+        var server = browser.Page.GetByLabel("Game Server", new() { Exact = true });
+        await Assertions.Expect(server.Locator($"option[value='{MapRotationAssignmentScenario.NonPermittedServerId}']")).ToHaveCountAsync(0);
+        await server.SelectOptionAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        var browse = browser.Page.GetByRole(AriaRole.Button, new() { Name = "Browse", Exact = true });
+        var response = await browser.Page.RunAndWaitForResponseAsync(() => browse.ClickAsync(),
+            response => response.Request.Method == "GET" && new Uri(response.Url).AbsolutePath == endpoint);
+        Assert.Contains("purpose=map-rotation-import", new Uri(response.Url).Query, StringComparison.Ordinal);
+        await Assertions.Expect(browser.Page.Locator("#fileBrowseListingBody tr").Filter(new() { HasText = "server.log" })).ToHaveClassAsync("opacity-50");
+        await browser.Page.Locator("#fileBrowseListingBody tr").Filter(new() { HasText = "maprotation.cfg" }).ClickAsync();
+        await browser.Page.Locator("#fileBrowseSelectBtn").ClickAsync();
+        var path = browser.Page.GetByLabel("Server Config File", new() { Exact = true });
+        await Assertions.Expect(path).ToHaveValueAsync(MapRotationImportScenario.ConfigPath);
+        await source.UncheckAsync();
+        await Assertions.Expect(local).ToBeVisibleAsync();
+        await source.CheckAsync();
+        await Assertions.Expect(path).ToHaveValueAsync(MapRotationImportScenario.ConfigPath);
+
+        var preview = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = "Parse & Preview", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/Import");
+        Assert.Equal(200, preview.Status);
+        await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("mp_alpha");
+        await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("mp_beta");
+        await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("synthetic-secret");
+        scenario.Servers.Verify(x => x.Files.V1.GetContent(MapRotationAssignmentScenario.PermittedServerId,
+            It.Is<GetFileContentQueryDto>(q => q.Path == MapRotationImportScenario.ConfigPath && q.RangeEnd == 1_000_000),
+            It.IsAny<CancellationToken>()), Times.Once);
+        Assert.DoesNotContain(scenario.Repository.Invocations, invocation => invocation.Method.Name.StartsWith("Create", StringComparison.Ordinal));
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MapEditor_SuggestionsShowAtLeastSixCompleteMapsAndCanSelectBeyondTheFold(bool edit)
+    {
+        var scenario = new MapRotationRecoveryScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        var maps = Enumerable.Range(0, 12).Select(index => new
+        {
+            id = Guid.Parse($"00000000-0000-0000-0000-{index + 1:D12}").ToString(),
+            text = $"mp_test_{index}",
+            imageUrl = "/images/noimage.jpg"
+        }).ToArray();
+        await browser.Page.RouteAsync("**/MapSearch/Maps?**", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json", Body = System.Text.Json.JsonSerializer.Serialize(maps)
+        }));
+        var url = edit ? $"/MapRotations/Edit/{scenario.RotationId}" : "/MapRotations/Create";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, url).AbsoluteUri);
+        await browser.Page.Locator("#mapSearch").FillAsync("mp_test");
+        var suggestions = browser.Page.Locator(".map-suggestions");
+        await Assertions.Expect(suggestions.Locator("button")).ToHaveCountAsync(12);
+        await suggestions.ScrollIntoViewIfNeededAsync();
+        var visibleMaps = await suggestions.EvaluateAsync<int>("""
+            list => {
+                const bounds = list.getBoundingClientRect();
+                const card = list.closest('.ibox').getBoundingClientRect();
+                return [...list.children].filter(item => {
+                    const row = item.getBoundingClientRect();
+                    return row.top >= Math.max(0, bounds.top) && row.bottom <= Math.min(innerHeight, bounds.bottom, card.bottom);
+                }).length;
+            }
+            """);
+        Assert.True(visibleMaps >= 6, $"Only {visibleMaps} complete map suggestions were visible.");
+        await suggestions.GetByRole(AriaRole.Option, new() { Name = "mp_test_11", Exact = true }).ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#selectedMapsList")).ToContainTextAsync("mp_test_11");
+        await Assertions.Expect(browser.Page.Locator("#mapIdsContainer input").Last).ToHaveValueAsync(maps[11].id);
+        await browser.Page.Locator("#mapSearch").FillAsync("mp_test");
+        await Assertions.Expect(suggestions).ToBeVisibleAsync();
+        await browser.Page.Locator("#mapSearch").PressAsync("ArrowDown");
+        await browser.Page.Locator("#mapSearch").PressAsync("Enter");
+        await Assertions.Expect(browser.Page.Locator("#selectedMapsList")).ToContainTextAsync("mp_test_0");
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task CombinedAssignment_OneServerRowAndHub_ChildNavigationAndPrimaryAction()
     {

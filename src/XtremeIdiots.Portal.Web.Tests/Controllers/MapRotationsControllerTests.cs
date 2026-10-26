@@ -12,6 +12,9 @@ using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using System.Net;
 using System.Security.Claims;
+using System.Text;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -30,6 +33,7 @@ public class MapRotationsControllerTests
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly Mock<ISyncApiClient> mockSyncApiClient = new();
+    private readonly Mock<IServersApiClient> mockServersApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly Mock<IMapMetadataService> mockMapMetadataService = new();
     private readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
@@ -45,6 +49,210 @@ public class MapRotationsControllerTests
                 new ApiResponse<CollectionModel<MapRotationAssignmentOperationDto>>(new CollectionModel<MapRotationAssignmentOperationDto>([]))));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Import_FromServer_UsesExistingPreviewAndBomDetectionWithoutWrites(bool utf16)
+    {
+        const string cfg = "set rcon_password \"synthetic-secret\"\n// Rotation #4\nset sv_maprotation \"gametype dm map mp_alpha map mp_beta\"";
+        var bytes = Encoding.UTF8.GetBytes(cfg);
+        if (utf16)
+            bytes = [.. Encoding.Unicode.GetPreamble(), .. Encoding.Unicode.GetBytes(cfg)];
+        var (server, model) = SetupServerImport(bytes);
+        model.CfgContent = "set sv_maprotation \"gametype dm map mp_wrong_source\"";
+
+        var result = await CreateSut().Import(model);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal("ImportPreview", view.ViewName);
+        var preview = Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model);
+        Assert.Equal(GameType.CallOfDuty4, preview.GameType);
+        Assert.Equal(["mp_alpha", "mp_beta"], Assert.Single(preview.Rotations).MapNames);
+        Assert.NotNull(memoryCache.Get<string>($"ImportDraft_{preview.DraftId}"));
+        mockServersApiClient.Verify(x => x.Files.V1.GetContent(server.GameServerId,
+            It.Is<GetFileContentQueryDto>(q => q.Path == model.ServerCfgPath && q.Mode == FileContentMode.Binary && q.RangeStart == 0 && q.RangeEnd == 1_000_000),
+            It.IsAny<CancellationToken>()), Times.Once);
+        mockServersApiClient.Verify(x => x.Files.V1.PutContent(It.IsAny<Guid>(), It.IsAny<PutFileContentRequestDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSyncApiClient.Verify(x => x.TriggerApply(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Import_FromServer_RequiresWriteAndDeployForTheResolvedServer(bool write, bool deploy)
+    {
+        var (server, model) = SetupServerImport();
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), server.GameType, AuthPolicies.MapRotations_Write))
+            .ReturnsAsync(write ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var resource = (server.GameType, server.GameServerId);
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), resource, AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(deploy ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+
+        Assert.IsType<ForbidResult>(await CreateSut().Import(model));
+        mockServersApiClient.Verify(x => x.Files.V1.GetMetadata(It.IsAny<Guid>(), It.IsAny<GetEntryMetadataQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockServersApiClient.Verify(x => x.Files.V1.GetContent(It.IsAny<Guid>(), It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Import_FromServer_RejectsOversizedOrGrowingFilesWithoutPreview(bool grows)
+    {
+        var (server, model) = SetupServerImport();
+        if (grows)
+            mockServersApiClient.Setup(x => x.Files.V1.GetContent(server.GameServerId, It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ApiResult<FileContentDto>(HttpStatusCode.OK, new ApiResponse<FileContentDto>(
+                    new FileContentDto(model.ServerCfgPath!, FileContentMode.Binary, "base64", 1_000_001, null, "unused"))));
+        else
+            mockServersApiClient.Setup(x => x.Files.V1.GetMetadata(server.GameServerId, It.IsAny<GetEntryMetadataQueryDto>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ApiResult<FileEntryMetadataDto>(HttpStatusCode.OK, new ApiResponse<FileEntryMetadataDto>(
+                    new FileEntryMetadataDto("maprotation.cfg", model.ServerCfgPath!, FileEntryType.File, 1_000_001, null))));
+        var sut = CreateSut();
+
+        var view = Assert.IsType<ViewResult>(await sut.Import(model));
+
+        Assert.Equal("Import", view.ViewName);
+        Assert.Contains(sut.ModelState[nameof(model.ServerCfgPath)]!.Errors, error => error.ErrorMessage.Contains("1 MB", StringComparison.Ordinal));
+        Assert.Single(Assert.IsType<ImportMapRotationsViewModel>(view.Model).AvailableServers);
+        if (!grows)
+            mockServersApiClient.Verify(x => x.Files.V1.GetContent(It.IsAny<Guid>(), It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Import_FromServer_ReadFailuresKeepTheSelectionAndShowAnError(bool contentFailure)
+    {
+        var (server, model) = SetupServerImport();
+        if (contentFailure)
+            mockServersApiClient.Setup(x => x.Files.V1.GetContent(server.GameServerId, It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ApiResult<FileContentDto>(HttpStatusCode.NotFound, new ApiResponse<FileContentDto>()));
+        else
+            mockServersApiClient.Setup(x => x.Files.V1.GetMetadata(server.GameServerId, It.IsAny<GetEntryMetadataQueryDto>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ApiResult<FileEntryMetadataDto>(HttpStatusCode.NotFound, new ApiResponse<FileEntryMetadataDto>()));
+        var sut = CreateSut();
+
+        var view = Assert.IsType<ViewResult>(await sut.Import(model));
+
+        Assert.Equal("Import", view.ViewName);
+        var returned = Assert.IsType<ImportMapRotationsViewModel>(view.Model);
+        Assert.Equal(server.GameServerId, returned.GameServerId);
+        Assert.Equal(model.ServerCfgPath, returned.ServerCfgPath);
+        Assert.Single(returned.AvailableServers);
+        Assert.NotEmpty(sut.ModelState[nameof(model.ServerCfgPath)]!.Errors);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Import_PasteAndUpload_StillUsePreviewWithoutReadingTheServer(bool upload)
+    {
+        var (_, model) = SetupServerImport();
+        const string cfg = "set sv_maprotation \"gametype dm map mp_alpha\"";
+        model.FromGameServer = false;
+        model.CfgContent = upload ? null : cfg;
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(cfg));
+        if (upload)
+            model.CfgFile = new FormFile(stream, 0, stream.Length, "CfgFile", "maprotation.cfg");
+
+        var view = Assert.IsType<ViewResult>(await CreateSut().Import(model));
+
+        Assert.Equal("ImportPreview", view.ViewName);
+        Assert.Equal(["mp_alpha"], Assert.Single(Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model).Rotations).MapNames);
+        mockServersApiClient.Verify(x => x.Files.V1.GetContent(It.IsAny<Guid>(), It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Import_FromServer_AcceptsExactlyOneMegabyte()
+    {
+        var bytes = new byte[1_000_000];
+        Array.Fill(bytes, (byte)' ');
+        Encoding.UTF8.GetBytes("set sv_maprotation \"gametype dm map mp_alpha\"").CopyTo(bytes, 0);
+        var (_, model) = SetupServerImport(bytes);
+
+        var view = Assert.IsType<ViewResult>(await CreateSut().Import(model));
+
+        Assert.Equal("ImportPreview", view.ViewName);
+        Assert.Equal(["mp_alpha"], Assert.Single(Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model).Rotations).MapNames);
+    }
+
+    [Theory]
+    [InlineData(FileEntryType.Directory, 100L)]
+    [InlineData(FileEntryType.File, 0L)]
+    [InlineData(FileEntryType.File, null)]
+    public async Task Import_FromServer_RejectsDirectoriesEmptyFilesAndUnknownSizesBeforeReading(FileEntryType type, long? size)
+    {
+        var (server, model) = SetupServerImport();
+        mockServersApiClient.Setup(x => x.Files.V1.GetMetadata(server.GameServerId, It.IsAny<GetEntryMetadataQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<FileEntryMetadataDto>(HttpStatusCode.OK, new ApiResponse<FileEntryMetadataDto>(
+                new FileEntryMetadataDto("maprotation.cfg", model.ServerCfgPath!, type, size, null))));
+        var sut = CreateSut();
+
+        var view = Assert.IsType<ViewResult>(await sut.Import(model));
+
+        Assert.Equal("Import", view.ViewName);
+        Assert.NotEmpty(sut.ModelState[nameof(model.ServerCfgPath)]!.Errors);
+        mockServersApiClient.Verify(x => x.Files.V1.GetContent(It.IsAny<Guid>(), It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Import_ServerChoices_ExcludeUnauthorizedAndUnavailableServers()
+    {
+        var (server, _) = SetupServerImport();
+        var forbidden = CreateGameServer(Guid.NewGuid(), server.GameType);
+        SetDtoProperty(forbidden, nameof(forbidden.FileTransportEnabled), true);
+        SetDtoProperty(forbidden, nameof(forbidden.FileTransportType), FileTransportType.Ftp);
+        var disabled = CreateGameServer(Guid.NewGuid(), server.GameType);
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
+            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([server, forbidden, disabled]))));
+        var resource = (GameType.CallOfDuty4, forbidden.GameServerId);
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), resource, AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(AuthorizationResult.Failed());
+
+        var view = Assert.IsType<ViewResult>(await CreateSut().Import());
+
+        Assert.Equal(server.GameServerId, Assert.Single(Assert.IsType<ImportMapRotationsViewModel>(view.Model).AvailableServers).GameServerId);
+    }
+
+    private (GameServerDto Server, ImportMapRotationsViewModel Model) SetupServerImport(byte[]? bytes = null)
+    {
+        bytes ??= Encoding.UTF8.GetBytes("set sv_maprotation \"gametype dm map mp_alpha map mp_beta\"");
+        var server = CreateGameServer(Guid.NewGuid(), GameType.CallOfDuty4x);
+        SetDtoProperty(server, nameof(server.FileTransportEnabled), true);
+        SetDtoProperty(server, nameof(server.FileTransportType), FileTransportType.Ftp);
+        var model = new ImportMapRotationsViewModel
+        {
+            GameType = GameType.CallOfDuty4, FromGameServer = true,
+            GameServerId = server.GameServerId, ServerCfgPath = "/configs/maprotation.cfg"
+        };
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
+            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([server]))));
+        mockRepositoryApiClient.Setup(x => x.Maps.V1.GetMaps(It.IsAny<GameType?>(), It.IsAny<string[]?>(), It.IsAny<MapsFilter?>(),
+            It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<MapsOrder?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapDto>>(new CollectionModel<MapDto>([]))));
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotations(It.IsAny<GameType[]?>(), It.IsAny<string?>(),
+            It.IsAny<MapRotationsFilter?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<MapRotationsOrder?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapRotationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapRotationDto>>(new CollectionModel<MapRotationDto>([]))));
+        mockServersApiClient.Setup(x => x.Files.V1.GetMetadata(server.GameServerId, It.IsAny<GetEntryMetadataQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<FileEntryMetadataDto>(HttpStatusCode.OK, new ApiResponse<FileEntryMetadataDto>(
+                new FileEntryMetadataDto("maprotation.cfg", model.ServerCfgPath, FileEntryType.File, bytes.LongLength, null))));
+        mockServersApiClient.Setup(x => x.Files.V1.GetContent(server.GameServerId, It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<FileContentDto>(HttpStatusCode.OK, new ApiResponse<FileContentDto>(
+                new FileContentDto(model.ServerCfgPath, FileContentMode.Binary, "base64", bytes.LongLength, null, Convert.ToBase64String(bytes)))));
+        return (server, model);
+    }
+
     private MapRotationsController CreateSut(ClaimsPrincipal? user = null)
     {
         mockMapMetadataService.Setup(x => x.GetAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
@@ -53,6 +261,7 @@ public class MapRotationsControllerTests
             mockAuthorizationService.Object,
             mockRepositoryApiClient.Object,
             mockSyncApiClient.Object,
+            mockServersApiClient.Object,
             memoryCache,
             mockMapMetadataService.Object,
             telemetryClient,
