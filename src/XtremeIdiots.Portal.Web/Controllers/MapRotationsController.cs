@@ -1546,16 +1546,25 @@ public class MapRotationsController(
     private async Task<ViewResult> RenderImportViewAsync(ImportMapRotationsViewModel model, CancellationToken cancellationToken)
     {
         model.AvailableServers.Clear();
-        foreach (var gameType in new[] { GameType.CallOfDuty4, GameType.CallOfDuty5 })
+        model.ServerImportError = null;
+        try
         {
-            var canWrite = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
-            if (!canWrite.Succeeded)
-                continue;
+            foreach (var gameType in new[] { GameType.CallOfDuty4, GameType.CallOfDuty5 })
+            {
+                var canWrite = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
+                if (!canWrite.Succeeded)
+                    continue;
 
-            var compatibleTypes = BaseAuthorizationHelper.GetEquivalentGameTypes(gameType);
-            var servers = await GetAuthorizedServersAsync(gameType, cancellationToken).ConfigureAwait(false);
-            model.AvailableServers.AddRange(servers.Where(server =>
-                compatibleTypes.Contains(server.GameType) && server.FileTransportEnabled && server.FileTransportType != FileTransportType.Unknown));
+                var compatibleTypes = BaseAuthorizationHelper.GetEquivalentGameTypes(gameType);
+                var servers = await GetAuthorizedServersAsync(gameType, cancellationToken).ConfigureAwait(false);
+                model.AvailableServers.AddRange(servers.Where(server =>
+                    compatibleTypes.Contains(server.GameType) && server.FileTransportEnabled && server.FileTransportType != FileTransportType.Unknown));
+            }
+        }
+        catch (ServerLookupException)
+        {
+            model.AvailableServers.Clear();
+            model.ServerImportError = "Server import is unavailable. Upload or paste a config instead.";
         }
 
         model.AvailableServers = [.. model.AvailableServers.DistinctBy(server => server.GameServerId)
@@ -1852,7 +1861,7 @@ public class MapRotationsController(
                 Logger.LogError(
                     "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
                     gameType, offset);
-                throw new InvalidOperationException($"Failed to load game servers for game type {gameType}.");
+                throw new ServerLookupException(gameType);
             }
 
             var serverBatch = serversResponse.Result.Data.Items.ToList();
@@ -1865,6 +1874,10 @@ public class MapRotationsController(
 
             offset += pageSize;
         }
+    }
+
+    private sealed class ServerLookupException(GameType gameType) : InvalidOperationException($"Failed to load game servers for game type {gameType}.")
+    {
     }
 
     /// <summary>

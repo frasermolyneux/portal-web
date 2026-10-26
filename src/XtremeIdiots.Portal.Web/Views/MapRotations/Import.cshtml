@@ -16,6 +16,10 @@
                         </div>
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            @if (Model.ServerImportError != null)
+                            {
+                                <div class="alert alert-warning" role="alert">@Model.ServerImportError</div>
+                            }
 
                             <div class="mb-3">
                                 <label asp-for="@Model.GameType" class="form-label"></label>

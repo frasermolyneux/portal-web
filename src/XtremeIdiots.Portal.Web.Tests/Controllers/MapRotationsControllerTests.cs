@@ -253,6 +253,26 @@ public class MapRotationsControllerTests
         return (server, model);
     }
 
+    [Fact]
+    public async Task Import_ServerCatalogueFailure_IsVisibleWithoutBlockingManualImport()
+    {
+        var (_, model) = SetupServerImport();
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
+            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.BadGateway,
+                new ApiResponse<CollectionModel<GameServerDto>>()));
+        var sut = CreateSut();
+
+        var view = Assert.IsType<ViewResult>(await sut.Import());
+        var page = Assert.IsType<ImportMapRotationsViewModel>(view.Model);
+        Assert.Empty(page.AvailableServers);
+        Assert.Contains("Upload or paste", page.ServerImportError, StringComparison.Ordinal);
+        model.FromGameServer = false;
+        model.CfgContent = "set sv_maprotation \"gametype dm map mp_alpha\"";
+
+        Assert.Equal("ImportPreview", Assert.IsType<ViewResult>(await sut.Import(model)).ViewName);
+    }
+
     private MapRotationsController CreateSut(ClaimsPrincipal? user = null)
     {
         mockMapMetadataService.Setup(x => x.GetAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
@@ -766,7 +786,7 @@ public class MapRotationsControllerTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CreateAssignment(mapRotationId));
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => sut.CreateAssignment(mapRotationId));
     }
 
     [Fact]
@@ -1208,7 +1228,7 @@ public class MapRotationsControllerTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
     }
 
     [Fact]
@@ -1239,7 +1259,7 @@ public class MapRotationsControllerTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => sut.Details(mapRotationId));
     }
 
     [Theory]

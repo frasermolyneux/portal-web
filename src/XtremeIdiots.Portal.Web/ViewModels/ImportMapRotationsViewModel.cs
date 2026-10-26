@@ -29,6 +29,9 @@ public class ImportMapRotationsViewModel
 
     [BindNever]
     public List<GameServerDto> AvailableServers { get; set; } = [];
+
+    [BindNever]
+    public string? ServerImportError { get; set; }
 }
 
 public class ImportMapRotationsPreviewViewModel
