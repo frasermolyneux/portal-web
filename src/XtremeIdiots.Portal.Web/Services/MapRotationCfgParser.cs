@@ -87,15 +87,21 @@ public static partial class MapRotationCfgParser
         }
 
         // Merge continuation parts into their parent rotations
-        foreach (var rotation in rotations)
+        for (var i = 0; i < rotations.Count; i++)
         {
+            var rotation = rotations[i];
             if (continuationParts.TryGetValue(rotation.ConfigVariableName, out var parts))
             {
                 foreach (var part in parts.OrderBy(p => p.Index))
                 {
-                    var (_, additionalMaps) = ParseRotationValue(rotation.ConfigVariableName, part.Value);
+                    var (gameMode, additionalMaps) = ParseRotationValue(rotation.ConfigVariableName, part.Value);
+                    if (string.IsNullOrEmpty(rotation.GameMode) && !string.IsNullOrEmpty(gameMode))
+                        rotation = rotation with { GameMode = gameMode };
+
                     rotation.MapNames.AddRange(additionalMaps);
                 }
+
+                rotations[i] = rotation;
             }
         }
 
@@ -120,7 +126,7 @@ public static partial class MapRotationCfgParser
     {
         // sv_maprotation_1, sv_maprotation_2 are continuations of sv_maprotation
         // But scr_aacp_maps_1 is NOT a continuation — it's the base variable
-        return suffixIndex > 0 && IsStandardRotationVariable(baseVar);
+        return suffixIndex > 0 && standardRotationVariables.Contains(baseVar, StringComparer.OrdinalIgnoreCase);
     }
 
     private static (string BaseVar, int SuffixIndex) ParseVariableSuffix(string varName)
