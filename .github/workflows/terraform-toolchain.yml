@@ -4,9 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-    paths:
-      - "terraform/**"
-      - ".github/workflows/terraform-toolchain.yml"
   workflow_dispatch:
 
 permissions:
@@ -38,3 +35,16 @@ jobs:
           terraform -chdir="$TF_ROOT" init -backend=false -input=false -lockfile=readonly
           terraform -chdir="$TF_ROOT" validate
           git diff --exit-code -- "$TF_ROOT/.terraform.lock.hcl" "$TF_ROOT/.terraform-version"
+
+  observe-terraform:
+    name: Observe terraform binary toolchain
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: frasermolyneux/actions/terraform-validate@terraform-validate/v1.0.0
+        with:
+          terraform-folder: terraform
