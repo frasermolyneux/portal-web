@@ -154,7 +154,7 @@ public class XtremeIdiotsAuth(
             await signInManager.SignInAsync(user, true).ConfigureAwait(false);
             await signInManager.RefreshSignInAsync(user).ConfigureAwait(false);
 
-            logger.LogInformation("Successfully created new user {Username} with email: {Email}", username, email);
+            logger.LogInformation("Successfully completed external registration for user {UserId}", user.Id);
         }
         catch (Exception ex)
         {
