@@ -321,21 +321,30 @@ public class UserController(
         var succeeded = true;
         foreach (var identityId in identityIds)
         {
-            var identityUser = await userManager.FindByIdAsync(identityId!).ConfigureAwait(false);
-            if (identityUser is null)
-                continue;
+            try
+            {
+                var identityUser = await userManager.FindByIdAsync(identityId!).ConfigureAwait(false);
+                if (identityUser is null)
+                    continue;
 
-            IdentityResult[] results =
-            [
-                await userManager.SetLockoutEnabledAsync(identityUser, true).ConfigureAwait(false),
-                await userManager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue).ConfigureAwait(false),
-                await userManager.UpdateSecurityStampAsync(identityUser).ConfigureAwait(false)
-            ];
-            foreach (var result in results.Where(result => !result.Succeeded))
+                IdentityResult[] results =
+                [
+                    await userManager.SetLockoutEnabledAsync(identityUser, true).ConfigureAwait(false),
+                    await userManager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue).ConfigureAwait(false),
+                    await userManager.UpdateSecurityStampAsync(identityUser).ConfigureAwait(false)
+                ];
+                foreach (var result in results.Where(result => !result.Succeeded))
+                {
+                    succeeded = false;
+                    Logger.LogError("Failed to disable local sign-in for archived profile {ProfileId}, Identity {IdentityId}: {Errors}",
+                        profile.UserProfileId, identityId, string.Join(", ", result.Errors.Select(error => error.Code)));
+                }
+            }
+            catch (Exception ex)
             {
                 succeeded = false;
-                Logger.LogError("Failed to disable local sign-in for archived profile {ProfileId}, Identity {IdentityId}: {Errors}",
-                    profile.UserProfileId, identityId, string.Join(", ", result.Errors.Select(error => error.Code)));
+                Logger.LogError(ex, "Unable to disable archived profile {ProfileId}, Identity {IdentityId}; retry is required",
+                    profile.UserProfileId, identityId);
             }
         }
 

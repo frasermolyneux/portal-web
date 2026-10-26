@@ -133,16 +133,69 @@ public class XtremeIdiotsAuthTests
         users.Verify(manager => manager.AddClaimsAsync(user, It.IsAny<IEnumerable<Claim>>()), Times.Never);
     }
 
-    private void SetupActiveProfile()
+    [Fact]
+    public async Task ArchivalDuringLocalUserCreation_CannotIssueCookie()
+    {
+        SetupActiveProfile();
+        var creationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finishCreation = new TaskCompletionSource<IdentityResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        signIn.Setup(manager => manager.ExternalLoginSignInAsync("XtremeIdiots", "42", true))
+            .ReturnsAsync(SignInResult.Failed);
+        users.Setup(manager => manager.CreateAsync(It.IsAny<IdentityUser>())).Returns(() =>
+        {
+            creationStarted.SetResult();
+            return finishCreation.Task;
+        });
+
+        var login = CreateSut().ProcessExternalLogin(CreateLogin());
+        await creationStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        repository.Setup(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("42", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.NotFound));
+        finishCreation.SetResult(IdentityResult.Success);
+
+        var result = await login;
+
+        Assert.Equal(XtremeIdiotsAuthResult.Failed, result);
+        signIn.Verify(manager => manager.SignOutAsync(), Times.Once);
+        signIn.Verify(manager => manager.SignInAsync(It.IsAny<IdentityUser>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never);
+        users.Verify(manager => manager.AddLoginAsync(It.IsAny<IdentityUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
+        repository.Verify(client => client.UserProfiles.V1.CreateUserProfile(
+            It.IsAny<CreateUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ArchivalAfterExternalSignIn_ClearsCookieBeforeRefreshingClaims()
+    {
+        var profile = SetupActiveProfile();
+        repository.SetupSequence(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("42", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(profile)))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.NotFound));
+        var user = new IdentityUser { Id = "42" };
+        signIn.Setup(manager => manager.ExternalLoginSignInAsync("XtremeIdiots", "42", true))
+            .ReturnsAsync(SignInResult.Success);
+        users.Setup(manager => manager.FindByLoginAsync("XtremeIdiots", "42")).ReturnsAsync(user);
+
+        var result = await CreateSut().ProcessExternalLogin(CreateLogin());
+
+        Assert.Equal(XtremeIdiotsAuthResult.Failed, result);
+        signIn.Verify(manager => manager.SignOutAsync(), Times.Once);
+        signIn.Verify(manager => manager.SignInAsync(It.IsAny<IdentityUser>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never);
+        users.Verify(manager => manager.RemoveClaimsAsync(user, It.IsAny<IEnumerable<Claim>>()), Times.Never);
+        repository.Verify(client => client.UserProfiles.V1.CreateUserProfile(
+            It.IsAny<CreateUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private UserProfileDto SetupActiveProfile()
     {
         var profile = JsonConvert.DeserializeObject<UserProfileDto>(JsonConvert.SerializeObject(new
         {
             UserProfileId = Guid.NewGuid(),
             XtremeIdiotsForumId = "42",
             UserProfileClaims = Array.Empty<object>()
-        }));
+        })) ?? throw new InvalidOperationException("Unable to create the active profile fixture.");
         repository.Setup(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("42", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(profile)));
+        return profile;
     }
 
     private XtremeIdiotsAuth CreateSut()

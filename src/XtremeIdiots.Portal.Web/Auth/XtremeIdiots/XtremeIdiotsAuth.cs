@@ -86,6 +86,7 @@ public class XtremeIdiotsAuth(
             var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false) ?? throw new InvalidOperationException($"User not found for login provider: {info.LoginProvider}, key: {info.ProviderKey}");
             cancellationToken.ThrowIfCancellationRequested();
 
+            userProfile = await RecheckActiveUserProfile(id, userProfile.UserProfileId, cancellationToken).ConfigureAwait(false);
             var userClaims = await userManager.GetClaimsAsync(user).ConfigureAwait(false);
             EnsureIdentitySucceeded(await userManager.RemoveClaimsAsync(user, userClaims).ConfigureAwait(false));
             var claims = userProfile.UserProfileClaims.Select(upc => new Claim(upc.ClaimType, upc.ClaimValue)).ToList();
@@ -132,6 +133,7 @@ public class XtremeIdiotsAuth(
             var createUserResult = await userManager.CreateAsync(user).ConfigureAwait(false);
             EnsureIdentitySucceeded(createUserResult);
 
+            userProfile = await RecheckActiveUserProfile(id, userProfile.UserProfileId, cancellationToken).ConfigureAwait(false);
             var addLoginResult = await userManager.AddLoginAsync(user, info).ConfigureAwait(false);
             EnsureIdentitySucceeded(addLoginResult);
 
@@ -228,6 +230,16 @@ public class XtremeIdiotsAuth(
         {
             throw new ArgumentException("External login info must contain a valid provider key", nameof(info));
         }
+    }
+
+    private async Task<UserProfileDto> RecheckActiveUserProfile(string memberId, Guid expectedProfileId, CancellationToken cancellationToken)
+    {
+        var response = await repositoryApiClient.UserProfiles.V1
+            .GetUserProfileByXtremeIdiotsId(memberId, cancellationToken).ConfigureAwait(false);
+        return response.IsSuccess && response.Result?.Data is { ArchivedAtUtc: null } profile &&
+            profile.UserProfileId == expectedProfileId
+            ? profile
+            : throw new InvalidOperationException($"The portal profile is no longer active for member {memberId}: {response.StatusCode}");
     }
 
     private static void EnsureIdentitySucceeded(IdentityResult result)

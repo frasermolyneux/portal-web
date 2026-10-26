@@ -1174,6 +1174,40 @@ public class UserControllerTests
         mockAuditLogger.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Archive_Post_IdentityException_OffersRetryAndContinuesOtherAliases(bool lookupThrows)
+    {
+        var profile = SetupArchiveProfile();
+        var identityUser = new IdentityUser { Id = profile.XtremeIdiotsForumId! };
+        if (lookupThrows)
+        {
+            mockUserManager.Setup(manager => manager.FindByIdAsync(identityUser.Id))
+                .ThrowsAsync(new InvalidOperationException("Identity store unavailable."));
+        }
+        else
+        {
+            mockUserManager.Setup(manager => manager.FindByIdAsync(identityUser.Id)).ReturnsAsync(identityUser);
+            mockUserManager.Setup(manager => manager.SetLockoutEnabledAsync(identityUser, true)).ReturnsAsync(IdentityResult.Success);
+            mockUserManager.Setup(manager => manager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue))
+                .ThrowsAsync(new InvalidOperationException("Identity store unavailable."));
+        }
+
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        var model = Assert.IsType<ArchiveUserProfileViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.NotNull(model.ArchivedAtUtc);
+        Assert.Equal(StatusCodes.Status502BadGateway, sut.Response.StatusCode);
+        Assert.Contains(sut.ModelState.Values.SelectMany(value => value.Errors),
+            error => error.ErrorMessage.Contains("Retry", StringComparison.Ordinal));
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockUserManager.Verify(manager => manager.FindByIdAsync(profile.UserProfileId.ToString()), Times.Once);
+    }
+
     private UserProfileDto SetupArchiveProfile(bool archived = false, HttpStatusCode forumStatus = HttpStatusCode.NotFound)
     {
         var profile = JsonConvert.DeserializeObject<UserProfileDto>(JsonConvert.SerializeObject(new
