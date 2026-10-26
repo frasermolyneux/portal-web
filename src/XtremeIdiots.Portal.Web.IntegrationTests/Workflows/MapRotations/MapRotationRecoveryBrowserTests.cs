@@ -57,6 +57,13 @@ public sealed class MapRotationRecoveryBrowserTests
         await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("mp_alpha");
         await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("mp_beta");
         await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("synthetic-secret");
+        var inputValues = await browser.Page.Locator("input, textarea").EvaluateAllAsync<string[]>(
+            "elements => elements.map(element => element.value)");
+        Assert.All(inputValues, value =>
+        {
+            Assert.DoesNotContain("synthetic-secret", value, StringComparison.Ordinal);
+            Assert.DoesNotContain("syntheticAuthor", value, StringComparison.Ordinal);
+        });
         scenario.Servers.Verify(x => x.Files.V1.GetContent(MapRotationAssignmentScenario.PermittedServerId,
             It.Is<GetFileContentQueryDto>(q => q.Path == MapRotationImportScenario.ConfigPath && q.RangeEnd == 1_000_000),
             It.IsAny<CancellationToken>()), Times.Once);

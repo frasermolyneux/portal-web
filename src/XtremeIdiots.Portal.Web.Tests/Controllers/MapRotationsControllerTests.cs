@@ -54,7 +54,7 @@ public class MapRotationsControllerTests
     [InlineData(true)]
     public async Task Import_FromServer_UsesExistingPreviewAndBomDetectionWithoutWrites(bool utf16)
     {
-        const string cfg = "set rcon_password \"synthetic-secret\"\n// Rotation #4\nset sv_maprotation \"gametype dm map mp_alpha map mp_beta\"";
+        const string cfg = "// set rcon_password \"synthetic-secret\"\n// Rotation #4 by syntheticAuthor 2026-10-26\nset sv_maprotation \"gametype dm map mp_alpha map mp_beta\"";
         var bytes = Encoding.UTF8.GetBytes(cfg);
         if (utf16)
             bytes = [.. Encoding.Unicode.GetPreamble(), .. Encoding.Unicode.GetBytes(cfg)];
@@ -67,8 +67,15 @@ public class MapRotationsControllerTests
         Assert.Equal("ImportPreview", view.ViewName);
         var preview = Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model);
         Assert.Equal(GameType.CallOfDuty4, preview.GameType);
-        Assert.Equal(["mp_alpha", "mp_beta"], Assert.Single(preview.Rotations).MapNames);
-        Assert.NotNull(memoryCache.Get<string>($"ImportDraft_{preview.DraftId}"));
+        var rotation = Assert.Single(preview.Rotations);
+        Assert.Equal(["mp_alpha", "mp_beta"], rotation.MapNames);
+        Assert.Equal("Rotation #4", rotation.Title);
+        Assert.Empty(rotation.Description);
+        Assert.Null(rotation.Author);
+        Assert.Null(rotation.DateText);
+        var draft = Assert.IsType<string>(memoryCache.Get<string>($"ImportDraft_{preview.DraftId}"));
+        Assert.DoesNotContain("synthetic-secret", draft, StringComparison.Ordinal);
+        Assert.DoesNotContain("syntheticAuthor", draft, StringComparison.Ordinal);
         mockServersApiClient.Verify(x => x.Files.V1.GetContent(server.GameServerId,
             It.Is<GetFileContentQueryDto>(q => q.Path == model.ServerCfgPath && q.Mode == FileContentMode.Binary && q.RangeStart == 0 && q.RangeEnd == 1_000_000),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -149,7 +156,7 @@ public class MapRotationsControllerTests
     public async Task Import_PasteAndUpload_StillUsePreviewWithoutReadingTheServer(bool upload)
     {
         var (_, model) = SetupServerImport();
-        const string cfg = "set sv_maprotation \"gametype dm map mp_alpha\"";
+        const string cfg = "// Manual description\n// Rotation #4 by syntheticAuthor 2026-10-26\nset sv_maprotation \"gametype dm map mp_alpha\"";
         model.FromGameServer = false;
         model.CfgContent = upload ? null : cfg;
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(cfg));
@@ -159,7 +166,11 @@ public class MapRotationsControllerTests
         var view = Assert.IsType<ViewResult>(await CreateSut().Import(model));
 
         Assert.Equal("ImportPreview", view.ViewName);
-        Assert.Equal(["mp_alpha"], Assert.Single(Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model).Rotations).MapNames);
+        var rotation = Assert.Single(Assert.IsType<ImportMapRotationsPreviewViewModel>(view.Model).Rotations);
+        Assert.Equal(["mp_alpha"], rotation.MapNames);
+        Assert.Equal("Manual description", rotation.Description);
+        Assert.Equal("syntheticAuthor", rotation.Author);
+        Assert.Equal("2026-10-26", rotation.DateText);
         mockServersApiClient.Verify(x => x.Files.V1.GetContent(It.IsAny<Guid>(), It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

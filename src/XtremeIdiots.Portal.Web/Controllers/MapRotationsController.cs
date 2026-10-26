@@ -1444,6 +1444,8 @@ public class MapRotationsController(
 
             // Parse the cfg content
             var parsed = MapRotationCfgParser.Parse(cfgContent);
+            if (model.FromGameServer)
+                parsed = [.. parsed.Select(rotation => rotation with { Author = null, DateText = null, RawComment = null })];
 
             if (parsed.Count == 0)
             {
