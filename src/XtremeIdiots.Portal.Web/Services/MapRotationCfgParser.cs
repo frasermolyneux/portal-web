@@ -19,12 +19,9 @@ public static partial class MapRotationCfgParser
     [GeneratedRegex(@"^(\s*//\s*)?set\s+(\S+)\s+""([^""]*)""", RegexOptions.IgnoreCase)]
     private static partial Regex SetLineRegex();
 
-    // Known rotation variable names (case-insensitive prefix matching)
-    private readonly static string[] rotationVariablePrefixes =
+    private readonly static string[] standardRotationVariables =
     [
         "sv_maprotation",
-        "sv_maprotation_",
-        "scr_aacp_maps_",
         "scr_small_rotation",
         "scr_med_rotation",
         "scr_large_rotation"
@@ -61,7 +58,7 @@ public static partial class MapRotationCfgParser
 
             // Check if this is a continuation variable (e.g., sv_maprotation_1, _2)
             var (baseVar, suffixIndex) = ParseVariableSuffix(varName);
-            if (IsContinuationVariable(baseVar, suffixIndex, varName))
+            if (IsContinuationVariable(baseVar, suffixIndex))
             {
                 if (!continuationParts.ContainsKey(baseVar))
                     continuationParts[baseVar] = [];
@@ -98,25 +95,28 @@ public static partial class MapRotationCfgParser
             }
         }
 
-        return rotations;
+        return [.. rotations.Where(rotation => rotation.MapNames.Count > 0)];
     }
 
     private static bool IsRotationVariable(string varName)
     {
-        return rotationVariablePrefixes.Any(prefix =>
-            varName.Equals(prefix, StringComparison.OrdinalIgnoreCase) ||
-            varName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return IsStandardRotationVariable(varName) ||
+            (varName.StartsWith("scr_aacp_maps_", StringComparison.OrdinalIgnoreCase) &&
+                varName.Length > "scr_aacp_maps_".Length);
     }
 
-    private static bool IsContinuationVariable(string baseVar, int suffixIndex, string fullVarName)
+    private static bool IsStandardRotationVariable(string varName)
+    {
+        return standardRotationVariables.Any(variable =>
+            varName.Equals(variable, StringComparison.OrdinalIgnoreCase) ||
+            varName.StartsWith($"{variable}_", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsContinuationVariable(string baseVar, int suffixIndex)
     {
         // sv_maprotation_1, sv_maprotation_2 are continuations of sv_maprotation
         // But scr_aacp_maps_1 is NOT a continuation — it's the base variable
-        return suffixIndex > 0
-            && (baseVar.Equals("sv_maprotation", StringComparison.OrdinalIgnoreCase)
-                || baseVar.Equals("scr_small_rotation", StringComparison.OrdinalIgnoreCase)
-                || baseVar.Equals("scr_med_rotation", StringComparison.OrdinalIgnoreCase)
-                || baseVar.Equals("scr_large_rotation", StringComparison.OrdinalIgnoreCase));
+        return suffixIndex > 0 && IsStandardRotationVariable(baseVar);
     }
 
     private static (string BaseVar, int SuffixIndex) ParseVariableSuffix(string varName)
@@ -152,16 +152,21 @@ public static partial class MapRotationCfgParser
         // Standard format: gametype {mode} map {map1} map {map2} ...
         var gameMode = "";
         var mapNames = new List<string>();
-        var tokens = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var tokens = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 
         for (var j = 0; j < tokens.Length; j++)
         {
-            if (tokens[j].Equals("gametype", StringComparison.OrdinalIgnoreCase) && j + 1 < tokens.Length)
+            if (j + 1 >= tokens.Length ||
+                tokens[j + 1].Equals("map", StringComparison.OrdinalIgnoreCase) ||
+                tokens[j + 1].Equals("gametype", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (tokens[j].Equals("gametype", StringComparison.OrdinalIgnoreCase))
             {
                 gameMode = tokens[j + 1];
                 j++;
             }
-            else if (tokens[j].Equals("map", StringComparison.OrdinalIgnoreCase) && j + 1 < tokens.Length)
+            else if (tokens[j].Equals("map", StringComparison.OrdinalIgnoreCase))
             {
                 mapNames.Add(tokens[j + 1]);
                 j++;
