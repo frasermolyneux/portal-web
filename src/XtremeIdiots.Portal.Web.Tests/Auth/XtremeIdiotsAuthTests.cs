@@ -185,6 +185,75 @@ public class XtremeIdiotsAuthTests
             It.IsAny<CreateUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedProfileRecheck_CanResumeUnlinkedRegistrationAfterRecovery(bool recheckThrows)
+    {
+        var profile = SetupActiveProfile();
+        var response = new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(profile));
+        var reads = repository.SetupSequence(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("42", It.IsAny<CancellationToken>()));
+        reads.ReturnsAsync(response);
+        if (recheckThrows)
+            reads.ThrowsAsync(new HttpRequestException("Repository unavailable."));
+        else
+            reads.ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.ServiceUnavailable));
+        reads.ReturnsAsync(response).ReturnsAsync(response);
+
+        IdentityUser? persistedUser = null;
+        users.Setup(manager => manager.FindByIdAsync("42")).ReturnsAsync(() => persistedUser);
+        users.Setup(manager => manager.CreateAsync(It.IsAny<IdentityUser>())).ReturnsAsync((IdentityUser user) =>
+        {
+            if (persistedUser is not null)
+                return IdentityResult.Failed(new IdentityError { Code = "DuplicateUserId" });
+            persistedUser = user;
+            return IdentityResult.Success;
+        });
+        users.Setup(manager => manager.GetLoginsAsync(It.IsAny<IdentityUser>())).ReturnsAsync([]);
+        users.Setup(manager => manager.IsLockedOutAsync(It.IsAny<IdentityUser>())).ReturnsAsync(false);
+        users.Setup(manager => manager.AddLoginAsync(It.IsAny<IdentityUser>(), It.IsAny<UserLoginInfo>())).ReturnsAsync(IdentityResult.Success);
+        users.Setup(manager => manager.AddClaimsAsync(It.IsAny<IdentityUser>(), It.IsAny<IEnumerable<Claim>>())).ReturnsAsync(IdentityResult.Success);
+        signIn.Setup(manager => manager.ExternalLoginSignInAsync("XtremeIdiots", "42", true)).ReturnsAsync(SignInResult.Failed);
+        signIn.Setup(manager => manager.SignInAsync(It.IsAny<IdentityUser>(), true, It.IsAny<string>())).Returns(Task.CompletedTask);
+        signIn.Setup(manager => manager.RefreshSignInAsync(It.IsAny<IdentityUser>())).Returns(Task.CompletedTask);
+        var sut = CreateSut();
+
+        var firstAttempt = await sut.ProcessExternalLogin(CreateLogin());
+        var retry = await sut.ProcessExternalLogin(CreateLogin());
+
+        Assert.Equal(XtremeIdiotsAuthResult.Failed, firstAttempt);
+        Assert.Equal(XtremeIdiotsAuthResult.Success, retry);
+        users.Verify(manager => manager.CreateAsync(It.IsAny<IdentityUser>()), Times.Once);
+        users.Verify(manager => manager.AddLoginAsync(It.IsAny<IdentityUser>(), It.IsAny<UserLoginInfo>()), Times.Once);
+        signIn.Verify(manager => manager.SignInAsync(It.IsAny<IdentityUser>(), true, It.IsAny<string>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("password")]
+    [InlineData("login")]
+    [InlineData("lockout")]
+    public async Task IncompleteRegistration_DoesNotReuseProtectedLocalAccounts(string protection)
+    {
+        SetupActiveProfile();
+        var user = new IdentityUser
+        {
+            Id = "42",
+            PasswordHash = protection == "password" ? "synthetic-password-hash" : null
+        };
+        users.Setup(manager => manager.FindByIdAsync("42")).ReturnsAsync(user);
+        users.Setup(manager => manager.GetLoginsAsync(user)).ReturnsAsync(
+            protection == "login" ? [new UserLoginInfo("OtherProvider", "other-key", "Other provider")] : []);
+        users.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(protection == "lockout");
+        signIn.Setup(manager => manager.ExternalLoginSignInAsync("XtremeIdiots", "42", true)).ReturnsAsync(SignInResult.Failed);
+
+        var result = await CreateSut().ProcessExternalLogin(CreateLogin());
+
+        Assert.Equal(XtremeIdiotsAuthResult.Failed, result);
+        users.Verify(manager => manager.CreateAsync(It.IsAny<IdentityUser>()), Times.Never);
+        users.Verify(manager => manager.AddLoginAsync(It.IsAny<IdentityUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
+        signIn.Verify(manager => manager.SignInAsync(It.IsAny<IdentityUser>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never);
+    }
+
     private UserProfileDto SetupActiveProfile()
     {
         var profile = JsonConvert.DeserializeObject<UserProfileDto>(JsonConvert.SerializeObject(new

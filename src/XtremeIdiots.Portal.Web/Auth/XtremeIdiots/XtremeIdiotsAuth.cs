@@ -129,9 +129,18 @@ public class XtremeIdiotsAuth(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var user = new IdentityUser { Id = id, UserName = username, Email = email };
-            var createUserResult = await userManager.CreateAsync(user).ConfigureAwait(false);
-            EnsureIdentitySucceeded(createUserResult);
+            var user = await userManager.FindByIdAsync(id).ConfigureAwait(false);
+            if (user is null)
+            {
+                user = new IdentityUser { Id = id, UserName = username, Email = email };
+                EnsureIdentitySucceeded(await userManager.CreateAsync(user).ConfigureAwait(false));
+            }
+            else if (user.PasswordHash is not null ||
+                (await userManager.GetLoginsAsync(user).ConfigureAwait(false)).Count != 0 ||
+                await userManager.IsLockedOutAsync(user).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException($"Local user {id} cannot resume an incomplete external registration.");
+            }
 
             userProfile = await RecheckActiveUserProfile(id, userProfile.UserProfileId, cancellationToken).ConfigureAwait(false);
             var addLoginResult = await userManager.AddLoginAsync(user, info).ConfigureAwait(false);
