@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Web.Auth.Requirements;
+using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.Auth.Handlers;
 
@@ -23,6 +25,18 @@ public class UsersAuthHandler : IAuthorizationHandler
                     break;
                 case UsersLogOut:
                     BaseAuthorizationHelper.CheckClaimTypes(context, requirement, BaseAuthorizationHelper.ClaimGroups.SeniorAndHeadAdminOnly);
+                    break;
+                case UsersArchive:
+                    if (context.Resource is UserProfileDto profile &&
+                        Guid.TryParse(context.User.UserProfileId(), out var actorProfileId) &&
+                        actorProfileId != Guid.Empty &&
+                        profile.UserProfileId != Guid.Empty &&
+                        actorProfileId != profile.UserProfileId &&
+                        !string.Equals(context.User.XtremeIdiotsId(), profile.XtremeIdiotsForumId, StringComparison.Ordinal))
+                    {
+                        BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
+                    }
+
                     break;
                 case UsersManageNotificationPreferences:
                     BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);

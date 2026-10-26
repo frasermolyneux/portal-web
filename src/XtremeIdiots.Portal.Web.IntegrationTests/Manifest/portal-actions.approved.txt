@@ -259,6 +259,8 @@ XtremeIdiots.Portal.Web.Controllers.TagsController#Edit#GET#Tags/Edit#(System.Gu
 XtremeIdiots.Portal.Web.Controllers.TagsController#Edit#POST#Tags/Edit#(XtremeIdiots.Portal.Web.ViewModels.EditTagViewModel)|StateChange
 XtremeIdiots.Portal.Web.Controllers.TagsController#Index#GET#Tags/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.UserController#ActivityLog#GET#User/ActivityLog#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.UserController#Archive#GET#User/Archive#(System.Guid)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.UserController#ArchiveConfirmed#POST#User/Archive#(XtremeIdiots.Portal.Web.ViewModels.ArchiveUserProfileViewModel)|StateChange
 XtremeIdiots.Portal.Web.Controllers.UserController#CreateUserClaim#POST#User/CreateUserClaim#(System.Guid,System.String,System.String)|StateChange
 XtremeIdiots.Portal.Web.Controllers.UserController#Index#GET#User/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.UserController#LogUserOut#POST#User/LogUserOut#(System.String)|StateChange

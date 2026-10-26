@@ -24,11 +24,11 @@ internal static class PortalActionManifest
     public static IReadOnlyDictionary<PortalActionKind, int> ApprovedCounts { get; } =
         new Dictionary<PortalActionKind, int>
         {
-            [PortalActionKind.BrowserPage] = 89,
+            [PortalActionKind.BrowserPage] = 90,
             [PortalActionKind.DownloadOrStream] = 3,
             [PortalActionKind.ExternalCallback] = 1,
             [PortalActionKind.HttpEndpoint] = 111,
-            [PortalActionKind.StateChange] = 67,
+            [PortalActionKind.StateChange] = 68,
         };
 
     private readonly static string[] downloadActionNames =

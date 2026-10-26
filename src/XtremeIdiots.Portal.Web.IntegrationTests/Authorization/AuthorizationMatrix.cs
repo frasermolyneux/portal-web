@@ -1,4 +1,6 @@
+using Newtonsoft.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 
@@ -114,6 +116,10 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.Users_ManageClaims, GameType.CallOfDuty4, HeadAdminAndAbove, "with game resource", directPermissionAssignable: false),
         Entry(AuthPolicies.Users_ManageClaims, null, SeniorAdminOnly, "without resource", directPermissionAssignable: false),
         Entry(AuthPolicies.Users_LogOut, null, HeadAdminAndAbove, directPermissionAssignable: false),
+        Entry(AuthPolicies.Users_Archive, JsonConvert.DeserializeObject<UserProfileDto>(
+            JsonConvert.SerializeObject(new { UserProfileId = otherUserProfileId, XtremeIdiotsForumId = OtherAdminId })),
+            SeniorAdminOnly, "other resolved profile", directPermissionAssignable: false),
+        Entry(AuthPolicies.Users_Archive, null, PortalRoleSet.None, "without resource", directPermissionAssignable: false),
         Entry(AuthPolicies.Users_ManageNotificationPreferences, null, SeniorAdminOnly, directPermissionAssignable: false),
         Entry(AuthPolicies.Users_Search, null, AllAdmins, directPermissionAssignable: false),
         Entry(AuthPolicies.Users_ActivityLog, null, SeniorAdminOnly, directPermissionAssignable: false),
@@ -125,6 +131,7 @@ internal static class AuthorizationMatrix
         AuthPolicies.Users_Read,
         AuthPolicies.Users_ManageClaims,
         AuthPolicies.Users_LogOut,
+        AuthPolicies.Users_Archive,
         AuthPolicies.Users_ManageNotificationPreferences,
         AuthPolicies.Users_Search,
         AuthPolicies.Users_ActivityLog,

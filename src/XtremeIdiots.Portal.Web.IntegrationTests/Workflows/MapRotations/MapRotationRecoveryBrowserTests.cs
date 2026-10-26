@@ -54,6 +54,7 @@ public sealed class MapRotationRecoveryBrowserTests
             () => browser.Page.GetByRole(AriaRole.Button, new() { Name = "Parse & Preview", Exact = true }).ClickAsync(),
             response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/Import");
         Assert.Equal(200, preview.Status);
+        await Assertions.Expect(browser.Page.Locator("input[name$='.Title']")).ToHaveCountAsync(1);
         await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("mp_alpha");
         await Assertions.Expect(browser.Page.Locator("body")).ToContainTextAsync("mp_beta");
         await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("synthetic-secret");

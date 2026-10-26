@@ -247,7 +247,7 @@ public class MapRotationCfgParserTests
     }
 
     [Fact]
-    public void Parse_EmptyRotationValue_ReturnsEmptyMapList()
+    public void Parse_EmptyRotationValue_IsNotAnImportableRotation()
     {
         // Arrange
         var cfg = """
@@ -258,8 +258,105 @@ public class MapRotationCfgParserTests
         var result = MapRotationCfgParser.Parse(cfg);
 
         // Assert
-        Assert.Single(result);
-        Assert.Empty(result[0].MapNames);
+        Assert.Empty(result);
+    }
+
+    [Theory]
+    [InlineData("sv_mapRotationLoadBased")]
+    [InlineData("sv_mapRotationScramble")]
+    [InlineData("sv_maprotationcurrent")]
+    [InlineData("scr_small_rotation_enabled")]
+    public void Parse_SimilarlyNamedControls_AreNotRotationDefinitions(string variable)
+    {
+        var cfg = $"""
+            set {variable} "1"
+            set sv_maprotation_low "gametype dm map mp_backlot"
+            set scr_aacp_maps_custom "mp_crash;mp_strike"
+            """;
+
+        var result = MapRotationCfgParser.Parse(cfg);
+
+        Assert.Equal(["sv_maprotation_low", "scr_aacp_maps_custom"], result.Select(rotation => rotation.ConfigVariableName));
+    }
+
+    [Theory]
+    [InlineData("sv_mapRotationLoadBased")]
+    [InlineData("sv_mapRotationScramble")]
+    [InlineData("sv_maprotationcurrent")]
+    public void Parse_ControlVariables_AreExcludedEvenIfTheirValueLooksLikeARotation(string variable)
+    {
+        Assert.Empty(MapRotationCfgParser.Parse($"set {variable} \"gametype dm map mp_backlot\""));
+    }
+
+    [Theory]
+    [InlineData("blah blah blah...")]
+    [InlineData("gametype gametype map map")]
+    [InlineData("gametype ftag")]
+    [InlineData("map")]
+    public void Parse_CommentedExamplesWithoutMaps_AreNotImportable(string value)
+    {
+        Assert.Empty(MapRotationCfgParser.Parse($"// set sv_mapRotation \"{value}\""));
+    }
+
+    [Fact]
+    public void Parse_RepeatedAndDanglingDirectives_DoNotBecomeMapNamesOrConsumeValidMaps()
+    {
+        var cfg = "set sv_maprotation \"gametype gametype ftag map\tmap mp_backlot gametype map mp_crash map gametype dm map mp_strike map\"";
+
+        var rotation = Assert.Single(MapRotationCfgParser.Parse(cfg));
+
+        Assert.Equal("dm", rotation.GameMode);
+        Assert.Equal(["mp_backlot", "mp_crash", "mp_strike"], rotation.MapNames);
+    }
+
+    [Theory]
+    [InlineData("sv_maprotation")]
+    [InlineData("scr_small_rotation")]
+    public void Parse_EmptyBaseWithPopulatedContinuations_RemainsImportable(string variable)
+    {
+        var cfg = $"""
+            set {variable}_2 "map mp_strike"
+            set {variable} ""
+            set {variable}_1 "gametype dm map mp_crash"
+            set scr_aacp_maps_1 ""
+            """;
+
+        var rotation = Assert.Single(MapRotationCfgParser.Parse(cfg));
+
+        Assert.Equal(variable, rotation.ConfigVariableName);
+        Assert.Equal("dm", rotation.GameMode);
+        Assert.Equal(["mp_crash", "mp_strike"], rotation.MapNames);
+    }
+
+    [Fact]
+    public void Parse_CustomAndNestedNumericSlots_PreserveIndependentRotationsAndGameModes()
+    {
+        var cfg = """
+            set sv_maprotation_low "gametype war map mp_backlot"
+            set sv_maprotation_low_1 "gametype dm map mp_crash"
+            set sv_maprotation_low_1_1 "gametype ftag map mp_strike"
+            """;
+
+        var rotations = MapRotationCfgParser.Parse(cfg);
+
+        Assert.Equal(["sv_maprotation_low", "sv_maprotation_low_1", "sv_maprotation_low_1_1"],
+            rotations.Select(rotation => rotation.ConfigVariableName));
+        Assert.Equal(["war", "dm", "ftag"], rotations.Select(rotation => rotation.GameMode));
+        Assert.Equal(["mp_backlot", "mp_crash", "mp_strike"], rotations.SelectMany(rotation => rotation.MapNames));
+    }
+
+    [Theory]
+    [InlineData("sv_maprotation_low_1")]
+    [InlineData("scr_small_rotation_custom_1")]
+    [InlineData("sv_maprotation_1")]
+    public void Parse_NumericSlotWithoutParent_PreservesStandaloneRotation(string variable)
+    {
+        var rotation = Assert.Single(MapRotationCfgParser.Parse(
+            $"set {variable} \"gametype dm map mp_crash\""));
+
+        Assert.Equal(variable, rotation.ConfigVariableName);
+        Assert.Equal("dm", rotation.GameMode);
+        Assert.Equal(["mp_crash"], rotation.MapNames);
     }
 
     [Fact]
