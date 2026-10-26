@@ -39,6 +39,10 @@ public static partial class MapRotationCfgParser
     public static List<ParsedRotation> Parse(string cfgContent)
     {
         var lines = cfgContent.Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
+        var declaredVariables = lines.Select(line => SetLineRegex().Match(line))
+            .Where(match => match.Success)
+            .Select(match => match.Groups[2].Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var rotations = new List<ParsedRotation>();
         var continuationParts = new Dictionary<string, List<(int Index, string Value, bool IsActive)>>(StringComparer.OrdinalIgnoreCase);
 
@@ -58,7 +62,7 @@ public static partial class MapRotationCfgParser
 
             // Check if this is a continuation variable (e.g., sv_maprotation_1, _2)
             var (baseVar, suffixIndex) = ParseVariableSuffix(varName);
-            if (IsContinuationVariable(baseVar, suffixIndex))
+            if (IsContinuationVariable(baseVar, suffixIndex) && declaredVariables.Contains(baseVar))
             {
                 if (!continuationParts.ContainsKey(baseVar))
                     continuationParts[baseVar] = [];

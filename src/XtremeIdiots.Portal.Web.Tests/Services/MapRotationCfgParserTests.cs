@@ -316,8 +316,8 @@ public class MapRotationCfgParserTests
     public void Parse_EmptyBaseWithPopulatedContinuations_RemainsImportable(string variable)
     {
         var cfg = $"""
-            set {variable} ""
             set {variable}_2 "map mp_strike"
+            set {variable} ""
             set {variable}_1 "map mp_crash"
             set scr_aacp_maps_1 ""
             """;
@@ -326,6 +326,20 @@ public class MapRotationCfgParserTests
 
         Assert.Equal(variable, rotation.ConfigVariableName);
         Assert.Equal(["mp_crash", "mp_strike"], rotation.MapNames);
+    }
+
+    [Theory]
+    [InlineData("sv_maprotation_low_1")]
+    [InlineData("scr_small_rotation_custom_1")]
+    [InlineData("sv_maprotation_1")]
+    public void Parse_NumericSlotWithoutParent_PreservesStandaloneRotation(string variable)
+    {
+        var rotation = Assert.Single(MapRotationCfgParser.Parse(
+            $"set {variable} \"gametype dm map mp_crash\""));
+
+        Assert.Equal(variable, rotation.ConfigVariableName);
+        Assert.Equal("dm", rotation.GameMode);
+        Assert.Equal(["mp_crash"], rotation.MapNames);
     }
 
     [Fact]
