@@ -67,7 +67,10 @@ public sealed class MapRotationRecoveryBrowserTests
         scenario.Servers.Verify(x => x.Files.V1.GetContent(MapRotationAssignmentScenario.PermittedServerId,
             It.Is<GetFileContentQueryDto>(q => q.Path == MapRotationImportScenario.ConfigPath && q.RangeEnd == 1_000_000),
             It.IsAny<CancellationToken>()), Times.Once);
-        Assert.DoesNotContain(scenario.Repository.Invocations, invocation => invocation.Method.Name.StartsWith("Create", StringComparison.Ordinal));
+        Assert.DoesNotContain(Mock.Get(scenario.Repository.Object.MapRotations.V1).Invocations,
+            invocation => invocation.Method.Name.StartsWith("Create", StringComparison.Ordinal));
+        Assert.DoesNotContain(Mock.Get(scenario.Repository.Object.Maps.V1).Invocations,
+            invocation => invocation.Method.Name.StartsWith("Create", StringComparison.Ordinal));
         browser.AssertNoBrowserErrors();
     }
 

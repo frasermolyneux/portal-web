@@ -1851,8 +1851,20 @@ public class MapRotationsController(
 
         while (true)
         {
-            var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                equivalentGameTypes, null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
+            ApiResult<CollectionModel<Repository.Abstractions.Models.V1.GameServers.GameServerDto>> serversResponse;
+            try
+            {
+                serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                    equivalentGameTypes, null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is HttpRequestException ||
+                (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+            {
+                Logger.LogError(exception,
+                    "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
+                    gameType, offset);
+                throw new ServerLookupException(gameType, exception);
+            }
 
             // Surface repository failures — including a successful-but-malformed response with no
             // Data/Items payload — as errors rather than silently treating them as "no servers"
@@ -1878,7 +1890,8 @@ public class MapRotationsController(
         }
     }
 
-    private sealed class ServerLookupException(GameType gameType) : InvalidOperationException($"Failed to load game servers for game type {gameType}.")
+    private sealed class ServerLookupException(GameType gameType, Exception? innerException = null)
+        : InvalidOperationException($"Failed to load game servers for game type {gameType}.", innerException)
     {
     }
 

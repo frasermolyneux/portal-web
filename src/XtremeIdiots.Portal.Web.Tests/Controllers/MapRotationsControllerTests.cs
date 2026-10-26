@@ -264,13 +264,21 @@ public class MapRotationsControllerTests
         return (server, model);
     }
 
-    [Fact]
-    public async Task Import_ServerCatalogueFailure_IsVisibleWithoutBlockingManualImport()
+    [Theory]
+    [InlineData("response")]
+    [InlineData("transport")]
+    [InlineData("timeout")]
+    public async Task Import_ServerCatalogueFailure_IsVisibleWithoutBlockingManualImport(string failure)
     {
         var (_, model) = SetupServerImport();
-        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
-            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.BadGateway,
+        var lookup = mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
+            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()));
+        if (failure == "transport")
+            lookup.ThrowsAsync(new HttpRequestException("Synthetic catalogue transport failure."));
+        else if (failure == "timeout")
+            lookup.ThrowsAsync(new TaskCanceledException("Synthetic catalogue timeout."));
+        else
+            lookup.ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.BadGateway,
                 new ApiResponse<CollectionModel<GameServerDto>>()));
         var sut = CreateSut();
 
@@ -279,9 +287,25 @@ public class MapRotationsControllerTests
         Assert.Empty(page.AvailableServers);
         Assert.Contains("Upload or paste", page.ServerImportError, StringComparison.Ordinal);
         model.FromGameServer = false;
+        model.CfgContent = null;
+        var validation = Assert.IsType<ViewResult>(await sut.Import(model));
+        Assert.Contains("Upload or paste", Assert.IsType<ImportMapRotationsViewModel>(validation.Model).ServerImportError, StringComparison.Ordinal);
         model.CfgContent = "set sv_maprotation \"gametype dm map mp_alpha\"";
 
         Assert.Equal("ImportPreview", Assert.IsType<ViewResult>(await sut.Import(model)).ViewName);
+    }
+
+    [Fact]
+    public async Task Import_ServerCatalogueLookup_PropagatesIncomingRequestCancellation()
+    {
+        SetupServerImport();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
+            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().Import(cancellation.Token));
     }
 
     private MapRotationsController CreateSut(ClaimsPrincipal? user = null)
