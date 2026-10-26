@@ -26,7 +26,8 @@ public class FileBrowseApiController(
             ["game-server-configuration"] = FileBrowsePurpose.GameServerConfiguration,
             ["file-transport-configuration"] = FileBrowsePurpose.FileTransportConfiguration,
             ["screenshot-configuration"] = FileBrowsePurpose.ScreenshotConfiguration,
-            ["map-rotation-assignment"] = FileBrowsePurpose.MapRotationAssignment
+            ["map-rotation-assignment"] = FileBrowsePurpose.MapRotationAssignment,
+            ["map-rotation-import"] = FileBrowsePurpose.MapRotationImport
         };
 
     [HttpGet("{gameServerId:guid}/browse")]
@@ -88,6 +89,11 @@ public class FileBrowseApiController(
             ],
             FileBrowsePurpose.MapRotationAssignment =>
             [
+                ((gameType, gameServerId), AuthPolicies.MapRotations_Deploy)
+            ],
+            FileBrowsePurpose.MapRotationImport =>
+            [
+                (gameType, AuthPolicies.MapRotations_Write),
                 ((gameType, gameServerId), AuthPolicies.MapRotations_Deploy)
             ],
             _ => []

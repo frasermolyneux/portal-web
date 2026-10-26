@@ -1,6 +1,7 @@
 using Moq;
 using System.Net;
 using System.Text.RegularExpressions;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
@@ -9,6 +10,46 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "HttpIntegration")]
 public sealed partial class MapRotationRecoveryHttpTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ServerImport_ForgedSelectionAndMissingAntiforgeryCannotReadServerFiles(bool permitted)
+    {
+        var scenario = new MapRotationImportScenario();
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationDeployer);
+        var fields = new Dictionary<string, string>
+        {
+            ["GameType"] = "CallOfDuty4", ["FromGameServer"] = "true",
+            ["GameServerId"] = (permitted ? MapRotationAssignmentScenario.PermittedServerId : MapRotationAssignmentScenario.NonPermittedServerId).ToString(),
+            ["ServerCfgPath"] = MapRotationImportScenario.ConfigPath
+        };
+        using var noToken = await host.Client.PostAsync("/MapRotations/Import", new FormUrlEncodedContent(fields));
+        Assert.Equal("/Errors/Display/400", noToken.Headers.Location?.OriginalString);
+        scenario.Servers.Verify(x => x.Files.V1.GetMetadata(It.IsAny<Guid>(), It.IsAny<GetEntryMetadataQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        using var page = await host.Client.GetAsync("/MapRotations/Import");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        fields["__RequestVerificationToken"] = AntiforgeryToken().Match(await page.Content.ReadAsStringAsync()).Groups[1].Value;
+        Assert.NotEmpty(fields["__RequestVerificationToken"]);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/MapRotations/Import")
+        {
+            Content = new FormUrlEncodedContent(fields)
+        };
+        request.Headers.Add("Cookie", string.Join("; ", page.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])));
+        using var response = await host.Client.SendAsync(request);
+        if (permitted)
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("mp_alpha", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Equal("/Errors/Display/403", response.Headers.Location?.OriginalString);
+            scenario.Servers.Verify(x => x.Files.V1.GetContent(It.IsAny<Guid>(), It.IsAny<GetFileContentQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+    }
+
     [Fact]
     public async Task CombinedChildUrl_RedirectsToHub_ChildPostDispatchesOnlyPrimary()
     {

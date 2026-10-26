@@ -194,6 +194,33 @@ public class FileBrowseApiControllerTests
     }
 
     [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Browse_WhenRotationImport_RequiresWriteAndServerScopedDeploy(bool write, bool deploy)
+    {
+        var serverId = Guid.NewGuid();
+        var gameType = GameType.CallOfDuty4x;
+        SetupGameServer(serverId, gameType);
+        authorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), gameType, AuthPolicies.MapRotations_Write))
+            .ReturnsAsync(write ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var resource = (gameType, serverId);
+        authorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), resource, AuthPolicies.MapRotations_Deploy))
+            .ReturnsAsync(deploy ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        SetupBrowse(serverId);
+
+        var result = await CreateSut().Browse(serverId, "map-rotation-import");
+
+        if (write && deploy)
+            Assert.IsType<OkObjectResult>(result);
+        else
+        {
+            Assert.IsType<ForbidResult>(result);
+            fileBrowseApi.Verify(x => x.BrowseDirectory(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("credential-write")]

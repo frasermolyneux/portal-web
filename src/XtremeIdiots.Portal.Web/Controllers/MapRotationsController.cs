@@ -5,6 +5,8 @@ using Microsoft.Extensions.Caching.Memory;
 using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
@@ -24,6 +26,7 @@ public class MapRotationsController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
     ISyncApiClient syncApiClient,
+    IServersApiClient serversApiClient,
     IMemoryCache memoryCache,
     IMapMetadataService mapMetadataService,
     TelemetryClient telemetryClient,
@@ -34,6 +37,7 @@ public class MapRotationsController(
     private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty4x, GameType.CallOfDuty5];
     private readonly static string[] assignmentOperationNames = ["apply", "sync", "activate", "deactivate", "remove", "verify"];
     private const string PendingInstanceKey = "PendingInstanceId";
+    private const int MaxConfigFileBytes = 1_000_000;
 
     private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
     {
@@ -1377,10 +1381,14 @@ public class MapRotationsController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> Import()
+    public async Task<IActionResult> Import(CancellationToken cancellationToken = default)
     {
-        var canImport = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
-        return !canImport.Succeeded ? Forbid() : View(new ImportMapRotationsViewModel());
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var canImport = await authorizationService.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
+            return !canImport.Succeeded ? Forbid() : await RenderImportViewAsync(
+                new ImportMapRotationsViewModel { GameType = GameType.CallOfDuty4 }, cancellationToken).ConfigureAwait(false);
+        }, nameof(Import)).ConfigureAwait(false);
     }
 
     [HttpPost]
@@ -1392,7 +1400,7 @@ public class MapRotationsController(
             if (!supportedGameTypes.Contains(model.GameType))
             {
                 ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.");
-                return View(model);
+                return await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false);
             }
 
             var authResult = await CheckAuthorizationAsync(
@@ -1405,14 +1413,21 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            // Read cfg content from textarea or uploaded file
             var cfgContent = model.CfgContent;
-            if (model.CfgFile is { Length: > 0 })
+            if (model.FromGameServer)
             {
-                if (model.CfgFile.Length > 1_000_000)
+                var serverConfig = await ReadServerImportConfigAsync(model, cancellationToken).ConfigureAwait(false);
+                if (serverConfig.Error != null)
+                    return serverConfig.Error;
+
+                cfgContent = serverConfig.Content;
+            }
+            else if (model.CfgFile is { Length: > 0 })
+            {
+                if (model.CfgFile.Length > MaxConfigFileBytes)
                 {
-                    ModelState.AddModelError(nameof(model.CfgFile), "Config file must be under 1 MB.");
-                    return View(model);
+                    ModelState.AddModelError(nameof(model.CfgFile), "Config file must be 1 MB or smaller.");
+                    return await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false);
                 }
 
                 using var reader = new StreamReader(model.CfgFile.OpenReadStream());
@@ -1421,17 +1436,21 @@ public class MapRotationsController(
 
             if (string.IsNullOrWhiteSpace(cfgContent))
             {
-                ModelState.AddModelError("", "Please paste config content or upload a .cfg file.");
-                return View(model);
+                ModelState.AddModelError("", model.FromGameServer
+                    ? "The server config file is empty."
+                    : "Please paste config content or upload a .cfg file.");
+                return await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false);
             }
 
             // Parse the cfg content
             var parsed = MapRotationCfgParser.Parse(cfgContent);
+            if (model.FromGameServer)
+                parsed = [.. parsed.Select(rotation => rotation with { Author = null, DateText = null, RawComment = null })];
 
             if (parsed.Count == 0)
             {
                 ModelState.AddModelError("", "No map rotations found in the config content. Expected lines like: set sv_maprotation \"gametype ftag map mp_xxx map mp_yyy\"");
-                return View(model);
+                return await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false);
             }
 
             // Collect all unique map names for duplicate/new-map detection
@@ -1524,6 +1543,112 @@ public class MapRotationsController(
                 DraftId = draftId
             });
         }, nameof(Import)).ConfigureAwait(false);
+    }
+
+    private async Task<ViewResult> RenderImportViewAsync(ImportMapRotationsViewModel model, CancellationToken cancellationToken)
+    {
+        model.AvailableServers.Clear();
+        model.ServerImportError = null;
+        try
+        {
+            foreach (var gameType in new[] { GameType.CallOfDuty4, GameType.CallOfDuty5 })
+            {
+                var canWrite = await authorizationService.AuthorizeAsync(User, gameType, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
+                if (!canWrite.Succeeded)
+                    continue;
+
+                var compatibleTypes = BaseAuthorizationHelper.GetEquivalentGameTypes(gameType);
+                var servers = await GetAuthorizedServersAsync(gameType, cancellationToken).ConfigureAwait(false);
+                model.AvailableServers.AddRange(servers.Where(server =>
+                    compatibleTypes.Contains(server.GameType) && server.FileTransportEnabled && server.FileTransportType != FileTransportType.Unknown));
+            }
+        }
+        catch (ServerLookupException)
+        {
+            model.AvailableServers.Clear();
+            model.ServerImportError = "Server import is unavailable. Upload or paste a config instead.";
+        }
+
+        model.AvailableServers = [.. model.AvailableServers.DistinctBy(server => server.GameServerId)
+            .OrderBy(server => server.Title, StringComparer.OrdinalIgnoreCase)];
+        return View("Import", model);
+    }
+
+    private async Task<(IActionResult? Error, string? Content)> ReadServerImportConfigAsync(
+        ImportMapRotationsViewModel model, CancellationToken cancellationToken)
+    {
+        if (!model.GameServerId.HasValue || model.GameServerId == Guid.Empty)
+            ModelState.AddModelError(nameof(model.GameServerId), "Choose a game server.");
+
+        if (string.IsNullOrWhiteSpace(model.ServerCfgPath) || !model.ServerCfgPath.Trim().EndsWith(".cfg", StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(model.ServerCfgPath), "Choose a .cfg file on the server.");
+
+        if (!ModelState.IsValid)
+            return (await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false), null);
+
+        var serverId = model.GameServerId!.Value;
+        var response = await repositoryApiClient.GameServers.V1.GetGameServer(serverId, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data == null)
+        {
+            Logger.LogWarning("Unable to resolve server {GameServerId} for rotation import: {StatusCode}.", serverId, response.StatusCode);
+            return (StatusCode(502, "Unable to load the selected game server."), null);
+        }
+
+        var server = response.Result.Data;
+        var canWrite = await authorizationService.AuthorizeAsync(User, server.GameType, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
+        var canDeploy = await authorizationService.AuthorizeAsync(User, (server.GameType, serverId), AuthPolicies.MapRotations_Deploy).ConfigureAwait(false);
+        if (!canWrite.Succeeded || !canDeploy.Succeeded)
+            return (Forbid(), null);
+
+        if (!BaseAuthorizationHelper.GetEquivalentGameTypes(model.GameType).Contains(server.GameType))
+            ModelState.AddModelError(nameof(model.GameServerId), "Choose a server for the selected game.");
+        else if (!server.FileTransportEnabled || server.FileTransportType == FileTransportType.Unknown)
+            ModelState.AddModelError(nameof(model.GameServerId), "File transport is not available for this server.");
+
+        if (!ModelState.IsValid)
+            return (await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false), null);
+
+        var path = model.ServerCfgPath!.Trim();
+        var metadata = await serversApiClient.Files.V1.GetMetadata(serverId, new GetEntryMetadataQueryDto { Path = path }, cancellationToken).ConfigureAwait(false);
+        if (!metadata.IsSuccess || metadata.Result?.Data == null)
+        {
+            Logger.LogWarning("Unable to read config metadata for rotation import on server {GameServerId}: {StatusCode}.", serverId, metadata.StatusCode);
+            ModelState.AddModelError(nameof(model.ServerCfgPath), "Could not read this config file. Check the path and try again.");
+        }
+        else if (metadata.Result.Data.Type != FileEntryType.File || metadata.Result.Data.Size is null or <= 0)
+            ModelState.AddModelError(nameof(model.ServerCfgPath), "Choose a non-empty config file.");
+        else if (metadata.Result.Data.Size > MaxConfigFileBytes)
+            ModelState.AddModelError(nameof(model.ServerCfgPath), "Config file must be 1 MB or smaller.");
+
+        if (!ModelState.IsValid)
+            return (await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false), null);
+
+        // Read one extra byte so a file that grows after the metadata check is rejected, not partially imported.
+        var content = await serversApiClient.Files.V1.GetContent(serverId, new GetFileContentQueryDto
+        {
+            Path = path,
+            Mode = FileContentMode.Binary,
+            RangeStart = 0,
+            RangeEnd = MaxConfigFileBytes
+        }, cancellationToken).ConfigureAwait(false);
+        if (!content.IsSuccess || content.Result?.Data?.Base64Content == null)
+        {
+            Logger.LogWarning("Unable to read config content for rotation import on server {GameServerId}: {StatusCode}.", serverId, content.StatusCode);
+            ModelState.AddModelError(nameof(model.ServerCfgPath), "Could not read this config file. Check the path and try again.");
+        }
+        else if (content.Result.Data.ContentLengthBytes > MaxConfigFileBytes)
+            ModelState.AddModelError(nameof(model.ServerCfgPath), "Config file must be 1 MB or smaller.");
+
+        if (!ModelState.IsValid)
+            return (await RenderImportViewAsync(model, cancellationToken).ConfigureAwait(false), null);
+
+        var bytes = Convert.FromBase64String(content.Result!.Data!.Base64Content!);
+        if (bytes.LongLength != content.Result.Data.ContentLengthBytes || bytes.Length > MaxConfigFileBytes)
+            throw new InvalidOperationException("The server config content did not match its reported size.");
+
+        using var stream = new MemoryStream(bytes);
+        using var reader = new StreamReader(stream);
+        return (null, await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost]
@@ -1726,8 +1851,20 @@ public class MapRotationsController(
 
         while (true)
         {
-            var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                equivalentGameTypes, null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
+            ApiResult<CollectionModel<Repository.Abstractions.Models.V1.GameServers.GameServerDto>> serversResponse;
+            try
+            {
+                serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                    equivalentGameTypes, null, null, offset, pageSize, null, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is HttpRequestException ||
+                (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+            {
+                Logger.LogError(exception,
+                    "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
+                    gameType, offset);
+                throw new ServerLookupException(gameType, exception);
+            }
 
             // Surface repository failures — including a successful-but-malformed response with no
             // Data/Items payload — as errors rather than silently treating them as "no servers"
@@ -1738,7 +1875,7 @@ public class MapRotationsController(
                 Logger.LogError(
                     "Failed to load game servers for game type {GameType} while resolving authorized deploy servers (offset {Offset}).",
                     gameType, offset);
-                throw new InvalidOperationException($"Failed to load game servers for game type {gameType}.");
+                throw new ServerLookupException(gameType);
             }
 
             var serverBatch = serversResponse.Result.Data.Items.ToList();
@@ -1751,6 +1888,11 @@ public class MapRotationsController(
 
             offset += pageSize;
         }
+    }
+
+    private sealed class ServerLookupException(GameType gameType, Exception? innerException = null)
+        : InvalidOperationException($"Failed to load game servers for game type {gameType}.", innerException)
+    {
     }
 
     /// <summary>

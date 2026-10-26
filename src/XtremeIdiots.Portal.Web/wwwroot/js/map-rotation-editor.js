@@ -19,8 +19,7 @@
         let timer = null;
 
         // Suggestions dropdown
-        const $suggestions = $('<div class="map-suggestions list-group position-absolute bg-white shadow" style="z-index:1050; max-height:300px; overflow-y:auto; display:none; width:100%;"></div>');
-        $searchInput.parent().css('position', 'relative');
+        const $suggestions = $('<div class="map-suggestions list-group bg-white shadow mt-1" style="max-height:min(420px, 50vh); overflow-y:auto; display:none;"></div>');
         $searchInput.after($suggestions);
 
         // Initialize with existing maps (edit mode)

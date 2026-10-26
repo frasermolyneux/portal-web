@@ -5,5 +5,6 @@ public enum FileBrowsePurpose
     GameServerConfiguration,
     FileTransportConfiguration,
     ScreenshotConfiguration,
-    MapRotationAssignment
+    MapRotationAssignment,
+    MapRotationImport
 }

@@ -66,6 +66,7 @@ allow-listed purposes:
 | `file-transport-configuration` | Resolved server `GameType`: `GameServers.Write` and `GameServers.Credentials.FileTransport.Write` |
 | `screenshot-configuration` | Resolved server `GameType`: `GameServers.Write` and `GameServers.Admin.Screenshots.Configure` |
 | `map-rotation-assignment` | Resolved `(GameType, GameServerId)`: `MapRotations.Deploy` |
+| `map-rotation-import` | Resolved server `GameType`: `MapRotations.Write`, and resolved `(GameType, GameServerId)`: `MapRotations.Deploy` |
 
 The server and its game type are resolved server-side; clients cannot provide a
 policy name or game type. File transport must be enabled with a supported
@@ -75,6 +76,10 @@ Credential configuration remains protected by the file-transport credential
 policies. Browser access exposes remote directory metadata (names, paths, sizes,
 and modified timestamps) for an authorized server, but never stored credentials
 or file contents.
+
+Rotation import reads a selected `.cfg` through the existing Files API and only
+returns parsed rotations to the preview. It does not expose a raw file-download
+endpoint or require access to stored file-transport credentials.
 
 ## PolicyTagHelper
 

@@ -4,6 +4,13 @@ Open **Map Rotations**, choose a rotation, then **Manage** beside its server and
 assignment. This server page is the single place to run actions and review activity.
 Edit the map list and order on the rotation page.
 
+## Importing rotations
+
+Upload or paste a config, or choose **Read config from a game server** and
+browse to its `.cfg` file (up to 1 MB). Server import requires rotation-write
+permission and deploy permission for that server. Both paths use the same preview
+and confirmation; importing does not assign rotations or change server files.
+
 ## Everyday actions
 
 | Action | Use it to |
