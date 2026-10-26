@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using MX.InvisionCommunity.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using System.Net;
@@ -41,7 +42,8 @@ public class UserController(
     TelemetryClient telemetryClient,
     ILogger<UserController> logger,
     IConfiguration configuration,
-    IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
+    IAuditLogger auditLogger,
+    IInvisionApiClient forumsClient) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
     private const int ManageProfileRecentNotificationLimit = 50;
     private const string NotificationPreferencesUnavailableMessage = "Notification preferences are currently unavailable. Please try again later.";
@@ -174,6 +176,170 @@ public class UserController(
 
             return errorResult ?? View(model);
         }, nameof(ManageProfile)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var response = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfileIncludingArchived(id, cancellationToken).ConfigureAwait(false);
+            if (response.IsNotFound)
+                return NotFound();
+            if (!response.IsSuccess || response.Result?.Data is not { } profile)
+            {
+                Logger.LogWarning("Unable to retrieve profile {ProfileId} for archival: HTTP {StatusCode}", id, response.StatusCode);
+                return StatusCode(StatusCodes.Status502BadGateway, "Unable to retrieve the portal profile.");
+            }
+
+            var denied = await CheckAuthorizationAsync(
+                authorizationService, profile, AuthPolicies.Users_Archive, nameof(Archive), "UserProfile").ConfigureAwait(false);
+            return denied is not null
+                ? denied
+                : View(new ArchiveUserProfileViewModel
+                {
+                    Id = profile.UserProfileId,
+                    DisplayName = profile.DisplayName,
+                    ForumId = profile.XtremeIdiotsForumId,
+                    ArchivedAtUtc = profile.ArchivedAtUtc,
+                    Reason = profile.ArchiveReason ?? "Upstream forum account no longer exists."
+                });
+        }, nameof(Archive)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ActionName(nameof(Archive))]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ArchiveConfirmed(ArchiveUserProfileViewModel model, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var response = await repositoryApiClient.UserProfiles.V1
+                .GetUserProfileIncludingArchived(model.Id, cancellationToken).ConfigureAwait(false);
+            if (response.IsNotFound)
+                return NotFound();
+            if (!response.IsSuccess || response.Result?.Data is not { } profile)
+            {
+                Logger.LogWarning("Unable to retrieve profile {ProfileId} for archival: HTTP {StatusCode}", model.Id, response.StatusCode);
+                return StatusCode(StatusCodes.Status502BadGateway, "Unable to retrieve the portal profile.");
+            }
+
+            var denied = await CheckAuthorizationAsync(
+                authorizationService, profile, AuthPolicies.Users_Archive, nameof(ArchiveConfirmed), "UserProfile").ConfigureAwait(false);
+            if (denied is not null)
+                return denied;
+
+            model.DisplayName = profile.DisplayName;
+            model.ForumId = profile.XtremeIdiotsForumId;
+            model.ArchivedAtUtc = profile.ArchivedAtUtc;
+
+            if (!Guid.TryParse(User.UserProfileId(), out var actorProfileId))
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(model.Reason) || model.Reason.Length > 500)
+                ModelState.AddModelError(nameof(model.Reason), "Enter a reason of up to 500 characters.");
+            if (!ModelState.IsValid)
+                return View(nameof(Archive), model);
+
+            if (profile.ArchivedAtUtc is null)
+            {
+                var archiveError = await ArchiveMissingForumProfileAsync(profile, model, actorProfileId, cancellationToken).ConfigureAwait(false);
+                if (archiveError is not null)
+                    return archiveError;
+            }
+
+            if (!await DisableArchivedIdentityUsersAsync(profile).ConfigureAwait(false))
+            {
+                Response.StatusCode = StatusCodes.Status502BadGateway;
+                model.ArchivedAtUtc ??= DateTime.UtcNow;
+                ModelState.AddModelError(string.Empty, "The profile is archived, but local sign-in could not be fully disabled. Retry to finish disabling sign-in and invalidating sessions.");
+                return View(nameof(Archive), model);
+            }
+
+            this.AddAlertSuccess("The portal profile has been archived. Historical activity is preserved and it will no longer appear in active users or synchronization. Existing sessions expire within 15 minutes.");
+            return RedirectToAction(nameof(Index));
+        }, nameof(ArchiveConfirmed)).ConfigureAwait(false);
+    }
+
+    private async Task<IActionResult?> ArchiveMissingForumProfileAsync(
+        UserProfileDto profile, ArchiveUserProfileViewModel model, Guid actorProfileId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(profile.XtremeIdiotsForumId))
+        {
+            Logger.LogWarning("Cannot verify the upstream account for profile {ProfileId} without a forum ID", profile.UserProfileId);
+            ModelState.AddModelError(string.Empty, "This profile has no forum ID, so the upstream account cannot be verified.");
+            return View(nameof(Archive), model);
+        }
+
+        var member = await forumsClient.Core.GetMember(profile.XtremeIdiotsForumId, cancellationToken).ConfigureAwait(false);
+        if (member.StatusCode != HttpStatusCode.NotFound)
+        {
+            if (member.IsSuccess)
+            {
+                ModelState.AddModelError(string.Empty, "The forum account still exists. Only profiles whose upstream account is missing can be archived.");
+            }
+            else
+            {
+                Logger.LogWarning("Forum account verification failed for profile {ProfileId}: HTTP {StatusCode}", profile.UserProfileId, member.StatusCode);
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                ModelState.AddModelError(string.Empty, "The forum account could not be verified. Nothing has been archived; try again later.");
+            }
+
+            return View(nameof(Archive), model);
+        }
+
+        var archive = await repositoryApiClient.UserProfiles.V1.ArchiveUserProfile(
+            new ArchiveUserProfileDto(profile.UserProfileId, actorProfileId, model.Reason.Trim()),
+            cancellationToken).ConfigureAwait(false);
+        if (!archive.IsSuccess)
+        {
+            Logger.LogError("Failed to archive portal profile {ProfileId}: HTTP {StatusCode}", profile.UserProfileId, archive.StatusCode);
+            Response.StatusCode = StatusCodes.Status502BadGateway;
+            ModelState.AddModelError(string.Empty, "The portal profile could not be archived. Try again later.");
+            return View(nameof(Archive), model);
+        }
+
+        if (archive.StatusCode == HttpStatusCode.OK)
+        {
+            TrackSuccessTelemetry("UserProfileArchived", nameof(ArchiveConfirmed), new Dictionary<string, string>
+            {
+                ["TargetUserProfileId"] = profile.UserProfileId.ToString(),
+                ["TargetForumId"] = profile.XtremeIdiotsForumId,
+                ["Reason"] = model.Reason.Trim()
+            });
+        }
+
+        return null;
+    }
+
+    private async Task<bool> DisableArchivedIdentityUsersAsync(UserProfileDto profile)
+    {
+        var identityIds = new[] { profile.XtremeIdiotsForumId, profile.IdentityOid, profile.UserProfileId.ToString() }
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        var succeeded = true;
+        foreach (var identityId in identityIds)
+        {
+            var identityUser = await userManager.FindByIdAsync(identityId!).ConfigureAwait(false);
+            if (identityUser is null)
+                continue;
+
+            IdentityResult[] results =
+            [
+                await userManager.SetLockoutEnabledAsync(identityUser, true).ConfigureAwait(false),
+                await userManager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue).ConfigureAwait(false),
+                await userManager.UpdateSecurityStampAsync(identityUser).ConfigureAwait(false)
+            ];
+            foreach (var result in results.Where(result => !result.Succeeded))
+            {
+                succeeded = false;
+                Logger.LogError("Failed to disable local sign-in for archived profile {ProfileId}, Identity {IdentityId}: {Errors}",
+                    profile.UserProfileId, identityId, string.Join(", ", result.Errors.Select(error => error.Code)));
+            }
+        }
+
+        return succeeded;
     }
 
     /// <summary>

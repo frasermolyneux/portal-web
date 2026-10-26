@@ -35,19 +35,28 @@ public class XtremeIdiotsAuth(
 
         try
         {
-            var result = await AttemptExternalLoginSignIn(info, cancellationToken).ConfigureAwait(false);
+            var memberId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("The external login has no member ID.");
+            var memberResult = await forumsClient.Core.GetMember(memberId, cancellationToken).ConfigureAwait(false);
+            if (!memberResult.IsSuccess || memberResult.Result?.Data is not { } member)
+                throw new InvalidOperationException($"Forums API call failed for member {memberId}: {memberResult.StatusCode}");
+
+            // Resolve the active profile before any Identity method can issue a sign-in cookie.
+            var profile = await EnsureUserProfileExists(memberId, member, cancellationToken).ConfigureAwait(false);
+            var result = await AttemptExternalLoginSignIn(info, profile, cancellationToken).ConfigureAwait(false);
 
             if (result != XtremeIdiotsAuthResult.Failed)
             {
                 return result;
             }
 
-            await RegisterNewUser(info, cancellationToken).ConfigureAwait(false);
+            await RegisterNewUser(info, profile, cancellationToken).ConfigureAwait(false);
             return XtremeIdiotsAuthResult.Success;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error processing external login for provider {LoginProvider}", info.LoginProvider);
+            await signInManager.SignOutAsync().ConfigureAwait(false);
             return XtremeIdiotsAuthResult.Failed;
         }
     }
@@ -57,7 +66,7 @@ public class XtremeIdiotsAuth(
         await signInManager.SignOutAsync().ConfigureAwait(false);
     }
 
-    private async Task UpdateExistingUser(ExternalLoginInfo info, CancellationToken cancellationToken = default)
+    private async Task UpdateExistingUser(ExternalLoginInfo info, UserProfileDto userProfile, CancellationToken cancellationToken = default)
     {
         if (info?.Principal is null)
         {
@@ -74,27 +83,13 @@ public class XtremeIdiotsAuth(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var memberResult = await forumsClient.Core.GetMember(id, cancellationToken).ConfigureAwait(false);
-
-            if (memberResult is null || !memberResult.IsSuccess)
-            {
-                throw new InvalidOperationException($"Forums API call failed for member ID: {id} with status: {memberResult?.StatusCode.ToString() ?? "null response"}");
-            }
-
-            var member = memberResult.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
             var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false) ?? throw new InvalidOperationException($"User not found for login provider: {info.LoginProvider}, key: {info.ProviderKey}");
             cancellationToken.ThrowIfCancellationRequested();
 
             var userClaims = await userManager.GetClaimsAsync(user).ConfigureAwait(false);
-            await userManager.RemoveClaimsAsync(user, userClaims).ConfigureAwait(false);
-
-            var userProfile = await EnsureUserProfileExists(member.Id.ToString(), member, cancellationToken).ConfigureAwait(false);
-
-            if (userProfile?.UserProfileClaims != null)
-            {
-                var claims = userProfile.UserProfileClaims.Select(upc => new Claim(upc.ClaimType, upc.ClaimValue)).ToList();
-                await userManager.AddClaimsAsync(user, claims).ConfigureAwait(false);
-            }
+            EnsureIdentitySucceeded(await userManager.RemoveClaimsAsync(user, userClaims).ConfigureAwait(false));
+            var claims = userProfile.UserProfileClaims.Select(upc => new Claim(upc.ClaimType, upc.ClaimValue)).ToList();
+            EnsureIdentitySucceeded(await userManager.AddClaimsAsync(user, claims).ConfigureAwait(false));
 
             await signInManager.SignInAsync(user, true).ConfigureAwait(false);
             await signInManager.RefreshSignInAsync(user).ConfigureAwait(false);
@@ -108,7 +103,7 @@ public class XtremeIdiotsAuth(
         }
     }
 
-    private async Task RegisterNewUser(ExternalLoginInfo info, CancellationToken cancellationToken = default)
+    private async Task RegisterNewUser(ExternalLoginInfo info, UserProfileDto userProfile, CancellationToken cancellationToken = default)
     {
         if (info?.Principal is null)
         {
@@ -133,41 +128,17 @@ public class XtremeIdiotsAuth(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var memberResult = await forumsClient.Core.GetMember(id, cancellationToken).ConfigureAwait(false);
-
-            if (memberResult is null || !memberResult.IsSuccess)
-            {
-                throw new InvalidOperationException($"Forums API call failed for member ID: {id} with status: {memberResult?.StatusCode.ToString() ?? "null response"}");
-            }
-
-            var member = memberResult.Result?.Data ?? throw new InvalidOperationException($"Member not found with ID: {id}");
             var user = new IdentityUser { Id = id, UserName = username, Email = email };
             var createUserResult = await userManager.CreateAsync(user).ConfigureAwait(false);
-
-            if (!createUserResult.Succeeded)
-            {
-                logger.LogWarning("Failed to create user {Username}. Errors: {Errors}",
-                    username, string.Join(", ", createUserResult.Errors.Select(e => e.Description)));
-                return;
-            }
+            EnsureIdentitySucceeded(createUserResult);
 
             var addLoginResult = await userManager.AddLoginAsync(user, info).ConfigureAwait(false);
-            if (!addLoginResult.Succeeded)
-            {
-                logger.LogWarning("Failed to add external login for user {Username}. Errors: {Errors}",
-                    username, string.Join(", ", addLoginResult.Errors.Select(e => e.Description)));
-                return;
-            }
+            EnsureIdentitySucceeded(addLoginResult);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var userProfile = await EnsureUserProfileExists(member.Id.ToString(), member, cancellationToken).ConfigureAwait(false);
-
-            if (userProfile?.UserProfileClaims != null)
-            {
-                var claims = userProfile.UserProfileClaims.Select(upc => new Claim(upc.ClaimType, upc.ClaimValue)).ToList();
-                await userManager.AddClaimsAsync(user, claims).ConfigureAwait(false);
-            }
+            var claims = userProfile.UserProfileClaims.Select(upc => new Claim(upc.ClaimType, upc.ClaimValue)).ToList();
+            EnsureIdentitySucceeded(await userManager.AddClaimsAsync(user, claims).ConfigureAwait(false));
 
             await signInManager.SignInAsync(user, true).ConfigureAwait(false);
             await signInManager.RefreshSignInAsync(user).ConfigureAwait(false);
@@ -181,7 +152,7 @@ public class XtremeIdiotsAuth(
         }
     }
 
-    private async Task<UserProfileDto?> EnsureUserProfileExists(string memberId, MemberDto member, CancellationToken cancellationToken = default)
+    private async Task<UserProfileDto> EnsureUserProfileExists(string memberId, MemberDto member, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(memberId))
         {
@@ -217,22 +188,20 @@ public class XtremeIdiotsAuth(
 
                 if (!createResult.IsSuccess)
                 {
-                    logger.LogWarning("Failed to create user profile for member {MemberId}", memberId);
-                    return null;
+                    throw new InvalidOperationException($"Unable to create an active portal profile for member {memberId}: {createResult.StatusCode}");
                 }
 
                 userProfileDtoApiResponse = await repositoryApiClient.UserProfiles.V1
                     .GetUserProfileByXtremeIdiotsId(memberId, cancellationToken).ConfigureAwait(false);
             }
 
-            if (userProfileDtoApiResponse.IsSuccess)
+            if (userProfileDtoApiResponse.IsSuccess && userProfileDtoApiResponse.Result?.Data is { ArchivedAtUtc: null } profile)
             {
                 logger.LogDebug("Successfully retrieved user profile for member {MemberId}", memberId);
-                return userProfileDtoApiResponse.Result?.Data;
+                return profile;
             }
 
-            logger.LogWarning("Failed to retrieve user profile for member {MemberId}", memberId);
-            return null;
+            throw new InvalidOperationException($"Unable to retrieve an active portal profile for member {memberId}: {userProfileDtoApiResponse.StatusCode}");
         }
         catch (Exception ex)
         {
@@ -261,7 +230,13 @@ public class XtremeIdiotsAuth(
         }
     }
 
-    private async Task<XtremeIdiotsAuthResult> AttemptExternalLoginSignIn(ExternalLoginInfo info, CancellationToken cancellationToken)
+    private static void EnsureIdentitySucceeded(IdentityResult result)
+    {
+        if (!result.Succeeded)
+            throw new InvalidOperationException($"Identity operation failed: {string.Join(", ", result.Errors.Select(error => error.Code))}");
+    }
+
+    private async Task<XtremeIdiotsAuthResult> AttemptExternalLoginSignIn(ExternalLoginInfo info, UserProfileDto profile, CancellationToken cancellationToken)
     {
         var result = await signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, true).ConfigureAwait(false);
         var username = info.Principal.FindFirstValue(ClaimTypes.Name);
@@ -270,7 +245,7 @@ public class XtremeIdiotsAuth(
 
         if (result.Succeeded)
         {
-            await UpdateExistingUser(info, cancellationToken).ConfigureAwait(false);
+            await UpdateExistingUser(info, profile, cancellationToken).ConfigureAwait(false);
             return XtremeIdiotsAuthResult.Success;
         }
 
