@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.Api.Abstractions;
+using MX.InvisionCommunity.Api.Abstractions;
+using MX.InvisionCommunity.Api.Abstractions.Models;
 using MX.Observability.ApplicationInsights.Auditing;
 using MX.Observability.ApplicationInsights.Auditing.Models;
 using Newtonsoft.Json;
@@ -74,6 +76,7 @@ public class UserControllerTests
     private readonly Mock<ILogger<UserController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
     private readonly Mock<IAuditLogger> mockAuditLogger = new();
+    private readonly Mock<IInvisionApiClient> mockForumsClient = new() { DefaultValue = DefaultValue.Mock };
 
     public UserControllerTests()
     {
@@ -1020,6 +1023,217 @@ public class UserControllerTests
         mockRepositoryApiClient.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task Archive_Get_ConfirmsWithoutMutatingOrCallingForums()
+    {
+        var profile = SetupArchiveProfile();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.Archive(profile.UserProfileId);
+
+        var model = Assert.IsType<ArchiveUserProfileViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Equal(profile.UserProfileId, model.Id);
+        Assert.Equal(profile.DisplayName, model.DisplayName);
+        mockForumsClient.VerifyNoOtherCalls();
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Archive_Post_VerifiedMissingAccount_ArchivesWithActorAndAudits()
+    {
+        var profile = SetupArchiveProfile();
+        var principal = CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin);
+        var actorId = Guid.Parse(principal.FindFirstValue(UserProfileClaimType.UserProfileId)!);
+        var sut = CreateSut(principal);
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel
+        {
+            Id = profile.UserProfileId,
+            Reason = "  Forum account deleted.  "
+        });
+
+        Assert.Equal(nameof(UserController.Index), Assert.IsType<RedirectToActionResult>(result).ActionName);
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.Is<ArchiveUserProfileDto>(dto => dto.UserProfileId == profile.UserProfileId &&
+                dto.ArchivedByUserProfileId == actorId && dto.Reason == "Forum account deleted."),
+            It.IsAny<CancellationToken>()), Times.Once);
+        mockAuditLogger.Verify(logger => logger.LogAudit(It.IsAny<AuditEvent>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task Archive_Post_RequiresDefinitiveForumNotFound(HttpStatusCode forumStatus)
+    {
+        var profile = SetupArchiveProfile(forumStatus: forumStatus);
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(sut.ModelState.IsValid);
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockUserManager.Verify(manager => manager.FindByIdAsync(It.IsAny<string>()), Times.Never);
+        mockAuditLogger.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Archive_Post_DeniedPolicy_DoesNotVerifyOrMutate()
+    {
+        var profile = SetupArchiveProfile();
+        mockAuthorizationService.Setup(service => service.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Users_Archive))
+            .ReturnsAsync(AuthorizationResult.Failed());
+        var sut = CreateSut(CreateHeadAdminPrincipal(GameType.CallOfDuty5));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        Assert.IsType<UnauthorizedResult>(result);
+        mockForumsClient.VerifyNoOtherCalls();
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Archive_Post_InvalidReason_DoesNotVerifyOrMutate()
+    {
+        var profile = SetupArchiveProfile();
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId, Reason = " " });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(sut.ModelState.IsValid);
+        mockForumsClient.VerifyNoOtherCalls();
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Archive_Post_IdentityFailure_IsVisibleAndRetryableAfterArchive()
+    {
+        var profile = SetupArchiveProfile();
+        var identityUser = new IdentityUser { Id = profile.XtremeIdiotsForumId! };
+        mockUserManager.Setup(manager => manager.FindByIdAsync(identityUser.Id)).ReturnsAsync(identityUser);
+        mockUserManager.Setup(manager => manager.SetLockoutEnabledAsync(identityUser, true)).ReturnsAsync(IdentityResult.Success);
+        mockUserManager.Setup(manager => manager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue)).ReturnsAsync(IdentityResult.Success);
+        mockUserManager.Setup(manager => manager.UpdateSecurityStampAsync(identityUser))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "ConcurrencyFailure" }));
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        var model = Assert.IsType<ArchiveUserProfileViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.NotNull(model.ArchivedAtUtc);
+        Assert.Equal(StatusCodes.Status502BadGateway, sut.Response.StatusCode);
+        Assert.False(sut.ModelState.IsValid);
+        mockUserManager.Verify(manager => manager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue), Times.Once);
+    }
+
+    [Fact]
+    public async Task Archive_Post_RepositoryFailure_DoesNotAuditOrDisableIdentity()
+    {
+        var profile = SetupArchiveProfile();
+        mockRepositoryApiClient.Setup(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.ServiceUnavailable));
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Equal(StatusCodes.Status502BadGateway, sut.Response.StatusCode);
+        Assert.False(sut.ModelState.IsValid);
+        mockUserManager.Verify(manager => manager.FindByIdAsync(It.IsAny<string>()), Times.Never);
+        mockAuditLogger.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Archive_Post_AlreadyArchived_RetriesIdentityRevocationWithoutArchivingOrRecheckingForums()
+    {
+        var profile = SetupArchiveProfile(archived: true);
+        var identityUser = new IdentityUser { Id = profile.XtremeIdiotsForumId! };
+        mockUserManager.Setup(manager => manager.FindByIdAsync(identityUser.Id)).ReturnsAsync(identityUser);
+        mockUserManager.Setup(manager => manager.SetLockoutEnabledAsync(identityUser, true)).ReturnsAsync(IdentityResult.Success);
+        mockUserManager.Setup(manager => manager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue)).ReturnsAsync(IdentityResult.Success);
+        mockUserManager.Setup(manager => manager.UpdateSecurityStampAsync(identityUser)).ReturnsAsync(IdentityResult.Success);
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        mockForumsClient.VerifyNoOtherCalls();
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockUserManager.Verify(manager => manager.UpdateSecurityStampAsync(identityUser), Times.Once);
+        mockAuditLogger.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Archive_Post_IdentityException_OffersRetryAndContinuesOtherAliases(bool lookupThrows)
+    {
+        var profile = SetupArchiveProfile();
+        var identityUser = new IdentityUser { Id = profile.XtremeIdiotsForumId! };
+        if (lookupThrows)
+        {
+            mockUserManager.Setup(manager => manager.FindByIdAsync(identityUser.Id))
+                .ThrowsAsync(new InvalidOperationException("Identity store unavailable."));
+        }
+        else
+        {
+            mockUserManager.Setup(manager => manager.FindByIdAsync(identityUser.Id)).ReturnsAsync(identityUser);
+            mockUserManager.Setup(manager => manager.SetLockoutEnabledAsync(identityUser, true)).ReturnsAsync(IdentityResult.Success);
+            mockUserManager.Setup(manager => manager.SetLockoutEndDateAsync(identityUser, DateTimeOffset.MaxValue))
+                .ThrowsAsync(new InvalidOperationException("Identity store unavailable."));
+        }
+
+        var sut = CreateSut(CreateGlobalAdminPrincipal(UserProfileClaimType.SeniorAdmin));
+
+        var result = await sut.ArchiveConfirmed(new ArchiveUserProfileViewModel { Id = profile.UserProfileId });
+
+        var model = Assert.IsType<ArchiveUserProfileViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.NotNull(model.ArchivedAtUtc);
+        Assert.Equal(StatusCodes.Status502BadGateway, sut.Response.StatusCode);
+        Assert.Contains(sut.ModelState.Values.SelectMany(value => value.Errors),
+            error => error.ErrorMessage.Contains("Retry", StringComparison.Ordinal));
+        mockRepositoryApiClient.Verify(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockUserManager.Verify(manager => manager.FindByIdAsync(profile.UserProfileId.ToString()), Times.Once);
+    }
+
+    private UserProfileDto SetupArchiveProfile(bool archived = false, HttpStatusCode forumStatus = HttpStatusCode.NotFound)
+    {
+        var profile = JsonConvert.DeserializeObject<UserProfileDto>(JsonConvert.SerializeObject(new
+        {
+            UserProfileId = Guid.NewGuid(),
+            XtremeIdiotsForumId = "42",
+            IdentityOid = "42",
+            DisplayName = "Former Forum User",
+            ArchivedAtUtc = archived ? DateTime.UtcNow : (DateTime?)null,
+            ArchiveReason = archived ? "Forum account deleted." : null,
+            UserProfileClaims = Array.Empty<object>()
+        }))!;
+        mockRepositoryApiClient.Setup(client => client.UserProfiles.V1.GetUserProfileIncludingArchived(
+            profile.UserProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(profile)));
+        mockRepositoryApiClient.Setup(client => client.UserProfiles.V1.ArchiveUserProfile(
+            It.IsAny<ArchiveUserProfileDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK));
+        mockAuthorizationService.Setup(service => service.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Users_Archive))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockForumsClient.Setup(client => client.Core.GetMember("42", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MemberDto>(forumStatus));
+        return profile;
+    }
+
     private UserController CreateSut(ClaimsPrincipal? user = null)
     {
         var controller = new UserController(
@@ -1029,7 +1243,8 @@ public class UserControllerTests
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,
-            mockAuditLogger.Object);
+            mockAuditLogger.Object,
+            mockForumsClient.Object);
 
         var httpContext = new DefaultHttpContext
         {

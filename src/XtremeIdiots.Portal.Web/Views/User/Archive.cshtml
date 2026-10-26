@@ -1,0 +1,64 @@
+@model XtremeIdiots.Portal.Web.ViewModels.ArchiveUserProfileViewModel
+@{
+    ViewData["Title"] = "Archive Portal Profile";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title"><h5>@ViewData["Title"]</h5></div>
+            <form asp-action="Archive" method="post">
+                <input asp-for="Id" type="hidden" />
+                <div class="ibox-content">
+                    <div asp-validation-summary="All" class="text-danger"></div>
+                    @if (Model.ArchivedAtUtc.HasValue)
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            This profile is already archived. Retry to finish disabling its local sign-in and invalidating sessions.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fa-solid fa-fw fa-triangle-exclamation" aria-hidden="true"></i>
+                            Archive this portal profile only if its upstream forum account has been deleted.
+                            The forum account will be checked again when you confirm.
+                        </div>
+                    }
+                    <p>
+                        The profile will disappear from active users, searches and synchronization.
+                        Local sign-in will be disabled; existing sessions expire within 15 minutes.
+                        Historical actions, demos and other attribution are preserved.
+                        This does not delete or modify the forum account. There is no self-service restore.
+                    </p>
+                    <dl class="detail-fields row">
+                        <div class="detail-field col-sm-6">
+                            <dt class="detail-label">Display Name</dt>
+                            <dd class="detail-value">@Model.DisplayName</dd>
+                        </div>
+                        <div class="detail-field col-sm-6">
+                            <dt class="detail-label">Forum Id</dt>
+                            <dd class="detail-value">@Model.ForumId</dd>
+                        </div>
+                        <div class="detail-field col-sm-6">
+                            <dt class="detail-label">Profile Id</dt>
+                            <dd class="detail-value">@Model.Id</dd>
+                        </div>
+                    </dl>
+                    <div class="mb-3">
+                        <label asp-for="Reason" class="form-label"></label>
+                        <textarea asp-for="Reason" class="form-control" rows="3" maxlength="500"></textarea>
+                        <span asp-validation-for="Reason" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="ibox-footer">
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fa-solid fa-fw fa-box-archive" aria-hidden="true"></i>
+                        @(Model.ArchivedAtUtc.HasValue ? "Retry Disabling Sign-In" : "Archive Portal Profile")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

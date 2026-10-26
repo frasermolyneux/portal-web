@@ -54,6 +54,18 @@ Handlers often combine multiple checks. For example, `AdminActions.Edit` checks:
 3. GameAdmin/Moderator for the game type **and** ownership of the specific action, then
 4. Direct permission grant as a fallback
 
+## Portal Profile Archival
+
+`Users.Archive` is restricted to SeniorAdmin/Webmaster and is not assignable as
+an additional permission. It requires a resolved target profile and rejects
+self-archival by profile ID or forum ID. The confirmation POST rechecks that the
+upstream forum API returns `404 Not Found`; other errors never establish deletion.
+Archival preserves historical attribution but excludes the profile from active
+API results and synchronization. Local sign-in is locked and its security stamp
+is invalidated; existing cookies expire at the normal 15-minute validation boundary.
+An incomplete local Identity update is surfaced and can be retried from the same
+confirmation URL without rearchiving the profile.
+
 ## Server File Browser
 
 The server file browser is authorized according to the feature configuration being

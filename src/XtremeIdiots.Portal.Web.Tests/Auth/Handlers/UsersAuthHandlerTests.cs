@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using Newtonsoft.Json;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Auth.Handlers;
@@ -21,6 +23,15 @@ public class UsersAuthHandlerTests
     {
         UserProfileClaimType.SeniorAdmin,
         UserProfileClaimType.Webmaster
+    };
+
+    public static TheoryData<string, bool> ArchiveRoleScenarios => new()
+    {
+        { UserProfileClaimType.SeniorAdmin, true },
+        { UserProfileClaimType.Webmaster, true },
+        { UserProfileClaimType.HeadAdmin, false },
+        { UserProfileClaimType.GameAdmin, false },
+        { "Users.Archive", false }
     };
 #pragma warning restore IDE0028
 
@@ -122,6 +133,57 @@ public class UsersAuthHandlerTests
         await new UsersAuthHandler().HandleAsync(context);
 
         Assert.False(context.HasSucceeded);
+    }
+
+    [Theory]
+    [MemberData(nameof(ArchiveRoleScenarios))]
+    public async Task HandleAsync_UsersArchive_RequiresGlobalRoleAndAnotherResolvedProfile(string role, bool expected)
+    {
+        var profile = CreateProfile(Guid.NewGuid(), "42");
+        var user = CreateUser(
+            new Claim(role, bool.TrueString),
+            new Claim(UserProfileClaimType.UserProfileId, Guid.NewGuid().ToString()),
+            new Claim(UserProfileClaimType.XtremeIdiotsId, "99"));
+        var context = CreateContext(new UsersArchive(), user, profile);
+
+        await new UsersAuthHandler().HandleAsync(context);
+
+        Assert.Equal(expected, context.HasSucceeded);
+    }
+
+    [Theory]
+    [InlineData("same-profile")]
+    [InlineData("same-forum")]
+    [InlineData("missing-actor")]
+    [InlineData("missing-resource")]
+    [InlineData("probe")]
+    public async Task HandleAsync_UsersArchive_FailsClosedForSelfOrUnresolvedResource(string scenario)
+    {
+        var profileId = Guid.NewGuid();
+        var claims = new List<Claim> { new(UserProfileClaimType.SeniorAdmin, bool.TrueString) };
+        if (scenario != "missing-actor")
+            claims.Add(new Claim(UserProfileClaimType.UserProfileId, (scenario == "same-profile" ? profileId : Guid.NewGuid()).ToString()));
+        claims.Add(new Claim(UserProfileClaimType.XtremeIdiotsId, scenario == "same-forum" ? "42" : "99"));
+        object? resource = scenario switch
+        {
+            "missing-resource" => null,
+            "probe" => PotentialAccessProbe.Instance,
+            _ => CreateProfile(profileId, "42")
+        };
+        var context = CreateContext(new UsersArchive(), CreateUser([.. claims]), resource);
+
+        await new UsersAuthHandler().HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    private static UserProfileDto CreateProfile(Guid id, string forumId)
+    {
+        return JsonConvert.DeserializeObject<UserProfileDto>(JsonConvert.SerializeObject(new
+        {
+            UserProfileId = id,
+            XtremeIdiotsForumId = forumId
+        }))!;
     }
 
     private static AuthorizationHandlerContext CreateContext(

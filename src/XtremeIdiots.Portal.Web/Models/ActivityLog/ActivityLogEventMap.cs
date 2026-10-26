@@ -85,6 +85,7 @@ public static class ActivityLogEventMap
         ["Audit:UserClaimCreated"] = ActivityLogCategory.UserManagement,
         ["Audit:UserClaimRemoved"] = ActivityLogCategory.UserManagement,
         ["Audit:UserForceLoggedOut"] = ActivityLogCategory.UserManagement,
+        ["Audit:UserProfileArchived"] = ActivityLogCategory.UserManagement,
         ["Audit:UserNotificationPreferencesUpdated"] = ActivityLogCategory.UserManagement,
 
         // Tags
