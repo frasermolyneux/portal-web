@@ -40,7 +40,8 @@ ViewData["RotationTitle"] : "");
                                         @if (Model.CanBrowseServerFiles)
                                         {
                                             <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
-                                                    style="display: none;" title="Browse server files">
+                                                    style="display: none;" title="Browse server files"
+                                                    data-file-browser-target="ConfigFilePathInput">
                                                 <i class="fa-solid fa-fw fa-folder-open"></i>Browse
                                             </button>
                                         }
@@ -56,9 +57,20 @@ ViewData["RotationTitle"] : "");
                                         <span asp-validation-for="AacpEnabled" class="text-danger"></span>
                                         <div id="aacp-config" class="mt-2" hidden="@(!Model.AacpEnabled)">
                                             <label asp-for="AacpConfigFilePath" class="form-label"></label>
-                                            <input asp-for="AacpConfigFilePath" class="form-control" required="@Model.AacpEnabled" />
+                                            <div class="input-group">
+                                                <input asp-for="AacpConfigFilePath" class="form-control" required="@Model.AacpEnabled"
+                                                       aria-describedby="AacpConfigFilePathHelp" />
+                                                @if (Model.CanBrowseServerFiles)
+                                                {
+                                                    <button class="btn btn-outline-secondary" type="button" id="AacpConfigFilePathBrowseBtn"
+                                                            style="display: none;" title="Browse AACP config files"
+                                                            data-file-browser-target="AacpConfigFilePath">
+                                                        <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
+                                                    </button>
+                                                }
+                                            </div>
                                             <span asp-validation-for="AacpConfigFilePath" class="text-danger"></span>
-                                            <small class="form-text text-muted">Updates the map picker together with this server's main rotation. Both targets are saved together.</small>
+                                            <small class="form-text text-muted" id="AacpConfigFilePathHelp">Uses <code>scr_aacp_maps_1</code> automatically; the main rotation stays on <code>sv_maprotation</code>.</small>
                                         </div>
                                     </div>
                                     <details class="mb-3" open="@(!string.Equals(Model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase) ? "open" : null)">
@@ -126,23 +138,27 @@ ViewData["RotationTitle"] : "");
                         <script>
                             $(document).ready(function () {
                             var serverSelect = document.getElementById('GameServerIdSelect');
-                            var browseBtn = document.getElementById('ConfigFilePathBrowseBtn');
+                            var browseButtons = document.querySelectorAll('[data-file-browser-target]');
 
-                            if (browseBtn) {
+                            if (browseButtons.length) {
                             function updateBrowseButton() {
                             var selectedOption = serverSelect.options[serverSelect.selectedIndex];
                             var fileTransportEnabled = selectedOption && selectedOption.dataset.fileTransportEnabled === 'true';
+                            browseButtons.forEach(function (browseBtn) {
                             browseBtn.style.display = fileTransportEnabled ? '' : 'none';
+                            });
                             }
 
                             serverSelect.addEventListener('change', updateBrowseButton);
                             updateBrowseButton();
 
+                            browseButtons.forEach(function (browseBtn) {
                             browseBtn.addEventListener('click', function () {
                             var gameServerId = serverSelect.value;
                             if (gameServerId) {
-                            openServerFileBrowser(gameServerId, 'ConfigFilePathInput', 'map-rotation-assignment', '.cfg');
+                            openServerFileBrowser(gameServerId, browseBtn.dataset.fileBrowserTarget, 'map-rotation-assignment', '.cfg');
                             }
+                            });
                             });
                             }
                             });

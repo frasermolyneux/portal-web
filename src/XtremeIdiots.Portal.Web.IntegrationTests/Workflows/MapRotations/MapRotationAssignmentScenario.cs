@@ -19,7 +19,7 @@ internal sealed class MapRotationAssignmentScenario
     public readonly static Guid PermittedServerId = Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId);
     public readonly static Guid NonPermittedServerId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
 
-    public MapRotationAssignmentScenario()
+    public MapRotationAssignmentScenario(bool fileTransportEnabled = false)
     {
         RepositoryClient = new Mock<IRepositoryApiClient>(MockBehavior.Default)
         {
@@ -27,7 +27,7 @@ internal sealed class MapRotationAssignmentScenario
         };
 
         var rotation = CreateRotation();
-        var permittedServer = CreateGameServer(PermittedServerId, GameType.CallOfDuty4x, "COD4x Permitted Server");
+        var permittedServer = CreateGameServer(PermittedServerId, GameType.CallOfDuty4x, "COD4x Permitted Server", fileTransportEnabled);
         var nonPermittedServer = CreateGameServer(NonPermittedServerId, GameType.CallOfDuty4x, "COD4x Non-Permitted Server");
 
         // GetMapRotation — returns the COD4 rotation
@@ -99,7 +99,7 @@ internal sealed class MapRotationAssignmentScenario
         return JsonConvert.DeserializeObject<MapRotationDto>(json)!;
     }
 
-    private static GameServerDto CreateGameServer(Guid id, GameType gameType, string title)
+    private static GameServerDto CreateGameServer(Guid id, GameType gameType, string title, bool fileTransportEnabled = false)
     {
         var json = JsonConvert.SerializeObject(new
         {
@@ -110,7 +110,7 @@ internal sealed class MapRotationAssignmentScenario
             Hostname = "127.0.0.1",
             QueryPort = 28960,
             AgentEnabled = false,
-            FileTransportEnabled = false,
+            FileTransportEnabled = fileTransportEnabled,
             FileTransportType = FileTransportType.Ftp.ToString(),
             RconEnabled = false,
             BanFileSyncEnabled = false,
