@@ -1093,44 +1093,6 @@ public class MapRotationsController(
                 this.AddAlertInfo("Configuration application queued. Check the result below; runtime use is not confirmed. Restart only if required by the game/mod configuration, using a separate explicit action.");
                 TempData[PendingInstanceKey] = $"maprot-activate-{assignmentId}";
                 TrackSuccessTelemetry("MapRotationAssignmentActivated", nameof(ActivateAssignment));
-
-                // Auto-promote rotation status to Published if still in Draft or Testing
-                if (rotation.Status is MapRotationStatus.Draft or MapRotationStatus.Testing)
-                {
-                    var writeAuth = await authorizationService.AuthorizeAsync(User, rotation.GameType, AuthPolicies.MapRotations_Write).ConfigureAwait(false);
-                    if (writeAuth.Succeeded)
-                    {
-                        // Re-read to avoid overwriting concurrent edits
-                        var freshResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(mapRotationId, cancellationToken).ConfigureAwait(false);
-                        if (freshResponse.IsSuccess && freshResponse.Result?.Data is { } freshRotation
-                            && freshRotation.Status is MapRotationStatus.Draft or MapRotationStatus.Testing
-                            && freshRotation.GameType == rotation.GameType)
-                        {
-                            var promoteDto = new UpdateMapRotationDto(mapRotationId)
-                            {
-                                Title = freshRotation.Title,
-                                Description = freshRotation.Description,
-                                GameMode = freshRotation.GameMode,
-                                Status = MapRotationStatus.Published,
-                                Category = freshRotation.Category,
-                                SequenceOrder = freshRotation.SequenceOrder,
-                                LastModifiedByUserId = Guid.TryParse(User.UserProfileId(), out var upId) ? upId : null,
-                                MapIds = freshRotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? []
-                            };
-
-                            var promoteResult = await repositoryApiClient.MapRotations.V1.UpdateMapRotation(promoteDto, cancellationToken).ConfigureAwait(false);
-                            if (promoteResult.IsSuccess)
-                            {
-                                this.AddAlertInfo("Rotation status automatically promoted to Published.");
-                            }
-                            else
-                            {
-                                Logger.LogWarning("Failed to auto-promote rotation {RotationId} status to Published", mapRotationId);
-                                this.AddAlertWarning("Configuration was queued, but the rotation status could not be promoted to Published.");
-                            }
-                        }
-                    }
-                }
             }
             else
             {
