@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -15,6 +17,21 @@ public class ImportMapRotationsViewModel
 
     [DisplayName("Config File")]
     public IFormFile? CfgFile { get; set; }
+
+    [DisplayName("Read config from a game server")]
+    public bool FromGameServer { get; set; }
+
+    [DisplayName("Game Server")]
+    public Guid? GameServerId { get; set; }
+
+    [DisplayName("Server Config File")]
+    public string? ServerCfgPath { get; set; }
+
+    [BindNever]
+    public List<GameServerDto> AvailableServers { get; set; } = [];
+
+    [BindNever]
+    public string? ServerImportError { get; set; }
 }
 
 public class ImportMapRotationsPreviewViewModel

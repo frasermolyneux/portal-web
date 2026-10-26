@@ -16,6 +16,10 @@
                         </div>
                         <div class="ibox-content">
                             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            @if (Model.ServerImportError != null)
+                            {
+                                <div class="alert alert-warning" role="alert">@Model.ServerImportError</div>
+                            }
 
                             <div class="mb-3">
                                 <label asp-for="@Model.GameType" class="form-label"></label>
@@ -26,13 +30,46 @@
                                 <span asp-validation-for="@Model.GameType" class="text-danger"></span>
                             </div>
 
-                            <div class="mb-3">
+                            @if (Model.AvailableServers.Count > 0 || Model.FromGameServer)
+                            {
+                                <div class="form-check mb-3">
+                                    <input asp-for="FromGameServer" class="form-check-input" />
+                                    <label asp-for="FromGameServer" class="form-check-label"></label>
+                                </div>
+                                <div id="serverImportFields" hidden="@(!Model.FromGameServer)">
+                                    <div class="mb-3">
+                                        <label asp-for="GameServerId" class="form-label"></label>
+                                        <select asp-for="GameServerId" class="form-select">
+                                            <option value="">-- Select Server --</option>
+                                            @foreach (var server in Model.AvailableServers)
+                                            {
+                                                var gameType = server.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : server.GameType;
+                                                <option value="@server.GameServerId" data-game-type="@gameType">@server.Title</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="GameServerId" class="text-danger"></span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label asp-for="ServerCfgPath" class="form-label"></label>
+                                        <div class="input-group">
+                                            <input asp-for="ServerCfgPath" class="form-control" placeholder="/mods/mymod/configs/maprotation.cfg" />
+                                            <button type="button" id="serverImportBrowse" class="btn btn-outline-secondary" disabled>
+                                                <i class="fa-solid fa-fw fa-folder-open" aria-hidden="true"></i> Browse
+                                            </button>
+                                        </div>
+                                        <span asp-validation-for="ServerCfgPath" class="text-danger"></span>
+                                        <small class="form-text text-muted">Read-only. Review the rotations before importing.</small>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="mb-3" data-local-import hidden="@Model.FromGameServer">
                                 <label asp-for="@Model.CfgFile" class="form-label"></label>
                                 <input asp-for="@Model.CfgFile" type="file" class="form-control" accept=".cfg,.txt" />
                                 <small class="form-text text-muted">Upload a .cfg file, or paste the content below.</small>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-3" data-local-import hidden="@Model.FromGameServer">
                                 <label asp-for="@Model.CfgContent" class="form-label"></label>
                                 <textarea asp-for="@Model.CfgContent" class="form-control font-monospace" rows="15"
                                           placeholder="Paste map rotation config content here...&#10;&#10;Example:&#10;set sv_maprotation &quot;gametype ftag map mp_backlot map mp_crash map mp_crossfire&quot;"></textarea>
@@ -55,3 +92,16 @@
         </div>
     </form>
 </div>
+
+@if (Model.AvailableServers.Count > 0 || Model.FromGameServer)
+{
+    @await Html.PartialAsync("_FileBrowserModal")
+}
+
+@section Scripts {
+    @if (Model.AvailableServers.Count > 0 || Model.FromGameServer)
+    {
+        <script src="~/js/file-browse.js" asp-append-version="true"></script>
+        <script src="~/js/map-rotation-import.js" asp-append-version="true"></script>
+    }
+}
