@@ -13,6 +13,67 @@ public sealed partial class HistoryPagingBrowserTests
     private static partial Regex DisabledClass();
 
     [Fact]
+    public async Task SharedHelpers_HandleUninitializedTablesAndInvalidLookahead()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, "/js/datatable-page-jump.js").AbsoluteUri });
+        var result = await page.EvaluateAsync<JsonElement>("""
+            () => {
+                const helpers = PortalDataTableUi;
+                const table = { page() {}, table() {} };
+                const missingSettingsIgnored = helpers.attachPageJump(table) === null;
+                table.settings = () => [];
+                const emptySettingsIgnored = helpers.attachPageJump(table) === null;
+                const empty = JSON.parse(helpers.historyDataFilter(JSON.stringify({
+                    start: 0, data: [], hasMore: true
+                })));
+                const nonBoolean = JSON.parse(helpers.historyDataFilter(JSON.stringify({
+                    start: 0, data: [{}], hasMore: 'false'
+                })));
+                return {
+                    missingSettingsIgnored, emptySettingsIgnored,
+                    emptyLength: empty.recordsFiltered, nonBooleanLength: nonBoolean.recordsFiltered
+                };
+            }
+            """);
+
+        Assert.True(result.GetProperty("missingSettingsIgnored").GetBoolean());
+        Assert.True(result.GetProperty("emptySettingsIgnored").GetBoolean());
+        Assert.Equal(0, result.GetProperty("emptyLength").GetInt32());
+        Assert.Equal(1, result.GetProperty("nonBooleanLength").GetInt32());
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task Debounce_PreservesLatestCallerAndArguments()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, "/js/datatable-page-jump.js").AbsoluteUri });
+        await page.Clock.InstallAsync();
+        await page.Clock.PauseAtAsync(DateTime.UtcNow.AddSeconds(1));
+        await page.EvaluateAsync("""
+            () => {
+                window.debounceCalls = [];
+                const callback = PortalDataTableUi.debounce(function (value) {
+                    window.debounceCalls.push(this.label + ':' + value);
+                }, 100);
+                callback.call({ label: 'first' }, 'discarded');
+                callback.call({ label: 'second' }, 'latest');
+            }
+            """);
+
+        await page.Clock.RunForAsync(99);
+        Assert.Empty(await page.EvaluateAsync<string[]>("() => window.debounceCalls"));
+        await page.Clock.RunForAsync(1);
+        Assert.Equal(["second:latest"], await page.EvaluateAsync<string[]>("() => window.debounceCalls"));
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task History_InvalidJsonUsesStandardAjaxErrorHandling()
     {
         await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin);

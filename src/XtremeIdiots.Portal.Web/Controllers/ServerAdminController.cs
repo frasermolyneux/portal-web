@@ -2419,7 +2419,7 @@ public class ServerAdminController(
 
             var sinceTime = DateTime.UtcNow.AddMinutes(-minutes);
 
-            // If lastMessageId is provided, only get messages newer than that
+            // Bound the repository query by time; apply the message cursor below.
             var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessagesPage(
                 null, id, null, null,
                 0, 100, ChatMessageOrder.TimestampDesc, null, sinceTime, cancellationToken).ConfigureAwait(false);
