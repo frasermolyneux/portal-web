@@ -30,6 +30,7 @@ jobs:
     outputs:
       src: ${{ inputs.scope == 'maps-bootstrap' || steps.changes.outputs.src == 'true' }}
       terraform: ${{ steps.changes.outputs.terraform }}
+      workload: ${{ steps.changes.outputs.workload }}
     steps:
       - name: Require approved main for maps bootstrap
         if: inputs.scope == 'maps-bootstrap' && github.ref != 'refs/heads/main'
@@ -43,9 +44,12 @@ jobs:
           filters: |
             src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/deploy-prd.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
             terraform:terraform/**
-
+            workload:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props,terraform/**
   terraform-state-check-dev:
-    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
+    needs: [detect-changes]
+    if: |
+      (github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap') &&
+      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
     permissions:
       contents: read
       id-token: write
@@ -71,11 +75,15 @@ jobs:
     needs:
       - detect-changes
       - terraform-state-check-dev
-    if: "!failure() && !cancelled() && (needs.detect-changes.outputs.src == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')"
+    if: |
+      (!failure() && !cancelled() && (needs.detect-changes.outputs.src == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')) &&
+      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
     uses: ./.github/workflows/test-and-publish.yml
 
   terraform-plan-and-apply-dev:
-    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
+    if: |
+      (github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap') &&
+      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
     permissions:
       contents: read
       id-token: write
@@ -134,7 +142,8 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-dev
     if: |
-      !failure() && !cancelled() && inputs.scope != 'maps-bootstrap' && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
+      (!failure() && !cancelled() && inputs.scope != 'maps-bootstrap' && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true') &&
+      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
@@ -165,7 +174,8 @@ jobs:
       - terraform-plan-and-apply-dev
       - app-service-deploy-dev
     if: |
-      !failure() && !cancelled() && (inputs.scope == 'maps-bootstrap' || needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
+      (!failure() && !cancelled() && (inputs.scope == 'maps-bootstrap' || needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')) &&
+      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
@@ -217,7 +227,8 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-prd
     if: |
-      !failure() && !cancelled() && needs.terraform-plan-and-apply-prd.result == 'success' && needs.detect-changes.outputs.src == 'true'
+      (!failure() && !cancelled() && needs.terraform-plan-and-apply-prd.result == 'success' && needs.detect-changes.outputs.src == 'true') &&
+      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
