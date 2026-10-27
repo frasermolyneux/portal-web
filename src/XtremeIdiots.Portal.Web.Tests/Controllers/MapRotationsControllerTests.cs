@@ -114,7 +114,9 @@ public class MapRotationsControllerTests
     [InlineData(false, "//set sv_maprotation \"map mp_bog\"")]
     [InlineData(true, "//set sv_maprotation \"map mp_bog\"")]
     [InlineData(true, "set another_variable \"map mp_bog\"")]
-    public async Task AssignmentSave_RejectsFilesWithoutTheSelectedActiveVariable(bool edit, string content)
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    public async Task AssignmentSave_RejectsUnwritableFilesOrReadTimeoutsWithoutLosingTheForm(bool edit, string? content)
     {
         var (sut, assignment) = SetupRecovery();
         var server = CreateGameServer(assignment.GameServerId, GameType.CallOfDuty4);
@@ -124,8 +126,11 @@ public class MapRotationsControllerTests
             It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([server]))));
-        mockServersApiClient.Setup(x => x.Config.V1.GetConfigFile(server.GameServerId, "wrong.cfg", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK,
+        var read = mockServersApiClient.Setup(x => x.Config.V1.GetConfigFile(server.GameServerId, "wrong.cfg", It.IsAny<CancellationToken>()));
+        if (content == null)
+            read.ThrowsAsync(new TaskCanceledException("synthetic-private-timeout"));
+        else
+            read.ReturnsAsync(new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK,
                 new ApiResponse<ConfigFileContentDto>(new ConfigFileContentDto("wrong.cfg", content))));
 
         var response = edit
@@ -140,10 +145,13 @@ public class MapRotationsControllerTests
                 ConfigFilePath = "wrong.cfg", ConfigVariableName = "sv_maprotation"
             });
 
-        Assert.IsType<ViewResult>(response);
+        var view = Assert.IsType<ViewResult>(response);
+        Assert.Equal("wrong.cfg", edit
+            ? Assert.IsType<EditMapRotationAssignmentViewModel>(view.Model).ConfigFilePath
+            : Assert.IsType<CreateMapRotationAssignmentViewModel>(view.Model).ConfigFilePath);
         var error = Assert.Single(sut.ModelState[nameof(CreateMapRotationAssignmentViewModel.ConfigFilePath)]!.Errors);
-        Assert.Contains("Select a different file", error.ErrorMessage, StringComparison.Ordinal);
-        Assert.Contains("sv_maprotation", error.ErrorMessage, StringComparison.Ordinal);
+        Assert.Contains(content == null ? "Unable to read" : "Select a different file", error.ErrorMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic-private-timeout", error.ErrorMessage, StringComparison.Ordinal);
         mockRepositoryApiClient.Verify(x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
         mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
         mockSyncApiClient.Verify(x => x.TriggerApply(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -184,12 +192,17 @@ public class MapRotationsControllerTests
         mockSyncApiClient.VerifyNoOtherCalls();
     }
 
-    [Fact]
-    public async Task Apply_WhenConfigReadFails_DoesNotQueueOrExposePrivateDiagnostics()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Apply_WhenConfigReadFails_DoesNotQueueOrExposePrivateDiagnostics(bool timeout)
     {
         var (sut, assignment) = SetupRecovery();
+        Exception failure = timeout
+            ? new TaskCanceledException("synthetic-private-diagnostic")
+            : new HttpRequestException("synthetic-private-diagnostic", null, HttpStatusCode.BadGateway);
         mockServersApiClient.Setup(x => x.Config.V1.GetConfigFile(assignment.GameServerId, assignment.ConfigFilePath!, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("synthetic-private-diagnostic", null, HttpStatusCode.BadGateway));
+            .ThrowsAsync(failure);
 
         var response = Assert.IsType<RedirectToActionResult>(await sut.ApplyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId));
 
@@ -198,6 +211,22 @@ public class MapRotationsControllerTests
         Assert.Contains("Unable to read", error, StringComparison.Ordinal);
         Assert.DoesNotContain("synthetic-private-diagnostic", error, StringComparison.Ordinal);
         mockSyncApiClient.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Apply_WhenTheRequestIsCancelled_PropagatesCancellationWithoutQueuing()
+    {
+        var (sut, assignment) = SetupRecovery();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        mockServersApiClient.Setup(x => x.Config.V1.GetConfigFile(assignment.GameServerId, assignment.ConfigFilePath!, cancellation.Token))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            sut.ApplyAssignment(assignment.MapRotationServerAssignmentId, assignment.MapRotationId, cancellation.Token));
+
+        mockSyncApiClient.VerifyNoOtherCalls();
+        Assert.Null(sut.TempData[$"ConfigTargetError_{assignment.MapRotationServerAssignmentId}"]);
     }
 
     [Theory]

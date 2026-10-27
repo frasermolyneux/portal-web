@@ -853,7 +853,8 @@ public class MapRotationsController(
             Logger.LogWarning("Unable to validate configuration file for game server {GameServerId}: {StatusCode}. Reference {Reference}",
                 gameServerId, response.StatusCode, HttpContext.TraceIdentifier);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException ||
+            (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
             Logger.LogWarning(ex, "Unable to validate configuration file for game server {GameServerId}. Reference {Reference}",
                 gameServerId, HttpContext.TraceIdentifier);
