@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/actions/**'
+      - '.github/scripts/**'
+      - '.github/workflows/test-and-publish.yml'
+      - 'global.json'
+      - '.node-version'
+      - 'Directory.Build.props'
+      - 'terraform/**'
   workflow_dispatch:
     # checkov:skip=CKV_GHA_7:Deployment entry point selects fixed jobs; build inputs are unchanged and user input never enters commands.
     inputs:
