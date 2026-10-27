@@ -4,6 +4,18 @@ namespace XtremeIdiots.Portal.Web.Tests.Services;
 
 public class MapRotationCfgParserTests
 {
+    [Theory]
+    [InlineData("//set sv_mapRotation \"map mp_bog\"", false)]
+    [InlineData("set sv_mapRotation_low \"map mp_bog\"", false)]
+    [InlineData("set sv_mapRotation map mp_bog", false)]
+    [InlineData("seta sv_mapRotation \"map mp_bog\"", false)]
+    [InlineData("set SV_MAPROTATION \"\"", true)]
+    [InlineData("//set sv_mapRotation \"map mp_bog\"\r\nset sv_maprotation \"map mp_farm\"", true)]
+    public void HasWritableVariable_RequiresTheConfigWritersActiveQuotedSetSyntax(string content, bool expected)
+    {
+        Assert.Equal(expected, MapRotationCfgParser.HasWritableVariable(content, "sv_maprotation"));
+    }
+
     [Fact]
     public void Parse_StandardRotation_ExtractsGameModeAndMaps()
     {

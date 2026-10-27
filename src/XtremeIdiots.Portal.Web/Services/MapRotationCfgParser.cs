@@ -14,6 +14,12 @@ public record ParsedRotation(
 
 public static partial class MapRotationCfgParser
 {
+    public static bool HasWritableVariable(string content, string variableName)
+    {
+        return Regex.IsMatch(content, $@"^(\s*set\s+{Regex.Escape(variableName)}\s+)""([^""]*)""",
+            RegexOptions.IgnoreCase | RegexOptions.Multiline, TimeSpan.FromSeconds(1));
+    }
+
     // Matches: set sv_maprotation "..." or //set sv_maprotation "..."
     // Captures: optional comment prefix, variable name, quoted value
     [GeneratedRegex(@"^(\s*//\s*)?set\s+(\S+)\s+""([^""]*)""", RegexOptions.IgnoreCase)]

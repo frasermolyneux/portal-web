@@ -46,7 +46,7 @@ ViewData["RotationTitle"] : "");
                                             </button>
                                         }
                                     </div>
-                                    <small class="form-text text-muted">Choose the server's rotation config file.</small>
+                                    <small class="form-text text-muted">The file must contain an uncommented, quoted <code>set</code> entry for the selected variable.</small>
                                         <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                                     </div>
                                     <div class="mb-3" id="aacp-option">

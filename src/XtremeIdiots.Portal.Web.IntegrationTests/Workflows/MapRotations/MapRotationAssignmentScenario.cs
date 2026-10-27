@@ -5,6 +5,8 @@ using MX.Api.Abstractions;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Net;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Config;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -25,6 +27,10 @@ internal sealed class MapRotationAssignmentScenario
         {
             DefaultValue = DefaultValue.Mock,
         };
+        Servers.Setup(x => x.Config.V1.GetConfigFile(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string path, CancellationToken _) =>
+                new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK, new ApiResponse<ConfigFileContentDto>(
+                    new ConfigFileContentDto(path, "set sv_maprotation \"\"\nset scr_aacp_maps_1 \"\""))));
 
         var rotation = CreateRotation();
         var permittedServer = CreateGameServer(PermittedServerId, GameType.CallOfDuty4x, "COD4x Permitted Server", fileTransportEnabled);
@@ -72,11 +78,14 @@ internal sealed class MapRotationAssignmentScenario
     public ConcurrentQueue<CreateMapRotationServerAssignmentDto> CreatedAssignments { get; } = new();
 
     public Mock<IRepositoryApiClient> RepositoryClient { get; }
+    public Mock<IServersApiClient> Servers { get; } = new() { DefaultValue = DefaultValue.Mock };
 
     public void ConfigureServices(IServiceCollection services)
     {
         services.RemoveAll<IRepositoryApiClient>();
         services.AddSingleton(RepositoryClient.Object);
+        services.RemoveAll<IServersApiClient>();
+        services.AddSingleton(Servers.Object);
     }
 
     private static MapRotationDto CreateRotation()
