@@ -27,7 +27,7 @@ public class MapsControllerTests
     public async Task MapCatalogue_StockMapsHaveBuiltInBadgesInsteadOfRedirectLinks(GameType gameType)
     {
         var repository = new Mock<IRepositoryApiClient> { DefaultValue = DefaultValue.Mock };
-        string[] names = ["mp_bog", "mp_custom"];
+        string[] names = ["mp_bog", "mp_farm", "mp_convoy", "mp_citystreets", "mp_carentan", "mp_crash_snow", "mp_custom"];
         var maps = names.Select(name => JsonConvert.DeserializeObject<MapDto>(
             JsonConvert.SerializeObject(new { MapId = Guid.NewGuid(), GameType = gameType, MapName = name }))!).ToList();
         repository.Setup(x => x.Maps.V1.GetMaps(gameType, null, null, null, 0, 10, MapsOrder.MapNameAsc, It.IsAny<CancellationToken>()))
@@ -43,9 +43,14 @@ public class MapsControllerTests
         var response = Assert.IsType<OkObjectResult>(await controller.GetMapListAjax(gameType));
         var rows = Assert.IsType<JArray>(JObject.FromObject(response.Value!)["data"]);
 
-        Assert.True(rows[0]["builtIn"]!.Value<bool>());
-        Assert.Equal(JTokenType.Null, rows[0]["redirectManagerUrl"]!.Type);
-        Assert.False(rows[1]["builtIn"]!.Value<bool>());
-        Assert.Equal("https://maps.xtremeidiots.com/?game=cod4&map=mp_custom", rows[1]["redirectManagerUrl"]!.Value<string>());
+        Assert.Equal(names.Length, rows.Count);
+        foreach (var row in rows.Take(names.Length - 1))
+        {
+            Assert.True(row["builtIn"]!.Value<bool>());
+            Assert.Equal(JTokenType.Null, row["redirectManagerUrl"]!.Type);
+        }
+
+        Assert.False(rows.Last!["builtIn"]!.Value<bool>());
+        Assert.Equal("https://maps.xtremeidiots.com/?game=cod4&map=mp_custom", rows.Last!["redirectManagerUrl"]!.Value<string>());
     }
 }
