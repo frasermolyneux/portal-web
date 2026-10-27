@@ -22,7 +22,7 @@ $(document).ready(function () {
         if (gtMeta) fixedGameType = gtMeta.getAttribute('content') || '';
     }
 
-    const structureVersion = 5; // bumped after adding server filter
+    const structureVersion = 6;
 
     const columns = [
         { data: 'timestamp', name: 'timestamp', orderable: true, render: function (data) { return data ? ('<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>') : ''; } },
@@ -74,7 +74,7 @@ $(document).ready(function () {
         { data: 'chatMessageId', name: 'chatMessageId', orderable: false, render: function (data, type, row) { return chatLogUrl(row['chatMessageId']); } }
     );
 
-    const table = tableEl.DataTable({
+    const table = tableEl.DataTable($.extend(true, PortalDataTableUi.historyOptions(), {
         processing: true,
         serverSide: true,
         searchDelay: 700,
@@ -103,6 +103,7 @@ $(document).ready(function () {
         ajax: {
             url: dataUrl,
             dataSrc: 'data',
+            dataFilter: PortalDataTableUi.historyDataFilter,
             contentType: 'application/json',
             type: 'POST',
             data: function (d) { return JSON.stringify(d); },
@@ -125,7 +126,7 @@ $(document).ready(function () {
             }
         },
         columns: columns
-    });
+    }));
 
     function relocateSearch() {
         try {
@@ -158,15 +159,15 @@ $(document).ready(function () {
         }
     }, 1200);
 
-    if (lockedSel) lockedSel.addEventListener('change', function () { table.ajax.reload(null, false); });
+    if (lockedSel) lockedSel.addEventListener('change', function () { table.ajax.reload(); });
     if (gameTypeSel) gameTypeSel.addEventListener('change', function () {
         filterServersByGame();
-        table.ajax.reload(null, false);
+        table.ajax.reload();
     });
     if (serverSel) serverSel.addEventListener('change', function () {
         selectedServerId = serverSel.value;
         handleServerColumnVisibility();
-        table.ajax.reload(null, false);
+        table.ajax.reload();
     });
 
     document.getElementById('resetFilters')?.addEventListener('click', function () {

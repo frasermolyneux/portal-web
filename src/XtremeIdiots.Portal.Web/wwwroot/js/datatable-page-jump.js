@@ -99,6 +99,9 @@
         if (!table || typeof table.page !== 'function' || typeof table.table !== 'function') {
             return null;
         }
+        if (table.settings()[0].oInit.countFreeHistory) {
+            return null;
+        }
 
         const settings = Object.assign({
             label: 'Page',
@@ -220,7 +223,45 @@
         return container;
     }
 
+    function historyOptions() {
+        return {
+            countFreeHistory: true,
+            pagingType: 'simple',
+            language: {
+                info: 'Showing _START_ to _END_',
+                infoEmpty: 'No matching records',
+                infoFiltered: ''
+            }
+        };
+    }
+
+    function historyDataFilter(raw) {
+        var response = JSON.parse(raw);
+        var rows = Array.isArray(response.data) ? response.data : [];
+        // DataTables requires a length to enable Next; this lookahead is not a displayed total.
+        var navigationLength = Math.max(0, response.start || 0) + rows.length + (response.hasMore ? 1 : 0);
+        response.recordsTotal = navigationLength;
+        response.recordsFiltered = navigationLength;
+        return JSON.stringify(response);
+    }
+
+    function debounce(callback, delay) {
+        var timer;
+        function cancel() {
+            window.clearTimeout(timer);
+        }
+        function run() {
+            cancel();
+            timer = window.setTimeout(callback, delay);
+        }
+        run.cancel = cancel;
+        return run;
+    }
+
     window.PortalDataTableUi = window.PortalDataTableUi || {};
     window.PortalDataTableUi.relocateSearch = relocateSearch;
     window.PortalDataTableUi.attachPageJump = attachPageJump;
+    window.PortalDataTableUi.historyOptions = historyOptions;
+    window.PortalDataTableUi.historyDataFilter = historyDataFilter;
+    window.PortalDataTableUi.debounce = debounce;
 })(window);

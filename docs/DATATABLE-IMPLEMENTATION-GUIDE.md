@@ -90,6 +90,23 @@ $(document).ready(function () {
 - `AdminActions/Global.cshtml` + `admin-actions-global.js`
 - `Demos/Index.cshtml` + `demos-index.js`
 
+#### Count-free history variant
+
+Event and chat history use next/previous navigation instead of exact totals.
+Merge `PortalDataTableUi.historyOptions()` into the table configuration and set
+`ajax.dataFilter` to `PortalDataTableUi.historyDataFilter`. The AJAX controller
+returns `{ draw, start, data, hasMore }` from the Repository history API; it must
+not call counted list methods. The shared adapter supplies only an internal
+lookahead length for DataTables and never presents it as a total or page count.
+
+Reset paging when filters change, debounce free-text filters, and bump saved-state
+versions when migrating a counted table. Keep retention messages beside history
+tables, including shared player chat. Server events retain 30 days; unlocked chat
+retains six months, while locked messages are preserved.
+
+Ordinary entity lists keep their numbered pagination, totals and page-jump
+controls. Do not apply the history variant globally.
+
 ---
 
 ### 2. DataTable-Static (Client-Side Processing)

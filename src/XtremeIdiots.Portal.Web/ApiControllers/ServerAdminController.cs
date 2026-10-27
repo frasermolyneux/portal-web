@@ -129,9 +129,9 @@ public class ServerAdminController(
             };
         }
 
-        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
+        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessagesPage(
             gameType, serverId, playerId, model.Search?.Value,
-            model.Start, model.Length, order, lockedOnly, cancellationToken).ConfigureAwait(false);
+            Math.Max(0, model.Start), Math.Clamp(model.Length, 1, 200), order, lockedOnly, null, cancellationToken).ConfigureAwait(false);
 
         if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data is null)
         {
@@ -142,8 +142,8 @@ public class ServerAdminController(
         return Ok(new
         {
             model.Draw,
-            recordsTotal = chatMessagesApiResponse.Result?.Pagination?.TotalCount,
-            recordsFiltered = chatMessagesApiResponse.Result?.Pagination?.FilteredCount,
+            start = Math.Max(0, model.Start),
+            hasMore = chatMessagesApiResponse.Result.Data.HasMore,
             data = chatMessagesApiResponse?.Result?.Data?.Items
         });
     }
@@ -188,9 +188,9 @@ public class ServerAdminController(
                 };
             }
 
-            var eventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEvents(
+            var eventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEventsPage(
                 parsedGameType, gameServerId, string.IsNullOrWhiteSpace(eventType) ? null : eventType.Trim(),
-                model.Start, model.Length, order, cancellationToken).ConfigureAwait(false);
+                Math.Max(0, model.Start), Math.Clamp(model.Length, 1, 200), order, null, cancellationToken).ConfigureAwait(false);
 
             if (!eventsApiResponse.IsSuccess || eventsApiResponse.Result?.Data is null)
             {
@@ -201,8 +201,8 @@ public class ServerAdminController(
             return Ok(new
             {
                 model.Draw,
-                recordsTotal = eventsApiResponse.Result?.Pagination?.TotalCount,
-                recordsFiltered = eventsApiResponse.Result?.Pagination?.FilteredCount,
+                start = Math.Max(0, model.Start),
+                hasMore = eventsApiResponse.Result.Data.HasMore,
                 data = eventsApiResponse?.Result?.Data?.Items
             });
         }, nameof(GetServerEventsAjax)).ConfigureAwait(false);

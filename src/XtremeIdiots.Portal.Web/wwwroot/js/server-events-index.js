@@ -30,23 +30,24 @@ $(document).ready(function () {
         }
     }
 
-    var table = tableEl.DataTable({
+    var table = tableEl.DataTable($.extend(true, PortalDataTableUi.historyOptions(), {
         processing: true,
         serverSide: true,
         searchDelay: 700,
+        searching: false,
         stateSave: true,
         deferLoading: 0,
         responsive: { details: { type: 'inline', target: 'tr' } },
         autoWidth: false,
         order: [[0, 'desc']],
         stateSaveParams: function (settings, data) {
-            data._serverEventsVersion = 1;
+            data._serverEventsVersion = 2;
             if (gameTypeSel) data.gameType = gameTypeSel.value || '';
             if (serverSel) data.serverId = serverSel.value || '';
             if (eventTypeInput) data.eventType = eventTypeInput.value || '';
         },
         stateLoadParams: function (settings, data) {
-            if (data._serverEventsVersion !== 1) return false;
+            if (data._serverEventsVersion !== 2) return false;
             if (gameTypeSel && data.gameType) gameTypeSel.value = data.gameType;
             if (serverSel && typeof data.serverId !== 'undefined') serverSel._pendingValue = data.serverId;
             if (eventTypeInput && typeof data.eventType !== 'undefined') eventTypeInput.value = data.eventType;
@@ -60,6 +61,7 @@ $(document).ready(function () {
         ajax: {
             url: '/ServerAdmin/GetServerEventsAjax',
             dataSrc: 'data',
+            dataFilter: PortalDataTableUi.historyDataFilter,
             contentType: 'application/json',
             type: 'POST',
             data: function (d) { return JSON.stringify(d); },
@@ -107,7 +109,12 @@ $(document).ready(function () {
                 render: function (data) { return renderEventData(data); }
             }
         ]
-    });
+    }));
+
+    var reload = PortalDataTableUi.debounce(function () {
+        table.page('first').draw(false);
+    }, 500);
+    table.on('destroy.dt', reload.cancel);
 
     // Server filter population
     function populateServers() {
@@ -151,20 +158,21 @@ $(document).ready(function () {
 
     // Filter change handlers
     gameTypeSel?.addEventListener('change', function () {
+        reload.cancel();
         serverSel.value = '';
         rebuildServerOptions();
         table.page('first').draw(false);
     });
 
     serverSel?.addEventListener('change', function () {
+        reload.cancel();
         table.page('first').draw(false);
     });
 
-    eventTypeInput?.addEventListener('input', function () {
-        table.page('first').draw(false);
-    });
+    eventTypeInput?.addEventListener('input', reload);
 
     document.getElementById('resetFilters')?.addEventListener('click', function () {
+        reload.cancel();
         if (gameTypeSel) gameTypeSel.value = '';
         if (serverSel) serverSel.value = '';
         if (eventTypeInput) eventTypeInput.value = '';
