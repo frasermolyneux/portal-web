@@ -38,6 +38,7 @@ public class MapRotationsController(
     private readonly static GameType[] supportedGameTypes = [GameType.CallOfDuty4, GameType.CallOfDuty4x, GameType.CallOfDuty5];
     private readonly static string[] assignmentOperationNames = ["apply", "sync", "activate", "deactivate", "remove", "verify"];
     private const string PendingInstanceKey = "PendingInstanceId";
+    private const string ConfigTargetErrorKey = "ConfigTargetError_";
     private const int MaxConfigFileBytes = 1_000_000;
 
     private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
@@ -560,6 +561,15 @@ public class MapRotationsController(
                 return View(model);
             }
 
+            await ValidateAssignmentConfigTargetsAsync(model.GameServerId, model.ConfigFilePath, model.ConfigVariableName,
+                model.AacpEnabled ? model.AacpConfigFilePath : null, cancellationToken).ConfigureAwait(false);
+            if (!ModelState.IsValid)
+            {
+                await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
+            }
+
             var createDto = new CreateMapRotationServerAssignmentDto(model.MapRotationId, model.GameServerId)
             {
                 ConfigFilePath = model.ConfigFilePath,
@@ -649,6 +659,9 @@ public class MapRotationsController(
             if (group.IsAmbiguous)
                 return Conflict("Multiple standard configuration targets exist. Ask a portal administrator to resolve the assignment before editing.");
             var aacp = group.Targets.FirstOrDefault(a => a.IsAacpMapPicker());
+
+            if (TempData[$"{ConfigTargetErrorKey}{id}"] is string configError)
+                ModelState.AddModelError(string.Empty, configError);
 
             ViewData["RotationTitle"] = rotation.Title;
 
@@ -743,6 +756,15 @@ public class MapRotationsController(
 
             var canUpdateAacp = assignment.IsMainRotation()
                 && string.Equals(model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase);
+            await ValidateAssignmentConfigTargetsAsync(assignment.GameServerId, model.ConfigFilePath, model.ConfigVariableName,
+                canUpdateAacp && model.AacpEnabled ? model.AacpConfigFilePath : null, cancellationToken).ConfigureAwait(false);
+            if (!ModelState.IsValid)
+            {
+                await RepopulateAssignmentForm(model).ConfigureAwait(false);
+                ViewData["RotationTitle"] = rotation.Title;
+                return View(model);
+            }
+
             var updateDto = new UpdateMapRotationServerAssignmentDto(model.MapRotationServerAssignmentId)
             {
                 ConfigFilePath = model.ConfigFilePath,
@@ -788,6 +810,71 @@ public class MapRotationsController(
 
             return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
         }, nameof(EditAssignment)).ConfigureAwait(false);
+    }
+
+    private async Task ValidateAssignmentConfigTargetsAsync(Guid gameServerId, string? filePath, string? variableName,
+        string? aacpFilePath, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            var error = await GetConfigTargetErrorAsync(gameServerId, filePath, variableName, cancellationToken).ConfigureAwait(false);
+            if (error != null)
+                ModelState.AddModelError(nameof(CreateMapRotationAssignmentViewModel.ConfigFilePath), error);
+        }
+
+        if (!string.IsNullOrWhiteSpace(aacpFilePath))
+        {
+            var aacpError = await GetConfigTargetErrorAsync(gameServerId, aacpFilePath, "scr_aacp_maps_1", cancellationToken).ConfigureAwait(false);
+            if (aacpError != null)
+                ModelState.AddModelError(nameof(CreateMapRotationAssignmentViewModel.AacpConfigFilePath), aacpError);
+        }
+    }
+
+    private async Task<string?> GetConfigTargetErrorAsync(Guid gameServerId, string? filePath, string? variableName,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(variableName))
+            return "Choose a configuration file and variable before continuing.";
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(variableName, @"^[a-zA-Z_][a-zA-Z0-9_]*$",
+            System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1)))
+            return "The configuration variable must contain only letters, digits and underscores, starting with a letter or underscore.";
+
+        try
+        {
+            var response = await serversApiClient.Config.V1.GetConfigFile(gameServerId, filePath, cancellationToken).ConfigureAwait(false);
+            if (response.IsSuccess && response.Result?.Data != null)
+            {
+                return MapRotationCfgParser.HasWritableVariable(response.Result.Data.Content, variableName)
+                    ? null
+                    : $"The file '{filePath}' has no active, quoted 'set {variableName}' entry. Commented-out entries are not updated. Select a different file containing an active entry for '{variableName}'.";
+            }
+
+            Logger.LogWarning("Unable to validate configuration file for game server {GameServerId}: {StatusCode}. Reference {Reference}",
+                gameServerId, response.StatusCode, HttpContext.TraceIdentifier);
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.LogWarning(ex, "Unable to validate configuration file for game server {GameServerId}. Reference {Reference}",
+                gameServerId, HttpContext.TraceIdentifier);
+        }
+
+        return $"Unable to read the selected configuration file. Check the file path and server file connection, then retry. Nothing was saved or queued. Reference: {HttpContext.TraceIdentifier}.";
+    }
+
+    private async Task<IActionResult?> CheckGroupConfigTargetsAsync(MapRotationAssignmentGroup group, CancellationToken cancellationToken)
+    {
+        foreach (var target in group.Targets)
+        {
+            var error = await GetConfigTargetErrorAsync(target.GameServerId, target.ConfigFilePath, target.ConfigVariableName, cancellationToken).ConfigureAwait(false);
+            if (error != null)
+            {
+                TempData[$"{ConfigTargetErrorKey}{group.Primary.MapRotationServerAssignmentId}"] = error;
+                return RedirectToAction(nameof(EditAssignment), new { id = group.Primary.MapRotationServerAssignmentId });
+            }
+        }
+
+        return null;
     }
 
     private void AddAssignmentErrors(System.Net.HttpStatusCode? statusCode, IEnumerable<ApiError>? errors)
@@ -995,6 +1082,10 @@ public class MapRotationsController(
             if (string.IsNullOrWhiteSpace(assignment.ConfigFilePath) || string.IsNullOrWhiteSpace(assignment.ConfigVariableName))
                 return BadRequest("A configuration target is required to apply a rotation.");
 
+            var invalidConfig = await CheckGroupConfigTargetsAsync(group, cancellationToken).ConfigureAwait(false);
+            if (invalidConfig != null)
+                return invalidConfig;
+
             var result = await syncApiClient.TriggerApply(assignmentId, cancellationToken).ConfigureAwait(false);
             if (result.Success)
             {
@@ -1127,6 +1218,10 @@ public class MapRotationsController(
             var blocked = await CheckGroupOperationAvailable(group, cancellationToken).ConfigureAwait(false);
             if (blocked != null)
                 return blocked;
+
+            var invalidConfig = await CheckGroupConfigTargetsAsync(group, cancellationToken).ConfigureAwait(false);
+            if (invalidConfig != null)
+                return invalidConfig;
 
             var result = await syncApiClient.TriggerActivate(assignmentId, cancellationToken).ConfigureAwait(false);
 

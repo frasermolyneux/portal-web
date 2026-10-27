@@ -3,6 +3,7 @@ using MX.Api.Abstractions;
 using MX.Api.Client;
 using System.Net;
 using System.Text.RegularExpressions;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Config;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
@@ -13,6 +14,86 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "HttpIntegration")]
 public sealed partial class MapRotationRecoveryHttpTests
 {
+    [Fact]
+    public async Task AssignmentCreate_RequiresSelectingAFileWithAnActiveEntry_BeforeSaving()
+    {
+        var scenario = new MapRotationAssignmentScenario();
+        scenario.Servers.Setup(x => x.Config.V1.GetConfigFile(MapRotationAssignmentScenario.PermittedServerId, "commented.cfg", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK,
+                new ApiResponse<ConfigFileContentDto>(new ConfigFileContentDto("commented.cfg", "//set sv_mapRotation \"map mp_bog\""))));
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationDeployer);
+        using var page = await host.Client.GetAsync($"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}");
+        var token = AntiforgeryToken().Match(await page.Content.ReadAsStringAsync()).Groups[1].Value;
+        var cookie = string.Join("; ", page.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0]));
+
+        foreach (var path in new[] { "commented.cfg", "server.cfg" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/MapRotations/CreateAssignment")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["MapRotationId"] = MapRotationAssignmentScenario.RotationId.ToString(),
+                    ["GameServerId"] = MapRotationAssignmentScenario.PermittedServerId.ToString(),
+                    ["ConfigFilePath"] = path,
+                    ["ConfigVariableName"] = "sv_maprotation",
+                    ["__RequestVerificationToken"] = token
+                })
+            };
+            request.Headers.Add("Cookie", cookie);
+            using var response = await host.Client.SendAsync(request);
+            if (path == "commented.cfg")
+            {
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                var html = await response.Content.ReadAsStringAsync();
+                Assert.Contains("Select a different file", html, StringComparison.Ordinal);
+                Assert.Contains("data-valmsg-for=\"ConfigFilePath\"", html, StringComparison.Ordinal);
+                Assert.Contains("value=\"commented.cfg\"", html, StringComparison.Ordinal);
+                Assert.Empty(scenario.CreatedAssignments);
+            }
+            else
+            {
+                Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+                Assert.Equal("server.cfg", Assert.Single(scenario.CreatedAssignments).ConfigFilePath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CombinedApply_WhenAacpFileHasOnlyCommentedEntries_DoesNotQueueEitherTarget()
+    {
+        var scenario = new MapRotationRecoveryScenario(combined: true);
+        scenario.Servers.Setup(x => x.Config.V1.GetConfigFile(It.IsAny<Guid>(), "aacp.cfg", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK,
+                new ApiResponse<ConfigFileContentDto>(new ConfigFileContentDto("aacp.cfg", "//set scr_aacp_maps_1 \"mp_bog\""))));
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationDeployer);
+        using var page = await host.Client.GetAsync($"/MapRotations/AssignmentStatus/{scenario.AssignmentId}");
+        var token = AntiforgeryToken().Match(await page.Content.ReadAsStringAsync()).Groups[1].Value;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/MapRotations/ApplyAssignment")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["assignmentId"] = scenario.AssignmentId.ToString(),
+                ["mapRotationId"] = scenario.RotationId.ToString(),
+                ["__RequestVerificationToken"] = token
+            })
+        };
+        request.Headers.Add("Cookie", string.Join("; ", page.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])));
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal($"/MapRotations/EditAssignment/{scenario.AssignmentId}", response.Headers.Location?.OriginalString);
+        using var editRequest = new HttpRequestMessage(HttpMethod.Get, response.Headers.Location);
+        editRequest.Headers.Add("Cookie", string.Join("; ", response.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])));
+        using var editResponse = await host.Client.SendAsync(editRequest);
+        var html = await editResponse.Content.ReadAsStringAsync();
+        Assert.Contains("Select a different file", html, StringComparison.Ordinal);
+        Assert.Contains("scr_aacp_maps_1", html, StringComparison.Ordinal);
+        scenario.Sync.Verify(x => x.TriggerApply(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData("GAME_TYPE_MISMATCH", "The selected server does not support this rotation")]
     [InlineData("DUPLICATE_CONFIG_TARGET", "Edit the existing assignment instead.")]
