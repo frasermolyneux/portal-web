@@ -71,7 +71,7 @@
                                         </button>
                                     }
                                 </div>
-                                <small class="form-text text-muted">Path to the config file on the game server.</small>
+                                <small class="form-text text-muted">The file must contain an uncommented, quoted <code>set</code> entry for the selected variable.</small>
                                 <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
                             </div>
                             <details class="mb-3" id="assignment-advanced" open="@(!Model.CanConfigureAacp || ViewData.ModelState[nameof(Model.ConfigVariableName)]?.Errors.Count > 0 ? "open" : null)">

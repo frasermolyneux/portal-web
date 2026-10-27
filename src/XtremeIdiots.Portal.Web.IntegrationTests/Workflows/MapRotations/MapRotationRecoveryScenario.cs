@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using MX.Api.Abstractions;
 using System.Net;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Config;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -19,6 +21,7 @@ internal sealed class MapRotationRecoveryScenario
     public Guid RotationId { get; } = Guid.NewGuid();
     public Mock<ISyncApiClient> Sync { get; } = new();
     public Mock<IRepositoryApiClient> Repository { get; } = new() { DefaultValue = DefaultValue.Mock };
+    public Mock<IServersApiClient> Servers { get; } = new() { DefaultValue = DefaultValue.Mock };
 
     public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
         AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress, DateTime? completedAt = null,
@@ -30,6 +33,10 @@ internal sealed class MapRotationRecoveryScenario
             state, ActivationState.Active, 1, 1, "synthetic.cfg", combined || mainOnly ? "sv_maprotation" : "scr_aacp_maps_small",
             combined ? null : "Synthetic verification error on active configuration", DateTime.UtcNow,
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, null);
+        Servers.Setup(x => x.Config.V1.GetConfigFile(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string path, CancellationToken _) =>
+                new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK, new ApiResponse<ConfigFileContentDto>(
+                    new ConfigFileContentDto(path, $"set {assignment.ConfigVariableName} \"\"\nset scr_aacp_maps_1 \"\"\nset sv_maprotation_low \"\""))));
         var picker = new MapRotationServerAssignmentDto(ChildAssignmentId, RotationId, serverId,
             state, childFailed ? ActivationState.Failed : ActivationState.Active, 1, 1, "aacp.cfg", "scr_aacp_maps_1",
             childFailed ? "Synthetic AACP configuration failure" : null, null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, null);
@@ -110,5 +117,7 @@ internal sealed class MapRotationRecoveryScenario
         services.AddSingleton(Repository.Object);
         services.RemoveAll<ISyncApiClient>();
         services.AddSingleton(Sync.Object);
+        services.RemoveAll<IServersApiClient>();
+        services.AddSingleton(Servers.Object);
     }
 }
