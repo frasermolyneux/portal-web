@@ -1,7 +1,11 @@
 using Microsoft.Playwright;
 using Moq;
+using MX.Api.Abstractions;
+using MX.Api.Client;
+using System.Net;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 using XtremeIdiots.Portal.Web.Services;
@@ -11,6 +15,65 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "Browser")]
 public sealed class MapRotationRecoveryBrowserTests
 {
+    [Fact]
+    public async Task EditAssignment_InvalidAacpTargetRemainsVisibleWhenPickerUnchecked()
+    {
+        var scenario = new MapRotationRecoveryScenario(mainOnly: true);
+        scenario.Repository.Setup(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ApiHttpRequestException("synthetic-private-diagnostic", HttpStatusCode.BadRequest,
+                new ApiResponse(new ApiError("INVALID_AACP_TARGET", "synthetic-private-diagnostic"))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        var path = $"/MapRotations/EditAssignment/{scenario.AssignmentId}";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await Assertions.Expect(browser.Page.GetByLabel("Also update AACP map picker", new() { Exact = true })).Not.ToBeCheckedAsync();
+        await Assertions.Expect(browser.Page.Locator("#aacp-config")).Not.ToBeVisibleAsync();
+
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save Changes", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == path);
+
+        Assert.Equal(200, response.Status);
+        var summary = browser.Page.Locator(".validation-summary-errors");
+        await Assertions.Expect(summary).ToBeVisibleAsync();
+        await Assertions.Expect(summary).ToContainTextAsync("Choose valid main and AACP configuration files");
+        await Assertions.Expect(browser.Page.GetByLabel("Also update AACP map picker", new() { Exact = true })).Not.ToBeCheckedAsync();
+        await Assertions.Expect(browser.Page.GetByLabel("Config File", new() { Exact = true })).ToHaveValueAsync("synthetic.cfg");
+        await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("synthetic-private-diagnostic");
+        scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Once);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task AssignmentRejection_ShowsErrorBesideServerAndPreservesForm()
+    {
+        var scenario = new MapRotationAssignmentScenario();
+        scenario.RepositoryClient.Setup(x => x.MapRotations.V1.CreateServerAssignment(
+            It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ApiHttpRequestException("synthetic-private-diagnostic", HttpStatusCode.BadRequest,
+                new ApiResponse(new ApiError("GAME_TYPE_MISMATCH", "synthetic-private-diagnostic", "UntrustedTarget"))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress,
+            $"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}").AbsoluteUri);
+        await browser.Page.GetByTestId("server-select").SelectOptionAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        await browser.Page.GetByLabel("Config File", new() { Exact = true }).FillAsync("server.cfg");
+
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByTestId("assign-server-submit").ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/CreateAssignment");
+
+        Assert.Equal(200, response.Status);
+        var error = browser.Page.Locator("[data-valmsg-for='GameServerId']");
+        await Assertions.Expect(error).ToBeVisibleAsync();
+        await Assertions.Expect(error).ToContainTextAsync("The selected server does not support this rotation");
+        await Assertions.Expect(browser.Page.GetByTestId("server-select")).ToHaveValueAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        await Assertions.Expect(browser.Page.GetByLabel("Config File", new() { Exact = true })).ToHaveValueAsync("server.cfg");
+        await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("synthetic-private-diagnostic");
+        Assert.Empty(scenario.CreatedAssignments);
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task Import_ServerPickerUsesScopedBrowseAndExistingPreviewWithoutExposingOtherConfig()
     {
@@ -322,7 +385,7 @@ public sealed class MapRotationRecoveryBrowserTests
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Save Changes", Exact = true }).ClickAsync();
         await Assertions.Expect(browser.Page.Locator("[data-valmsg-for='AacpEnabled']")).ToContainTextAsync("Deactivate first");
         scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
-            It.IsAny<Repository.Abstractions.Models.V1.MapRotations.UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
         browser.AssertNoBrowserErrors();
     }
 
@@ -345,7 +408,7 @@ public sealed class MapRotationRecoveryBrowserTests
         await Assertions.Expect(explanation).ToContainTextAsync("sv_maprotation");
         await Assertions.Expect(advanced.Locator("#ConfigVariableName")).ToHaveValueAsync("sv_maprotation_low");
         scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
-            It.IsAny<Repository.Abstractions.Models.V1.MapRotations.UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
         browser.AssertNoBrowserErrors();
     }
 
