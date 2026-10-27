@@ -96,7 +96,12 @@
     }
 
     function attachPageJump(table, options) {
-        if (!table || typeof table.page !== 'function' || typeof table.table !== 'function') {
+        if (!table || typeof table.page !== 'function' || typeof table.table !== 'function' ||
+            typeof table.settings !== 'function') {
+            return null;
+        }
+        const tableSettings = table.settings()?.[0];
+        if (!tableSettings || tableSettings.oInit?.countFreeHistory) {
             return null;
         }
 
@@ -220,7 +225,55 @@
         return container;
     }
 
+    function historyOptions() {
+        return {
+            countFreeHistory: true,
+            pagingType: 'simple',
+            language: {
+                info: 'Showing _START_ to _END_',
+                infoEmpty: 'No matching records',
+                infoFiltered: ''
+            }
+        };
+    }
+
+    function historyDataFilter(raw) {
+        var response;
+        try {
+            response = JSON.parse(raw);
+        } catch {
+            // Let jQuery report malformed responses through its normal Ajax error path.
+            return raw;
+        }
+        if (!response || !Array.isArray(response.data)) return raw;
+        var rows = response.data;
+        // DataTables requires a length to enable Next; this lookahead is not a displayed total.
+        var navigationLength = Math.max(0, response.start || 0) + rows.length +
+            (rows.length > 0 && response.hasMore === true ? 1 : 0);
+        response.recordsTotal = navigationLength;
+        response.recordsFiltered = navigationLength;
+        return JSON.stringify(response);
+    }
+
+    function debounce(callback, delay) {
+        var timer;
+        function cancel() {
+            window.clearTimeout(timer);
+        }
+        function run() {
+            var context = this;
+            var args = arguments;
+            cancel();
+            timer = window.setTimeout(function () { callback.apply(context, args); }, delay);
+        }
+        run.cancel = cancel;
+        return run;
+    }
+
     window.PortalDataTableUi = window.PortalDataTableUi || {};
     window.PortalDataTableUi.relocateSearch = relocateSearch;
     window.PortalDataTableUi.attachPageJump = attachPageJump;
+    window.PortalDataTableUi.historyOptions = historyOptions;
+    window.PortalDataTableUi.historyDataFilter = historyDataFilter;
+    window.PortalDataTableUi.debounce = debounce;
 })(window);

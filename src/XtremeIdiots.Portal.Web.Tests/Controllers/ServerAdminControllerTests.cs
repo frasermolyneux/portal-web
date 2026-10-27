@@ -22,6 +22,7 @@ using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
@@ -811,7 +812,7 @@ public class ServerAdminControllerTests
             .ReturnsAsync(AuthorizationResult.Failed());
 
         mockRepositoryApiClient
-            .Setup(x => x.ChatMessages.V1.GetChatMessages(
+            .Setup(x => x.ChatMessages.V1.GetChatMessagesPage(
                 null,
                 serverId,
                 null,
@@ -820,13 +821,14 @@ public class ServerAdminControllerTests
                 200,
                 ChatMessageOrder.TimestampDesc,
                 null,
+                It.IsAny<DateTime?>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ChatMessageDto>>(
+            .ReturnsAsync(new ApiResult<HistoryPageDto<ChatMessageDto>>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<ChatMessageDto>>(new CollectionModel<ChatMessageDto>(
+                new ApiResponse<HistoryPageDto<ChatMessageDto>>(new HistoryPageDto<ChatMessageDto>(
                 [
                     CreateChatMessageDto(Guid.NewGuid(), serverId, timestamp)
-                ]))));
+                ], false))));
 
         var sut = CreateSut();
 
@@ -843,13 +845,14 @@ public class ServerAdminControllerTests
         Assert.Equal("chat", items[0]?["SourceType"]?.Value<string>());
 
         mockRepositoryApiClient.Verify(
-            x => x.GameServersEvents.V1.GetGameServerEvents(
+            x => x.GameServersEvents.V1.GetGameServerEventsPage(
                 It.IsAny<GameType?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<string?>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<GameServerEventOrder?>(),
+                It.IsAny<DateTime?>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -876,7 +879,7 @@ public class ServerAdminControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
 
         mockRepositoryApiClient
-            .Setup(x => x.ChatMessages.V1.GetChatMessages(
+            .Setup(x => x.ChatMessages.V1.GetChatMessagesPage(
                 null,
                 serverId,
                 null,
@@ -885,14 +888,15 @@ public class ServerAdminControllerTests
                 200,
                 ChatMessageOrder.TimestampDesc,
                 null,
+                It.Is<DateTime?>(from => from.HasValue && from.Value <= olderTimestamp),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<ChatMessageDto>>(
+            .ReturnsAsync(new ApiResult<HistoryPageDto<ChatMessageDto>>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<ChatMessageDto>>(new CollectionModel<ChatMessageDto>(
+                new ApiResponse<HistoryPageDto<ChatMessageDto>>(new HistoryPageDto<ChatMessageDto>(
                 [
                     CreateChatMessageDto(newerId, serverId, newerTimestamp),
                     CreateChatMessageDto(olderId, serverId, olderTimestamp)
-                ]))));
+                ], false))));
 
         var sut = CreateSut();
 
@@ -933,20 +937,21 @@ public class ServerAdminControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
 
         mockRepositoryApiClient
-            .Setup(x => x.GameServersEvents.V1.GetGameServerEvents(
+            .Setup(x => x.GameServersEvents.V1.GetGameServerEventsPage(
                 null,
                 serverId,
                 null,
                 0,
                 200,
                 GameServerEventOrder.TimestampDesc,
+                It.IsAny<DateTime?>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<GameServerEventDto>>(
+            .ReturnsAsync(new ApiResult<HistoryPageDto<GameServerEventDto>>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<GameServerEventDto>>(new CollectionModel<GameServerEventDto>(
+                new ApiResponse<HistoryPageDto<GameServerEventDto>>(new HistoryPageDto<GameServerEventDto>(
                 [
                     CreateGameServerEventDto(eventId, serverId, timestamp, "token=abc123; message=ok")
-                ]))));
+                ], false))));
 
         var sut = CreateSut();
 

@@ -2419,10 +2419,10 @@ public class ServerAdminController(
 
             var sinceTime = DateTime.UtcNow.AddMinutes(-minutes);
 
-            // If lastMessageId is provided, only get messages newer than that
-            var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
+            // Bound the repository query by time; apply the message cursor below.
+            var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessagesPage(
                 null, id, null, null,
-                0, 100, ChatMessageOrder.TimestampDesc, null, cancellationToken).ConfigureAwait(false);
+                0, 100, ChatMessageOrder.TimestampDesc, null, sinceTime, cancellationToken).ConfigureAwait(false);
 
             if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data?.Items is null)
             {
@@ -2587,7 +2587,7 @@ public class ServerAdminController(
 
     private async Task<IReadOnlyList<ServerFeedItemDto>> GetServerFeedChatItemsAsync(Guid serverId, DateTime sinceTime, CancellationToken cancellationToken)
     {
-        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
+        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessagesPage(
             null,
             serverId,
             null,
@@ -2596,6 +2596,7 @@ public class ServerAdminController(
             200,
             ChatMessageOrder.TimestampDesc,
             null,
+            sinceTime,
             cancellationToken).ConfigureAwait(false);
 
         if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data?.Items is null)
@@ -2614,13 +2615,14 @@ public class ServerAdminController(
 
     private async Task<IReadOnlyList<ServerFeedItemDto>> GetServerFeedEventItemsAsync(Guid serverId, DateTime sinceTime, CancellationToken cancellationToken)
     {
-        var gameServerEventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEvents(
+        var gameServerEventsApiResponse = await repositoryApiClient.GameServersEvents.V1.GetGameServerEventsPage(
             null,
             serverId,
             null,
             0,
             200,
             GameServerEventOrder.TimestampDesc,
+            sinceTime,
             cancellationToken).ConfigureAwait(false);
 
         if (!gameServerEventsApiResponse.IsSuccess || gameServerEventsApiResponse.Result?.Data?.Items is null)
@@ -3101,9 +3103,9 @@ public class ServerAdminController(
             model.Search.Value = model.Search.Value[7..].Trim();
         }
 
-        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessages(
+        var chatMessagesApiResponse = await repositoryApiClient.ChatMessages.V1.GetChatMessagesPage(
             gameType, gameServerId, playerId, model.Search?.Value,
-            model.Start, model.Length, order, lockedOnly, cancellationToken).ConfigureAwait(false);
+            Math.Max(0, model.Start), Math.Clamp(model.Length, 1, 200), order, lockedOnly, null, cancellationToken).ConfigureAwait(false);
 
         if (!chatMessagesApiResponse.IsSuccess || chatMessagesApiResponse.Result?.Data is null)
         {
@@ -3114,8 +3116,8 @@ public class ServerAdminController(
         return Json(new
         {
             model.Draw,
-            recordsTotal = chatMessagesApiResponse.Result?.Pagination?.TotalCount,
-            recordsFiltered = chatMessagesApiResponse.Result?.Pagination?.FilteredCount,
+            start = Math.Max(0, model.Start),
+            hasMore = chatMessagesApiResponse.Result.Data.HasMore,
             data = chatMessagesApiResponse?.Result?.Data?.Items
         });
     }

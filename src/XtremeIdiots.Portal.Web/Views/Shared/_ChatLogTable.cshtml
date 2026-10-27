@@ -1,3 +1,4 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
 @* 
     Shared ChatLog Table Partial View
     Can be used for global, game-specific, server-specific, or player-specific chat logs
@@ -18,6 +19,7 @@
         <h5>@title</h5>
     </div>
     <div class="ibox-content">
+        <p class="text-muted">Unlocked chat messages are retained for @HistoryRetention.ChatMessageMonths months. Locked messages are preserved. Use Previous and Next to browse history.</p>
         <div class="table-responsive">
             <table id="dataTable" class="table table-striped table-hover w-100" 
                    data-source="@dataUrl"
