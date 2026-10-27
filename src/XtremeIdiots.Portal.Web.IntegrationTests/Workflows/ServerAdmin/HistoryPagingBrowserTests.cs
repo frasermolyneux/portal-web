@@ -13,6 +13,26 @@ public sealed partial class HistoryPagingBrowserTests
     private static partial Regex DisabledClass();
 
     [Fact]
+    public async Task History_InvalidJsonUsesStandardAjaxErrorHandling()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin);
+        var page = fixture.Page;
+        await page.AddInitScriptAsync("""
+            document.addEventListener('DOMContentLoaded', () => {
+                $.fn.dataTable.ext.errMode = () => { window.historyAjaxError = true; };
+            });
+            """);
+        await page.RouteAsync("**/ServerAdmin/GetServerEventsAjax*", route => route.FulfillAsync(new()
+        {
+            ContentType = "text/html",
+            Body = "<style>body { color: black; }</style><p>Upstream error</p>"
+        }));
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/ServerAdmin/ServerEventsIndex").AbsoluteUri);
+        await page.WaitForFunctionAsync("() => window.historyAjaxError === true");
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task OrdinaryTables_KeepNumberedPagingTotalsAndPageJump()
     {
         await using var fixture = await BrowserFixture.CreateAsync();

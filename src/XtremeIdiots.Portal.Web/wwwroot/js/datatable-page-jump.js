@@ -236,8 +236,15 @@
     }
 
     function historyDataFilter(raw) {
-        var response = JSON.parse(raw);
-        var rows = Array.isArray(response.data) ? response.data : [];
+        var response;
+        try {
+            response = JSON.parse(raw);
+        } catch {
+            // Let jQuery report malformed responses through its normal Ajax error path.
+            return raw;
+        }
+        if (!response || !Array.isArray(response.data)) return raw;
+        var rows = response.data;
         // DataTables requires a length to enable Next; this lookahead is not a displayed total.
         var navigationLength = Math.max(0, response.start || 0) + rows.length + (response.hasMore ? 1 : 0);
         response.recordsTotal = navigationLength;
