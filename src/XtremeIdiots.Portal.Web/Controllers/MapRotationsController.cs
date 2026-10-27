@@ -1493,27 +1493,7 @@ public class MapRotationsController(
 
             // Collect all unique map names for duplicate/new-map detection
             var allMapNames = parsed.SelectMany(r => r.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            var existingMaps = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-
-            if (allMapNames.Length > 0)
-            {
-                // Bulk lookup existing maps (paginate if needed)
-                for (var skip = 0; skip < allMapNames.Length; skip += 100)
-                {
-                    var batch = allMapNames.Skip(skip).Take(100).ToArray();
-                    var mapsResponse = await repositoryApiClient.Maps.V1.GetMaps(
-                        model.GameType, batch, null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
-
-                    if (mapsResponse.IsSuccess && mapsResponse.Result?.Data?.Items != null)
-                    {
-                        foreach (var map in mapsResponse.Result.Data.Items)
-                        {
-                            if (map.MapName != null && !existingMaps.ContainsKey(map.MapName))
-                                existingMaps[map.MapName] = map.MapId;
-                        }
-                    }
-                }
-            }
+            var existingMaps = await ResolveImportMaps(model.GameType, allMapNames, cancellationToken).ConfigureAwait(false);
 
             var newMapNames = allMapNames.Where(m => !existingMaps.ContainsKey(m)).OrderBy(m => m).ToList();
 
@@ -1581,6 +1561,34 @@ public class MapRotationsController(
                 DraftId = draftId
             });
         }, nameof(Import)).ConfigureAwait(false);
+    }
+
+    private async Task<Dictionary<string, Guid>> ResolveImportMaps(GameType gameType, string[] mapNames, CancellationToken cancellationToken)
+    {
+        var maps = new Dictionary<string, MapDto>(StringComparer.OrdinalIgnoreCase);
+        foreach (var batch in mapNames.Chunk(100))
+        {
+            for (var offset = 0; ; offset += 100)
+            {
+                var response = await repositoryApiClient.Maps.V1.GetMaps(
+                    gameType, batch, null, null, offset, 100, MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccess || response.Result?.Data?.Items is not { } items)
+                    throw new InvalidOperationException("Could not look up existing maps for the import. Please try again.");
+
+                var page = items.ToList();
+                foreach (var map in page)
+                {
+                    if (!maps.ContainsKey(map.MapName) || map.GameType == gameType)
+                        maps[map.MapName] = map;
+                }
+
+                // Compatible COD4/COD4x records can exceed the number of requested names.
+                if (page.Count < 100 || offset + page.Count >= response.Result.Pagination?.FilteredCount)
+                    break;
+            }
+        }
+
+        return maps.ToDictionary(pair => pair.Key, pair => pair.Value.MapId, StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task<ViewResult> RenderImportViewAsync(ImportMapRotationsViewModel model, CancellationToken cancellationToken)
@@ -1762,23 +1770,7 @@ public class MapRotationsController(
 
             // Step 2: Resolve ALL map names to GUIDs (always re-resolve after creation attempt)
             var allMapNames = selectedRotationsWithIndex.SelectMany(x => x.Rotation.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            var mapLookup = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-
-            for (var skip = 0; skip < allMapNames.Length; skip += 100)
-            {
-                var batch = allMapNames.Skip(skip).Take(100).ToArray();
-                var mapsResponse = await repositoryApiClient.Maps.V1.GetMaps(
-                    draft.GameType, batch, null, null, 0, 100, null, cancellationToken).ConfigureAwait(false);
-
-                if (mapsResponse.IsSuccess && mapsResponse.Result?.Data?.Items != null)
-                {
-                    foreach (var map in mapsResponse.Result.Data.Items)
-                    {
-                        if (map.MapName != null && !mapLookup.ContainsKey(map.MapName))
-                            mapLookup[map.MapName] = map.MapId;
-                    }
-                }
-            }
+            var mapLookup = await ResolveImportMaps(draft.GameType, allMapNames, cancellationToken).ConfigureAwait(false);
 
             // Step 3: Create rotations
             var results = new List<ImportResultItem>();
