@@ -316,10 +316,16 @@ public sealed class MapRotationRecoveryBrowserTests
             operationStatus: AssignmentOperationStatus.Succeeded, completedAt: DateTime.UtcNow);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
-        await Assertions.Expect(browser.Page.Locator(".alert-danger")).ToContainTextAsync("Synthetic AACP configuration failure");
+        await Assertions.Expect(browser.Page.Locator(".alert-danger")).ToContainTextAsync("Action needed — Map picker");
+        await Assertions.Expect(browser.Page.Locator(".alert-danger")).ToContainTextAsync("Check the selected file and variable");
+        await browser.Page.Locator("#assignment-details > summary").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#assignment-details pre")).ToHaveTextAsync("Synthetic AACP configuration failure");
         await Assertions.Expect(browser.Page.Locator("#operation-history > summary .badge.bg-danger")).ToHaveTextAsync("Needs attention");
         await browser.Page.Locator("#operation-history > summary").ClickAsync();
-        await Assertions.Expect(browser.Page.Locator("#operationsTable")).ToContainTextAsync("Synthetic child operation failed");
+        var childDetails = browser.Page.Locator("#operationsTable details").Filter(new() { HasText = "Synthetic child operation failed" });
+        await childDetails.Locator("summary").ClickAsync();
+        await Assertions.Expect(childDetails.Locator(".operation-diagnostics")).ToBeVisibleAsync();
+        await Assertions.Expect(childDetails).ToContainTextAsync("Synthetic child operation failed");
         await Assertions.Expect(browser.Page.Locator("#operationsTable tbody > tr")).ToHaveCountAsync(2);
         browser.AssertNoBrowserErrors();
     }
@@ -695,6 +701,8 @@ public sealed class MapRotationRecoveryBrowserTests
             .ToContainTextAsync("Expand technical details");
         await browser.Page.Locator(".pending-bootstrap-row details > summary").ClickAsync();
         await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row .operation-diagnostics")).ToHaveTextAsync("Synthetic bootstrap failure");
+        await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row > td details")).ToHaveCountAsync(1);
+        await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row > details")).ToHaveCountAsync(0);
         await Assertions.Expect(browser.Page.Locator(".progress-bar.bg-danger")).ToHaveCountAsync(1);
         browser.AssertNoBrowserErrors();
     }
