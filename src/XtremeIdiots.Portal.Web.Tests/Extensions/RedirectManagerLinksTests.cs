@@ -28,6 +28,7 @@ public class RedirectManagerLinksTests
     public void BuiltInAndUnsupportedMaps_DoNotAdvertiseNonexistentRedirectDownloads()
     {
         Assert.Null(GameType.CallOfDuty4.RedirectManagerUrl("mp_backlot"));
+        Assert.Null(GameType.CallOfDuty4x.RedirectManagerUrl("mp_bog"));
         Assert.Null(GameType.CallOfDuty2.RedirectManagerUrl("mp_custom"));
         Assert.DoesNotContain("map=", GameType.CallOfDuty4.RedirectManagerUrl());
     }

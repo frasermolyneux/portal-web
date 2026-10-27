@@ -22,7 +22,8 @@ internal sealed class MapRotationRecoveryScenario
 
     public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
         AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress, DateTime? completedAt = null,
-        bool combined = false, bool childFailed = false, bool childBusy = false, bool fileTransportEnabled = false, bool mainOnly = false)
+        bool combined = false, bool childFailed = false, bool childBusy = false, bool fileTransportEnabled = false, bool mainOnly = false,
+        GameType gameType = GameType.CallOfDuty4)
     {
         var serverId = permitted ? Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId) : Guid.NewGuid();
         var assignment = new MapRotationServerAssignmentDto(AssignmentId, RotationId, serverId,
@@ -32,7 +33,7 @@ internal sealed class MapRotationRecoveryScenario
         var picker = new MapRotationServerAssignmentDto(ChildAssignmentId, RotationId, serverId,
             state, childFailed ? ActivationState.Failed : ActivationState.Active, 1, 1, "aacp.cfg", "scr_aacp_maps_1",
             childFailed ? "Synthetic AACP configuration failure" : null, null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, null);
-        var rotation = new MapRotationDto(RotationId, GameType.CallOfDuty4, "Synthetic Recovery", null, "dm",
+        var rotation = new MapRotationDto(RotationId, gameType, "Synthetic Recovery", null, "dm",
             2, null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, [], combined ? [picker, assignment] : [assignment]);
         Repository.Setup(x => x.MapRotations.V1.GetMapRotation(RotationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));

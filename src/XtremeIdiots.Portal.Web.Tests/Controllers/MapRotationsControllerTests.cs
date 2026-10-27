@@ -158,6 +158,64 @@ public class MapRotationsControllerTests
     }
 
     [Theory]
+    [InlineData(GameType.CallOfDuty4)]
+    [InlineData(GameType.CallOfDuty4x)]
+    public async Task Import_CompatibleMapDuplicatesAreFullyPagedAndPreferTheNativeGame(GameType gameType)
+    {
+        var (_, model) = SetupServerImport();
+        model.FromGameServer = false;
+        model.GameType = gameType;
+        var names = Enumerable.Range(0, 100).Select(index => $"mp_test_{index:D3}").ToArray();
+        model.CfgContent = $"set sv_maprotation \"gametype dm {string.Join(" ", names.Select(name => $"map {name}"))}\"";
+        var maps = names.SelectMany(name => new[] { GameType.CallOfDuty4, GameType.CallOfDuty4x }
+            .Select(type => Newtonsoft.Json.JsonConvert.DeserializeObject<MapDto>(
+                Newtonsoft.Json.JsonConvert.SerializeObject(new { MapId = Guid.NewGuid(), MapName = name, GameType = type }))!)).ToList();
+        mockRepositoryApiClient.Setup(x => x.Maps.V1.GetMaps(It.IsAny<GameType?>(), It.IsAny<string[]?>(), It.IsAny<MapsFilter?>(),
+            It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<MapsOrder?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GameType? _, string[]? _, MapsFilter? _, string? _, int offset, int top, MapsOrder? _, CancellationToken _) =>
+                new ApiResult<CollectionModel<MapDto>>(HttpStatusCode.OK, new ApiResponse<CollectionModel<MapDto>>(
+                    new CollectionModel<MapDto>(maps.Skip(offset).Take(top).ToList()))
+                {
+                    Pagination = new ApiPagination(200, 200, offset, top)
+                }));
+        CreateMapRotationDto? imported = null;
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()))
+            .Callback<CreateMapRotationDto, CancellationToken>((dto, _) => imported = dto)
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK,
+                new ApiResponse<MapRotationDto>(CreateRotation(Guid.NewGuid(), gameType))));
+        var sut = CreateSut();
+
+        var preview = Assert.IsType<ImportMapRotationsPreviewViewModel>(Assert.IsType<ViewResult>(await sut.Import(model)).Model);
+        Assert.Empty(preview.NewMapNames);
+        var result = Assert.IsType<ImportMapRotationsResultViewModel>(Assert.IsType<ViewResult>(
+            await sut.ImportConfirm(new() { DraftId = preview.DraftId, SelectedIndices = [0] })).Model);
+
+        Assert.Equal(1, result.ImportedCount);
+        Assert.Equal(0, result.FailedCount);
+        Assert.NotNull(imported);
+        Assert.Equal(gameType, imported.GameType);
+        Assert.Equal(maps.Where(map => map.GameType == gameType).Select(map => map.MapId), imported.MapIds);
+        mockRepositoryApiClient.Verify(x => x.Maps.V1.GetMaps(gameType, It.IsAny<string[]?>(), null, null,
+            100, 100, MapsOrder.MapNameAsc, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        mockRepositoryApiClient.Verify(x => x.Maps.V1.CreateMaps(It.IsAny<List<CreateMapDto>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Import_MapLookupFailureCannotBeMistakenForMissingMaps()
+    {
+        var (_, model) = SetupServerImport();
+        mockRepositoryApiClient.Setup(x => x.Maps.V1.GetMaps(It.IsAny<GameType?>(), It.IsAny<string[]?>(), It.IsAny<MapsFilter?>(),
+            It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<MapsOrder?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(HttpStatusCode.ServiceUnavailable));
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().Import(model));
+
+        Assert.Contains("Could not look up existing maps", error.Message);
+        mockRepositoryApiClient.Verify(x => x.Maps.V1.CreateMaps(It.IsAny<List<CreateMapDto>>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
     [InlineData("server")]
     [InlineData("upload")]
     [InlineData("paste")]

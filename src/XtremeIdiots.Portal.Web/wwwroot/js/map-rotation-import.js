@@ -24,9 +24,10 @@
     }
 
     function filterServers() {
+        const family = game.value === 'CallOfDuty4x' ? 'CallOfDuty4' : game.value;
         Array.from(server.options).forEach(option => {
             if (!option.value) return;
-            option.hidden = option.dataset.gameType !== game.value;
+            option.hidden = option.dataset.gameType !== family;
             option.disabled = option.hidden;
         });
         const selected = server.options[server.selectedIndex];

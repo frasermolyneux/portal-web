@@ -16,6 +16,26 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 public sealed class MapRotationRecoveryBrowserTests
 {
     [Fact]
+    public async Task Clone_Cod4xKeepsItsGameTypeInTheCreateFormAndCatalogueFilter()
+    {
+        var scenario = new MapRotationRecoveryScenario(gameType: GameType.CallOfDuty4x);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/Clone/{scenario.RotationId}").AbsoluteUri);
+
+        await Assertions.Expect(browser.Page.Locator("#GameType")).ToHaveValueAsync("CallOfDuty4x");
+        await Assertions.Expect(browser.Page.Locator("#Title")).ToHaveValueAsync("Synthetic Recovery (Copy)");
+        await browser.Page.RouteAsync("**/MapRotations/GetMapRotationsAjax/**", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = /*lang=json,strict*/ """{"draw":1,"recordsTotal":0,"recordsFiltered":0,"data":[]}"""
+        }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations?gameType=CallOfDuty4x").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("#filterGameType")).ToHaveValueAsync("CallOfDuty4x");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task EditAssignment_InvalidAacpTargetRemainsVisibleWhenPickerUnchecked()
     {
         var scenario = new MapRotationRecoveryScenario(mainOnly: true);
@@ -91,6 +111,7 @@ public sealed class MapRotationRecoveryBrowserTests
                 """
         }));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations/Import").AbsoluteUri);
+        await browser.Page.Locator("#GameType").SelectOptionAsync("CallOfDuty4x");
         var source = browser.Page.GetByLabel("Read config from a game server", new() { Exact = true });
         var local = browser.Page.GetByLabel("Config Content", new() { Exact = true });
         await Assertions.Expect(local).ToBeVisibleAsync();
@@ -99,6 +120,10 @@ public sealed class MapRotationRecoveryBrowserTests
         var server = browser.Page.GetByLabel("Game Server", new() { Exact = true });
         await Assertions.Expect(server.Locator($"option[value='{MapRotationAssignmentScenario.NonPermittedServerId}']")).ToHaveCountAsync(0);
         await server.SelectOptionAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        await browser.Page.Locator("#GameType").SelectOptionAsync("CallOfDuty4");
+        await Assertions.Expect(server).ToHaveValueAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
+        await browser.Page.Locator("#GameType").SelectOptionAsync("CallOfDuty4x");
+        await Assertions.Expect(server).ToHaveValueAsync(MapRotationAssignmentScenario.PermittedServerId.ToString());
         var browse = browser.Page.GetByRole(AriaRole.Button, new() { Name = "Browse", Exact = true });
         var response = await browser.Page.RunAndWaitForResponseAsync(() => browse.ClickAsync(),
             response => response.Request.Method == "GET" && new Uri(response.Url).AbsolutePath == endpoint);
@@ -131,6 +156,8 @@ public sealed class MapRotationRecoveryBrowserTests
         scenario.Servers.Verify(x => x.Files.V1.GetContent(MapRotationAssignmentScenario.PermittedServerId,
             It.Is<GetFileContentQueryDto>(q => q.Path == MapRotationImportScenario.ConfigPath && q.RangeEnd == 1_000_000),
             It.IsAny<CancellationToken>()), Times.Once);
+        scenario.Repository.Verify(x => x.Maps.V1.GetMaps(GameType.CallOfDuty4x, It.IsAny<string[]?>(), null, null,
+            0, 100, MapsOrder.MapNameAsc, It.IsAny<CancellationToken>()), Times.Once);
         Assert.DoesNotContain(Mock.Get(scenario.Repository.Object.MapRotations.V1).Invocations,
             invocation => invocation.Method.Name.StartsWith("Create", StringComparison.Ordinal));
         Assert.DoesNotContain(Mock.Get(scenario.Repository.Object.Maps.V1).Invocations,
