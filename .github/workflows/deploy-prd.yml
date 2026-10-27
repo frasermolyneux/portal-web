@@ -30,7 +30,7 @@ jobs:
     outputs:
       src: ${{ inputs.scope == 'maps-bootstrap' || steps.changes.outputs.src == 'true' }}
       terraform: ${{ steps.changes.outputs.terraform }}
-      workload: ${{ steps.changes.outputs.workload }}
+      workload: ${{ steps.workload.outputs.src }}
     steps:
       - name: Require approved main for maps bootstrap
         if: inputs.scope == 'maps-bootstrap' && github.ref != 'refs/heads/main'
@@ -44,7 +44,14 @@ jobs:
           filters: |
             src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/deploy-prd.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
             terraform:terraform/**
-            workload:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props,terraform/**
+      - name: Detect deployable workload inputs
+        id: workload
+        uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
+        with:
+          perform-checkout: 'false'
+          filters: |
+            src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props,terraform/**
+
   terraform-state-check-dev:
     needs: [detect-changes]
     if: |
