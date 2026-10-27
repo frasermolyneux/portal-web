@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/actions/**'
+      - '.github/scripts/**'
+      - '.github/workflows/test-and-publish.yml'
+      - 'global.json'
+      - '.node-version'
+      - 'Directory.Build.props'
+      - 'terraform/**'
   workflow_dispatch:
     # checkov:skip=CKV_GHA_7:Deployment entry point selects fixed jobs; build inputs are unchanged and user input never enters commands.
     inputs:
@@ -30,7 +40,6 @@ jobs:
     outputs:
       src: ${{ inputs.scope == 'maps-bootstrap' || steps.changes.outputs.src == 'true' }}
       terraform: ${{ steps.changes.outputs.terraform }}
-      workload: ${{ steps.workload.outputs.src }}
     steps:
       - name: Require approved main for maps bootstrap
         if: inputs.scope == 'maps-bootstrap' && github.ref != 'refs/heads/main'
@@ -44,19 +53,9 @@ jobs:
           filters: |
             src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/deploy-prd.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
             terraform:terraform/**
-      - name: Detect deployable workload inputs
-        id: workload
-        uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
-        with:
-          perform-checkout: 'false'
-          filters: |
-            src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props,terraform/**
 
   terraform-state-check-dev:
-    needs: [detect-changes]
-    if: |
-      (github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap') &&
-      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
+    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
     permissions:
       contents: read
       id-token: write
@@ -82,15 +81,11 @@ jobs:
     needs:
       - detect-changes
       - terraform-state-check-dev
-    if: |
-      (!failure() && !cancelled() && (needs.detect-changes.outputs.src == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')) &&
-      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
+    if: "!failure() && !cancelled() && (needs.detect-changes.outputs.src == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')"
     uses: ./.github/workflows/test-and-publish.yml
 
   terraform-plan-and-apply-dev:
-    if: |
-      (github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap') &&
-      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
+    if: github.event_name != 'schedule' && inputs.scope != 'maps-bootstrap'
     permissions:
       contents: read
       id-token: write
@@ -149,8 +144,7 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-dev
     if: |
-      (!failure() && !cancelled() && inputs.scope != 'maps-bootstrap' && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true') &&
-      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
+      !failure() && !cancelled() && inputs.scope != 'maps-bootstrap' && github.event_name != 'schedule' && needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-dev
@@ -181,8 +175,7 @@ jobs:
       - terraform-plan-and-apply-dev
       - app-service-deploy-dev
     if: |
-      (!failure() && !cancelled() && (inputs.scope == 'maps-bootstrap' || needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')) &&
-      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
+      !failure() && !cancelled() && (inputs.scope == 'maps-bootstrap' || needs.terraform-plan-and-apply-dev.result == 'success' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
@@ -234,8 +227,7 @@ jobs:
       - build-and-test
       - terraform-plan-and-apply-prd
     if: |
-      (!failure() && !cancelled() && needs.terraform-plan-and-apply-prd.result == 'success' && needs.detect-changes.outputs.src == 'true') &&
-      (github.event_name != 'push' || needs.detect-changes.outputs.workload == 'true')
+      !failure() && !cancelled() && needs.terraform-plan-and-apply-prd.result == 'success' && needs.detect-changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.repository }}-prd
