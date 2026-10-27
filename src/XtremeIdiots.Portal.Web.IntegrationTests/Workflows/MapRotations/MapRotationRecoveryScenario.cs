@@ -22,11 +22,11 @@ internal sealed class MapRotationRecoveryScenario
 
     public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
         AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress, DateTime? completedAt = null,
-        bool combined = false, bool childFailed = false, bool childBusy = false, bool fileTransportEnabled = false)
+        bool combined = false, bool childFailed = false, bool childBusy = false, bool fileTransportEnabled = false, bool mainOnly = false)
     {
         var serverId = permitted ? Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId) : Guid.NewGuid();
         var assignment = new MapRotationServerAssignmentDto(AssignmentId, RotationId, serverId,
-            state, ActivationState.Active, 1, 1, "synthetic.cfg", combined ? "sv_maprotation" : "scr_aacp_maps_small",
+            state, ActivationState.Active, 1, 1, "synthetic.cfg", combined || mainOnly ? "sv_maprotation" : "scr_aacp_maps_small",
             combined ? null : "Synthetic verification error on active configuration", DateTime.UtcNow,
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, null);
         var picker = new MapRotationServerAssignmentDto(ChildAssignmentId, RotationId, serverId,

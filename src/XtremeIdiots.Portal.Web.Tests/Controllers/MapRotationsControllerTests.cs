@@ -35,7 +35,7 @@ public class MapRotationsControllerTests
     [InlineData("GAME_TYPE_MISMATCH", "GameServerId", true, HttpStatusCode.BadRequest)]
     [InlineData("GAME_TYPE_MISMATCH", "GameServerId", false, HttpStatusCode.BadRequest)]
     [InlineData("DUPLICATE_CONFIG_TARGET", "", true, HttpStatusCode.BadRequest)]
-    [InlineData("INVALID_AACP_TARGET", "AacpConfigFilePath", true, HttpStatusCode.BadRequest)]
+    [InlineData("INVALID_AACP_TARGET", "", true, HttpStatusCode.BadRequest)]
     [InlineData("UNKNOWN_ERROR", "", false, HttpStatusCode.BadRequest)]
     [InlineData("GAME_TYPE_MISMATCH", "", true, HttpStatusCode.InternalServerError)]
     public async Task CreateAssignment_ApiErrorsGiveSafeFieldFeedbackOrReference(

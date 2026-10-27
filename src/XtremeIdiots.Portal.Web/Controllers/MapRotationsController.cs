@@ -809,7 +809,7 @@ public class MapRotationsController(
                         "This rotation no longer exists. Return to the rotation library."),
                     "DUPLICATE_CONFIG_TARGET" => (string.Empty,
                         "An assignment already exists for this rotation and server with the same config file path and variable name. Edit the existing assignment instead."),
-                    "INVALID_AACP_TARGET" => (nameof(CreateMapRotationAssignmentViewModel.AacpConfigFilePath),
+                    "INVALID_AACP_TARGET" => (string.Empty,
                         "Choose valid main and AACP configuration files through the main sv_maprotation assignment."),
                     "CONFIGURATION_GROUP_EXISTS" => (string.Empty,
                         "Edit the existing server assignment to configure its AACP map picker."),
