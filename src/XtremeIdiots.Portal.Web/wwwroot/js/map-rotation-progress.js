@@ -175,7 +175,17 @@ $(document).ready(function () {
 
         updateStaleIndicator(ctx, data);
         if (data.error) {
-            ctx.$row.find('.operation-error').text(data.error).removeClass('text-muted').addClass('text-danger');
+            ctx.$row.find('.operation-error')
+                .text('This action did not complete successfully. Expand technical details for the recorded error.')
+                .removeClass('text-muted').addClass('text-danger');
+            var $diagnostics = ctx.$row.find('.operation-diagnostics');
+            if ($diagnostics.length === 0) {
+                var $details = $('<details>').append($('<summary>').text('Technical details'));
+                $diagnostics = $('<pre class="operation-diagnostics small text-wrap text-break mt-2 mb-1">');
+                $details.append($diagnostics);
+                ctx.$row.find('.operation-error').after($details);
+            }
+            $diagnostics.text(data.error);
         }
 
         var isTerminal = data.runtimeStatus === 'Completed' || data.runtimeStatus === 'Failed' ||

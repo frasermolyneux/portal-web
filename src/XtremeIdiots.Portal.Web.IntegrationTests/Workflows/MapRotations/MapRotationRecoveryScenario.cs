@@ -26,12 +26,12 @@ internal sealed class MapRotationRecoveryScenario
     public MapRotationRecoveryScenario(DeploymentState state = DeploymentState.Synced, bool busy = false, bool permitted = true,
         AssignmentOperationStatus operationStatus = AssignmentOperationStatus.InProgress, DateTime? completedAt = null,
         bool combined = false, bool childFailed = false, bool childBusy = false, bool fileTransportEnabled = false, bool mainOnly = false,
-        GameType gameType = GameType.CallOfDuty4)
+        GameType gameType = GameType.CallOfDuty4, string? error = null, ActivationState activationState = ActivationState.Active)
     {
         var serverId = permitted ? Guid.Parse(TestPrincipalProfiles.MapRotationDeployServerId) : Guid.NewGuid();
         var assignment = new MapRotationServerAssignmentDto(AssignmentId, RotationId, serverId,
-            state, ActivationState.Active, 1, 1, "synthetic.cfg", combined || mainOnly ? "sv_maprotation" : "scr_aacp_maps_small",
-            combined ? null : "Synthetic verification error on active configuration", DateTime.UtcNow,
+            state, activationState, 1, 1, "synthetic.cfg", combined || mainOnly ? "sv_maprotation" : "scr_aacp_maps_small",
+            combined ? null : error ?? "Synthetic verification error on active configuration", DateTime.UtcNow,
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, null);
         Servers.Setup(x => x.Config.V1.GetConfigFile(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid _, string path, CancellationToken _) =>
@@ -77,7 +77,8 @@ internal sealed class MapRotationRecoveryScenario
                     DurableFunctionInstanceId = $"maprot-apply-{AssignmentId}",
                     StartedAt = completedAt?.AddMinutes(-2) ?? DateTime.UtcNow,
                     CompletedAt = completedAt,
-                    Status = operationStatus
+                    Status = operationStatus,
+                    Error = error
                 }))!);
         }
 

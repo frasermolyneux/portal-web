@@ -61,9 +61,25 @@
 
                         @foreach (var target in Model.Group.Targets.Where(a => !string.IsNullOrEmpty(a.LastError)))
                         {
-                            <div class="alert alert-danger mt-3 mb-0">
+                            <div class="alert alert-danger mt-3 mb-0" role="alert">
                                 <strong>Action needed@(Model.Group.IsCombined ? " — " + target.SlotLabel() : "")</strong>
-                                <p class="mb-0 mt-1">@target.LastError</p>
+                                <p class="mb-0 mt-1">
+                                    @if (target.DeploymentState == DeploymentState.Failed)
+                                    {
+                                        <text>Map files could not be prepared or verified. Review the file results before retrying.</text>
+                                    }
+                                    else if (target.ActivationState == ActivationState.Failed)
+                                    {
+                                        <text>The rotation configuration could not be updated. Check the selected file and variable in assignment settings before applying again.</text>
+                                    }
+                                    else
+                                    {
+                                        <text>The last operation needs attention. Review the technical details before retrying.</text>
+                                    }
+                                </p>
+                                <a asp-action="EditAssignment" asp-route-id="@Model.Assignment.MapRotationServerAssignmentId"
+                                   policy="@AuthPolicies.MapRotations_Deploy" policy-resource="@deployResource"
+                                   class="alert-link d-inline-block mt-2">Edit assignment settings</a>
                             </div>
                         }
                         @if (busy && !hasRunningOperation && !hasPending)
@@ -98,6 +114,13 @@
                                     <dt class="detail-label">Updated</dt>
                                     <dd class="detail-value"><time user-time utc="@target.UpdatedAt"></time></dd>
                                 </div>
+                                @if (!string.IsNullOrEmpty(target.LastError))
+                                {
+                                    <div class="detail-field col-12">
+                                        <dt class="detail-label">Last error</dt>
+                                        <dd class="detail-value"><pre class="small text-wrap text-break mb-0">@target.LastError</pre></dd>
+                                    </div>
+                                }
                                 @if (Model.Assignment.UnassignedAt.HasValue)
                                 {
                                     <div class="detail-field col-sm-6">
@@ -186,7 +209,7 @@
                                                     <td>Starting</td>
                                                     <td><span class="badge bg-info">Queued</span></td>
                                                     <td colspan="2">Waiting to start...</td>
-                                                    <td class="operation-error"></td>
+                                                    <td><div class="operation-error"></div></td>
                                                     <td></td>
                                                 </tr>
                                                 <tr class="progress-detail-row">
@@ -249,9 +272,15 @@
                                                         }
                                                     </td>
                                                     <td>
-                                                        <div class="operation-error @(op.Status == AssignmentOperationStatus.Failed ? "text-danger" : "text-muted")">@op.Error</div>
+                                                        <div class="operation-error @(op.Status == AssignmentOperationStatus.Failed ? "text-danger" : "text-muted")">
+                                                            @if (!string.IsNullOrEmpty(op.Error))
+                                                            {
+                                                                <text>This action did not complete successfully. Expand technical details for the recorded error.</text>
+                                                            }
+                                                        </div>
                                                         <details>
                                                             <summary>Technical details</summary>
+                                                            <pre class="operation-diagnostics small text-wrap text-break mt-2 mb-1">@op.Error</pre>
                                                             @if (op.CompletedAt.HasValue)
                                                             {
                                                                 <div>Completed: <time user-time utc="@op.CompletedAt.Value"></time></div>

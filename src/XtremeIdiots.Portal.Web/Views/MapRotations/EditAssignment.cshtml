@@ -20,7 +20,16 @@
                             <h5>@ViewData["Title"]</h5>
                         </div>
                         <div class="ibox-content">
-                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            @if (ViewData.ModelState[string.Empty]?.Errors.Count > 0)
+                            {
+                                <div class="alert alert-danger validation-summary-errors text-break" role="alert">
+                                    <strong>Check assignment settings</strong>
+                                    @foreach (var error in ViewData.ModelState[string.Empty]!.Errors)
+                                    {
+                                        <p class="mt-1 mb-0">@error.ErrorMessage</p>
+                                    }
+                                </div>
+                            }
                             @if (Model.CanConfigureAacp)
                             {
                                 <div class="mb-3" id="aacp-option">
@@ -28,7 +37,7 @@
                                         <input asp-for="AacpEnabled" class="form-check-input" />
                                         <label asp-for="AacpEnabled" class="form-check-label"></label>
                                     </div>
-                                    <span asp-validation-for="AacpEnabled" class="text-danger"></span>
+                                    <span asp-validation-for="AacpEnabled" class="text-danger d-block small mt-1"></span>
                                     @if (Model.AacpRequiresDeactivation)
                                     {
                                         <p class="small text-muted">Deactivate first before disabling the AACP map picker. Saving settings never clears active configuration.</p>
@@ -47,8 +56,8 @@
                                                 </button>
                                             }
                                         </div>
-                                        <span asp-validation-for="AacpConfigFilePath" class="text-danger"></span>
-                                        <small class="form-text text-muted" id="AacpConfigFilePathHelp">Uses <code>scr_aacp_maps_1</code> automatically; the main rotation stays on <code>sv_maprotation</code>.</small>
+                                        <span asp-validation-for="AacpConfigFilePath" class="text-danger d-block small mt-1 text-break"></span>
+                                        <small class="form-text text-muted d-block" id="AacpConfigFilePathHelp">Uses <code>scr_aacp_maps_1</code> automatically; the main rotation stays on <code>sv_maprotation</code>.</small>
                                     </div>
                                 </div>
                             }
@@ -60,7 +69,8 @@
                                 <label asp-for="@Model.ConfigFilePath" for="ConfigFilePathInput" class="form-label"></label>
                                 <div class="input-group">
                                     <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
-                                           placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
+                                           placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg"
+                                           aria-describedby="ConfigFilePathError ConfigFilePathHelp" />
                                     @if (Model.CanBrowseServerFiles && Model.FileTransportType !=
                                     FileTransportType.Unknown)
                                     {
@@ -71,8 +81,8 @@
                                         </button>
                                     }
                                 </div>
-                                <small class="form-text text-muted">The file must contain an uncommented, quoted <code>set</code> entry for the selected variable.</small>
-                                <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
+                                <span asp-validation-for="@Model.ConfigFilePath" class="text-danger d-block small mt-1 text-break" id="ConfigFilePathError"></span>
+                                <small class="form-text text-muted d-block" id="ConfigFilePathHelp">The file must contain an uncommented, quoted <code>set</code> entry for the selected variable.</small>
                             </div>
                             <details class="mb-3" id="assignment-advanced" open="@(!Model.CanConfigureAacp || ViewData.ModelState[nameof(Model.ConfigVariableName)]?.Errors.Count > 0 ? "open" : null)">
                                 <summary>Advanced: configuration slot</summary>
@@ -91,7 +101,7 @@
                                 </datalist>
                                 <small class="form-text text-muted">The config variable to write the rotation string
                                     to.</small>
-                                <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
+                                <span asp-validation-for="@Model.ConfigVariableName" class="text-danger d-block small mt-1"></span>
                                 </div>
                             </details>
                                 <div class="row">
@@ -99,13 +109,13 @@
                                         <label asp-for="@Model.PlayerCountMin" class="form-label"></label>
                                         <input asp-for="@Model.PlayerCountMin" type="number" class="form-control" min="0"
                                                placeholder="Optional" />
-                                        <span asp-validation-for="@Model.PlayerCountMin" class="text-danger"></span>
+                                        <span asp-validation-for="@Model.PlayerCountMin" class="text-danger d-block small mt-1"></span>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label asp-for="@Model.PlayerCountMax" class="form-label"></label>
                                         <input asp-for="@Model.PlayerCountMax" type="number" class="form-control" min="0"
                                                placeholder="Optional" />
-                                        <span asp-validation-for="@Model.PlayerCountMax" class="text-danger"></span>
+                                        <span asp-validation-for="@Model.PlayerCountMax" class="text-danger d-block small mt-1"></span>
                                     </div>
                                 </div>
                                 <div class="mb-3">

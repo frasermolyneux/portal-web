@@ -847,7 +847,7 @@ public class MapRotationsController(
             {
                 return MapRotationCfgParser.HasWritableVariable(response.Result.Data.Content, variableName)
                     ? null
-                    : $"The file '{filePath}' has no active, quoted 'set {variableName}' entry. Commented-out entries are not updated. Select a different file containing an active entry for '{variableName}'.";
+                    : $"Select a different file: '{filePath}' has no uncommented, quoted 'set {variableName}' entry.";
             }
 
             Logger.LogWarning("Unable to validate configuration file for game server {GameServerId}: {StatusCode}. Reference {Reference}",
