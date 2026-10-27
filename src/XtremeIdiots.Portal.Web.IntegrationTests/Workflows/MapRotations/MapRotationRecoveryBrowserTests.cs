@@ -3,6 +3,7 @@ using Moq;
 using MX.Api.Abstractions;
 using MX.Api.Client;
 using System.Net;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Config;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -15,6 +16,82 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "Browser")]
 public sealed class MapRotationRecoveryBrowserTests
 {
+    [Theory]
+    [InlineData(false, 1280)]
+    [InlineData(true, 1280)]
+    [InlineData(false, 390)]
+    [InlineData(true, 390)]
+    public async Task ConfigValidation_SeparatesInlineErrorsAndPersistentAlerts(bool fromApply, int width)
+    {
+        var scenario = new MapRotationRecoveryScenario(mainOnly: true);
+        scenario.Servers.Setup(x => x.Config.V1.GetConfigFile(It.IsAny<Guid>(), "synthetic.cfg", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigFileContentDto>(HttpStatusCode.OK, new ApiResponse<ConfigFileContentDto>(
+                new ConfigFileContentDto("synthetic.cfg", "//set sv_maprotation \"map mp_bog\""))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.SetViewportSizeAsync(width, 1000);
+        var page = fromApply ? "AssignmentStatus" : "EditAssignment";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/{page}/{scenario.AssignmentId}").AbsoluteUri);
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = fromApply ? "Apply rotation" : "Save Changes", Exact = true }).ClickAsync();
+
+        await Assertions.Expect(browser.Page.GetByLabel("Config File", new() { Exact = true })).ToHaveValueAsync("synthetic.cfg");
+        var error = fromApply
+            ? browser.Page.Locator(".validation-summary-errors.alert[role='alert']")
+            : browser.Page.Locator("#ConfigFilePathError");
+        await Assertions.Expect(error).ToBeVisibleAsync();
+        await Assertions.Expect(error).ToContainTextAsync("Select a different file");
+        await Assertions.Expect(error).ToContainTextAsync("sv_maprotation");
+        if (fromApply)
+        {
+            await Assertions.Expect(error.Locator("strong")).ToHaveTextAsync("Check assignment settings");
+            await Assertions.Expect(error.Locator("ul")).ToHaveCountAsync(0);
+        }
+        else
+        {
+            Assert.Equal("block", await error.EvaluateAsync<string>("element => getComputedStyle(element).display"));
+            var errorBounds = await error.BoundingBoxAsync();
+            var helpBounds = await browser.Page.Locator("#ConfigFilePathHelp").BoundingBoxAsync();
+            Assert.NotNull(errorBounds);
+            Assert.NotNull(helpBounds);
+            Assert.True(helpBounds.Y >= errorBounds.Y + errorBounds.Height);
+        }
+
+        Assert.True(await error.EvaluateAsync<bool>("element => element.scrollWidth <= element.clientWidth"));
+        scenario.Repository.Verify(x => x.MapRotations.V1.UpdateServerAssignment(
+            It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        scenario.Sync.Verify(x => x.TriggerApply(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task Status_PutsRecordedErrorsInExpandableWrappingTechnicalDetails()
+    {
+        const string diagnostic = "Task 'WriteAndVerifyConfigVariable' failed: synthetic-diagnostic-" +
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" +
+            " <script>window.rotationDiagnosticExecuted=true</script>";
+        var scenario = new MapRotationRecoveryScenario(mainOnly: true, busy: true,
+            operationStatus: AssignmentOperationStatus.Failed, completedAt: DateTime.UtcNow.AddMinutes(-1),
+            error: diagnostic, activationState: ActivationState.Failed);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        await browser.Page.SetViewportSizeAsync(390, 1000);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
+
+        var alert = browser.Page.Locator(".alert-danger[role='alert']");
+        await Assertions.Expect(alert).ToContainTextAsync("Check the selected file and variable");
+        await Assertions.Expect(alert).Not.ToContainTextAsync("synthetic-diagnostic");
+        await Assertions.Expect(alert.GetByRole(AriaRole.Link, new() { Name = "Edit assignment settings" })).ToBeVisibleAsync();
+        var diagnosticText = browser.Page.Locator("#assignment-details pre");
+        await Assertions.Expect(diagnosticText).Not.ToBeVisibleAsync();
+        await browser.Page.Locator("#assignment-details > summary").ClickAsync();
+        await Assertions.Expect(diagnosticText).ToHaveTextAsync(diagnostic);
+        Assert.True(await diagnosticText.EvaluateAsync<bool>("element => element.scrollWidth <= element.clientWidth"));
+        await browser.Page.Locator("#operation-history > summary").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator(".operation-error")).Not.ToContainTextAsync("synthetic-diagnostic");
+        await browser.Page.Locator("#operationsTable tbody details > summary").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator(".operation-diagnostics")).ToHaveTextAsync(diagnostic);
+        Assert.False(await browser.Page.EvaluateAsync<bool>("window.rotationDiagnosticExecuted === true"));
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task Clone_Cod4xKeepsItsGameTypeInTheCreateFormAndCatalogueFilter()
     {
@@ -461,7 +538,9 @@ public sealed class MapRotationRecoveryBrowserTests
         await Assertions.Expect(browser.Page.GetByText("Rotation version", new() { Exact = true })).ToHaveCountAsync(0);
         await Assertions.Expect(browser.Page.GetByText("Deployed version", new() { Exact = true })).ToHaveCountAsync(0);
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Unassign", Exact = true })).ToHaveCountAsync(0);
-        await Assertions.Expect(browser.Page.Locator(".alert-danger")).ToContainTextAsync("Synthetic verification error on active configuration");
+        await Assertions.Expect(browser.Page.Locator(".alert-danger")).Not.ToContainTextAsync("Synthetic verification error on active configuration");
+        await browser.Page.Locator("#assignment-details > summary").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator("#assignment-details")).ToContainTextAsync("Synthetic verification error on active configuration");
         await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("server still needs a restart");
 
         var response = await browser.Page.RunAndWaitForResponseAsync(
@@ -612,7 +691,10 @@ public sealed class MapRotationRecoveryBrowserTests
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/AssignmentStatus/{scenario.AssignmentId}").AbsoluteUri);
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply rotation", Exact = true }).ClickAsync();
-        await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row .operation-error")).ToHaveTextAsync("Synthetic bootstrap failure");
+        await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row .operation-error"))
+            .ToContainTextAsync("Expand technical details");
+        await browser.Page.Locator(".pending-bootstrap-row details > summary").ClickAsync();
+        await Assertions.Expect(browser.Page.Locator(".pending-bootstrap-row .operation-diagnostics")).ToHaveTextAsync("Synthetic bootstrap failure");
         await Assertions.Expect(browser.Page.Locator(".progress-bar.bg-danger")).ToHaveCountAsync(1);
         browser.AssertNoBrowserErrors();
     }

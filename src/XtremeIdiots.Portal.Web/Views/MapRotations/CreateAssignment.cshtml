@@ -17,7 +17,16 @@ ViewData["RotationTitle"] : "");
                             <h5>@ViewData["Title"]</h5>
                         </div>
                         <div class="ibox-content">
-                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            @if (ViewData.ModelState[string.Empty]?.Errors.Count > 0)
+                            {
+                                <div class="alert alert-danger validation-summary-errors text-break" role="alert">
+                                    <strong>Check assignment settings</strong>
+                                    @foreach (var error in ViewData.ModelState[string.Empty]!.Errors)
+                                    {
+                                        <p class="mt-1 mb-0">@error.ErrorMessage</p>
+                                    }
+                                </div>
+                            }
                             <div class="mb-3">
                                 <label asp-for="@Model.GameServerId" for="GameServerIdSelect" class="form-label"></label>
                                 <select asp-for="@Model.GameServerId" class="form-select" id="GameServerIdSelect" data-testid="server-select">
@@ -30,13 +39,14 @@ ViewData["RotationTitle"] : "");
                                             @server.Title</option>
                                         }
                                     </select>
-                                    <span asp-validation-for="@Model.GameServerId" class="text-danger"></span>
+                                    <span asp-validation-for="@Model.GameServerId" class="text-danger d-block small mt-1"></span>
                                 </div>
                                 <div class="mb-3">
                                     <label asp-for="@Model.ConfigFilePath" for="ConfigFilePathInput" class="form-label"></label>
                                     <div class="input-group">
                                         <input asp-for="@Model.ConfigFilePath" class="form-control" id="ConfigFilePathInput"
-                                               placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg" />
+                                               placeholder="e.g. /mods/mymod/configs/server/mapcontrol.cfg"
+                                               aria-describedby="ConfigFilePathError ConfigFilePathHelp" />
                                         @if (Model.CanBrowseServerFiles)
                                         {
                                             <button class="btn btn-outline-secondary" type="button" id="ConfigFilePathBrowseBtn"
@@ -46,15 +56,15 @@ ViewData["RotationTitle"] : "");
                                             </button>
                                         }
                                     </div>
-                                    <small class="form-text text-muted">The file must contain an uncommented, quoted <code>set</code> entry for the selected variable.</small>
-                                        <span asp-validation-for="@Model.ConfigFilePath" class="text-danger"></span>
+                                    <span asp-validation-for="@Model.ConfigFilePath" class="text-danger d-block small mt-1 text-break" id="ConfigFilePathError"></span>
+                                    <small class="form-text text-muted d-block" id="ConfigFilePathHelp">The file must contain an uncommented, quoted <code>set</code> entry for the selected variable.</small>
                                     </div>
                                     <div class="mb-3" id="aacp-option">
                                         <div class="form-check">
                                             <input asp-for="AacpEnabled" class="form-check-input" />
                                             <label asp-for="AacpEnabled" class="form-check-label"></label>
                                         </div>
-                                        <span asp-validation-for="AacpEnabled" class="text-danger"></span>
+                                        <span asp-validation-for="AacpEnabled" class="text-danger d-block small mt-1"></span>
                                         <div id="aacp-config" class="mt-2" hidden="@(!Model.AacpEnabled)">
                                             <label asp-for="AacpConfigFilePath" class="form-label"></label>
                                             <div class="input-group">
@@ -69,8 +79,8 @@ ViewData["RotationTitle"] : "");
                                                     </button>
                                                 }
                                             </div>
-                                            <span asp-validation-for="AacpConfigFilePath" class="text-danger"></span>
-                                            <small class="form-text text-muted" id="AacpConfigFilePathHelp">Uses <code>scr_aacp_maps_1</code> automatically; the main rotation stays on <code>sv_maprotation</code>.</small>
+                                            <span asp-validation-for="AacpConfigFilePath" class="text-danger d-block small mt-1 text-break"></span>
+                                            <small class="form-text text-muted d-block" id="AacpConfigFilePathHelp">Uses <code>scr_aacp_maps_1</code> automatically; the main rotation stays on <code>sv_maprotation</code>.</small>
                                         </div>
                                     </div>
                                     <details class="mb-3" open="@(!string.Equals(Model.ConfigVariableName, "sv_maprotation", StringComparison.OrdinalIgnoreCase) ? "open" : null)">
@@ -90,7 +100,7 @@ ViewData["RotationTitle"] : "");
                                             <option value="sv_maprotation_high" label="Load-based: high player count"></option>
                                         </datalist>
                                         <small class="form-text text-muted">Select a suggestion or enter a custom slot.</small>
-                                            <span asp-validation-for="@Model.ConfigVariableName" class="text-danger"></span>
+                                            <span asp-validation-for="@Model.ConfigVariableName" class="text-danger d-block small mt-1"></span>
                                         </div>
                                     </details>
                                         <div class="row">
