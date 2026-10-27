@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using MX.Api.Abstractions;
+using MX.Api.Client;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
@@ -577,11 +578,12 @@ public class MapRotationsController(
             catch (HttpRequestException ex)
             {
                 Logger.LogWarning(ex,
-                    "Validation failure creating map rotation assignment for MapRotationId {MapRotationId} and GameServerId {GameServerId}",
+                    "Failed creating map rotation assignment for MapRotationId {MapRotationId} and GameServerId {GameServerId}. Reference {Reference}",
                     model.MapRotationId,
-                    model.GameServerId);
+                    model.GameServerId,
+                    HttpContext.TraceIdentifier);
 
-                ModelState.AddModelError(string.Empty, "Unable to create server assignment. Please review the values and try again.");
+                AddAssignmentErrors(ex.StatusCode, (ex as ApiHttpRequestException)?.ErrorResponse?.Errors);
                 await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
                 return View(model);
@@ -589,17 +591,7 @@ public class MapRotationsController(
 
             if (!apiResponse.IsSuccess)
             {
-                if (apiResponse.Result?.Errors != null)
-                {
-                    foreach (var error in apiResponse.Result.Errors)
-                    {
-                        ModelState.AddModelError(error.Target ?? string.Empty, error.Message ?? "An error occurred");
-                    }
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "An error occurred while creating the server assignment.");
-                }
+                AddAssignmentErrors(apiResponse.StatusCode, apiResponse.Result?.Errors);
 
                 await RepopulateAuthorizedServersAsync(model, rotation.GameType, cancellationToken).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
@@ -770,11 +762,12 @@ public class MapRotationsController(
             catch (HttpRequestException ex)
             {
                 Logger.LogWarning(ex,
-                    "Validation failure updating map rotation assignment {AssignmentId} for MapRotationId {MapRotationId}",
+                    "Failed updating map rotation assignment {AssignmentId} for MapRotationId {MapRotationId}. Reference {Reference}",
                     model.MapRotationServerAssignmentId,
-                    model.MapRotationId);
+                    model.MapRotationId,
+                    HttpContext.TraceIdentifier);
 
-                ModelState.AddModelError(string.Empty, "Unable to update server assignment. Please review the values and try again.");
+                AddAssignmentErrors(ex.StatusCode, (ex as ApiHttpRequestException)?.ErrorResponse?.Errors);
                 await RepopulateAssignmentForm(model).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
                 return View(model);
@@ -782,17 +775,7 @@ public class MapRotationsController(
 
             if (!apiResponse.IsSuccess)
             {
-                if (apiResponse.Result?.Errors != null)
-                {
-                    foreach (var error in apiResponse.Result.Errors)
-                    {
-                        ModelState.AddModelError(error.Target ?? string.Empty, error.Message ?? "An error occurred");
-                    }
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "Failed to update server assignment.");
-                }
+                AddAssignmentErrors(apiResponse.StatusCode, apiResponse.Result?.Errors);
 
                 await RepopulateAssignmentForm(model).ConfigureAwait(false);
                 ViewData["RotationTitle"] = rotation.Title;
@@ -805,6 +788,61 @@ public class MapRotationsController(
 
             return RedirectToAction(nameof(Details), new { id = model.MapRotationId });
         }, nameof(EditAssignment)).ConfigureAwait(false);
+    }
+
+    private void AddAssignmentErrors(System.Net.HttpStatusCode? statusCode, IEnumerable<ApiError>? errors)
+    {
+        var handled = false;
+        var unhandled = false;
+        if (statusCode is System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.Conflict
+            or System.Net.HttpStatusCode.UnprocessableEntity && errors is not null)
+        {
+            foreach (var error in errors)
+            {
+                var (target, message) = error.Code switch
+                {
+                    "GAME_TYPE_MISMATCH" => (nameof(CreateMapRotationAssignmentViewModel.GameServerId),
+                        "The selected server does not support this rotation's game."),
+                    "GAME_SERVER_NOT_FOUND" => (nameof(CreateMapRotationAssignmentViewModel.GameServerId),
+                        "This server no longer exists. Choose another server."),
+                    "MAP_ROTATION_NOT_FOUND" => (string.Empty,
+                        "This rotation no longer exists. Return to the rotation library."),
+                    "DUPLICATE_CONFIG_TARGET" => (string.Empty,
+                        "An assignment already exists for this rotation and server with the same config file path and variable name. Edit the existing assignment instead."),
+                    "INVALID_AACP_TARGET" => (nameof(CreateMapRotationAssignmentViewModel.AacpConfigFilePath),
+                        "Choose valid main and AACP configuration files through the main sv_maprotation assignment."),
+                    "CONFIGURATION_GROUP_EXISTS" => (string.Empty,
+                        "Edit the existing server assignment to configure its AACP map picker."),
+                    "AACP_CONFIGURATION_ACTIVE" => (nameof(CreateMapRotationAssignmentViewModel.AacpEnabled),
+                        "Deactivate this server assignment before changing or disabling its AACP configuration."),
+                    "ASSIGNMENT_IN_USE" or "CONFIG_TARGET_IN_USE" => (string.Empty,
+                        "Finish outstanding operations and deactivate this assignment before changing its configuration."),
+                    "ASSIGNMENT_REMOVED" => (string.Empty,
+                        "This assignment has been removed. Create a new assignment instead."),
+                    "AMBIGUOUS_CONFIGURATION_GROUP" => (string.Empty,
+                        "This assignment has duplicate configuration targets. Ask a portal administrator to resolve them."),
+                    "RESOURCE_CHANGED" => (string.Empty,
+                        "This assignment changed while saving. Refresh the rotation before trying again."),
+                    _ => (string.Empty, null)
+                };
+                if (message is null)
+                {
+                    unhandled = true;
+                    continue;
+                }
+
+                ModelState.AddModelError(target, message);
+                handled = true;
+            }
+        }
+
+        Logger.LogWarning("Server assignment request rejected with status {StatusCode}. Reference {Reference}",
+            statusCode, HttpContext.TraceIdentifier);
+        if (!handled || unhandled)
+        {
+            ModelState.AddModelError(string.Empty,
+                $"Unable to confirm the server assignment was saved. Refresh the rotation before trying again. Reference: {HttpContext.TraceIdentifier}.");
+        }
     }
 
     [HttpPost]

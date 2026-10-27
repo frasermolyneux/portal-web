@@ -24,6 +24,9 @@ and confirmation; importing does not assign rotations or change server files.
 
 ## Assigning a server
 
+COD4 and COD4x share compatible maps and rotations. Either rotation type can be
+assigned to either server type; operations still use the server's actual type.
+
 Choose the server and its normal rotation config file. Select **Also update AACP
 map picker** and supply the **AACP config file** to maintain `scr_aacp_maps_1`
 alongside `sv_maprotation`. The option belongs to this server assignment, not to
@@ -32,6 +35,10 @@ the rotation library. Both configuration targets are saved atomically.
 Saving a server assignment automatically marks a **Draft** or **Testing** library
 entry as **Published**. Published and Archived entries are left unchanged. This
 does not apply configuration or upload maps; run **Apply rotation** for that.
+
+If saving is rejected, the form explains the action needed and retains your
+selections. Unexpected service failures include a reference for investigation;
+refresh the rotation before retrying to check whether the save completed.
 
 A matching normal/map-picker pair is shown as one server row and one Manage
 page, only when both rows have the same rotation ID and server ID. All actions

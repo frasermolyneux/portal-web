@@ -1,7 +1,10 @@
 using Moq;
+using MX.Api.Abstractions;
+using MX.Api.Client;
 using System.Net;
 using System.Text.RegularExpressions;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
@@ -10,6 +13,43 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "HttpIntegration")]
 public sealed partial class MapRotationRecoveryHttpTests
 {
+    [Theory]
+    [InlineData("GAME_TYPE_MISMATCH", "The selected server does not support this rotation")]
+    [InlineData("DUPLICATE_CONFIG_TARGET", "Edit the existing assignment instead.")]
+    [InlineData("UNKNOWN_ERROR", "Refresh the rotation before trying again. Reference:")]
+    public async Task AssignmentRejection_RendersActionableFeedbackAndRetainsSelection(string code, string expected)
+    {
+        var scenario = new MapRotationAssignmentScenario();
+        scenario.RepositoryClient.Setup(x => x.MapRotations.V1.CreateServerAssignment(
+            It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ApiHttpRequestException("synthetic-private-diagnostic", HttpStatusCode.BadRequest,
+                new ApiResponse(new ApiError(code, "synthetic-private-diagnostic", "UntrustedTarget"))));
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+        host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.MapRotationDeployer);
+        using var page = await host.Client.GetAsync($"/MapRotations/CreateAssignment?mapRotationId={MapRotationAssignmentScenario.RotationId}");
+        var token = AntiforgeryToken().Match(await page.Content.ReadAsStringAsync()).Groups[1].Value;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/MapRotations/CreateAssignment")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["MapRotationId"] = MapRotationAssignmentScenario.RotationId.ToString(),
+                ["GameServerId"] = MapRotationAssignmentScenario.PermittedServerId.ToString(),
+                ["ConfigFilePath"] = "server.cfg", ["ConfigVariableName"] = "sv_maprotation",
+                ["__RequestVerificationToken"] = token
+            })
+        };
+        request.Headers.Add("Cookie", string.Join("; ", page.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])));
+
+        using var response = await host.Client.SendAsync(request);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(expected, html, StringComparison.Ordinal);
+        Assert.Contains("server.cfg", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic-private-diagnostic", html, StringComparison.Ordinal);
+        Assert.Empty(scenario.CreatedAssignments);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.Api.Abstractions;
+using MX.Api.Client;
 using MX.Observability.ApplicationInsights.Auditing;
 using System.Net;
 using System.Security.Claims;
@@ -30,6 +31,61 @@ namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
 public class MapRotationsControllerTests
 {
+    [Theory]
+    [InlineData("GAME_TYPE_MISMATCH", "GameServerId", true, HttpStatusCode.BadRequest)]
+    [InlineData("GAME_TYPE_MISMATCH", "GameServerId", false, HttpStatusCode.BadRequest)]
+    [InlineData("DUPLICATE_CONFIG_TARGET", "", true, HttpStatusCode.BadRequest)]
+    [InlineData("INVALID_AACP_TARGET", "AacpConfigFilePath", true, HttpStatusCode.BadRequest)]
+    [InlineData("UNKNOWN_ERROR", "", false, HttpStatusCode.BadRequest)]
+    [InlineData("GAME_TYPE_MISMATCH", "", true, HttpStatusCode.InternalServerError)]
+    public async Task CreateAssignment_ApiErrorsGiveSafeFieldFeedbackOrReference(
+        string code, string field, bool thrown, HttpStatusCode status)
+    {
+        var rotationId = Guid.NewGuid();
+        var serverId = Guid.NewGuid();
+        var rotation = CreateRotation(rotationId, GameType.CallOfDuty4);
+        var server = CreateGameServer(serverId, GameType.CallOfDuty4x);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(rotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServers(
+            It.IsAny<GameType[]>(), null, null, 0, 100, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([server]))));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var error = new ApiError(code, "synthetic-private-diagnostic", "UntrustedTarget");
+        var request = mockRepositoryApiClient.Setup(x => x.MapRotations.V1.CreateServerAssignment(
+            It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()));
+        if (thrown)
+            request.ThrowsAsync(new ApiHttpRequestException("synthetic-private-diagnostic", status, new ApiResponse(error)));
+        else
+            request.ReturnsAsync(new ApiResult<MapRotationServerAssignmentDto>(status, new ApiResponse<MapRotationServerAssignmentDto>(error)));
+        var sut = CreateSut();
+        sut.HttpContext.TraceIdentifier = "assignment-reference";
+        var model = new CreateMapRotationAssignmentViewModel
+        {
+            MapRotationId = rotationId, GameServerId = serverId,
+            ConfigFilePath = "server.cfg", ConfigVariableName = "sv_maprotation"
+        };
+
+        var response = Assert.IsType<ViewResult>(await sut.CreateAssignment(model));
+
+        Assert.Same(model, response.Model);
+        Assert.NotEmpty(sut.ModelState[field]!.Errors);
+        var messages = string.Join(" ", sut.ModelState.Values.SelectMany(value => value.Errors).Select(error => error.ErrorMessage));
+        Assert.DoesNotContain("synthetic-private-diagnostic", messages, StringComparison.Ordinal);
+        Assert.False(sut.ModelState.ContainsKey("UntrustedTarget"));
+        if (code == "UNKNOWN_ERROR" || status == HttpStatusCode.InternalServerError)
+            Assert.Contains("assignment-reference", messages, StringComparison.Ordinal);
+        else
+            Assert.DoesNotContain("Unable to confirm", messages, StringComparison.Ordinal);
+        if (code == "DUPLICATE_CONFIG_TARGET")
+            Assert.Contains("Edit the existing assignment instead.", messages, StringComparison.Ordinal);
+    }
+
     private readonly Mock<IAuthorizationService> mockAuthorizationService = new();
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly Mock<ISyncApiClient> mockSyncApiClient = new();
@@ -600,11 +656,13 @@ public class MapRotationsControllerTests
         Assert.True(sut.ModelState.ContainsKey(string.Empty));
         Assert.Contains(
             sut.ModelState[string.Empty]!.Errors,
-            e => e.ErrorMessage.Contains("Unable to create server assignment. Please review the values and try again.", StringComparison.Ordinal));
+            e => e.ErrorMessage.Contains("Unable to confirm the server assignment was saved.", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public async Task EditAssignment_WhenApiValidationFails_ReturnsViewWithValidationError()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EditAssignment_WhenApiValidationFails_ReturnsViewWithValidationError(bool thrown)
     {
         // Arrange
         var mapRotationId = Guid.NewGuid();
@@ -652,9 +710,13 @@ public class MapRotationsControllerTests
             .Setup(x => x.GameServers.V1.GetGameServer(gameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.NotFound));
 
-        mockRepositoryApiClient
-            .Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult(HttpStatusCode.BadRequest, new ApiResponse(new ApiError("DUPLICATE_CONFIG_TARGET", "An assignment already exists for this rotation and server with the same config file path and variable name."))));
+        var updateRequest = mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()));
+        var error = new ApiError("DUPLICATE_CONFIG_TARGET", "synthetic-private-diagnostic");
+        if (thrown)
+            updateRequest.ThrowsAsync(new ApiHttpRequestException("synthetic-private-diagnostic", HttpStatusCode.BadRequest, new ApiResponse(error)));
+        else
+            updateRequest.ReturnsAsync(new ApiResult(HttpStatusCode.BadRequest, new ApiResponse(error)));
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(
@@ -788,7 +850,7 @@ public class MapRotationsControllerTests
         Assert.True(sut.ModelState.ContainsKey(string.Empty));
         Assert.Contains(
             sut.ModelState[string.Empty]!.Errors,
-            e => e.ErrorMessage.Contains("Unable to update server assignment. Please review the values and try again.", StringComparison.Ordinal));
+            e => e.ErrorMessage.Contains("Unable to confirm the server assignment was saved.", StringComparison.Ordinal));
     }
 
     [Fact]
