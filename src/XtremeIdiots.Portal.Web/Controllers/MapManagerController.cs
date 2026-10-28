@@ -26,7 +26,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 /// <param name="telemetryClient">Client for tracking telemetry data</param>
 /// <param name="logger">Logger instance for this controller</param>
 /// <param name="configuration">Application configuration</param>
-[Authorize(Policy = AuthPolicies.GameServers_Maps_Read)]
+[Authorize]
 public class MapManagerController(
     IAuthorizationService authorizationService,
     IRepositoryApiClient repositoryApiClient,
@@ -218,11 +218,23 @@ public class MapManagerController(
         var authResult = await CheckAuthorizationAsync(
             authorizationService,
             gameServerData.GameType,
-            policy,
+            AuthPolicies.GameServers_Maps_Read,
             action,
             resourceType,
             $"GameType:{gameServerData.GameType},GameServerId:{gameServerId}",
             gameServerData).ConfigureAwait(false);
+
+        if (authResult == null && policy != AuthPolicies.GameServers_Maps_Read)
+        {
+            authResult = await CheckAuthorizationAsync(
+                authorizationService,
+                gameServerData.GameType,
+                policy,
+                action,
+                resourceType,
+                $"GameType:{gameServerData.GameType},GameServerId:{gameServerId}",
+                gameServerData).ConfigureAwait(false);
+        }
 
         return authResult != null ? (authResult, null) : (null, gameServerData);
     }
