@@ -96,13 +96,13 @@
             </a>
 
             <div>
-                <a class="nav-link text-white @(IsAnyControllerSelected("Servers", "Maps") ? "active" : "")"
+                <a class="nav-link text-white @(IsAnyControllerSelected("Servers") ? "active" : "")"
                    href="#serversMenu" data-bs-toggle="collapse" data-testid="nav-servers-toggle"
-                   aria-expanded="@(IsAnyControllerSelected("Servers", "Maps") ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("Servers") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-server" aria-hidden="true"></i> Servers
                     <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(IsAnyControllerSelected("Servers", "Maps") ? "show" : "")" id="serversMenu">
+                <div class="collapse @(IsAnyControllerSelected("Servers") ? "show" : "")" id="serversMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Servers", "Index")" asp-controller="Servers"
                            asp-action="Index" data-testid="nav-servers-gameservers">
@@ -112,10 +112,25 @@
                            asp-action="Map" data-testid="nav-servers-playermap">
                             <i class="fa-solid fa-fw fa-location-dot" aria-hidden="true"></i> Player Map
                         </a>
+                    </nav>
+                </div>
+            </div>
+
+            <div>
+                <a class="nav-link text-white @(IsAnyControllerSelected("Maps", "MapDownloads") ? "active" : "")"
+                   href="#mapsMenu" data-bs-toggle="collapse" data-testid="nav-maps-toggle"
+                   aria-expanded="@(IsAnyControllerSelected("Maps", "MapDownloads") ? "true" : "false")">
+                    <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
+                    <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
+                </a>
+                <div class="collapse @(IsAnyControllerSelected("Maps", "MapDownloads") ? "show" : "")" id="mapsMenu">
+                    <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("Maps", "Index")" asp-controller="Maps"
-                           asp-action="Index" data-testid="nav-servers-maps">
-                            <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
-                        </a>
+                           asp-action="Index" data-testid="nav-maps-index">Maps Index</a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("Maps", "Analytics")" asp-controller="Maps"
+                           asp-action="Analytics" data-testid="nav-maps-analytics">Map Analytics</a>
+                        <a class="nav-link text-white-50 @Html.IsSelected("Maps", "Rotations")" asp-controller="Maps"
+                           asp-action="Rotations" data-testid="nav-maps-rotations">Map Rotations</a>
                     </nav>
                 </div>
             </div>
@@ -344,10 +359,6 @@
                         <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Player")" asp-controller="Analytics"
                            asp-action="Player" data-testid="nav-analytics-player">
                             <i class="fa-solid fa-fw fa-users" aria-hidden="true"></i> Player
-                        </a>
-                        <a class="nav-link text-white-50 @Html.IsSelected("Analytics", "Maps")" asp-controller="Analytics"
-                           asp-action="Maps" data-testid="nav-analytics-maps">
-                            <i class="fa-solid fa-fw fa-map" aria-hidden="true"></i> Maps
                         </a>
                     </nav>
                 </div>

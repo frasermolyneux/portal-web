@@ -25,7 +25,6 @@ public class ServersControllerTests
     {
         var controller = new ServersController(
             mockRepositoryApiClient.Object,
-            Mock.Of<IMapMetadataService>(),
             telemetryClient,
             mockLogger.Object,
             mockConfiguration.Object,
@@ -57,7 +56,6 @@ public class ServersControllerTests
         Assert.Throws<ArgumentNullException>(() =>
             new ServersController(
                 mockRepositoryApiClient.Object,
-                Mock.Of<IMapMetadataService>(),
                 null!,
                 mockLogger.Object,
                 mockConfiguration.Object,
@@ -71,7 +69,6 @@ public class ServersControllerTests
         Assert.Throws<ArgumentNullException>(() =>
             new ServersController(
                 mockRepositoryApiClient.Object,
-                Mock.Of<IMapMetadataService>(),
                 telemetryClient,
                 null!,
                 mockConfiguration.Object,
@@ -85,7 +82,6 @@ public class ServersControllerTests
         Assert.Throws<ArgumentNullException>(() =>
             new ServersController(
                 mockRepositoryApiClient.Object,
-                Mock.Of<IMapMetadataService>(),
                 telemetryClient,
                 mockLogger.Object,
                 null!,

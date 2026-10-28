@@ -50,8 +50,10 @@ internal static class NavigationItemCatalog
         new("Profile - Manage", "[data-testid='nav-profile-manage']", AllAdmins),
         new("Logout button", "[data-testid='nav-logout-button']", AllAdmins),
 
-        // FIXED: nav link now public to match MapsController.Index ([AllowAnonymous]).
-        new("Servers - Maps", "[data-testid='nav-servers-maps']", AllAdmins, VisibleToAnonymous: true),
+        new("Maps (toggle)", "[data-testid='nav-maps-toggle']", AllAdmins, VisibleToAnonymous: true),
+        new("Maps - Index", "[data-testid='nav-maps-index']", AllAdmins, VisibleToAnonymous: true),
+        new("Maps - Analytics", "[data-testid='nav-maps-analytics']", AllAdmins, VisibleToAnonymous: true),
+        new("Maps - Rotations", "[data-testid='nav-maps-rotations']", AllAdmins, VisibleToAnonymous: true),
 
         // Dashboard_Read (Moderator and above).
         new("Dashboard", "[data-testid='nav-dashboard']", AllAdmins),
@@ -60,7 +62,6 @@ internal static class NavigationItemCatalog
         new("Analytics - Game", "[data-testid='nav-analytics-game']", AllAdmins),
         new("Analytics - Server", "[data-testid='nav-analytics-server']", AllAdmins),
         new("Analytics - Player", "[data-testid='nav-analytics-player']", AllAdmins),
-        new("Analytics - Maps", "[data-testid='nav-analytics-maps']", AllAdmins),
 
         // AdminActions_Read (Moderator and above).
         new("Admin Actions (toggle)", "a[href='#adminActionsMenu']", AllAdmins),

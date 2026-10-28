@@ -51,6 +51,8 @@ internal static class ReadOnlyFeatureCatalog
         new("Servers - Game Servers", "/Servers", AllAdmins, AllowAnonymous: true, RendersUnderMock: false),
         new("Servers - Player Map", "/Servers/Map", AllAdmins, AllowAnonymous: true, RendersUnderMock: false),
         new("Maps", "/Maps", AllAdmins, AllowAnonymous: true),
+        new("Map Analytics", "/Maps/Analytics", AllAdmins, AllowAnonymous: true),
+        new("Public Map Rotations", "/Maps/Rotations", AllAdmins, AllowAnonymous: true),
 
         // Dashboard_Read (Moderator and above).
         new("Dashboard", "/Dashboard", AllAdmins),
@@ -59,7 +61,7 @@ internal static class ReadOnlyFeatureCatalog
         new("Analytics - Game", "/Analytics/Game", AllAdmins),
         new("Analytics - Server", "/Analytics/Server", AllAdmins),
         new("Analytics - Player", "/Analytics/Player", AllAdmins),
-        new("Analytics - Maps", "/Analytics/Maps", AllAdmins),
+        new("Analytics - Maps legacy redirect", "/Analytics/Maps", AllAdmins, AllowAnonymous: true, AuthorizedRedirectPath: "/Maps/Analytics"),
 
         // AdminActions_Read (Moderator and above).
         new("Admin Actions - My Actions", "/AdminActions/MyActions", AllAdmins, RendersUnderMock: false),

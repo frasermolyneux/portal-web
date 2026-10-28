@@ -31,14 +31,14 @@
 
 // Button variants
 .btn-primary {
-    background-color: $xi-primary;
-    border-color: $xi-primary;
+    background-color: $xi-primary-action;
+    border-color: $xi-primary-action;
     color: #fff;
 
     &:hover,
     &:focus {
-        background-color: $xi-primary-dark;
-        border-color: $xi-primary-dark;
+        background-color: $xi-primary-action-hover;
+        border-color: $xi-primary-action-hover;
     }
 }
 
@@ -109,12 +109,12 @@
 
 // Outline buttons
 .btn-outline-primary {
-    color: $xi-primary;
-    border-color: $xi-primary;
+    color: $xi-primary-action;
+    border-color: $xi-primary-action;
     background-color: transparent;
 
     &:hover {
-        background-color: $xi-primary;
+        background-color: $xi-primary-action;
         color: #fff;
     }
 }

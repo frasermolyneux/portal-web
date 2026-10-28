@@ -60,7 +60,7 @@ public sealed class MapDownloadsControllerTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(16)]
+    [InlineData(101)]
     public async Task ArchiveSelectionOutsideBound_DoesNotReachApi(int count)
     {
         var fake = new FakeRedirectApiClient();
@@ -70,11 +70,11 @@ public sealed class MapDownloadsControllerTests
     }
 
     [Fact]
-    public async Task FifteenFolders_ReachDelegatedApi_WithoutExposingLegacyArchiveUrl()
+    public async Task HundredFolders_ReachDelegatedApi_WithoutExposingLegacyArchiveUrl()
     {
         var job = RedirectDtoFactory.CreateArchive(status: "complete");
         var fake = new FakeRedirectApiClient().WithData("CreateArchive", job);
-        var paths = Enumerable.Range(0, 15).Select(value => $"redirect/cod4/usermaps/mp_{value}").ToArray();
+        var paths = Enumerable.Range(0, 100).Select(value => $"redirect/cod4/usermaps/mp_{value}").ToArray();
         var result = Assert.IsType<JsonResult>(await Controller(fake, "123").CreateArchive(new CreateArchive(paths)));
         Assert.Null(Assert.IsType<ArchiveJob>(result.Value).DownloadUrl);
         Assert.Equal("123", Assert.Single(fake.PortalCalls).MemberId);

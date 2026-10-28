@@ -9,6 +9,7 @@
     const chunkSize = 4 * 1024 * 1024;
     let pageHidden = false;
     const query = new URLSearchParams(location.search);
+    const rotation = query.get('rotation');
     const aliases = { CallOfDuty2: 'cod2', CallOfDuty4: 'cod4', CallOfDuty4x: 'cod4', cod4x: 'cod4', CallOfDuty5: 'cod5' };
     const game = query.get('game') || 'cod4';
     byId('downloadGame').value = aliases[game] || (['cod2', 'cod4', 'cod5'].includes(game) ? game : 'cod4');
@@ -56,7 +57,7 @@
         return entry.isDirectory && /^redirect\/(?:cod[45]\/(?:usermaps|mods)\/[^/]+|cod2\/(?!main$)[^/]+)$/.test(entry.path);
     }
     function updateSelection() {
-        byId('downloadSelection').textContent = `${selected.size} of 15 folders selected`;
+        byId('downloadSelection').textContent = `${selected.size} of 100 folders selected`;
         byId('downloadZip').disabled = !member || selected.size === 0;
         byId('downloadClear').disabled = selected.size === 0;
         byId('downloadSelectionBar').hidden = !!path || !!manifest || selected.size === 0;
@@ -75,9 +76,9 @@
         updateSelection();
     }
     function choose(entry, input) {
-        if (input.checked && selected.size >= 15) {
+        if (input.checked && selected.size >= 100) {
             input.checked = false;
-            status('A ZIP can contain at most 15 folders. Clear a selection first.');
+            status('A ZIP can contain at most 100 folders. Clear a selection first.');
             return;
         }
         if (input.checked) selected.add(entry.path); else selected.delete(entry.path);
@@ -273,11 +274,11 @@
         task.state = 'This task completed or was dismissed in another tab, or its destination was reused. Dismiss this local task.';
         task.terminal = true; task.busy = false;
     }
-    async function createZip(paths) {
-        if (!member || paths.length < 1 || paths.length > 15) return;
-        const task = newTask({ name: `ZIP: ${paths.map(value => value.split('/').pop()).join(', ')}`, state: 'Submitting ZIP…', busy: true });
+    async function createZip(paths, serverId = null) {
+        if (!member || !serverId && (paths.length < 1 || paths.length > 100)) return;
+        const task = newTask({ name: serverId ? 'Rotation ZIP' : `ZIP: ${paths.map(value => value.split('/').pop()).join(', ')}`, state: 'Submitting ZIP…', busy: true });
         try {
-            const job = await api('CreateArchive', { paths }, true);
+            const job = await api(serverId ? 'CreateRotationArchive' : 'CreateArchive', serverId ? { gameServerId: serverId } : { paths }, true);
             if (!tasks.has(task.id)) return;
             paths.forEach(value => selected.delete(value)); updateSelection();
             task.job = job.id; task.expires = job.expiresUtc;
@@ -577,6 +578,18 @@
     window.addEventListener('pageshow', event => {
         if (event.persisted) { pageHidden = false; tasks.forEach(trackJob); }
     });
-    void load();
+    if (rotation) {
+        byId('downloadSearch').hidden = true;
+        byId('downloadHeading').textContent = 'Map rotation download';
+        byId('downloadContext').textContent = 'Public server maps';
+        status('Prepare a ZIP of the available custom maps from this server’s normal rotation or recent 48-hour history. Built-in maps and server mods are excluded.');
+        byId('downloadRotationZip').hidden = !member;
+        byId('downloadRotationZip').addEventListener('click', async () => {
+            byId('downloadRotationZip').disabled = true;
+            try { await createZip([], rotation); }
+            finally { byId('downloadRotationZip').disabled = false; }
+        });
+        if (byId('downloadLogin')) byId('downloadLogin').hidden = false;
+    } else void load();
     void restore();
 })();

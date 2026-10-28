@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Api.Abstractions;
 using System.Globalization;
+using System.Net;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Redirect.Api.Abstractions.V1;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -47,15 +50,73 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
     [ValidateAntiForgeryToken]
     public Task<IActionResult> CreateArchive([FromBody] CreateArchive request, CancellationToken cancellationToken = default)
     {
-        return request?.Paths is not { Length: >= 1 and <= 15 } ||
+        return request?.Paths is not { Length: >= 1 and <= 100 } ||
             request.Paths.Any(string.IsNullOrWhiteSpace) ||
             request.Paths.Distinct(StringComparer.OrdinalIgnoreCase).Count() != request.Paths.Length
-            ? Task.FromResult<IActionResult>(BadRequest(new { message = "Select between 1 and 15 distinct map or mod folders." }))
+            ? Task.FromResult<IActionResult>(BadRequest(new { message = "Select between 1 and 100 distinct map or mod folders." }))
             : Read(async client =>
         {
             var result = await client.CreateArchive(request, cancellationToken).ConfigureAwait(false);
             return WithoutArchiveUrl(result);
         });
+    }
+
+    public sealed record RotationArchiveRequest(Guid GameServerId);
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateRotationArchive([FromBody] RotationArchiveRequest request,
+        [FromServices] MapExperienceService maps, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid || request is null || request.GameServerId == Guid.Empty)
+            return BadRequest();
+        Repository.Abstractions.Models.V1.MapRotations.PublicServerRotationDto? server;
+        try
+        {
+            server = (await maps.Rotations(cancellationToken).ConfigureAwait(false)).Servers
+                .SingleOrDefault(s => s.GameServerId == request.GameServerId);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return StatusCode(503, new { message = "Map rotations are temporarily unavailable. Please try again later." });
+        }
+
+        if (server is null)
+            return NotFound();
+        if (server.GameType is not (GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5))
+            return BadRequest(new { message = "Rotation ZIP downloads support COD4, COD4x and COD5 only." });
+        var names = server.Maps.Select(m => m.MapName).Where(n => !BuiltInMaps.IsBuiltIn(server.GameType, n))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var game = server.GameType == GameType.CallOfDuty5 ? "cod5" : "cod4";
+        return await Read(async client =>
+        {
+            var paths = new HashSet<string>(StringComparer.Ordinal);
+            string? version = null;
+            // Version-pinned collection pages avoid one manager request per map.
+            for (var page = 1; page <= 50 && names.Count > 0; page++)
+            {
+                var response = await client.Collection(game, "maps", page: page, pageSize: 200, version: version,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccess || response.Result?.Data is not { } catalogue)
+                    return new ApiResult<ArchiveJob>(response.StatusCode);
+                version = catalogue.Version;
+                foreach (var entry in catalogue.Entries.Where(e => e.IsDirectory && e.Bytes > 0 && names.Contains(e.Name)
+                    && e.Path == $"redirect/{game}/usermaps/{e.Name}"))
+                    paths.Add(entry.Path);
+                if (paths.Count > 100)
+                    return new ApiResult<ArchiveJob>(HttpStatusCode.RequestEntityTooLarge);
+                if ((long)page * catalogue.PageSize >= catalogue.TotalCount)
+                    break;
+                if (page == 50)
+                    return new ApiResult<ArchiveJob>(HttpStatusCode.ServiceUnavailable);
+            }
+
+            return paths.Count == 0
+                ? new ApiResult<ArchiveJob>(HttpStatusCode.UnprocessableEntity)
+                : WithoutArchiveUrl(await client.CreateArchive(new CreateArchive([.. paths.Order(StringComparer.Ordinal)]),
+                cancellationToken).ConfigureAwait(false));
+        }).ConfigureAwait(false);
     }
 
     [HttpGet]
@@ -113,6 +174,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
                 404 => "The file or ZIP is no longer available.",
                 409 or 412 => "The content has changed. Refresh the files and start a new download.",
                 410 => "This ZIP has expired. Create a new ZIP.",
+                413 => "This rotation exceeds the ZIP folder, file or size limit.",
+                422 => "No downloadable custom map files are available for this rotation.",
                 429 => "Too many requests. Please wait before trying again.",
                 _ => "Maps Manager is unavailable. Please try again later."
             }

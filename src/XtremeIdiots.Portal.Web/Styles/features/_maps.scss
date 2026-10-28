@@ -5,6 +5,37 @@
 
 // Maps Feature Styles
 
+.public-map-strip {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: .75rem;
+}
+
+.public-map-card {
+    flex: 0 0 240px;
+    border: 1px solid $map-border-color;
+    border-radius: 4px;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+
+    img {
+        width: 240px;
+        height: 180px;
+        object-fit: cover;
+    }
+
+    progress {
+        width: 100%;
+        accent-color: $xi-primary;
+    }
+}
+
+.map-insights-chart {
+    height: 360px;
+    position: relative;
+}
+
 .map-files li {
     line-height: 1.2;
 }

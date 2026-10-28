@@ -117,9 +117,9 @@ public sealed class NativeMapDownloadsBrowserTests
     }
 
     [Fact]
-    public async Task AuthenticatedJourney_BoundsSelectionAt15_AutomaticallyPollsZip_AndDismissesReadyTasks()
+    public async Task AuthenticatedJourney_BoundsSelectionAt100_AutomaticallyPollsZip_AndDismissesReadyTasks()
     {
-        var folders = Enumerable.Range(0, 16).Select(index => new ContentEntry(
+        var folders = Enumerable.Range(0, 101).Select(index => new ContentEntry(
             $"redirect/cod5/usermaps/mp_{index}", $"mp_{index}", true, 1024, DateTimeOffset.UnixEpoch, "v1", null)).ToArray();
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, services =>
             services.AddFakeRedirectApiClient(fake => fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue(folders))));
@@ -127,7 +127,7 @@ public sealed class NativeMapDownloadsBrowserTests
         await browser.Page.RouteAsync("**/MapDownloads/CreateArchive", async route =>
         {
             var request = JsonSerializer.Deserialize<CreateArchive>(route.Request.PostData!, JsonSerializerOptions.Web)!;
-            Assert.Equal(15, request.Paths.Length);
+            Assert.Equal(100, request.Paths.Length);
             await Json(route, RedirectDtoFactory.CreateArchive());
         });
         await browser.Page.RouteAsync("**/MapDownloads/ArchiveStatus?**", route =>
@@ -136,20 +136,20 @@ public sealed class NativeMapDownloadsBrowserTests
             return Json(route, RedirectDtoFactory.CreateArchive(status: polls == 1 ? "running" : "complete"));
         });
         await browser.Page.RouteAsync("**/MapDownloads/Collection?**", route => Json(route, new CataloguePage(
-            route.Request.Url.Contains("page=2", StringComparison.Ordinal) ? folders[15..] : folders[..15],
-            1, 15, 16, "collection-v1")));
+            route.Request.Url.Contains("page=2", StringComparison.Ordinal) ? folders[100..] : folders[..100],
+            1, 100, 101, "collection-v1")));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapDownloads?game=cod5").AbsoluteUri);
         var choices = browser.Page.Locator("[data-select-path]");
-        await Assertions.Expect(choices).ToHaveCountAsync(15);
-        for (var index = 0; index < 15; index++)
+        await Assertions.Expect(choices).ToHaveCountAsync(100);
+        for (var index = 0; index < 100; index++)
             await choices.Nth(index).ClickAsync();
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Next", Exact = true }).ClickAsync();
         await Assertions.Expect(choices).ToHaveCountAsync(1);
         await choices.First.ClickAsync();
-        await Assertions.Expect(browser.Page.Locator("#downloadSelection")).ToHaveTextAsync("15 of 15 folders selected");
+        await Assertions.Expect(browser.Page.Locator("#downloadSelection")).ToHaveTextAsync("100 of 100 folders selected");
         await Assertions.Expect(choices.First).Not.ToBeCheckedAsync();
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Previous", Exact = true }).ClickAsync();
-        await Assertions.Expect(choices).ToHaveCountAsync(15);
+        await Assertions.Expect(choices).ToHaveCountAsync(100);
         await Assertions.Expect(choices.First).ToBeCheckedAsync();
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Select all", Exact = true })).ToHaveCountAsync(0);
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create selected ZIP" }).ClickAsync();
@@ -637,7 +637,7 @@ public sealed class NativeMapDownloadsBrowserTests
         }
 
         await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP queued");
-        await Assertions.Expect(browser.Page.Locator("#downloadSelection")).ToHaveTextAsync("2 of 15 folders selected");
+        await Assertions.Expect(browser.Page.Locator("#downloadSelection")).ToHaveTextAsync("2 of 100 folders selected");
         await Assertions.Expect(choices.Nth(0)).ToBeCheckedAsync();
         await Assertions.Expect(choices.Nth(2)).ToBeCheckedAsync();
     }

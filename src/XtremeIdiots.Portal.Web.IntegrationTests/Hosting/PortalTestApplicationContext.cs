@@ -135,6 +135,9 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
                 It.IsAny<GameType[]>(), null, null, 0, 100, MapRotationsOrder.TitleAsc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<MapRotationDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<MapRotationDto>>(new CollectionModel<MapRotationDto>([]))));
+        repository.Setup(x => x.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto())));
         services.AddSingleton(repository.Object);
         services.AddSingleton(new Mock<IServersApiClient>(MockBehavior.Default)
         {
