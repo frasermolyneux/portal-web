@@ -100,6 +100,17 @@ public class MapsControllerTests
     }
 
     [Fact]
+    public async Task GameIndex_Cod4xUsesTheSharedCatalogue()
+    {
+        var sut = CreateSut();
+
+        var result = Assert.IsType<ViewResult>(await sut.GameIndex(GameType.CallOfDuty4x));
+
+        Assert.Equal("Index", result.ViewName);
+        Assert.Equal(GameType.CallOfDuty4, result.ViewData["GameType"]);
+    }
+
+    [Fact]
     public async Task GameIndex_WithGameType_SetsViewDataAndReturnsViewResult()
     {
         // Arrange
