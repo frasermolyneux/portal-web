@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Services;
 
@@ -17,8 +18,11 @@ public sealed class MapExperienceServiceTests : IDisposable
     private readonly DependencyReadCoordinator coordinator = new();
     private readonly Mock<IRepositoryApiClient> repository = new() { DefaultValue = DefaultValue.Mock };
 
-    [Fact]
-    public async Task Rotations_UsePlainPublicNames_WithoutChangingCachedServerIdentity()
+    [Theory]
+    [InlineData("^2Public ^1name", "Public name")]
+    [InlineData("^2", "Backend name")]
+    [InlineData("^7   ", "Backend name")]
+    public async Task Rotations_UsePlainPublicNames_WithoutChangingCachedServerIdentity(string liveTitle, string expectedTitle)
     {
         var id = Guid.NewGuid();
         repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
@@ -29,13 +33,13 @@ public sealed class MapExperienceServiceTests : IDisposable
                         Maps = [new() { MapName = "mp_custom" }] }]
                 })));
         var live = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerLiveStatusDto>(
-            Newtonsoft.Json.JsonConvert.SerializeObject(new { ServerId = id, Title = "^2Public ^1name" }))!;
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { ServerId = id, Title = liveTitle }))!;
         repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<GameServerLiveStatusDto>>(new CollectionModel<GameServerLiveStatusDto>([live]))));
         var service = new MapExperienceService(repository.Object, cache, coordinator);
         var server = Assert.Single((await service.BrowsableRotations(CancellationToken.None)).Servers);
-        Assert.Equal("Public name", server.Title);
+        Assert.Equal(expectedTitle, server.Title);
         Assert.Equal(id, server.GameServerId);
         Assert.Equal(GameType.CallOfDuty4x, server.GameType);
         Assert.Same(server, Assert.Single((await service.Rotations(CancellationToken.None)).Servers));
@@ -60,6 +64,25 @@ public sealed class MapExperienceServiceTests : IDisposable
             setup.ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.ServiceUnavailable));
         var service = new MapExperienceService(repository.Object, cache, coordinator);
         Assert.Equal("Fallback name", Assert.Single((await service.Rotations(CancellationToken.None)).Servers).Title);
+    }
+
+    [Fact]
+    public async Task CatalogueGames_ObserveFirstMapAdded_AndLastMapRemoved()
+    {
+        static ApiResult<MapGamesDto> Games(params GameType[] games)
+        {
+            return new(HttpStatusCode.OK,
+            new ApiResponse<MapGamesDto>(new MapGamesDto { Games = [.. games] }));
+        }
+
+        repository.SetupSequence(r => r.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Games())
+            .ReturnsAsync(Games(GameType.CallOfDuty4))
+            .ReturnsAsync(Games());
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        Assert.Empty((await service.Games(CancellationToken.None)).Games);
+        Assert.Equal(GameType.CallOfDuty4, Assert.Single((await service.Games(CancellationToken.None)).Games));
+        Assert.Empty((await service.Games(CancellationToken.None)).Games);
     }
 
     [Fact]

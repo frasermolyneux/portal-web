@@ -25,10 +25,10 @@ public sealed class MapExperienceService(
                 var names = await namesTask.ConfigureAwait(false);
                 return data with
                 {
-                    Servers = [.. data.Servers.Select(server => server with
+                    Servers = [.. data.Servers.Select(server =>
                     {
-                        Title = CodColorHelper.PlainText(names?.GetValueOrDefault(server.GameServerId) is { } title
-                                && !string.IsNullOrWhiteSpace(title) ? title : server.Title)
+                        var title = CodColorHelper.PlainText(names?.GetValueOrDefault(server.GameServerId) ?? "");
+                        return server with { Title = string.IsNullOrWhiteSpace(title) ? CodColorHelper.PlainText(server.Title) : title };
                     })]
                 };
             }, cancellationToken);
@@ -63,12 +63,14 @@ public sealed class MapExperienceService(
 
     public Task<MapGamesDto> Games(CancellationToken cancellationToken)
     {
-        return Cached("maps:catalogue-games", async ct =>
+        return coordinator.RunAsync(DependencyWorkload.MapMetadata, "maps:catalogue-games", async () =>
         {
-            var result = await repository.Maps.V1.GetMapGames(ct).ConfigureAwait(false);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(15));
+            var result = await repository.Maps.V1.GetMapGames(timeout.Token).ConfigureAwait(false);
             return result.IsSuccess && result.Result?.Data is { } data
                 ? data : throw new InvalidOperationException("Map games are unavailable.");
-        }, cancellationToken, TimeSpan.FromMinutes(10));
+        }, cancellationToken);
     }
 
     public Task<ApiResult<PublicServerRotationDto>> DownloadPreview(Guid serverId,
