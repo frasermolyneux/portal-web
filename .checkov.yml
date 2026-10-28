@@ -1,0 +1,51 @@
+# Managed by platform-devex repository standards. Do not edit by hand.
+# Provenance: repository-standards-v1 / checkov-v1
+# Changes are proposed by pull request and require human review.
+soft-fail: false
+compact: true
+skip-check:
+  # Profile: base
+  - CKV_AZURE_41
+  - CKV_AZURE_114
+  - CKV_GHA_7
+  - CKV_GIT_1
+  # Profile: cost-optimised
+  - CKV2_AZURE_1
+  - CKV2_AZURE_22
+  - CKV_AZURE_199
+  - CKV_AZURE_201
+  - CKV_AZURE_206
+  - CKV_AZURE_212
+  - CKV_AZURE_225
+  - CKV_AZURE_229
+  - CKV_AZURE_233
+  - CKV_AZURE_165
+  - CKV_AZURE_211
+  - CKV_AZURE_188
+  - CKV_AZURE_224
+  # Profile: public-endpoints
+  - CKV2_AZURE_33
+  - CKV_AZURE_109
+  - CKV_AZURE_189
+  - CKV2_AZURE_32
+  - CKV_AZURE_222
+  - CKV_AZURE_221
+  - CKV_AZURE_107
+  - CKV_AZURE_174
+  - CKV_AZURE_134
+  - CKV_AZURE_139
+  - CKV_AZURE_204
+  - CKV_AZURE_113
+  - CKV2_AZURE_45
+  # Profile: app-service-standard
+  - CKV_AZURE_88
+  - CKV_AZURE_13
+  - CKV_AZURE_17
+  # Profile: central-observability
+  - CKV_AZURE_33
+  - CKV2_AZURE_21
+  - CKV2_AZURE_20
+  - CKV_AZURE_63
+  - CKV_AZURE_65
+  - CKV_AZURE_66
+  - CKV_AZURE_24
