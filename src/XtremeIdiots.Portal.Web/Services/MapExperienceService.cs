@@ -12,7 +12,7 @@ using XtremeIdiots.Portal.Web.Helpers;
 namespace XtremeIdiots.Portal.Web.Services;
 
 public sealed class MapExperienceService(
-    IRepositoryApiClient repository, IMemoryCache cache, DependencyReadCoordinator coordinator)
+    IRepositoryApiClient repository, IMemoryCache cache, DependencyReadCoordinator coordinator, IServiceScopeFactory scopeFactory)
 {
     private readonly static Lock gamesGate = new();
 
@@ -90,7 +90,10 @@ public sealed class MapExperienceService(
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         return await coordinator.RunAsync(DependencyWorkload.MapMetadata, "maps:catalogue-games-read", async () =>
         {
-            var result = await repository.Maps.V1.GetMapGames(timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
+            // Shared work can outlive its originating request and must own its dependencies.
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var client = scope.ServiceProvider.GetRequiredService<IRepositoryApiClient>();
+            var result = await client.Maps.V1.GetMapGames(timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
             return result.IsSuccess && result.Result?.Data is { } data
                 ? data : throw new InvalidOperationException("Map games are unavailable.");
         }, timeout.Token).ConfigureAwait(false);

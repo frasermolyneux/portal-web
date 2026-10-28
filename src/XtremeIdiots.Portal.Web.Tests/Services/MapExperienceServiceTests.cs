@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MX.Api.Abstractions;
 using System.Net;
@@ -17,6 +18,17 @@ public sealed class MapExperienceServiceTests : IDisposable
     private readonly MemoryCache cache = new(new MemoryCacheOptions());
     private readonly DependencyReadCoordinator coordinator = new();
     private readonly Mock<IRepositoryApiClient> repository = new() { DefaultValue = DefaultValue.Mock };
+    private readonly ServiceProvider services;
+
+    public MapExperienceServiceTests()
+    {
+        services = new ServiceCollection().AddSingleton(repository.Object).BuildServiceProvider();
+    }
+
+    private MapExperienceService CreateService()
+    {
+        return new(repository.Object, cache, coordinator, services.GetRequiredService<IServiceScopeFactory>());
+    }
 
     [Theory]
     [InlineData("^2Public ^1name", "Public name")]
@@ -37,7 +49,7 @@ public sealed class MapExperienceServiceTests : IDisposable
         repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<GameServerLiveStatusDto>>(new CollectionModel<GameServerLiveStatusDto>([live]))));
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         var server = Assert.Single((await service.BrowsableRotations(CancellationToken.None)).Servers);
         Assert.Equal(expectedTitle, server.Title);
         Assert.Equal(id, server.GameServerId);
@@ -62,7 +74,7 @@ public sealed class MapExperienceServiceTests : IDisposable
             setup.ThrowsAsync(new HttpRequestException("Live names unavailable"));
         else
             setup.ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.ServiceUnavailable));
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         Assert.Equal("Fallback name", Assert.Single((await service.Rotations(CancellationToken.None)).Servers).Title);
     }
 
@@ -79,7 +91,7 @@ public sealed class MapExperienceServiceTests : IDisposable
             .ReturnsAsync(Games())
             .ReturnsAsync(Games(GameType.CallOfDuty4))
             .ReturnsAsync(Games());
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         Assert.Empty((await service.Games(CancellationToken.None)).Games);
         Assert.Equal(GameType.CallOfDuty4, Assert.Single((await service.Games(CancellationToken.None)).Games));
         Assert.Empty((await service.Games(CancellationToken.None)).Games);
@@ -97,7 +109,7 @@ public sealed class MapExperienceServiceTests : IDisposable
         var names = new TaskCompletionSource<ApiResult<CollectionModel<GameServerLiveStatusDto>>>(TaskCreationOptions.RunContinuationsAsynchronously);
         repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken ct) => names.Task.WaitAsync(ct));
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         Assert.Equal("Fallback name", Assert.Single((await service.Rotations(CancellationToken.None)).Servers).Title);
     }
 
@@ -114,14 +126,14 @@ public sealed class MapExperienceServiceTests : IDisposable
                 await request.CancelAsync();
                 return await Task.FromCanceled<ApiResult<CollectionModel<GameServerLiveStatusDto>>>(ct);
             });
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.Rotations(request.Token));
     }
 
     [Fact]
     public async Task DownloadPreviews_CoalesceConcurrentReads_AndNeverCacheFailures()
     {
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         var id = Guid.NewGuid();
         var server = new PublicServerRotationDto { GameServerId = id };
         var calls = 0;
@@ -159,8 +171,8 @@ public sealed class MapExperienceServiceTests : IDisposable
                 return new ApiResult<MapGamesDto>(HttpStatusCode.OK, new ApiResponse<MapGamesDto>(
                     new MapGamesDto { Games = [GameType.CallOfDuty4] }));
             });
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
-        var otherRequest = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
+        var otherRequest = CreateService();
         using var cancelled = new CancellationTokenSource();
         var first = service.Games(cancelled.Token);
         var second = otherRequest.Games(CancellationToken.None);
@@ -171,6 +183,59 @@ public sealed class MapExperienceServiceTests : IDisposable
         Assert.Single((await second).Games);
         Assert.Single((await service.Games(CancellationToken.None)).Games);
         Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task CatalogueGames_OwnDependenciesUntilSharedReadCompletes_AfterOriginatingRequestDisposal()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var disposedClients = 0;
+        using var provider = new ServiceCollection().AddScoped(_ =>
+        {
+            var client = new Mock<IRepositoryApiClient> { DefaultValue = DefaultValue.Mock };
+            var disposed = false;
+            client.As<IDisposable>().Setup(c => c.Dispose()).Callback(() =>
+            {
+                disposed = true;
+                Interlocked.Increment(ref disposedClients);
+            });
+            client.Setup(c => c.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+                .Returns(async (CancellationToken ct) =>
+                {
+                    entered.TrySetResult();
+                    await gate.Task.WaitAsync(ct);
+                    Assert.False(disposed);
+                    return new ApiResult<MapGamesDto>(HttpStatusCode.OK,
+                        new ApiResponse<MapGamesDto>(new MapGamesDto { Games = [GameType.CallOfDuty4] }));
+                });
+            return client.Object;
+        }).BuildServiceProvider();
+        var factory = provider.GetRequiredService<IServiceScopeFactory>();
+        using var firstScope = provider.CreateScope();
+        using var secondScope = provider.CreateScope();
+        var firstService = new MapExperienceService(firstScope.ServiceProvider.GetRequiredService<IRepositoryApiClient>(),
+            cache, coordinator, factory);
+        var secondService = new MapExperienceService(secondScope.ServiceProvider.GetRequiredService<IRepositoryApiClient>(),
+            cache, coordinator, factory);
+        using var cancellation = new CancellationTokenSource();
+        var first = firstService.Games(cancellation.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var remaining = secondService.Games(CancellationToken.None);
+        try
+        {
+            await cancellation.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+            firstScope.Dispose();
+            Assert.Equal(1, disposedClients);
+        }
+        finally
+        {
+            gate.TrySetResult();
+        }
+
+        Assert.Equal(GameType.CallOfDuty4, Assert.Single((await remaining).Games));
+        Assert.Equal(2, disposedClients);
     }
 
     [Fact]
@@ -185,7 +250,7 @@ public sealed class MapExperienceServiceTests : IDisposable
                 await gate.Task.WaitAsync(ct);
                 return new ApiResult<MapGamesDto>(HttpStatusCode.OK, new ApiResponse<MapGamesDto>(new MapGamesDto()));
             });
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         var games = service.Games(CancellationToken.None);
         var otherReads = Enumerable.Range(0, 4).Select(i =>
             coordinator.RunAsync(DependencyWorkload.MapMetadata, $"other-metadata:{i}", async () =>
@@ -209,7 +274,7 @@ public sealed class MapExperienceServiceTests : IDisposable
     [Fact]
     public async Task DownloadPreviews_ChangeWithTheRotationSnapshot()
     {
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         var server = new PublicServerRotationDto { GameServerId = Guid.NewGuid(), GameType = GameType.CallOfDuty4 };
         var calls = 0;
         Task<ApiResult<PublicServerRotationDto>> Read(CancellationToken _)
@@ -229,7 +294,7 @@ public sealed class MapExperienceServiceTests : IDisposable
     [Fact]
     public async Task SlowDownloadPreviews_DoNotBlockRepositoryReads()
     {
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var calls = 0;
         async Task<ApiResult<PublicServerRotationDto>> Read(CancellationToken ct)
@@ -273,7 +338,7 @@ public sealed class MapExperienceServiceTests : IDisposable
                 await gate.Task.WaitAsync(ct);
                 return new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(new MapInsightsDto { TotalLikes = 7 }));
             });
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         var first = service.Insights(30, null, null, CancellationToken.None);
         var second = service.Insights(30, null, null, CancellationToken.None);
         gate.SetResult();
@@ -292,13 +357,14 @@ public sealed class MapExperienceServiceTests : IDisposable
                 null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.ServiceUnavailable))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(new MapInsightsDto { TotalLikes = 3 })));
-        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var service = CreateService();
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.Insights(7, null, null, CancellationToken.None));
         Assert.Equal(3, (await service.Insights(7, null, null, CancellationToken.None)).TotalVotes);
     }
 
     public void Dispose()
     {
+        services.Dispose();
         cache.Dispose();
         coordinator.Dispose();
     }

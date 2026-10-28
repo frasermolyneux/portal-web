@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MX.Api.Abstractions;
@@ -23,17 +24,24 @@ public class MapsControllerTests : IDisposable
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new() { DefaultValue = DefaultValue.Mock };
     private readonly MemoryCache cache = new(new MemoryCacheOptions());
     private readonly DependencyReadCoordinator coordinator = new();
+    private readonly ServiceProvider services;
+
+    public MapsControllerTests()
+    {
+        services = new ServiceCollection().AddSingleton(mockRepositoryApiClient.Object).BuildServiceProvider();
+    }
 
     private MapExperienceService Maps()
     {
         mockRepositoryApiClient.Setup(r => r.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapGamesDto>(HttpStatusCode.OK,
                 new ApiResponse<MapGamesDto>(new MapGamesDto { Games = [GameType.CallOfDuty4] })));
-        return new(mockRepositoryApiClient.Object, cache, coordinator);
+        return new(mockRepositoryApiClient.Object, cache, coordinator, services.GetRequiredService<IServiceScopeFactory>());
     }
 
     public void Dispose()
     {
+        services.Dispose();
         cache.Dispose();
         coordinator.Dispose();
         GC.SuppressFinalize(this);
