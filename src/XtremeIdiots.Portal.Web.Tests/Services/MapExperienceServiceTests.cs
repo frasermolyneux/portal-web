@@ -4,6 +4,8 @@ using MX.Api.Abstractions;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Services;
 
@@ -16,13 +18,58 @@ public sealed class MapExperienceServiceTests : IDisposable
     private readonly Mock<IRepositoryApiClient> repository = new() { DefaultValue = DefaultValue.Mock };
 
     [Fact]
+    public async Task Rotations_UsePlainPublicNames_WithoutChangingCachedServerIdentity()
+    {
+        var id = Guid.NewGuid();
+        repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto
+                {
+                    Servers = [new() { GameServerId = id, Title = "Backend name", GameType = GameType.CallOfDuty4x,
+                        Maps = [new() { MapName = "mp_custom" }] }]
+                })));
+        var live = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerLiveStatusDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { ServerId = id, Title = "^2Public ^1name" }))!;
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerLiveStatusDto>>(new CollectionModel<GameServerLiveStatusDto>([live]))));
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var server = Assert.Single((await service.BrowsableRotations(CancellationToken.None)).Servers);
+        Assert.Equal("Public name", server.Title);
+        Assert.Equal(id, server.GameServerId);
+        Assert.Equal(GameType.CallOfDuty4x, server.GameType);
+        Assert.Same(server, Assert.Single((await service.Rotations(CancellationToken.None)).Servers));
+        repository.Verify(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Rotations_StillLoadWhenOptionalLiveNamesAreUnavailable(bool throws)
+    {
+        repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto
+                {
+                    Servers = [new() { GameServerId = Guid.NewGuid(), Title = "^2Fallback name" }]
+                })));
+        var setup = repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()));
+        if (throws)
+            setup.ThrowsAsync(new HttpRequestException("Live names unavailable"));
+        else
+            setup.ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.ServiceUnavailable));
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        Assert.Equal("Fallback name", Assert.Single((await service.Rotations(CancellationToken.None)).Servers).Title);
+    }
+
+    [Fact]
     public async Task Insights_IncludesCurrentVotes_AndCoalescesConcurrentReads()
     {
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var before = DateTime.UtcNow;
         DateTime observedFrom = default, observedTo = default;
         var calls = 0;
-        repository.Setup(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.Setup(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             null, null, It.IsAny<CancellationToken>()))
             .Returns(async (DateTime from, DateTime to, GameType? _, Guid? _, CancellationToken ct) =>
             {
@@ -47,7 +94,7 @@ public sealed class MapExperienceServiceTests : IDisposable
     [Fact]
     public async Task Insights_DoesNotCacheDependencyFailureAsEmptySuccess()
     {
-        repository.SetupSequence(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.SetupSequence(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
                 null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.ServiceUnavailable))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(new MapInsightsDto { TotalLikes = 3 })));

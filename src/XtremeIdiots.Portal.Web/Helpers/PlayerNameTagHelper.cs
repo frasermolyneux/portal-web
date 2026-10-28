@@ -31,6 +31,11 @@ internal static partial class CodColorHelper
     [GeneratedRegex(@"\^([0-9])")]
     private static partial Regex colorCodeRegex();
 
+    public static string PlainText(string input)
+    {
+        return colorCodeRegex().Replace(input, "");
+    }
+
     public static string RenderColorCodes(string input)
     {
         var matches = colorCodeRegex().Matches(input);

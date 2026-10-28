@@ -37,7 +37,7 @@ public class MapsController(
     {
         try
         {
-            return View(await maps.Rotations(cancellationToken).ConfigureAwait(false));
+            return View(await maps.BrowsableRotations(cancellationToken).ConfigureAwait(false));
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -52,7 +52,7 @@ public class MapsController(
     {
         try
         {
-            return View(await maps.Rotations(cancellationToken).ConfigureAwait(false));
+            return View(await maps.BrowsableRotations(cancellationToken).ConfigureAwait(false));
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -102,9 +102,9 @@ public class MapsController(
     /// <returns>Maps index view</returns>
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Index([FromServices] MapExperienceService maps, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() => Task.FromResult<IActionResult>(View()), nameof(Index)).ConfigureAwait(false);
+        return await ExecuteWithErrorHandlingAsync(async () => View(await maps.Games(cancellationToken).ConfigureAwait(false)), nameof(Index)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -115,12 +115,12 @@ public class MapsController(
     /// <returns>Maps index view with game type filter applied</returns>
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GameIndex(GameType? id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GameIndex(GameType? id, [FromServices] MapExperienceService maps, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithErrorHandlingAsync(() =>
+        return await ExecuteWithErrorHandlingAsync(async () =>
         {
             ViewData["GameType"] = id == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : id;
-            return Task.FromResult<IActionResult>(View(nameof(Index)));
+            return View(nameof(Index), await maps.Games(cancellationToken).ConfigureAwait(false));
         }, nameof(GameIndex)).ConfigureAwait(false);
     }
 

@@ -2,20 +2,42 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MX.Api.Abstractions;
 using MX.Observability.ApplicationInsights.Auditing;
+using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Controllers;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
-public class MapsControllerTests
+public class MapsControllerTests : IDisposable
 {
-    private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new();
+    private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new() { DefaultValue = DefaultValue.Mock };
+    private readonly MemoryCache cache = new(new MemoryCacheOptions());
+    private readonly DependencyReadCoordinator coordinator = new();
+
+    private MapExperienceService Maps()
+    {
+        mockRepositoryApiClient.Setup(r => r.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapGamesDto>(HttpStatusCode.OK,
+                new ApiResponse<MapGamesDto>(new MapGamesDto { Games = [GameType.CallOfDuty4] })));
+        return new(mockRepositoryApiClient.Object, cache, coordinator);
+    }
+
+    public void Dispose()
+    {
+        cache.Dispose();
+        coordinator.Dispose();
+        GC.SuppressFinalize(this);
+    }
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<MapsController>> mockLogger = new();
     private readonly Mock<IConfiguration> mockConfiguration = new();
@@ -80,7 +102,7 @@ public class MapsControllerTests
         var sut = CreateSut();
 
         // Act
-        var result = await sut.Index();
+        var result = await sut.Index(Maps());
 
         // Assert
         Assert.IsType<ViewResult>(result);
@@ -93,7 +115,7 @@ public class MapsControllerTests
         var sut = CreateSut();
 
         // Act
-        var result = await sut.GameIndex(null);
+        var result = await sut.GameIndex(null, Maps());
 
         // Assert
         Assert.IsType<ViewResult>(result);
@@ -104,7 +126,7 @@ public class MapsControllerTests
     {
         var sut = CreateSut();
 
-        var result = Assert.IsType<ViewResult>(await sut.GameIndex(GameType.CallOfDuty4x));
+        var result = Assert.IsType<ViewResult>(await sut.GameIndex(GameType.CallOfDuty4x, Maps()));
 
         Assert.Equal("Index", result.ViewName);
         Assert.Equal(GameType.CallOfDuty4, result.ViewData["GameType"]);
@@ -117,7 +139,7 @@ public class MapsControllerTests
         var sut = CreateSut();
 
         // Act
-        var result = await sut.GameIndex(GameType.CallOfDuty4);
+        var result = await sut.GameIndex(GameType.CallOfDuty4, Maps());
 
         // Assert
         var viewResult = Assert.IsType<ViewResult>(result);

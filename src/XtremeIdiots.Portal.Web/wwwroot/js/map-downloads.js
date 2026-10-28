@@ -580,16 +580,16 @@
     });
     if (rotation) {
         byId('downloadSearch').hidden = true;
-        byId('downloadHeading').textContent = 'Map rotation download';
-        byId('downloadContext').textContent = 'Public server maps';
-        status('Prepare a ZIP of the available custom maps from this server’s normal rotation or recent 48-hour history. Built-in maps and server mods are excluded.');
-        byId('downloadRotationZip').hidden = !member;
+        byId('downloadHeading').textContent = 'Download map pack';
+        byId('downloadContext').textContent = 'Get ready to play';
+        status(member ? 'Prepare your map pack, then save the ZIP when it is ready.' : 'Sign in to download these maps together as one ZIP.');
+        byId('downloadRotationZip').hidden = !member || root.dataset.rotationReady !== 'true';
         byId('downloadRotationZip').addEventListener('click', async () => {
             byId('downloadRotationZip').disabled = true;
             try { await createZip([], rotation); }
             finally { byId('downloadRotationZip').disabled = false; }
         });
-        if (byId('downloadLogin')) byId('downloadLogin').hidden = false;
+        if (byId('downloadLogin')) byId('downloadLogin').hidden = root.dataset.rotationReady !== 'true';
     } else void load();
     void restore();
 })();

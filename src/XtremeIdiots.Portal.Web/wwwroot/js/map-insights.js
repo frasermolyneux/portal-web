@@ -35,9 +35,9 @@
     }
     function rankings() {
         if (!data) return;
-        table('insightsRankings', ['Map family / map', 'Likes', 'Dislikes', 'Total votes', 'Approval', 'Evidence'],
+        table('insightsRankings', ['Map', 'Likes', 'Dislikes', 'Votes', 'Popularity', 'Rating'],
             data[el('insightsRanking').value].map(map => [name(map), number(map.likes), number(map.dislikes), number(map.votes),
-                `${number(map.approval)}%`, map.votes < data.minimumRankingVotes ? 'Low vote count' : '5+ votes']));
+                `${number(map.approval)}%`, map.votes < data.minimumRankingVotes ? 'A few votes so far' : '5+ votes']));
     }
     function chart(id, labels, datasets, percentage = false) {
         charts.push(new Chart(el(id), {
@@ -46,7 +46,7 @@
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 scales: {
                     x: { beginAtZero: true, max: percentage ? 100 : undefined, stacked: !percentage,
-                        title: { display: true, text: percentage ? 'Approval (%)' : 'Recorded votes' },
+                        title: { display: true, text: percentage ? 'Likes (%)' : 'Votes' },
                         ticks: { precision: 0 } },
                     y: { stacked: !percentage }
                 },
@@ -57,8 +57,8 @@
     function render() {
         charts.splice(0).forEach(item => item.destroy());
         el('insightsTiles').replaceChildren();
-        for (const [label, value] of [['Recorded votes', data.totalVotes], ['Likes', data.totalLikes],
-            ['Dislikes', data.totalDislikes], ['Approval', data.totalVotes ? `${number(data.approval)}%` : 'Not rated'],
+        for (const [label, value] of [['Votes', data.totalVotes], ['Likes', data.totalLikes],
+            ['Dislikes', data.totalDislikes], ['Popularity', data.totalVotes ? `${number(data.approval)}%` : 'Not rated'],
             ['Rated maps', data.ratedMaps]]) {
             const col = node('div', '', 'col-6 col-md');
             const tile = node('div', '', 'ibox-content h-100');
@@ -74,8 +74,6 @@
             { label: 'Approval (%)', data: data.popular.map(map => map.approval), backgroundColor: '#2274a5' }
         ], true);
         rankings();
-        table('insightsHotspots', ['Map family / map', 'Average players', 'Peak players', 'Telemetry samples'],
-            data.hotspots.map(map => [name(map), number(map.avgPlayers), number(map.peakPlayers), number(map.sampleCount)]));
     }
     async function load() {
         const current = ++generation;
@@ -90,7 +88,7 @@
             const result = await response.json();
             if (current !== generation) return;
             data = result; render();
-            el('insightsStatus').textContent = data.totalVotes ? 'Showing recorded votes in the selected UTC window.' : 'No votes in this date range.';
+            el('insightsStatus').textContent = data.totalVotes ? 'Showing votes for your selection.' : 'No votes in this date range.';
         } catch (error) {
             if (current === generation) el('insightsStatus').textContent = error.message;
         }

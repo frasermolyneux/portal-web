@@ -5,7 +5,9 @@ using MX.Api.Abstractions;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -24,11 +26,13 @@ public sealed class PublicMapsBrowserTests
     [InlineData(1440)]
     public async Task MapsNavigationAndButtons_ArePublicReadableAndFitViewport(int width)
     {
-        await using var browser = await BrowserFixture.CreateAsync();
+        await using var browser = await BrowserFixture.CreateAsync(null, services => services.AddSingleton(Repository().Object));
         await browser.Page.SetViewportSizeAsync(width, 900);
         await browser.Page.RouteAsync("**/Maps/GetMapListAjax**", route => Json(route,
             new { draw = 1, recordsTotal = 0, recordsFiltered = 0, data = Array.Empty<object>() }));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Maps").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("#filterGameType option")).ToHaveCountAsync(2);
+        await Assertions.Expect(browser.Page.Locator("#filterGameType")).ToContainTextAsync("COD4 / COD4x");
         await browser.Page.Locator(".wrapper-content").EvaluateAsync("async root => await Promise.all(root.getAnimations().map(animation => animation.finished))");
         await Assertions.Expect(browser.Page.Locator("[data-testid=nav-maps-toggle]")).ToBeAttachedAsync();
         Assert.True(await browser.Page.EvaluateAsync<bool>("""
@@ -68,8 +72,10 @@ public sealed class PublicMapsBrowserTests
         await using var browser = await BrowserFixture.CreateAsync(profile,
             services => services.AddSingleton(Repository().Object));
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Maps/Analytics").AbsoluteUri);
-        await Assertions.Expect(browser.Page.Locator("#insightsTiles")).ToContainTextAsync("Recorded votes");
-        await Assertions.Expect(browser.Page.Locator("#insightsRankings")).ToContainTextAsync("Low vote count");
+        await Assertions.Expect(browser.Page.Locator("#insightsTiles")).ToContainTextAsync("Votes");
+        await Assertions.Expect(browser.Page.Locator("#insightsRankings")).ToContainTextAsync("A few votes so far");
+        await Assertions.Expect(browser.Page.Locator("#insightsServer")).ToContainTextAsync("Public COD4x");
+        await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("telemetry");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Vote Log", Exact = true }))
             .ToHaveCountAsync(logVisible ? 1 : 0);
         if (logVisible)
@@ -83,7 +89,7 @@ public sealed class PublicMapsBrowserTests
         }
 
         await browser.Page.Locator("#insightsRanking").SelectOptionAsync("popular");
-        await Assertions.Expect(browser.Page.Locator("#insightsRankings")).Not.ToContainTextAsync("Low vote count");
+        await Assertions.Expect(browser.Page.Locator("#insightsRankings")).Not.ToContainTextAsync("A few votes so far");
         await browser.Page.Locator("#insightsServer").SelectOptionAsync(serverId.ToString());
         await browser.Page.Locator("#insightsGame").SelectOptionAsync("CallOfDuty5");
         await Assertions.Expect(browser.Page.Locator("#insightsServer")).ToHaveValueAsync("");
@@ -92,7 +98,7 @@ public sealed class PublicMapsBrowserTests
         await browser.Page.Locator("#insightsDays").SelectOptionAsync("7");
         await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Apply filters" }).ClickAsync();
         Assert.Equal(200, (await response).Status);
-        await Assertions.Expect(browser.Page.Locator("#insightsStatus")).ToContainTextAsync("Showing recorded votes");
+        await Assertions.Expect(browser.Page.Locator("#insightsStatus")).ToContainTextAsync("Showing votes");
         browser.AssertNoBrowserErrors();
     }
 
@@ -112,18 +118,29 @@ public sealed class PublicMapsBrowserTests
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Maps/Rotations").AbsoluteUri);
         await Assertions.Expect(browser.Page.Locator(".public-map-rotation")).ToHaveCountAsync(3);
         await browser.Page.Locator(".wrapper-content").EvaluateAsync("async root => await Promise.all(root.getAnimations().map(animation => animation.finished))");
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD4x" }))
-            .ToContainTextAsync("Assigned rotation: Normal");
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Public COD4x" }))
+            .ToContainTextAsync("This server's map rotation");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD5" }))
-            .ToContainTextAsync("Recent history (48 hours)");
-        await Assertions.Expect(browser.Page.Locator(".public-map-card").First).ToContainTextAsync("Low vote count");
+            .ToContainTextAsync("Recently played on this server (last 2 days)");
+        await Assertions.Expect(browser.Page.Locator(".public-map-card").First).ToContainTextAsync("A few votes so far");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD2" })
             .GetByRole(AriaRole.Link, new() { Name = "Download", Exact = false })).ToHaveCountAsync(0);
         Assert.True(await browser.Page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= innerWidth"));
-        await browser.Page.GetByRole(AriaRole.Link, new() { Name = "Download rotation ZIP", Exact = true }).ClickAsync();
-        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create rotation ZIP" })).ToBeVisibleAsync();
-        Assert.Empty(fake.Calls);
-        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create rotation ZIP" }).ClickAsync();
+        await browser.Page.Locator("#rotationServer").SelectOptionAsync(serverId.ToString());
+        await Assertions.Expect(browser.Page.Locator(".public-map-rotation:visible")).ToHaveCountAsync(1);
+        await browser.Page.Locator("#rotationGame").SelectOptionAsync("CallOfDuty5");
+        await Assertions.Expect(browser.Page.Locator("#rotationServer")).ToHaveValueAsync("");
+        await Assertions.Expect(browser.Page.Locator(".public-map-rotation:visible")).ToHaveCountAsync(1);
+        await browser.Page.Locator("#rotationGame").SelectOptionAsync("");
+        var progress = browser.Page.Locator(".public-map-card .map-approval").Nth(1);
+        Assert.True(await progress.EvaluateAsync<bool>("""e => { const rgb = node => getComputedStyle(node).backgroundColor.match(/\d+/g).map(Number); const track = rgb(e), value = rgb(e.firstElementChild); const fillWidth = e.firstElementChild.getBoundingClientRect().width; return track[0] > track[1] && value[1] > value[0] && fillWidth > 0 && fillWidth < e.getBoundingClientRect().width; }"""));
+        await browser.Page.GetByRole(AriaRole.Region, new() { Name = "Public COD4x" })
+            .GetByRole(AriaRole.Link, new() { Name = "Download map pack", Exact = true }).ClickAsync();
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Button, new() { Name = "Prepare map pack" })).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#rotationPreview .public-map-card")).ToHaveCountAsync(1);
+        await Assertions.Expect(browser.Page.Locator("#rotationPreview")).ToContainTextAsync("Public COD4x");
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
+        await browser.Page.GetByRole(AriaRole.Button, new() { Name = "Prepare map pack" }).ClickAsync();
         await Assertions.Expect(browser.Page.Locator("#downloadTasks")).ToContainTextAsync("ZIP ready to save");
         Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
         Assert.All(fake.PortalCalls, caller => Assert.Equal("12345", caller.MemberId));
@@ -133,6 +150,14 @@ public sealed class PublicMapsBrowserTests
     private static Mock<IRepositoryApiClient> Repository()
     {
         var repository = new Mock<IRepositoryApiClient> { DefaultValue = DefaultValue.Mock };
+        repository.Setup(r => r.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapGamesDto>(HttpStatusCode.OK, new ApiResponse<MapGamesDto>(
+                new MapGamesDto { Games = [GameType.CallOfDuty4] })));
+        var live = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerLiveStatusDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { ServerId = serverId, Title = "^2Public COD4x" }))!;
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerLiveStatusDto>>(new CollectionModel<GameServerLiveStatusDto>([live]))));
         repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK, new ApiResponse<PublicServerRotationsDto>(
                 new PublicServerRotationsDto
@@ -143,11 +168,15 @@ public sealed class PublicMapsBrowserTests
                             Maps = [new() { MapName = "mp_custom", Likes = 2 }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD5", GameType = GameType.CallOfDuty5,
                             IsObservedHistory = true, Maps = [new() { MapName = "mp_history", Likes = 5, Dislikes = 1 }] },
-                        new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD2", GameType = GameType.CallOfDuty2, IsObservedHistory = true }
+                        new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD2", GameType = GameType.CallOfDuty2,
+                            IsObservedHistory = true, Maps = [new() { MapName = "mp_cod2" }] },
+                        new() { GameServerId = Guid.NewGuid(), Title = "Teamspeak", GameType = GameType.Unknown,
+                            Maps = [new() { MapName = "not-a-game-map" }] },
+                        new() { GameServerId = Guid.NewGuid(), Title = "Empty server", GameType = GameType.CallOfDuty4 }
                     ]
                 })));
         var popular = new MapRatingDto { MapId = Guid.NewGuid(), MapName = "mp_popular", GameType = GameType.CallOfDuty4, Likes = 10, Dislikes = 2 };
-        repository.Setup(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.Setup(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             It.IsAny<GameType?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(
                 new MapInsightsDto

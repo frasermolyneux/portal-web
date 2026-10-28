@@ -16,6 +16,7 @@ using System.Net;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web;
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
@@ -138,6 +139,8 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
         repository.Setup(x => x.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
                 new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto())));
+        repository.Setup(x => x.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapGamesDto>(HttpStatusCode.OK, new ApiResponse<MapGamesDto>(new MapGamesDto())));
         services.AddSingleton(repository.Object);
         services.AddSingleton(new Mock<IServersApiClient>(MockBehavior.Default)
         {

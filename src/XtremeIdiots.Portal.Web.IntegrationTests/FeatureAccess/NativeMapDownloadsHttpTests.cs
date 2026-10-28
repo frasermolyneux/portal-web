@@ -68,13 +68,13 @@ public sealed partial class NativeMapDownloadsHttpTests
         var id = Guid.NewGuid();
         SetRotation(host, new PublicServerRotationDto { GameServerId = id, GameType = GameType.CallOfDuty4x });
         var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
-        repository.Setup(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.Setup(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             GameType.CallOfDuty4, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(new MapInsightsDto { TotalLikes = 2 })));
         using var valid = await host.Client.GetAsync($"/Maps/Insights?gameType=CallOfDuty4x&gameServerId={id}");
         Assert.Equal(HttpStatusCode.OK, valid.StatusCode);
         Assert.Equal(2, (await valid.Content.ReadFromJsonAsync<MapInsightsDto>())!.TotalVotes);
-        repository.Verify(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.Verify(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             GameType.CallOfDuty4, id, It.IsAny<CancellationToken>()), Times.Once);
         using var hidden = await host.Client.GetAsync($"/Maps/Insights?gameServerId={Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
@@ -104,7 +104,13 @@ public sealed partial class NativeMapDownloadsHttpTests
             .WithData("CreateArchive", RedirectDtoFactory.CreateArchive(status: "complete"));
         using var page = await host.Client.GetAsync($"/MapDownloads?rotation={serverId}");
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
-        Assert.Empty(fake.Calls);
+        var preview = await page.Content.ReadAsStringAsync();
+        Assert.Contains("mp_custom", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("mp_crash", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("mp_missing", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("MP_CUSTOM", preview, StringComparison.Ordinal);
+        Assert.Single(MyRegex().Matches(preview));
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
         using var anonymous = await host.Client.PostAsJsonAsync("/MapDownloads/CreateRotationArchive", new { gameServerId = serverId });
         Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
         using var noToken = new HttpRequestMessage(HttpMethod.Post, "/MapDownloads/CreateRotationArchive")
@@ -114,14 +120,14 @@ public sealed partial class NativeMapDownloadsHttpTests
         noToken.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
         using var rejected = await host.Client.SendAsync(noToken);
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-        Assert.Empty(fake.Calls);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
         using var request = await Post(host, "/MapDownloads/CreateRotationArchive",
             new { gameServerId = serverId, paths = untrustedPaths }, true);
         using var response = await host.Client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var job = await response.Content.ReadFromJsonAsync<ArchiveJob>();
         Assert.Null(job!.DownloadUrl);
-        Assert.Equal(2, fake.Calls.Count);
+        Assert.Equal(3, fake.Calls.Count);
         Assert.Contains("Collection:cod4:maps", fake.Calls);
         Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
         Assert.All(fake.PortalCalls, caller => Assert.Equal("12345", caller.MemberId));
@@ -311,4 +317,7 @@ public sealed partial class NativeMapDownloadsHttpTests
             };
         }
     }
+
+    [GeneratedRegex("class=\"public-map-card\"")]
+    private static partial Regex MyRegex();
 }

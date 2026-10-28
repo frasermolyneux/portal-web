@@ -25,11 +25,23 @@
         object-fit: cover;
     }
 
-    progress {
+    .map-approval {
         width: 100%;
-        accent-color: $xi-primary;
+        height: 10px;
+        border: 0;
+        border-radius: 3px;
+        overflow: hidden;
+        background-color: $danger-color;
+        &.unrated { background-color: $border-color; }
+        span {
+            display: block;
+            height: 100%;
+            background-color: $success-color;
+        }
     }
 }
+
+#publicRotations [hidden] { display: none !important; }
 
 .map-insights-chart {
     height: 360px;

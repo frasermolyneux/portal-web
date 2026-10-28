@@ -2,7 +2,9 @@ using Microsoft.Extensions.Caching.Memory;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Helpers;
 
 namespace XtremeIdiots.Portal.Web.Services;
 
@@ -13,10 +15,56 @@ public sealed class MapExperienceService(
     {
         return Cached("maps:public-rotations", async ct =>
             {
-                var result = await repository.MapRotations.V1.GetPublicServerRotations(ct).ConfigureAwait(false);
-                return result.IsSuccess && result.Result?.Data is { } data
-                    ? data : throw new InvalidOperationException("Public map rotations are unavailable.");
+                var rotationsTask = repository.MapRotations.V1.GetPublicServerRotations(ct);
+                var namesTask = PublicNames(ct);
+                await Task.WhenAll(rotationsTask, namesTask).ConfigureAwait(false);
+                var result = await rotationsTask.ConfigureAwait(false);
+                if (!result.IsSuccess || result.Result?.Data is not { } data)
+                    throw new InvalidOperationException("Public map rotations are unavailable.");
+                var names = await namesTask.ConfigureAwait(false);
+                return data with
+                {
+                    Servers = [.. data.Servers.Select(server => server with
+                    {
+                        Title = CodColorHelper.PlainText(names?.GetValueOrDefault(server.GameServerId) is { } title
+                                && !string.IsNullOrWhiteSpace(title) ? title : server.Title)
+                    })]
+                };
             }, cancellationToken);
+    }
+
+    private async Task<Dictionary<Guid, string?>?> PublicNames(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await repository.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
+            return result is { IsSuccess: true }
+                ? result.Result?.Data?.Items?.ToDictionary(status => status.ServerId, status => status.Title)
+                : null;
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return null;
+        }
+    }
+
+    public async Task<PublicServerRotationsDto> BrowsableRotations(CancellationToken cancellationToken)
+    {
+        var rotations = await Rotations(cancellationToken).ConfigureAwait(false);
+        return rotations with
+        {
+            Servers = [.. rotations.Servers.Where(server => server.GameType != GameType.Unknown && server.Maps.Count > 0)]
+        };
+    }
+
+    public Task<MapGamesDto> Games(CancellationToken cancellationToken)
+    {
+        return Cached("maps:catalogue-games", async ct =>
+        {
+            var result = await repository.Maps.V1.GetMapGames(ct).ConfigureAwait(false);
+            return result.IsSuccess && result.Result?.Data is { } data
+                ? data : throw new InvalidOperationException("Map games are unavailable.");
+        }, cancellationToken, TimeSpan.FromMinutes(10));
     }
 
     public Task<MapInsightsDto> Insights(int days, GameType? family, Guid? server, CancellationToken cancellationToken)
@@ -24,22 +72,24 @@ public sealed class MapExperienceService(
         var to = DateTime.UtcNow;
         return Cached($"maps:insights:{days}:{family}:{server}:{to:yyyyMMddHH}", async ct =>
         {
-            var result = await repository.MapAnalytics.V1.GetInsights(to.AddDays(-days), to, family, server, ct).ConfigureAwait(false);
+            var result = await repository.MapAnalytics.V1.GetVoteInsights(to.AddDays(-days), to, family, server, ct).ConfigureAwait(false);
             return result.IsSuccess && result.Result?.Data is { } data
                 ? data : throw new InvalidOperationException("Map insights are unavailable.");
-        }, cancellationToken);
+        }, cancellationToken, TimeSpan.FromMinutes(2));
     }
 
-    private Task<T> Cached<T>(string key, Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken) where T : class
+    private Task<T> Cached<T>(string key, Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken, TimeSpan? lifetime = null) where T : class
     {
-        return coordinator.RunAsync(DependencyWorkload.MapMetadata, key, async () =>
+        return cache.TryGetValue<T>(key, out var cached) && cached is not null
+            ? Task.FromResult(cached)
+            : coordinator.RunAsync(DependencyWorkload.MapMetadata, key, async () =>
             {
-                if (cache.TryGetValue<T>(key, out var cached) && cached is not null)
-                    return cached;
+                if (cache.TryGetValue<T>(key, out var existing) && existing is not null)
+                    return existing;
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(15));
                 var result = await read(timeout.Token).ConfigureAwait(false);
-                cache.Set(key, result, TimeSpan.FromSeconds(30));
+                cache.Set(key, result, lifetime ?? TimeSpan.FromSeconds(30));
                 return result;
             }, cancellationToken);
     }
