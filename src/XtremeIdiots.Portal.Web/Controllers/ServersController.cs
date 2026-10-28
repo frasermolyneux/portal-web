@@ -23,7 +23,6 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 [AllowAnonymous]
 public class ServersController(
     IRepositoryApiClient repositoryApiClient,
-    IMapMetadataService mapMetadataService,
     TelemetryClient telemetryClient,
     ILogger<ServersController> logger,
     IConfiguration configuration,
@@ -179,57 +178,34 @@ public class ServersController(
     /// Returns the map rotation for a server from the repository (not RCON)
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetPublicMapRotation(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetPublicMapRotation(Guid id, [FromServices] MapExperienceService maps, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null || !gameServerApiResponse.Result.Data.ServerListEnabled)
+            var rotation = (await maps.Rotations(cancellationToken).ConfigureAwait(false)).Servers
+                .SingleOrDefault(s => s.GameServerId == id);
+            if (rotation is null)
             {
                 return Json(new { success = false, maps = Array.Empty<object>() });
             }
 
-            // Find active map rotation assignments for this server
-            var assignmentsResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignments(
-                null, id, null, 0, 10, cancellationToken).ConfigureAwait(false);
-
-            if (!assignmentsResponse.IsSuccess || assignmentsResponse.Result?.Data?.Items is null || !assignmentsResponse.Result.Data.Items.Any())
+            return Json(new
             {
-                return Json(new { success = false, maps = Array.Empty<object>() });
-            }
-
-            // Use the first active/synced assignment
-            var activeAssignment = assignmentsResponse.Result.Data.Items
-                .FirstOrDefault(a => a.ActivationState == ActivationState.Active)
-                ?? assignmentsResponse.Result.Data.Items.First();
-
-            var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(
-                activeAssignment.MapRotationId, cancellationToken).ConfigureAwait(false);
-
-            if (!rotationResponse.IsSuccess || rotationResponse.Result?.Data is null)
-            {
-                return Json(new { success = false, maps = Array.Empty<object>() });
-            }
-
-            var rotation = rotationResponse.Result.Data;
-            var orderedMaps = rotation.MapRotationMaps.OrderBy(m => m.SortOrder).ToList();
-
-            var metadata = await mapMetadataService.GetAsync(
-                orderedMaps.Select(map => map.MapId), cancellationToken).ConfigureAwait(false);
-
-            var enrichedMaps = orderedMaps.Select(rotationMap =>
-            {
-                metadata.TryGetValue(rotationMap.MapId, out var mapData);
-                return new
+                success = true,
+                maps = rotation.Maps.Select(map => new
                 {
-                    mapName = mapData?.MapName ?? "Unknown",
-                    mapTitle = mapData?.DisplayName ?? mapData?.MapName ?? "Unknown",
-                    mapImageUri = !string.IsNullOrEmpty(mapData?.MapImageUri) ? mapData.MapImageUri : null,
-                    hasImage = !string.IsNullOrEmpty(mapData?.MapImageUri)
-                };
-            }).ToList();
-
-            return Json(new { success = true, maps = enrichedMaps, rotationTitle = rotation.Title });
+                    map.MapName,
+                    mapTitle = map.MapName,
+                    map.MapImageUri,
+                    hasImage = !string.IsNullOrWhiteSpace(map.MapImageUri),
+                    map.Likes,
+                    map.Dislikes,
+                    map.Votes,
+                    map.Approval
+                }),
+                rotationTitle = rotation.RotationTitle,
+                rotation.IsObservedHistory
+            });
         }, nameof(GetPublicMapRotation)).ConfigureAwait(false);
     }
 

@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
+using XtremeIdiots.Portal.Web.Services;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
 
@@ -30,6 +31,69 @@ public class MapsController(
     IConfiguration configuration,
     IAuditLogger auditLogger) : BaseController(telemetryClient, logger, configuration, auditLogger)
 {
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> Analytics([FromServices] MapExperienceService maps, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return View(await maps.Rotations(cancellationToken).ConfigureAwait(false));
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            Logger.LogWarning(ex, "Map analytics selectors unavailable");
+            return StatusCode(503, "Map analytics is temporarily unavailable. Please try again later.");
+        }
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> Rotations([FromServices] MapExperienceService maps, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return View(await maps.Rotations(cancellationToken).ConfigureAwait(false));
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            Logger.LogWarning(ex, "Public map rotations unavailable");
+            return StatusCode(503, "Map rotations are temporarily unavailable. Please try again later.");
+        }
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [SkipStatusCodePages]
+    public async Task<IActionResult> Insights([FromServices] MapExperienceService maps, int days = 30,
+        GameType? gameType = null, Guid? gameServerId = null, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid || days is not (7 or 30 or 90 or 180 or 365) ||
+            (gameType.HasValue && (!Enum.IsDefined(gameType.Value) || gameType == GameType.Unknown)))
+            return BadRequest();
+        if (gameType == GameType.CallOfDuty4x)
+            gameType = GameType.CallOfDuty4;
+        try
+        {
+            if (gameServerId.HasValue)
+            {
+                var server = (await maps.Rotations(cancellationToken).ConfigureAwait(false)).Servers
+                    .SingleOrDefault(s => s.GameServerId == gameServerId);
+                if (server is null)
+                    return NotFound();
+                var family = server.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : server.GameType;
+                if (gameType.HasValue && gameType != family)
+                    return BadRequest();
+            }
+
+            return Json(await maps.Insights(days, gameType, gameServerId, cancellationToken).ConfigureAwait(false));
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            Logger.LogWarning(ex, "Public map insights unavailable");
+            return StatusCode(503, new { message = "Map analytics is temporarily unavailable. Please try again later." });
+        }
+    }
 
     /// <summary>
     /// Displays the main maps index page

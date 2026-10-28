@@ -126,6 +126,7 @@ public static class PortalWebApplication
         builder.Services.AddScoped<IPlayerProfileService, PlayerProfileService>();
         builder.Services.AddSingleton<DependencyReadCoordinator>();
         builder.Services.AddScoped<IMapMetadataService, MapMetadataService>();
+        builder.Services.AddScoped<MapExperienceService>();
         builder.Services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
         builder.Services.AddScoped<INamespaceSettingsParser, NamespaceSettingsParser>();
         builder.Services.AddScoped<INamespaceSettingsSerializer, NamespaceSettingsSerializer>();

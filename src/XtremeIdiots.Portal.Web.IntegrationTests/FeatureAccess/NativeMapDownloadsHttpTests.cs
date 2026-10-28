@@ -1,10 +1,17 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using MX.Api.Abstractions;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 using XtremeIdiots.Redirect.Api.Abstractions.V1;
@@ -15,6 +22,164 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 [Trait("Category", "HttpIntegration")]
 public sealed partial class NativeMapDownloadsHttpTests
 {
+    private readonly static string[] untrustedPaths = ["redirect/cod4/mods/untrusted"];
+
+    [Fact]
+    public async Task ServerDetails_LinksToServerDerivedZip_AndUsesSharedObservedMapPopularity()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4x, IsObservedHistory = true,
+            Maps = [new() { MapName = "mp_history", Likes = 2, Dislikes = 1 }]
+        });
+        var server = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                GameServerId = id,
+                GameType = GameType.CallOfDuty4x,
+                Title = "Synthetic server",
+                Hostname = "192.0.2.10",
+                QueryPort = 28960,
+                ServerListEnabled = true
+            }));
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.GameServers.V1.GetGameServer(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        repository.Setup(r => r.LiveStatus.V1.GetGameServerLiveStatus(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerLiveStatusDto>(HttpStatusCode.NotFound));
+        using var page = await host.Client.GetAsync($"/Servers/Details/{id}");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains($"/MapDownloads?rotation={id}", await page.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        using var response = await host.Client.GetAsync($"/Servers/GetPublicMapRotation/{id}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var projection = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(projection.RootElement.GetProperty("isObservedHistory").GetBoolean());
+        var map = Assert.Single(projection.RootElement.GetProperty("maps").EnumerateArray());
+        Assert.Equal("mp_history", map.GetProperty("mapName").GetString());
+        Assert.Equal(3, map.GetProperty("votes").GetInt32());
+    }
+
+    [Fact]
+    public async Task PublicInsights_NormalizesMapFamily_RejectsHiddenOrMismatchedServers_AndValidatesFilters()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto { GameServerId = id, GameType = GameType.CallOfDuty4x });
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+            GameType.CallOfDuty4, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(new MapInsightsDto { TotalLikes = 2 })));
+        using var valid = await host.Client.GetAsync($"/Maps/Insights?gameType=CallOfDuty4x&gameServerId={id}");
+        Assert.Equal(HttpStatusCode.OK, valid.StatusCode);
+        Assert.Equal(2, (await valid.Content.ReadFromJsonAsync<MapInsightsDto>())!.TotalVotes);
+        repository.Verify(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+            GameType.CallOfDuty4, id, It.IsAny<CancellationToken>()), Times.Once);
+        using var hidden = await host.Client.GetAsync($"/Maps/Insights?gameServerId={Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        using var mismatch = await host.Client.GetAsync($"/Maps/Insights?gameType=CallOfDuty5&gameServerId={id}");
+        Assert.Equal(HttpStatusCode.BadRequest, mismatch.StatusCode);
+        using var invalid = await host.Client.GetAsync("/Maps/Insights?days=invalid");
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [Fact]
+    public async Task RotationZip_IsExplicitAuthenticatedAndAntiforgeryProtected_AndDerivesOnlyAvailableCustomMaps()
+    {
+        await using var host = await CreateHost();
+        var serverId = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = serverId, GameType = GameType.CallOfDuty4x,
+            Maps = [new() { MapName = "mp_crash" }, new() { MapName = "mp_custom" },
+                new() { MapName = "MP_CUSTOM" }, new() { MapName = "mp_missing" }]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        var folder = new ContentEntry("redirect/cod4/usermaps/mp_custom", "mp_custom", true, 100,
+            DateTimeOffset.UnixEpoch, "v1", null);
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue(folder,
+            folder with { Path = "redirect/cod4/mods/mp_custom" },
+            folder with { Name = "mp_crash", Path = "redirect/cod4/usermaps/mp_crash" }))
+            .WithData("CreateArchive", RedirectDtoFactory.CreateArchive(status: "complete"));
+        using var page = await host.Client.GetAsync($"/MapDownloads?rotation={serverId}");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Empty(fake.Calls);
+        using var anonymous = await host.Client.PostAsJsonAsync("/MapDownloads/CreateRotationArchive", new { gameServerId = serverId });
+        Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
+        using var noToken = new HttpRequestMessage(HttpMethod.Post, "/MapDownloads/CreateRotationArchive")
+        {
+            Content = JsonContent.Create(new { gameServerId = serverId })
+        };
+        noToken.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
+        using var rejected = await host.Client.SendAsync(noToken);
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        Assert.Empty(fake.Calls);
+        using var request = await Post(host, "/MapDownloads/CreateRotationArchive",
+            new { gameServerId = serverId, paths = untrustedPaths }, true);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var job = await response.Content.ReadFromJsonAsync<ArchiveJob>();
+        Assert.Null(job!.DownloadUrl);
+        Assert.Equal(2, fake.Calls.Count);
+        Assert.Contains("Collection:cod4:maps", fake.Calls);
+        Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
+        Assert.All(fake.PortalCalls, caller => Assert.Equal("12345", caller.MemberId));
+    }
+
+    [Theory]
+    [InlineData(GameType.CallOfDuty2, 1, 400)]
+    [InlineData(GameType.CallOfDuty4, 0, 422)]
+    [InlineData(GameType.CallOfDuty4, 101, 413)]
+    public async Task RotationZip_RejectsUnsupportedEmptyAndOversizedRotationsWithoutCreatingPartialJobs(GameType game, int count, int status)
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = game,
+            Maps = [.. Enumerable.Range(0, count).Select(i => new PublicRotationMapDto { MapName = $"mp_custom_{i}" })]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue([.. Enumerable.Range(0, count).Select(i =>
+            new ContentEntry($"redirect/cod4/usermaps/mp_custom_{i}", $"mp_custom_{i}", true, 1,
+                DateTimeOffset.UnixEpoch, "v1", null))]));
+        using var request = await Post(host, "/MapDownloads/CreateRotationArchive", new { gameServerId = id }, true);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(status, (int)response.StatusCode);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RotationZip_StopsPagingOnceAllCustomMapsAreResolved_EvenWithALargerCatalogue()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4,
+            Maps = [new() { MapName = "mp_custom" }]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        var folder = new ContentEntry("redirect/cod4/usermaps/mp_custom", "mp_custom", true, 100,
+            DateTimeOffset.UnixEpoch, "v1", null);
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue(folder) with { PageSize = 200, TotalCount = 20_000 })
+            .WithData("CreateArchive", RedirectDtoFactory.CreateArchive());
+        using var request = await Post(host, "/MapDownloads/CreateRotationArchive", new { gameServerId = id }, true);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(fake.Calls, call => call.StartsWith("Collection:", StringComparison.Ordinal));
+        Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
+    }
+
+    private static void SetRotation(PortalWebTestHost host, PublicServerRotationDto server)
+    {
+        Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>())
+                .Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                    new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto { Servers = [server] })));
+    }
+
     [Fact]
     public async Task AnonymousFileGrant_RequiresAntiforgery_AndUsesServerFingerprint()
     {
@@ -56,7 +221,7 @@ public sealed partial class NativeMapDownloadsHttpTests
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
 
         using var tooMany = await Post(host, "/MapDownloads/CreateArchive", new CreateArchive(
-            [.. Enumerable.Range(0, 16).Select(index => $"redirect/cod4/usermaps/mp_{index}")]), true);
+            [.. Enumerable.Range(0, 101).Select(index => $"redirect/cod4/usermaps/mp_{index}")]), true);
         using var tooManyResponse = await host.Client.SendAsync(tooMany);
         Assert.Equal(HttpStatusCode.BadRequest, tooManyResponse.StatusCode);
         Assert.Empty(fake.PortalCalls);

@@ -1,0 +1,81 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
+@using XtremeIdiots.Portal.Web.Auth.Constants
+@using XtremeIdiots.Portal.Web.Extensions
+@model XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.PublicServerRotationsDto
+@{
+    ViewData["Title"] = "Map Analytics";
+}
+<div class="wrapper wrapper-content animated fadeInRight" id="mapInsights">
+    <div class="ibox">
+        <div class="ibox-title">
+            <h5>Map Analytics</h5>
+            <div class="ibox-tools">
+                <a policy="@AuthPolicies.MapRotations_Read" asp-action="VoteLog" class="btn btn-outline-primary btn-sm">Vote Log</a>
+            </div>
+        </div>
+        <div class="ibox-content">
+            <p>Discover the maps players vote for. Vote volume and approval are separate measures; rankings require at least five votes. COD4 / COD4x share maps and ratings, but server filters retain their actual engine.</p>
+            <form id="mapInsightsFilters" class="row g-3 align-items-end">
+                <div class="col-md-3"><label for="insightsDays" class="form-label">Date range (UTC)</label>
+                    <select id="insightsDays" class="form-select">
+                        <option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option><option value="180">Last 180 days</option><option value="365">Last 365 days</option>
+                    </select>
+                </div>
+                <div class="col-md-3"><label for="insightsGame" class="form-label">Map family</label>
+                    <select id="insightsGame" class="form-select">
+                        <option value="">All games</option>
+                        @foreach (var game in Model.Servers.Select(s => s.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : s.GameType).Distinct().Order())
+                        {
+                            <option value="@game">@(game == GameType.CallOfDuty4 ? "COD4 / COD4x" : game.ToDisplayName())</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4"><label for="insightsServer" class="form-label">Server</label>
+                    <select id="insightsServer" class="form-select">
+                        <option value="">All public servers</option>
+                        @foreach (var server in Model.Servers)
+                        {
+                            <option value="@server.GameServerId" data-family="@(server.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : server.GameType)">@server.Title (@server.GameType.ToDisplayName())</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2"><button type="submit" class="btn btn-primary">Apply filters</button></div>
+            </form>
+            <p class="small text-muted mt-3 mb-0">These are recorded votes, not unique voters. Family totals include unattributed legacy votes; a server filter excludes those votes. Hotspots measure telemetry samples, not map plays or sessions.</p>
+        </div>
+    </div>
+    <p id="insightsStatus" role="status" aria-live="polite">Loading map analytics...</p>
+    <div id="insightsResults" hidden>
+        <div class="row g-3 mb-3" id="insightsTiles"></div>
+        <div class="row">
+            <div class="col-lg-7"><section class="ibox">
+                <div class="ibox-title"><h5>Most voted: likes and dislikes</h5></div>
+                <div class="ibox-content"><div class="map-insights-chart"><canvas id="insightsVolume" aria-label="Vote volumes by map" role="img"></canvas></div></div>
+            </section></div>
+            <div class="col-lg-5"><section class="ibox">
+                <div class="ibox-title"><h5>Highest approval (5+ votes)</h5></div>
+                <div class="ibox-content"><div class="map-insights-chart"><canvas id="insightsApproval" aria-label="Approval percentages by map" role="img"></canvas></div></div>
+            </section></div>
+        </div>
+        <section class="ibox"><div class="ibox-title"><h5>Vote rankings</h5></div>
+            <div class="ibox-content">
+                <label for="insightsRanking" class="form-label">Ranking</label>
+                <select id="insightsRanking" class="form-select mb-3">
+                    <option value="mostVoted">Most votes</option><option value="popular">Highest approval (5+ votes)</option>
+                    <option value="unpopular">Lowest approval (5+ votes)</option>
+                </select>
+                <div id="insightsRankings" class="table-responsive"></div>
+            </div>
+        </section>
+        <section class="ibox"><div class="ibox-title"><h5>Player hotspots</h5></div>
+            <div class="ibox-content"><p class="small text-muted">Highest average player counts while the map was observed. Sample counts show the strength of the evidence.</p>
+                <div id="insightsHotspots" class="table-responsive"></div>
+            </div>
+        </section>
+    </div>
+</div>
+@section Scripts {
+    <script src="~/lib/chart.js/dist/chart.umd.js" asp-append-version="true"></script>
+    <script src="~/js/map-insights.js" asp-append-version="true"></script>
+}

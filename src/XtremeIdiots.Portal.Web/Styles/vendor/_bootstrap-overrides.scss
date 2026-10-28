@@ -8,19 +8,21 @@
 
 // Custom primary color overrides
 .btn-primary {
-    --bs-btn-bg: #{$xi-primary};
-    --bs-btn-border-color: #{$xi-primary};
-    --bs-btn-hover-bg: #{$xi-primary-dark};
-    --bs-btn-hover-border-color: #{$xi-primary-dark};
-    --bs-btn-active-bg: #{$xi-primary-dark};
-    --bs-btn-active-border-color: #{$xi-primary-dark};
+    --bs-btn-bg: #{$xi-primary-action};
+    --bs-btn-border-color: #{$xi-primary-action};
+    --bs-btn-hover-bg: #{$xi-primary-action-hover};
+    --bs-btn-hover-border-color: #{$xi-primary-action-hover};
+    --bs-btn-active-bg: #{$xi-primary-action-hover};
+    --bs-btn-active-border-color: #{$xi-primary-action-hover};
 }
 
 .btn-outline-primary {
-    --bs-btn-color: #{$xi-primary};
-    --bs-btn-border-color: #{$xi-primary};
-    --bs-btn-hover-bg: #{$xi-primary};
-    --bs-btn-hover-border-color: #{$xi-primary};
+    --bs-btn-color: #{$xi-primary-action};
+    --bs-btn-border-color: #{$xi-primary-action};
+    --bs-btn-hover-bg: #{$xi-primary-action};
+    --bs-btn-hover-border-color: #{$xi-primary-action};
+    --bs-btn-active-bg: #{$xi-primary-action-hover};
+    --bs-btn-active-border-color: #{$xi-primary-action-hover};
 }
 
 // Link color overrides

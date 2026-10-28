@@ -24,11 +24,11 @@ internal static class PortalActionManifest
     public static IReadOnlyDictionary<PortalActionKind, int> ApprovedCounts { get; } =
         new Dictionary<PortalActionKind, int>
         {
-            [PortalActionKind.BrowserPage] = 90,
+            [PortalActionKind.BrowserPage] = 92,
             [PortalActionKind.DownloadOrStream] = 3,
             [PortalActionKind.ExternalCallback] = 1,
-            [PortalActionKind.HttpEndpoint] = 111,
-            [PortalActionKind.StateChange] = 68,
+            [PortalActionKind.HttpEndpoint] = 112,
+            [PortalActionKind.StateChange] = 69,
         };
 
     private readonly static string[] downloadActionNames =
@@ -63,6 +63,7 @@ internal static class PortalActionManifest
             : descriptor.ActionName.StartsWith("Get", StringComparison.Ordinal) ||
             descriptor.ActionName.StartsWith("Search", StringComparison.Ordinal) ||
             descriptor.ActionName is "Browse" or "Status" or "WhoAmI" ||
+            (descriptor.ControllerName == "Maps" && descriptor.ActionName == "Insights") ||
             (descriptor.ControllerName == "MapDownloads" && isSafeMethod && descriptor.ActionName != "Index")
             ? PortalActionKind.HttpEndpoint
             : !isSafeMethod && (!isApiController || IsMutationAction(descriptor.ActionName))

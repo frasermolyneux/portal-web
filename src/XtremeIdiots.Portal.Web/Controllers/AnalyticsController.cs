@@ -96,18 +96,10 @@ public class AnalyticsController(
     /// Maps analytics command centre.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Maps(CancellationToken cancellationToken = default)
+    [AllowAnonymous]
+    public IActionResult Maps()
     {
-        return await ExecuteWithErrorHandlingAsync(async () =>
-        {
-            var servers = await GetServerOptionsAsync(cancellationToken).ConfigureAwait(false);
-
-            return View(new AnalyticsMapsViewModel
-            {
-                Games = SelectableGames,
-                Servers = servers
-            });
-        }, nameof(Maps)).ConfigureAwait(false);
+        return RedirectToAction(nameof(MapsController.Analytics), "Maps");
     }
 
     private async Task<IReadOnlyList<AnalyticsServerOption>> GetServerOptionsAsync(CancellationToken cancellationToken)

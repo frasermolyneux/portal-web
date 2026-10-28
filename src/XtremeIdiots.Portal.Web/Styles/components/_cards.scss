@@ -41,10 +41,11 @@
         a {
             cursor: pointer;
             margin-left: 5px;
-            color: $xi-text-muted;
-
-            &:hover {
-                color: $xi-primary;
+            &:not(.btn) {
+                color: $xi-text-muted;
+                &:hover {
+                    color: $xi-primary;
+                }
             }
         }
 

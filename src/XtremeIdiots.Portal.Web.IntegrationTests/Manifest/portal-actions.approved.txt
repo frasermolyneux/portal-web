@@ -151,6 +151,7 @@ XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#ArchiveStatus#GET#Map
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Browse#GET#MapDownloads/Browse#(System.String,System.String,System.Int32,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Collection#GET#MapDownloads/Collection#(System.String,System.String,System.String,System.Int32,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#CreateArchive#POST#MapDownloads/CreateArchive#(XtremeIdiots.Redirect.Api.Abstractions.V1.CreateArchive)|StateChange
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#CreateRotationArchive#POST#MapDownloads/CreateRotationArchive#(XtremeIdiots.Portal.Web.Controllers.MapDownloadsController+RotationArchiveRequest,XtremeIdiots.Portal.Web.Services.MapExperienceService)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Grant#POST#MapDownloads/Grant#(XtremeIdiots.Redirect.Api.Abstractions.V1.CreateDownloadGrant)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Index#GET#MapDownloads/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Manifest#GET#MapDownloads/Manifest#(System.String,System.String,System.String)|HttpEndpoint
@@ -182,9 +183,12 @@ XtremeIdiots.Portal.Web.Controllers.MapRotationsController#Index#GET#MapRotation
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#SyncAssignment#POST#MapRotations/SyncAssignment#(System.Guid,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#TerminateOrchestration#POST#MapRotations/TerminateOrchestration#(System.String,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#VerifyAssignment#POST#MapRotations/VerifyAssignment#(System.Guid,System.Guid)|StateChange
+XtremeIdiots.Portal.Web.Controllers.MapsController#Analytics#GET#Maps/Analytics#(XtremeIdiots.Portal.Web.Services.MapExperienceService)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapsController#GameIndex#GET#Maps/GameIndex#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapsController#Index#GET#Maps/Index#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.MapsController#Insights#GET#Maps/Insights#(XtremeIdiots.Portal.Web.Services.MapExperienceService,System.Int32,System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.Nullable<System.Guid>)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.MapsController#MapImage#GET#Maps/MapImage#(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType,System.String)|DownloadOrStream
+XtremeIdiots.Portal.Web.Controllers.MapsController#Rotations#GET#Maps/Rotations#(XtremeIdiots.Portal.Web.Services.MapExperienceService)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapsController#VoteLog#GET#Maps/VoteLog#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.PlayerTagsController#Add#GET#PlayerTags/Add#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.PlayerTagsController#Add#POST#PlayerTags/Add#(XtremeIdiots.Portal.Web.ViewModels.AddPlayerTagViewModel)|StateChange
@@ -244,7 +248,7 @@ XtremeIdiots.Portal.Web.Controllers.ServerAdminController#ToggleChatMessageLock#
 XtremeIdiots.Portal.Web.Controllers.ServersController#Details#GET#Servers/Details#(System.Guid)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetLivePlayers#GET#Servers/GetLivePlayers#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetOverviewStatistics#GET#Servers/GetOverviewStatistics#(System.Guid,XtremeIdiots.Portal.Web.Services.ServerStatisticsService,System.String)|HttpEndpoint
-XtremeIdiots.Portal.Web.Controllers.ServersController#GetPublicMapRotation#GET#Servers/GetPublicMapRotation#(System.Guid)|HttpEndpoint
+XtremeIdiots.Portal.Web.Controllers.ServersController#GetPublicMapRotation#GET#Servers/GetPublicMapRotation#(System.Guid,XtremeIdiots.Portal.Web.Services.MapExperienceService)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetRecentPlayersForMap#GET#Servers/GetRecentPlayersForMap#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#Index#GET#Servers/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ServersController#Map#GET#Servers/Map#()|BrowserPage
