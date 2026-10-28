@@ -55,7 +55,7 @@ public class MapsController(
     {
         return await ExecuteWithErrorHandlingAsync(() =>
         {
-            ViewData["GameType"] = id;
+            ViewData["GameType"] = id == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : id;
             return Task.FromResult<IActionResult>(View(nameof(Index)));
         }, nameof(GameIndex)).ConfigureAwait(false);
     }
