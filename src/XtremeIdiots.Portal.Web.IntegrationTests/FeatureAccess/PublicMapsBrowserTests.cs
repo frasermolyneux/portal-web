@@ -45,6 +45,17 @@ public sealed class PublicMapsBrowserTests
         await link.HoverAsync();
         await link.EvaluateAsync("async element => await Promise.all(element.getAnimations().map(animation => animation.finished))");
         Assert.True(await link.EvaluateAsync<bool>(Contrast));
+        await browser.Page.Mouse.DownAsync();
+        await link.EvaluateAsync("async element => await Promise.all(element.getAnimations().map(animation => animation.finished))");
+        Assert.True(await link.EvaluateAsync<bool>("element => element.matches(':active')"));
+        Assert.True(await link.EvaluateAsync<bool>(Contrast));
+        await browser.Page.Mouse.MoveAsync(0, 0);
+        await browser.Page.Mouse.UpAsync();
+        await browser.Page.Keyboard.PressAsync("Tab");
+        await link.FocusAsync();
+        await link.EvaluateAsync("async element => await Promise.all(element.getAnimations().map(animation => animation.finished))");
+        Assert.True(await link.EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
+        Assert.True(await link.EvaluateAsync<bool>(Contrast));
         Assert.True(await browser.Page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= innerWidth"));
         browser.AssertNoBrowserErrors();
     }
@@ -61,6 +72,16 @@ public sealed class PublicMapsBrowserTests
         await Assertions.Expect(browser.Page.Locator("#insightsRankings")).ToContainTextAsync("Low vote count");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Vote Log", Exact = true }))
             .ToHaveCountAsync(logVisible ? 1 : 0);
+        if (logVisible)
+        {
+            var log = browser.Page.GetByRole(AriaRole.Link, new() { Name = "Vote Log", Exact = true });
+            await browser.Page.Keyboard.PressAsync("Tab");
+            await log.FocusAsync();
+            await log.EvaluateAsync("async element => await Promise.all(element.getAnimations().map(animation => animation.finished))");
+            Assert.True(await log.EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
+            Assert.True(await log.EvaluateAsync<bool>(Contrast));
+        }
+
         await browser.Page.Locator("#insightsRanking").SelectOptionAsync("popular");
         await Assertions.Expect(browser.Page.Locator("#insightsRankings")).Not.ToContainTextAsync("Low vote count");
         await browser.Page.Locator("#insightsServer").SelectOptionAsync(serverId.ToString());

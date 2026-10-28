@@ -150,6 +150,28 @@ public sealed partial class NativeMapDownloadsHttpTests
         Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task RotationZip_StopsPagingOnceAllCustomMapsAreResolved_EvenWithALargerCatalogue()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4,
+            Maps = [new() { MapName = "mp_custom" }]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        var folder = new ContentEntry("redirect/cod4/usermaps/mp_custom", "mp_custom", true, 100,
+            DateTimeOffset.UnixEpoch, "v1", null);
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue(folder) with { PageSize = 200, TotalCount = 20_000 })
+            .WithData("CreateArchive", RedirectDtoFactory.CreateArchive());
+        using var request = await Post(host, "/MapDownloads/CreateRotationArchive", new { gameServerId = id }, true);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(fake.Calls, call => call.StartsWith("Collection:", StringComparison.Ordinal));
+        Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
+    }
+
     private static void SetRotation(PortalWebTestHost host, PublicServerRotationDto server)
     {
         Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>())

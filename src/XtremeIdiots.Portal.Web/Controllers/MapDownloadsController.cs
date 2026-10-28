@@ -103,10 +103,14 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
                 version = catalogue.Version;
                 foreach (var entry in catalogue.Entries.Where(e => e.IsDirectory && e.Bytes > 0 && names.Contains(e.Name)
                     && e.Path == $"redirect/{game}/usermaps/{e.Name}"))
+                {
                     paths.Add(entry.Path);
+                    names.Remove(entry.Name);
+                }
+
                 if (paths.Count > 100)
                     return new ApiResult<ArchiveJob>(HttpStatusCode.RequestEntityTooLarge);
-                if ((long)page * catalogue.PageSize >= catalogue.TotalCount)
+                if (names.Count == 0 || (long)page * catalogue.PageSize >= catalogue.TotalCount)
                     break;
                 if (page == 50)
                     return new ApiResult<ArchiveJob>(HttpStatusCode.ServiceUnavailable);
