@@ -23,6 +23,9 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
             return BadRequest();
         if (!rotation.HasValue)
             return View();
+        var client = PortalClient(out var error);
+        if (client is null)
+            return error!;
         try
         {
             var server = (await maps.Rotations(cancellationToken).ConfigureAwait(false)).Servers
@@ -32,8 +35,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
             if (server.GameType is not (GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5))
                 return BadRequest("Map packs are available for COD4, COD4x and COD5.");
             var game = server.GameType == GameType.CallOfDuty5 ? "cod5" : "cod4";
-            var available = await AvailableMaps(server, (page, version) =>
-                redirect.Collection(game, "maps", page: page, pageSize: 200, version: version, cancellationToken: cancellationToken)).ConfigureAwait(false);
+            var available = await maps.DownloadPreview(server.GameServerId, ct => AvailableMaps(server, (page, version) =>
+                client.Collection(game, "maps", page: page, pageSize: 200, version: version, cancellationToken: ct)), cancellationToken).ConfigureAwait(false);
             return !available.IsSuccess
                 ? StatusCode((int)available.StatusCode, "We couldn't check the maps right now. Please try again later.")
                 : View(available.Result!.Data);
@@ -189,19 +192,9 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
 
     private async Task<IActionResult> Read<T>(Func<IRedirectPortalClient, Task<ApiResult<T>>> operation) where T : class
     {
-        if (!ModelState.IsValid)
-            return BadRequest();
-        var ip = HttpContext.Connection.RemoteIpAddress;
-        if (ip is null)
-            return BadRequest(new { message = "The client address is unavailable." });
-        if (ip.IsIPv4MappedToIPv6)
-            ip = ip.MapToIPv4();
-        var memberId = User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : null;
-        if (User.Identity?.IsAuthenticated == true &&
-            (!long.TryParse(memberId, NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0))
-            return StatusCode(StatusCodes.Status403Forbidden);
-        var userAgent = Request.Headers.UserAgent.ToString();
-        var client = redirect.ForPortal(new PortalCaller(memberId, ip.ToString(), userAgent[..Math.Min(512, userAgent.Length)]));
+        var client = PortalClient(out var error);
+        if (client is null)
+            return error!;
         var result = await operation(client).ConfigureAwait(false);
         if (result.IsSuccess && result.Result?.Data is { } data)
             return Json(data);
@@ -223,6 +216,36 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
                 _ => "Maps Manager is unavailable. Please try again later."
             }
         });
+    }
+
+    private IRedirectPortalClient? PortalClient(out IActionResult? error)
+    {
+        error = null;
+        if (!ModelState.IsValid)
+        {
+            error = BadRequest();
+            return null;
+        }
+
+        var ip = HttpContext.Connection.RemoteIpAddress;
+        if (ip is null)
+        {
+            error = BadRequest(new { message = "The client address is unavailable." });
+            return null;
+        }
+
+        if (ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
+        var memberId = User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : null;
+        if (User.Identity?.IsAuthenticated == true &&
+            (!long.TryParse(memberId, NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0))
+        {
+            error = StatusCode(StatusCodes.Status403Forbidden);
+            return null;
+        }
+
+        var userAgent = Request.Headers.UserAgent.ToString();
+        return redirect.ForPortal(new PortalCaller(memberId, ip.ToString(), userAgent[..Math.Min(512, userAgent.Length)]));
     }
 
     private static ApiResult<ArchiveJob> WithoutArchiveUrl(ApiResult<ArchiveJob> result)

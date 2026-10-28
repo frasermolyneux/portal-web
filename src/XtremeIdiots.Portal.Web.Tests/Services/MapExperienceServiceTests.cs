@@ -63,6 +63,66 @@ public sealed class MapExperienceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Rotations_FallBackWhenLiveNamesReachTheirOwnDeadline()
+    {
+        repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto
+                {
+                    Servers = [new() { Title = "Fallback name" }]
+                })));
+        var names = new TaskCompletionSource<ApiResult<CollectionModel<GameServerLiveStatusDto>>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken ct) => names.Task.WaitAsync(ct));
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        Assert.Equal("Fallback name", Assert.Single((await service.Rotations(CancellationToken.None)).Servers).Title);
+    }
+
+    [Fact]
+    public async Task Rotations_PropagateActualRequestCancellation()
+    {
+        using var request = new CancellationTokenSource();
+        repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto())));
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .Returns(async (CancellationToken ct) =>
+            {
+                await request.CancelAsync();
+                return await Task.FromCanceled<ApiResult<CollectionModel<GameServerLiveStatusDto>>>(ct);
+            });
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.Rotations(request.Token));
+    }
+
+    [Fact]
+    public async Task DownloadPreviews_CoalesceConcurrentReads_AndNeverCacheFailures()
+    {
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var id = Guid.NewGuid();
+        var calls = 0;
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task<ApiResult<PublicServerRotationDto>> Read(CancellationToken ct)
+        {
+            if (++calls == 1)
+                return new ApiResult<PublicServerRotationDto>(HttpStatusCode.ServiceUnavailable);
+            await gate.Task.WaitAsync(ct);
+            return new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationDto>(new PublicServerRotationDto { GameServerId = id }));
+        }
+
+        Assert.False((await service.DownloadPreview(id, Read, CancellationToken.None)).IsSuccess);
+        var first = service.DownloadPreview(id, Read, CancellationToken.None);
+        var second = service.DownloadPreview(id, Read, CancellationToken.None);
+        gate.SetResult();
+        await Task.WhenAll(first, second);
+        var cached = await service.DownloadPreview(id, Read, CancellationToken.None);
+        Assert.True(cached.IsSuccess);
+        Assert.Equal(id, cached.Result!.Data!.GameServerId);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
     public async Task Insights_IncludesCurrentVotes_AndCoalescesConcurrentReads()
     {
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

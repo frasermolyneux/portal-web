@@ -56,6 +56,9 @@ public sealed class MapDownloadsControllerTests
         var result = Assert.IsType<StatusCodeResult>(await Controller(fake, member).Browse("redirect/cod4"));
         Assert.Equal(403, result.StatusCode);
         Assert.Empty(fake.PortalCalls);
+        var preview = Assert.IsType<StatusCodeResult>(await Controller(fake, member).Index(null!, Guid.NewGuid()));
+        Assert.Equal(403, preview.StatusCode);
+        Assert.Empty(fake.PortalCalls);
     }
 
     [Theory]

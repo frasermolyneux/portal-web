@@ -65,6 +65,26 @@ public sealed class PublicMapsBrowserTests
     }
 
     [Theory]
+    [InlineData("CallOfDuty4x", "CallOfDuty4")]
+    [InlineData("CallOfDuty5", "")]
+    public async Task BookmarkedCatalogue_UsesOnlyAvailableFamilies_AndCanClearFilters(string bookmarked, string selected)
+    {
+        await using var browser = await BrowserFixture.CreateAsync(null, services => services.AddSingleton(Repository().Object));
+        await browser.Page.RouteAsync("**/Maps/GetMapListAjax**", route => Json(route,
+            new { draw = 1, recordsTotal = 0, recordsFiltered = 0, data = Array.Empty<object>() }));
+        var expected = "/Maps/GetMapListAjax" + (selected.Length > 0 ? "/" + selected : "");
+        var initial = browser.Page.WaitForResponseAsync(r => new Uri(r.Url).AbsolutePath == expected);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Maps/GameIndex/" + bookmarked).AbsoluteUri);
+        Assert.Equal(200, (await initial).Status);
+        await Assertions.Expect(browser.Page.Locator("#filterGameType")).ToHaveValueAsync(selected);
+        var cleared = browser.Page.WaitForResponseAsync(r => new Uri(r.Url).AbsolutePath == "/Maps/GetMapListAjax");
+        await browser.Page.Locator("#resetFilters").ClickAsync();
+        Assert.Equal(200, (await cleared).Status);
+        await Assertions.Expect(browser.Page.Locator("#filterGameType")).ToHaveValueAsync("");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
     [InlineData(null, false)]
     [InlineData(TestPrincipalProfiles.GameAdmin, true)]
     public async Task Analytics_ShowsVoteTilesRankingsAndFilters_WithRestrictedVoteLog(string? profile, bool logVisible)
@@ -75,6 +95,8 @@ public sealed class PublicMapsBrowserTests
         await Assertions.Expect(browser.Page.Locator("#insightsTiles")).ToContainTextAsync("Votes");
         await Assertions.Expect(browser.Page.Locator("#insightsRankings")).ToContainTextAsync("A few votes so far");
         await Assertions.Expect(browser.Page.Locator("#insightsServer")).ToContainTextAsync("Public COD4x");
+        await Assertions.Expect(browser.Page.Locator("#insightsServer")).ToContainTextAsync("Empty server");
+        await Assertions.Expect(browser.Page.Locator("#insightsServer")).Not.ToContainTextAsync("Teamspeak");
         await Assertions.Expect(browser.Page.Locator("body")).Not.ToContainTextAsync("telemetry");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Link, new() { Name = "Vote Log", Exact = true }))
             .ToHaveCountAsync(logVisible ? 1 : 0);

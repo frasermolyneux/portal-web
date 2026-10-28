@@ -62,6 +62,13 @@ public class MapsControllerTests : IDisposable
     }
 
     [Fact]
+    public async Task GameIndex_WithAbsentGame_ClearsBookmarkedFilter()
+    {
+        var result = Assert.IsType<ViewResult>(await CreateSut().GameIndex(GameType.CallOfDuty5, Maps()));
+        Assert.Null(result.ViewData["GameType"]);
+    }
+
+    [Fact]
     public void Constructor_WithValidDependencies_DoesNotThrow()
     {
         // Act

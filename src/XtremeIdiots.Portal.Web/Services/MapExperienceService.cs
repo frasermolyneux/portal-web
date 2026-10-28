@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using MX.Api.Abstractions;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -35,9 +36,12 @@ public sealed class MapExperienceService(
 
     private async Task<Dictionary<Guid, string?>?> PublicNames(CancellationToken cancellationToken)
     {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(2));
         try
         {
-            var result = await repository.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
+            var result = await repository.LiveStatus.V1.GetAllGameServerLiveStatuses(timeout.Token)
+                .WaitAsync(timeout.Token).ConfigureAwait(false);
             return result is { IsSuccess: true }
                 ? result.Result?.Data?.Items?.ToDictionary(status => status.ServerId, status => status.Title)
                 : null;
@@ -67,6 +71,13 @@ public sealed class MapExperienceService(
         }, cancellationToken, TimeSpan.FromMinutes(10));
     }
 
+    public Task<ApiResult<PublicServerRotationDto>> DownloadPreview(Guid serverId,
+        Func<CancellationToken, Task<ApiResult<PublicServerRotationDto>>> read, CancellationToken cancellationToken)
+    {
+        return Cached($"maps:download-preview:{serverId}", read, cancellationToken,
+            canCache: result => result.IsSuccess && result.Result?.Data is not null);
+    }
+
     public Task<MapInsightsDto> Insights(int days, GameType? family, Guid? server, CancellationToken cancellationToken)
     {
         var to = DateTime.UtcNow;
@@ -78,7 +89,8 @@ public sealed class MapExperienceService(
         }, cancellationToken, TimeSpan.FromMinutes(2));
     }
 
-    private Task<T> Cached<T>(string key, Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken, TimeSpan? lifetime = null) where T : class
+    private Task<T> Cached<T>(string key, Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken,
+        TimeSpan? lifetime = null, Func<T, bool>? canCache = null) where T : class
     {
         return cache.TryGetValue<T>(key, out var cached) && cached is not null
             ? Task.FromResult(cached)
@@ -89,7 +101,8 @@ public sealed class MapExperienceService(
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(15));
                 var result = await read(timeout.Token).ConfigureAwait(false);
-                cache.Set(key, result, lifetime ?? TimeSpan.FromSeconds(30));
+                if (canCache?.Invoke(result) != false)
+                    cache.Set(key, result, lifetime ?? TimeSpan.FromSeconds(30));
                 return result;
             }, cancellationToken);
     }

@@ -37,7 +37,8 @@ public class MapsController(
     {
         try
         {
-            return View(await maps.BrowsableRotations(cancellationToken).ConfigureAwait(false));
+            var rotations = await maps.Rotations(cancellationToken).ConfigureAwait(false);
+            return View(rotations with { Servers = [.. rotations.Servers.Where(server => server.GameType != GameType.Unknown)] });
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -119,8 +120,10 @@ public class MapsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            ViewData["GameType"] = id == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : id;
-            return View(nameof(Index), await maps.Games(cancellationToken).ConfigureAwait(false));
+            var games = await maps.Games(cancellationToken).ConfigureAwait(false);
+            var family = id == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : id;
+            ViewData["GameType"] = family.HasValue && games.Games.Contains(family.Value) ? family : null;
+            return View(nameof(Index), games);
         }, nameof(GameIndex)).ConfigureAwait(false);
     }
 

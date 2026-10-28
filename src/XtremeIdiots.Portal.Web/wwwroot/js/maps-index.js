@@ -31,7 +31,7 @@ $(document).ready(function () {
                 }
                 // mutate url based on filters
                 const gt = document.getElementById('filterGameType')?.value;
-                let base = dataUrl;
+                let base = dataUrl.replace(/\/Maps\/GetMapListAjax.*/, '/Maps/GetMapListAjax');
                 if (gt) {
                     base = dataUrl.replace(/\/Maps\/GetMapListAjax.*/, '/Maps/GetMapListAjax/' + encodeURIComponent(gt));
                 }
