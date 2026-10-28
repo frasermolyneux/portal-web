@@ -1,9 +1,11 @@
 @using XtremeIdiots.Portal.Web.Extensions
+@model XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.PublicServerRotationDto
 @{
     ViewData["Title"] = "Map and mod downloads";
     ViewData["DisableClientTelemetry"] = true;
 }
 <div class="wrapper wrapper-content animated fadeInRight" id="mapDownloads"
+     data-rotation-ready="@(Model?.Maps.Count > 0 ? "true" : "false")"
      data-member="@(User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : "")">
     <div class="ibox">
         <div class="ibox-title native-download-header">
@@ -14,6 +16,23 @@
             <button id="downloadBack" type="button" class="btn btn-outline-secondary btn-sm" hidden>Back to collection</button>
         </div>
         <div class="ibox-content">
+            @if (Model is not null)
+            {
+                <section id="rotationPreview" aria-label="Maps to download">
+                    <h3><game-type-icon game="@Model.GameType" size="24" /> @Model.Title</h3>
+                    <p>@(Model.IsObservedHistory ? "Catch up on the maps played here over the last 2 days." : "Get the maps in this server's rotation, ready for your next game.")</p>
+                    <p>This pack includes the @Model.Maps.Count extra maps shown below. Maps already included with your game don't need downloading. Server mods are not included.</p>
+                    @if (Model.Maps.Count > 0)
+                    {
+                        <partial name="_PublicMapCards" model="Model.Maps" />
+                        <p class="small text-muted">The available maps are checked again when you prepare your download.</p>
+                    }
+                    else
+                    {
+                        <p role="status">No extra maps are available to download for this server right now.</p>
+                    }
+                </section>
+            }
             <form id="downloadSearch" class="native-download-filters">
                 @Html.AntiForgeryToken()
                 <div><label for="downloadGame" class="form-label">Game</label>
@@ -41,7 +60,7 @@
         </div>
         <div class="ibox-footer native-download-toolbar">
             <button id="downloadFolderZip" type="button" class="btn btn-primary" hidden>Create folder ZIP</button>
-            <button id="downloadRotationZip" type="button" class="btn btn-primary" hidden>Create rotation ZIP</button>
+            <button id="downloadRotationZip" type="button" class="btn btn-primary" hidden>Prepare map pack</button>
             <div id="downloadSelectionBar" class="native-download-toolbar" hidden>
                 <output id="downloadSelection">0 of 100 folders selected</output>
                 <button id="downloadZip" type="button" class="btn btn-primary" disabled>Create selected ZIP</button>

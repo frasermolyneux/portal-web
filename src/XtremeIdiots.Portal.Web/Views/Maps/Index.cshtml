@@ -1,4 +1,6 @@
-﻿@{
+﻿@using XtremeIdiots.Portal.Web.Extensions
+@model XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps.MapGamesDto
+@{
     ViewData["Title"] = "Maps Index";
     var dataUrl = "/Maps/GetMapListAjax";
     if (ViewData["GameType"] != null)
@@ -16,13 +18,11 @@
                     <label for="filterGameType" class="form-label">Map Family</label>
                     <select id="filterGameType" class="form-select">
                         <option value="">All Games</option>
-                        @foreach (var gt in
-                                                Enum.GetValues<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>()
-                                                .Where(game => game != XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType.CallOfDuty4x))
+                        @foreach (var gt in Model.Games)
                         {
                             var isSelected = ViewData["GameType"] != null && ViewData["GameType"]!.ToString() ==
                             gt.ToString();
-                            <option value="@gt" selected="@(isSelected ? "selected" : null)">@(gt == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType.CallOfDuty4 ? "COD4 / COD4x" : gt.ToString())</option>
+                            <option value="@gt" selected="@(isSelected ? "selected" : null)">@(gt == XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType.CallOfDuty4 ? "COD4 / COD4x" : gt.ToDisplayName())</option>
                         }
                     </select>
                 </div>

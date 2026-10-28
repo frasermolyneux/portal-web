@@ -4,56 +4,57 @@
 @{
     ViewData["Title"] = "Map Rotations";
 }
-<div class="wrapper wrapper-content animated fadeInRight">
+<div class="wrapper wrapper-content animated fadeInRight" id="publicRotations">
     <h2>Map Rotations</h2>
-    <p class="text-muted">Current normal rotations on our public servers, with all-time map ratings. When no applied normal rotation is known, recent history shows distinct maps observed over the last 48 hours, newest first; it is not a guaranteed rotation.</p>
-    <p>ZIP downloads contain available custom maps only, not built-in maps or server mods. Sign in to prepare a ZIP. COD2 rotation downloads are not supported.</p>
-    @if (Model.Servers.Count == 0)
-    {
-        <p role="status">No public servers are available.</p>
-    }
+    <p>Explore the maps on each server and see what other players think. Download a map pack to get ready to play.</p>
+    <div class="ibox"><div class="ibox-content">
+        <div class="row g-3">
+            <div class="col-md-5">
+                <label for="rotationGame" class="form-label">Game</label>
+                <select id="rotationGame" class="form-select">
+                    <option value="">All games</option>
+                    @foreach (var game in Model.Servers.Select(s => s.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : s.GameType).Distinct().Order())
+                    {
+                        <option value="@game">@(game == GameType.CallOfDuty4 ? "COD4 / COD4x" : game.ToDisplayName())</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-7">
+                <label for="rotationServer" class="form-label">Server</label>
+                <select id="rotationServer" class="form-select">
+                    <option value="">All servers</option>
+                    @foreach (var server in Model.Servers)
+                    {
+                        <option value="@server.GameServerId" data-game="@(server.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : server.GameType)">@server.Title</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div></div>
+    <p class="small text-muted">Map packs include extra maps you need to download, not maps already included with the game or server mods. Sign in to prepare a pack. COD2 map packs are not available yet.</p>
+    <p id="rotationEmpty" role="status" hidden="@(Model.Servers.Count > 0)">No maps to show for this selection.</p>
     @foreach (var server in Model.Servers)
     {
-        <section class="ibox public-map-rotation" aria-label="@server.Title">
+        <section class="ibox public-map-rotation" aria-label="@server.Title" data-server="@server.GameServerId"
+                 data-game="@(server.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : server.GameType)">
             <div class="ibox-title">
-                <h5><a asp-controller="Servers" asp-action="Details" asp-route-id="@server.GameServerId">@server.Title</a></h5>
+                <h5><game-type-icon game="@server.GameType" size="24" />
+                    <a asp-controller="Servers" asp-action="Details" asp-route-id="@server.GameServerId">@server.Title</a></h5>
                 <div class="ibox-tools">
-                    @if (server.Maps.Count > 0 && server.GameType is GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5)
+                    @if (server.GameType is GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5)
                     {
                         <a class="btn btn-primary btn-sm" asp-controller="MapDownloads" asp-action="Index"
-                           asp-route-rotation="@server.GameServerId">Download @(server.IsObservedHistory ? "recent maps" : "rotation") ZIP</a>
+                           asp-route-rotation="@server.GameServerId">Download map pack</a>
                     }
                 </div>
             </div>
             <div class="ibox-content">
-                <p class="small text-muted">@server.GameType.ToDisplayName() &middot;
-                    @(server.IsObservedHistory ? "Recent history (48 hours)" : $"Assigned rotation: {server.RotationTitle}")</p>
-                @if (server.Maps.Count == 0)
-                {
-                    <p class="text-muted">No maps observed in the last 48 hours.</p>
-                }
-                else
-                {
-                    <div class="public-map-strip" tabindex="0" role="list" aria-label="Maps on @server.Title">
-                        @foreach (var map in server.Maps)
-                        {
-                            <article class="public-map-card" role="listitem">
-                                <img src="@(string.IsNullOrWhiteSpace(map.MapImageUri) ? "/images/noimage.jpg" : map.MapImageUri)"
-                                     alt="@map.MapName" loading="lazy" width="240" height="180" />
-                                <div class="p-2">
-                                    <h6>@map.MapName</h6>
-                                    <p class="small mb-1">@map.Likes likes &middot; @map.Dislikes dislikes &middot; @map.Votes votes</p>
-                                    <progress value="@map.Likes" max="@(Math.Max(1, map.Votes))" aria-label="Approval for @map.MapName"></progress>
-                                    <p class="small mb-0">
-                                        @(map.Votes == 0 ? "Not yet rated" : $"{map.Approval:0.#}% approval")
-                                        @if (map.Votes is > 0 and < 5) { <span class="badge bg-secondary">Low vote count</span> }
-                                    </p>
-                                </div>
-                            </article>
-                        }
-                    </div>
-                }
+                <p class="small text-muted">@(server.IsObservedHistory ? "Recently played on this server (last 2 days)" : "This server's map rotation")</p>
+                <partial name="_PublicMapCards" model="server.Maps" />
             </div>
         </section>
     }
 </div>
+@section Scripts {
+    <script src="~/js/map-rotations.js" asp-append-version="true"></script>
+}

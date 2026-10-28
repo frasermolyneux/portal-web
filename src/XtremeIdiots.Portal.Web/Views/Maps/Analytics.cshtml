@@ -14,15 +14,15 @@
             </div>
         </div>
         <div class="ibox-content">
-            <p>Discover the maps players vote for. Vote volume and approval are separate measures; rankings require at least five votes. COD4 / COD4x share maps and ratings, but server filters retain their actual engine.</p>
+            <p>See which maps players love. Compare likes and dislikes, or explore the most popular maps on your favourite server.</p>
             <form id="mapInsightsFilters" class="row g-3 align-items-end">
-                <div class="col-md-3"><label for="insightsDays" class="form-label">Date range (UTC)</label>
+                <div class="col-md-3"><label for="insightsDays" class="form-label">When</label>
                     <select id="insightsDays" class="form-select">
                         <option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option>
                         <option value="90">Last 90 days</option><option value="180">Last 180 days</option><option value="365">Last 365 days</option>
                     </select>
                 </div>
-                <div class="col-md-3"><label for="insightsGame" class="form-label">Map family</label>
+                <div class="col-md-3"><label for="insightsGame" class="form-label">Game</label>
                     <select id="insightsGame" class="form-select">
                         <option value="">All games</option>
                         @foreach (var game in Model.Servers.Select(s => s.GameType == GameType.CallOfDuty4x ? GameType.CallOfDuty4 : s.GameType).Distinct().Order())
@@ -42,7 +42,7 @@
                 </div>
                 <div class="col-md-2"><button type="submit" class="btn btn-primary">Apply filters</button></div>
             </form>
-            <p class="small text-muted mt-3 mb-0">These are recorded votes, not unique voters. Family totals include unattributed legacy votes; a server filter excludes those votes. Hotspots measure telemetry samples, not map plays or sessions.</p>
+            <p class="small text-muted mt-3 mb-0">Popularity is the percentage of votes that are likes. Maps need at least five votes to appear in the highest and lowest rated lists. COD4 and COD4x share maps and ratings. Votes without a known server appear only in the all-server results.</p>
         </div>
     </div>
     <p id="insightsStatus" role="status" aria-live="polite">Loading map analytics...</p>
@@ -54,7 +54,7 @@
                 <div class="ibox-content"><div class="map-insights-chart"><canvas id="insightsVolume" aria-label="Vote volumes by map" role="img"></canvas></div></div>
             </section></div>
             <div class="col-lg-5"><section class="ibox">
-                <div class="ibox-title"><h5>Highest approval (5+ votes)</h5></div>
+                <div class="ibox-title"><h5>Highest rated (5+ votes)</h5></div>
                 <div class="ibox-content"><div class="map-insights-chart"><canvas id="insightsApproval" aria-label="Approval percentages by map" role="img"></canvas></div></div>
             </section></div>
         </div>
@@ -62,15 +62,10 @@
             <div class="ibox-content">
                 <label for="insightsRanking" class="form-label">Ranking</label>
                 <select id="insightsRanking" class="form-select mb-3">
-                    <option value="mostVoted">Most votes</option><option value="popular">Highest approval (5+ votes)</option>
-                    <option value="unpopular">Lowest approval (5+ votes)</option>
+                    <option value="mostVoted">Most votes</option><option value="popular">Highest rated (5+ votes)</option>
+                    <option value="unpopular">Lowest rated (5+ votes)</option>
                 </select>
                 <div id="insightsRankings" class="table-responsive"></div>
-            </div>
-        </section>
-        <section class="ibox"><div class="ibox-title"><h5>Player hotspots</h5></div>
-            <div class="ibox-content"><p class="small text-muted">Highest average player counts while the map was observed. Sample counts show the strength of the evidence.</p>
-                <div id="insightsHotspots" class="table-responsive"></div>
             </div>
         </section>
     </div>

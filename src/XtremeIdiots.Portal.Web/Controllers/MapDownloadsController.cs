@@ -4,6 +4,7 @@ using MX.Api.Abstractions;
 using System.Globalization;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services;
 using XtremeIdiots.Redirect.Api.Abstractions.V1;
@@ -16,9 +17,36 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
 {
     [HttpGet]
     [AllowAnonymous]
-    public IActionResult Index()
+    public async Task<IActionResult> Index([FromServices] MapExperienceService maps, Guid? rotation = null, CancellationToken cancellationToken = default)
     {
-        return View();
+        if (!ModelState.IsValid)
+            return BadRequest();
+        if (!rotation.HasValue)
+            return View();
+        var client = PortalClient(out var error);
+        if (client is null)
+            return error!;
+        try
+        {
+            var server = (await maps.Rotations(cancellationToken).ConfigureAwait(false)).Servers
+                .SingleOrDefault(server => server.GameServerId == rotation);
+            if (server is null)
+                return NotFound();
+            if (server.GameType is not (GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5))
+                return BadRequest("Map packs are available for COD4, COD4x and COD5.");
+            var game = server.GameType == GameType.CallOfDuty5 ? "cod5" : "cod4";
+            var available = await maps.DownloadPreview(server, ct => AvailableMaps(server, (page, version) =>
+                client.Collection(game, "maps", page: page, pageSize: 200, version: version, cancellationToken: ct)), cancellationToken).ConfigureAwait(false);
+            return !available.IsSuccess
+                ? StatusCode((int)available.StatusCode, available.StatusCode == HttpStatusCode.RequestEntityTooLarge
+                    ? "This pack contains more than 100 maps. Open Map and mod downloads (/MapDownloads) and choose smaller packs of up to 100 maps at a time."
+                    : "We couldn't check the maps right now. Please try again later.")
+                : View(available.Result!.Data);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return StatusCode(503, "We couldn't load this map pack. Please try again later.");
+        }
     }
 
     [HttpGet]
@@ -71,7 +99,7 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
     {
         if (!ModelState.IsValid || request is null || request.GameServerId == Guid.Empty)
             return BadRequest();
-        Repository.Abstractions.Models.V1.MapRotations.PublicServerRotationDto? server;
+        PublicServerRotationDto? server;
         try
         {
             server = (await maps.Rotations(cancellationToken).ConfigureAwait(false)).Servers
@@ -85,42 +113,58 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
         if (server is null)
             return NotFound();
         if (server.GameType is not (GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5))
-            return BadRequest(new { message = "Rotation ZIP downloads support COD4, COD4x and COD5 only." });
-        var names = server.Maps.Select(m => m.MapName).Where(n => !BuiltInMaps.IsBuiltIn(server.GameType, n))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return BadRequest(new { message = "Map packs are available for COD4, COD4x and COD5." });
         var game = server.GameType == GameType.CallOfDuty5 ? "cod5" : "cod4";
         return await Read(async client =>
         {
-            var paths = new HashSet<string>(StringComparer.Ordinal);
-            string? version = null;
-            // Version-pinned collection pages avoid one manager request per map.
-            for (var page = 1; page <= 50 && names.Count > 0; page++)
-            {
-                var response = await client.Collection(game, "maps", page: page, pageSize: 200, version: version,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
-                if (!response.IsSuccess || response.Result?.Data is not { } catalogue)
-                    return new ApiResult<ArchiveJob>(response.StatusCode);
-                version = catalogue.Version;
-                foreach (var entry in catalogue.Entries.Where(e => e.IsDirectory && e.Bytes > 0 && names.Contains(e.Name)
-                    && e.Path == $"redirect/{game}/usermaps/{e.Name}"))
-                {
-                    paths.Add(entry.Path);
-                    names.Remove(entry.Name);
-                }
+            var available = await AvailableMaps(server, (page, version) =>
+                client.Collection(game, "maps", page: page, pageSize: 200, version: version, cancellationToken: cancellationToken)).ConfigureAwait(false);
+            return !available.IsSuccess || available.Result?.Data is not { } selection
+                ? new ApiResult<ArchiveJob>(available.StatusCode)
+                : selection.Maps.Count == 0
+                ? new ApiResult<ArchiveJob>(HttpStatusCode.UnprocessableEntity)
+                : WithoutArchiveUrl(await client.CreateArchive(new CreateArchive(
+                    [.. selection.Maps.Select(map => $"redirect/{game}/usermaps/{map.MapName}").Order(StringComparer.Ordinal)]),
+                    cancellationToken).ConfigureAwait(false));
+        }).ConfigureAwait(false);
+    }
 
-                if (paths.Count > 100)
-                    return new ApiResult<ArchiveJob>(HttpStatusCode.RequestEntityTooLarge);
-                if (names.Count == 0 || (long)page * catalogue.PageSize >= catalogue.TotalCount)
-                    break;
-                if (page == 50)
-                    return new ApiResult<ArchiveJob>(HttpStatusCode.ServiceUnavailable);
+    private async static Task<ApiResult<PublicServerRotationDto>> AvailableMaps(PublicServerRotationDto server,
+        Func<int, string?, Task<ApiResult<CataloguePage>>> readPage)
+    {
+        var names = server.Maps.Select(m => m.MapName).Where(n => !BuiltInMaps.IsBuiltIn(server.GameType, n))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var game = server.GameType == GameType.CallOfDuty5 ? "cod5" : "cod4";
+        var found = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string? version = null;
+        // Version-pinned collection pages avoid one manager request per map.
+        for (var page = 1; page <= 50 && names.Count > 0; page++)
+        {
+            var response = await readPage(page, version).ConfigureAwait(false);
+            if (!response.IsSuccess || response.Result?.Data is not { } catalogue)
+                return new ApiResult<PublicServerRotationDto>(response.IsSuccess ? HttpStatusCode.BadGateway : response.StatusCode);
+            version = catalogue.Version;
+            foreach (var entry in catalogue.Entries.Where(e => e.IsDirectory && e.Bytes > 0 && names.Contains(e.Name)
+                && e.Path == $"redirect/{game}/usermaps/{e.Name}"))
+            {
+                found[entry.Name] = entry.Name;
+                names.Remove(entry.Name);
             }
 
-            return paths.Count == 0
-                ? new ApiResult<ArchiveJob>(HttpStatusCode.UnprocessableEntity)
-                : WithoutArchiveUrl(await client.CreateArchive(new CreateArchive([.. paths.Order(StringComparer.Ordinal)]),
-                cancellationToken).ConfigureAwait(false));
-        }).ConfigureAwait(false);
+            if (found.Count > 100)
+                return new ApiResult<PublicServerRotationDto>(HttpStatusCode.RequestEntityTooLarge);
+            if (names.Count == 0 || (long)page * catalogue.PageSize >= catalogue.TotalCount)
+                break;
+            if (page == 50)
+                return new ApiResult<PublicServerRotationDto>(HttpStatusCode.ServiceUnavailable);
+        }
+
+        return new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK, new ApiResponse<PublicServerRotationDto>(server with
+        {
+            Maps = [.. server.Maps.Where(map => found.ContainsKey(map.MapName))
+                .DistinctBy(map => map.MapName, StringComparer.OrdinalIgnoreCase)
+                .Select(map => map with { MapName = found[map.MapName] })]
+        }));
     }
 
     [HttpGet]
@@ -150,19 +194,9 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
 
     private async Task<IActionResult> Read<T>(Func<IRedirectPortalClient, Task<ApiResult<T>>> operation) where T : class
     {
-        if (!ModelState.IsValid)
-            return BadRequest();
-        var ip = HttpContext.Connection.RemoteIpAddress;
-        if (ip is null)
-            return BadRequest(new { message = "The client address is unavailable." });
-        if (ip.IsIPv4MappedToIPv6)
-            ip = ip.MapToIPv4();
-        var memberId = User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : null;
-        if (User.Identity?.IsAuthenticated == true &&
-            (!long.TryParse(memberId, NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0))
-            return StatusCode(StatusCodes.Status403Forbidden);
-        var userAgent = Request.Headers.UserAgent.ToString();
-        var client = redirect.ForPortal(new PortalCaller(memberId, ip.ToString(), userAgent[..Math.Min(512, userAgent.Length)]));
+        var client = PortalClient(out var error);
+        if (client is null)
+            return error!;
         var result = await operation(client).ConfigureAwait(false);
         if (result.IsSuccess && result.Result?.Data is { } data)
             return Json(data);
@@ -178,12 +212,42 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
                 404 => "The file or ZIP is no longer available.",
                 409 or 412 => "The content has changed. Refresh the files and start a new download.",
                 410 => "This ZIP has expired. Create a new ZIP.",
-                413 => "This rotation exceeds the ZIP folder, file or size limit.",
-                422 => "No downloadable custom map files are available for this rotation.",
+                413 => "This map pack is too large to download as one ZIP.",
+                422 => "There are no extra maps to download for this server.",
                 429 => "Too many requests. Please wait before trying again.",
                 _ => "Maps Manager is unavailable. Please try again later."
             }
         });
+    }
+
+    private IRedirectPortalClient? PortalClient(out IActionResult? error)
+    {
+        error = null;
+        if (!ModelState.IsValid)
+        {
+            error = BadRequest();
+            return null;
+        }
+
+        var ip = HttpContext.Connection.RemoteIpAddress;
+        if (ip is null)
+        {
+            error = BadRequest(new { message = "The client address is unavailable." });
+            return null;
+        }
+
+        if (ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
+        var memberId = User.Identity?.IsAuthenticated == true ? User.XtremeIdiotsId() : null;
+        if (User.Identity?.IsAuthenticated == true &&
+            (!long.TryParse(memberId, NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0))
+        {
+            error = StatusCode(StatusCodes.Status403Forbidden);
+            return null;
+        }
+
+        var userAgent = Request.Headers.UserAgent.ToString();
+        return redirect.ForPortal(new PortalCaller(memberId, ip.ToString(), userAgent[..Math.Min(512, userAgent.Length)]));
     }
 
     private static ApiResult<ArchiveJob> WithoutArchiveUrl(ApiResult<ArchiveJob> result)

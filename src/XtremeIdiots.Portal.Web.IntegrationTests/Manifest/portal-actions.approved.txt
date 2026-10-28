@@ -153,7 +153,7 @@ XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Collection#GET#MapDow
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#CreateArchive#POST#MapDownloads/CreateArchive#(XtremeIdiots.Redirect.Api.Abstractions.V1.CreateArchive)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#CreateRotationArchive#POST#MapDownloads/CreateRotationArchive#(XtremeIdiots.Portal.Web.Controllers.MapDownloadsController+RotationArchiveRequest,XtremeIdiots.Portal.Web.Services.MapExperienceService)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Grant#POST#MapDownloads/Grant#(XtremeIdiots.Redirect.Api.Abstractions.V1.CreateDownloadGrant)|StateChange
-XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Index#GET#MapDownloads/Index#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Index#GET#MapDownloads/Index#(XtremeIdiots.Portal.Web.Services.MapExperienceService,System.Nullable<System.Guid>)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapDownloadsController#Manifest#GET#MapDownloads/Manifest#(System.String,System.String,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#DeleteMapFromHost#POST#MapManager/DeleteMapFromHost#(XtremeIdiots.Portal.Web.ViewModels.DeleteMapFromHostModel)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapManagerController#Manage#GET#MapManager/Manage#(System.Guid)|BrowserPage
@@ -184,8 +184,8 @@ XtremeIdiots.Portal.Web.Controllers.MapRotationsController#SyncAssignment#POST#M
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#TerminateOrchestration#POST#MapRotations/TerminateOrchestration#(System.String,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapRotationsController#VerifyAssignment#POST#MapRotations/VerifyAssignment#(System.Guid,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.MapsController#Analytics#GET#Maps/Analytics#(XtremeIdiots.Portal.Web.Services.MapExperienceService)|BrowserPage
-XtremeIdiots.Portal.Web.Controllers.MapsController#GameIndex#GET#Maps/GameIndex#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>)|BrowserPage
-XtremeIdiots.Portal.Web.Controllers.MapsController#Index#GET#Maps/Index#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.MapsController#GameIndex#GET#Maps/GameIndex#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,XtremeIdiots.Portal.Web.Services.MapExperienceService)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.MapsController#Index#GET#Maps/Index#(XtremeIdiots.Portal.Web.Services.MapExperienceService)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.MapsController#Insights#GET#Maps/Insights#(XtremeIdiots.Portal.Web.Services.MapExperienceService,System.Int32,System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.Nullable<System.Guid>)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.MapsController#MapImage#GET#Maps/MapImage#(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType,System.String)|DownloadOrStream
 XtremeIdiots.Portal.Web.Controllers.MapsController#Rotations#GET#Maps/Rotations#(XtremeIdiots.Portal.Web.Services.MapExperienceService)|BrowserPage

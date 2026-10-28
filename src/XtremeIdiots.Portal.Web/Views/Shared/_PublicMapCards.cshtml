@@ -1,0 +1,23 @@
+@model IReadOnlyList<XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations.PublicRotationMapDto>
+<div class="public-map-strip" tabindex="0" role="list" aria-label="Maps">
+    @foreach (var map in Model)
+    {
+        <article class="public-map-card" role="listitem">
+            <img src="@(string.IsNullOrWhiteSpace(map.MapImageUri) ? "/images/noimage.jpg" : map.MapImageUri)"
+                 alt="@map.MapName" loading="lazy" width="240" height="180" />
+            <div class="p-2">
+                <h6>@map.MapName</h6>
+                <p class="small mb-1">@map.Likes likes &middot; @map.Dislikes dislikes</p>
+                <div class="map-approval @(map.Votes == 0 ? "unrated" : "")" role="meter"
+                     aria-valuenow="@map.Approval.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                     aria-valuemin="0" aria-valuemax="100" aria-label="Likes for @map.MapName">
+                    <span style="width: @map.Approval.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
+                </div>
+                <p class="small mb-0">
+                    @(map.Votes == 0 ? "Not yet rated" : $"{map.Approval:0.#}% liked this map")
+                    @if (map.Votes is > 0 and < 5) { <span class="badge bg-secondary">A few votes so far</span> }
+                </p>
+            </div>
+        </article>
+    }
+</div>

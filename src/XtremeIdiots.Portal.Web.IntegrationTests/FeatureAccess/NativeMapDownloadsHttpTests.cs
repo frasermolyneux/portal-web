@@ -68,13 +68,13 @@ public sealed partial class NativeMapDownloadsHttpTests
         var id = Guid.NewGuid();
         SetRotation(host, new PublicServerRotationDto { GameServerId = id, GameType = GameType.CallOfDuty4x });
         var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
-        repository.Setup(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.Setup(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             GameType.CallOfDuty4, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<MapInsightsDto>(HttpStatusCode.OK, new ApiResponse<MapInsightsDto>(new MapInsightsDto { TotalLikes = 2 })));
         using var valid = await host.Client.GetAsync($"/Maps/Insights?gameType=CallOfDuty4x&gameServerId={id}");
         Assert.Equal(HttpStatusCode.OK, valid.StatusCode);
         Assert.Equal(2, (await valid.Content.ReadFromJsonAsync<MapInsightsDto>())!.TotalVotes);
-        repository.Verify(r => r.MapAnalytics.V1.GetInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+        repository.Verify(r => r.MapAnalytics.V1.GetVoteInsights(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             GameType.CallOfDuty4, id, It.IsAny<CancellationToken>()), Times.Once);
         using var hidden = await host.Client.GetAsync($"/Maps/Insights?gameServerId={Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
@@ -102,9 +102,17 @@ public sealed partial class NativeMapDownloadsHttpTests
             folder with { Path = "redirect/cod4/mods/mp_custom" },
             folder with { Name = "mp_crash", Path = "redirect/cod4/usermaps/mp_crash" }))
             .WithData("CreateArchive", RedirectDtoFactory.CreateArchive(status: "complete"));
-        using var page = await host.Client.GetAsync($"/MapDownloads?rotation={serverId}");
+        using var previewRequest = new HttpRequestMessage(HttpMethod.Get, $"/MapDownloads?rotation={serverId}");
+        previewRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
+        using var page = await host.Client.SendAsync(previewRequest);
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
-        Assert.Empty(fake.Calls);
+        var preview = await page.Content.ReadAsStringAsync();
+        Assert.Contains("mp_custom", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("mp_crash", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("mp_missing", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("MP_CUSTOM", preview, StringComparison.Ordinal);
+        Assert.Single(MyRegex().Matches(preview));
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
         using var anonymous = await host.Client.PostAsJsonAsync("/MapDownloads/CreateRotationArchive", new { gameServerId = serverId });
         Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
         using var noToken = new HttpRequestMessage(HttpMethod.Post, "/MapDownloads/CreateRotationArchive")
@@ -114,17 +122,58 @@ public sealed partial class NativeMapDownloadsHttpTests
         noToken.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
         using var rejected = await host.Client.SendAsync(noToken);
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-        Assert.Empty(fake.Calls);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
         using var request = await Post(host, "/MapDownloads/CreateRotationArchive",
             new { gameServerId = serverId, paths = untrustedPaths }, true);
         using var response = await host.Client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var job = await response.Content.ReadFromJsonAsync<ArchiveJob>();
         Assert.Null(job!.DownloadUrl);
-        Assert.Equal(2, fake.Calls.Count);
+        Assert.Equal(3, fake.Calls.Count);
         Assert.Contains("Collection:cod4:maps", fake.Calls);
         Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
         Assert.All(fake.PortalCalls, caller => Assert.Equal("12345", caller.MemberId));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RotationPreview_CachesPublicMaps_ButRechecksOnExplicitPreparation(bool authenticated)
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4,
+            Maps = [new() { MapName = "mp_custom" }, new() { MapName = "mp_missing" }]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue(new ContentEntry(
+            "redirect/cod4/usermaps/mp_custom", "mp_custom", true, 1, DateTimeOffset.UnixEpoch, "v1", null)))
+            .WithData("CreateArchive", RedirectDtoFactory.CreateArchive());
+        for (var i = 0; i < 2; i++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/MapDownloads?rotation={id}");
+            request.Headers.Add("User-Agent", "Synthetic preview test");
+            if (authenticated)
+                request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
+            using var response = await host.Client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        Assert.Single(fake.Calls, call => call.StartsWith("Collection:", StringComparison.Ordinal));
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
+        Assert.All(fake.PortalCalls, caller =>
+        {
+            Assert.Equal(authenticated ? "12345" : null, caller.MemberId);
+            Assert.Equal("192.0.2.15", caller.IpAddress);
+            Assert.Equal("Synthetic preview test", caller.UserAgent);
+        });
+        using var prepare = await Post(host, "/MapDownloads/CreateRotationArchive", new { gameServerId = id }, true);
+        using var prepared = await host.Client.SendAsync(prepare);
+        Assert.Equal(HttpStatusCode.OK, prepared.StatusCode);
+        Assert.Equal(2, fake.Calls.Count(call => call.StartsWith("Collection:", StringComparison.Ordinal)));
+        Assert.Contains("CreateArchive:redirect/cod4/usermaps/mp_custom", fake.Calls);
     }
 
     [Theory]
@@ -147,6 +196,29 @@ public sealed partial class NativeMapDownloadsHttpTests
         using var request = await Post(host, "/MapDownloads/CreateRotationArchive", new { gameServerId = id }, true);
         using var response = await host.Client.SendAsync(request);
         Assert.Equal(status, (int)response.StatusCode);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task OversizedRotationPreview_ExplainsTheLimit_AndHowToMakeSmallerPacks()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4,
+            Maps = [.. Enumerable.Range(0, 101).Select(i => new PublicRotationMapDto { MapName = $"mp_custom_{i}" })]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue([.. Enumerable.Range(0, 101).Select(i =>
+            new ContentEntry($"redirect/cod4/usermaps/mp_custom_{i}", $"mp_custom_{i}", true, 1, DateTimeOffset.UnixEpoch, "v1", null))]));
+        using var response = await host.Client.GetAsync($"/MapDownloads?rotation={id}");
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.Contains("100 maps", text, StringComparison.Ordinal);
+        Assert.Contains("smaller packs", text, StringComparison.Ordinal);
+        Assert.Contains("/MapDownloads", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("try again", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
     }
 
@@ -311,4 +383,7 @@ public sealed partial class NativeMapDownloadsHttpTests
             };
         }
     }
+
+    [GeneratedRegex("class=\"public-map-card\"")]
+    private static partial Regex MyRegex();
 }
