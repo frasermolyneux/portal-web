@@ -14,6 +14,8 @@ namespace XtremeIdiots.Portal.Web.Services;
 public sealed class MapExperienceService(
     IRepositoryApiClient repository, IMemoryCache cache, DependencyReadCoordinator coordinator)
 {
+    private readonly static Lock gamesGate = new();
+
     public Task<PublicServerRotationsDto> Rotations(CancellationToken cancellationToken)
     {
         return Cached("maps:public-rotations", async ct =>
@@ -63,27 +65,35 @@ public sealed class MapExperienceService(
         };
     }
 
-    public async Task<MapGamesDto> Games(CancellationToken cancellationToken)
+    public Task<MapGamesDto> Games(CancellationToken cancellationToken)
     {
         const string key = "maps:catalogue-games";
-        var pending = await coordinator.RunAsync(DependencyWorkload.MapMetadata, key, () =>
+        cancellationToken.ThrowIfCancellationRequested();
+        Task<MapGamesDto> pending;
+        lock (gamesGate)
         {
             // Share only in-flight reads; completed results never hide catalogue changes.
             if (cache.TryGetValue<Task<MapGamesDto>>(key, out var existing) && existing is { IsCompleted: false })
-                return Task.FromResult(existing);
-            var read = ReadGames();
-            cache.Set(key, read, TimeSpan.FromSeconds(15));
-            return Task.FromResult(read);
-        }, cancellationToken).ConfigureAwait(false);
-        return await pending.WaitAsync(cancellationToken).ConfigureAwait(false);
+                pending = existing;
+            else
+            {
+                pending = ReadGames();
+                cache.Set(key, pending, TimeSpan.FromSeconds(15));
+            }
+        }
+
+        return pending.WaitAsync(cancellationToken);
     }
 
     private async Task<MapGamesDto> ReadGames()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var result = await repository.Maps.V1.GetMapGames(timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
-        return result.IsSuccess && result.Result?.Data is { } data
-            ? data : throw new InvalidOperationException("Map games are unavailable.");
+        return await coordinator.RunAsync(DependencyWorkload.MapMetadata, "maps:catalogue-games-read", async () =>
+        {
+            var result = await repository.Maps.V1.GetMapGames(timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
+            return result.IsSuccess && result.Result?.Data is { } data
+                ? data : throw new InvalidOperationException("Map games are unavailable.");
+        }, timeout.Token).ConfigureAwait(false);
     }
 
     public Task<ApiResult<PublicServerRotationDto>> DownloadPreview(PublicServerRotationDto server,

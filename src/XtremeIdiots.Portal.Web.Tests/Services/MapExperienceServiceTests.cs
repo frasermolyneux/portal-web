@@ -174,6 +174,39 @@ public sealed class MapExperienceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CatalogueGames_HoldTheRepositoryPermitUntilTheSharedReadCompletes()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = 0;
+        repository.Setup(r => r.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+            .Returns(async (CancellationToken ct) =>
+            {
+                Interlocked.Increment(ref entered);
+                await gate.Task.WaitAsync(ct);
+                return new ApiResult<MapGamesDto>(HttpStatusCode.OK, new ApiResponse<MapGamesDto>(new MapGamesDto()));
+            });
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var games = service.Games(CancellationToken.None);
+        var otherReads = Enumerable.Range(0, 4).Select(i =>
+            coordinator.RunAsync(DependencyWorkload.MapMetadata, $"other-metadata:{i}", async () =>
+            {
+                Interlocked.Increment(ref entered);
+                await gate.Task;
+                return i;
+            })).ToArray();
+        try
+        {
+            Assert.InRange(entered, 1, 4);
+        }
+        finally
+        {
+            gate.SetResult();
+            await games;
+            await Task.WhenAll(otherReads);
+        }
+    }
+
+    [Fact]
     public async Task DownloadPreviews_ChangeWithTheRotationSnapshot()
     {
         var service = new MapExperienceService(repository.Object, cache, coordinator);
