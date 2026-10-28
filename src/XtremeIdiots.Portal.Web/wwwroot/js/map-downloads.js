@@ -582,14 +582,16 @@
         byId('downloadSearch').hidden = true;
         byId('downloadHeading').textContent = 'Download map pack';
         byId('downloadContext').textContent = 'Get ready to play';
-        status(member ? 'Prepare your map pack, then save the ZIP when it is ready.' : 'Sign in to download these maps together as one ZIP.');
-        byId('downloadRotationZip').hidden = !member || root.dataset.rotationReady !== 'true';
+        const ready = root.dataset.rotationReady === 'true';
+        status(!ready ? 'No extra maps are available to download for this server right now.'
+            : member ? 'Prepare your map pack, then save the ZIP when it is ready.' : 'Sign in to download these maps together as one ZIP.');
+        byId('downloadRotationZip').hidden = !member || !ready;
         byId('downloadRotationZip').addEventListener('click', async () => {
             byId('downloadRotationZip').disabled = true;
             try { await createZip([], rotation); }
             finally { byId('downloadRotationZip').disabled = false; }
         });
-        if (byId('downloadLogin')) byId('downloadLogin').hidden = root.dataset.rotationReady !== 'true';
+        if (byId('downloadLogin')) byId('downloadLogin').hidden = !ready;
     } else void load();
     void restore();
 })();

@@ -200,6 +200,29 @@ public sealed partial class NativeMapDownloadsHttpTests
     }
 
     [Fact]
+    public async Task OversizedRotationPreview_ExplainsTheLimit_AndHowToMakeSmallerPacks()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4,
+            Maps = [.. Enumerable.Range(0, 101).Select(i => new PublicRotationMapDto { MapName = $"mp_custom_{i}" })]
+        });
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        fake.WithData("Collection", RedirectDtoFactory.CreateCatalogue([.. Enumerable.Range(0, 101).Select(i =>
+            new ContentEntry($"redirect/cod4/usermaps/mp_custom_{i}", $"mp_custom_{i}", true, 1, DateTimeOffset.UnixEpoch, "v1", null))]));
+        using var response = await host.Client.GetAsync($"/MapDownloads?rotation={id}");
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.Contains("100 maps", text, StringComparison.Ordinal);
+        Assert.Contains("smaller packs", text, StringComparison.Ordinal);
+        Assert.Contains("/MapDownloads", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("try again", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task RotationZip_StopsPagingOnceAllCustomMapsAreResolved_EvenWithALargerCatalogue()
     {
         await using var host = await CreateHost();

@@ -35,10 +35,12 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
             if (server.GameType is not (GameType.CallOfDuty4 or GameType.CallOfDuty4x or GameType.CallOfDuty5))
                 return BadRequest("Map packs are available for COD4, COD4x and COD5.");
             var game = server.GameType == GameType.CallOfDuty5 ? "cod5" : "cod4";
-            var available = await maps.DownloadPreview(server.GameServerId, ct => AvailableMaps(server, (page, version) =>
+            var available = await maps.DownloadPreview(server, ct => AvailableMaps(server, (page, version) =>
                 client.Collection(game, "maps", page: page, pageSize: 200, version: version, cancellationToken: ct)), cancellationToken).ConfigureAwait(false);
             return !available.IsSuccess
-                ? StatusCode((int)available.StatusCode, "We couldn't check the maps right now. Please try again later.")
+                ? StatusCode((int)available.StatusCode, available.StatusCode == HttpStatusCode.RequestEntityTooLarge
+                    ? "This pack contains more than 100 maps. Open Map and mod downloads (/MapDownloads) and choose smaller packs of up to 100 maps at a time."
+                    : "We couldn't check the maps right now. Please try again later.")
                 : View(available.Result!.Data);
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)

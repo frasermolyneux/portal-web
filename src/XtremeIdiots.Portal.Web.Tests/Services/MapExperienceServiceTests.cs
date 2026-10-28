@@ -123,6 +123,7 @@ public sealed class MapExperienceServiceTests : IDisposable
     {
         var service = new MapExperienceService(repository.Object, cache, coordinator);
         var id = Guid.NewGuid();
+        var server = new PublicServerRotationDto { GameServerId = id };
         var calls = 0;
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         async Task<ApiResult<PublicServerRotationDto>> Read(CancellationToken ct)
@@ -134,15 +135,92 @@ public sealed class MapExperienceServiceTests : IDisposable
                 new ApiResponse<PublicServerRotationDto>(new PublicServerRotationDto { GameServerId = id }));
         }
 
-        Assert.False((await service.DownloadPreview(id, Read, CancellationToken.None)).IsSuccess);
-        var first = service.DownloadPreview(id, Read, CancellationToken.None);
-        var second = service.DownloadPreview(id, Read, CancellationToken.None);
+        Assert.False((await service.DownloadPreview(server, Read, CancellationToken.None)).IsSuccess);
+        var first = service.DownloadPreview(server, Read, CancellationToken.None);
+        var second = service.DownloadPreview(server, Read, CancellationToken.None);
         gate.SetResult();
         await Task.WhenAll(first, second);
-        var cached = await service.DownloadPreview(id, Read, CancellationToken.None);
+        var cached = await service.DownloadPreview(server, Read, CancellationToken.None);
         Assert.True(cached.IsSuccess);
         Assert.Equal(id, cached.Result!.Data!.GameServerId);
+        Assert.InRange(calls, 1, 2);
+    }
+
+    [Fact]
+    public async Task CatalogueGames_ShareOnlyInFlightReads_AcrossRequests()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        repository.Setup(r => r.Maps.V1.GetMapGames(It.IsAny<CancellationToken>()))
+            .Returns(async (CancellationToken ct) =>
+            {
+                calls++;
+                await gate.Task.WaitAsync(ct);
+                return new ApiResult<MapGamesDto>(HttpStatusCode.OK, new ApiResponse<MapGamesDto>(
+                    new MapGamesDto { Games = [GameType.CallOfDuty4] }));
+            });
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var otherRequest = new MapExperienceService(repository.Object, cache, coordinator);
+        using var cancelled = new CancellationTokenSource();
+        var first = service.Games(cancelled.Token);
+        var second = otherRequest.Games(CancellationToken.None);
+        await cancelled.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+        Assert.Equal(1, calls);
+        gate.SetResult();
+        Assert.Single((await second).Games);
+        Assert.Single((await service.Games(CancellationToken.None)).Games);
         Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task DownloadPreviews_ChangeWithTheRotationSnapshot()
+    {
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var server = new PublicServerRotationDto { GameServerId = Guid.NewGuid(), GameType = GameType.CallOfDuty4 };
+        var calls = 0;
+        Task<ApiResult<PublicServerRotationDto>> Read(CancellationToken _)
+        {
+            calls++;
+            return Task.FromResult(new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationDto>(server)));
+        }
+
+        Assert.Empty((await service.DownloadPreview(server, Read, CancellationToken.None)).Result!.Data!.Maps);
+        server = server with { Maps = [new() { MapName = "mp_added" }] };
+        Assert.Single((await service.DownloadPreview(server, Read, CancellationToken.None)).Result!.Data!.Maps);
+        Assert.Single((await service.DownloadPreview(server, Read, CancellationToken.None)).Result!.Data!.Maps);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task SlowDownloadPreviews_DoNotBlockRepositoryReads()
+    {
+        var service = new MapExperienceService(repository.Object, cache, coordinator);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        async Task<ApiResult<PublicServerRotationDto>> Read(CancellationToken ct)
+        {
+            Interlocked.Increment(ref calls);
+            await gate.Task.WaitAsync(ct);
+            return new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK, new ApiResponse<PublicServerRotationDto>(new PublicServerRotationDto()));
+        }
+
+        var previews = Enumerable.Range(0, 4).Select(_ => service.DownloadPreview(
+            new PublicServerRotationDto { GameServerId = Guid.NewGuid() }, Read, CancellationToken.None)).ToArray();
+        repository.Setup(r => r.MapRotations.V1.GetPublicServerRotations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationsDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationsDto>(new PublicServerRotationsDto())));
+        try
+        {
+            await service.Rotations(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(2, calls);
+        }
+        finally
+        {
+            gate.SetResult();
+            await Task.WhenAll(previews);
+        }
     }
 
     [Fact]

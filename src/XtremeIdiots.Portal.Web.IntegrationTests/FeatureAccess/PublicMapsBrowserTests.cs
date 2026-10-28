@@ -124,6 +124,25 @@ public sealed class PublicMapsBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(TestPrincipalProfiles.GameAdmin)]
+    public async Task EmptyRotationPreview_DoesNotSuggestUnavailablePreparation(string? profile)
+    {
+        var fake = new FakeRedirectApiClient().WithData("Collection", RedirectDtoFactory.CreateCatalogue());
+        await using var browser = await BrowserFixture.CreateAsync(profile, services =>
+        {
+            services.AddSingleton(Repository().Object);
+            services.AddSingleton<IRedirectApiClient>(fake);
+        });
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapDownloads?rotation={serverId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("#downloadStatus")).ToHaveTextAsync("No extra maps are available to download for this server right now.");
+        await Assertions.Expect(browser.Page.Locator("#downloadRotationZip")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#downloadLogin")).Not.ToBeVisibleAsync();
+        Assert.DoesNotContain(fake.Calls, call => call.StartsWith("CreateArchive:", StringComparison.Ordinal));
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task PublicRotations_ShowAssignedAndHistoryPopularity_AndOnlyExplicitAuthenticatedZipCreation()
     {

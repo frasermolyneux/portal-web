@@ -6,7 +6,8 @@ public enum DependencyWorkload
     IpIntelligence,
     Telemetry,
     Configuration,
-    MapMetadata
+    MapMetadata,
+    MapDownloads
 }
 
 public sealed class DependencyReadCoordinator : IDisposable
@@ -17,7 +18,8 @@ public sealed class DependencyReadCoordinator : IDisposable
         [DependencyWorkload.IpIntelligence] = new(4),
         [DependencyWorkload.Telemetry] = new(2),
         [DependencyWorkload.Configuration] = new(4),
-        [DependencyWorkload.MapMetadata] = new(4)
+        [DependencyWorkload.MapMetadata] = new(4),
+        [DependencyWorkload.MapDownloads] = new(2)
     };
 
     // Fixed stripes bound coordination memory even when inputs contain many unique keys.

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using MX.Api.Abstractions;
+using System.Security.Cryptography;
+using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -61,23 +63,35 @@ public sealed class MapExperienceService(
         };
     }
 
-    public Task<MapGamesDto> Games(CancellationToken cancellationToken)
+    public async Task<MapGamesDto> Games(CancellationToken cancellationToken)
     {
-        return coordinator.RunAsync(DependencyWorkload.MapMetadata, "maps:catalogue-games", async () =>
+        const string key = "maps:catalogue-games";
+        var pending = await coordinator.RunAsync(DependencyWorkload.MapMetadata, key, () =>
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(15));
-            var result = await repository.Maps.V1.GetMapGames(timeout.Token).ConfigureAwait(false);
-            return result.IsSuccess && result.Result?.Data is { } data
-                ? data : throw new InvalidOperationException("Map games are unavailable.");
-        }, cancellationToken);
+            // Share only in-flight reads; completed results never hide catalogue changes.
+            if (cache.TryGetValue<Task<MapGamesDto>>(key, out var existing) && existing is { IsCompleted: false })
+                return Task.FromResult(existing);
+            var read = ReadGames();
+            cache.Set(key, read, TimeSpan.FromSeconds(15));
+            return Task.FromResult(read);
+        }, cancellationToken).ConfigureAwait(false);
+        return await pending.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public Task<ApiResult<PublicServerRotationDto>> DownloadPreview(Guid serverId,
+    private async Task<MapGamesDto> ReadGames()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var result = await repository.Maps.V1.GetMapGames(timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
+        return result.IsSuccess && result.Result?.Data is { } data
+            ? data : throw new InvalidOperationException("Map games are unavailable.");
+    }
+
+    public Task<ApiResult<PublicServerRotationDto>> DownloadPreview(PublicServerRotationDto server,
         Func<CancellationToken, Task<ApiResult<PublicServerRotationDto>>> read, CancellationToken cancellationToken)
     {
-        return Cached($"maps:download-preview:{serverId}", read, cancellationToken,
-            canCache: result => result.IsSuccess && result.Result?.Data is not null);
+        var snapshot = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(server)));
+        return Cached($"maps:download-preview:{server.GameServerId}:{snapshot}", read, cancellationToken,
+            canCache: result => result.IsSuccess && result.Result?.Data is not null, workload: DependencyWorkload.MapDownloads);
     }
 
     public Task<MapInsightsDto> Insights(int days, GameType? family, Guid? server, CancellationToken cancellationToken)
@@ -92,11 +106,11 @@ public sealed class MapExperienceService(
     }
 
     private Task<T> Cached<T>(string key, Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken,
-        TimeSpan? lifetime = null, Func<T, bool>? canCache = null) where T : class
+        TimeSpan? lifetime = null, Func<T, bool>? canCache = null, DependencyWorkload workload = DependencyWorkload.MapMetadata) where T : class
     {
         return cache.TryGetValue<T>(key, out var cached) && cached is not null
             ? Task.FromResult(cached)
-            : coordinator.RunAsync(DependencyWorkload.MapMetadata, key, async () =>
+            : coordinator.RunAsync(workload, key, async () =>
             {
                 if (cache.TryGetValue<T>(key, out var existing) && existing is not null)
                     return existing;
