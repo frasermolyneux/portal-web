@@ -397,3 +397,31 @@ dotnet_naming_style.camel_case.required_suffix =
 dotnet_naming_style.camel_case.word_separator = 
 dotnet_naming_style.camel_case.capitalization = camel_case
 
+# BEGIN platform-devex managed .NET analyzer policy
+# Managed by platform-devex repository standards. Do not edit this section by hand.
+# Provenance: repository-standards-v1 / dotnet-editorconfig-v1
+[*.{cs,vb}]
+# Profile: curated-low-noise
+# Public XML documentation completeness is not an estate-wide correctness requirement.
+dotnet_diagnostic.CS1591.severity = none
+# Expression-value simplification is optional style; compiler correctness diagnostics remain enabled.
+dotnet_diagnostic.IDE0058.severity = none
+# Expression-bodied member selection is a formatting preference rather than a correctness control.
+dotnet_diagnostic.IDE0022.severity = none
+# ConfigureAwait is not required for the estate's application and test workloads.
+dotnet_diagnostic.CA2007.severity = none
+# Source-generated logging is an optional micro-optimisation for these personal projects.
+dotnet_diagnostic.CA1848.severity = none
+# Namespace-to-folder alignment is a repository layout preference rather than a correctness control.
+dotnet_diagnostic.IDE0130.severity = none
+# File-scoped namespace selection is a formatting preference rather than a correctness control.
+dotnet_diagnostic.IDE0161.severity = none
+# Logging argument evaluation is an optional performance optimisation for these workloads.
+dotnet_diagnostic.CA1873.severity = none
+# Conditional-expression selection is a readability preference rather than a correctness control.
+dotnet_diagnostic.IDE0046.severity = none
+# Primary-constructor adoption is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0290.severity = none
+# Collection-expression adoption is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0300.severity = none
+# END platform-devex managed .NET analyzer policy
