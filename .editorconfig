@@ -92,4 +92,6 @@ dotnet_diagnostic.IDE0046.severity = none
 dotnet_diagnostic.IDE0290.severity = none
 # Collection-expression adoption is a modernisation preference rather than a correctness control.
 dotnet_diagnostic.IDE0300.severity = none
+# Redundant suppression cleanup is low-value churn when the centrally managed policy changes diagnostic severity.
+dotnet_diagnostic.IDE0370.severity = none
 # END platform-devex managed .NET analyzer policy
