@@ -163,6 +163,8 @@ dotnet_diagnostic.CA1865.severity = none
 dotnet_diagnostic.CA1866.severity = none
 # JsonSerializerOptions caching is a micro-optimisation deferred from the initial baseline.
 dotnet_diagnostic.CA1869.severity = none
+# Sonar's retained S8949 rule reports cancellation-token forwarding, so the duplicate compiler diagnostic is suppressed.
+dotnet_diagnostic.CA2016.severity = none
 # String contains API adoption is a modernisation preference rather than a correctness defect.
 dotnet_diagnostic.CA2249.severity = none
 # Source-generated regular-expression adoption is a performance modernisation deferred from the initial baseline.
@@ -221,6 +223,8 @@ dotnet_diagnostic.IDE0060.severity = none
 dotnet_diagnostic.IDE0061.severity = none
 # Using statement syntax is a style preference rather than a correctness control.
 dotnet_diagnostic.IDE0063.severity = none
+# Missing switch-case population is deferred when compiler exhaustiveness and application correctness checks already pass.
+dotnet_diagnostic.IDE0072.severity = none
 # Pattern matching simplification is a modernisation preference rather than a correctness control.
 dotnet_diagnostic.IDE0078.severity = none
 # Target-typed construction is a modernisation preference rather than a correctness control.
