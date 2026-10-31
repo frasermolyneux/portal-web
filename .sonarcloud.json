@@ -1,0 +1,168 @@
+{
+  "version": "sonar-policy-v1",
+  "provenance": "repository-standards-v1",
+  "profiles": [
+    "actionable-only",
+    "common-vendor-assets"
+  ],
+  "ignoredRules": [
+    {
+      "key": "csharpsquid:S2699",
+      "reason": "Test assertion heuristics are deferred until the actionable correctness backlog is controlled."
+    },
+    {
+      "key": "csharpsquid:S3237",
+      "reason": "Contextual keyword preference is a readability convention rather than a correctness defect."
+    },
+    {
+      "key": "csharpsquid:S3427",
+      "reason": "Overlapping optional overloads are retained unless they cause a demonstrated correctness problem."
+    },
+    {
+      "key": "javascript:S2004",
+      "reason": "Nesting depth is deferred as maintainability work under the initial actionable-only baseline."
+    },
+    {
+      "key": "javascript:S2699",
+      "reason": "Test assertion heuristics are deferred until the actionable correctness backlog is controlled."
+    },
+    {
+      "key": "javascript:S3358",
+      "reason": "Nested ternary preference is a readability convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S3776",
+      "reason": "Cognitive complexity is deferred as maintainability work under the initial actionable-only baseline."
+    },
+    {
+      "key": "javascript:S5843",
+      "reason": "Regular-expression complexity is deferred unless it creates a security or correctness risk."
+    },
+    {
+      "key": "javascript:S6353",
+      "reason": "Concise regular-expression syntax is a style preference rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S6535",
+      "reason": "Unnecessary escape removal is a style preference rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S6582",
+      "reason": "Optional chaining is a modernisation preference rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7758",
+      "reason": "Unicode-aware string API modernisation is deferred unless a concrete correctness defect exists."
+    },
+    {
+      "key": "javascript:S7767",
+      "reason": "Bitwise truncation replacement is deferred unless a concrete numeric correctness defect exists."
+    },
+    {
+      "key": "javascript:S7770",
+      "reason": "Built-in conversion preference is a modernisation convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7772",
+      "reason": "The node protocol import form is a style convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7773",
+      "reason": "Static Number API preference is a modernisation convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7776",
+      "reason": "Set replacement is a micro-performance recommendation deferred from the initial baseline."
+    },
+    {
+      "key": "javascript:S7780",
+      "reason": "String.raw preference is a readability convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7781",
+      "reason": "replaceAll preference is a modernisation convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7785",
+      "reason": "Top-level await preference is a modernisation convention rather than a correctness defect."
+    },
+    {
+      "key": "javascript:S7786",
+      "reason": "Error subclass preference is deferred unless callers depend on the more specific type."
+    },
+    {
+      "key": "javascript:S9382",
+      "reason": "Sequential await optimisation is deferred until correctness and security findings are controlled."
+    },
+    {
+      "key": "python:S1192",
+      "reason": "String literal duplication is deferred as maintainability work under the initial baseline."
+    },
+    {
+      "key": "python:S3776",
+      "reason": "Cognitive complexity is deferred as maintainability work under the initial actionable-only baseline."
+    },
+    {
+      "key": "python:S5778",
+      "reason": "Exception-test invocation heuristics are deferred until the actionable correctness backlog is controlled."
+    },
+    {
+      "key": "shell:S7677",
+      "reason": "Standard-error routing is deferred as a shell usability convention in the initial baseline."
+    },
+    {
+      "key": "Web:InputWithoutLabelCheck",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S5254",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S5256",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S6840",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S6843",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S6845",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S6850",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    },
+    {
+      "key": "Web:S6853",
+      "reason": "Accessibility heuristics are staged for progressive re-enablement after the actionable baseline."
+    }
+  ],
+  "exclusions": [
+    {
+      "pattern": "**/node_modules/**",
+      "reason": "Package-manager dependencies are third-party inputs and are not maintained source."
+    },
+    {
+      "pattern": "**/vendor/**",
+      "reason": "Vendored dependencies are third-party inputs and are not maintained source."
+    },
+    {
+      "pattern": "**/wwwroot/lib/**",
+      "reason": "Client libraries under wwwroot are vendored assets and are not maintained source."
+    },
+    {
+      "pattern": "**/*.min.js",
+      "reason": "Minified JavaScript is a generated distribution asset rather than maintained source."
+    },
+    {
+      "pattern": "**/*.min.css",
+      "reason": "Minified CSS is a generated distribution asset rather than maintained source."
+    }
+  ]
+}

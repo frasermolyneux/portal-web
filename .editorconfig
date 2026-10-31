@@ -94,4 +94,157 @@ dotnet_diagnostic.IDE0290.severity = none
 dotnet_diagnostic.IDE0300.severity = none
 # Redundant suppression cleanup is low-value churn when the centrally managed policy changes diagnostic severity.
 dotnet_diagnostic.IDE0370.severity = none
+# Profile: actionable-only
+# XML documentation reference precision is deferred from the initial actionable-only baseline.
+dotnet_diagnostic.CS0419.severity = none
+# XML documentation formatting is deferred from the initial actionable-only baseline.
+dotnet_diagnostic.CS1570.severity = none
+# XML parameter documentation completeness is deferred from the initial actionable-only baseline.
+dotnet_diagnostic.CS1573.severity = none
+# Public field design is an API convention rather than an estate-wide correctness requirement.
+dotnet_diagnostic.CA1051.severity = none
+# Cancellation-token parameter ordering is an API convention rather than a correctness defect.
+dotnet_diagnostic.CA1068.severity = none
+# Explicit culture selection is deferred unless a concrete globalization defect is identified.
+dotnet_diagnostic.CA1304.severity = none
+# Explicit format-provider selection is deferred unless a concrete globalization defect is identified.
+dotnet_diagnostic.CA1305.severity = none
+# String-comparison overload preference is deferred unless a concrete correctness defect is identified.
+dotnet_diagnostic.CA1310.severity = none
+# Culture specification is deferred unless a concrete globalization defect is identified.
+dotnet_diagnostic.CA1311.severity = none
+# ArgumentNullException helper adoption is a modernisation preference rather than a correctness defect.
+dotnet_diagnostic.CA1510.severity = none
+# Exception helper adoption is a modernisation preference rather than a correctness defect.
+dotnet_diagnostic.CA1512.severity = none
+# Identifier underscore restrictions are naming conventions rather than correctness controls.
+dotnet_diagnostic.CA1707.severity = none
+# Type suffix restrictions are naming conventions rather than correctness controls.
+dotnet_diagnostic.CA1711.severity = none
+# Keyword identifier restrictions are naming conventions rather than correctness controls.
+dotnet_diagnostic.CA1716.severity = none
+# Primitive type name restrictions are naming conventions rather than correctness controls.
+dotnet_diagnostic.CA1720.severity = none
+# Event-handler naming is a convention rather than an estate-wide correctness requirement.
+dotnet_diagnostic.CA1727.severity = none
+# Default value initialization cleanup is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1805.severity = none
+# Static member conversion is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1822.severity = none
+# Empty array allocation cleanup is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1825.severity = none
+# Index access replacement is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1826.severity = none
+# Length property selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1829.severity = none
+# Dictionary key lookup selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1841.severity = none
+# Character literal selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1847.severity = none
+# Hash computation API selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1850.severity = none
+# Internal type sealing is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1852.severity = none
+# Dictionary access consolidation is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1854.severity = none
+# Concrete type selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1859.severity = none
+# Count comparison replacement is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1860.severity = none
+# Constant array reuse is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1861.severity = none
+# String comparison allocation reduction is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1862.severity = none
+# Dictionary insertion consolidation is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1864.severity = none
+# String API overload selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1865.severity = none
+# Character overload selection is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1866.severity = none
+# JsonSerializerOptions caching is a micro-optimisation deferred from the initial baseline.
+dotnet_diagnostic.CA1869.severity = none
+# String contains API adoption is a modernisation preference rather than a correctness defect.
+dotnet_diagnostic.CA2249.severity = none
+# Source-generated regular-expression adoption is a performance modernisation deferred from the initial baseline.
+dotnet_diagnostic.SYSLIB1044.severity = none
+# Source-generated regular-expression adoption is a performance modernisation deferred from the initial baseline.
+dotnet_diagnostic.SYSLIB1045.severity = none
+# Assertion API preference is deferred while functional test failures and correctness findings remain visible.
+dotnet_diagnostic.xUnit2032.severity = none
+# Analyzer-specific style guidance is deferred from the initial actionable-only baseline.
+dotnet_diagnostic.AV0025.severity = none
+# Cast simplification is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0004.severity = none
+# Explicit type selection is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0007.severity = none
+# Pattern matching simplification is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0010.severity = none
+# Object initialization syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0017.severity = none
+# Inline variable declaration is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0018.severity = none
+# Pattern matching syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0019.severity = none
+# Expression-bodied constructor selection is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0021.severity = none
+# Collection initialization syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0028.severity = none
+# Null propagation syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0031.severity = none
+# Auto-property selection is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0032.severity = none
+# Inferred member naming is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0037.severity = none
+# Local function selection is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0039.severity = none
+# Accessibility modifier declaration is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0040.severity = none
+# Deconstruction syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0042.severity = none
+# Readonly field conversion is a maintainability preference deferred from the initial baseline.
+dotnet_diagnostic.IDE0044.severity = none
+# Conditional expression syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0045.severity = none
+# Parenthesis preference is formatting rather than a correctness control.
+dotnet_diagnostic.IDE0047.severity = none
+# Parenthesis preference is formatting rather than a correctness control.
+dotnet_diagnostic.IDE0048.severity = none
+# Unused private member cleanup is deferred as maintainability work in the initial baseline.
+dotnet_diagnostic.IDE0051.severity = none
+# Unread private member cleanup is deferred as maintainability work in the initial baseline.
+dotnet_diagnostic.IDE0052.severity = none
+# Unnecessary assignment cleanup is deferred as maintainability work in the initial baseline.
+dotnet_diagnostic.IDE0059.severity = none
+# Unused parameter cleanup is deferred as maintainability work in the initial baseline.
+dotnet_diagnostic.IDE0060.severity = none
+# Array element access simplification is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0061.severity = none
+# Using statement syntax is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0063.severity = none
+# Pattern matching simplification is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0078.severity = none
+# Target-typed construction is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0090.severity = none
+# Lambda simplification is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0100.severity = none
+# Lambda expression removal is a style preference rather than a correctness control.
+dotnet_diagnostic.IDE0200.severity = none
+# Null check simplification is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0240.severity = none
+# Null check syntax is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0270.severity = none
+# Collection expression adoption is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0301.severity = none
+# Collection expression adoption is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0305.severity = none
+# Collection expression adoption is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0306.severity = none
+# System.Threading.Lock adoption is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0330.severity = none
+# Implicit object creation is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0350.severity = none
+# Unbound generic type use is a modernisation preference rather than a correctness control.
+dotnet_diagnostic.IDE0390.severity = none
+# Naming style enforcement is deferred from the initial actionable-only baseline.
+dotnet_diagnostic.IDE1006.severity = none
 # END platform-devex managed .NET analyzer policy
