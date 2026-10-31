@@ -1,0 +1,11 @@
+# Managed by platform-devex repository standards. Do not edit by hand.
+# Provenance: repository-standards-v1 / eslint-ignore-v1
+# Profile: common-vendor-assets
+# Package-manager dependencies are third-party inputs and are not maintained source.
+**/node_modules/**
+# Vendored dependencies are third-party inputs and are not maintained source.
+**/vendor/**
+# Client libraries under wwwroot are vendored assets and are not maintained source.
+**/wwwroot/lib/**
+# Minified JavaScript is a generated distribution asset rather than maintained source.
+**/*.min.js
