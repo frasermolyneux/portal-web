@@ -10,12 +10,12 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" />
-    <PackageReference Include="MX.Api.Abstractions" Version="2.3.81" />
-    <PackageReference Include="MX.Api.Client" Version="2.3.81" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
+    <PackageReference Include="MX.Api.Abstractions" Version="2.3.89" />
+    <PackageReference Include="MX.Api.Client" Version="2.3.89" />
     <PackageReference Include="MX.InvisionCommunity.Api.Client" Version="1.0.66" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="4.2.88" />
-    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="4.2.88" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Abstractions.V1" Version="4.2.91" />
+    <PackageReference Include="XtremeIdiots.Portal.Repository.Api.Client.V1" Version="4.2.91" />
   </ItemGroup>
 
 </Project>
