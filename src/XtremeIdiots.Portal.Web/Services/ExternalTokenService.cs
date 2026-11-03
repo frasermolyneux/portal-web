@@ -50,7 +50,7 @@ public class ExternalTokenService(
 
             if (age > tokenExpiry || age < -TimeSpan.FromMinutes(1))
             {
-                logger.LogDebug("Token expired for forum member {ForumMemberId}, age: {Age}", forumMemberId, age);
+                logger.LogDebug("External token expired, age: {Age}", age);
                 return new ExternalTokenResult(false, null, "Token expired");
             }
 
@@ -62,7 +62,7 @@ public class ExternalTokenService(
                 Encoding.UTF8.GetBytes(providedHmac),
                 Encoding.UTF8.GetBytes(expectedHmac)))
             {
-                logger.LogWarning("Invalid HMAC signature for forum member {ForumMemberId}", forumMemberId);
+                logger.LogWarning("Invalid external token HMAC signature");
                 return new ExternalTokenResult(false, null, "Invalid signature");
             }
 

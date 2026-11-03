@@ -325,3 +325,10 @@ These patterns are deprecated. The SCSS retains bridge definitions for backward 
 | `onclick="copyToClipboard(...)"`            | `data-copy-target` attribute                                          |
 | `style="display:none"` on anti-forgery form | `af-hidden` CSS class                                                 |
 | Inline `style="height: ..."` on map divs    | `player-location-map` CSS class                                       |
+
+## Admin action rich text
+
+Render persisted admin-action reasons through `AdminActionHtmlSanitizer` before
+inserting them as HTML. The sanitizer preserves supported rich-text formatting
+while removing executable content and disallowed tags, attributes, and styles.
+Fetched HTML fragments must also use the shared `PortalAsync.renderHtml` helper.

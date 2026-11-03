@@ -83,7 +83,7 @@
     <div class="mb-3">
         <div class="fw-semibold mb-1 small text-uppercase text-muted">Reason / Notes</div>
         <div class="admin-action-text border rounded p-2"
-            style="max-height:220px; overflow:auto; white-space:pre-wrap;">@Html.Raw(adminAction.Text)</div>
+            style="max-height:220px; overflow:auto; white-space:pre-wrap;">@Html.Raw(XtremeIdiots.Portal.Web.Helpers.AdminActionHtmlSanitizer.Sanitize(adminAction.Text))</div>
     </div>
 
     <div class="d-flex flex-wrap gap-2 mb-2">

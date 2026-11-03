@@ -90,7 +90,7 @@
         panel.innerHTML = '<div class="p-3 text-center text-muted"><span class="spinner-border spinner-border-sm"></span> Loading...</div>';
         fetch('/AdminActions/GetMyAdminActionDetails?id=' + encodeURIComponent(id))
             .then(r => { if (!r.ok) throw new Error('Failed'); return r.text(); })
-            .then(html => { panel.innerHTML = html; })
+            .then(html => { PortalAsync.renderHtml(panel, html); })
             .catch(() => { panel.innerHTML = '<div class="alert alert-danger m-2">Failed to load details.</div>'; });
     }
 
