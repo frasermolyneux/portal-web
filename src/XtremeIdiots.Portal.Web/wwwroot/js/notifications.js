@@ -14,6 +14,16 @@
         if (poller) return poller.refreshAfterCurrent();
     }
 
+    function safeActionUrl(value) {
+        if (typeof value !== 'string' || !value.trim()) return '#';
+        try {
+            var url = new URL(value, window.location.origin);
+            if (url.protocol === 'https:' || url.protocol === 'http:') return url.href;
+        } catch { /* Invalid URL is reported below. */ }
+        console.warn('Rejected unsafe notification action URL');
+        return '#';
+    }
+
     function updateBadge(count) {
         var badge = document.getElementById('notificationBadge');
         if (!badge) return;
@@ -55,7 +65,7 @@
 
         var html = notifications.map(function (n) {
             var readClass = n.isRead ? '' : ' bg-light';
-            var actionUrl = n.actionUrl || '#';
+            var actionUrl = safeActionUrl(n.actionUrl);
             return '<a href="' + escapeHtml(actionUrl) + '" class="dropdown-item notification-item py-2 px-3' + readClass + '" ' +
                 'data-notification-id="' + escapeHtml(String(n.notificationId)) + '" style="white-space: normal;">' +
                 '<div class="d-flex justify-content-between">' +

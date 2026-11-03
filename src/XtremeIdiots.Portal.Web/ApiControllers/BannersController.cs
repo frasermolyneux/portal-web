@@ -94,8 +94,7 @@ public class BannersController(
         {
             if (string.IsNullOrWhiteSpace(ipAddress) || string.IsNullOrWhiteSpace(queryPort) || string.IsNullOrWhiteSpace(imageName))
             {
-                Logger.LogWarning("User {UserId} provided invalid parameters for GameTracker banner request: IP={IpAddress}, Port={QueryPort}, Image={ImageName}",
-                    User.XtremeIdiotsId(), ipAddress, queryPort, imageName);
+                Logger.LogWarning("User {UserId} provided invalid parameters for a GameTracker banner request", User.XtremeIdiotsId());
 
                 return BadRequest("Invalid parameters provided");
             }
@@ -104,13 +103,11 @@ public class BannersController(
 
             if (memoryCache.TryGetValue(cacheKey, out ApiResult<GameTrackerBannerDto>? repositoryApiResponse) && repositoryApiResponse != null)
             {
-                Logger.LogDebug("Retrieved GameTracker banner data from cache for {IpAddress}:{QueryPort}/{ImageName}",
-                    ipAddress, queryPort, imageName);
+                Logger.LogDebug("Retrieved GameTracker banner data from cache");
             }
             else
             {
-                Logger.LogDebug("Fetching GameTracker banner data from API for {IpAddress}:{QueryPort}/{ImageName}",
-                    ipAddress, queryPort, imageName);
+                Logger.LogDebug("Fetching GameTracker banner data from API");
 
                 repositoryApiResponse = await repositoryApiClient.GameTrackerBanner.V1.GetGameTrackerBanner(
                     ipAddress, queryPort, imageName, cancellationToken).ConfigureAwait(false);
@@ -118,8 +115,7 @@ public class BannersController(
                 if (repositoryApiResponse != null)
                 {
                     memoryCache.Set(cacheKey, repositoryApiResponse, DateTime.UtcNow.AddMinutes(5));
-                    Logger.LogDebug("Cached GameTracker banner data for {IpAddress}:{QueryPort}/{ImageName}",
-                        ipAddress, queryPort, imageName);
+                    Logger.LogDebug("Cached GameTracker banner data");
                 }
             }
 
@@ -127,16 +123,14 @@ public class BannersController(
             {
                 var bannerData = repositoryApiResponse.Result.Data;
 
-                Logger.LogInformation("Successfully retrieved GameTracker banner for {IpAddress}:{QueryPort}/{ImageName}, redirecting to {BannerUrl}",
-                    ipAddress, queryPort, imageName, bannerData.BannerUrl);
+                Logger.LogInformation("Successfully retrieved GameTracker banner");
 
                 return Redirect(bannerData.BannerUrl ?? $"{gameTrackerBannerBaseUrl}{ipAddress}:{queryPort}/{imageName}");
             }
 
-            Logger.LogWarning("Failed to retrieve GameTracker banner data for {IpAddress}:{QueryPort}/{ImageName}, falling back to default GameTracker URL",
-                ipAddress, queryPort, imageName);
+            Logger.LogWarning("Failed to retrieve GameTracker banner data, falling back to default GameTracker URL");
 
             return Redirect($"{gameTrackerBannerBaseUrl}{ipAddress}:{queryPort}/{imageName}");
-        }, nameof(GetGameTrackerBanner), $"ipAddress: {ipAddress}, queryPort: {queryPort}, imageName: {imageName}").ConfigureAwait(false);
+        }, nameof(GetGameTrackerBanner)).ConfigureAwait(false);
     }
 }

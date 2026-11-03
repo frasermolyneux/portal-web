@@ -51,7 +51,7 @@
                             @Html.DisplayNameFor(model => model.Text)
                         </dt>
                         <dd class="col-sm-10">
-                            @Html.Raw(Model?.Text ?? string.Empty)
+                            @Html.Raw(XtremeIdiots.Portal.Web.Helpers.AdminActionHtmlSanitizer.Sanitize(Model?.Text))
                         </dd>
                     </dl>
                 </div>

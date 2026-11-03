@@ -8,6 +8,50 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
 public sealed class AsyncDataTests
 {
     [Fact]
+    public async Task MyAdminActionDetails_SanitizesFetchedMarkup()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        await page.RouteAsync("**/AdminActions/GetMyAdminActionsAjax", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                draw = 1,
+                recordsTotal = 1,
+                recordsFiltered = 1,
+                data = new[] { new { id = "test-id", created = "2026-01-01T00:00:00Z", type = "Ban", player = "Test", text = "Reason" } }
+            })
+        }));
+        await page.RouteAsync("**/AdminActions/GetMyAdminActionDetails?*", route => route.FulfillAsync(new()
+        {
+            ContentType = "text/html",
+            Body = """<strong>Safe details</strong><img src="x" onerror="window.unexpectedExecution=true"><script>window.unexpectedExecution=true</script>"""
+        }));
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.SetContentAsync("""
+            <div id="myActionsLayoutRoot"><div class="my-actions-left"><div class="ibox">
+                <table id="myActionsTable"><thead><tr><th>Created</th><th>Type</th><th>Player</th><th>Text</th></tr></thead></table>
+            </div></div></div>
+            <select id="filterMyGameType"><option value="">All</option></select>
+            <select id="filterMyAdminActionFilter"><option value="">All</option></select>
+            <button id="resetMyFilters">Reset</button>
+            <div id="myActionDetailsPanel"></div>
+            """);
+        foreach (var script in new[] { "/lib/jquery/dist/jquery.min.js", "/lib/datatables/jquery.dataTables.min.js",
+            "/js/date-utils.js", "/js/vendor/dompurify.min.js", "/js/async-data.js", "/js/admin-actions-my.js" })
+        {
+            await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, script).AbsoluteUri });
+        }
+
+        await page.Locator("#myActionsTable tbody tr").Filter(new() { HasText = "Test" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#myActionDetailsPanel strong")).ToHaveTextAsync("Safe details");
+        await Assertions.Expect(page.Locator("#myActionDetailsPanel script, #myActionDetailsPanel [onerror]")).ToHaveCountAsync(0);
+        Assert.False(await page.EvaluateAsync<bool>("() => window.unexpectedExecution === true"));
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task SectionMarkup_PreservesUiAttributesWithoutExecutableContent()
     {
         await using var fixture = await BrowserFixture.CreateAsync();
@@ -158,6 +202,44 @@ public sealed class AsyncDataTests
     }
 
     [Fact]
+    public async Task Notifications_RejectsExecutableActionUrls()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        await page.RouteAsync("**/api/notifications/unread-count", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new { count = 2 })
+        }));
+        await page.RouteAsync("**/api/notifications/recent?take=10", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new[]
+            {
+                new { notificationId = "1", title = "Unsafe", actionUrl = "javascript:window.unexpectedExecution=true" },
+                new { notificationId = "2", title = "Safe", actionUrl = "/Players/Details/123" }
+            })
+        }));
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.SetContentAsync("""
+            <button id="notificationBell">Notifications</button>
+            <button id="notificationDropdown">Open</button>
+            <div id="notificationList"></div>
+            """);
+        foreach (var script in new[] { "/lib/jquery/dist/jquery.min.js", "/js/site.js", "/js/date-utils.js", "/js/async-data.js", "/js/notifications.js" })
+        {
+            await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, script).AbsoluteUri });
+        }
+
+        await page.EvaluateAsync("() => document.getElementById('notificationDropdown').dispatchEvent(new Event('show.bs.dropdown'))");
+        var items = page.Locator("#notificationList .notification-item");
+        await Assertions.Expect(items).ToHaveCountAsync(2);
+        Assert.Equal("#", await items.Nth(0).GetAttributeAsync("href"));
+        Assert.Equal(new Uri(fixture.Host.BaseAddress, "/Players/Details/123").AbsoluteUri, await items.Nth(1).GetAttributeAsync("href"));
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task Notifications_LoadCountOnInitializationAndReusePollerAfterMarkingAllRead()
     {
         await using var fixture = await BrowserFixture.CreateAsync();
@@ -216,6 +298,45 @@ public sealed class AsyncDataTests
             () => page.Clock.RunForAsync(60000),
             response => response.Url.EndsWith("/api/notifications/unread-count", StringComparison.Ordinal));
         Assert.Equal(4, Volatile.Read(ref reads));
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task ForumWidget_EscapesQuotesInNotificationAttributes()
+    {
+        await using var fixture = await BrowserFixture.CreateAsync();
+        var page = fixture.Page;
+        const string url = "https://example.test/\" onmouseover=\"window.unexpectedExecution=true";
+        await page.RouteAsync("**/api/external/notifications?*", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = JsonSerializer.Serialize(new
+            {
+                authenticated = false,
+                notifications = new[]
+                {
+                    new { title = "Safe notification", message = "Test", actionUrl = url },
+                    new { title = "Unsafe notification", message = "Test", actionUrl = "javascript:window.unexpectedExecution=true" }
+                }
+            })
+        }));
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/Identity/Account/Login").AbsoluteUri);
+        await page.EvaluateAsync("""
+            () => {
+                const host = document.createElement('div');
+                host.id = 'portal-notifications-widget';
+                host.setAttribute('data-portal-url', window.location.origin);
+                document.body.append(host);
+            }
+            """);
+        await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, "/js/forum-widget.js").AbsoluteUri });
+
+        var item = page.Locator("#portal-notifications-widget .xi-pw-item");
+        await Assertions.Expect(item).ToHaveCountAsync(2);
+        Assert.Equal(url, await item.Nth(0).GetAttributeAsync("href"));
+        Assert.Null(await item.Nth(0).GetAttributeAsync("onmouseover"));
+        Assert.Equal(fixture.Host.BaseAddress.AbsoluteUri, await item.Nth(1).GetAttributeAsync("href"));
+        Assert.False(await page.EvaluateAsync<bool>("() => window.unexpectedExecution === true"));
         fixture.AssertNoBrowserErrors();
     }
 
