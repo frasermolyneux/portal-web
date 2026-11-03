@@ -35,7 +35,7 @@
                         </div>
                         <div class="detail-field col-sm-12">
                             <dt class="detail-label">@Html.DisplayNameFor(model => model.Text)</dt>
-                            <dd class="detail-value">@Html.Raw(Model?.Text ?? string.Empty)</dd>
+                            <dd class="detail-value">@Html.Raw(XtremeIdiots.Portal.Web.Helpers.AdminActionHtmlSanitizer.Sanitize(Model?.Text))</dd>
                         </div>
                     </dl>
                 </div>
