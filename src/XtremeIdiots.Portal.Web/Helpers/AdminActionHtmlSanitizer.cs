@@ -6,7 +6,7 @@ public static class AdminActionHtmlSanitizer
 {
     public static string Sanitize(string? html)
     {
-        var sanitizer = new HtmlSanitizer();
+        var sanitizer = new HtmlSanitizer { KeepChildNodes = true };
         sanitizer.AllowedTags.IntersectWith(
         [
             "a", "b", "blockquote", "br", "code", "div", "em", "h1", "h2", "h3", "h4", "h5", "h6",

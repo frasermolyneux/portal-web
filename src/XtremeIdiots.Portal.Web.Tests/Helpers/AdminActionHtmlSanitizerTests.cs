@@ -10,6 +10,7 @@ public class AdminActionHtmlSanitizerTests
     [InlineData("<a href=\"javascript:alert(1)\">link</a>", "javascript:")]
     [InlineData("<svg onload=alert(1)></svg>", "onload")]
     [InlineData("<form action=\"https://example.com\"><input name=\"password\"></form>", "<form")]
+    [InlineData("<font><img src=x onerror=alert(1)></font>", "onerror")]
     [InlineData("<span style=\"position:fixed;top:0\">overlay</span>", "position")]
     public void Sanitize_RemovesExecutableContent(string input, string forbidden)
     {
@@ -25,6 +26,15 @@ public class AdminActionHtmlSanitizerTests
 
         Assert.Contains("<strong>Reason</strong>", result);
         Assert.Contains("href=\"https://example.com\"", result);
+    }
+
+    [Fact]
+    public void Sanitize_PreservesTextInUnsupportedFormatting()
+    {
+        var result = AdminActionHtmlSanitizer.Sanitize("<p><font color=\"red\">wallhack evidence</font></p>");
+
+        Assert.Contains("wallhack evidence", result);
+        Assert.DoesNotContain("<font", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

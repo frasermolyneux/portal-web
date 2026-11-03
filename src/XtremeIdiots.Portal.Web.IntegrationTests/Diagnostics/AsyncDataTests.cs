@@ -44,7 +44,7 @@ public sealed class AsyncDataTests
             await page.AddScriptTagAsync(new() { Url = new Uri(fixture.Host.BaseAddress, script).AbsoluteUri });
         }
 
-        await page.Locator("#myActionsTable tbody tr").ClickAsync();
+        await page.Locator("#myActionsTable tbody tr").Filter(new() { HasText = "Test" }).ClickAsync();
         await Assertions.Expect(page.Locator("#myActionDetailsPanel strong")).ToHaveTextAsync("Safe details");
         await Assertions.Expect(page.Locator("#myActionDetailsPanel script, #myActionDetailsPanel [onerror]")).ToHaveCountAsync(0);
         Assert.False(await page.EvaluateAsync<bool>("() => window.unexpectedExecution === true"));
