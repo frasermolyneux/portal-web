@@ -203,7 +203,7 @@
                                         <h6 class="mb-0 text-@cardStyle fw-bold">@item.Type Details</h6>
                                     </div>
                                     <div class="admin-action-text fs-6 lh-base">
-                                        @Html.Raw(item.Text)
+                                        @Html.Raw(XtremeIdiots.Portal.Web.Helpers.AdminActionHtmlSanitizer.Sanitize(item.Text))
                                     </div>
                                 </div>
                             </div>

@@ -168,6 +168,7 @@ public class DemosController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>JSON response with paginated demo data for DataTables</returns>
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetDemoListAjax(GameType? id, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -372,7 +373,7 @@ public class DemosController(
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
-                Logger.LogWarning("ClientDemoList - Invalid auth key provided: {AuthKeyPrefix}", authKey[..Math.Min(4, authKey.Length)]);
+                Logger.LogWarning("ClientDemoList - Invalid auth key provided");
                 return Content("AuthError: Your auth key is incorrect, check the portal for the correct one and re-enter it on your client.");
             }
 
@@ -465,7 +466,7 @@ public class DemosController(
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
-                Logger.LogWarning("ClientUploadDemo - Invalid auth key provided: {AuthKeyPrefix}", authKey[..Math.Min(4, authKey.Length)]);
+                Logger.LogWarning("ClientUploadDemo - Invalid auth key provided");
                 return Content("AuthError: Your auth key is incorrect, check the portal for the correct one and re-enter it on your client.");
             }
 
@@ -477,9 +478,9 @@ public class DemosController(
             }
 
             var gameTypeHeader = Request.Headers["demo-manager-game-type"].ToString();
-            if (!Enum.TryParse(gameTypeHeader, out GameType gameType))
+            if (!Enum.TryParse(gameTypeHeader, out GameType gameType) || !Enum.IsDefined(gameType))
             {
-                Logger.LogWarning("ClientUploadDemo - Invalid or missing game type header: {GameTypeHeader}", gameTypeHeader);
+                Logger.LogWarning("ClientUploadDemo - Invalid or missing game type header");
                 return Content("Error: Invalid or missing game type. Please ensure your client is properly configured.");
             }
 
@@ -491,22 +492,45 @@ public class DemosController(
 
             string[] whitelistedExtensions = [".dm_1", ".dm_6"];
 
-            if (!whitelistedExtensions.Any(file.FileName.EndsWith))
+            if (string.IsNullOrWhiteSpace(file.FileName)
+                || file.FileName.IndexOfAny(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) >= 0
+                || file.FileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+                || file.FileName.Any(char.IsControl)
+                || !whitelistedExtensions.Any(extension => file.FileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
             {
-                Logger.LogWarning("ClientUploadDemo - Invalid file extension {FileName} by user {UserId}", file.FileName, userIdFromProfile);
+                Logger.LogWarning("ClientUploadDemo - Invalid filename or extension from user {UserId}", userIdFromProfile);
                 return Content("Invalid file type extension");
             }
 
-            var filePath = Path.Join(Path.GetTempPath(), file.FileName);
-            using (var stream = System.IO.File.Create(filePath))
-                await file.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
-
-            var demoDto = new CreateDemoDto(gameType, userProfileApiResponse.Result.Data.UserProfileId);
-
-            var createDemoApiResponse = await repositoryApiClient.Demos.V1.CreateDemo(demoDto, cancellationToken).ConfigureAwait(false);
-            if (createDemoApiResponse.IsSuccess && createDemoApiResponse.Result?.Data != null)
+            var filePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            var fileOptions = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
+            if (!OperatingSystem.IsWindows())
+                fileOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            var stream = new FileStream(filePath, fileOptions);
+            try
             {
-                await repositoryApiClient.Demos.V1.SetDemoFile(createDemoApiResponse.Result.Data.DemoId, file.FileName, filePath, cancellationToken).ConfigureAwait(false);
+                await using (stream.ConfigureAwait(false))
+                    await file.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
+
+                var demoDto = new CreateDemoDto(gameType, userProfileApiResponse.Result.Data.UserProfileId);
+
+                var createDemoApiResponse = await repositoryApiClient.Demos.V1.CreateDemo(demoDto, cancellationToken).ConfigureAwait(false);
+                if (!createDemoApiResponse.IsSuccess || createDemoApiResponse.Result?.Data is null)
+                {
+                    Logger.LogError("ClientUploadDemo - Failed to create demo for user {UserId}", userIdFromProfile);
+                    return Content("Error: Failed to create demo.");
+                }
+
+                var uploadResult = await repositoryApiClient.Demos.V1.SetDemoFile(createDemoApiResponse.Result.Data.DemoId, file.FileName, filePath, cancellationToken).ConfigureAwait(false);
+                if (!uploadResult.IsSuccess)
+                {
+                    Logger.LogError("ClientUploadDemo - Failed to upload demo file for user {UserId}", userIdFromProfile);
+                    return Content("Error: Failed to upload demo.");
+                }
+            }
+            finally
+            {
+                System.IO.File.Delete(filePath);
             }
 
             Logger.LogInformation("User {UserId} successfully uploaded demo {FileName} for game type {GameType}",
@@ -565,7 +589,7 @@ public class DemosController(
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
-                Logger.LogWarning("ClientDownload - Invalid auth key provided: {AuthKeyPrefix}", authKey[..Math.Min(4, authKey.Length)]);
+                Logger.LogWarning("ClientDownload - Invalid auth key provided");
                 return Content("AuthError: Your auth key is incorrect, check the portal for the correct one and re-enter it on your client.");
             }
 

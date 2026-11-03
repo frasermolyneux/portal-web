@@ -39,7 +39,17 @@
         if (!str) return '';
         var d = document.createElement('div');
         d.appendChild(document.createTextNode(str));
-        return d.innerHTML;
+        return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function safeUrl(value, fallback) {
+        if (typeof value !== 'string' || !value.trim()) return fallback;
+        try {
+            var url = new URL(value, widgetState.portalUrl || window.location.href);
+            if (url.protocol === 'https:' || url.protocol === 'http:') return value;
+        } catch (_err) { /* Invalid URL is reported below. */ }
+        console.warn('Rejected unsafe forum widget URL');
+        return fallback;
     }
 
     function ago(dateStr) {
@@ -221,12 +231,13 @@
         for (var j = 0; j < filtered.length; j++) {
             var n = filtered[j];
             var unread = (n.isRead === false) ? ' xi-pw-unread' : '';
-            var url = n.actionUrl || (widgetState.portalUrl + '/');
+            var url = safeUrl(n.actionUrl, widgetState.portalUrl + '/');
             var icon = '';
 
             // Game icon
-            if (n.iconUrl) {
-                icon = '<img src="' + esc(n.iconUrl) + '" class="xi-pw-game-icon" alt="" onerror="this.style.display=\'none\'">';
+            var iconUrl = safeUrl(n.iconUrl, '');
+            if (iconUrl) {
+                icon = '<img src="' + esc(iconUrl) + '" class="xi-pw-game-icon" alt="" onerror="this.style.display=\'none\'">';
             }
 
             // Action type icon
@@ -249,7 +260,7 @@
         html += '</div>';
 
         if (data.authenticated && data.unclaimed && data.unclaimed.hasItems) {
-            html += '<a href="' + esc(data.unclaimed.url) + '" class="xi-pw-unclaimed" target="_blank">' +
+            html += '<a href="' + esc(safeUrl(data.unclaimed.url, widgetState.portalUrl + '/')) + '" class="xi-pw-unclaimed" target="_blank">' +
                 '\u26A0 There are unclaimed admin actions that need review' +
                 '</a>';
         }
@@ -258,7 +269,7 @@
     }
 
     function buildFooter(data) {
-        var portalLink = data.portalUrl || widgetState.portalUrl;
+        var portalLink = safeUrl(data.portalUrl, widgetState.portalUrl);
         return '<div class="xi-pw-footer">' +
             '<a href="' + esc(portalLink) + (data.authenticated ? '/Profile/Notifications' : '') + '" target="_blank">' +
             (data.authenticated ? 'View all in Portal' : 'Open Portal') + '</a>' +
@@ -361,7 +372,7 @@
         }
 
         widgetState.token = container.getAttribute('data-token') || '';
-        widgetState.portalUrl = (container.getAttribute('data-portal-url') || '').replace(/\/+$/, '');
+        widgetState.portalUrl = safeUrl(container.getAttribute('data-portal-url'), '').replace(/\/+$/, '');
 
         if (!widgetState.portalUrl) {
             container.innerHTML = '<div class="xi-pw-error">Portal URL not configured</div>';

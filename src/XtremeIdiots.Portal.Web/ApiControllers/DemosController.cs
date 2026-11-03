@@ -116,7 +116,7 @@ public class DemosController(
 
             if (userProfileApiResponse.IsNotFound || userProfileApiResponse.Result?.Data is null)
             {
-                Logger.LogWarning("{MethodName} - Invalid auth key provided: {AuthKeyPrefix}", nameof(ClientDemoList), authKey[..Math.Min(4, authKey.Length)]);
+                Logger.LogWarning("{MethodName} - Invalid auth key provided", nameof(ClientDemoList));
                 return Content("AuthError: Your auth key is incorrect, check the portal for the correct one and re-enter it on your client.");
             }
 
