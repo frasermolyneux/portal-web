@@ -2,21 +2,51 @@
 <div class="public-map-strip" tabindex="0" role="list" aria-label="Maps">
     @foreach (var map in Model)
     {
+        var globalVotes = map.Likes + map.Dislikes;
+        var globalApproval = globalVotes == 0 ? 0 : map.Likes * 100d / globalVotes;
+        var hasServerPopularity = map.ServerLikes.HasValue && map.ServerDislikes.HasValue;
+        var serverLikes = map.ServerLikes.GetValueOrDefault();
+        var serverDislikes = map.ServerDislikes.GetValueOrDefault();
+        var serverVotes = serverLikes + serverDislikes;
+        var serverApproval = serverVotes == 0 ? 0 : serverLikes * 100d / serverVotes;
         <article class="public-map-card" role="listitem">
             <img src="@(string.IsNullOrWhiteSpace(map.MapImageUri) ? "/images/noimage.jpg" : map.MapImageUri)"
                  alt="@map.MapName" loading="lazy" width="240" height="180" />
             <div class="p-2">
                 <h6>@map.MapName</h6>
-                <p class="small mb-1">@map.Likes likes &middot; @map.Dislikes dislikes</p>
-                <div class="map-approval @(map.Votes == 0 ? "unrated" : "")" role="meter"
-                     aria-valuenow="@map.Approval.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                     aria-valuemin="0" aria-valuemax="100" aria-label="Likes for @map.MapName">
-                    <span style="width: @map.Approval.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
-                </div>
-                <p class="small mb-0">
-                    @(map.Votes == 0 ? "Not yet rated" : $"{map.Approval:0.#}% liked this map")
-                    @if (map.Votes is > 0 and < 5) { <span class="badge bg-secondary">A few votes so far</span> }
-                </p>
+                <section class="map-popularity-scope">
+                    <p class="map-popularity-title">Global</p>
+                    <p class="small mb-1">Lifetime: @map.Likes likes &middot; @map.Dislikes dislikes</p>
+                    <div class="map-approval @(globalVotes == 0 ? "unrated" : "")" role="meter"
+                         aria-valuenow="@globalApproval.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                         aria-valuemin="0" aria-valuemax="100" aria-label="Global lifetime popularity for @map.MapName">
+                        <span style="width: @globalApproval.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
+                    </div>
+                    <p class="small mb-1">
+                        @(globalVotes == 0 ? "No global votes yet" : $"{globalApproval:0.#}% liked this map")
+                        @if (globalVotes is > 0 and < 5) { <span class="badge bg-secondary">A few votes so far</span> }
+                    </p>
+                </section>
+                <section class="map-popularity-scope">
+                    <p class="map-popularity-title">This server</p>
+                    @if (hasServerPopularity)
+                    {
+                        <p class="small mb-1">Lifetime: @serverLikes likes &middot; @serverDislikes dislikes</p>
+                        <div class="map-approval @(serverVotes == 0 ? "unrated" : "")" role="meter"
+                             aria-valuenow="@serverApproval.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                             aria-valuemin="0" aria-valuemax="100" aria-label="This server lifetime popularity for @map.MapName">
+                            <span style="width: @serverApproval.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
+                        </div>
+                        <p class="small mb-0">
+                            @(serverVotes == 0 ? "No votes on this server yet" : $"{serverApproval:0.#}% liked this map on this server")
+                            @if (serverVotes is > 0 and < 5) { <span class="badge bg-secondary">A few votes so far</span> }
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="small mb-0">Server-specific popularity is unavailable.</p>
+                    }
+                </section>
             </div>
         </article>
     }

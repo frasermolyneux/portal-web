@@ -39,6 +39,20 @@
             background-color: $success-color;
         }
     }
+
+    .map-popularity-scope + .map-popularity-scope {
+        padding-top: .5rem;
+        margin-top: .5rem;
+        border-top: 1px solid $border-color;
+    }
+
+    .map-popularity-title {
+        display: block;
+        margin-bottom: .125rem;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-bold;
+        text-transform: uppercase;
+    }
 }
 
 #publicRotations [hidden] { display: none !important; }
