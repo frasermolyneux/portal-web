@@ -144,7 +144,7 @@ public sealed class PublicMapsBrowserTests
     }
 
     [Fact]
-    public async Task PublicRotations_ShowAssignedAndHistoryPopularity_AndOnlyExplicitAuthenticatedZipCreation()
+    public async Task PublicRotations_ShowGlobalAndServerPopularity_AndOnlyExplicitAuthenticatedZipCreation()
     {
         var fake = new FakeRedirectApiClient()
             .WithData("Collection", RedirectDtoFactory.CreateCatalogue(new ContentEntry(
@@ -163,7 +163,18 @@ public sealed class PublicMapsBrowserTests
             .ToContainTextAsync("This server's map rotation");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD5" }))
             .ToContainTextAsync("Recently played on this server (last 2 days)");
-        await Assertions.Expect(browser.Page.Locator(".public-map-card").First).ToContainTextAsync("A few votes so far");
+        var assignedMap = browser.Page.GetByRole(AriaRole.Region, new() { Name = "Public COD4x" })
+            .Locator(".public-map-card");
+        await Assertions.Expect(assignedMap).ToContainTextAsync("Global");
+        await Assertions.Expect(assignedMap).ToContainTextAsync("Lifetime: 2 likes · 0 dislikes");
+        await Assertions.Expect(assignedMap).ToContainTextAsync("This server");
+        await Assertions.Expect(assignedMap).ToContainTextAsync("Lifetime: 1 likes · 1 dislikes");
+        await Assertions.Expect(assignedMap).ToContainTextAsync("50% liked this map on this server");
+        var historyMap = browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD5" })
+            .Locator(".public-map-card");
+        await Assertions.Expect(historyMap).ToContainTextAsync("No votes on this server yet");
+        await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD2" })
+            .Locator(".public-map-card")).ToContainTextAsync("Server-specific popularity is unavailable.");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD2" })
             .GetByRole(AriaRole.Link, new() { Name = "Download", Exact = false })).ToHaveCountAsync(0);
         Assert.True(await browser.Page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= innerWidth"));
@@ -206,9 +217,9 @@ public sealed class PublicMapsBrowserTests
                     Servers =
                     [
                         new() { GameServerId = serverId, Title = "Synthetic COD4x", GameType = GameType.CallOfDuty4x, RotationTitle = "Normal",
-                            Maps = [new() { MapName = "mp_custom", Likes = 2 }] },
+                            Maps = [new() { MapName = "mp_custom", Likes = 2, ServerLikes = 1, ServerDislikes = 1 }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD5", GameType = GameType.CallOfDuty5,
-                            IsObservedHistory = true, Maps = [new() { MapName = "mp_history", Likes = 5, Dislikes = 1 }] },
+                            IsObservedHistory = true, Maps = [new() { MapName = "mp_history", Likes = 5, Dislikes = 1, ServerLikes = 0, ServerDislikes = 0 }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD2", GameType = GameType.CallOfDuty2,
                             IsObservedHistory = true, Maps = [new() { MapName = "mp_cod2" }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Teamspeak", GameType = GameType.Unknown,
