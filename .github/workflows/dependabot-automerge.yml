@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Evaluate auto-merge policy
         id: evaluate
-        uses: frasermolyneux/actions/dependabot-policy@dependabot-policy/v2.0.0
+        uses: frasermolyneux/actions/dependabot-policy@4a4970b7789ddb81ea56695f8796987604813c05 # dependabot-policy/v2.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
   dependabot:

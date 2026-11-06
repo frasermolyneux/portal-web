@@ -58,7 +58,7 @@ runs:
     - name: Summarize bootstrap smoke separately
       id: bootstrap-report
       if: always() && inputs.suite == 'Browser'
-      uses: frasermolyneux/actions/dotnet-test-report@dotnet-test-report/v1
+      uses: frasermolyneux/actions/dotnet-test-report@43f7ef20fa9a18564aee2860c8ade81e13715654 # dotnet-test-report/v1.1.0
       with:
         suite: bootstrap
         results-directory: src/TestResults/bootstrap

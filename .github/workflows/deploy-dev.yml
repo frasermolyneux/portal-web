@@ -21,7 +21,7 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-dev
     steps:
-      - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v2.0.1
+      - uses: frasermolyneux/actions/terraform-plan-and-apply@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-plan-and-apply/v5.0.0
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
@@ -58,7 +58,7 @@ jobs:
       group: ${{ github.repository }}-dev
     steps:
       - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
-        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.3
+        uses: frasermolyneux/actions/deploy-app-service@027d7e31bb32b734090aaed01b36d74f1d658b61 # deploy-app-service/v1.3.1
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}
@@ -67,7 +67,7 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - uses: frasermolyneux/actions/wait-for-version@wait-for-version/v1.0
+      - uses: frasermolyneux/actions/wait-for-version@027d7e31bb32b734090aaed01b36d74f1d658b61 # wait-for-version/v1.0.2
         with:
           info-url: "https://${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}.azurewebsites.net/info"
           expected-version: ${{ needs.build-and-test.outputs.build_version }}

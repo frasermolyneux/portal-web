@@ -24,7 +24,7 @@ jobs:
       actions: read
       security-events: write
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    uses: frasermolyneux/actions/.github/workflows/codequality.yml@main
+    uses: frasermolyneux/actions/.github/workflows/codequality.yml@a6271c58ed8e8f3b6fbdb738ac7566863fdc38c8 # codequality/v1.0.0
     with:
       sonar-project-key: frasermolyneux_portal-web
       sonar-organization: frasermolyneux
@@ -44,7 +44,7 @@ jobs:
       id-token: write
       security-events: write
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    uses: frasermolyneux/actions/.github/workflows/devops-secure-scanning.yml@main
+    uses: frasermolyneux/actions/.github/workflows/devops-secure-scanning.yml@a6271c58ed8e8f3b6fbdb738ac7566863fdc38c8 # devops-secure-scanning/v1.0.0
 
   dependency-review:
     permissions:
