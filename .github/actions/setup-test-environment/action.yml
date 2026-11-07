@@ -9,7 +9,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: frasermolyneux/actions/dotnet-node-setup@dotnet-node-setup/v1
+    - uses: frasermolyneux/actions/dotnet-node-setup@69e7328594382e5f5ce219eb9e210751ac3fca55 # dotnet-node-setup/v1.0.0
       id: setup
       with:
         npm-cache-dependency-path: src/XtremeIdiots.Portal.Web/package-lock.json

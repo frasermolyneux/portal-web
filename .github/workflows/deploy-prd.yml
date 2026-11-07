@@ -48,7 +48,7 @@ jobs:
           exit 1
 
       - id: changes
-        uses: frasermolyneux/actions/detect-changes@detect-changes/v1.0
+        uses: frasermolyneux/actions/detect-changes@8e7ca58b7821e01192ee4f23756c55e4ee057496 # detect-changes/v1.0.4
         with:
           filters: |
             src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/deploy-prd.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
@@ -66,7 +66,7 @@ jobs:
       state_tainted: ${{ steps.state-check.outputs.state_tainted }}
     steps:
       - id: state-check
-        uses: frasermolyneux/actions/terraform-state-check@terraform-state-check/v2.0.1
+        uses: frasermolyneux/actions/terraform-state-check@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-state-check/v2.0.2
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
@@ -97,7 +97,7 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-dev
     steps:
-      - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v2.0.1
+      - uses: frasermolyneux/actions/terraform-plan-and-apply@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-plan-and-apply/v5.0.0
         if: inputs.scope != 'maps-bootstrap' && (needs.detect-changes.outputs.terraform == 'true' || needs.terraform-state-check-dev.outputs.state_tainted == 'true')
         with:
           terraform-folder: "terraform"
@@ -107,7 +107,7 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - uses: frasermolyneux/actions/terraform-output@terraform-output/v2.0.1
+      - uses: frasermolyneux/actions/terraform-output@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-output/v2.0.2
         if: inputs.scope == 'maps-bootstrap' || (needs.detect-changes.outputs.terraform != 'true' && needs.terraform-state-check-dev.outputs.state_tainted != 'true')
         with:
           terraform-folder: "terraform"
@@ -150,7 +150,7 @@ jobs:
       group: ${{ github.repository }}-dev
     steps:
       - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
-        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.3
+        uses: frasermolyneux/actions/deploy-app-service@027d7e31bb32b734090aaed01b36d74f1d658b61 # deploy-app-service/v1.3.1
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}
@@ -159,7 +159,7 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - uses: frasermolyneux/actions/wait-for-version@wait-for-version/v1.0
+      - uses: frasermolyneux/actions/wait-for-version@027d7e31bb32b734090aaed01b36d74f1d658b61 # wait-for-version/v1.0.2
         with:
           info-url: "https://${{ needs.terraform-plan-and-apply-dev.outputs.web_app_name }}.azurewebsites.net/info"
           expected-version: ${{ needs.build-and-test.outputs.build_version }}
@@ -180,7 +180,7 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-prd
     steps:
-      - uses: frasermolyneux/actions/terraform-plan-and-apply@terraform-plan-and-apply/v2.0.1
+      - uses: frasermolyneux/actions/terraform-plan-and-apply@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-plan-and-apply/v5.0.0
         if: inputs.scope != 'maps-bootstrap' && needs.detect-changes.outputs.terraform == 'true'
         with:
           terraform-folder: "terraform"
@@ -190,7 +190,7 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - uses: frasermolyneux/actions/terraform-output@terraform-output/v2.0.1
+      - uses: frasermolyneux/actions/terraform-output@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-output/v2.0.2
         if: inputs.scope == 'maps-bootstrap' || needs.detect-changes.outputs.terraform != 'true'
         with:
           terraform-folder: "terraform"
@@ -233,7 +233,7 @@ jobs:
       group: ${{ github.repository }}-prd
     steps:
       - name: Deploy v${{ needs.build-and-test.outputs.build_version }}
-        uses: frasermolyneux/actions/deploy-app-service@deploy-app-service/v1.3
+        uses: frasermolyneux/actions/deploy-app-service@027d7e31bb32b734090aaed01b36d74f1d658b61 # deploy-app-service/v1.3.1
         with:
           web-artifact-name: "XtremeIdiots.Portal.Web"
           web-app-name: ${{ needs.terraform-plan-and-apply-prd.outputs.web_app_name }}
@@ -242,7 +242,7 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - uses: frasermolyneux/actions/wait-for-version@wait-for-version/v1.0
+      - uses: frasermolyneux/actions/wait-for-version@027d7e31bb32b734090aaed01b36d74f1d658b61 # wait-for-version/v1.0.2
         with:
           info-url: "https://${{ needs.terraform-plan-and-apply-prd.outputs.web_app_name }}.azurewebsites.net/info"
           expected-version: ${{ needs.build-and-test.outputs.build_version }}

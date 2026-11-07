@@ -185,7 +185,7 @@ jobs:
 
       - name: Resolve build version
         id: nbgv-metadata
-        uses: frasermolyneux/actions/nbgv-metadata@nbgv-metadata/v1
+        uses: frasermolyneux/actions/nbgv-metadata@027d7e31bb32b734090aaed01b36d74f1d658b61 # nbgv-metadata/v1.2.1
         with:
           perform-checkout: "false"
 
