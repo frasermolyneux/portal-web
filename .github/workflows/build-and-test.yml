@@ -19,7 +19,7 @@ jobs:
       terraform: ${{ steps.changes.outputs.terraform }}
     steps:
       - id: changes
-        uses: frasermolyneux/actions/detect-changes@8e7ca58b7821e01192ee4f23756c55e4ee057496 # detect-changes/v1.0.4
+        uses: frasermolyneux/actions/detect-changes@f335f9f14d0062304978193d016f4a43a2e797f4 # detect-changes/v3.0.0
         with:
           filters: |
             src:src/**,scripts/**,.github/actions/**,.github/scripts/**,.github/workflows/build-and-test.yml,.github/workflows/test-and-publish.yml,global.json,.node-version,Directory.Build.props
@@ -43,7 +43,7 @@ jobs:
     concurrency:
       group: ${{ github.repository }}-dev
     steps:
-      - uses: frasermolyneux/actions/terraform-plan@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-plan/v5.0.0
+      - uses: frasermolyneux/actions/terraform-plan@977ddbedf7f5c6e2fae98ff1d6ec6a9c7669d778 # terraform-plan/v6.0.0
         with:
           terraform-folder: "terraform"
           terraform-var-file: "tfvars/dev.tfvars"
