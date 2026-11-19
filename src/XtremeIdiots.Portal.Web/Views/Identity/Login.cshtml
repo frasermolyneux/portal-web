@@ -1,4 +1,5 @@
 @inject IConfiguration Configuration
+@inject Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider AuthenticationSchemes
 @{
     ViewData["Title"] = "Login";
     Layout = null;
@@ -50,6 +51,15 @@
                                 <i class="fa-solid fa-fw fa-arrow-right-to-bracket" aria-hidden="true"></i> XtremeIdiots Login
                             </button>
                         </form>
+                        @if (await AuthenticationSchemes.GetSchemeAsync("XtremeIdiotsTest") is not null)
+                        {
+                            <form asp-controller="ForumIdentity" asp-action="LoginTest" method="post" class="mt-3">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                                <button type="submit" class="btn btn-outline-primary">Test forum login</button>
+                            </form>
+                            <p class="text-muted small mt-2">First link your test account from your Portal profile.</p>
+                        }
                     </div>
                     <div class="ibox-footer text-muted small d-flex justify-content-between">
                         <span>Copyright &mdash; Fraser Molyneux</span>

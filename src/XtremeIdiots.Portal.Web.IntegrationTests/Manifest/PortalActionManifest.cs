@@ -26,9 +26,9 @@ internal static class PortalActionManifest
         {
             [PortalActionKind.BrowserPage] = 92,
             [PortalActionKind.DownloadOrStream] = 3,
-            [PortalActionKind.ExternalCallback] = 1,
-            [PortalActionKind.HttpEndpoint] = 112,
-            [PortalActionKind.StateChange] = 69,
+            [PortalActionKind.ExternalCallback] = 3,
+            [PortalActionKind.HttpEndpoint] = 124,
+            [PortalActionKind.StateChange] = 74,
         };
 
     private readonly static string[] downloadActionNames =
@@ -56,7 +56,8 @@ internal static class PortalActionManifest
         var isSafeMethod = httpMethods.All(method => method is "ANY" or "GET" or "HEAD");
         var isApiController = descriptor.ControllerTypeInfo.Namespace?.Contains(".ApiControllers", StringComparison.Ordinal) == true;
 
-        return descriptor.ActionName.Contains("Callback", StringComparison.Ordinal)
+        return descriptor.ActionName.Contains("Callback", StringComparison.Ordinal) ||
+            (descriptor.ControllerName == "ForumIdentity" && descriptor.ActionName is "ConfirmProduction" or "ConfirmTest")
             ? PortalActionKind.ExternalCallback
             : downloadActionNames.Contains(descriptor.ActionName, StringComparer.Ordinal)
             ? PortalActionKind.DownloadOrStream

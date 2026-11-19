@@ -1,5 +1,6 @@
 ﻿@using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Web.Models
+@inject Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider AuthenticationSchemes
 @model ProfileManageViewModel
 @{
     ViewData["Title"] = "Manage Profile";
@@ -44,6 +45,18 @@
                                                 target="_blank">XtremeIdiots Profile</a>
                                         </td>
                                     </tr>
+                                    @if (await AuthenticationSchemes.GetSchemeAsync("XtremeIdiotsTest") is not null)
+                                    {
+                                        <tr>
+                                            <td>Test forum account</td>
+                                            <td>
+                                                <form asp-controller="ForumIdentity" asp-action="LinkTest" method="post">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-outline-primary">Link test account</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
                                 </tbody>
                         </table>
                         </div>
