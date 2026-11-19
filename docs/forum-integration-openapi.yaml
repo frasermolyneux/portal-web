@@ -40,7 +40,6 @@ paths:
                 properties:
                   banners:
                     type: array
-                    maxItems: 2147483647
                     items:
                       type: string
   /api/integration/v1/rotations:
@@ -58,7 +57,6 @@ paths:
                 properties:
                   servers:
                     type: array
-                    maxItems: 2147483647
                     items:
                       type: object
                       properties:
@@ -76,7 +74,6 @@ paths:
                           type: boolean
                         maps:
                           type: array
-                          maxItems: 2147483647
                           items:
                             type: object
                             properties:
@@ -208,7 +205,6 @@ paths:
                     type: integer
                   onlineByGame:
                     type: array
-                    maxItems: 2147483647
                     items:
                       type: object
                       properties:
