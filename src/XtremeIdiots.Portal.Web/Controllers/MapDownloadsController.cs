@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using MX.Api.Abstractions;
 using System.Globalization;
@@ -13,6 +14,7 @@ namespace XtremeIdiots.Portal.Web.Controllers;
 
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [SkipStatusCodePages]
+[EnableCors("ForumIntegration")]
 public sealed class MapDownloadsController(IRedirectApiClient redirect) : Controller
 {
     [HttpGet]
@@ -49,7 +51,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
         }
     }
 
-    [HttpGet]
+    [HttpGet("/MapDownloads/Collection")]
+    [HttpGet("/api/integration/v1/downloads/collection")]
     [AllowAnonymous]
     public Task<IActionResult> Collection(string game, string kind = "maps", string search = "", int page = 1,
         string? version = null, CancellationToken cancellationToken = default)
@@ -57,7 +60,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
         return Read(client => client.Collection(game, kind, search, page, 50, version, cancellationToken));
     }
 
-    [HttpGet]
+    [HttpGet("/MapDownloads/Browse")]
+    [HttpGet("/api/integration/v1/downloads/browse")]
     [AllowAnonymous]
     public Task<IActionResult> Browse(string path, string search = "", int page = 1, string? version = null,
         CancellationToken cancellationToken = default)
@@ -65,7 +69,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
         return Read(client => client.Browse(path, search, page, 50, version, cancellationToken));
     }
 
-    [HttpGet]
+    [HttpGet("/MapDownloads/Manifest")]
+    [HttpGet("/api/integration/v1/downloads/manifest")]
     [AllowAnonymous]
     public Task<IActionResult> Manifest(string game, string mapName, string? version = null,
         CancellationToken cancellationToken = default)
@@ -73,7 +78,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
         return Read(client => client.Manifest(game, mapName, version, cancellationToken));
     }
 
-    [HttpPost]
+    [HttpPost("/MapDownloads/CreateArchive")]
+    [HttpPost("/api/integration/v1/downloads/archives")]
     [Authorize]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> CreateArchive([FromBody] CreateArchive request, CancellationToken cancellationToken = default)
@@ -91,7 +97,8 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
 
     public sealed record RotationArchiveRequest(Guid GameServerId);
 
-    [HttpPost]
+    [HttpPost("/MapDownloads/CreateRotationArchive")]
+    [HttpPost("/api/integration/v1/downloads/rotation-archives")]
     [Authorize]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRotationArchive([FromBody] RotationArchiveRequest request,
@@ -167,14 +174,17 @@ public sealed class MapDownloadsController(IRedirectApiClient redirect) : Contro
         }));
     }
 
-    [HttpGet]
+    [HttpGet("/MapDownloads/ArchiveStatus")]
+    [HttpGet("/MapDownloads/ArchiveStatus/{id}")]
+    [HttpGet("/api/integration/v1/downloads/archive-status")]
     [Authorize]
     public Task<IActionResult> ArchiveStatus(string id, CancellationToken cancellationToken = default)
     {
         return Read(async client => WithoutArchiveUrl(await client.ArchiveStatus(id, cancellationToken).ConfigureAwait(false)));
     }
 
-    [HttpPost]
+    [HttpPost("/MapDownloads/Grant")]
+    [HttpPost("/api/integration/v1/downloads/grants")]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Grant([FromBody] CreateDownloadGrant request, CancellationToken cancellationToken = default)

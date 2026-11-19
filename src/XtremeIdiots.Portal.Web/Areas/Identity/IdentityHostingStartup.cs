@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using XtremeIdiots.Portal.Web.Areas.Identity.Data;
@@ -25,6 +26,7 @@ public static class IdentityHostingStartup
     private const string ApplicationName = "portal";
     private const string CookieName = "XIPortal";
     private const string OAuthSchemeName = "XtremeIdiots";
+    public const string TestOAuthSchemeName = "XtremeIdiotsTest";
 
     public static void ConfigureIdentityServices(IServiceCollection services, IConfiguration configuration)
     {
@@ -90,8 +92,8 @@ public static class IdentityHostingStartup
         //   DefaultSignInScheme       = Identity.External
         //   DefaultChallengeScheme    = Identity.Application (login page redirect)
         // The controller explicitly challenges "XtremeIdiots" when needed.
-        services.AddAuthentication()
-        .AddOAuth(OAuthSchemeName, options =>
+        var authentication = services.AddAuthentication();
+        authentication.AddOAuth(OAuthSchemeName, options =>
         {
             // Sign into the external cookie so SignInManager.GetExternalLoginInfoAsync() works
             options.SignInScheme = IdentityConstants.ExternalScheme;
@@ -109,41 +111,29 @@ public static class IdentityHostingStartup
             options.TokenEndpoint = configuration["xtremeidiots_auth_token_endpoint"] ?? $"{forumSiteUrl}/oauth/token/";
             options.UserInformationEndpoint = configuration["xtremeidiots_auth_userinfo_endpoint"] ?? $"{forumSiteUrl}/api/core/me";
 
-            options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
-            options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
-            options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
-
-            options.Scope.Add("profile");
-
-            options.Events = new OAuthEvents
-            {
-                OnCreatingTicket = async context =>
-                {
-                    try
-                    {
-                        var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
-                        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
-
-                        var response = await context.Backchannel.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, context.HttpContext.RequestAborted).ConfigureAwait(false);
-                        response.EnsureSuccessStatusCode();
-
-                        var contentAsString = await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted).ConfigureAwait(false);
-                        var user = JsonDocument.Parse(contentAsString);
-
-                        context.RunClaimActions(user.RootElement);
-                    }
-                    catch (HttpRequestException ex)
-                    {
-                        throw new InvalidOperationException("Failed to retrieve user information from OAuth provider", ex);
-                    }
-                    catch (JsonException ex)
-                    {
-                        throw new InvalidOperationException("Failed to parse user information from OAuth provider", ex);
-                    }
-                }
-            };
+            ConfigureOAuthClaimsAndEvents(options);
         });
+
+        var testClientId = GetConfigurationValue(configuration, "XtremeIdiots:TestAuth:ClientId");
+        var testClientSecret = GetConfigurationValue(configuration, "XtremeIdiots:TestAuth:ClientSecret");
+        if (!string.IsNullOrWhiteSpace(testClientId) || !string.IsNullOrWhiteSpace(testClientSecret))
+        {
+            if (string.IsNullOrWhiteSpace(testClientId) || string.IsNullOrWhiteSpace(testClientSecret))
+                throw new InvalidOperationException("Both test OAuth client ID and secret are required.");
+
+            authentication.AddOAuth(TestOAuthSchemeName, options =>
+            {
+                options.SignInScheme = IdentityConstants.ExternalScheme;
+                options.CorrelationCookie.IsEssential = true;
+                options.ClientId = testClientId;
+                options.ClientSecret = testClientSecret;
+                options.CallbackPath = new PathString("/signin-xtremeidiots-test");
+                options.AuthorizationEndpoint = "https://test.xtremeidiots.com/oauth/authorize/";
+                options.TokenEndpoint = "https://test.xtremeidiots.com/oauth/token/";
+                options.UserInformationEndpoint = "https://test.xtremeidiots.com/api/core/me";
+                ConfigureOAuthClaimsAndEvents(options);
+            });
+        }
 
         // Configure Identity's application cookie (replaces the removed AddCookie call)
         services.ConfigureApplicationCookie(options =>
@@ -156,10 +146,80 @@ public static class IdentityHostingStartup
             options.LoginPath = "/Identity/Login";
             options.ReturnUrlParameter = CookieAuthenticationDefaults.ReturnUrlParameter;
             options.SlidingExpiration = true;
+            var redirectToLogin = options.Events.OnRedirectToLogin;
+            var redirectToDenied = options.Events.OnRedirectToAccessDenied;
+            options.Events.OnRedirectToLogin = context =>
+                ApiStatusOrRedirect(context, StatusCodes.Status401Unauthorized, redirectToLogin);
+            options.Events.OnRedirectToAccessDenied = context =>
+                ApiStatusOrRedirect(context, StatusCodes.Status403Forbidden, redirectToDenied);
         });
 
         // Ensure the external cookie used during OAuth callback is not blocked by consent policy
         services.ConfigureExternalCookie(options => options.Cookie.IsEssential = true);
+    }
+
+    private static Task ApiStatusOrRedirect(RedirectContext<CookieAuthenticationOptions> context, int status,
+        Func<RedirectContext<CookieAuthenticationOptions>, Task> redirect)
+    {
+        if (!context.Request.Path.StartsWithSegments("/api/integration/v1"))
+            return redirect(context);
+        context.Response.StatusCode = status;
+        return Task.CompletedTask;
+    }
+
+    private static void ConfigureOAuthClaimsAndEvents(OAuthOptions options)
+    {
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+
+        options.Scope.Add("profile");
+
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                try
+                {
+                    var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+
+                    var response = await context.Backchannel.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, context.HttpContext.RequestAborted).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+
+                    var contentAsString = await response.Content.ReadAsStringAsync(context.HttpContext.RequestAborted).ConfigureAwait(false);
+                    var user = JsonDocument.Parse(contentAsString);
+
+                    context.RunClaimActions(user.RootElement);
+                    if (context.Scheme.Name == TestOAuthSchemeName)
+                    {
+                        var identity = context.Identity
+                            ?? throw new InvalidOperationException("The test provider did not return an identity.");
+                        var subject = identity.FindFirst(ClaimTypes.NameIdentifier)
+                            ?? throw new InvalidOperationException("The test provider did not return a subject.");
+                        identity.RemoveClaim(subject);
+                        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, TestSubjectKey(context.Options.ClientId, subject.Value)));
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    throw new InvalidOperationException("Failed to retrieve user information from OAuth provider", ex);
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidOperationException("Failed to parse user information from OAuth provider", ex);
+                }
+            }
+        };
+    }
+
+    internal static string TestSubjectKey(string clientId, string subject)
+    {
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(subject))
+            throw new InvalidOperationException("A test OAuth client ID and subject are required.");
+        var input = JsonSerializer.SerializeToUtf8Bytes(new[] { "https://test.xtremeidiots.com", clientId, subject });
+        return Convert.ToHexString(SHA256.HashData(input));
     }
 
     private static void ConfigureDataProtection(IServiceCollection services)

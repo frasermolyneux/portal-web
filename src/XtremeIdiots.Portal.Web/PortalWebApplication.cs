@@ -204,6 +204,12 @@ public static class PortalWebApplication
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials());
+            corsOptions.AddPolicy("ForumIntegration",
+                policy => policy
+                    .WithOrigins("https://test.xtremeidiots.com", "https://www.xtremeidiots.com")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
         });
 
         var mvcBuilder = builder.Services.AddControllersWithViews()
