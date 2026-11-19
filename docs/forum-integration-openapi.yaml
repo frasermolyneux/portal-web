@@ -4,10 +4,13 @@ info:
   version: 1.0.0
 servers:
   - url: https://portal.xtremeidiots.com
+security:
+  - portalCookie: []
 paths:
   /api/integration/v1/session:
     get:
       summary: Portal session and antiforgery token
+      security: []
       responses:
         '200':
           description: The token is bound to the antiforgery cookie and current session.
@@ -25,6 +28,7 @@ paths:
   /api/integration/v1/banners:
     get:
       summary: Configured public server banners
+      security: []
       responses:
         '200':
           description: Administrator-configured HTML banners in server-list order.
@@ -36,11 +40,13 @@ paths:
                 properties:
                   banners:
                     type: array
+                    maxItems: 2147483647
                     items:
                       type: string
   /api/integration/v1/rotations:
     get:
       summary: Public server rotations
+      security: []
       description: An observed-history fallback is identified by isObservedHistory; it is not a configured rotation.
       responses:
         '200':
@@ -52,6 +58,7 @@ paths:
                 properties:
                   servers:
                     type: array
+                    maxItems: 2147483647
                     items:
                       type: object
                       properties:
@@ -69,6 +76,7 @@ paths:
                           type: boolean
                         maps:
                           type: array
+                          maxItems: 2147483647
                           items:
                             type: object
                             properties:
@@ -106,6 +114,7 @@ paths:
   /api/integration/v1/maps:
     get:
       summary: Search the public map catalogue
+      security: []
       parameters:
         - in: query
           name: gameType
@@ -199,6 +208,7 @@ paths:
                     type: integer
                   onlineByGame:
                     type: array
+                    maxItems: 2147483647
                     items:
                       type: object
                       properties:
@@ -286,6 +296,7 @@ paths:
   /api/integration/v1/downloads/collection:
     get:
       summary: Browse map or mod collections
+      security: []
       parameters:
         - in: query
           name: game
@@ -316,6 +327,7 @@ paths:
   /api/integration/v1/downloads/browse:
     get:
       summary: Browse a download path
+      security: []
       parameters:
         - in: query
           name: path
@@ -341,6 +353,7 @@ paths:
   /api/integration/v1/downloads/manifest:
     get:
       summary: Retrieve a map manifest
+      security: []
       parameters:
         - in: query
           name: game
@@ -432,6 +445,8 @@ paths:
   /api/integration/v1/downloads/grants:
     post:
       summary: Create an individual-file or owned-archive download grant
+      description: File grants may be anonymous; archive grants require a Portal session.
+      security: []
       parameters:
         - $ref: '#/components/parameters/Antiforgery'
       requestBody:
@@ -476,6 +491,7 @@ components:
       properties:
         items:
           type: array
+          maxItems: 100
           items:
             type: object
             properties:
@@ -515,6 +531,7 @@ components:
       properties:
         items:
           type: array
+          maxItems: 100
           items:
             type: object
             required: [id, gameType, name]
@@ -544,6 +561,7 @@ components:
       properties:
         items:
           type: array
+          maxItems: 100
           items:
             type: object
             properties:
