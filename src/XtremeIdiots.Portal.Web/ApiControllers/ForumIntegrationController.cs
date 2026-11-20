@@ -15,7 +15,8 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [EnableCors("ForumIntegration")]
 [SkipStatusCodePages]
 public sealed class ForumIntegrationController(
-    MapExperienceService maps, IRepositoryApiClient repository, ILogger<ForumIntegrationController> logger) : ControllerBase
+    MapExperienceService maps, IRepositoryApiClient repository, ILogger<ForumIntegrationController> logger,
+    IAuthorizationService authorization) : ControllerBase
 {
     [HttpGet("session")]
     [AllowAnonymous]
@@ -88,16 +89,26 @@ public sealed class ForumIntegrationController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
-        return Ok(new ModerationPage(
-            [.. response.Result.Data.Items.Select(action => new ModerationItem(
+        var items = new List<ModerationItem>();
+        foreach (var action in response.Result.Data.Items)
+        {
+            var actionUrl = action.Player is { } player &&
+                (await authorization.AuthorizeAsync(User, (player.GameType, action.Type, action.UserProfile?.XtremeIdiotsForumId),
+                    AuthPolicies.AdminActions_Edit).ConfigureAwait(false)).Succeeded
+                ? Url.Action("Edit", "AdminActions", new { id = action.AdminActionId })
+                : null;
+            items.Add(new ModerationItem(
                 action.AdminActionId, DateTime.SpecifyKind(action.Created, DateTimeKind.Utc),
                 action.Player?.GameType.ToString(), action.Type.ToString(), action.Player?.Username,
-                action.PlayerId, action.UserProfile?.DisplayName, action.Source.ToString()))],
+                action.PlayerId, action.UserProfile?.DisplayName, action.Source.ToString(), actionUrl));
+        }
+
+        return Ok(new ModerationPage(items,
             skip, take, response.Result.Pagination?.TotalCount, response.Result.Pagination?.FilteredCount));
     }
 
     public sealed record ModerationItem(Guid Id, DateTime CreatedUtc, string? GameType, string Type,
-        string? PlayerName, Guid PlayerId, string? AdminName, string Source);
+        string? PlayerName, Guid PlayerId, string? AdminName, string Source, string? ActionUrl);
     public sealed record ModerationPage(IReadOnlyList<ModerationItem> Items, int Skip, int Take, int? TotalCount, int? FilteredCount);
 
     [HttpGet("activity")]

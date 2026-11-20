@@ -40,6 +40,50 @@ paths:
                       chatLogs:
                         type: boolean
                         description: Access to /ServerAdmin/ChatLogIndex (GameServers.Admin.Read and ChatLog.Read).
+  /api/integration/v1/player-map:
+    get:
+      summary: Coarse live and recent player map for public servers
+      security:
+        - {}
+        - portalCookie: []
+      responses:
+        '200':
+          description: No-store response. Named observations require game-scoped Players.Read.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [asOfUtc, recentSinceUtc, points, players]
+                properties:
+                  asOfUtc:
+                    type: string
+                    format: date-time
+                  recentSinceUtc:
+                    type: string
+                    format: date-time
+                  points:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/PlayerMapLocation'
+                        - type: object
+                          required: [count]
+                          properties:
+                            count:
+                              type: integer
+                              description: Observation count, not a unique-person count.
+                  players:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/PlayerMapLocation'
+                        - type: object
+                          required: [name]
+                          properties:
+                            name:
+                              type: string
+        '503':
+          description: A required map dependency is unavailable.
   /api/integration/v1/banners:
     get:
       summary: Configured public server banners
@@ -497,6 +541,24 @@ components:
       in: cookie
       name: XIPortal
   schemas:
+    PlayerMapLocation:
+      type: object
+      required: [lat, lng, gameType, activity]
+      properties:
+        lat:
+          type: number
+          format: double
+          description: Latitude of the five-degree cell center.
+        lng:
+          type: number
+          format: double
+          description: Longitude of the five-degree cell center.
+        gameType:
+          type: string
+        activity:
+          type: string
+          enum: [live, recentlySeen]
+          description: Recently seen does not imply offline.
     ActivityPage:
       type: object
       properties:
@@ -593,6 +655,10 @@ components:
               playerId:
                 type: string
                 format: uuid
+              actionUrl:
+                type: string
+                nullable: true
+                description: Portal-relative action edit route, present only for users with access to that action.
               adminName:
                 type: string
                 nullable: true

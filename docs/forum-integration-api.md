@@ -18,6 +18,28 @@ All three are false for guests. Show a shortcut only when its field is `true`;
 missing fields do not grant access. These flags describe access to the landing
 pages, not permission to read individual resources or perform mutations.
 
+Moderation `actionUrl` is a Portal-relative link to the individual action's edit
+page, or `null` if the caller cannot edit that action. The destination checks
+authorization independently. Resolve it against the configured Portal origin.
+Game icons use `/images/game-icons/{gameType}.png` (`Unknown.png` as fallback).
+Use `/images/noimage.jpg` for a missing map image, `/MapDownloads` for the
+download catalogue, and `/MapDownloads?rotation={gameServerId}` for a configured
+server rotation's ZIP landing page.
+
+`GET /api/integration/v1/player-map` is no-store. `points` contains coarse
+five-degree cell centers and observation counts, grouped by game and activity,
+from public servers only. A cell needs three identified observations (or live
+slots for live cells) to display; unidentified recent rows cannot qualify a cell.
+`players` contains names at the same coarse precision only for authenticated
+callers with `Players.Read` for the corresponding game. Neither array contains
+IP addresses or player identifiers.
+
+The map uses online server snapshots and a sample of the latest 200 geolocated
+observations requested from Repository within 48 hours, filtered to public
+servers. `recentlySeen` does not mean offline: known player IDs are deduplicated
+with live observations taking precedence, but unidentified rows cannot be
+matched and may repeat or overlap. Counts are observations, not unique people.
+
 For download writes, fetch `/api/integration/v1/session` with credentials and send
 its `requestVerificationToken` in the returned `headerName` together with the
 antiforgery cookie. The token is bound to the current session; fetch a new one
