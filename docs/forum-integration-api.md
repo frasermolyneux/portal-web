@@ -26,6 +26,23 @@ Use `/images/noimage.jpg` for a missing map image, `/MapDownloads` for the
 download catalogue, and `/MapDownloads?rotation={gameServerId}` for a configured
 server rotation's ZIP landing page.
 
+`GET /api/integration/v1/server-admin` requires `GameServers.Admin.Read` and
+returns a private, no-store `servers` array matching the Portal index (up to 50
+agent-enabled servers). Each row contains `title` (plain text), `gameType`,
+`hostname`, `queryPort`, nullable `currentPlayers`, `maxPlayers`, `currentMap`
+and `mod`, plus Portal-relative `consoleUrl`, `chatLogUrl` and `manageMapsUrl`.
+The optional links are null unless the destination policy permits them. The
+Console and row policy uses the existing Server Admin see-all access model;
+ChatLog and Manage Maps use their existing destination policies. Missing live
+status for a server is represented by null fields. A failed required dependency
+returns 503, not fabricated counts. Guests receive 401 and authenticated
+callers without access receive 403.
+
+The rotation download route may also show an observed-history pack when no
+configured rotation exists. `/MapDownloads?game={gameType}` selects the game-wide
+catalogue; it is not a server-specific collection. There is currently no public
+server-collection filter.
+
 `GET /api/integration/v1/player-map` is no-store. `points` contains coarse
 five-degree cell centers and observation counts, grouped by game and activity,
 from public servers only. A cell needs three identified observations (or live

@@ -7,6 +7,61 @@ servers:
 security:
   - portalCookie: []
 paths:
+  /api/integration/v1/server-admin:
+    get:
+      summary: Server Admin index and authorized Portal action links
+      description: Private no-store response; links are Portal-relative and optional links may be null. Uses the existing Server Admin see-all row policy and the destination policies for optional actions.
+      responses:
+        '200':
+          description: Up to 50 agent-enabled servers; missing per-server live status is null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [servers]
+                properties:
+                  servers:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      required: [title, gameType, hostname, queryPort, currentPlayers, maxPlayers, currentMap, mod, consoleUrl, chatLogUrl, manageMapsUrl]
+                      properties:
+                        title:
+                          type: string
+                        gameType:
+                          type: string
+                        hostname:
+                          type: string
+                          nullable: true
+                        queryPort:
+                          type: integer
+                        currentPlayers:
+                          type: integer
+                          nullable: true
+                        maxPlayers:
+                          type: integer
+                          nullable: true
+                        currentMap:
+                          type: string
+                          nullable: true
+                        mod:
+                          type: string
+                          nullable: true
+                        consoleUrl:
+                          type: string
+                        chatLogUrl:
+                          type: string
+                          nullable: true
+                        manageMapsUrl:
+                          type: string
+                          nullable: true
+        '401':
+          description: Sign-in required.
+        '403':
+          description: Server Admin access denied.
+        '503':
+          description: Required server or live-status data unavailable.
   /api/integration/v1/session:
     get:
       summary: Portal session, antiforgery token, and shortcut capabilities

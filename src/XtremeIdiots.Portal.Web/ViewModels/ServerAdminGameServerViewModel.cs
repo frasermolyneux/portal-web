@@ -28,4 +28,8 @@ public class ServerAdminGameServerViewModel
     /// Gets or sets the current RCON connection status of the game server
     /// </summary>
     public required ServerRconStatusResponseDto GameServerRconStatus { get; set; }
+
+    public bool CanViewChatLog { get; set; }
+
+    public bool CanManageMaps { get; set; }
 }
