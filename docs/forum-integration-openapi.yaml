@@ -1,0 +1,595 @@
+openapi: 3.0.3
+info:
+  title: Portal forum integration API
+  version: 1.0.0
+servers:
+  - url: https://portal.xtremeidiots.com
+security:
+  - portalCookie: []
+paths:
+  /api/integration/v1/session:
+    get:
+      summary: Portal session and antiforgery token
+      security: []
+      responses:
+        '200':
+          description: The token is bound to the antiforgery cookie and current session.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                  requestVerificationToken:
+                    type: string
+                  headerName:
+                    type: string
+  /api/integration/v1/banners:
+    get:
+      summary: Configured public server banners
+      security: []
+      responses:
+        '200':
+          description: Administrator-configured HTML banners in server-list order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [banners]
+                properties:
+                  banners:
+                    type: array
+                    items:
+                      type: string
+  /api/integration/v1/rotations:
+    get:
+      summary: Public server rotations
+      security: []
+      description: An observed-history fallback is identified by isObservedHistory; it is not a configured rotation.
+      responses:
+        '200':
+          description: Public server rotations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  servers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        gameServerId:
+                          type: string
+                          format: uuid
+                        title:
+                          type: string
+                        gameType:
+                          type: string
+                        rotationTitle:
+                          type: string
+                          nullable: true
+                        isObservedHistory:
+                          type: boolean
+                        maps:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              mapId:
+                                type: string
+                                format: uuid
+                                nullable: true
+                              mapName:
+                                type: string
+                              mapImageUri:
+                                type: string
+                                nullable: true
+                              likes:
+                                type: integer
+                              dislikes:
+                                type: integer
+                              votes:
+                                type: integer
+                              approval:
+                                type: number
+                                format: double
+                              serverLikes:
+                                type: integer
+                                nullable: true
+                              serverDislikes:
+                                type: integer
+                                nullable: true
+                              serverVotes:
+                                type: integer
+                                nullable: true
+                              serverApproval:
+                                type: number
+                                format: double
+                                nullable: true
+  /api/integration/v1/maps:
+    get:
+      summary: Search the public map catalogue
+      security: []
+      parameters:
+        - in: query
+          name: gameType
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: take
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: A page of public map metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MapPage'
+        '400':
+          description: Invalid paging or game type.
+        '503':
+          description: Catalogue unavailable.
+  /api/integration/v1/moderation:
+    get:
+      summary: Paged moderation actions
+      description: Requires the Portal AdminActions.Read policy.
+      security:
+        - portalCookie: []
+      parameters:
+        - in: query
+          name: gameType
+          schema:
+            type: string
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: take
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Moderation actions in descending creation order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationPage'
+        '400':
+          description: Invalid paging or game type.
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: Portal authorization denied.
+        '503':
+          description: Moderation data unavailable.
+  /api/integration/v1/stats:
+    get:
+      summary: Aggregate Portal statistics
+      description: Requires Dashboard.Read. Counts refer to tracked game-player records, not distinct people.
+      security:
+        - portalCookie: []
+      responses:
+        '200':
+          description: Counts from current dependency snapshots.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asOfUtc:
+                    type: string
+                    format: date-time
+                  playersOnline:
+                    type: integer
+                  onlineByGame:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        gameType:
+                          type: string
+                        playersOnline:
+                          type: integer
+                  trackedPlayers:
+                    type: integer
+                  activePlayers24h:
+                    type: integer
+                  activePlayers48h:
+                    type: integer
+                  unclaimedBans:
+                    type: integer
+                  openReports:
+                    type: integer
+                  actions24h:
+                    type: object
+                    nullable: true
+                    properties:
+                      bans:
+                        type: integer
+                      tempBans:
+                        type: integer
+                      kicks:
+                        type: integer
+                      warnings:
+                        type: integer
+                      observations:
+                        type: integer
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: Portal authorization denied.
+        '503':
+          description: Statistics unavailable.
+  /api/integration/v1/activity:
+    get:
+      summary: Paged Portal activity log
+      description: Requires Users.ActivityLog.
+      security:
+        - portalCookie: []
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            enum: [1, 6, 12, 24, 168, 720]
+            default: 24
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: take
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Newest activity entries first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityPage'
+        '400':
+          description: Invalid filter or paging.
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: Portal authorization denied.
+  /api/integration/v1/downloads/collection:
+    get:
+      summary: Browse map or mod collections
+      security: []
+      parameters:
+        - in: query
+          name: game
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: kind
+          schema:
+            type: string
+            default: maps
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: version
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version-pinned collection page.
+  /api/integration/v1/downloads/browse:
+    get:
+      summary: Browse a download path
+      security: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: version
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version-pinned directory page.
+  /api/integration/v1/downloads/manifest:
+    get:
+      summary: Retrieve a map manifest
+      security: []
+      parameters:
+        - in: query
+          name: game
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: mapName
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: version
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version-pinned manifest.
+  /api/integration/v1/downloads/archives:
+    post:
+      summary: Create a ZIP archive from folders
+      security:
+        - portalCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Antiforgery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paths]
+              properties:
+                paths:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Archive job; polling is required until complete.
+        '400':
+          description: Invalid request or antiforgery token.
+        '401':
+          description: Portal sign-in required.
+  /api/integration/v1/downloads/rotation-archives:
+    post:
+      summary: Create a ZIP from a public server rotation
+      security:
+        - portalCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Antiforgery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameServerId]
+              properties:
+                gameServerId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Archive job.
+        '400':
+          description: Invalid request or antiforgery token.
+        '401':
+          description: Portal sign-in required.
+  /api/integration/v1/downloads/archive-status:
+    get:
+      summary: Retrieve an owned archive job
+      security:
+        - portalCookie: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Archive job.
+        '401':
+          description: Portal sign-in required.
+  /api/integration/v1/downloads/grants:
+    post:
+      summary: Create an individual-file or owned-archive download grant
+      description: File grants may be anonymous; archive grants require a Portal session.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Antiforgery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  nullable: true
+                version:
+                  type: string
+                  nullable: true
+                archiveId:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Short-lived download grant; do not log or persist the URL.
+        '400':
+          description: Invalid request or antiforgery token.
+        '401':
+          description: Portal sign-in required for archive grants.
+components:
+  parameters:
+    Antiforgery:
+      in: header
+      name: RequestVerificationToken
+      required: true
+      schema:
+        type: string
+  securitySchemes:
+    portalCookie:
+      type: apiKey
+      in: cookie
+      name: XIPortal
+  schemas:
+    ActivityPage:
+      type: object
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              eventName:
+                type: string
+              category:
+                type: string
+              actorId:
+                type: string
+                nullable: true
+              actorName:
+                type: string
+                nullable: true
+              sourceComponent:
+                type: string
+                nullable: true
+              action:
+                type: string
+                nullable: true
+              properties:
+                type: object
+                additionalProperties:
+                  type: string
+        skip:
+          type: integer
+        take:
+          type: integer
+        totalCount:
+          type: integer
+        filteredCount:
+          type: integer
+    MapPage:
+      type: object
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            required: [id, gameType, name]
+            properties:
+              id:
+                type: string
+                format: uuid
+              gameType:
+                type: string
+              name:
+                type: string
+              imageUrl:
+                type: string
+                nullable: true
+        skip:
+          type: integer
+        take:
+          type: integer
+        totalCount:
+          type: integer
+          nullable: true
+        filteredCount:
+          type: integer
+          nullable: true
+    ModerationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              createdUtc:
+                type: string
+                format: date-time
+              gameType:
+                type: string
+                nullable: true
+              type:
+                type: string
+              playerName:
+                type: string
+                nullable: true
+              playerId:
+                type: string
+                format: uuid
+              adminName:
+                type: string
+                nullable: true
+              source:
+                type: string
+        skip:
+          type: integer
+        take:
+          type: integer
+        totalCount:
+          type: integer
+          nullable: true
+        filteredCount:
+          type: integer
+          nullable: true

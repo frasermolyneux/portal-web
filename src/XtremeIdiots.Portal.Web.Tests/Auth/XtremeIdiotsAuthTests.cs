@@ -12,6 +12,7 @@ using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Areas.Identity;
 using XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
 
 namespace XtremeIdiots.Portal.Web.Tests.Auth;
@@ -253,6 +254,75 @@ public class XtremeIdiotsAuthTests
         users.Verify(manager => manager.AddLoginAsync(It.IsAny<IdentityUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
         signIn.Verify(manager => manager.SignInAsync(It.IsAny<IdentityUser>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never);
     }
+
+    [Fact]
+    public void TestSubjectKeys_AreBoundToClientAndSubject()
+    {
+        var original = IdentityHostingStartup.TestSubjectKey("client-one", "42");
+        Assert.Equal(original, IdentityHostingStartup.TestSubjectKey("client-one", "42"));
+        Assert.NotEqual(original, IdentityHostingStartup.TestSubjectKey("client-two", "42"));
+        Assert.NotEqual(original, IdentityHostingStartup.TestSubjectKey("client-one", "43"));
+    }
+
+    [Fact]
+    public async Task UnlinkedTestSubject_DoesNotResolveOrCreateProductionProfileEvenWhenIdsMatch()
+    {
+        users.Setup(manager => manager.FindByLoginAsync(IdentityHostingStartup.TestOAuthSchemeName, "42"))
+            .ReturnsAsync((IdentityUser?)null);
+
+        var result = await CreateSut().ProcessExternalLogin(CreateTestLogin("42"));
+
+        Assert.Equal(XtremeIdiotsAuthResult.Failed, result);
+        AssertNoSignIn();
+        repository.Verify(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(client => client.UserProfiles.V1.CreateUserProfile(
+            It.IsAny<CreateUserProfileDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LinkedTestSubject_RefreshesClaimsFromCanonicalProductionProfile()
+    {
+        SetupActiveProfile();
+        var user = new IdentityUser { Id = "42" };
+        users.Setup(manager => manager.FindByLoginAsync(IdentityHostingStartup.TestOAuthSchemeName, "99")).ReturnsAsync(user);
+        users.Setup(manager => manager.GetLoginsAsync(user))
+            .ReturnsAsync([new UserLoginInfo("XtremeIdiots", "42", "Production")]);
+        users.Setup(manager => manager.GetClaimsAsync(user)).ReturnsAsync([]);
+        users.Setup(manager => manager.RemoveClaimsAsync(user, It.IsAny<IEnumerable<Claim>>())).ReturnsAsync(IdentityResult.Success);
+        users.Setup(manager => manager.AddClaimsAsync(user, It.IsAny<IEnumerable<Claim>>())).ReturnsAsync(IdentityResult.Success);
+        signIn.Setup(manager => manager.ExternalLoginSignInAsync(IdentityHostingStartup.TestOAuthSchemeName, "99", true))
+            .ReturnsAsync(SignInResult.Success);
+        signIn.Setup(manager => manager.SignInAsync(user, true, It.IsAny<string>())).Returns(Task.CompletedTask);
+        signIn.Setup(manager => manager.RefreshSignInAsync(user)).Returns(Task.CompletedTask);
+
+        var result = await CreateSut().ProcessExternalLogin(CreateTestLogin("99"));
+
+        Assert.Equal(XtremeIdiotsAuthResult.Success, result);
+        repository.Verify(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("42", It.IsAny<CancellationToken>()), Times.Exactly(2));
+        repository.Verify(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("99", It.IsAny<CancellationToken>()), Times.Never);
+        forums.Verify(client => client.Core.GetMember(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LinkedTestSubject_RejectsArchivedProductionProfileBeforeSignIn()
+    {
+        var user = new IdentityUser { Id = "42" };
+        users.Setup(manager => manager.FindByLoginAsync(IdentityHostingStartup.TestOAuthSchemeName, "99")).ReturnsAsync(user);
+        users.Setup(manager => manager.GetLoginsAsync(user))
+            .ReturnsAsync([new UserLoginInfo("XtremeIdiots", "42", "Production")]);
+        repository.Setup(client => client.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("42", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.NotFound));
+
+        var result = await CreateSut().ProcessExternalLogin(CreateTestLogin("99"));
+
+        Assert.Equal(XtremeIdiotsAuthResult.Failed, result);
+        AssertNoSignIn();
+    }
+
+    private static ExternalLoginInfo CreateTestLogin(string subject)
+        => new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, subject)], "Test")),
+            IdentityHostingStartup.TestOAuthSchemeName, subject, "Test forum");
 
     private UserProfileDto SetupActiveProfile()
     {

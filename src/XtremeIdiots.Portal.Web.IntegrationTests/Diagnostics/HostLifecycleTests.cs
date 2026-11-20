@@ -1,4 +1,8 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
@@ -7,6 +11,26 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Diagnostics;
 [Trait("Category", "HttpIntegration")]
 public sealed class HostLifecycleTests
 {
+    [Fact]
+    public async Task Disposal_ReleasesWebRootFileWatchers()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var webRoot = host.Services.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider;
+        var physicalProviders = PhysicalProviders(webRoot).ToArray();
+        Assert.NotEmpty(physicalProviders);
+        host.Services.GetRequiredService<IFileVersionProvider>().AddFileVersionToPath(PathString.Empty, "/css/app.css");
+
+        await host.DisposeAsync();
+
+        foreach (var provider in physicalProviders)
+            Assert.Throws<ObjectDisposedException>(() => provider.Watch("css/app.css"));
+    }
+
+    private static IEnumerable<PhysicalFileProvider> PhysicalProviders(IFileProvider provider)
+        => provider is CompositeFileProvider composite
+            ? composite.FileProviders.SelectMany(PhysicalProviders)
+            : provider is PhysicalFileProvider physical ? [physical] : [];
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

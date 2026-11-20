@@ -15,14 +15,15 @@ public class BannersControllerTests
     }
 
     [Fact]
-    public void GetGameServers_HasAllowAnonymousAttribute_OnlyAnonymousActionInController()
+    public void BannerListActions_AreTheOnlyAnonymousActionsInController()
     {
         var methods = typeof(BannersController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         var allowAnonymousMethods = methods
             .Where(method => method.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Length > 0)
             .ToList();
 
-        Assert.Single(allowAnonymousMethods);
-        Assert.Equal(nameof(BannersController.GetGameServers), allowAnonymousMethods[0].Name);
+        Assert.Equal(
+            [nameof(BannersController.GetGameServers), nameof(BannersController.GetIntegrationBanners)],
+            allowAnonymousMethods.Select(method => method.Name).Order().ToArray());
     }
 }

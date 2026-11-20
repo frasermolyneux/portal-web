@@ -51,6 +51,11 @@ public class BannersController(
     [EnableCors("CorsPolicy")]
     public async Task<IActionResult> GetGameServers(CancellationToken cancellationToken = default)
     {
+        return await GetGameServersCore(false, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<IActionResult> GetGameServersCore(bool integration, CancellationToken cancellationToken)
+    {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
@@ -63,20 +68,65 @@ public class BannersController(
                 return StatusCode(500, "Failed to retrieve game servers banner data");
             }
 
+            var servers = gameServersApiResponse.Result.Data.Items.ToList();
+            if (integration)
+            {
+                var filteredCount = gameServersApiResponse.Result.Pagination?.FilteredCount;
+                if (filteredCount is null && servers.Count == 50)
+                {
+                    Logger.LogWarning("Server banner list pagination is unavailable");
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, "Failed to retrieve complete server banner data");
+                }
+
+                while (servers.Count < filteredCount)
+                {
+                    var page = await repositoryApiClient.GameServers.V1.GetGameServers(
+                        null, null, GameServerFilter.ServerListEnabled, servers.Count, 50,
+                        GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+                    if (!page.IsSuccess || page.Result?.Data?.Items is null || !page.Result.Data.Items.Any())
+                    {
+                        Logger.LogWarning("Failed to retrieve a server banner list page");
+                        return StatusCode(StatusCodes.Status503ServiceUnavailable, "Failed to retrieve complete server banner data");
+                    }
+
+                    servers.AddRange(page.Result.Data.Items);
+                }
+            }
+
             var htmlBanners = new List<string?>();
-            var serverIds = gameServersApiResponse.Result.Data.Items.Select(gs => gs.GameServerId);
+            var serverIds = servers.Select(gs => gs.GameServerId).ToArray();
+            if (integration && serverIds.Distinct().Count() != serverIds.Length)
+            {
+                Logger.LogWarning("Server banner list contained duplicate server IDs");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Failed to retrieve complete server banner data");
+            }
+
             var configs = await configurationReadService.GetAsync(
                 serverIds, cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (integration && serverIds.Any(id => !configs.ContainsKey(id)))
+            {
+                Logger.LogWarning("Unable to retrieve all server banner configurations");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Failed to retrieve server banner configurations");
+            }
 
-            foreach (var gs in gameServersApiResponse.Result.Data.Items)
+            foreach (var gs in servers)
             {
                 var banner = GameServerConfigHelper.GetConfigValue(configs, gs.GameServerId, "serverlist", "htmlBanner");
                 if (!string.IsNullOrEmpty(banner))
                     htmlBanners.Add(banner);
             }
 
-            return Ok(htmlBanners);
+            return integration ? Ok(new { banners = htmlBanners }) : Ok(htmlBanners);
         }, "Retrieve game servers banners data").ConfigureAwait(false);
+    }
+
+    [HttpGet("/api/integration/v1/banners")]
+    [AllowAnonymous]
+    [EnableCors("ForumIntegration")]
+    [SkipStatusCodePages]
+    public async Task<IActionResult> GetIntegrationBanners(CancellationToken cancellationToken = default)
+    {
+        return await GetGameServersCore(true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
