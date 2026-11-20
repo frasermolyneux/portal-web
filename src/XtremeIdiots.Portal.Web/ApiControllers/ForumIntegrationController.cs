@@ -20,10 +20,25 @@ public sealed class ForumIntegrationController(
     [HttpGet("session")]
     [AllowAnonymous]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public IActionResult Session([FromServices] IAntiforgery antiforgery)
+    public async Task<IActionResult> Session([FromServices] IAntiforgery antiforgery,
+        [FromServices] IAuthorizationService authorizationService)
     {
+        var authenticated = User.Identity?.IsAuthenticated == true;
+        var players = authenticated &&
+            (await authorizationService.AuthorizeAsync(User, HttpContext, AuthPolicies.Players_Read).ConfigureAwait(false)).Succeeded;
+        var serverAdmin = authenticated &&
+            (await authorizationService.AuthorizeAsync(User, HttpContext, AuthPolicies.GameServers_Admin_Read).ConfigureAwait(false)).Succeeded;
+        var chatLogs = serverAdmin &&
+            (await authorizationService.AuthorizeAsync(User, HttpContext, AuthPolicies.ChatLog_Read).ConfigureAwait(false)).Succeeded;
+
         var tokens = antiforgery.GetAndStoreTokens(HttpContext);
-        return Ok(new { authenticated = User.Identity?.IsAuthenticated == true, requestVerificationToken = tokens.RequestToken, headerName = tokens.HeaderName });
+        return Ok(new
+        {
+            authenticated,
+            requestVerificationToken = tokens.RequestToken,
+            headerName = tokens.HeaderName,
+            capabilities = new { players, serverAdmin, chatLogs }
+        });
     }
 
     [HttpGet("rotations")]

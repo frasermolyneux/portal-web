@@ -9,15 +9,16 @@ security:
 paths:
   /api/integration/v1/session:
     get:
-      summary: Portal session and antiforgery token
+      summary: Portal session, antiforgery token, and shortcut capabilities
       security: []
       responses:
         '200':
-          description: The token is bound to the antiforgery cookie and current session.
+          description: Not cacheable. The token is bound to the antiforgery cookie and current session.
           content:
             application/json:
               schema:
                 type: object
+                required: [capabilities]
                 properties:
                   authenticated:
                     type: boolean
@@ -25,6 +26,20 @@ paths:
                     type: string
                   headerName:
                     type: string
+                  capabilities:
+                    type: object
+                    description: Landing-page access only; all fields are false for guests.
+                    required: [players, serverAdmin, chatLogs]
+                    properties:
+                      players:
+                        type: boolean
+                        description: Access to /Players (Players.Read).
+                      serverAdmin:
+                        type: boolean
+                        description: Access to /ServerAdmin (GameServers.Admin.Read).
+                      chatLogs:
+                        type: boolean
+                        description: Access to /ServerAdmin/ChatLogIndex (GameServers.Admin.Read and ChatLog.Read).
   /api/integration/v1/banners:
     get:
       summary: Configured public server banners

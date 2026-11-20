@@ -21,6 +21,7 @@ internal static class TestPrincipalProfiles
     /// </summary>
     public const string MapRotationDeployServerId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
 
+    public const string ChatLogReader = "chat-log-reader";
     public const string GameAdmin = "game-admin";
     public const string GameServerWriterWithoutRcon = "game-server-writer-without-rcon";
     public const string HeadAdmin = "head-admin";
@@ -48,6 +49,10 @@ internal static class TestPrincipalProfiles
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_Read, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x.ToString()));
             claims.Add(new Claim(AdditionalPermission.ChatLog_ReadServer, GameType.CallOfDuty4x.ToString()));
+        }
+        else if (profile == ChatLogReader)
+        {
+            claims.Add(new Claim(AuthPolicies.ChatLog_Read, GameType.CallOfDuty4.ToString()));
         }
         else if (profile == MapRotationReader)
         {

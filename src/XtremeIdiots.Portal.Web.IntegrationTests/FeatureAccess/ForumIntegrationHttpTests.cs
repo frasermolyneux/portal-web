@@ -26,6 +26,34 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 public sealed class ForumIntegrationHttpTests
 {
     [Theory]
+    [InlineData(null, false, false, false)]
+    [InlineData(TestPrincipalProfiles.ChatLogReader, false, false, false)]
+    [InlineData(TestPrincipalProfiles.Cod4xLifecycleManager, false, true, false)]
+    [InlineData(TestPrincipalProfiles.Moderator, true, true, false)]
+    [InlineData(TestPrincipalProfiles.GameAdmin, true, true, true)]
+    public async Task Session_ReportsLandingPageCapabilities(string? profile, bool players, bool serverAdmin, bool chatLogs)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        if (profile is not null)
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(profile is not null, body.GetProperty("authenticated").GetBoolean());
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("requestVerificationToken").GetString()));
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("headerName").GetString()));
+        Assert.Equal(4, body.EnumerateObject().Count());
+        var capabilities = body.GetProperty("capabilities");
+        Assert.Equal(3, capabilities.EnumerateObject().Count());
+        Assert.Equal(players, capabilities.GetProperty("players").GetBoolean());
+        Assert.Equal(serverAdmin, capabilities.GetProperty("serverAdmin").GetBoolean());
+        Assert.Equal(chatLogs, capabilities.GetProperty("chatLogs").GetBoolean());
+    }
+
+    [Theory]
     [InlineData("https://test.xtremeidiots.com", true)]
     [InlineData("https://www.xtremeidiots.com", true)]
     [InlineData("https://evil.xtremeidiots.com", false)]
