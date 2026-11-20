@@ -28,8 +28,10 @@ download routes use the same request and response types as the
 short-lived and must not be logged or persisted.
 
 The aggregate statistics endpoint requires Dashboard.Read. Its 24/48-hour
-figures count tracked game-player records by last-seen time, not distinct people;
-the online total and per-game counts come from separate dependency snapshots.
+figures sum Repository's per-game counts of tracked player records by last-seen
+time, not distinct people. Each window uses the same UTC end time. The online
+total and per-game online counts come from separate dependency snapshots.
+Stats returns `503` if a required count is unavailable; it does not substitute zero.
 
 The test OAuth provider is optional. Configure `XtremeIdiots:TestAuth:ClientId` and
 `XtremeIdiots:TestAuth:ClientSecret` using the existing secure configuration system.
