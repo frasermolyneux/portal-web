@@ -22,6 +22,7 @@ paths:
                 properties:
                   servers:
                     type: array
+                    maxItems: 50
                     items:
                       type: object
                       required: [title, gameType, hostname, queryPort, currentPlayers, maxPlayers, currentMap, mod, consoleUrl, chatLogUrl, manageMapsUrl]
