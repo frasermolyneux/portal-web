@@ -128,8 +128,9 @@ public sealed class ForumIntegrationController(
             GameServerOrder.ServerListPosition, cancellationToken);
         var liveTask = repository.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken);
         var trackedTask = repository.Players.V1.GetPlayers(null, null, null, 0, 1, PlayersOrder.LastSeenDesc, PlayerEntityOptions.None);
-        var active24Task = repository.PlayerAnalyticsV2.V1.GetOverview(now.AddHours(-24), now, cancellationToken);
-        var active48Task = repository.PlayerAnalyticsV2.V1.GetOverview(now.AddHours(-48), now, cancellationToken);
+        // The grouped query counts the same last-seen records without the overview's separate new/returning queries.
+        var active24Task = repository.PlayerAnalyticsV2.V1.GetByGame(now.AddHours(-24), now, cancellationToken);
+        var active48Task = repository.PlayerAnalyticsV2.V1.GetByGame(now.AddHours(-48), now, cancellationToken);
         await Task.WhenAll(summaryTask, serversTask, liveTask, trackedTask, active24Task, active48Task).ConfigureAwait(false);
 
         var summary = await summaryTask.ConfigureAwait(false);
@@ -142,8 +143,8 @@ public sealed class ForumIntegrationController(
             !servers.IsSuccess || servers.Result?.Data?.Items is null ||
             !live.IsSuccess || live.Result?.Data?.Items is null ||
             !tracked.IsSuccess || tracked.Result?.Pagination?.TotalCount is not { } trackedCount ||
-            !active24.IsSuccess || active24.Result?.Data is not { } day ||
-            !active48.IsSuccess || active48.Result?.Data is not { } twoDays)
+            !active24.IsSuccess || active24.Result?.Data?.Items is not { } day ||
+            !active48.IsSuccess || active48.Result?.Data?.Items is not { } twoDays)
         {
             logger.LogWarning("Forum aggregate statistics are unavailable from a dependency");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
@@ -184,7 +185,7 @@ public sealed class ForumIntegrationController(
 
         var actions = dashboard.RecentActions24h;
         return Ok(new AggregateStats(now, dashboard.TotalPlayersOnline, byGame, trackedCount,
-            day.ActivePlayers, twoDays.ActivePlayers, dashboard.UnclaimedBanCount, dashboard.OpenReportCount,
+            day.Sum(game => game.ActivePlayers), twoDays.Sum(game => game.ActivePlayers), dashboard.UnclaimedBanCount, dashboard.OpenReportCount,
             actions is null ? null : new ActionCounts(actions.Bans, actions.TempBans, actions.Kicks, actions.Warnings, actions.Observations)));
     }
 

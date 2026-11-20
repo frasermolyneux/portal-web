@@ -220,8 +220,11 @@ public sealed class ForumIntegrationHttpTests
         Assert.Equal(51, body.GetProperty("banners").GetArrayLength());
     }
 
-    [Fact]
-    public async Task Stats_CombinesServerSideCountsForAuthorizedDashboardUser()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(24)]
+    [InlineData(48)]
+    public async Task Stats_CombinesGroupedCountsOrReportsUnavailable(int failedWindowHours)
     {
         await using var host = await PortalWebTestHost.CreateAsync();
         var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
@@ -243,17 +246,44 @@ public sealed class ForumIntegrationHttpTests
             .ReturnsAsync(new ApiResult<CollectionModel<PlayerDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<PlayerDto>>(new CollectionModel<PlayerDto>([]))
                 { Pagination = new ApiPagination(125, 125, 0, 1) }));
-        repository.Setup(client => client.PlayerAnalyticsV2.V1.GetOverview(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        repository.Setup(client => client.PlayerAnalyticsV2.V1.GetByGame(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((DateTime from, DateTime to, CancellationToken _) =>
-                new ApiResult<PlayersOverviewDto>(HttpStatusCode.OK, new ApiResponse<PlayersOverviewDto>(
-                    Fixture<PlayersOverviewDto>(new { ActivePlayers = (to - from).TotalHours < 30 ? 10 : 20 }))));
+            {
+                var hours = (to - from).TotalHours;
+                Assert.Contains(hours, new[] { 24d, 48d });
+                if (hours == failedWindowHours)
+                    return new ApiResult<PlayersByGameDto>(HttpStatusCode.ServiceUnavailable);
+
+                return new ApiResult<PlayersByGameDto>(HttpStatusCode.OK, new ApiResponse<PlayersByGameDto>(
+                    Fixture<PlayersByGameDto>(new
+                    {
+                        Items = new[]
+                        {
+                            new { GameType = GameType.CallOfDuty4, ActivePlayers = hours == 24 ? 6 : 12 },
+                            new { GameType = GameType.CallOfDuty5, ActivePlayers = hours == 24 ? 4 : 8 }
+                        }
+                    })));
+            });
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/stats");
         request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.SeniorAdmin);
 
         using var response = await host.Client.SendAsync(request);
+        repository.Verify(client => client.PlayerAnalyticsV2.V1.GetOverview(It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        if (failedWindowHours != 0)
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            return;
+        }
+
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var asOfUtc = body.GetProperty("asOfUtc").GetDateTime();
+        repository.Verify(client => client.PlayerAnalyticsV2.V1.GetByGame(asOfUtc.AddHours(-24), asOfUtc,
+            It.IsAny<CancellationToken>()), Times.Once);
+        repository.Verify(client => client.PlayerAnalyticsV2.V1.GetByGame(asOfUtc.AddHours(-48), asOfUtc,
+            It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(125, body.GetProperty("trackedPlayers").GetInt32());
         Assert.Equal(10, body.GetProperty("activePlayers24h").GetInt32());
         Assert.Equal(20, body.GetProperty("activePlayers48h").GetInt32());
