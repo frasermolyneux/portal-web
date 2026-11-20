@@ -279,6 +279,35 @@ public sealed partial class NativeMapDownloadsHttpTests
     }
 
     [Fact]
+    public async Task ForumDownloadGrant_UsesCrossOriginSessionTokenAndExistingFingerprint()
+    {
+        await using var host = await CreateHost();
+        var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
+        var file = RedirectDtoFactory.CreateFile();
+        fake.WithData("CreateDownloadGrant", new DownloadGrant("https://maps.test.invalid/v1/downloads/" + new string('a', 64),
+            file.Name, file.Bytes, file.Version, DateTimeOffset.UtcNow.AddMinutes(15)));
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        sessionRequest.Headers.Add("Origin", "https://test.xtremeidiots.com");
+        using var session = await host.Client.SendAsync(sessionRequest);
+        var payload = await session.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.False(payload.GetProperty("authenticated").GetBoolean());
+        Assert.Equal("https://test.xtremeidiots.com", Assert.Single(session.Headers.GetValues("Access-Control-Allow-Origin")));
+        var cookie = string.Join("; ", session.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0]));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/integration/v1/downloads/grants")
+        {
+            Content = JsonContent.Create(new { file.Path, file.Version })
+        };
+        request.Headers.Add("Origin", "https://test.xtremeidiots.com");
+        request.Headers.Add("Cookie", cookie);
+        request.Headers.Add(payload.GetProperty("headerName").GetString()!, payload.GetProperty("requestVerificationToken").GetString());
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("https://test.xtremeidiots.com", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+        Assert.Null(Assert.Single(fake.PortalCalls).MemberId);
+    }
+
+    [Fact]
     public async Task LoggedInArchives_EnforceAntiforgeryAndFolderBound_AndPreserveOwnershipFailures()
     {
         await using var host = await CreateHost();

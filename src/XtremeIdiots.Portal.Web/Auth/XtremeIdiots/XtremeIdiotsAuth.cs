@@ -5,6 +5,7 @@ using MX.InvisionCommunity.Api.Abstractions.Models;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Web.Areas.Identity;
 
 namespace XtremeIdiots.Portal.Web.Auth.XtremeIdiots;
 
@@ -35,6 +36,11 @@ public class XtremeIdiotsAuth(
 
         try
         {
+            if (info.LoginProvider == IdentityHostingStartup.TestOAuthSchemeName)
+                return await ProcessTestLogin(info, cancellationToken).ConfigureAwait(false);
+            if (info.LoginProvider != XtremeIdiotsProvider)
+                throw new InvalidOperationException("The external login provider is not supported.");
+
             var memberId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? throw new InvalidOperationException("The external login has no member ID.");
             var memberResult = await forumsClient.Core.GetMember(memberId, cancellationToken).ConfigureAwait(false);
@@ -66,7 +72,33 @@ public class XtremeIdiotsAuth(
         await signInManager.SignOutAsync().ConfigureAwait(false);
     }
 
-    private async Task UpdateExistingUser(ExternalLoginInfo info, UserProfileDto userProfile, CancellationToken cancellationToken = default)
+    private async Task<XtremeIdiotsAuthResult> ProcessTestLogin(ExternalLoginInfo info, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false);
+        if (user is null)
+            return XtremeIdiotsAuthResult.Failed;
+
+        var logins = await userManager.GetLoginsAsync(user).ConfigureAwait(false);
+        var productionLogin = logins.SingleOrDefault(login => login.LoginProvider == XtremeIdiotsProvider);
+        if (productionLogin is null || productionLogin.ProviderKey != user.Id)
+            throw new InvalidOperationException("The linked account has no canonical production login.");
+
+        var response = await repositoryApiClient.UserProfiles.V1
+            .GetUserProfileByXtremeIdiotsId(productionLogin.ProviderKey, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data is not { ArchivedAtUtc: null } profile)
+            throw new InvalidOperationException("The linked account has no active Portal profile.");
+
+        var result = await signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, true).ConfigureAwait(false);
+        if (result.IsLockedOut)
+            return XtremeIdiotsAuthResult.Locked;
+        if (!result.Succeeded)
+            return XtremeIdiotsAuthResult.Failed;
+
+        await UpdateExistingUser(info, profile, cancellationToken, productionLogin.ProviderKey).ConfigureAwait(false);
+        return XtremeIdiotsAuthResult.Success;
+    }
+
+    private async Task UpdateExistingUser(ExternalLoginInfo info, UserProfileDto userProfile, CancellationToken cancellationToken = default, string? canonicalMemberId = null)
     {
         if (info?.Principal is null)
         {
@@ -86,7 +118,7 @@ public class XtremeIdiotsAuth(
             var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false) ?? throw new InvalidOperationException($"User not found for login provider: {info.LoginProvider}, key: {info.ProviderKey}");
             cancellationToken.ThrowIfCancellationRequested();
 
-            userProfile = await RecheckActiveUserProfile(id, userProfile.UserProfileId, cancellationToken).ConfigureAwait(false);
+            userProfile = await RecheckActiveUserProfile(canonicalMemberId ?? id, userProfile.UserProfileId, cancellationToken).ConfigureAwait(false);
             var userClaims = await userManager.GetClaimsAsync(user).ConfigureAwait(false);
             EnsureIdentitySucceeded(await userManager.RemoveClaimsAsync(user, userClaims).ConfigureAwait(false));
             var claims = userProfile.UserProfileClaims.Select(upc => new Claim(upc.ClaimType, upc.ClaimValue)).ToList();

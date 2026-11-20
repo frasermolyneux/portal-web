@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -101,10 +102,18 @@ internal sealed class PortalTestApplicationContext : IAsyncDisposable
         }
 
         var cleanup = new DiagnosticResourceCleanup(diagnostics);
+        // The static-assets composite does not dispose its web-root physical providers.
+        foreach (var provider in PhysicalWebRootProviders(Builder.Environment.WebRootFileProvider).Distinct())
+            cleanup.Run("Disposing test web-root file provider", provider.Dispose);
         await cleanup.RunAsync("Disposing SQLite services", () => sqliteServiceProvider.DisposeAsync().AsTask()).ConfigureAwait(false);
         await cleanup.RunAsync("Closing SQLite connection", () => sqliteConnection.DisposeAsync().AsTask()).ConfigureAwait(false);
         cleanup.ThrowIfFailed();
     }
+
+    private static IEnumerable<PhysicalFileProvider> PhysicalWebRootProviders(IFileProvider provider)
+        => provider is CompositeFileProvider composite
+            ? composite.FileProviders.SelectMany(PhysicalWebRootProviders)
+            : provider is PhysicalFileProvider physical ? [physical] : [];
 
     private static string FindWebContentRoot()
     {
