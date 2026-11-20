@@ -30,7 +30,7 @@ public sealed class ForumIntegrationHttpTests
     [Theory]
     [InlineData(null, 0)]
     [InlineData(TestPrincipalProfiles.MapRotationReader, 0)]
-    [InlineData(TestPrincipalProfiles.Moderator, 5)]
+    [InlineData(TestPrincipalProfiles.Moderator, 10)]
     public async Task PlayerMap_ProtectsNamesAndPrivateServersAndPrefersKnownLivePlayers(string? profile, int namedCount)
     {
         await using var host = await PortalWebTestHost.CreateAsync();
@@ -39,6 +39,8 @@ public sealed class ForumIntegrationHttpTests
         var privateId = Guid.NewGuid();
         var otherGameId = Guid.NewGuid();
         var playerId = Guid.NewGuid();
+        var recentPlayerId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
         const string privateName = "private-player";
         const string ip = "192.0.2.7";
         repository.Setup(r => r.GameServers.V1.GetGameServers(null, null, GameServerFilter.ServerListEnabled,
@@ -55,13 +57,13 @@ public sealed class ForumIntegrationHttpTests
             .ReturnsAsync(OkCollection(new[] { publicId, privateId }.Select(id =>
                 Fixture<GameServerLiveStatusDto>(new { ServerId = id, IsOnline = true, CurrentPlayers = 4 }))));
         repository.Setup(r => r.LiveStatus.V1.GetGameServerLivePlayers(publicId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(OkCollection(new[] { "known", "anonymous-id-1", "anonymous-id-2", "no-coordinates" }.Select((name, i) =>
+            .ReturnsAsync(OkCollection(new[] { "known", "anonymous-id-1", "anonymous-id-2", "no-coordinates", "sparse-live-1", "sparse-live-2", "sparse-live-3" }.Select((name, i) =>
                 Fixture<LivePlayerDto>(new
                 {
                     Name = name,
                     PlayerId = i == 0 ? playerId : (Guid?)null,
                     IpAddress = ip,
-                    GeoIntelligence = new { Latitude = i == 3 ? (double?)null : 52.1, Longitude = -1.2 }
+                    GeoIntelligence = new { Latitude = i switch { 3 => (double?)null, 4 or 5 => 42.1, 6 => 32.1, _ => 52.1 }, Longitude = -1.2 }
                 }))));
         repository.Setup(r => r.RecentPlayers.V1.GetRecentPlayers(null, null, It.IsAny<DateTime?>(),
                 RecentPlayersFilter.GeoLocated, 0, 200, RecentPlayersOrder.TimestampDesc, It.IsAny<CancellationToken>()))
@@ -69,6 +71,11 @@ public sealed class ForumIntegrationHttpTests
             {
                 Recent(publicId, playerId, "matched-live"), Recent(publicId, null, "unmatched-recent"),
                 Recent(publicId, null, "unmatched-recent-2"), Recent(privateId, null, privateName),
+                Recent(publicId, null, "unmatched-recent-3"),
+                Recent(publicId, recentPlayerId, "older-repeat", 32.1, now.AddMinutes(-3)),
+                Recent(publicId, recentPlayerId, "latest-repeat", 42.1, now.AddMinutes(-1)),
+                Recent(publicId, recentPlayerId, "older-repeat-2", 42.1, now.AddMinutes(-2)),
+                Recent(publicId, recentPlayerId, "older-repeat-3", 42.1, now.AddMinutes(-3)),
                 Recent(otherGameId, Guid.NewGuid(), "different-game"),
                 Recent(otherGameId, Guid.NewGuid(), "different-game-2"),
                 Recent(otherGameId, Guid.NewGuid(), "different-game-3")
@@ -101,12 +108,19 @@ public sealed class ForumIntegrationHttpTests
         Assert.DoesNotContain("\"matched-live\"", json);
         Assert.DoesNotContain("different-game", json);
         if (namedCount > 0)
-            Assert.Contains("\"recentlySeen\"", json);
+        {
+            var latest = Assert.Single(body.GetProperty("players").EnumerateArray(),
+                player => player.GetProperty("name").GetString() == "latest-repeat");
+            Assert.Equal(42.5, latest.GetProperty("lat").GetDouble());
+            Assert.Equal("recentlySeen", latest.GetProperty("activity").GetString());
+            Assert.DoesNotContain("older-repeat", json);
+        }
+
         repository.Verify(r => r.LiveStatus.V1.GetGameServerLivePlayers(privateId, It.IsAny<CancellationToken>()), Times.Never);
 
-        static RecentPlayerDto Recent(Guid server, Guid? player, string name)
+        static RecentPlayerDto Recent(Guid server, Guid? player, string name, double lat = 52.1, DateTime? timestamp = null)
         {
-            return Fixture<RecentPlayerDto>(new { GameServerId = server, PlayerId = player, Name = name, Lat = 52.1, Long = -1.2, IpAddress = ip });
+            return Fixture<RecentPlayerDto>(new { GameServerId = server, PlayerId = player, Name = name, Lat = lat, Long = -1.2, IpAddress = ip, Timestamp = timestamp ?? DateTime.UtcNow });
         }
     }
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
@@ -92,19 +93,25 @@ public sealed class ForumIntegrationController(
         var items = new List<ModerationItem>();
         foreach (var action in response.Result.Data.Items)
         {
-            var actionUrl = action.Player is { } player &&
-                (await authorization.AuthorizeAsync(User, (player.GameType, action.Type, action.UserProfile?.XtremeIdiotsForumId),
-                    AuthPolicies.AdminActions_Edit).ConfigureAwait(false)).Succeeded
-                ? Url.Action("Edit", "AdminActions", new { id = action.AdminActionId })
-                : null;
             items.Add(new ModerationItem(
                 action.AdminActionId, DateTime.SpecifyKind(action.Created, DateTimeKind.Utc),
                 action.Player?.GameType.ToString(), action.Type.ToString(), action.Player?.Username,
-                action.PlayerId, action.UserProfile?.DisplayName, action.Source.ToString(), actionUrl));
+                action.PlayerId, action.UserProfile?.DisplayName, action.Source.ToString(),
+                await GetModerationActionUrl(action).ConfigureAwait(false)));
         }
 
         return Ok(new ModerationPage(items,
             skip, take, response.Result.Pagination?.TotalCount, response.Result.Pagination?.FilteredCount));
+    }
+
+    private async Task<string?> GetModerationActionUrl(AdminActionDto action)
+    {
+        if (action.Player is not { } player)
+            return null;
+
+        var resource = (player.GameType, action.Type, action.UserProfile?.XtremeIdiotsForumId);
+        var access = await authorization.AuthorizeAsync(User, resource, AuthPolicies.AdminActions_Edit).ConfigureAwait(false);
+        return access.Succeeded ? Url.Action("Edit", "AdminActions", new { id = action.AdminActionId }) : null;
     }
 
     public sealed record ModerationItem(Guid Id, DateTime CreatedUtc, string? GameType, string Type,
