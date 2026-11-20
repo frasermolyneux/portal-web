@@ -1,7 +1,3 @@
-@inject IAuthorizationService AuthorizationService
-@using Microsoft.AspNetCore.Authorization
-@using XtremeIdiots.Portal.Web.Auth.Constants
-@using XtremeIdiots.Portal.Web.Constants
 @using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Web.ViewModels
 @model List<ServerAdminGameServerViewModel>
@@ -74,12 +70,10 @@
                                                     asp-route-id="@item.GameServer.GameServerId"
                                                     data-testid="server-@(item.GameServer.GameServerId)-detail">
                                                     <i class="fa-solid fa-fw fa-gauge" aria-hidden="true"></i> 
-                                                    <span class="d-none d-sm-inline">Detail</span>
+                                                    <span class="d-none d-sm-inline">Console</span>
                                                 </a>
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User,
-                                                                                            item.GameServer.GameType, AuthPolicies.ChatLog_ReadServer)).Succeeded
-                                                                                            && ChatLogSupportedGames.Games.Contains(item.GameServer.GameType))
+                                                @if (item.CanViewChatLog)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-action="ServerChatLog"
                                                         asp-route-id="@item.GameServer.GameServerId"
@@ -89,8 +83,7 @@
                                                     </a>
                                                 }
 
-                                                @if ((await AuthorizationService.AuthorizeAsync(User,
-                                                                                            item.GameServer.GameType, AuthPolicies.GameServers_Maps_Read)).Succeeded)
+                                                @if (item.CanManageMaps)
                                                 {
                                                     <a class="btn btn-outline-secondary" asp-controller="MapManager"
                                                         asp-action="Manage" asp-route-id="@item.GameServer.GameServerId"

@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Helpers;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
 using XtremeIdiots.Portal.Web.Services;
 
@@ -73,6 +74,35 @@ public sealed class ForumIntegrationController(
 
     public sealed record MapItem(Guid Id, string GameType, string Name, string? ImageUrl);
     public sealed record MapPage(IReadOnlyList<MapItem> Items, int Skip, int Take, int? TotalCount, int? FilteredCount);
+
+    [HttpGet("server-admin")]
+    [Authorize(Policy = AuthPolicies.GameServers_Admin_Read)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> ServerAdmin(CancellationToken cancellationToken)
+    {
+        var result = await new ServerAdminIndexService(repository, authorization).Load(User, cancellationToken).ConfigureAwait(false);
+        if (result is null || !result.LiveAvailable)
+        {
+            logger.LogWarning("Forum server administration data is unavailable from a dependency");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var servers = result.Servers.Select(row => new
+        {
+            title = CodColorHelper.PlainText(string.IsNullOrWhiteSpace(row.LiveStatus?.Title) ? row.GameServer.Title : row.LiveStatus.Title),
+            gameType = row.GameServer.GameType.ToString(),
+            hostname = row.GameServer.Hostname,
+            queryPort = row.GameServer.QueryPort,
+            currentPlayers = row.LiveStatus?.CurrentPlayers,
+            maxPlayers = row.LiveStatus?.MaxPlayers,
+            currentMap = row.LiveStatus?.Map,
+            mod = row.LiveStatus?.Mod,
+            consoleUrl = Url.Action("ServerDetail", "ServerAdmin", new { id = row.GameServer.GameServerId }),
+            chatLogUrl = row.CanViewChatLog ? Url.Action("ServerChatLog", "ServerAdmin", new { id = row.GameServer.GameServerId }) : null,
+            manageMapsUrl = row.CanManageMaps ? Url.Action("Manage", "MapManager", new { id = row.GameServer.GameServerId }) : null
+        });
+        return Ok(new { servers });
+    }
 
     [HttpGet("moderation")]
     [Authorize(Policy = AuthPolicies.AdminActions_Read)]

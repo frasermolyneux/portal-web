@@ -28,6 +28,99 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 public sealed class ForumIntegrationHttpTests
 {
     [Theory]
+    [InlineData(null, HttpStatusCode.Unauthorized)]
+    [InlineData(TestPrincipalProfiles.MapRotationReader, HttpStatusCode.Forbidden)]
+    public async Task ServerAdmin_RequiresAdminRead(string? profile, HttpStatusCode expected)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/server-admin");
+        if (profile is not null)
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+        Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>()).Verify(r =>
+            r.GameServers.V1.GetGameServers(It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(), GameServerFilter.AgentEnabled,
+                0, 50, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(TestPrincipalProfiles.GameAdmin, true, true, true)]
+    [InlineData(TestPrincipalProfiles.Cod4xLifecycleManager, true, false, false)]
+    public async Task ServerAdmin_UsesDestinationPoliciesForEachAction(string profile, bool chat4, bool maps4, bool chat5)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var id4 = Guid.NewGuid();
+        var id5 = Guid.NewGuid();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.GameServers.V1.GetGameServers(It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(),
+                GameServerFilter.AgentEnabled, 0, 50, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(new[]
+            {
+                Fixture<GameServerDto>(new { GameServerId = id4, GameType = GameType.CallOfDuty4, Title = "Configured", Hostname = "server.example", QueryPort = 28960 }),
+                Fixture<GameServerDto>(new { GameServerId = id5, GameType = GameType.CallOfDuty5, Title = "Second" })
+            }));
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(new[]
+            {
+                Fixture<GameServerLiveStatusDto>(new { ServerId = id4, Title = "^1Live title", CurrentPlayers = 4, MaxPlayers = 20, Map = "mp_test", Mod = "testmod" })
+            }));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/server-admin");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+        request.Headers.Add("Origin", "https://test.xtremeidiots.com");
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Equal("https://test.xtremeidiots.com", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+        Assert.Equal("true", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Credentials")));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var rows = body.GetProperty("servers").EnumerateArray().ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.Equal("Live title", rows[0].GetProperty("title").GetString());
+        Assert.Equal("server.example", rows[0].GetProperty("hostname").GetString());
+        Assert.Equal(28960, rows[0].GetProperty("queryPort").GetInt32());
+        Assert.Equal(4, rows[0].GetProperty("currentPlayers").GetInt32());
+        Assert.Equal(20, rows[0].GetProperty("maxPlayers").GetInt32());
+        Assert.Equal("mp_test", rows[0].GetProperty("currentMap").GetString());
+        Assert.Equal("testmod", rows[0].GetProperty("mod").GetString());
+        Assert.Equal($"/ServerAdmin/ServerDetail/{id4}", rows[0].GetProperty("consoleUrl").GetString());
+        Assert.Equal(chat4 ? $"/ServerAdmin/ServerChatLog/{id4}" : null, rows[0].GetProperty("chatLogUrl").GetString());
+        Assert.Equal(maps4 ? $"/MapManager/Manage/{id4}" : null, rows[0].GetProperty("manageMapsUrl").GetString());
+        Assert.Equal(chat5 ? $"/ServerAdmin/ServerChatLog/{id5}" : null, rows[1].GetProperty("chatLogUrl").GetString());
+        Assert.Null(rows[1].GetProperty("manageMapsUrl").GetString());
+        Assert.Equal(JsonValueKind.Null, rows[1].GetProperty("currentPlayers").ValueKind);
+
+        using var pageRequest = new HttpRequestMessage(HttpMethod.Get, "/ServerAdmin");
+        pageRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+        using var pageResponse = await host.Client.SendAsync(pageRequest);
+        Assert.Equal(HttpStatusCode.OK, pageResponse.StatusCode);
+        var page = await pageResponse.Content.ReadAsStringAsync();
+        Assert.Contains("Console</span>", page);
+        Assert.Equal(chat4, page.Contains($"server-{id4}-view-chatlog", StringComparison.Ordinal));
+        Assert.Equal(maps4, page.Contains($"server-{id4}-manage-maps", StringComparison.Ordinal));
+        Assert.Equal(chat5, page.Contains($"server-{id5}-view-chatlog", StringComparison.Ordinal));
+        Assert.DoesNotContain($"server-{id5}-manage-maps", page);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ServerAdmin_ReturnsUnavailableWhenRequiredDataFails(bool failLive)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.GameServers.V1.GetGameServers(It.IsAny<GameType[]?>(), It.IsAny<Guid[]?>(),
+                GameServerFilter.AgentEnabled, 0, 50, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failLive ? OkCollection(Array.Empty<GameServerDto>()) :
+                new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.ServiceUnavailable));
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerLiveStatusDto>>(HttpStatusCode.ServiceUnavailable));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/server-admin");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameAdmin);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Theory]
     [InlineData(null, 0)]
     [InlineData(TestPrincipalProfiles.MapRotationReader, 0)]
     [InlineData(TestPrincipalProfiles.Moderator, 10)]

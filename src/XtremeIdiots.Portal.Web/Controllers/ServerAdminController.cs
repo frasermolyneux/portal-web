@@ -91,40 +91,18 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            string[] requiredClaims = [UserProfileClaimType.Webmaster, UserProfileClaimType.SeniorAdmin, UserProfileClaimType.HeadAdmin, UserProfileClaimType.GameAdmin, AdditionalPermission.GameServers_Admin_Read];
-            var (gameTypes, gameServerIds) = User.ClaimedGamesAndItemsForViewing(requiredClaims);
-
-            var gameServersApiResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
-                gameTypes, gameServerIds, GameServerFilter.AgentEnabled, 0, 50,
-                GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
-
-            if (!gameServersApiResponse.IsSuccess || gameServersApiResponse.Result?.Data?.Items is null)
+            var result = await new ServerAdminIndexService(repositoryApiClient, authorizationService)
+                .Load(User, cancellationToken).ConfigureAwait(false);
+            if (result is null)
             {
                 Logger.LogError("Failed to retrieve game servers for server admin dashboard for user {UserId}", User.XtremeIdiotsId());
                 return RedirectToAction("Display", "Errors", new { id = 500 });
             }
 
-            var liveStatusResponse = await repositoryApiClient.LiveStatus.V1.GetAllGameServerLiveStatuses(cancellationToken).ConfigureAwait(false);
-            var liveStatusLookup = liveStatusResponse.IsSuccess && liveStatusResponse.Result?.Data?.Items is not null
-                ? liveStatusResponse.Result.Data.Items.ToDictionary(ls => ls.ServerId)
-                : [];
-
-            var results = gameServersApiResponse.Result.Data.Items.Select(gs =>
-            {
-                liveStatusLookup.TryGetValue(gs.GameServerId, out var liveStatus);
-                return new ServerAdminGameServerViewModel
-                {
-                    GameServer = gs,
-                    LiveStatus = liveStatus,
-                    GameServerQueryStatus = new ServerQueryStatusResponseDto(),
-                    GameServerRconStatus = new ServerRconStatusResponseDto()
-                };
-            }).ToList();
-
             Logger.LogInformation("Successfully loaded {Count} game servers for user {UserId} server admin dashboard",
-                results.Count, User.XtremeIdiotsId());
+                result.Servers.Count, User.XtremeIdiotsId());
 
-            return View(results);
+            return View(result.Servers);
         }, nameof(Index)).ConfigureAwait(false);
     }
 
