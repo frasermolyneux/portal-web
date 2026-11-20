@@ -5,6 +5,19 @@ Requests originate from `https://www.xtremeidiots.com` or `https://test.xtremeid
 Use `credentials: "include"` for Portal sessions. Banner HTML is configured by Portal
 administrators and should be treated as HTML, not plain text.
 
+Use the no-store `GET /api/integration/v1/session` response to decide which
+protected shortcuts to show. The `capabilities` object contains three booleans:
+
+| Field | Portal destination | Required policies |
+| --- | --- | --- |
+| `players` | `/Players` | `Players.Read` |
+| `serverAdmin` | `/ServerAdmin` | `GameServers.Admin.Read` |
+| `chatLogs` | `/ServerAdmin/ChatLogIndex` | `GameServers.Admin.Read` and `ChatLog.Read` |
+
+All three are false for guests. Show a shortcut only when its field is `true`;
+missing fields do not grant access. These flags describe access to the landing
+pages, not permission to read individual resources or perform mutations.
+
 For download writes, fetch `/api/integration/v1/session` with credentials and send
 its `requestVerificationToken` in the returned `headerName` together with the
 antiforgery cookie. The token is bound to the current session; fetch a new one
