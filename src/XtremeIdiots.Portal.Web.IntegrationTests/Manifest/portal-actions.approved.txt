@@ -60,7 +60,7 @@ XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Activity#GET#a
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Maps#GET#api/integration/v1/maps#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.String,System.Int32,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Moderation#GET#api/integration/v1/moderation#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.Int32,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Rotations#GET#api/integration/v1/rotations#()|HttpEndpoint
-XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Session#GET#api/integration/v1/session#(Microsoft.AspNetCore.Antiforgery.IAntiforgery)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Session#GET#api/integration/v1/session#(Microsoft.AspNetCore.Antiforgery.IAntiforgery,Microsoft.AspNetCore.Authorization.IAuthorizationService)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Stats#GET#api/integration/v1/stats#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.GameServersApiController#UpdateOrder#POST#GameServers/UpdateOrder#(System.Collections.Generic.List<System.Guid>)|StateChange
 XtremeIdiots.Portal.Web.ApiControllers.HealthCheckController#Status#GET#api/HealthCheck/status#()|HttpEndpoint
