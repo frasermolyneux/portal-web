@@ -69,7 +69,9 @@ public sealed class ForumIntegrationHttpTests
             {
                 Recent(publicId, playerId, "matched-live"), Recent(publicId, null, "unmatched-recent"),
                 Recent(publicId, null, "unmatched-recent-2"), Recent(privateId, null, privateName),
-                Recent(otherGameId, null, "different-game")
+                Recent(otherGameId, Guid.NewGuid(), "different-game"),
+                Recent(otherGameId, Guid.NewGuid(), "different-game-2"),
+                Recent(otherGameId, Guid.NewGuid(), "different-game-3")
             }));
 
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/player-map");
@@ -81,11 +83,16 @@ public sealed class ForumIntegrationHttpTests
         Assert.True(response.Headers.CacheControl?.NoStore);
         Assert.Equal("https://test.xtremeidiots.com", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var point = Assert.Single(body.GetProperty("points").EnumerateArray());
+        var points = body.GetProperty("points").EnumerateArray().ToArray();
+        Assert.Equal(2, points.Length);
+        var point = Assert.Single(points, point => point.GetProperty("activity").GetString() == "live");
         Assert.Equal(52.5, point.GetProperty("lat").GetDouble());
         Assert.Equal(-2.5, point.GetProperty("lng").GetDouble());
         Assert.Equal("live", point.GetProperty("activity").GetString());
         Assert.Equal(3, point.GetProperty("count").GetInt32());
+        var recentPoint = Assert.Single(points, point => point.GetProperty("activity").GetString() == "recentlySeen");
+        Assert.Equal("CallOfDuty5", recentPoint.GetProperty("gameType").GetString());
+        Assert.Equal(3, recentPoint.GetProperty("count").GetInt32());
         Assert.Equal(namedCount, body.GetProperty("players").GetArrayLength());
         var json = body.GetRawText();
         Assert.DoesNotContain(ip, json);
@@ -97,12 +104,16 @@ public sealed class ForumIntegrationHttpTests
             Assert.Contains("\"recentlySeen\"", json);
         repository.Verify(r => r.LiveStatus.V1.GetGameServerLivePlayers(privateId, It.IsAny<CancellationToken>()), Times.Never);
 
-        static RecentPlayerDto Recent(Guid server, Guid? player, string name) =>
-            Fixture<RecentPlayerDto>(new { GameServerId = server, PlayerId = player, Name = name, Lat = 52.1, Long = -1.2, IpAddress = ip });
+        static RecentPlayerDto Recent(Guid server, Guid? player, string name)
+        {
+            return Fixture<RecentPlayerDto>(new { GameServerId = server, PlayerId = player, Name = name, Lat = 52.1, Long = -1.2, IpAddress = ip });
+        }
     }
 
-    private static ApiResult<CollectionModel<T>> OkCollection<T>(IEnumerable<T> items) where T : class =>
-        new(HttpStatusCode.OK, new ApiResponse<CollectionModel<T>>(new CollectionModel<T>(items)));
+    private static ApiResult<CollectionModel<T>> OkCollection<T>(IEnumerable<T> items) where T : class
+    {
+        return new(HttpStatusCode.OK, new ApiResponse<CollectionModel<T>>(new CollectionModel<T>(items)));
+    }
 
     [Theory]
     [InlineData(null, false, false, false)]

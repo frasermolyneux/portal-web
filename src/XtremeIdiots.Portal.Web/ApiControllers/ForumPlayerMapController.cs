@@ -134,8 +134,7 @@ public sealed class ForumPlayerMapController(
         return StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 
-    private static double CellCenter(double coordinate, int limit) =>
-        Math.Min(Math.Floor(coordinate / 5) * 5 + 2.5, limit - 2.5);
+    private static double CellCenter(double coordinate, int limit) => Math.Min(Math.Floor(coordinate / 5) * 5 + 2.5, limit - 2.5);
 
     private sealed record Observation(double Lat, double Lng, GameType Game, string Activity, string? Name, bool Identified);
     public sealed record MapPoint(double Lat, double Lng, string GameType, string Activity, int Count);
