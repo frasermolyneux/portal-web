@@ -2,10 +2,13 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Helpers;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
 using XtremeIdiots.Portal.Web.Services;
@@ -43,6 +46,185 @@ public sealed class ForumIntegrationController(
             capabilities = new { players, serverAdmin, chatLogs }
         });
     }
+
+    [HttpGet("player-links/linked-players")]
+    [Authorize]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> LinkedPlayers(int skip = 0, int take = 25,
+        CancellationToken cancellationToken = default)
+    {
+        if (skip < 0 || take is < 1 or > 100)
+            return BadRequest();
+
+        var (profileId, error) = await ResolveProfile(cancellationToken).ConfigureAwait(false);
+        if (error is not null)
+            return error;
+
+        var response = await repository.ConnectedPlayers.V1
+            .GetConnectedPlayersByUserProfile(profileId, skip, take, cancellationToken)
+            .ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data?.Items is not { } items)
+        {
+            logger.LogWarning("Forum linked-player lookup failed: {StatusCode}", response.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var rows = items.Select(player => new LinkedPlayerItem(
+            player.ConnectedPlayerProfileId,
+            player.PlayerId,
+            player.GameType.ToString(),
+            player.Username,
+            player.LinkMethod.ToString(),
+            player.LinkedAtUtc,
+            player.UnlinkedAtUtc,
+            player.IsActive)).ToArray();
+
+        return Ok(new LinkedPlayerPage(rows, skip, take,
+            response.Result.Pagination?.TotalCount,
+            response.Result.Pagination?.FilteredCount));
+    }
+
+    [HttpGet("player-links/claims")]
+    [Authorize]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> PendingPlayerClaims(CancellationToken cancellationToken)
+    {
+        var (profileId, error) = await ResolveProfile(cancellationToken).ConfigureAwait(false);
+        if (error is not null)
+            return error;
+
+        var response = await repository.ConnectedPlayers.V1.GetPendingConnectedPlayerClaims(profileId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data?.Items is not { } claims)
+        {
+            logger.LogWarning("Forum pending-player claims lookup failed: {StatusCode}", response.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        return Ok(new
+        {
+            claims = claims.Select(claim => new
+            {
+                claim.ClaimId,
+                claim.PlayerId,
+                claim.Username,
+                gameType = claim.GameType.ToString(),
+                claim.GameServerId,
+                claim.GameServerName,
+                claim.Status,
+                claim.CreatedAtUtc,
+                claim.ExpiresAtUtc
+            })
+        });
+    }
+
+    [HttpPost("player-links/claim-code")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> IssuePlayerClaimCode(CancellationToken cancellationToken)
+    {
+        var (profileId, error) = await ResolveProfile(cancellationToken).ConfigureAwait(false);
+        if (error is not null)
+            return error;
+
+        var response = await repository.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(
+            new ActivateConnectedPlayerActivationCodeDto { UserProfileId = profileId }, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data is not { } code || string.IsNullOrWhiteSpace(code.Code))
+        {
+            logger.LogWarning("Forum player claim code issuance failed: {StatusCode}", response.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+        return Ok(new { code.Code, code.ActivatedAtUtc, code.ExpiresAtUtc });
+    }
+
+    [HttpPost("player-links/claims/{claimId:guid}/approve")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public Task<IActionResult> ApprovePlayerClaim(Guid claimId, CancellationToken cancellationToken)
+        => ResolvePlayerClaim(claimId, true, cancellationToken);
+
+    [HttpPost("player-links/claims/{claimId:guid}/decline")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public Task<IActionResult> DeclinePlayerClaim(Guid claimId, CancellationToken cancellationToken)
+        => ResolvePlayerClaim(claimId, false, cancellationToken);
+
+    [HttpDelete("player-links/linked-players/{connectedPlayerProfileId:guid}")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> UnlinkPlayer(Guid connectedPlayerProfileId, CancellationToken cancellationToken)
+    {
+        var (profileId, error) = await ResolveProfile(cancellationToken).ConfigureAwait(false);
+        if (error is not null)
+            return error;
+
+        var response = await repository.ConnectedPlayers.V1.UnlinkOwnConnectedPlayer(
+            profileId, connectedPlayerProfileId, cancellationToken).ConfigureAwait(false);
+        return response.IsSuccess ? NoContent() : RepositoryMutationError(response.StatusCode);
+    }
+
+    private async Task<IActionResult> ResolvePlayerClaim(Guid claimId, bool approve, CancellationToken cancellationToken)
+    {
+        var (profileId, error) = await ResolveProfile(cancellationToken).ConfigureAwait(false);
+        if (error is not null)
+            return error;
+
+        var response = approve
+            ? await repository.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profileId, claimId, cancellationToken).ConfigureAwait(false)
+            : await repository.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profileId, claimId, cancellationToken).ConfigureAwait(false);
+        return response.IsSuccess ? NoContent() : RepositoryMutationError(response.StatusCode);
+    }
+
+    private IActionResult RepositoryMutationError(HttpStatusCode status)
+    {
+        if (status == HttpStatusCode.NotFound)
+            return NotFound();
+        if (status == HttpStatusCode.Conflict)
+            return Conflict();
+        logger.LogWarning("Forum player-link mutation failed: {StatusCode}", status);
+        return StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    private async Task<(Guid ProfileId, IActionResult? Error)> ResolveProfile(CancellationToken cancellationToken)
+    {
+        var xtremeIdiotsId = User.XtremeIdiotsId();
+        if (string.IsNullOrWhiteSpace(xtremeIdiotsId))
+            return (Guid.Empty, Forbid());
+
+        var response = await repository.UserProfiles.V1
+            .GetUserProfileByXtremeIdiotsId(xtremeIdiotsId, cancellationToken).ConfigureAwait(false);
+        if (response.IsNotFound)
+            return (Guid.Empty, NotFound());
+        if (!response.IsSuccess || response.Result?.Data is not { } profile)
+        {
+            logger.LogWarning("Forum player-link profile lookup failed: {StatusCode}", response.StatusCode);
+            return (Guid.Empty, StatusCode(StatusCodes.Status503ServiceUnavailable));
+        }
+        return profile.ArchivedAtUtc is null
+            ? (profile.UserProfileId, null)
+            : (Guid.Empty, Forbid());
+    }
+
+    public sealed record LinkedPlayerItem(
+        Guid ConnectedPlayerProfileId,
+        Guid PlayerId,
+        string GameType,
+        string Username,
+        string LinkMethod,
+        DateTime LinkedAtUtc,
+        DateTime? UnlinkedAtUtc,
+        bool IsActive);
+
+    public sealed record LinkedPlayerPage(
+        IReadOnlyList<LinkedPlayerItem> Items,
+        int Skip,
+        int Take,
+        int? TotalCount,
+        int? FilteredCount);
 
     [HttpGet("rotations")]
     [AllowAnonymous]

@@ -85,7 +85,7 @@
                         else
                         {
                             <p class="text-muted mb-3">
-                                Generate a website activation code, then in game run <strong>!register CODE</strong>. You can run <strong>!commands</strong> in game to list available commands.
+                                Generate a code, then in game run <strong>!register CODE</strong>. Review the player and server below before approving the link.
                             </p>
 
                             <div class="row g-3 mb-3">
@@ -104,6 +104,7 @@
                                                     <div class="small text-muted">
                                                         Expires <time user-time utc="@Model.ActiveActivationCode.ExpiresAtUtc"></time>
                                                     </div>
+                                                    <div class="small text-muted">Codes issued before this update may link immediately. Generate a new code to require approval.</div>
                                                 }
                                             </div>
                                         </div>
@@ -117,6 +118,43 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <h6 class="mb-2">Pending link requests</h6>
+                            @if (Model.PendingClaims.Count == 0)
+                            {
+                                <p class="text-muted">No pending requests.</p>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-striped w-100">
+                                        <thead>
+                                            <tr><th scope="col">Game</th><th scope="col">Player</th><th scope="col">Server</th><th scope="col">Expires</th><th scope="col">Actions</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var claim in Model.PendingClaims)
+                                            {
+                                                <tr>
+                                                    <td>@claim.GameType</td>
+                                                    <td>@claim.Username</td>
+                                                    <td>@(string.IsNullOrWhiteSpace(claim.GameServerName) ? "Unknown server" : claim.GameServerName)</td>
+                                                    <td><time user-time utc="@claim.ExpiresAtUtc"></time></td>
+                                                    <td>
+                                                        <form asp-action="ApproveConnectedPlayerClaim" method="post" class="d-inline">
+                                                            <input type="hidden" name="claimId" value="@claim.ClaimId" />
+                                                            <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                                                        </form>
+                                                        <form asp-action="DeclineConnectedPlayerClaim" method="post" class="d-inline">
+                                                            <input type="hidden" name="claimId" value="@claim.ClaimId" />
+                                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Decline</button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
 
                             @if (activeLinks.Count == 0)
                             {
@@ -143,6 +181,7 @@
                                                 <th scope="col">Username</th>
                                                 <th scope="col">Link Method</th>
                                                 <th scope="col" class="table-date-col">Linked At</th>
+                                                <th scope="col">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -153,6 +192,12 @@
                                                     <td>@link.Username</td>
                                                     <td>@link.LinkMethod</td>
                                                     <td><time user-time utc="@link.LinkedAtUtc"></time></td>
+                                                    <td>
+                                                        <form asp-action="UnlinkConnectedPlayer" method="post">
+                                                            <input type="hidden" name="connectedPlayerProfileId" value="@link.ConnectedPlayerProfileId" />
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Unlink this player profile?">Unlink</button>
+                                                        </form>
+                                                    </td>
                                                 </tr>
                                             }
                                         </tbody>

@@ -38,6 +38,39 @@ status for a server is represented by null fields. A failed required dependency
 returns 503, not fabricated counts. Guests receive 401 and authenticated
 callers without access receive 403.
 
+`GET /api/integration/v1/player-links/linked-players` requires a Portal session
+and returns a no-store page of the signed-in member's linked game profiles. The
+profile is resolved from the authenticated Portal principal; callers cannot
+select another profile. `skip` defaults to 0 and `take` to 25 (maximum 100).
+Each item includes the linked-profile ID, player ID, game, username, link
+method, linked/unlinked timestamps, and active state.
+
+Player linking uses the existing Portal session for both forum origins. Fetch
+`GET /api/integration/v1/session` with credentials and use its
+`requestVerificationToken` in the returned `headerName` with the antiforgery
+cookie on every write. Fetch a new token after login or logout. The caller's
+Portal profile is resolved server-side; no forum or profile ID is accepted.
+
+`GET /api/integration/v1/player-links/claims` returns `claims` with `claimId`,
+`playerId`, `username`, `gameType`, `gameServerId`, nullable `gameServerName`,
+`status`, `createdAtUtc` and `expiresAtUtc`. `POST
+/api/integration/v1/player-links/claim-code` returns `code`, `activatedAtUtc`
+and `expiresAtUtc`. The code is valid for one hour and can be spoken publicly;
+it creates a request, not an active link. Review player, game and server before
+approving. The pending list contains only unexpired claims with status
+`Pending`; these can be approved or declined. UUID fields are JSON strings.
+`POST /api/integration/v1/player-links/claims/{claimId}/approve`
+or `/decline` resolves a pending request, and `DELETE
+/api/integration/v1/player-links/linked-players/{connectedPlayerProfileId}`
+unlinks an owned record; these return 204. Claims expire after 24 hours.
+All responses are no-store. A missing session returns 401, an unresolvable
+identity 403 or 404, a stale/conflicting claim 409 and an unavailable
+dependency 503.
+
+During migration, previously issued legacy codes may still link immediately.
+Approval codes require a compatible Server Events processor; deploy that
+processor before switching Portal issuance.
+
 The rotation download route may also show an observed-history pack when no
 configured rotation exists. `/MapDownloads?game={gameType}` selects the game-wide
 catalogue; it is not a server-specific collection. There is currently no public

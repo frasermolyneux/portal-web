@@ -35,6 +35,7 @@ public class ProfileController(
     /// <param name="cancellationToken">Cancellation token for the async operation</param>
     /// <returns>The profile management view</returns>
     [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Manage(CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -61,7 +62,7 @@ public class ProfileController(
             }
 
             var activationResponse = await repositoryApiClient.ConnectedPlayers.V1
-                .ActivateConnectedPlayerActivationCode(new ActivateConnectedPlayerActivationCodeDto
+                .IssueConnectedPlayerClaimCode(new ActivateConnectedPlayerActivationCodeDto
                 {
                     UserProfileId = userProfile.UserProfileId
                 }, cancellationToken)
@@ -79,6 +80,59 @@ public class ProfileController(
 
             return RedirectToAction(nameof(Manage));
         }, nameof(ActivateConnectedPlayerCode)).ConfigureAwait(false);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> ApproveConnectedPlayerClaim(Guid claimId, CancellationToken cancellationToken = default)
+        => ResolveConnectedPlayerClaim(claimId, true, cancellationToken);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> DeclineConnectedPlayerClaim(Guid claimId, CancellationToken cancellationToken = default)
+        => ResolveConnectedPlayerClaim(claimId, false, cancellationToken);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnlinkConnectedPlayer(Guid connectedPlayerProfileId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var profile = await GetCurrentUserProfile(cancellationToken).ConfigureAwait(false);
+            if (profile is null)
+            {
+                this.AddAlertDanger("Unable to resolve your profile. Please sign in again and retry.");
+                return RedirectToAction(nameof(Manage));
+            }
+            var result = await repositoryApiClient.ConnectedPlayers.V1
+                .UnlinkOwnConnectedPlayer(profile.UserProfileId, connectedPlayerProfileId, cancellationToken).ConfigureAwait(false);
+            if (result.IsSuccess)
+                this.AddAlertSuccess("Player profile unlinked.");
+            else
+                this.AddAlertDanger("Unable to unlink this player profile. Refresh and try again.");
+            return RedirectToAction(nameof(Manage));
+        }, nameof(UnlinkConnectedPlayer)).ConfigureAwait(false);
+    }
+
+    private async Task<IActionResult> ResolveConnectedPlayerClaim(Guid claimId, bool approve, CancellationToken cancellationToken)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var profile = await GetCurrentUserProfile(cancellationToken).ConfigureAwait(false);
+            if (profile is null)
+            {
+                this.AddAlertDanger("Unable to resolve your profile. Please sign in again and retry.");
+                return RedirectToAction(nameof(Manage));
+            }
+            var result = approve
+                ? await repositoryApiClient.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profile.UserProfileId, claimId, cancellationToken).ConfigureAwait(false)
+                : await repositoryApiClient.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profile.UserProfileId, claimId, cancellationToken).ConfigureAwait(false);
+            if (result.IsSuccess)
+                this.AddAlertSuccess(approve ? "Player profile linked." : "Player link request declined.");
+            else
+                this.AddAlertDanger("Unable to update this player link request. Refresh and try again.");
+            return RedirectToAction(nameof(Manage));
+        }, nameof(ResolveConnectedPlayerClaim)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -248,7 +302,7 @@ public class ProfileController(
     {
         var userProfile = await GetCurrentUserProfile(cancellationToken).ConfigureAwait(false);
         if (userProfile is null)
-            return new ProfileManageViewModel(null, null, [], 0, false);
+            return new ProfileManageViewModel(null, null, [], 0, false, []);
 
         const int linkedPlayersPageSize = 100;
 
@@ -260,8 +314,16 @@ public class ProfileController(
             .GetConnectedPlayersByUserProfile(userProfile.UserProfileId, 0, linkedPlayersPageSize, cancellationToken)
             .ConfigureAwait(false);
 
+        var claimsResult = await repositoryApiClient.ConnectedPlayers.V1
+            .GetPendingConnectedPlayerClaims(userProfile.UserProfileId, cancellationToken).ConfigureAwait(false);
+        if (!linkedPlayersResult.IsSuccess || linkedPlayersResult.Result?.Data?.Items is null ||
+            !claimsResult.IsSuccess || claimsResult.Result?.Data?.Items is null ||
+            (!activeCodeResult.IsSuccess && !activeCodeResult.IsNotFound))
+            throw new InvalidOperationException("Unable to retrieve connected-player linking state.");
+
         var linkedPlayers = (linkedPlayersResult.Result?.Data?.Items ?? [])
             .Select(x => new ProfileLinkedPlayerViewModel(
+                x.ConnectedPlayerProfileId,
                 x.GameType.ToString(),
                 x.Username,
                 x.LinkMethod.ToString(),
@@ -286,7 +348,9 @@ public class ProfileController(
             activeCode,
             linkedPlayers,
             totalLinkedPlayers,
-            isLinkedPlayersCapped);
+            isLinkedPlayersCapped,
+            claimsResult.Result.Data.Items.Select(claim => new ProfilePendingClaimViewModel(
+                claim.ClaimId, claim.GameType.ToString(), claim.Username, claim.GameServerName, claim.ExpiresAtUtc)).ToList());
     }
 
     private async Task<Repository.Abstractions.Models.V1.UserProfiles.UserProfileDto?> GetCurrentUserProfile(CancellationToken cancellationToken)
@@ -299,6 +363,10 @@ public class ProfileController(
             .GetUserProfileByXtremeIdiotsId(xtremeIdiotsId, cancellationToken)
             .ConfigureAwait(false);
 
-        return userProfileResponse.IsNotFound || userProfileResponse.Result?.Data is null ? null : userProfileResponse.Result.Data;
+        if (userProfileResponse.IsNotFound)
+            return null;
+        if (!userProfileResponse.IsSuccess || userProfileResponse.Result?.Data is not { } profile)
+            throw new InvalidOperationException("Unable to retrieve the current user profile.");
+        return profile.ArchivedAtUtc is null ? profile : null;
     }
 }
