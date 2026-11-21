@@ -97,13 +97,13 @@ paths:
                         description: Access to /ServerAdmin/ChatLogIndex (GameServers.Admin.Read and ChatLog.Read).
   /api/integration/v1/player-map:
     get:
-      summary: Coarse live and recent player map for public servers
+      summary: Live and recent player locations for public servers
       security:
         - {}
         - portalCookie: []
       responses:
         '200':
-          description: No-store response. Named observations require game-scoped Players.Read. The arrays are independent; live players may be present even when no live aggregate point meets the public threshold.
+          description: No-store response. Guests receive individual Repository coordinates; named observations require game-scoped Players.Read. Render markers from points only to avoid duplicating players.
           content:
             application/json:
               schema:
@@ -126,7 +126,7 @@ paths:
                           properties:
                             count:
                               type: integer
-                              description: Observation count, not a unique-person count.
+                              description: Always 1 per observation; not a unique-person count.
                   players:
                     type: array
                     items:
@@ -603,11 +603,11 @@ components:
         lat:
           type: number
           format: double
-          description: Latitude of the five-degree cell center.
+          description: Repository latitude of the individual observation.
         lng:
           type: number
           format: double
-          description: Longitude of the five-degree cell center.
+          description: Repository longitude of the individual observation.
         gameType:
           type: string
         activity:
