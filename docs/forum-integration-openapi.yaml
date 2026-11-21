@@ -103,7 +103,7 @@ paths:
         - portalCookie: []
       responses:
         '200':
-          description: No-store response. Named observations require game-scoped Players.Read.
+          description: No-store response. Named observations require game-scoped Players.Read. The arrays are independent; live players may be present even when no live aggregate point meets the public threshold.
           content:
             application/json:
               schema:

@@ -123,6 +123,48 @@ public sealed class ForumIntegrationHttpTests
     [Theory]
     [InlineData(null, 0)]
     [InlineData(TestPrincipalProfiles.MapRotationReader, 0)]
+    [InlineData(TestPrincipalProfiles.Moderator, 2)]
+    public async Task PlayerMap_SparseLiveLocationsAreAvailableOnlyAsAuthorizedPlayers(string? profile, int expectedPlayers)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var serverId = Guid.NewGuid();
+        repository.Setup(r => r.GameServers.V1.GetGameServers(null, null, GameServerFilter.ServerListEnabled,
+                0, 200, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>(
+                [Fixture<GameServerDto>(new { GameServerId = serverId, GameType = GameType.CallOfDuty4, ServerListEnabled = true })]))
+                { Pagination = new ApiPagination(1, 1, 0, 200) }));
+        repository.Setup(r => r.LiveStatus.V1.GetAllGameServerLiveStatuses(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection([Fixture<GameServerLiveStatusDto>(new { ServerId = serverId, IsOnline = true, CurrentPlayers = 3 })]));
+        repository.Setup(r => r.LiveStatus.V1.GetGameServerLivePlayers(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(new[]
+            {
+                Fixture<LivePlayerDto>(new { Name = "synthetic-1", GeoIntelligence = new { Latitude = 52.1, Longitude = -1.2 } }),
+                Fixture<LivePlayerDto>(new { Name = "synthetic-2", GeoIntelligence = new { Latitude = 52.2, Longitude = -1.3 } }),
+                Fixture<LivePlayerDto>(new { Name = "no-location" })
+            }));
+        repository.Setup(r => r.RecentPlayers.V1.GetRecentPlayers(null, null, It.IsAny<DateTime?>(),
+                RecentPlayersFilter.GeoLocated, 0, 200, RecentPlayersOrder.TimestampDesc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(Array.Empty<RecentPlayerDto>()));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/player-map");
+        if (profile is not null)
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Empty(body.GetProperty("points").EnumerateArray());
+        var players = body.GetProperty("players").EnumerateArray().ToArray();
+        Assert.Equal(expectedPlayers, players.Length);
+        Assert.All(players, player => Assert.Equal("live", player.GetProperty("activity").GetString()));
+        Assert.DoesNotContain("no-location", body.GetRawText());
+    }
+
+    [Theory]
+    [InlineData(null, 0)]
+    [InlineData(TestPrincipalProfiles.MapRotationReader, 0)]
     [InlineData(TestPrincipalProfiles.Moderator, 10)]
     public async Task PlayerMap_ProtectsNamesAndPrivateServersAndPrefersKnownLivePlayers(string? profile, int namedCount)
     {

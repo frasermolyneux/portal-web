@@ -51,6 +51,12 @@ slots for live cells) to display; unidentified recent rows cannot qualify a cell
 callers with `Players.Read` for the corresponding game. Neither array contains
 IP addresses or player identifiers.
 
+The arrays are independent: an authorized caller may receive live `players`
+even when no live `points` meet the public aggregation threshold. Consumers
+should render permitted players independently rather than treating an empty
+`points` array as an empty map. A live player without valid coordinates cannot
+appear in either array.
+
 The map uses online server snapshots and a sample of the latest 200 geolocated
 observations requested from Repository within 48 hours, filtered to public
 servers. `recentlySeen` does not mean offline: known player IDs are deduplicated
