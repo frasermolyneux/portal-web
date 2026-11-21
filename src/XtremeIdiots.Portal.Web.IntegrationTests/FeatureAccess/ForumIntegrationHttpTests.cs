@@ -124,7 +124,7 @@ public sealed class ForumIntegrationHttpTests
     [InlineData(null, 0)]
     [InlineData(TestPrincipalProfiles.MapRotationReader, 0)]
     [InlineData(TestPrincipalProfiles.Moderator, 2)]
-    public async Task PlayerMap_SparseLiveLocationsAreAvailableOnlyAsAuthorizedPlayers(string? profile, int expectedPlayers)
+    public async Task PlayerMap_SparseLiveLocationsArePublicButNamesRequirePermission(string? profile, int expectedPlayers)
     {
         await using var host = await PortalWebTestHost.CreateAsync();
         var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
@@ -155,10 +155,24 @@ public sealed class ForumIntegrationHttpTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Empty(body.GetProperty("points").EnumerateArray());
+        var points = body.GetProperty("points").EnumerateArray().ToArray();
+        Assert.Equal(2, points.Length);
+        Assert.Equal(52.1, points[0].GetProperty("lat").GetDouble());
+        Assert.Equal(-1.2, points[0].GetProperty("lng").GetDouble());
+        Assert.Equal(52.2, points[1].GetProperty("lat").GetDouble());
+        Assert.Equal(-1.3, points[1].GetProperty("lng").GetDouble());
+        Assert.All(points, point =>
+        {
+            Assert.Equal(1, point.GetProperty("count").GetInt32());
+            Assert.False(point.TryGetProperty("name", out _));
+        });
         var players = body.GetProperty("players").EnumerateArray().ToArray();
         Assert.Equal(expectedPlayers, players.Length);
         Assert.All(players, player => Assert.Equal("live", player.GetProperty("activity").GetString()));
+        if (expectedPlayers > 0)
+            Assert.Equal(points[0].GetProperty("lat").GetDouble(), players[0].GetProperty("lat").GetDouble());
+        else
+            Assert.DoesNotContain("synthetic-", body.GetRawText());
         Assert.DoesNotContain("no-location", body.GetRawText());
     }
 
@@ -226,15 +240,11 @@ public sealed class ForumIntegrationHttpTests
         Assert.Equal("https://test.xtremeidiots.com", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         var points = body.GetProperty("points").EnumerateArray().ToArray();
-        Assert.Equal(2, points.Length);
-        var point = Assert.Single(points, point => point.GetProperty("activity").GetString() == "live");
-        Assert.Equal(52.5, point.GetProperty("lat").GetDouble());
-        Assert.Equal(-2.5, point.GetProperty("lng").GetDouble());
-        Assert.Equal("live", point.GetProperty("activity").GetString());
-        Assert.Equal(3, point.GetProperty("count").GetInt32());
-        var recentPoint = Assert.Single(points, point => point.GetProperty("activity").GetString() == "recentlySeen");
-        Assert.Equal("CallOfDuty5", recentPoint.GetProperty("gameType").GetString());
-        Assert.Equal(3, recentPoint.GetProperty("count").GetInt32());
+        Assert.Equal(13, points.Length);
+        Assert.Equal(6, points.Count(point => point.GetProperty("activity").GetString() == "live"));
+        Assert.Equal(7, points.Count(point => point.GetProperty("activity").GetString() == "recentlySeen"));
+        Assert.All(points, point => Assert.Equal(1, point.GetProperty("count").GetInt32()));
+        Assert.Equal(3, points.Count(point => point.GetProperty("gameType").GetString() == "CallOfDuty5"));
         Assert.Equal(namedCount, body.GetProperty("players").GetArrayLength());
         var json = body.GetRawText();
         Assert.DoesNotContain(ip, json);
@@ -246,7 +256,7 @@ public sealed class ForumIntegrationHttpTests
         {
             var latest = Assert.Single(body.GetProperty("players").EnumerateArray(),
                 player => player.GetProperty("name").GetString() == "latest-repeat");
-            Assert.Equal(42.5, latest.GetProperty("lat").GetDouble());
+            Assert.Equal(42.1, latest.GetProperty("lat").GetDouble());
             Assert.Equal("recentlySeen", latest.GetProperty("activity").GetString());
             Assert.DoesNotContain("older-repeat", json);
         }

@@ -43,19 +43,17 @@ configured rotation exists. `/MapDownloads?game={gameType}` selects the game-wid
 catalogue; it is not a server-specific collection. There is currently no public
 server-collection filter.
 
-`GET /api/integration/v1/player-map` is no-store. `points` contains coarse
-five-degree cell centers and observation counts, grouped by game and activity,
-from public servers only. A cell needs three identified observations (or live
-slots for live cells) to display; unidentified recent rows cannot qualify a cell.
-`players` contains names at the same coarse precision only for authenticated
-callers with `Players.Read` for the corresponding game. Neither array contains
-IP addresses or player identifiers.
+`GET /api/integration/v1/player-map` is no-store. `points` contains one item
+per eligible observation from public servers, with the individual Repository
+latitude and longitude, game, activity and `count: 1`. Guests receive these
+individual locations without a small-group threshold, matching the public Portal
+map. `players` contains named observations at the same precision only for
+authenticated callers with `Players.Read` for the corresponding game. Neither
+array contains IP addresses or player identifiers.
 
-The arrays are independent: an authorized caller may receive live `players`
-even when no live `points` meet the public aggregation threshold. Consumers
-should render permitted players independently rather than treating an empty
-`points` array as an empty map. A live player without valid coordinates cannot
-appear in either array.
+Render map markers from `points` only and use `players` for the authorized
+player ticker; drawing both arrays would duplicate observations. A live player
+without valid coordinates cannot appear in either array.
 
 The map uses online server snapshots and a sample of the latest 200 geolocated
 observations requested from Repository within 48 hours, filtered to public

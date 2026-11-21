@@ -97,10 +97,8 @@ public sealed class ForumPlayerMapController(
             AddObservation(player.PlayerId, game, "recentlySeen", player.Name, player.Lat, player.Long);
         }
 
-        var points = observations.GroupBy(row => (row.Lat, row.Lng, row.Game, row.Activity))
-            // Repeated unidentified recent rows cannot establish that a cell contains several players.
-            .Where(cell => cell.Count(row => row.Identified || row.Activity == "live") >= 3)
-            .Select(cell => new MapPoint(cell.Key.Lat, cell.Key.Lng, cell.Key.Game.ToString(), cell.Key.Activity, cell.Count()))
+        var points = observations
+            .Select(row => new MapPoint(row.Lat, row.Lng, row.Game.ToString(), row.Activity, 1))
             .ToArray();
         var players = new List<MapPlayer>();
         if (User.Identity?.IsAuthenticated == true)
@@ -123,8 +121,7 @@ public sealed class ForumPlayerMapController(
             var identified = playerId is { } id && id != Guid.Empty;
             if (identified && !locatedIds.Add(playerId!.Value))
                 return;
-            observations.Add(new Observation(CellCenter(latitude.Value, 90), CellCenter(longitude.Value, 180),
-                game, activity, name, identified));
+            observations.Add(new Observation(latitude.Value, longitude.Value, game, activity, name));
         }
     }
 
@@ -134,9 +131,7 @@ public sealed class ForumPlayerMapController(
         return StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 
-    private static double CellCenter(double coordinate, int limit) => Math.Min(Math.Floor(coordinate / 5) * 5 + 2.5, limit - 2.5);
-
-    private sealed record Observation(double Lat, double Lng, GameType Game, string Activity, string? Name, bool Identified);
+    private sealed record Observation(double Lat, double Lng, GameType Game, string Activity, string? Name);
     public sealed record MapPoint(double Lat, double Lng, string GameType, string Activity, int Count);
     public sealed record MapPlayer(double Lat, double Lng, string GameType, string Activity, string Name);
     public sealed record PlayerMap(DateTime AsOfUtc, DateTime RecentSinceUtc, IReadOnlyList<MapPoint> Points, IReadOnlyList<MapPlayer> Players);
