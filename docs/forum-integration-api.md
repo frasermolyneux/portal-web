@@ -51,14 +51,16 @@ Player linking uses the existing Portal session for both forum origins. Fetch
 cookie on every write. Fetch a new token after login or logout. The caller's
 Portal profile is resolved server-side; no forum or profile ID is accepted.
 
-`GET /api/integration/v1/player-links/claims` returns `claims` with `claimId`,
+`GET /api/integration/v1/player-links/claims` returns a page of `claims` with `claimId`,
 `playerId`, `username`, `gameType`, `gameServerId`, nullable `gameServerName`,
 `status`, `createdAtUtc` and `expiresAtUtc`. `POST
 /api/integration/v1/player-links/claim-code` returns `code`, `activatedAtUtc`
 and `expiresAtUtc`. The code is valid for one hour and can be spoken publicly;
 it creates a request, not an active link. Review player, game and server before
 approving. The pending list contains only unexpired claims with status
-`Pending`; these can be approved or declined. UUID fields are JSON strings.
+`Pending`; these can be approved or declined. `skip` defaults to 0 and `take`
+to 25 (maximum 100); the response includes `skip`, `take`, and `totalCount` so
+callers can fetch every page. UUID fields are JSON strings.
 `POST /api/integration/v1/player-links/claims/{claimId}/approve`
 or `/decline` resolves a pending request, and `DELETE
 /api/integration/v1/player-links/linked-players/{connectedPlayerProfileId}`

@@ -87,8 +87,12 @@ public sealed class ForumIntegrationController(
     [HttpGet("player-links/claims")]
     [Authorize]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<IActionResult> PendingPlayerClaims(CancellationToken cancellationToken)
+    public async Task<IActionResult> PendingPlayerClaims(int skip = 0, int take = 25,
+        CancellationToken cancellationToken = default)
     {
+        if (skip < 0 || take is < 1 or > 100)
+            return BadRequest();
+
         var (profileId, error) = await ResolveProfile(cancellationToken).ConfigureAwait(false);
         if (error is not null)
             return error;
@@ -103,7 +107,10 @@ public sealed class ForumIntegrationController(
 
         return Ok(new
         {
-            claims = claims.Select(claim => new
+            skip,
+            take,
+            totalCount = claims.Count(),
+            claims = claims.Skip(skip).Take(take).Select(claim => new
             {
                 claim.ClaimId,
                 claim.PlayerId,

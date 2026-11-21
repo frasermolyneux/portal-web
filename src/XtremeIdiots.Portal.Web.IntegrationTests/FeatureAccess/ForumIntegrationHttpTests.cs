@@ -153,6 +153,42 @@ public sealed class ForumIntegrationHttpTests
         Assert.Equal(claimId, claim.GetProperty("claimId").GetGuid());
         Assert.Equal(JsonValueKind.Null, claim.GetProperty("gameServerName").ValueKind);
         Assert.False(claim.TryGetProperty("userProfileId", out _));
+        Assert.Equal(1, body.GetProperty("totalCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task PendingPlayerClaims_PaginatesWithoutLosingRemainingClaims()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var profileId = Guid.NewGuid();
+        var claims = Enumerable.Range(0, 101).Select(_ => new ConnectedPlayerClaimDto { ClaimId = Guid.NewGuid() }).ToArray();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(Fixture<UserProfileDto>(new { UserProfileId = profileId }))));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetPendingConnectedPlayerClaims(profileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(claims));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/player-links/claims?skip=100&take=100");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(101, body.GetProperty("totalCount").GetInt32());
+        Assert.Equal(100, body.GetProperty("skip").GetInt32());
+        Assert.Equal(100, body.GetProperty("take").GetInt32());
+        Assert.Equal(claims[100].ClaimId, Assert.Single(body.GetProperty("claims").EnumerateArray()).GetProperty("claimId").GetGuid());
+    }
+
+    [Theory]
+    [InlineData(-1, 25)]
+    [InlineData(0, 0)]
+    [InlineData(0, 101)]
+    public async Task PendingPlayerClaims_RejectsInvalidPagination(int skip, int take)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/integration/v1/player-links/claims?skip={skip}&take={take}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
