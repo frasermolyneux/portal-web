@@ -13,9 +13,9 @@
     var liveStatus = Model.LiveStatus;
     var serverTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title;
     var serverId = gs.GameServerId;
-    var selectedCod4xTargetVersion = !string.IsNullOrWhiteSpace(Model.Cod4xOperationRequestTargetVersion)
+    var selectedCod4xTargetVersion = Model.Cod4xOperationRequestAction == Cod4xPluginOperationAction.Install
         ? Model.Cod4xOperationRequestTargetVersion
-        : Model.Cod4xRuntimeCurrentVersion;
+        : null;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">

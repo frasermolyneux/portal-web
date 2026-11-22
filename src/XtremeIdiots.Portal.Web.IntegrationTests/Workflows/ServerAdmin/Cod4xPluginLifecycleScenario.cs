@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
@@ -16,6 +18,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 
@@ -31,8 +34,10 @@ internal sealed class Cod4xPluginLifecycleScenario
         bool configurationLoadSucceeds = true,
         bool malformedConfiguration = false,
         bool pendingRequest = false,
-        bool holdUpsert = false)
+        bool holdUpsert = false,
+        bool publishedVersions = false)
     {
+        PublishedVersions = publishedVersions;
         GameServerId = Guid.Parse("12121212-1212-1212-1212-121212121212");
         GameServer = CreateGameServer(GameServerId);
         CurrentConfiguration = CreateConfiguration(malformedConfiguration ? "{ malformed" : CreateExistingConfigurationJson(pendingRequest));
@@ -85,6 +90,7 @@ internal sealed class Cod4xPluginLifecycleScenario
     public Mock<IRepositoryApiClient> RepositoryClient { get; }
     public Mock<IServersApiClient> ServersClient { get; }
     public RequestGate UpsertGate { get; }
+    private bool PublishedVersions { get; }
 
     public void ConfigureServices(IServiceCollection services)
     {
@@ -94,6 +100,19 @@ internal sealed class Cod4xPluginLifecycleScenario
         services.AddSingleton(RepositoryClient.Object);
         services.AddSingleton(ServersClient.Object);
         services.AddSingleton(AgentTelemetry.Object);
+        if (PublishedVersions)
+            services.Configure<MvcOptions>(options => options.Filters.Add(new PublishedVersionsFilter()));
+    }
+
+    private sealed class PublishedVersionsFilter : IResultFilter
+    {
+        public void OnResultExecuting(ResultExecutingContext context)
+        {
+            if (context.Result is ViewResult { Model: ServerDetailViewModel model })
+                model.Cod4xAvailableVersions = ["1.2.4", "1.2.3"];
+        }
+
+        public void OnResultExecuted(ResultExecutedContext context) { }
     }
 
     public Cod4xPluginSettingsDocument GetAttemptedDocument()

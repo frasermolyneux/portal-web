@@ -49,6 +49,25 @@ Feature: CoD4x plugin lifecycle requests
     Then the target version warning should be displayed
     And no lifecycle request should be queued
 
+  Scenario: The current version is not preselected for a new install
+    Given a successful CoD4x lifecycle scenario for a direct lifecycle user
+    When the user opens the CoD4x lifecycle panel
+    Then the install target version should be empty
+
+  Scenario: A published version must be chosen for an install
+    Given a CoD4x lifecycle scenario with published versions
+    When the user opens the CoD4x lifecycle panel
+    Then the install target version should be empty
+    When the user requests install without choosing a version
+    Then the target version warning should be displayed
+    And no lifecycle request should be queued
+
+  Scenario: The chosen published version is queued for installation
+    Given a CoD4x lifecycle scenario with published versions
+    When the user selects published version "1.2.4" for install
+    Then an "Install" lifecycle request should be queued for version "1.2.4"
+    And the install request should contain Linux artifact metadata
+
   Scenario: Invalid target version is rejected server-side
     Given a successful CoD4x lifecycle scenario for a direct lifecycle user
     When the user directly submits install version "1.2.4 bad"
