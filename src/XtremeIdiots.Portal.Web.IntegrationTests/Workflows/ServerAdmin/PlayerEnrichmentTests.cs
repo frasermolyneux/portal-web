@@ -10,6 +10,39 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 public sealed class PlayerEnrichmentTests
 {
     [Fact]
+    public async Task FailedRosterRefreshRetainsPlayersButClearsSessionDuration()
+    {
+        var scenario = new PlayerModerationScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.LiveServerKick, scenario.ConfigureServices);
+        var liveRequests = 0;
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayers/**", async route =>
+        {
+            if (Interlocked.Increment(ref liveRequests) == 1)
+                await route.FulfillAsync(new RouteFulfillOptions { ContentType = "application/json", Body = LivePlayers("first-guid", "203.0.113.7", "First player") });
+            else
+                await route.FulfillAsync(new RouteFulfillOptions { Status = 503, ContentType = "application/json", Body = "{}" });
+        });
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+            }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions { ContentType = "application/json", Body = Enrichment(scenario.PlayerId) }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+        var row = browser.Page.Locator("#sd-playersTable tbody tr");
+        await Assertions.Expect(row).ToContainTextAsync("2h 1m");
+
+        var refresh = browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.EvaluateAsync("() => RconPlayers.reload()"), IsLivePlayersResponse);
+        Assert.Equal(503, (await refresh).Status);
+        await Assertions.Expect(row).ToContainTextAsync("First player");
+        await Assertions.Expect(row).ToContainTextAsync("Unknown");
+        await Assertions.Expect(row).Not.ToContainTextAsync("2h 1m");
+    }
+
+    [Fact]
     public async Task CurrentSessionAppearsAsynchronouslyAndIsClearedForReusedSlot()
     {
         var scenario = new PlayerModerationScenario();

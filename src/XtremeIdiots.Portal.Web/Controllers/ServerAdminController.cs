@@ -397,7 +397,9 @@ public class ServerAdminController(
                 .Where(item => item.profile.PlayerId is { } playerId && uniqueIds.Contains(playerId) &&
                     durations.ContainsKey(playerId) &&
                     players.Count(current => current.Num == item.player.Num) == 1 &&
+                    players.Count(current => string.Equals(current.Guid, item.player.Guid, StringComparison.OrdinalIgnoreCase)) == 1 &&
                     fresh.Result.Data.Players.Count(current => current.Num == item.player.Num) == 1 &&
+                    fresh.Result.Data.Players.Count(current => string.Equals(current.Guid, item.player.Guid, StringComparison.OrdinalIgnoreCase)) == 1 &&
                     fresh.Result.Data.Players.Count(current => current.Num == item.player.Num &&
                         string.Equals(current.Guid, item.player.Guid, StringComparison.Ordinal) &&
                         string.Equals(current.IpAddress, item.player.IpAddress, StringComparison.Ordinal)) == 1)

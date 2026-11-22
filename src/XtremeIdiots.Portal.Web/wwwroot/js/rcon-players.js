@@ -187,8 +187,12 @@ var RconPlayers = (function () {
             },
             error: function (xhr, textStatus, errorThrown) {
                 if (_disposed || textStatus === 'abort') return;
+                ++_rosterGeneration;
+                if (_sessionRequest) _sessionRequest.abort();
                 RconUtils.handleAjaxError(xhr, textStatus, errorThrown);
-                callback({ data: _table ? _table.rows().data().toArray() : [] });
+                callback({ data: _table ? _table.rows().data().toArray().map(function (player) {
+                    return { ...player, currentSessionObservedSeconds: null };
+                }) : [] });
             },
             complete: function () {
                 _liveRequest = null;

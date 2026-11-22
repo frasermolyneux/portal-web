@@ -71,6 +71,7 @@ public sealed class CurrentSessionEndpointTests
     [InlineData("same")]
     [InlineData("changed")]
     [InlineData("duplicate")]
+    [InlineData("duplicate-guid")]
     public async Task AdminSessionRequiresStillMatchingRconSlot(string snapshot)
     {
         var scenario = new PlayerModerationScenario();
@@ -81,9 +82,12 @@ public sealed class CurrentSessionEndpointTests
             {
                 Players = new[] { new { Num = PlayerModerationScenario.PlayerSlot, Guid = PlayerModerationScenario.PlayerGuid, IpAddress = "" } }
             }))!;
-            var changedPlayers = snapshot == "duplicate"
-                ? new[] { new { Num = PlayerModerationScenario.PlayerSlot, Guid = PlayerModerationScenario.PlayerGuid, IpAddress = "" }, new { Num = PlayerModerationScenario.PlayerSlot, Guid = "OTHER-GUID", IpAddress = "" } }
-                : new[] { new { Num = PlayerModerationScenario.PlayerSlot, Guid = "OTHER-GUID", IpAddress = "" } };
+            var changedPlayers = snapshot switch
+            {
+                "duplicate" => new[] { new { Num = PlayerModerationScenario.PlayerSlot, Guid = PlayerModerationScenario.PlayerGuid, IpAddress = "" }, new { Num = PlayerModerationScenario.PlayerSlot, Guid = "OTHER-GUID", IpAddress = "" } },
+                "duplicate-guid" => new[] { new { Num = PlayerModerationScenario.PlayerSlot, Guid = PlayerModerationScenario.PlayerGuid, IpAddress = "" }, new { Num = 8, Guid = PlayerModerationScenario.PlayerGuid.ToLowerInvariant(), IpAddress = "" } },
+                _ => new[] { new { Num = PlayerModerationScenario.PlayerSlot, Guid = "OTHER-GUID", IpAddress = "" } }
+            };
             var changed = JsonConvert.DeserializeObject<RconStatusResponseDto>(JsonConvert.SerializeObject(new
             {
                 Players = changedPlayers

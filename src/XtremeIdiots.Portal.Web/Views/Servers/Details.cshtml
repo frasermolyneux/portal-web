@@ -312,7 +312,9 @@
                             ? 'Live player updates unavailable. Showing the last successful snapshot; retrying automatically.'
                             : 'Live player data unavailable. Retrying automatically.')
                         .removeClass('d-none');
-                    updatePlayers({ data: table.rows().data().toArray() });
+                    updatePlayers({ data: table.rows().data().toArray().map(function(player) {
+                        return { ...player, currentSessionObservedSeconds: null };
+                    }) });
                 }
             }).start();
         })();
