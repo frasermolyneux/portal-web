@@ -91,7 +91,7 @@ public class ProfileControllerTests
         Assert.Equal(nameof(ProfileController.Manage), redirectResult.ActionName);
 
         mockRepositoryApiClient
-            .Verify(x => x.ConnectedPlayers.V1.ActivateConnectedPlayerActivationCode(
+            .Verify(x => x.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(
                 It.IsAny<ActivateConnectedPlayerActivationCodeDto>(),
                 It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -110,7 +110,7 @@ public class ProfileControllerTests
         var activationDto = CreateActivationCodeDto(userProfileId, "ABC123");
 
         mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.ActivateConnectedPlayerActivationCode(It.IsAny<ActivateConnectedPlayerActivationCodeDto>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(It.IsAny<ActivateConnectedPlayerActivationCodeDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<ConnectedPlayerActivationCodeDto>(HttpStatusCode.OK, new ApiResponse<ConnectedPlayerActivationCodeDto>(activationDto)));
 
         var user = new ClaimsPrincipal(
@@ -128,11 +128,11 @@ public class ProfileControllerTests
         Assert.Equal(nameof(ProfileController.Manage), redirectResult.ActionName);
 
         mockRepositoryApiClient
-            .Verify(x => x.ConnectedPlayers.V1.ActivateConnectedPlayerActivationCode(
+            .Verify(x => x.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(
                 It.Is<ActivateConnectedPlayerActivationCodeDto>(dto => dto.UserProfileId == userProfileId),
                 It.IsAny<CancellationToken>()), Times.Once);
 
-        Assert.Contains("Activation code generated", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains("Approval code ready", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class ProfileControllerTests
             .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(userProfile)));
 
         mockRepositoryApiClient
-            .Setup(x => x.ConnectedPlayers.V1.ActivateConnectedPlayerActivationCode(It.IsAny<ActivateConnectedPlayerActivationCodeDto>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(It.IsAny<ActivateConnectedPlayerActivationCodeDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<ConnectedPlayerActivationCodeDto>(HttpStatusCode.BadRequest));
 
         var user = new ClaimsPrincipal(
@@ -163,7 +163,7 @@ public class ProfileControllerTests
         // Assert
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(ProfileController.Manage), redirectResult.ActionName);
-        Assert.Contains("Failed to generate activation code", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains("Failed to get an approval code", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -194,6 +194,12 @@ public class ProfileControllerTests
         mockRepositoryApiClient
             .Setup(x => x.ConnectedPlayers.V1.GetConnectedPlayersByUserProfile(userProfileId, 0, 100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK, linkedPlayersResponse));
+        var claimId = Guid.NewGuid();
+        mockRepositoryApiClient
+            .Setup(x => x.ConnectedPlayers.V1.GetPendingConnectedPlayerClaims(userProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerClaimDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConnectedPlayerClaimDto>>(new CollectionModel<ConnectedPlayerClaimDto>(
+                [new ConnectedPlayerClaimDto { ClaimId = claimId, Username = "Candidate", GameServerName = null }]))));
 
         var user = new ClaimsPrincipal(
             new ClaimsIdentity([
@@ -217,6 +223,51 @@ public class ProfileControllerTests
         Assert.True(model.IsLinkedPlayersCapped);
         Assert.Contains(model.LinkedPlayers, x => x.Username == "Alpha" && x.IsActive);
         Assert.Contains(model.LinkedPlayers, x => x.Username == "Bravo" && !x.IsActive);
+        Assert.Equal(claimId, Assert.Single(model.PendingClaims).ClaimId);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ResolveClaim_UsesCurrentProfile(bool approve)
+    {
+        var profileId = Guid.NewGuid();
+        var claimId = Guid.NewGuid();
+        mockRepositoryApiClient
+            .Setup(x => x.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("123456", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(CreateUserProfileDto(profileId))));
+        var success = new ApiResult<ConnectedPlayerClaimDto>(HttpStatusCode.OK, new ApiResponse<ConnectedPlayerClaimDto>(new ConnectedPlayerClaimDto()));
+        mockRepositoryApiClient.Setup(x => x.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profileId, claimId, It.IsAny<CancellationToken>())).ReturnsAsync(success);
+        mockRepositoryApiClient.Setup(x => x.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profileId, claimId, It.IsAny<CancellationToken>())).ReturnsAsync(success);
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(UserProfileClaimType.XtremeIdiotsId, "123456")], "TestAuth"));
+        var controller = CreateSut(user);
+
+        if (approve)
+            await controller.ApproveConnectedPlayerClaim(claimId);
+        else
+            await controller.DeclineConnectedPlayerClaim(claimId);
+
+        mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profileId, claimId, It.IsAny<CancellationToken>()), approve ? Times.Once : Times.Never);
+        mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profileId, claimId, It.IsAny<CancellationToken>()), approve ? Times.Never : Times.Once);
+    }
+
+    [Fact]
+    public async Task UnlinkConnectedPlayer_UsesCurrentProfile()
+    {
+        var profileId = Guid.NewGuid();
+        var linkId = Guid.NewGuid();
+        mockRepositoryApiClient
+            .Setup(x => x.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("123456", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(CreateUserProfileDto(profileId))));
+        mockRepositoryApiClient.Setup(x => x.ConnectedPlayers.V1.UnlinkOwnConnectedPlayer(profileId, linkId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NotFound));
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(UserProfileClaimType.XtremeIdiotsId, "123456")], "TestAuth"));
+        var controller = CreateSut(user);
+
+        await controller.UnlinkConnectedPlayer(linkId);
+
+        mockRepositoryApiClient.Verify(x => x.ConnectedPlayers.V1.UnlinkOwnConnectedPlayer(profileId, linkId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Contains("Unable to unlink", controller.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
     }
 
     private static UserProfileDto CreateUserProfileDto(Guid userProfileId)

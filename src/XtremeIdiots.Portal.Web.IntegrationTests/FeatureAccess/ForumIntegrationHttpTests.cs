@@ -8,6 +8,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Players;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Dashboard;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
@@ -15,6 +16,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RecentPlayers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
@@ -27,6 +29,267 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 [Trait("Category", "HttpIntegration")]
 public sealed class ForumIntegrationHttpTests
 {
+    [Theory]
+    [InlineData("https://test.xtremeidiots.com")]
+    [InlineData("https://www.xtremeidiots.com")]
+    public async Task PlayerClaimCode_PreflightAllowsSessionAntiforgeryHeader(string origin)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var session = await host.Client.GetAsync("/api/integration/v1/session");
+        var tokens = await session.Content.ReadFromJsonAsync<JsonElement>();
+        var headerName = tokens.GetProperty("headerName").GetString()!;
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/integration/v1/player-links/claim-code");
+        request.Headers.Add("Origin", origin);
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", headerName);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(origin, Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+        Assert.Equal("true", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Credentials")));
+        Assert.Contains(headerName, string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers")), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PlayerClaimCode_IssuesApprovalCodeForCurrentProfile()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var profileId = Guid.NewGuid();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(Fixture<UserProfileDto>(new { UserProfileId = profileId }))));
+        repository.Setup(r => r.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(
+                It.Is<ActivateConnectedPlayerActivationCodeDto>(dto => dto.UserProfileId == profileId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConnectedPlayerActivationCodeDto>(HttpStatusCode.OK,
+                new ApiResponse<ConnectedPlayerActivationCodeDto>(Fixture<ConnectedPlayerActivationCodeDto>(new
+                {
+                    UserProfileId = profileId,
+                    Code = "ABC123",
+                    ActivatedAtUtc = DateTime.UtcNow,
+                    ExpiresAtUtc = DateTime.UtcNow.AddHours(1)
+                }))));
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        sessionRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var session = await host.Client.SendAsync(sessionRequest);
+        var tokens = await session.Content.ReadFromJsonAsync<JsonElement>();
+        var cookie = Assert.Single(session.Headers.GetValues("Set-Cookie")).Split(';')[0];
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/integration/v1/player-links/claim-code");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        request.Headers.Add("Cookie", cookie);
+        request.Headers.Add(tokens.GetProperty("headerName").GetString()!, tokens.GetProperty("requestVerificationToken").GetString()!);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("ABC123", body.GetProperty("code").GetString());
+        Assert.False(body.TryGetProperty("userProfileId", out _));
+        repository.Verify(r => r.ConnectedPlayers.V1.IssueConnectedPlayerClaimCode(
+            It.Is<ActivateConnectedPlayerActivationCodeDto>(dto => dto.UserProfileId == profileId), It.IsAny<CancellationToken>()), Times.Once);
+        repository.Verify(r => r.ConnectedPlayers.V1.ActivateConnectedPlayerActivationCode(
+            It.IsAny<ActivateConnectedPlayerActivationCodeDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("decline")]
+    [InlineData("unlink")]
+    public async Task PlayerLinkMutation_UsesSessionProfileAndRequiresAntiforgery(string action)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var profileId = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(
+                Fixture<UserProfileDto>(new { UserProfileId = profileId }))));
+        var claimResponse = new ApiResult<ConnectedPlayerClaimDto>(HttpStatusCode.OK, new ApiResponse<ConnectedPlayerClaimDto>(new ConnectedPlayerClaimDto()));
+        repository.Setup(r => r.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profileId, id, It.IsAny<CancellationToken>())).ReturnsAsync(claimResponse);
+        repository.Setup(r => r.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profileId, id, It.IsAny<CancellationToken>())).ReturnsAsync(claimResponse);
+        repository.Setup(r => r.ConnectedPlayers.V1.UnlinkOwnConnectedPlayer(profileId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+        var path = action == "unlink" ? $"/api/integration/v1/player-links/linked-players/{id}"
+            : $"/api/integration/v1/player-links/claims/{id}/{action}";
+        var method = action == "unlink" ? HttpMethod.Delete : HttpMethod.Post;
+
+        using var rejected = new HttpRequestMessage(method, path);
+        rejected.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var rejectedResponse = await host.Client.SendAsync(rejected);
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedResponse.StatusCode);
+
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        sessionRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var session = await host.Client.SendAsync(sessionRequest);
+        var tokens = await session.Content.ReadFromJsonAsync<JsonElement>();
+        var cookie = Assert.Single(session.Headers.GetValues("Set-Cookie")).Split(';')[0];
+        using var request = new HttpRequestMessage(method, path);
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        request.Headers.Add("Origin", "https://test.xtremeidiots.com");
+        request.Headers.Add("Cookie", cookie);
+        request.Headers.Add(tokens.GetProperty("headerName").GetString()!, tokens.GetProperty("requestVerificationToken").GetString()!);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        repository.Verify(r => r.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profileId, id, It.IsAny<CancellationToken>()), action == "approve" ? Times.Once : Times.Never);
+        repository.Verify(r => r.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profileId, id, It.IsAny<CancellationToken>()), action == "decline" ? Times.Once : Times.Never);
+        repository.Verify(r => r.ConnectedPlayers.V1.UnlinkOwnConnectedPlayer(profileId, id, It.IsAny<CancellationToken>()), action == "unlink" ? Times.Once : Times.Never);
+    }
+
+    [Fact]
+    public async Task PendingPlayerClaims_ExposesServerContextWithoutProfileId()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var profileId = Guid.NewGuid();
+        var claimId = Guid.NewGuid();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(Fixture<UserProfileDto>(new { UserProfileId = profileId }))));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetPendingConnectedPlayerClaims(profileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection([new ConnectedPlayerClaimDto { ClaimId = claimId, UserProfileId = profileId, Username = "Candidate", GameServerName = null }]));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/player-links/claims");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var claim = Assert.Single(body.GetProperty("claims").EnumerateArray());
+        Assert.Equal(claimId, claim.GetProperty("claimId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, claim.GetProperty("gameServerName").ValueKind);
+        Assert.False(claim.TryGetProperty("userProfileId", out _));
+        Assert.Equal(1, body.GetProperty("totalCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task PendingPlayerClaims_PaginatesWithoutLosingRemainingClaims()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var profileId = Guid.NewGuid();
+        var claims = Enumerable.Range(0, 101).Select(_ => new ConnectedPlayerClaimDto { ClaimId = Guid.NewGuid() }).ToArray();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(Fixture<UserProfileDto>(new { UserProfileId = profileId }))));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetPendingConnectedPlayerClaims(profileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(claims));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/player-links/claims?skip=100&take=100");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(101, body.GetProperty("totalCount").GetInt32());
+        Assert.Equal(100, body.GetProperty("skip").GetInt32());
+        Assert.Equal(100, body.GetProperty("take").GetInt32());
+        Assert.Equal(claims[100].ClaimId, Assert.Single(body.GetProperty("claims").EnumerateArray()).GetProperty("claimId").GetGuid());
+    }
+
+    [Theory]
+    [InlineData(-1, 25)]
+    [InlineData(0, 0)]
+    [InlineData(0, 101)]
+    public async Task PendingPlayerClaims_RejectsInvalidPagination(int skip, int take)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/integration/v1/player-links/claims?skip={skip}&take={take}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task LinkedPlayers_UsesAuthenticatedPortalProfileAndReturnsOwnLinks()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var userProfileId = Guid.NewGuid();
+        var connectedPlayerProfileId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(
+                Fixture<UserProfileDto>(new { UserProfileId = userProfileId, ArchivedAtUtc = (DateTime?)null }))));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetConnectedPlayersByUserProfile(userProfileId, 10, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>(
+                [
+                    Fixture<ConnectedPlayerDto>(new
+                    {
+                        ConnectedPlayerProfileId = connectedPlayerProfileId,
+                        PlayerId = playerId,
+                        UserProfileId = userProfileId,
+                        GameType = GameType.CallOfDuty4,
+                        Username = "member-player",
+                        LinkMethod = ConnectedPlayerLinkMethod.ActivationCode,
+                        LinkedAtUtc = new DateTime(2026, 11, 20, 12, 0, 0, DateTimeKind.Utc),
+                        IsActive = true
+                    })
+                ]))
+                {
+                    Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 10, top: 20)
+                }));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            "/api/integration/v1/player-links/linked-players?skip=10&take=20&userProfileId=99999999-9999-9999-9999-999999999999");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        request.Headers.Add("Origin", "https://test.xtremeidiots.com");
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Equal("https://test.xtremeidiots.com", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(10, body.GetProperty("skip").GetInt32());
+        Assert.Equal(20, body.GetProperty("take").GetInt32());
+        Assert.Equal(1, body.GetProperty("totalCount").GetInt32());
+        var item = Assert.Single(body.GetProperty("items").EnumerateArray());
+        Assert.Equal(connectedPlayerProfileId, item.GetProperty("connectedPlayerProfileId").GetGuid());
+        Assert.Equal(playerId, item.GetProperty("playerId").GetGuid());
+        Assert.Equal("CallOfDuty4", item.GetProperty("gameType").GetString());
+        Assert.Equal("member-player", item.GetProperty("username").GetString());
+        Assert.Equal("ActivationCode", item.GetProperty("linkMethod").GetString());
+        Assert.True(item.GetProperty("isActive").GetBoolean());
+        Assert.False(item.TryGetProperty("userProfileId", out _));
+        repository.Verify(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()), Times.Once);
+        repository.Verify(r => r.ConnectedPlayers.V1.GetConnectedPlayersByUserProfile(userProfileId, 10, 20, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LinkedPlayers_RequiresPortalAuthentication()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var response = await host.Client.GetAsync("/api/integration/v1/player-links/linked-players");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>())
+            .Verify(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LinkedPlayers_ReturnsUnavailableWhenRepositoryFails()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var userProfileId = Guid.NewGuid();
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(
+                Fixture<UserProfileDto>(new { UserProfileId = userProfileId, ArchivedAtUtc = (DateTime?)null }))));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetConnectedPlayersByUserProfile(userProfileId, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.ServiceUnavailable));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/player-links/linked-players");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(-1, 25)]
+    [InlineData(0, 0)]
+    [InlineData(0, 101)]
+    public async Task LinkedPlayers_RejectsInvalidPagination(int skip, int take)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"/api/integration/v1/player-links/linked-players?skip={skip}&take={take}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.Moderator);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Theory]
     [InlineData(null, HttpStatusCode.Unauthorized)]
     [InlineData(TestPrincipalProfiles.MapRotationReader, HttpStatusCode.Forbidden)]

@@ -13,7 +13,8 @@ public record ProfileManageViewModel(
     ProfileActivationCodeViewModel? ActiveActivationCode,
     IList<ProfileLinkedPlayerViewModel> LinkedPlayers,
     int TotalLinkedPlayers,
-    bool IsLinkedPlayersCapped);
+    bool IsLinkedPlayersCapped,
+    IList<ProfilePendingClaimViewModel> PendingClaims);
 
 public record ProfileActivationCodeViewModel(
     string Code,
@@ -21,9 +22,17 @@ public record ProfileActivationCodeViewModel(
     bool IsActive);
 
 public record ProfileLinkedPlayerViewModel(
+    Guid ConnectedPlayerProfileId,
     string GameType,
     string Username,
     string LinkMethod,
     DateTime LinkedAtUtc,
     DateTime? UnlinkedAtUtc,
     bool IsActive);
+
+public record ProfilePendingClaimViewModel(
+    Guid ClaimId,
+    string GameType,
+    string Username,
+    string? GameServerName,
+    DateTime ExpiresAtUtc);

@@ -95,6 +95,188 @@ paths:
                       chatLogs:
                         type: boolean
                         description: Access to /ServerAdmin/ChatLogIndex (GameServers.Admin.Read and ChatLog.Read).
+  /api/integration/v1/player-links/linked-players:
+    get:
+      summary: Current member's linked game profiles
+      description: No-store response. The Portal profile is resolved from the authenticated cookie; no profile identifier is accepted from the caller.
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: take
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: A page of the signed-in member's linked and historical player profiles.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, skip, take]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 100
+                    items:
+                      type: object
+                      required: [connectedPlayerProfileId, playerId, gameType, username, linkMethod, linkedAtUtc, unlinkedAtUtc, isActive]
+                      properties:
+                        connectedPlayerProfileId:
+                          type: string
+                          format: uuid
+                        playerId:
+                          type: string
+                          format: uuid
+                        gameType:
+                          type: string
+                        username:
+                          type: string
+                        linkMethod:
+                          type: string
+                        linkedAtUtc:
+                          type: string
+                          format: date-time
+                        unlinkedAtUtc:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        isActive:
+                          type: boolean
+                  skip:
+                    type: integer
+                  take:
+                    type: integer
+                  totalCount:
+                    type: integer
+                    nullable: true
+                  filteredCount:
+                    type: integer
+                    nullable: true
+        '400':
+          description: Invalid pagination.
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: The authenticated Portal account has no active member profile.
+        '404':
+          description: Portal member profile not found.
+        '503':
+          description: Repository data unavailable.
+  /api/integration/v1/player-links/claims:
+    get:
+      summary: Pending player link requests for the current member
+      parameters:
+        - in: query
+          name: skip
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: take
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: No-store response with pending claims and nullable server names.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [claims, skip, take, totalCount]
+                properties:
+                  skip: { type: integer }
+                  take: { type: integer }
+                  totalCount: { type: integer }
+                  claims:
+                    type: array
+                    maxItems: 100
+                    items:
+                      type: object
+                      required: [claimId, playerId, username, gameType, gameServerId, gameServerName, status, createdAtUtc, expiresAtUtc]
+                      properties:
+                        claimId: { type: string, format: uuid }
+                        playerId: { type: string, format: uuid }
+                        username: { type: string }
+                        gameType: { type: string }
+                        gameServerId: { type: string, format: uuid }
+                        gameServerName: { type: string, nullable: true }
+                        status: { type: string, enum: [Pending] }
+                        createdAtUtc: { type: string, format: date-time }
+                        expiresAtUtc: { type: string, format: date-time }
+        '400': { description: Invalid pagination. }
+        '401': { description: Portal sign-in required. }
+        '403': { description: No active authenticated member profile. }
+        '404': { description: Portal profile not found. }
+        '503': { description: Repository data unavailable. }
+  /api/integration/v1/player-links/claim-code:
+    post:
+      summary: Issue an approval-only player link code
+      description: Requires the token and cookie obtained from the session endpoint; expires after one hour.
+      parameters:
+        - $ref: '#/components/parameters/Antiforgery'
+      responses:
+        '200':
+          description: No-store code response.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, activatedAtUtc, expiresAtUtc]
+                properties:
+                  code: { type: string }
+                  activatedAtUtc: { type: string, format: date-time }
+                  expiresAtUtc: { type: string, format: date-time }
+        '400': { description: Missing or invalid antiforgery token. }
+        '401': { description: Portal sign-in required. }
+        '403': { description: No active authenticated member profile. }
+        '404': { description: Portal profile not found. }
+        '503': { description: Repository data unavailable. }
+  /api/integration/v1/player-links/claims/{claimId}/approve:
+    post:
+      summary: Approve an owned player claim
+      parameters:
+        - { in: path, name: claimId, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Antiforgery'
+      responses:
+        '204': { description: Claim approved. }
+        '400': { description: Missing or invalid antiforgery token. }
+        '401': { description: Portal sign-in required. }
+        '403': { description: No active authenticated member profile. }
+        '404': { description: Profile or owned claim not found. }
+        '409': { description: Expired or conflicting claim. }
+        '503': { description: Repository data unavailable. }
+  /api/integration/v1/player-links/claims/{claimId}/decline:
+    post:
+      summary: Decline an owned player claim
+      parameters:
+        - { in: path, name: claimId, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Antiforgery'
+      responses:
+        '204': { description: Claim declined. }
+        '400': { description: Missing or invalid antiforgery token. }
+        '401': { description: Portal sign-in required. }
+        '403': { description: No active authenticated member profile. }
+        '404': { description: Profile or owned claim not found. }
+        '409': { description: Expired or conflicting claim. }
+        '503': { description: Repository data unavailable. }
+  /api/integration/v1/player-links/linked-players/{connectedPlayerProfileId}:
+    delete:
+      summary: Unlink an owned player profile
+      parameters:
+        - { in: path, name: connectedPlayerProfileId, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Antiforgery'
+      responses:
+        '204': { description: Player profile unlinked. }
+        '400': { description: Missing or invalid antiforgery token. }
+        '401': { description: Portal sign-in required. }
+        '403': { description: No active authenticated member profile. }
+        '404': { description: Profile or owned player link not found. }
+        '503': { description: Repository data unavailable. }
   /api/integration/v1/player-map:
     get:
       summary: Live and recent player locations for public servers

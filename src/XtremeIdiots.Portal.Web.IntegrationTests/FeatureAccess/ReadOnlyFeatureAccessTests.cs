@@ -1,5 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
+using MX.Api.Abstractions;
 using System.Net;
-
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
+using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authorization;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
@@ -25,6 +30,19 @@ public sealed class ReadOnlyFeatureAccessTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         host = await PortalWebTestHost.CreateAsync().ConfigureAwait(false);
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var profileId = Guid.NewGuid();
+        var profile = Newtonsoft.Json.JsonConvert.DeserializeObject<UserProfileDto>($"{{\"UserProfileId\":\"{profileId}\"}}")!;
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(profile)));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetActiveConnectedPlayerActivationCode(profileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConnectedPlayerActivationCodeDto>(HttpStatusCode.NotFound));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetConnectedPlayersByUserProfile(profileId, 0, 100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConnectedPlayerDto>>(new CollectionModel<ConnectedPlayerDto>([]))));
+        repository.Setup(r => r.ConnectedPlayers.V1.GetPendingConnectedPlayerClaims(profileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConnectedPlayerClaimDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConnectedPlayerClaimDto>>(new CollectionModel<ConnectedPlayerClaimDto>([]))));
     }
 
     public async Task DisposeAsync()
