@@ -13,11 +13,11 @@
 
   <ItemGroup>
     <PackageReference Include="XtremeIdiots.Redirect.Api.Client.Testing" Version="1.0.29" />
-    <PackageReference Include="coverlet.collector" Version="10.1.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="coverlet.collector" Version="10.1.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
-    <PackageReference Include="Microsoft.Playwright" Version="1.64.1" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.65.1" />
     <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="NuGet.Packaging" Version="8.0.0" PrivateAssets="all" />
     <PackageReference Include="Reqnroll.xUnit" Version="3.3.4" />
