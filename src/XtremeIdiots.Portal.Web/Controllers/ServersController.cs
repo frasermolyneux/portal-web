@@ -125,7 +125,7 @@ public class ServersController(
     /// Returns live player data for a server, projecting only public-safe fields
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetLivePlayers(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetLivePlayers(Guid id, [FromServices] CurrentSessionService sessions, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
@@ -156,8 +156,17 @@ public class ServersController(
                     new { error = "Live player data is currently unavailable." });
             }
 
+            var livePlayers = livePlayersResponse.Result.Data.Items;
+            var uniquePlayers = livePlayers.Where(p => p.PlayerId is not null && p.PlayerId != Guid.Empty)
+                .GroupBy(p => p.PlayerId!.Value).Where(group => group.Count() == 1)
+                .Select(group => group.Key).ToHashSet();
+            var durations = uniquePlayers.Count > 0 && await sessions.IsRosterFreshAsync(
+                id, gameServerApiResponse.Result.Data.GameType, cancellationToken).ConfigureAwait(false)
+                ? await sessions.GetAsync(id, gameServerApiResponse.Result.Data.GameType, uniquePlayers, cancellationToken).ConfigureAwait(false)
+                : [];
+
             // Project only public-safe fields — no IPs, GUIDs, risk data, or player profiles
-            var safePlayers = livePlayersResponse.Result.Data.Items
+            var safePlayers = livePlayers
                 .OrderBy(p => p.Num)
                 .Select(p => new
                 {
@@ -167,8 +176,10 @@ public class ServersController(
                     ping = p.Ping,
                     countryCode = p.GeoIntelligence?.CountryCode,
                     countryName = p.GeoIntelligence?.CountryName,
-                    // The roster does not currently prove connection continuity.
-                    currentSessionObservedSeconds = (long?)null
+                    currentSessionObservedSeconds = p.PlayerId is { } playerId && uniquePlayers.Contains(playerId) &&
+                        (p.GameServerServerId is null || p.GameServerServerId == id) &&
+                        p.GameType == gameServerApiResponse.Result.Data.GameType &&
+                        durations.TryGetValue(playerId, out var seconds) ? (long?)seconds : null
                 })
                 .ToList();
 

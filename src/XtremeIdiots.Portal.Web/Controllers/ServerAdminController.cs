@@ -357,6 +357,65 @@ public class ServerAdminController(
 
     [HttpGet]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetRconPlayerSessions(
+        Guid id, [FromServices] CurrentSessionService sessions, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var (actionResult, server) = await GetAuthorizedGameServerAsync(id, nameof(GetRconPlayerSessions), cancellationToken).ConfigureAwait(false);
+            if (actionResult is not null)
+                return actionResult;
+
+            var status = await GetServerStatusAsync(id, server!.GameType, cancellationToken).ConfigureAwait(false);
+            if (!status.IsSuccess || status.Result?.Data?.Players is null)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Live players are unavailable." });
+
+            var players = status.Result.Data.Players.Where(player => !string.IsNullOrWhiteSpace(player.Guid)).ToArray();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            PlayerProfileResult[] profiles;
+            try
+            {
+                profiles = await Task.WhenAll(players.Select(player =>
+                    playerProfileService.GetAsync(server.GameType, player.Guid, timeout.Token))).WaitAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                Logger.LogWarning("Player identity lookup timed out for server {ServerId}", id);
+                return Json(new { data = Array.Empty<object>() });
+            }
+
+            var uniqueIds = profiles.Where(profile => profile.Status == "available" && profile.PlayerId is not null)
+                .GroupBy(profile => profile.PlayerId!.Value).Where(group => group.Count() == 1)
+                .Select(group => group.Key).ToHashSet();
+            var durations = await sessions.GetAsync(id, server.GameType, uniqueIds, cancellationToken).ConfigureAwait(false);
+            var fresh = await GetFreshServerStatusInternalAsync(id, server.GameType, cancellationToken).ConfigureAwait(false);
+            if (!fresh.IsSuccess || fresh.Result?.Data?.Players is null)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Live players are unavailable." });
+
+            var result = players.Select((player, index) => new { player, profile = profiles[index] })
+                .Where(item => item.profile.PlayerId is { } playerId && uniqueIds.Contains(playerId) &&
+                    durations.ContainsKey(playerId) &&
+                    players.Count(current => current.Num == item.player.Num) == 1 &&
+                    players.Count(current => string.Equals(current.Guid, item.player.Guid, StringComparison.OrdinalIgnoreCase)) == 1 &&
+                    fresh.Result.Data.Players.Count(current => current.Num == item.player.Num) == 1 &&
+                    fresh.Result.Data.Players.Count(current => string.Equals(current.Guid, item.player.Guid, StringComparison.OrdinalIgnoreCase)) == 1 &&
+                    fresh.Result.Data.Players.Count(current => current.Num == item.player.Num &&
+                        string.Equals(current.Guid, item.player.Guid, StringComparison.Ordinal) &&
+                        string.Equals(current.IpAddress, item.player.IpAddress, StringComparison.Ordinal)) == 1)
+                .Select(item => new
+                {
+                    num = item.player.Num,
+                    guid = item.player.Guid,
+                    ipAddress = item.player.IpAddress,
+                    currentSessionObservedSeconds = durations[item.profile.PlayerId!.Value]
+                });
+            return Json(new { data = result });
+        }, nameof(GetRconPlayerSessions)).ConfigureAwait(false);
+    }
+
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetRconPlayerEnrichment(
         Guid id, int playerSlot, string? playerGuid, string? ipAddress, CancellationToken cancellationToken = default)
     {

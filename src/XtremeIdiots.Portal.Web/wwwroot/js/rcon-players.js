@@ -23,6 +23,8 @@ var RconPlayers = (function () {
     var _intervalMs = 10000;
     var _enrichmentCache = new Map();
     var _pendingEnrichment = new Map();
+    var _sessionRequest = null;
+    var _rosterGeneration = 0;
 
     function init(options) {
         _disposed = false;
@@ -177,13 +179,20 @@ var RconPlayers = (function () {
                 RconUtils.updateRefreshBadge(_refreshBadgeId, _lastRefreshTime);
                 $(_playerCountSelector).text(json.data.length);
                 callback(json);
+                var generation = ++_rosterGeneration;
+                if (_sessionRequest) _sessionRequest.abort();
+                if (json.data.length) loadSessions(generation);
                 // DataTables can invoke the initial AJAX callback before initTable returns.
                 if (_table) enrichPlayers();
             },
             error: function (xhr, textStatus, errorThrown) {
                 if (_disposed || textStatus === 'abort') return;
+                ++_rosterGeneration;
+                if (_sessionRequest) _sessionRequest.abort();
                 RconUtils.handleAjaxError(xhr, textStatus, errorThrown);
-                callback({ data: _table ? _table.rows().data().toArray() : [] });
+                callback({ data: _table ? _table.rows().data().toArray().map(function (player) {
+                    return { ...player, currentSessionObservedSeconds: null };
+                }) : [] });
             },
             complete: function () {
                 _liveRequest = null;
@@ -191,6 +200,30 @@ var RconPlayers = (function () {
             }
         });
         return _liveRequest;
+    }
+
+    function loadSessions(generation) {
+        var request = $.ajax({
+            url: '/ServerAdmin/GetRconPlayerSessions/' + _serverId,
+            type: 'GET',
+            success: function (json) {
+                if (_disposed || generation !== _rosterGeneration || !_table) return;
+                _table.rows().every(function () {
+                    var player = this.data();
+                    var matches = json.data.filter(function (session) {
+                        return session.num === player.num && session.guid === player.guid &&
+                            session.ipAddress === player.ipAddress;
+                    });
+                    if (matches.length === 1) this.data({ ...player, currentSessionObservedSeconds: matches[0].currentSessionObservedSeconds });
+                });
+                _table.draw(false);
+            },
+            error: function (xhr, textStatus) {
+                if (!_disposed && textStatus !== 'abort') console.warn('Current sessions unavailable:', xhr.status);
+            },
+            complete: function () { if (_sessionRequest === request) _sessionRequest = null; }
+        });
+        _sessionRequest = request;
     }
 
     function applyEnrichment(key, value) {
@@ -298,6 +331,7 @@ var RconPlayers = (function () {
         _disposed = true;
         stop();
         if (_liveRequest) _liveRequest.abort();
+        if (_sessionRequest) _sessionRequest.abort();
         _pendingEnrichment.forEach(function (request) { if (request) request.abort(); });
         _pendingEnrichment.clear();
         _enrichmentCache.clear();

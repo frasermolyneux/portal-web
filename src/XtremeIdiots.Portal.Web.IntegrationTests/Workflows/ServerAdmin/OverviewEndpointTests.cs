@@ -233,6 +233,7 @@ public sealed class OverviewEndpointTests
             $"/ServerAdmin/GetOverviewStatistics/{scenario.GameServerId}",
             $"/ServerAdmin/GetOverviewTelemetry/{scenario.GameServerId}",
             $"/ServerAdmin/GetOverviewBanFileMonitors/{scenario.GameServerId}",
+            $"/ServerAdmin/GetRconPlayerSessions/{scenario.GameServerId}",
             "/Dashboard/GetOverviewSummary", "/Dashboard/GetOverviewLeaderboard", "/Dashboard/GetOverviewTrend",
             "/Dashboard/GetOverviewUtilization", "/Dashboard/GetOverviewTelemetry", "/Status/GetOverviewTelemetry"
         })
@@ -246,6 +247,10 @@ public sealed class OverviewEndpointTests
         request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameServerWriterWithoutRcon);
         using var denied = await host.Client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, $"/ServerAdmin/GetRconPlayerSessions/{scenario.GameServerId}");
+        sessionRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameServerWriterWithoutRcon);
+        using var deniedSessions = await host.Client.SendAsync(sessionRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, deniedSessions.StatusCode);
         foreach (var (path, expectedStatus) in new[]
         {
             ($"/ServerAdmin/GetOverviewTelemetry/{scenario.GameServerId}?detailed=true", HttpStatusCode.Redirect),

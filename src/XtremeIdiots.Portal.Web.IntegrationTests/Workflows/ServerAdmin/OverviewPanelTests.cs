@@ -114,6 +114,8 @@ public sealed class OverviewPanelTests
         await Assertions.Expect(status).ToContainTextAsync("Showing the last successful snapshot");
         await Assertions.Expect(rows).ToHaveCountAsync(1);
         await Assertions.Expect(rows).ToContainTextAsync("Gamma");
+        await Assertions.Expect(rows).ToContainTextAsync("Unknown");
+        await Assertions.Expect(rows).Not.ToContainTextAsync("2h 1m");
         await browser.Page.Clock.RunForAsync(60000);
         await Assertions.Expect(status).ToBeHiddenAsync();
         await Assertions.Expect(browser.Page.Locator("#si-playerCount")).ToHaveTextAsync("0");
