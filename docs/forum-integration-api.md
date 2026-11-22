@@ -55,9 +55,11 @@ Portal profile is resolved server-side; no forum or profile ID is accepted.
 `playerId`, `username`, `gameType`, `gameServerId`, nullable `gameServerName`,
 `status`, `createdAtUtc` and `expiresAtUtc`. `POST
 /api/integration/v1/player-links/claim-code` returns `code`, `activatedAtUtc`
-and `expiresAtUtc`. The code is valid for one hour and can be spoken publicly;
-it creates a request, not an active link. Review player, game and server before
-approving. The pending list contains only unexpired claims with status
+and `expiresAtUtc`. Approval codes are valid for one hour; issuance reuses an
+unexpired approval code and does not revoke it. Treat the code as sensitive:
+in-game commands may be visible to others, and a matching username and server
+alone do not prove ownership. It creates a request, not an active link. Approve
+only a request you can confidently identify as yours. The pending list contains only unexpired claims with status
 `Pending`; these can be approved or declined. `skip` defaults to 0 and `take`
 to 25 (maximum 100); the response includes `skip`, `take`, and `totalCount` so
 callers can fetch every page. UUID fields are JSON strings.

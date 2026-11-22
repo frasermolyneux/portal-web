@@ -85,7 +85,8 @@
                         else
                         {
                             <p class="text-muted mb-3">
-                                Generate a code, then in game run <strong>!register CODE</strong>. Review the player and server below before approving the link.
+                                Get a code, then in game run <strong>!register CODE</strong>. Refresh this page to see the request.
+                                Commands may be visible to others. Approve only a request you can confidently identify as yours; a matching name and server alone do not prove ownership.
                             </p>
 
                             <div class="row g-3 mb-3">
@@ -104,7 +105,7 @@
                                                     <div class="small text-muted">
                                                         Expires <time user-time utc="@Model.ActiveActivationCode.ExpiresAtUtc"></time>
                                                     </div>
-                                                    <div class="small text-muted">Codes issued before this update may link immediately. Generate a new code to require approval.</div>
+                                                    <div class="small text-muted">Codes issued before this update may link immediately. Request an approval code to replace a legacy code. An active approval code is reused until it expires and cannot be revoked here.</div>
                                                 }
                                             </div>
                                         </div>
@@ -256,7 +257,7 @@
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fa-solid fa-fw fa-arrows-rotate" aria-hidden="true"></i>
-                                    Generate New Code
+                                    Get Approval Code
                                 </button>
                             </form>
                         </div>

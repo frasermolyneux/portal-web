@@ -46,7 +46,7 @@ public class ProfileController(
     }
 
     /// <summary>
-    /// Creates a new active connected-player activation code for the current profile.
+    /// Gets an active connected-player approval code for the current profile.
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -71,11 +71,11 @@ public class ProfileController(
             var activationCode = activationResponse.Result?.Data?.Code;
             if (activationResponse.IsSuccess && !string.IsNullOrWhiteSpace(activationCode))
             {
-                this.AddAlertSuccess($"Activation code generated: {activationCode}");
+                this.AddAlertSuccess($"Approval code ready: {activationCode}");
             }
             else
             {
-                this.AddAlertDanger("Failed to generate activation code. Please try again.");
+                this.AddAlertDanger("Failed to get an approval code. Please try again.");
             }
 
             return RedirectToAction(nameof(Manage));

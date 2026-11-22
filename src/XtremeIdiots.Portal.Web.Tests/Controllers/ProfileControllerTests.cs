@@ -132,7 +132,7 @@ public class ProfileControllerTests
                 It.Is<ActivateConnectedPlayerActivationCodeDto>(dto => dto.UserProfileId == userProfileId),
                 It.IsAny<CancellationToken>()), Times.Once);
 
-        Assert.Contains("Activation code generated", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains("Approval code ready", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public class ProfileControllerTests
         // Assert
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(ProfileController.Manage), redirectResult.ActionName);
-        Assert.Contains("Failed to generate activation code", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains("Failed to get an approval code", sut.TempData["Alerts"]?.ToString() ?? string.Empty, StringComparison.Ordinal);
     }
 
     [Fact]
