@@ -347,7 +347,9 @@ public class ServerAdminController(
                     name = player.Name,
                     guid = player.Guid,
                     ipAddress = player.IpAddress,
-                    rate = player.Rate
+                    rate = player.Rate,
+                    // The RCON roster does not currently prove connection continuity.
+                    currentSessionObservedSeconds = (long?)null
                 })
             });
         }, nameof(GetRconPlayers)).ConfigureAwait(false);

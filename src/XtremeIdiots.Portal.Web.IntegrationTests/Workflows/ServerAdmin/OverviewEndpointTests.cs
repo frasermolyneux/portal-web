@@ -54,6 +54,56 @@ public sealed class OverviewEndpointTests
     }
 
     [Fact]
+    public async Task PublicLivePlayersDoesNotExposeIdentityOrConnectionDetails()
+    {
+        var scenario = new MapControlScenario();
+        var properties = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        properties[nameof(GameServerDto.ServerListEnabled)] = true;
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(properties.ToObject<GameServerDto>())));
+        var livePlayer = JsonConvert.DeserializeObject<LivePlayerDto>(JsonConvert.SerializeObject(new
+        {
+            LivePlayerId = Guid.NewGuid(),
+            PlayerId = Guid.NewGuid(),
+            GameServerServerId = scenario.GameServerId,
+            Name = "Player",
+            Num = 1,
+            IpAddress = "203.0.113.12",
+            ConnectedAtUtc = DateTime.UtcNow,
+            TelemetryProperties = new Dictionary<string, string> { ["private"] = "private-value" }
+        }))!;
+        scenario.RepositoryClient.Setup(r => r.LiveStatus.V1.GetGameServerLivePlayers(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<LivePlayerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<LivePlayerDto>>(new CollectionModel<LivePlayerDto>([livePlayer]))));
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+
+        using var response = await host.Client.GetAsync($"/Servers/GetLivePlayers/{scenario.GameServerId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = Newtonsoft.Json.Linq.JObject.Parse(await response.Content.ReadAsStringAsync());
+        var player = Assert.IsType<Newtonsoft.Json.Linq.JObject>(Assert.Single((Newtonsoft.Json.Linq.JArray)json["data"]!));
+        Assert.Equal(new[] { "countryCode", "countryName", "currentSessionObservedSeconds", "name", "num", "ping", "score" },
+            player.Properties().Select(p => p.Name).OrderBy(name => name, StringComparer.Ordinal));
+        Assert.Equal(Newtonsoft.Json.Linq.JTokenType.Null, player["currentSessionObservedSeconds"]!.Type);
+    }
+
+    [Fact]
+    public async Task PublicLivePlayersDoesNotReadRosterForNonPublicServer()
+    {
+        var scenario = new MapControlScenario();
+        var properties = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        properties[nameof(GameServerDto.ServerListEnabled)] = false;
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(properties.ToObject<GameServerDto>())));
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+
+        using var response = await host.Client.GetAsync($"/Servers/GetLivePlayers/{scenario.GameServerId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = Newtonsoft.Json.Linq.JObject.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Empty(Assert.IsType<Newtonsoft.Json.Linq.JArray>(json["data"]));
+        scenario.RepositoryClient.Verify(r => r.LiveStatus.V1.GetGameServerLivePlayers(scenario.GameServerId, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task EmptyAgentStatusDoesNotRenderLoadingPanelOrRequestTelemetry()
     {
         var scenario = new MapControlScenario();
