@@ -142,6 +142,7 @@ public sealed class ForumIntegrationController(
             logger.LogWarning("Forum player claim code issuance failed: {StatusCode}", response.StatusCode);
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
+
         return Ok(new { code.Code, code.ActivatedAtUtc, code.ExpiresAtUtc });
     }
 
@@ -211,6 +212,7 @@ public sealed class ForumIntegrationController(
             logger.LogWarning("Forum player-link profile lookup failed: {StatusCode}", response.StatusCode);
             return (Guid.Empty, StatusCode(StatusCodes.Status503ServiceUnavailable));
         }
+
         return profile.ArchivedAtUtc is null
             ? (profile.UserProfileId, null)
             : (Guid.Empty, Forbid());

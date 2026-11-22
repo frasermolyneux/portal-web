@@ -63,7 +63,7 @@ XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#IssuePlayerCla
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#LinkedPlayers#GET#api/integration/v1/player-links/linked-players#(System.Int32,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Maps#GET#api/integration/v1/maps#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.String,System.Int32,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Moderation#GET#api/integration/v1/moderation#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>,System.Int32,System.Int32)|HttpEndpoint
-XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#PendingPlayerClaims#GET#api/integration/v1/player-links/claims#()|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#PendingPlayerClaims#GET#api/integration/v1/player-links/claims#(System.Int32,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Rotations#GET#api/integration/v1/rotations#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#ServerAdmin#GET#api/integration/v1/server-admin#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Session#GET#api/integration/v1/session#(Microsoft.AspNetCore.Antiforgery.IAntiforgery,Microsoft.AspNetCore.Authorization.IAuthorizationService)|HttpEndpoint

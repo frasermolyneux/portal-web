@@ -104,6 +104,7 @@ public class ProfileController(
                 this.AddAlertDanger("Unable to resolve your profile. Please sign in again and retry.");
                 return RedirectToAction(nameof(Manage));
             }
+
             var result = await repositoryApiClient.ConnectedPlayers.V1
                 .UnlinkOwnConnectedPlayer(profile.UserProfileId, connectedPlayerProfileId, cancellationToken).ConfigureAwait(false);
             if (result.IsSuccess)
@@ -124,6 +125,7 @@ public class ProfileController(
                 this.AddAlertDanger("Unable to resolve your profile. Please sign in again and retry.");
                 return RedirectToAction(nameof(Manage));
             }
+
             var result = approve
                 ? await repositoryApiClient.ConnectedPlayers.V1.ApproveConnectedPlayerClaim(profile.UserProfileId, claimId, cancellationToken).ConfigureAwait(false)
                 : await repositoryApiClient.ConnectedPlayers.V1.DeclineConnectedPlayerClaim(profile.UserProfileId, claimId, cancellationToken).ConfigureAwait(false);
