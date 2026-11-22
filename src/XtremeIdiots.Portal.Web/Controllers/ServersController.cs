@@ -166,7 +166,9 @@ public class ServersController(
                     score = p.Score,
                     ping = p.Ping,
                     countryCode = p.GeoIntelligence?.CountryCode,
-                    countryName = p.GeoIntelligence?.CountryName
+                    countryName = p.GeoIntelligence?.CountryName,
+                    // The roster does not currently prove connection continuity.
+                    currentSessionObservedSeconds = (long?)null
                 })
                 .ToList();
 

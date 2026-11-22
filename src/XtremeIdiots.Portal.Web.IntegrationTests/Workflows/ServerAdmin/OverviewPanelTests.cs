@@ -7,6 +7,7 @@ using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 using XtremeIdiots.Portal.Web.IntegrationTests.Synchronization;
@@ -17,6 +18,35 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "Browser")]
 public sealed class OverviewPanelTests
 {
+    [Fact]
+    public async Task PublicLiveRosterWithoutConnectionEvidenceShowsUnknownSession()
+    {
+        var scenario = new MapControlScenario();
+        var server = JObject.FromObject(scenario.GameServer);
+        server[nameof(GameServerDto.ServerListEnabled)] = true;
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server.ToObject<GameServerDto>())));
+        scenario.RepositoryClient.Setup(r => r.LiveStatus.V1.GetGameServerLiveStatus(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerLiveStatusDto>(HttpStatusCode.NotFound));
+        var player = Newtonsoft.Json.JsonConvert.DeserializeObject<LivePlayerDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { Name = "Public player", Num = 1, PlayerId = Guid.NewGuid() }))!;
+        scenario.RepositoryClient.Setup(r => r.LiveStatus.V1.GetGameServerLivePlayers(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<LivePlayerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<LivePlayerDto>>(new CollectionModel<LivePlayerDto>([player]))));
+        await using var browser = await BrowserFixture.CreateAsync(configureServices: scenario.ConfigureServices);
+        await browser.Page.RouteAsync("**/Servers/GetOverviewStatistics/*", route =>
+            route.FulfillAsync(new() { ContentType = "text/html", Body = "<p>No statistics</p>" }));
+        await browser.Page.RouteAsync("**/Servers/GetPublicMapRotation/*", route =>
+            route.FulfillAsync(new() { ContentType = "application/json", Body = /*lang=json,strict*/ """{"success":false,"maps":[]}""" }));
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Servers/Details/{scenario.GameServerId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+
+        var row = browser.Page.Locator("#si-playersTable tbody tr");
+        await Assertions.Expect(row).ToContainTextAsync("Public player");
+        await Assertions.Expect(row).ToContainTextAsync("Unknown");
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task PublicPlayerPollingReplacesSnapshotsAndShowsFailuresWithoutDuplicatingRows()
     {
@@ -52,7 +82,7 @@ public sealed class OverviewPanelTests
                 ContentType = "application/json",
                 Body = Newtonsoft.Json.JsonConvert.SerializeObject(new
                 {
-                    data = names.Select((name, num) => new { num, name, score = 0, ping = 42, countryCode = (string?)null })
+                    data = names.Select((name, num) => new { num, name, score = 0, ping = 42, countryCode = (string?)null, currentSessionObservedSeconds = num == 0 ? (int?)7260 : null })
                 })
             });
         });
@@ -71,6 +101,8 @@ public sealed class OverviewPanelTests
         await browser.Page.Clock.RunForAsync(60000);
         await Assertions.Expect(rows).ToHaveCountAsync(2);
         await Assertions.Expect(rows).ToContainTextAsync(["Alpha", "Beta"]);
+        await Assertions.Expect(rows.Nth(0)).ToContainTextAsync("2h 1m");
+        await Assertions.Expect(rows.Nth(1)).ToContainTextAsync("Unknown");
         await Assertions.Expect(status).ToBeHiddenAsync();
         await Assertions.Expect(browser.Page.Locator("#si-playerCount")).ToHaveTextAsync("2");
         await browser.Page.Clock.RunForAsync(30000);

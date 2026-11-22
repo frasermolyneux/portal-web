@@ -10,6 +10,21 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 public sealed class PlayerEnrichmentTests
 {
     [Fact]
+    public async Task LiveRosterWithoutConnectionEvidenceShowsUnknownSession()
+    {
+        var scenario = new PlayerModerationScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.LiveServerKick, scenario.ConfigureServices);
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+
+        var row = browser.Page.Locator("#sd-playersTable tbody tr");
+        await Assertions.Expect(row).ToContainTextAsync(PlayerModerationScenario.PlayerName);
+        await Assertions.Expect(row).ToContainTextAsync("Unknown");
+        await Assertions.Expect(browser.Page.GetByTestId("player-kick")).ToBeEnabledAsync();
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task LivePlayersRemainUsableWhileEnrichmentLoadsAndReuseCachedEnrichment()
     {
         var scenario = new PlayerModerationScenario();
@@ -26,7 +41,7 @@ public sealed class PlayerEnrichmentTests
             await route.FulfillAsync(new RouteFulfillOptions
             {
                 ContentType = "application/json",
-                Body = LivePlayers("first-guid", "203.0.113.7", "Live name")
+                Body = LivePlayers("first-guid", "203.0.113.7", "Live name", 7260)
             });
         });
         await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", async route =>
@@ -47,6 +62,7 @@ public sealed class PlayerEnrichmentTests
             var row = browser.Page.Locator("#sd-playersTable tbody tr");
             await Assertions.Expect(row).ToContainTextAsync("Live name");
             await Assertions.Expect(row).ToContainTextAsync("Risk pending");
+            await Assertions.Expect(row).ToContainTextAsync("2h 1m");
             await Assertions.Expect(browser.Page.GetByTestId("player-kick")).ToBeEnabledAsync();
 
             await browser.Page.Clock.FastForwardAsync(10000);
@@ -121,6 +137,7 @@ public sealed class PlayerEnrichmentTests
             await secondGate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
             var row = browser.Page.Locator("#sd-playersTable tbody tr");
             await Assertions.Expect(row).ToContainTextAsync("Current player");
+            await Assertions.Expect(row).ToContainTextAsync("Unknown");
             var firstResponse = browser.Page.WaitForResponseAsync(IsEnrichmentResponse);
             firstGate.Release();
             Assert.True((await firstResponse).Ok);
@@ -149,11 +166,11 @@ public sealed class PlayerEnrichmentTests
         return new Uri(response.Url).AbsolutePath.Contains("/ServerAdmin/GetRconPlayerEnrichment/", StringComparison.Ordinal);
     }
 
-    private static string LivePlayers(string playerGuid, string ipAddress, string name)
+    private static string LivePlayers(string playerGuid, string ipAddress, string name, int? currentSessionObservedSeconds = null)
     {
         return JsonSerializer.Serialize(new
         {
-            data = new[] { new { num = 7, name, guid = playerGuid, ipAddress, rate = 25000 } }
+            data = new[] { new { num = 7, name, guid = playerGuid, ipAddress, rate = 25000, currentSessionObservedSeconds } }
         });
     }
 

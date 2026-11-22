@@ -21,6 +21,13 @@ public sealed class Cod4xPluginLifecycleSteps
         Configure(TestPrincipalProfiles.Cod4xLifecycleManager);
     }
 
+    [Given("a CoD4x lifecycle scenario with published versions")]
+    public void GivenScenarioWithPublishedVersions()
+    {
+        profile = TestPrincipalProfiles.Cod4xLifecycleManager;
+        Scenario = new Cod4xPluginLifecycleScenario(publishedVersions: true);
+    }
+
     [Given("a successful CoD4x lifecycle scenario for a head admin")]
     public void GivenSuccessfulHeadAdminScenario()
     {
@@ -76,6 +83,14 @@ public sealed class Cod4xPluginLifecycleSteps
         await ClickLifecycleActionAsync("cod4x-install");
     }
 
+    [When("the user selects published version {string} for install")]
+    public async Task WhenUserSelectsPublishedVersion(string version)
+    {
+        await OpenLifecyclePanelAsync();
+        await Browser.Page.Locator("#sd-cod4x-targetVersion").SelectOptionAsync(version);
+        await ClickLifecycleActionAsync("cod4x-install");
+    }
+
     [When("the user requests the {string} lifecycle action")]
     public async Task WhenUserRequestsLifecycleAction(string action)
     {
@@ -101,6 +116,12 @@ public sealed class Cod4xPluginLifecycleSteps
     {
         await OpenLifecyclePanelAsync();
         await Browser.Page.Locator("#sd-cod4x-targetVersion").FillAsync(string.Empty);
+        await Browser.Page.GetByTestId("cod4x-install").ClickAsync();
+    }
+
+    [When("the user requests install without choosing a version")]
+    public async Task WhenUserRequestsInstallWithoutChoosingVersion()
+    {
         await Browser.Page.GetByTestId("cod4x-install").ClickAsync();
     }
 
@@ -227,6 +248,18 @@ public sealed class Cod4xPluginLifecycleSteps
     public async Task ThenTargetVersionWarningDisplayed()
     {
         await Assertions.Expect(Browser.Page.Locator("#toast-container .toast-warning")).ToContainTextAsync("Target version is required");
+    }
+
+    [Then("the install target version should be empty")]
+    public async Task ThenInstallTargetVersionIsEmpty()
+    {
+        await Assertions.Expect(Browser.Page.Locator("#sd-cod4x-targetVersion")).ToHaveValueAsync(string.Empty);
+    }
+
+    [Then("the install target version should be {string}")]
+    public async Task ThenInstallTargetVersionIs(string version)
+    {
+        await Assertions.Expect(Browser.Page.Locator("#sd-cod4x-targetVersion")).ToHaveValueAsync(version);
     }
 
     [Then("the lifecycle response should report {string}")]

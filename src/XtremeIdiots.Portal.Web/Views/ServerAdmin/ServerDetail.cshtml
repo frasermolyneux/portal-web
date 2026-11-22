@@ -13,9 +13,9 @@
     var liveStatus = Model.LiveStatus;
     var serverTitle = string.IsNullOrWhiteSpace(liveStatus?.Title) ? gs.Title : liveStatus.Title;
     var serverId = gs.GameServerId;
-    var selectedCod4xTargetVersion = !string.IsNullOrWhiteSpace(Model.Cod4xOperationRequestTargetVersion)
+    var selectedCod4xTargetVersion = Model.Cod4xOperationRequestAction == Cod4xPluginOperationAction.Install
         ? Model.Cod4xOperationRequestTargetVersion
-        : Model.Cod4xRuntimeCurrentVersion;
+        : null;
 }
 
 <div class="wrapper wrapper-content animated fadeInRight">
@@ -228,6 +228,7 @@
                                 }
                             </div>
                             <div class="ibox-content">
+                                <p class="small text-muted">Current session is observed connected time through the last confirmed presence.</p>
                                 <div class="table-responsive">
                                     <table id="sd-playersTable" class="table table-striped table-hover w-100">
                                         <thead>
@@ -237,6 +238,7 @@
                                                 <th scope="col">Guid</th>
                                                 <th scope="col">IP Address</th>
                                                 <th scope="col">Rate</th>
+                                                <th scope="col">Current session</th>
                                                 <th scope="col">Actions</th>
                                             </tr>
                                         </thead>
@@ -492,6 +494,7 @@
     </environment>
 
     <script src="~/js/rcon-utils.js"></script>
+    <script src="~/js/current-session.js" asp-append-version="true"></script>
     <script src="~/js/rcon-server-status.js"></script>
     <script src="~/js/rcon-players.js"></script>
     <script src="~/js/server-feed.js"></script>

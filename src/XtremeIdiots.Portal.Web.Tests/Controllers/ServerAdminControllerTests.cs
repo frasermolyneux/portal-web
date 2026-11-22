@@ -94,6 +94,7 @@ public class ServerAdminControllerTests
         Assert.Equal("Live player", player.Value<string>("name"));
         Assert.Equal("live-guid", player.Value<string>("guid"));
         Assert.Null(player["playerId"]);
+        Assert.Equal(JTokenType.Null, player["currentSessionObservedSeconds"]!.Type);
         mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
             It.IsAny<GameType>(), It.IsAny<string>(), It.IsAny<PlayerEntityOptions>()), Times.Never);
         mockGeoLocationClient.VerifyNoOtherCalls();
