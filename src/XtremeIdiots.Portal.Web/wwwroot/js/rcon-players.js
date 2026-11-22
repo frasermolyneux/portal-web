@@ -58,7 +58,8 @@ var RconPlayers = (function () {
                 { targets: 2, responsivePriority: 5 },
                 { targets: 3, responsivePriority: 4 },
                 { targets: 4, responsivePriority: 6 },
-                { targets: 5, responsivePriority: 3 }
+                { targets: 5, responsivePriority: 5 },
+                { targets: 6, responsivePriority: 3 }
             ],
             columns: [
                 { data: 'num', name: 'num', width: '50px' },
@@ -99,6 +100,10 @@ var RconPlayers = (function () {
                     }
                 },
                 { data: 'rate', name: 'rate', sortable: false },
+                {
+                    data: 'currentSessionObservedSeconds', defaultContent: null, sortable: false,
+                    render: function (data) { return CurrentSession.format(data); }
+                },
                 {
                     data: null, sortable: false,
                     render: function (data, type, row) {
