@@ -124,6 +124,7 @@ public static class PortalWebApplication
         builder.Services.AddScoped<CachedAgentTelemetryService>();
         builder.Services.AddScoped<IIpIntelligenceService, IpIntelligenceService>();
         builder.Services.AddScoped<IPlayerProfileService, PlayerProfileService>();
+        builder.Services.AddScoped<CurrentSessionService>();
         builder.Services.AddSingleton<DependencyReadCoordinator>();
         builder.Services.AddScoped<IMapMetadataService, MapMetadataService>();
         builder.Services.AddScoped<MapExperienceService>();
