@@ -216,11 +216,18 @@ public sealed class PlayerEnrichmentTests
                 Body = Enrichment(first ? scenario.PlayerId : secondPlayerId)
             });
         });
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+            }));
 
         try
         {
             await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
             await firstGate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assertions.Expect(browser.Page.Locator("#sd-playersTable tbody tr")).ToContainTextAsync("2h 1m");
             var refresh = browser.Page.RunAndWaitForResponseAsync(
                 () => browser.Page.EvaluateAsync("() => RconPlayers.reload()"), IsLivePlayersResponse);
             Assert.True((await refresh).Ok);
