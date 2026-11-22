@@ -9,8 +9,7 @@ public sealed class CurrentSessionService(IRepositoryApiClient repository, ILogg
     private readonly static TimeSpan MaximumAge = TimeSpan.FromMinutes(6);
     private readonly static TimeSpan ClockTolerance = TimeSpan.FromSeconds(30);
 
-    public static bool IsFresh(DateTime timestamp, DateTime now) =>
-        timestamp >= now - MaximumAge && timestamp <= now + ClockTolerance;
+    public static bool IsFresh(DateTime timestamp, DateTime now) => timestamp >= now - MaximumAge && timestamp <= now + ClockTolerance;
 
     public async Task<bool> IsRosterFreshAsync(Guid serverId, GameType gameType, CancellationToken cancellationToken)
     {

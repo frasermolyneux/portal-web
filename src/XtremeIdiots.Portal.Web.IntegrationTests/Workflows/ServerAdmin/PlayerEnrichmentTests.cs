@@ -29,13 +29,14 @@ public sealed class PlayerEnrichmentTests
         await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", async route =>
         {
             var first = Interlocked.Increment(ref sessionRequests) == 1;
-            if (!first) await secondGate.WaitAsync();
+            if (!first)
+                await secondGate.WaitAsync();
             await route.FulfillAsync(new RouteFulfillOptions
             {
                 ContentType = "application/json",
                 Body = first
-                    ? """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
-                    : """{"data":[]}"""
+                    ? /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+                    : /*lang=json,strict*/ """{"data":[]}"""
             });
         });
         await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", async route =>

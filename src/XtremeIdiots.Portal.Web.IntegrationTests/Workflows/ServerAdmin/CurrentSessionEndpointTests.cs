@@ -93,6 +93,7 @@ public sealed class CurrentSessionEndpointTests
                 .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<RconStatusResponseDto>(original)))
                 .ReturnsAsync(new ApiResult<RconStatusResponseDto>(HttpStatusCode.OK, new ApiResponse<RconStatusResponseDto>(changed)));
         }
+
         await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
         host.Client.DefaultRequestHeaders.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.LiveServerKick);
 

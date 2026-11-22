@@ -43,8 +43,7 @@ public sealed class CurrentSessionServiceTests
             LastConfirmedUtc = now,
             ObservedSeconds = 7200
         };
-        static CurrentPlayerSessionResultDto Found(Guid id, CurrentPlayerSessionDto value) =>
-            new() { PlayerId = id, Status = CurrentPlayerSessionStatus.Found, Session = value };
+        static CurrentPlayerSessionResultDto Found(Guid id, CurrentPlayerSessionDto value) => new() { PlayerId = id, Status = CurrentPlayerSessionStatus.Found, Session = value };
         CurrentPlayerSessionResultDto[] response =
         [
             Found(good, session),
