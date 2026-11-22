@@ -12,6 +12,7 @@ Feature: CoD4x plugin lifecycle requests
     And the CoD4x lifecycle success toast should be displayed
     And all lifecycle controls should remain disabled after queueing
     And the queued lifecycle request should appear after reload
+    And the install target version should be "1.2.4"
     And the CoD4x lifecycle browser should report no errors
 
   Scenario Outline: Head admin queues a versionless lifecycle request
@@ -67,6 +68,8 @@ Feature: CoD4x plugin lifecycle requests
     When the user selects published version "1.2.4" for install
     Then an "Install" lifecycle request should be queued for version "1.2.4"
     And the install request should contain Linux artifact metadata
+    And the queued lifecycle request should appear after reload
+    And the install target version should be "1.2.4"
 
   Scenario: Invalid target version is rejected server-side
     Given a successful CoD4x lifecycle scenario for a direct lifecycle user

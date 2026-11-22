@@ -256,6 +256,12 @@ public sealed class Cod4xPluginLifecycleSteps
         await Assertions.Expect(Browser.Page.Locator("#sd-cod4x-targetVersion")).ToHaveValueAsync(string.Empty);
     }
 
+    [Then("the install target version should be {string}")]
+    public async Task ThenInstallTargetVersionIs(string version)
+    {
+        await Assertions.Expect(Browser.Page.Locator("#sd-cod4x-targetVersion")).ToHaveValueAsync(version);
+    }
+
     [Then("the lifecycle response should report {string}")]
     public void ThenLifecycleResponseReports(string message)
     {
