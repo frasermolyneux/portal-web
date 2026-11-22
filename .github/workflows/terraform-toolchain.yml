@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: frasermolyneux/actions/terraform-setup@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-setup/v5.0.0
+      - uses: frasermolyneux/actions/terraform-setup@977ddbedf7f5c6e2fae98ff1d6ec6a9c7669d778 # terraform-setup/v6.0.0
         with:
           terraform-folder: terraform
           terraform_wrapper: "false"
@@ -45,6 +45,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: frasermolyneux/actions/terraform-validate@027d7e31bb32b734090aaed01b36d74f1d658b61 # terraform-validate/v5.0.0
+      - uses: frasermolyneux/actions/terraform-validate@977ddbedf7f5c6e2fae98ff1d6ec6a9c7669d778 # terraform-validate/v6.0.0
         with:
           terraform-folder: terraform
