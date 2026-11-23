@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MX.Api.Abstractions;
 using System.Net;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -31,6 +32,9 @@ public sealed class ReadOnlyFeatureAccessTests : IAsyncLifetime
     {
         host = await PortalWebTestHost.CreateAsync().ConfigureAwait(false);
         var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
         var profileId = Guid.NewGuid();
         var profile = Newtonsoft.Json.JsonConvert.DeserializeObject<UserProfileDto>($"{{\"UserProfileId\":\"{profileId}\"}}")!;
         repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
