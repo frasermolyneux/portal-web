@@ -8,6 +8,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Players;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Dashboard;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
@@ -16,8 +17,10 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RecentPlayers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
@@ -30,9 +33,229 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 public sealed class ForumIntegrationHttpTests
 {
     [Theory]
-    [InlineData("https://test.xtremeidiots.com")]
-    [InlineData("https://www.xtremeidiots.com")]
-    public async Task PlayerClaimCode_PreflightAllowsSessionAntiforgeryHeader(string origin)
+    [InlineData(null, HttpStatusCode.Unauthorized)]
+    [InlineData(TestPrincipalProfiles.GameAdmin, HttpStatusCode.Forbidden)]
+    public async Task SiegeMode_RequiresSiegeAccess(string? profile, HttpStatusCode expected)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/siege-mode");
+        if (profile is not null)
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SiegeActivation_RequiresAuthentication()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        using var response = await host.Client.PostAsJsonAsync(
+            $"/api/integration/v1/siege-mode/servers/{Guid.NewGuid()}/activate",
+            new { mode = "DryRun", expectedDurationMinutes = 240 });
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SiegeMode_LoadsAllPagesAndReturnsOnlyAuthorizedServers()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var authorized = Fixture<GameServerDto>(new { GameServerId = Guid.NewGuid(), Title = "^1Production", GameType = GameType.CallOfDuty4 });
+        var excluded = Enumerable.Range(0, 200).Select(_ => Fixture<GameServerDto>(new
+        {
+            GameServerId = Guid.NewGuid(),
+            Title = "Other",
+            GameType = GameType.CallOfDuty5
+        })).ToArray();
+        var config = Fixture<ConfigurationDto>(new
+        {
+            Namespace = SiegeModeSettingsConstants.Namespace,
+            Configuration = JsonSerializer.Serialize(new SiegeModeSettingsDocument())
+        });
+        repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration(SiegeModeSettingsConstants.Namespace, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(config)));
+        repository.Setup(r => r.GameServers.V1.GetGameServers(null, null, null, 0, 200, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>(excluded)) { Pagination = new ApiPagination(300, 201, 0, 200) }));
+        repository.Setup(r => r.GameServers.V1.GetGameServers(null, null, null, 200, 200, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([authorized])) { Pagination = new ApiPagination(300, 201, 200, 200) }));
+        repository.Setup(r => r.SiegeMode.V1.GetCurrentSession(authorized.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<SiegeSessionDto>(HttpStatusCode.NotFound));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/siege-mode");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Portal Test User", body.GetProperty("portalUser").GetProperty("displayName").GetString());
+        Assert.Equal(240, body.GetProperty("defaultDurationMinutes").GetInt32());
+        var item = Assert.Single(body.GetProperty("servers").EnumerateArray());
+        Assert.Equal(authorized.GameServerId, item.GetProperty("gameServerId").GetGuid());
+        Assert.Equal("Production", item.GetProperty("name").GetString());
+        Assert.Equal("CallOfDuty4", item.GetProperty("gameType").GetString());
+        Assert.True(item.GetProperty("canActivate").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("currentSession").ValueKind);
+        Assert.Contains(authorized.GameServerId.ToString(), item.GetProperty("portalUrl").GetString());
+        repository.Verify(r => r.SiegeMode.V1.GetCurrentSession(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("DryRun", SiegeSessionMode.DryRun)]
+    [InlineData("Enforce", SiegeSessionMode.Enforce)]
+    public async Task SiegeActivation_UsesActualServerAndSessionActor(string mode, SiegeSessionMode expectedMode)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var serverId = Guid.NewGuid();
+        var server = Fixture<GameServerDto>(new { GameServerId = serverId, Title = "Production", GameType = GameType.CallOfDuty4 });
+        repository.Setup(r => r.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        repository.Setup(r => r.SiegeMode.V1.StartSession(serverId, It.IsAny<StartSiegeSessionDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<SiegeSessionDto>(HttpStatusCode.OK, new ApiResponse<SiegeSessionDto>(new SiegeSessionDto { SessionId = Guid.NewGuid(), Mode = expectedMode })));
+        var path = $"/api/integration/v1/siege-mode/servers/{serverId}/activate";
+        using var noToken = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(new { mode, expectedDurationMinutes = 240 }) };
+        noToken.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var rejected = await host.Client.SendAsync(noToken);
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        sessionRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var session = await host.Client.SendAsync(sessionRequest);
+        var tokens = await session.Content.ReadFromJsonAsync<JsonElement>();
+        var cookie = Assert.Single(session.Headers.GetValues("Set-Cookie")).Split(';')[0];
+
+        async Task<HttpResponseMessage> Send(string profile, object payload)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(payload) };
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+            request.Headers.Add("Cookie", cookie);
+            request.Headers.Add(tokens.GetProperty("headerName").GetString()!, tokens.GetProperty("requestVerificationToken").GetString()!);
+            return await host.Client.SendAsync(request);
+        }
+
+        using var denied = await Send(TestPrincipalProfiles.HeadAdminCod5, new { mode, expectedDurationMinutes = 240, gameType = "CallOfDuty5" });
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var invalid = await Send(TestPrincipalProfiles.HeadAdmin, new { expectedDurationMinutes = 240 });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        using var unknown = await Send(TestPrincipalProfiles.HeadAdmin, new { mode = "Unknown", expectedDurationMinutes = 240 });
+        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+        using var response = await Send(TestPrincipalProfiles.HeadAdmin, new { mode, expectedDurationMinutes = 240, actor = "attacker" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(mode, body.GetProperty("mode").GetString());
+        repository.Verify(r => r.SiegeMode.V1.StartSession(serverId, It.Is<StartSiegeSessionDto>(dto =>
+            dto.OperationId != Guid.Empty && dto.Actor == "12345" && dto.ExpectedDurationMinutes == 240 && dto.Mode == expectedMode),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Conflict, HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.UnprocessableEntity, HttpStatusCode.UnprocessableEntity)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, HttpStatusCode.ServiceUnavailable)]
+    public async Task SiegeActivation_PropagatesConflictAndInvalidSettings(HttpStatusCode upstream, HttpStatusCode expected)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var serverId = Guid.NewGuid();
+        repository.Setup(r => r.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(
+                Fixture<GameServerDto>(new { GameServerId = serverId, GameType = GameType.CallOfDuty4 }))));
+        repository.Setup(r => r.SiegeMode.V1.StartSession(serverId, It.IsAny<StartSiegeSessionDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<SiegeSessionDto>(upstream));
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        sessionRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var session = await host.Client.SendAsync(sessionRequest);
+        var tokens = await session.Content.ReadFromJsonAsync<JsonElement>();
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/integration/v1/siege-mode/servers/{serverId}/activate")
+        {
+            Content = JsonContent.Create(new { mode = "DryRun", expectedDurationMinutes = 240 })
+        };
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        request.Headers.Add("Cookie", Assert.Single(session.Headers.GetValues("Set-Cookie")).Split(';')[0]);
+        request.Headers.Add(tokens.GetProperty("headerName").GetString()!, tokens.GetProperty("requestVerificationToken").GetString()!);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SiegeMode_ReportsActiveSessionOrUpstreamFailure(bool failure)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var id = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var config = Fixture<ConfigurationDto>(new { Namespace = SiegeModeSettingsConstants.Namespace, Configuration = JsonSerializer.Serialize(new SiegeModeSettingsDocument()) });
+        repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration(SiegeModeSettingsConstants.Namespace, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(config)));
+        repository.Setup(r => r.GameServers.V1.GetGameServers(null, null, null, 0, 200, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>(
+                    [Fixture<GameServerDto>(new { GameServerId = id, Title = "Production", GameType = GameType.CallOfDuty4 })]))
+                { Pagination = new ApiPagination(1, 1, 0, 200) }));
+        repository.Setup(r => r.SiegeMode.V1.GetCurrentSession(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failure ? new ApiResult<SiegeSessionDto>(HttpStatusCode.ServiceUnavailable) :
+                new ApiResult<SiegeSessionDto>(HttpStatusCode.OK, new ApiResponse<SiegeSessionDto>(
+                    new SiegeSessionDto { SessionId = sessionId, Mode = SiegeSessionMode.Enforce })));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/siege-mode");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(failure ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK, response.StatusCode);
+        if (!failure)
+        {
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var item = body.GetProperty("servers")[0];
+            Assert.False(item.GetProperty("canActivate").GetBoolean());
+            Assert.Equal(sessionId, item.GetProperty("currentSession").GetProperty("sessionId").GetGuid());
+            Assert.Equal("Enforce", item.GetProperty("currentSession").GetProperty("mode").GetString());
+        }
+    }
+
+    [Fact]
+    public async Task SiegeMode_RejectsInvalidSettings()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration(SiegeModeSettingsConstants.Namespace, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(
+                Fixture<ConfigurationDto>(new { Namespace = SiegeModeSettingsConstants.Namespace, Configuration = "{" }))));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/siege-mode");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SiegeMode_UsesContractDefaultsWhenGlobalConfigurationIsMissing()
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration(SiegeModeSettingsConstants.Namespace, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.NotFound));
+        repository.Setup(r => r.GameServers.V1.GetGameServers(null, null, null, 0, 200, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))
+                { Pagination = new ApiPagination(5, 0, 0, 200) }));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/siege-mode");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(240, body.GetProperty("defaultDurationMinutes").GetInt32());
+        Assert.Empty(body.GetProperty("servers").EnumerateArray());
+        Assert.Equal("Portal Test User", body.GetProperty("portalUser").GetProperty("displayName").GetString());
+    }
+
+    [Theory]
+    [InlineData("https://test.xtremeidiots.com", true)]
+    [InlineData("https://www.xtremeidiots.com", true)]
+    [InlineData("https://example.invalid", false)]
+    public async Task PlayerClaimCode_PreflightAllowsJsonAndSessionAntiforgeryHeaderOnlyFromForumOrigins(string origin, bool allowed)
     {
         await using var host = await PortalWebTestHost.CreateAsync();
         using var session = await host.Client.GetAsync("/api/integration/v1/session");
@@ -41,12 +264,23 @@ public sealed class ForumIntegrationHttpTests
         using var request = new HttpRequestMessage(HttpMethod.Options, "/api/integration/v1/player-links/claim-code");
         request.Headers.Add("Origin", origin);
         request.Headers.Add("Access-Control-Request-Method", "POST");
-        request.Headers.Add("Access-Control-Request-Headers", headerName);
+        request.Headers.Add("Access-Control-Request-Headers", $"content-type, {headerName}");
         using var response = await host.Client.SendAsync(request);
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Equal(origin, Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
-        Assert.Equal("true", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Credentials")));
-        Assert.Contains(headerName, string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers")), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(allowed, response.Headers.TryGetValues("Access-Control-Allow-Origin", out var origins));
+        if (allowed)
+        {
+            Assert.Equal(origin, Assert.Single(origins!));
+            Assert.Equal("true", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Credentials")));
+            var allowedHeaders = string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers"));
+            Assert.Contains("content-type", allowedHeaders, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(headerName, allowedHeaders, StringComparison.OrdinalIgnoreCase);
+        }
+        else
+        {
+            Assert.False(response.Headers.Contains("Access-Control-Allow-Credentials"));
+            Assert.False(response.Headers.Contains("Access-Control-Allow-Headers"));
+        }
     }
 
     [Fact]

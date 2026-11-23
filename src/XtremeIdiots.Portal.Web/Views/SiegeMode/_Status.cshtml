@@ -1,0 +1,57 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode
+@model XtremeIdiots.Portal.Web.ViewModels.SiegeModeStatusViewModel
+
+@if (Model.Session is not { } session)
+{
+    <p class="text-muted">Siege Mode is not active on this server.</p>
+}
+else
+{
+    <div class="alert alert-warning" role="status">
+        <strong>Siege Mode active: @(session.Mode switch { SiegeSessionMode.DryRun => "Dry Run", SiegeSessionMode.Enforce => "Enforcing", _ => "Unknown mode" })</strong>
+        <span>Expires @session.ExpiresAtUtc.ToString("u")</span>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <form asp-controller="SiegeMode" asp-action="End" asp-route-id="@Model.ServerId" method="post">
+            <input type="hidden" name="sessionId" value="@session.SessionId" />
+            <input type="hidden" name="operationId" value="@Guid.NewGuid()" />
+            <button type="submit" class="btn btn-outline-danger" data-confirm="End this Siege Mode session early?">End early</button>
+        </form>
+        <form asp-controller="SiegeMode" asp-action="Extend" asp-route-id="@Model.ServerId" method="post">
+            <input type="hidden" name="sessionId" value="@session.SessionId" />
+            <input type="hidden" name="operationId" value="@Guid.NewGuid()" />
+            <label for="siege-extension-minutes">Extend by minutes</label>
+            <input id="siege-extension-minutes" name="extensionMinutes" type="number" min="1" value="60" required />
+            <button type="submit" class="btn btn-outline-primary">Extend</button>
+        </form>
+    </div>
+    <p class="text-muted">Queued and dispatched actions are not confirmed kicks. Existing VPN Protection runs independently.</p>
+    <h5>Recent protection actions</h5>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Time (UTC)</th><th>Player GUID</th><th>Rule</th><th>Outcome</th><th>Details</th></tr></thead>
+            <tbody>
+            @foreach (var action in Model.Actions)
+            {
+                <tr><td>@action.ClaimedAtUtc.ToString("u")</td><td>@action.PlayerGuid</td><td>@action.RuleId</td>
+                    <td>@action.Outcome</td><td>@action.Detail</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Actions.Count == 0) { <p class="text-muted">No protection actions recorded.</p> }
+    <h5>Recent protection checks</h5>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Time (UTC)</th><th>Player GUID</th><th>Outcome</th><th>Details</th></tr></thead>
+            <tbody>
+            @foreach (var check in Model.Checks)
+            {
+                <tr><td>@check.OccurredAtUtc.ToString("u")</td><td>@check.PlayerGuid</td>
+                    <td>@check.Outcome</td><td>@check.Detail</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Checks.Count == 0) { <p class="text-muted">No protection checks recorded.</p> }
+}

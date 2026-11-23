@@ -39,6 +39,7 @@ public class GameServersAdminRconSay : IAuthorizationRequirement { }
 public class GameServersAdminRconRestart : IAuthorizationRequirement { }
 public class GameServersAdminRconScreenshot : IAuthorizationRequirement { }
 public class GameServersAdminCoD4xPluginLifecycle : IAuthorizationRequirement { }
+public class GameServersAdminSiegeMode : IAuthorizationRequirement { }
 public class GameServersAdminScreenshotsRead : IAuthorizationRequirement { }
 public class GameServersAdminScreenshotsDelete : IAuthorizationRequirement { }
 public class GameServersAdminScreenshotsConfigure : IAuthorizationRequirement { }

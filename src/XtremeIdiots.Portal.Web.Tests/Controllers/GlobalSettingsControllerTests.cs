@@ -29,6 +29,20 @@ namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
 public class GlobalSettingsControllerTests
 {
+    private static void PrepareSiegeSubmission(GlobalSettingsController controller, GlobalSettingsViewModel model)
+    {
+        model.SiegeMode.SubmittedRuleCount = model.SiegeMode.Rules.Count;
+        controller.ModelState.SetModelValue("SiegeMode.DurationMinutes", model.SiegeMode.DurationMinutes, model.SiegeMode.DurationMinutes.ToString());
+        controller.ModelState.MarkFieldValid("SiegeMode.DurationMinutes");
+        controller.ModelState.SetModelValue("SiegeMode.SubmittedRuleCount", model.SiegeMode.SubmittedRuleCount, model.SiegeMode.SubmittedRuleCount.ToString());
+        controller.ModelState.MarkFieldValid("SiegeMode.SubmittedRuleCount");
+        if (model.SiegeMode.Rules.Count > 0)
+        {
+            controller.ModelState.SetModelValue("SiegeMode.Rules[0].Id", model.SiegeMode.Rules[0].Id, model.SiegeMode.Rules[0].Id);
+            controller.ModelState.MarkFieldValid("SiegeMode.Rules[0].Id");
+        }
+    }
+
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<GlobalSettingsController>> mockLogger = new();
@@ -265,6 +279,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -322,6 +337,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -389,6 +405,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -447,6 +464,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -498,6 +516,7 @@ public class GlobalSettingsControllerTests
             ServerListHtmlBanner = "<b>Global banner</b>"
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -541,6 +560,7 @@ public class GlobalSettingsControllerTests
         kickCommand.Enabled = false;
         kickCommand.MinPower = 99;
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -575,6 +595,7 @@ public class GlobalSettingsControllerTests
             ]
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);
@@ -609,6 +630,7 @@ public class GlobalSettingsControllerTests
         };
         var sut = CreateSut();
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);

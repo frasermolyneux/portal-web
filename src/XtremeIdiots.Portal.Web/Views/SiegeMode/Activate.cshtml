@@ -1,0 +1,51 @@
+@model XtremeIdiots.Portal.Web.ViewModels.SiegeModeActivationViewModel
+
+@{
+    ViewData["Title"] = "Enable Siege Mode";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title">
+                <h5>Enable Siege Mode</h5>
+            </div>
+            <div class="ibox-content">
+                <p>Confirm the server and choose a mode before activating Siege Mode for
+                    <strong>@Model.ServerName</strong> for <strong>@Model.DurationMinutes minutes</strong>.</p>
+                <p>Portal user: <strong>@Model.Actor</strong>.
+                    <environment names="Production"><strong>This affects a production server.</strong></environment>
+                    <environment exclude="Production">This affects the selected server.</environment>
+                </p>
+                <p>The current global rules will be used for this session. Existing VPN Protection runs
+                    independently in either mode.</p>
+                <form asp-action="Activate" asp-route-id="@Model.GameServerId" method="post">
+                    <input type="hidden" name="expectedDurationMinutes" value="@Model.DurationMinutes" />
+                    <input type="hidden" name="operationId" value="@Model.OperationId" />
+                    <fieldset class="mb-3">
+                        <legend class="fs-6">Siege Mode protocol</legend>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mode" id="siege-mode-dry-run"
+                                   value="DryRun" required />
+                            <label class="form-check-label" for="siege-mode-dry-run">
+                                <strong>Dry Run</strong> - log players who would be kicked without taking Siege enforcement actions.
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mode" id="siege-mode-enforcing"
+                                   value="Enforce" required />
+                            <label class="form-check-label" for="siege-mode-enforcing">
+                                <strong>Enforcing</strong> - take Siege enforcement actions when rules match.
+                            </label>
+                        </div>
+                    </fieldset>
+                    <button class="btn btn-danger" type="submit">
+                        <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Activate selected mode
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-controller="GameServers" asp-action="Details"
+                       asp-route-id="@Model.GameServerId">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

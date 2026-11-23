@@ -1,11 +1,17 @@
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 public interface INamespaceSettingsParser
 {
+    bool TryParseSiegeModeSettings(
+        ConfigurationDto config,
+        out SiegeModeSettingsDocument? settings,
+        out IReadOnlyList<string> errors);
+
     void PopulateGlobalSettingsViewModel(GlobalSettingsViewModel model, ConfigurationDto config, ILogger logger);
 
     void PopulateGameServerSettingsViewModel(GameServerEditViewModel model, ConfigurationDto config, ILogger logger);

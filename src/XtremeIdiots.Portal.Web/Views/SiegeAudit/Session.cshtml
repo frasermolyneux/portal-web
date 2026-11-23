@@ -1,0 +1,83 @@
+@model XtremeIdiots.Portal.Web.Controllers.SiegeSessionDetailViewModel
+@{
+    ViewData["Title"] = "Siege Session";
+}
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row"><div class="col-12"><div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Siege Session</h5></div>
+            <div class="ibox-content">
+                <p>Server: @Model.Server.Title · Session: @Model.Session.SessionId · Mode: @Model.Session.Mode</p>
+                <p>Times are UTC. WouldKick is a dry-run decision; Pending, Queued and Dispatched are unconfirmed and do not establish a successful kick.</p>
+                <h6>Session events</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>Event</th><th>Time (UTC)</th><th>Actor</th><th>Expiry (UTC)</th><th>Extension (minutes)</th><th>Mode</th></tr></thead>
+                        <tbody>
+                        @foreach (var entry in Model.Events)
+                        {
+                            <tr><td>@entry.EventType</td><td>@entry.OccurredAtUtc.ToString("u")</td><td>@entry.Actor</td>
+                                <td>@entry.ExpiresAtUtc.ToString("u")</td><td>@entry.ExtensionMinutes</td><td>@entry.Mode</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Events.Count == 0) { <p>No events on this page.</p> }
+                <nav aria-label="Session event pages" class="d-flex gap-2 mb-3">
+                    @if (Model.EventPage > 0) {
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Session" asp-route-serverId="@Model.Server.GameServerId" asp-route-sessionId="@Model.Session.SessionId" asp-route-eventPage="@(Model.EventPage - 1)" asp-route-actionPage="@Model.ActionPage" asp-route-checkPage="@Model.CheckPage">Previous events</a>
+                    }
+                    @if (Model.HasMoreEvents) {
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Session" asp-route-serverId="@Model.Server.GameServerId" asp-route-sessionId="@Model.Session.SessionId" asp-route-eventPage="@(Model.EventPage + 1)" asp-route-actionPage="@Model.ActionPage" asp-route-checkPage="@Model.CheckPage">Next events</a>
+                    }
+                </nav>
+                <h6>Actions</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <tbody>
+                        @foreach (var action in Model.Actions)
+                        {
+                            <tr><td>@action.ClaimedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                                <td>@action.RuleId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Actions.Count == 0) { <p>No actions on this page.</p> }
+                <nav aria-label="Session action pages" class="d-flex gap-2 mb-3">
+                    @if (Model.ActionPage > 0) {
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Session" asp-route-serverId="@Model.Server.GameServerId" asp-route-sessionId="@Model.Session.SessionId" asp-route-eventPage="@Model.EventPage" asp-route-actionPage="@(Model.ActionPage - 1)" asp-route-checkPage="@Model.CheckPage">Previous actions</a>
+                    }
+                    @if (Model.HasMoreActions) {
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Session" asp-route-serverId="@Model.Server.GameServerId" asp-route-sessionId="@Model.Session.SessionId" asp-route-eventPage="@Model.EventPage" asp-route-actionPage="@(Model.ActionPage + 1)" asp-route-checkPage="@Model.CheckPage">Next actions</a>
+                    }
+                </nav>
+                <h6>Checks</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <tbody>
+                        @foreach (var check in Model.Checks)
+                        {
+                            <tr><td>@check.OccurredAtUtc.ToString("u")</td><td>@check.Mode</td><td>@check.PlayerGuid</td><td>@check.Outcome</td><td>@check.Detail</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Checks.Count == 0) { <p>No checks on this page.</p> }
+                <nav aria-label="Session check pages" class="d-flex gap-2">
+                    @if (Model.CheckPage > 0) {
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Session" asp-route-serverId="@Model.Server.GameServerId" asp-route-sessionId="@Model.Session.SessionId" asp-route-eventPage="@Model.EventPage" asp-route-actionPage="@Model.ActionPage" asp-route-checkPage="@(Model.CheckPage - 1)">Previous checks</a>
+                    }
+                    @if (Model.HasMoreChecks) {
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Session" asp-route-serverId="@Model.Server.GameServerId" asp-route-sessionId="@Model.Session.SessionId" asp-route-eventPage="@Model.EventPage" asp-route-actionPage="@Model.ActionPage" asp-route-checkPage="@(Model.CheckPage + 1)">Next checks</a>
+                    }
+                </nav>
+            </div>
+            <div class="ibox-footer">
+                <a class="btn btn-outline-secondary" asp-action="Sessions" asp-route-serverId="@Model.Server.GameServerId">Back to sessions</a>
+            </div>
+        </div>
+    </div></div></div>
+</div>

@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using XtremeIdiots.Portal.Web.Auth.Constants
+@using XtremeIdiots.Portal.Web.Auth
 @using XtremeIdiots.Portal.Web.Constants
 @using XtremeIdiots.Portal.Web.Extensions
 @using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
@@ -167,13 +168,13 @@
             </div>
 
             <div policy="@AuthPolicies.GameServers_Admin_Read">
-                <a class="nav-link text-white @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations") ? "active" : "")"
+                <a class="nav-link text-white @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations", "SiegeAudit") ? "active" : "")"
                    href="#serverAdminMenu" data-bs-toggle="collapse" data-testid="nav-serveradmin-toggle"
-                   aria-expanded="@(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations") ? "true" : "false")">
+                   aria-expanded="@(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations", "SiegeAudit") ? "true" : "false")">
                     <i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> Server Admin
                     <i class="fa-solid fa-fw fa-chevron-down float-end" aria-hidden="true"></i>
                 </a>
-                <div class="collapse @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations") ? "show" : "")"
+                <div class="collapse @(IsAnyControllerSelected("ServerAdmin", "Status", "BanFileMonitors", "MapRotations", "SiegeAudit") ? "show" : "")"
                      id="serverAdminMenu">
                     <nav class="nav flex-column ms-3">
                         <a class="nav-link text-white-50 @Html.IsSelected("ServerAdmin", "Index")"
@@ -195,6 +196,16 @@
                            asp-controller="ServerAdmin" asp-action="ServerEventsIndex"
                            data-testid="nav-serveradmin-serverevents">
                             <i class="fa-solid fa-fw fa-timeline" aria-hidden="true"></i> Server Events
+                        </a>
+                        <a policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@PotentialAccessProbe.Instance"
+                           class="nav-link text-white-50 @Html.IsSelected("SiegeAudit", "Sessions")"
+                           asp-controller="SiegeAudit" asp-action="Sessions" data-testid="nav-siege-sessions">
+                            <i class="fa-solid fa-fw fa-clock-rotate-left" aria-hidden="true"></i> Siege Sessions
+                        </a>
+                        <a policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@PotentialAccessProbe.Instance"
+                           class="nav-link text-white-50 @Html.IsSelected("SiegeAudit", "Actions")"
+                           asp-controller="SiegeAudit" asp-action="Actions" data-testid="nav-siege-actions">
+                            <i class="fa-solid fa-fw fa-list" aria-hidden="true"></i> Siege Actions Audit
                         </a>
                         <a policy="@AuthPolicies.MapRotations_Read"
                            class="nav-link text-white-50 @Html.IsSelected("MapRotations")"

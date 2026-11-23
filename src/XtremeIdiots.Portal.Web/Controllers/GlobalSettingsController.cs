@@ -64,6 +64,21 @@ public class GlobalSettingsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
+            var ruleCount = model.SiegeMode.SubmittedRuleCount;
+            var hasRuleFields = ModelState.Keys.Any(static key => key.StartsWith("SiegeMode.Rules[", StringComparison.OrdinalIgnoreCase));
+            if (!ModelState.ContainsKey("SiegeMode.DurationMinutes")
+                || !ModelState.ContainsKey("SiegeMode.SubmittedRuleCount")
+                || ruleCount is null or < 0
+                || (ruleCount == 0 && hasRuleFields)
+                || (ruleCount > 0 && (!hasRuleFields || ruleCount != model.SiegeMode.Rules.Count)))
+            {
+                ModelState.AddModelError("SiegeMode", "The Siege Mode settings section is missing or incomplete.");
+            }
+            else if (ruleCount == 0)
+            {
+                model.SiegeMode.Rules.Clear();
+            }
+
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             if (isRequiredTagsCatalogAvailable)

@@ -1,0 +1,23 @@
+@model XtremeIdiots.Portal.Web.Controllers.SiegeAuditViewModel
+
+<form method="get" class="row g-3 mb-3">
+    <div class="col-md-4">
+        <label for="serverId" class="form-label">Server</label>
+        <select id="serverId" name="serverId" class="form-select">
+            <option value="">All authorized servers</option>
+            @foreach (var server in Model.Servers)
+            {
+                <option value="@server.GameServerId" selected="@(server.GameServerId == Model.ServerId)">@server.Title (@server.GameType)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="fromUtc" class="form-label">From (UTC)</label>
+        <input id="fromUtc" name="fromUtc" type="datetime-local" class="form-control" value="@Model.Query.FromUtc?.ToString("yyyy-MM-ddTHH:mm")" />
+    </div>
+    <div class="col-md-3">
+        <label for="toUtc" class="form-label">To (UTC)</label>
+        <input id="toUtc" name="toUtc" type="datetime-local" class="form-control" value="@Model.Query.ToUtc?.ToString("yyyy-MM-ddTHH:mm")" />
+    </div>
+    <div class="col-md-2 align-self-end"><button class="btn btn-primary" type="submit">Filter</button></div>
+</form>

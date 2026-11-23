@@ -6,12 +6,17 @@ using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ConnectedPlayers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
+using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Helpers;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
 using XtremeIdiots.Portal.Web.Services;
+using XtremeIdiots.Portal.Web.Services.Settings;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
 
@@ -23,6 +28,156 @@ public sealed class ForumIntegrationController(
     MapExperienceService maps, IRepositoryApiClient repository, ILogger<ForumIntegrationController> logger,
     IAuthorizationService authorization) : ControllerBase
 {
+    [HttpGet("siege-mode")]
+    [Authorize]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> SiegeMode([FromServices] INamespaceSettingsParser settingsParser, CancellationToken cancellationToken)
+    {
+        if (!(await authorization.AuthorizeAsync(User, PotentialAccessProbe.Instance, AuthPolicies.GameServers_Admin_SiegeMode).ConfigureAwait(false)).Succeeded)
+            return Forbid();
+        var actor = User.XtremeIdiotsId();
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        var settingsResponse = await repository.GlobalConfigurations.V1
+            .GetConfiguration(SiegeModeSettingsConstants.Namespace, cancellationToken).ConfigureAwait(false);
+        var settings = new SiegeModeSettingsDocument();
+        if (!settingsResponse.IsNotFound)
+        {
+            if (!settingsResponse.IsSuccess || settingsResponse.Result?.Data is not { } config)
+            {
+                logger.LogWarning("Forum Siege settings unavailable: {StatusCode}", settingsResponse.StatusCode);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            if (!settingsParser.TryParseSiegeModeSettings(config, out var parsedSettings, out var errors) || parsedSettings is null)
+            {
+                logger.LogWarning("Forum Siege settings invalid: {Errors}", string.Join("; ", errors));
+                return UnprocessableEntity();
+            }
+
+            settings = parsedSettings;
+        }
+
+        const int pageSize = 200;
+        var servers = new List<GameServerDto>();
+        var total = -1;
+        do
+        {
+            var response = await repository.GameServers.V1.GetGameServers(null, null, null, servers.Count, pageSize,
+                GameServerOrder.ServerListPosition, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccess || response.Result?.Data?.Items is not { } items ||
+                (response.Result.Pagination?.FilteredCount ?? response.Result.Pagination?.TotalCount) is not { } count || count < 0)
+            {
+                logger.LogWarning("Forum Siege server list unavailable: {StatusCode}", response.StatusCode);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            if (servers.Count > 0 && count != total)
+            {
+                logger.LogWarning("Forum Siege server count changed during pagination");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            total = count;
+            var page = items.ToArray();
+            if (page.Length == 0 && servers.Count < total)
+            {
+                logger.LogWarning("Forum Siege server list ended before all pages were loaded");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            servers.AddRange(page);
+        } while (servers.Count < total);
+        if (servers.Count != total || servers.Select(server => server.GameServerId).Distinct().Count() != total)
+        {
+            logger.LogWarning("Forum Siege server list contained duplicate servers or an unexpected count");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var rows = new List<object>();
+        foreach (var server in servers)
+        {
+            if (!(await authorization.AuthorizeAsync(User, server.GameType, AuthPolicies.GameServers_Admin_SiegeMode).ConfigureAwait(false)).Succeeded)
+                continue;
+
+            var current = await repository.SiegeMode.V1.GetCurrentSession(server.GameServerId, cancellationToken).ConfigureAwait(false);
+            if (!current.IsNotFound && (!current.IsSuccess || current.Result?.Data is null))
+            {
+                logger.LogWarning("Forum Siege session unavailable for {ServerId}: {StatusCode}", server.GameServerId, current.StatusCode);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            var session = current.Result?.Data;
+            rows.Add(new
+            {
+                server.GameServerId,
+                name = CodColorHelper.PlainText(server.Title),
+                gameType = server.GameType.ToString(),
+                canActivate = session is null,
+                currentSession = session is null ? null : new
+                {
+                    session.SessionId,
+                    session.StartedAtUtc,
+                    session.ExpiresAtUtc,
+                    mode = session.Mode.ToString()
+                },
+                portalUrl = Url.Action("ServerDetail", "ServerAdmin", new { id = server.GameServerId })
+            });
+        }
+
+        return Ok(new { portalUser = new { displayName = User.Username() ?? actor }, defaultDurationMinutes = settings.DurationMinutes, servers = rows });
+    }
+
+    [HttpPost("siege-mode/servers/{gameServerId:guid}/activate")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> ActivateSiegeMode(Guid gameServerId, SiegeActivationRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Mode is not ("DryRun" or "Enforce") || request.ExpectedDurationMinutes <= 0)
+            return BadRequest();
+
+        var serverResponse = await repository.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
+        if (serverResponse.IsNotFound)
+            return NotFound();
+        if (!serverResponse.IsSuccess || serverResponse.Result?.Data is not { } server || server.GameServerId != gameServerId)
+        {
+            logger.LogWarning("Forum Siege server lookup failed for {ServerId}: {StatusCode}", gameServerId, serverResponse.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (!(await authorization.AuthorizeAsync(User, server.GameType, AuthPolicies.GameServers_Admin_SiegeMode).ConfigureAwait(false)).Succeeded)
+            return Forbid();
+        var actor = User.XtremeIdiotsId();
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        var response = await repository.SiegeMode.V1.StartSession(gameServerId, new StartSiegeSessionDto
+        {
+            OperationId = Guid.NewGuid(),
+            Actor = actor,
+            Mode = request.Mode == "DryRun" ? SiegeSessionMode.DryRun : SiegeSessionMode.Enforce,
+            ExpectedDurationMinutes = request.ExpectedDurationMinutes
+        }, cancellationToken).ConfigureAwait(false);
+        if (response.IsSuccess && response.Result?.Data is { } session)
+            return Ok(new { session.SessionId, session.StartedAtUtc, session.ExpiresAtUtc, mode = session.Mode.ToString() });
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            return Conflict();
+        if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            logger.LogWarning("Forum Siege activation rejected invalid global settings for {ServerId}", gameServerId);
+            return UnprocessableEntity();
+        }
+
+        if (response.IsNotFound)
+            return NotFound();
+        logger.LogWarning("Forum Siege activation failed for {ServerId}: {StatusCode}", gameServerId, response.StatusCode);
+        return StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    public sealed record SiegeActivationRequest(string? Mode, int ExpectedDurationMinutes);
+
     [HttpGet("session")]
     [AllowAnonymous]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]

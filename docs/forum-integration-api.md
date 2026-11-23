@@ -38,6 +38,25 @@ status for a server is represented by null fields. A failed required dependency
 returns 503, not fabricated counts. Guests receive 401 and authenticated
 callers without access receive 403.
 
+`GET /api/integration/v1/siege-mode` returns the authenticated `portalUser.displayName`,
+`defaultDurationMinutes`, and authorized `servers`. Each server includes
+`gameServerId`, `name`, `gameType`, `canActivate`, a Portal-relative `portalUrl`,
+and nullable `currentSession` with `sessionId`, `startedAtUtc`, `expiresAtUtc`
+and `mode`. The list includes only servers the caller can administer under the
+Siege Mode policy (Senior Admin, Webmaster or game-scoped Head Admin).
+
+To activate, confirm the Portal user, production server, displayed duration and
+explicit mode, then send `POST /api/integration/v1/siege-mode/servers/{gameServerId}/activate`
+with JSON `{"mode":"DryRun","expectedDurationMinutes":240}` or mode `Enforce`.
+The duration is a confirmation precondition, not an override. Include credentials
+and the antiforgery header returned by `/session`. A 409 means the session or
+duration changed: reload and require a new confirmation. Missing or invalid input
+or antiforgery returns 400, an unauthenticated caller 401, an unauthorized caller
+403, a missing server 404, invalid stored settings 422 and unavailable dependencies
+503. The test forum connects to production Portal and can activate production
+servers. Dry Run records would-kick decisions without Siege enforcement; existing
+VPN Protection continues independently.
+
 `GET /api/integration/v1/player-links/linked-players` requires a Portal session
 and returns a no-store page of the signed-in member's linked game profiles. The
 profile is resolved from the authenticated Portal principal; callers cannot

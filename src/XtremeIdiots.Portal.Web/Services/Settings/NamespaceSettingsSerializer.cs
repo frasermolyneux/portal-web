@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -89,6 +90,10 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         configurations.Add((
             VpnProtectionSettingsConstants.Namespace,
             VpnProtectionSettingsJsonMapper.BuildGlobalConfigurationJson(model.VpnProtection)));
+
+        configurations.Add((
+            SiegeModeSettingsConstants.Namespace,
+            JsonSerializer.Serialize(SiegeModeSettingsViewModelMapper.ToDocument(model.SiegeMode), configJsonOptions)));
 
         configurations.Add((
             BroadcastSettingsConstants.Namespace,

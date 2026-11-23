@@ -1,0 +1,36 @@
+@model XtremeIdiots.Portal.Web.Controllers.SiegeAuditViewModel
+@{
+    ViewData["Title"] = "Siege Sessions";
+    var now = DateTime.UtcNow;
+}
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row"><div class="col-12"><div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Siege Sessions</h5></div>
+            <div class="ibox-content">
+                <partial name="_Filters" model="Model" />
+                <p>Active and historical sessions. Times are UTC; refresh the page to update.</p>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>Session</th><th>Server</th><th>Status</th><th>Mode</th><th>Started (UTC)</th><th>Expires (UTC)</th><th>Ended (UTC)</th><th>Started by</th><th>Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var session in Model.Sessions)
+                        {
+                            var server = Model.Servers.FirstOrDefault(s => s.GameServerId == session.GameServerId);
+                            <tr>
+                                <td><a asp-action="Session" asp-route-serverId="@session.GameServerId" asp-route-sessionId="@session.SessionId">@session.SessionId</a></td><td>@server?.Title</td>
+                                <td>@(session.EndedAtUtc.HasValue ? "Ended" : session.ExpiresAtUtc <= now ? "Expired" : "Active")</td>
+                                <td>@session.Mode</td><td>@session.StartedAtUtc.ToString("u")</td>
+                                <td>@session.ExpiresAtUtc.ToString("u")</td><td>@session.EndedAtUtc?.ToString("u")</td>
+                                <td>@session.StartedBy</td><td>@session.ActionCount</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Sessions.Count == 0) { <p>No sessions found.</p> }
+                <partial name="_Pagination" model="Model" />
+            </div>
+        </div>
+    </div></div></div>
+</div>

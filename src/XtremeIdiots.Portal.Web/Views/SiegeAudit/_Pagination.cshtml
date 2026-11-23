@@ -1,0 +1,16 @@
+@model XtremeIdiots.Portal.Web.Controllers.SiegeAuditViewModel
+
+<nav aria-label="Audit pages" class="d-flex gap-2">
+    @if (Model.Page > 0)
+    {
+        <a class="btn btn-outline-secondary btn-sm" asp-route-serverId="@Model.ServerId"
+           asp-route-fromUtc="@Model.Query.FromUtc?.ToString("yyyy-MM-ddTHH:mm:ss")" asp-route-toUtc="@Model.Query.ToUtc?.ToString("yyyy-MM-ddTHH:mm:ss")"
+           asp-route-page="@(Model.Page - 1)">Previous</a>
+    }
+    @if (Model.HasNext)
+    {
+        <a class="btn btn-outline-secondary btn-sm" asp-route-serverId="@Model.ServerId"
+           asp-route-fromUtc="@Model.Query.FromUtc?.ToString("yyyy-MM-ddTHH:mm:ss")" asp-route-toUtc="@Model.Query.ToUtc?.ToString("yyyy-MM-ddTHH:mm:ss")"
+           asp-route-page="@(Model.Page + 1)">Next</a>
+    }
+</nav>
