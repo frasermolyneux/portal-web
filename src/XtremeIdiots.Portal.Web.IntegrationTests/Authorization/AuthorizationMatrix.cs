@@ -75,6 +75,8 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.GameServers_Admin_Rcon_Restart, GameType.CallOfDuty4, HeadAdminAndAbove),
         Entry(AuthPolicies.GameServers_Admin_Rcon_Screenshot, GameType.CallOfDuty4, GameAdminAndAbove),
         Entry(AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle, GameType.CallOfDuty4x, HeadAdminAndAbove),
+        Entry(AuthPolicies.GameServers_Admin_SiegeMode, GameType.CallOfDuty4, HeadAdminAndAbove, directPermissionAssignable: false),
+        Entry(AuthPolicies.GameServers_Admin_SiegeMode, null, PortalRoleSet.None, "without resource", directPermissionAssignable: false),
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Read, GameType.CallOfDuty4, GameAdminAndAbove),
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Delete, GameType.CallOfDuty4, GameAdminAndAbove),
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Configure, GameType.CallOfDuty4, GameAdminAndAbove),
@@ -128,6 +130,7 @@ internal static class AuthorizationMatrix
     public static IReadOnlyList<string> NonAssignablePolicies { get; } =
     [
         AuthPolicies.GlobalSettings_Admin,
+        AuthPolicies.GameServers_Admin_SiegeMode,
         AuthPolicies.Users_Read,
         AuthPolicies.Users_ManageClaims,
         AuthPolicies.Users_LogOut,
@@ -154,6 +157,7 @@ internal static class AuthorizationMatrix
         Entry(AuthPolicies.GameServers_Admin_Rcon_Restart, PotentialAccessProbe.Instance, HeadAdminAndAbove, "potential access"),
         Entry(AuthPolicies.GameServers_Admin_Rcon_Screenshot, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),
         Entry(AuthPolicies.GameServers_Admin_CoD4xPluginLifecycle, PotentialAccessProbe.Instance, HeadAdminAndAbove, "potential access"),
+        Entry(AuthPolicies.GameServers_Admin_SiegeMode, PotentialAccessProbe.Instance, HeadAdminAndAbove, "potential access", directPermissionAssignable: false),
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Read, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Delete, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),
         Entry(AuthPolicies.GameServers_Admin_Screenshots_Configure, PotentialAccessProbe.Instance, GameAdminAndAbove, "potential access"),

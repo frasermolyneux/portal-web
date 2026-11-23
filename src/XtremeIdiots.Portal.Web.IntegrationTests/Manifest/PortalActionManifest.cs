@@ -24,11 +24,11 @@ internal static class PortalActionManifest
     public static IReadOnlyDictionary<PortalActionKind, int> ApprovedCounts { get; } =
         new Dictionary<PortalActionKind, int>
         {
-            [PortalActionKind.BrowserPage] = 92,
+            [PortalActionKind.BrowserPage] = 97,
             [PortalActionKind.DownloadOrStream] = 3,
             [PortalActionKind.ExternalCallback] = 3,
-            [PortalActionKind.HttpEndpoint] = 133,
-            [PortalActionKind.StateChange] = 77,
+            [PortalActionKind.HttpEndpoint] = 135,
+            [PortalActionKind.StateChange] = 81,
         };
 
     private readonly static string[] downloadActionNames =
@@ -74,7 +74,8 @@ internal static class PortalActionManifest
 
     private static bool IsMutationAction(string actionName)
     {
-        return actionName.StartsWith("Create", StringComparison.Ordinal) ||
+        return actionName.StartsWith("Activate", StringComparison.Ordinal) ||
+            actionName.StartsWith("Create", StringComparison.Ordinal) ||
             actionName.StartsWith("Delete", StringComparison.Ordinal) ||
             actionName.StartsWith("Force", StringComparison.Ordinal) ||
             actionName.StartsWith("Mark", StringComparison.Ordinal) ||

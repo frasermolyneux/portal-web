@@ -56,6 +56,7 @@ XtremeIdiots.Portal.Web.ApiControllers.ExternalNotificationsController#GetNotifi
 XtremeIdiots.Portal.Web.ApiControllers.ExternalNotificationsController#MarkAllAsRead#POST#api/external/notifications/read-all#(XtremeIdiots.Portal.Web.ApiControllers.ExternalMarkAsReadRequest)|StateChange
 XtremeIdiots.Portal.Web.ApiControllers.ExternalNotificationsController#MarkAsRead#POST#api/external/notifications/{id:guid}/read#(System.Guid,XtremeIdiots.Portal.Web.ApiControllers.ExternalMarkAsReadRequest)|StateChange
 XtremeIdiots.Portal.Web.ApiControllers.FileBrowseApiController#Browse#GET#api/file-browse/{gameServerId:guid}/browse#(System.Guid,System.String,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#ActivateSiegeMode#POST#api/integration/v1/siege-mode/servers/{gameServerId:guid}/activate#(System.Guid,XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController+SiegeActivationRequest)|StateChange
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Activity#GET#api/integration/v1/activity#(XtremeIdiots.Portal.Web.Services.IActivityLogService,System.Nullable<XtremeIdiots.Portal.Web.Models.ActivityLog.ActivityLogCategory>,System.String,System.Int32,System.Int32,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#ApprovePlayerClaim#POST#api/integration/v1/player-links/claims/{claimId:guid}/approve#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#DeclinePlayerClaim#POST#api/integration/v1/player-links/claims/{claimId:guid}/decline#(System.Guid)|HttpEndpoint
@@ -67,6 +68,7 @@ XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#PendingPlayerC
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Rotations#GET#api/integration/v1/rotations#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#ServerAdmin#GET#api/integration/v1/server-admin#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Session#GET#api/integration/v1/session#(Microsoft.AspNetCore.Antiforgery.IAntiforgery,Microsoft.AspNetCore.Authorization.IAuthorizationService)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#SiegeMode#GET#api/integration/v1/siege-mode#(XtremeIdiots.Portal.Web.Services.Settings.INamespaceSettingsParser)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#Stats#GET#api/integration/v1/stats#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumIntegrationController#UnlinkPlayer#DELETE#api/integration/v1/player-links/linked-players/{connectedPlayerProfileId:guid}#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ForumPlayerMapController#Get#GET#api/integration/v1/player-map#()|HttpEndpoint
@@ -283,6 +285,15 @@ XtremeIdiots.Portal.Web.Controllers.ServersController#GetPublicMapRotation#GET#S
 XtremeIdiots.Portal.Web.Controllers.ServersController#GetRecentPlayersForMap#GET#Servers/GetRecentPlayersForMap#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.ServersController#Index#GET#Servers/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ServersController#Map#GET#Servers/Map#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.SiegeAuditController#Actions#GET#SiegeAudit/Actions#(System.Nullable<System.Guid>,System.Nullable<System.DateTime>,System.Nullable<System.DateTime>,System.Int32)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.SiegeAuditController#Session#GET#SiegeAudit/Session#(System.Guid,System.Guid,System.Int32,System.Int32,System.Int32)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.SiegeAuditController#Sessions#GET#SiegeAudit/Sessions#(System.Nullable<System.Guid>,System.Nullable<System.DateTime>,System.Nullable<System.DateTime>,System.Int32)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.SiegeModeController#Activate#GET#SiegeMode/Activate#(System.Guid)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.SiegeModeController#Activate#POST#SiegeMode/Activate#(System.Guid,System.Guid,System.Int32,System.String)|StateChange
+XtremeIdiots.Portal.Web.Controllers.SiegeModeController#Banner#GET#SiegeMode/Banner#()|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.SiegeModeController#End#POST#SiegeMode/End#(System.Guid,System.Guid,System.Guid)|StateChange
+XtremeIdiots.Portal.Web.Controllers.SiegeModeController#Extend#POST#SiegeMode/Extend#(System.Guid,System.Guid,System.Guid,System.Int32)|StateChange
+XtremeIdiots.Portal.Web.Controllers.SiegeModeController#Status#GET#SiegeMode/Status#(System.Guid)|HttpEndpoint
 XtremeIdiots.Portal.Web.Controllers.StatusController#AgentStatus#GET#Status/AgentStatus#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.StatusController#BanFileStatus#GET#Status/BanFileStatus#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.StatusController#GetOverviewTelemetry#GET#Status/GetOverviewTelemetry#(XtremeIdiots.Portal.Web.Services.CachedAgentTelemetryService)|HttpEndpoint
