@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -32,27 +33,12 @@ public class GlobalSettingsController(
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
 
-            try
-            {
-                var configsResult = await repositoryApiClient.GlobalConfigurations.V1
-                    .GetConfigurations(cancellationToken).ConfigureAwait(false);
+            var (configs, error) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
+            if (error is not null)
+                return error;
 
-                if (configsResult.IsSuccess && configsResult.Result?.Data?.Items != null)
-                {
-                    foreach (var config in configsResult.Result.Data.Items)
-                    {
-                        PopulateModelFromNamespace(model, config);
-                    }
-                }
-                else
-                {
-                    Logger.LogWarning("Failed to retrieve global configurations, using defaults");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to fetch global configurations, using defaults");
-            }
+            foreach (var config in configs!)
+                PopulateModelFromNamespace(model, config);
 
             return View(model);
         }, nameof(Index)).ConfigureAwait(false);
@@ -97,6 +83,10 @@ public class GlobalSettingsController(
             if (modelStateResult is not null)
                 return modelStateResult;
 
+            var (_, configurationError) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
+            if (configurationError is not null)
+                return configurationError;
+
             model.AgentName = NormalizeAgentName(model.AgentName);
 
             var errors = new List<string>();
@@ -136,6 +126,40 @@ public class GlobalSettingsController(
     private void PopulateModelFromNamespace(GlobalSettingsViewModel model, ConfigurationDto config)
     {
         globalSettingsService.PopulateModelFromNamespace(model, config, Logger);
+    }
+
+    private async Task<(IReadOnlyList<ConfigurationDto>? Configurations, IActionResult? Error)> GetCurrentConfigurationsAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await repositoryApiClient.GlobalConfigurations.V1
+                .GetConfigurations(cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess || result.Result?.Data?.Items is not { } items)
+            {
+                Logger.LogWarning("Failed to retrieve global configurations: {StatusCode}", result.StatusCode);
+                return (null, StatusCode(StatusCodes.Status503ServiceUnavailable));
+            }
+
+            var configurations = items.ToArray();
+            foreach (var config in configurations.Where(static config =>
+                         string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!globalSettingsService.TryValidateSiegeModeSettings(config, out var errors))
+                {
+                    Logger.LogWarning("Invalid Siege Mode global settings: {Errors}", string.Join("; ", errors));
+                    return (null, UnprocessableEntity("Saved Siege Mode settings are unreadable. Correct them before saving global settings."));
+                }
+            }
+
+            return (configurations, null);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to retrieve global configurations");
+            return (null, StatusCode(StatusCodes.Status503ServiceUnavailable));
+        }
     }
 
     private static string NormalizeAgentName(string? value)

@@ -19,6 +19,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -54,6 +55,7 @@ public class GlobalSettingsControllerTests
 
     private GlobalSettingsController CreateSut(ClaimsPrincipal? user = null)
     {
+        SetupConfigurations();
         var controller = new GlobalSettingsController(
             mockRepositoryApiClient.Object,
             globalSettingsService,
@@ -115,6 +117,84 @@ public class GlobalSettingsControllerTests
                 mockLogger.Object,
                 null!,
                 auditLogger));
+    }
+
+    [Fact]
+    public async Task Index_Get_ReturnsUnavailableWhenConfigurationsCannotBeRetrieved()
+    {
+        var sut = CreateSut();
+        mockRepositoryApiClient
+            .Setup(client => client.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+
+        var result = Assert.IsType<StatusCodeResult>(await sut.Index(default));
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Index_Get_ReturnsUnprocessableEntityWhenSiegeSettingsAreUnreadable()
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SiegeModeSettingsConstants.Namespace,
+            Configuration = "not-json"
+        }))!);
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await sut.Index(default));
+
+        Assert.Contains("Saved Siege Mode settings are unreadable", Assert.IsType<string>(result.Value));
+    }
+
+    [Fact]
+    public async Task Index_Post_DoesNotSaveWhenExistingSiegeSettingsAreUnreadable()
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SiegeModeSettingsConstants.Namespace,
+            Configuration = "not-json"
+        }))!);
+        var model = new GlobalSettingsViewModel();
+        PrepareSiegeSubmission(sut, model);
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await sut.Index(model));
+
+        Assert.Contains("Saved Siege Mode settings are unreadable", Assert.IsType<string>(result.Value));
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.DeleteConfiguration(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Index_Post_DoesNotSaveWhenConfigurationsCannotBeRetrieved()
+    {
+        var sut = CreateSut();
+        mockRepositoryApiClient
+            .Setup(client => client.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+        var model = new GlobalSettingsViewModel();
+        PrepareSiegeSubmission(sut, model);
+
+        var result = Assert.IsType<StatusCodeResult>(await sut.Index(model));
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.DeleteConfiguration(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private void SetupConfigurations(params ConfigurationDto[] configurations)
+    {
+        mockRepositoryApiClient
+            .Setup(client => client.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(
+                    new CollectionModel<ConfigurationDto>(configurations))));
     }
 
     [Fact]
