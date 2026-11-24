@@ -1,86 +1,19 @@
 @model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
-@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1
-@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine
 @using XtremeIdiots.Portal.Web.ViewModels
 
-@{
-    var supportsDestructiveActions = Model.GameServer.GameType is GameType.CallOfDuty2 or GameType.CallOfDuty4 or GameType.CallOfDuty5 or GameType.CallOfDuty4x;
-}
-<div class="ibox">
-    <div class="ibox-title">
-        <h5><i class="fa-solid fa-fw fa-shield-halved" aria-hidden="true"></i> VPN Protection</h5>
-    </div>
-    <div class="ibox-content">
-        @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml",
-            new TriStateOverrideSelectViewModel
-            {
-                FieldName = "VpnProtection.Enabled",
-                Label = "Enabled Override",
-                Value = Model.VpnProtection.Enabled,
-                InheritLabel = $"Inherit global ({(Model.GlobalVpnProtection.Enabled ? "Enabled" : "Disabled")})",
-                HelpText = "Controls VPN Protection for this server."
-            })
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="VpnProtection_InheritGlobalRules"
-                   name="VpnProtection.InheritGlobalRules" value="true" checked="@(Model.VpnProtection.InheritGlobalRules ? "checked" : null)" />
-            <input type="hidden" name="VpnProtection.InheritGlobalRules" value="false" />
-            <label class="form-check-label" for="VpnProtection_InheritGlobalRules">Inherit global rules</label>
-            <small class="form-text text-muted d-block">Global rules run alongside local rules; overrides can adjust individual global rules.</small>
-        </div>
-        @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml",
-            new RequiredTagsSelectorViewModel
-            {
-                FieldName = "VpnProtection.ExcludedPlayerTagsCsv",
-                Label = "Additional Excluded Player Tags",
-                Value = Model.VpnProtection.ExcludedPlayerTagsCsv,
-                Options = Model.AvailableRequiredTags,
-                HelpText = "These exclusions are added to the global excluded tags and cannot remove global exclusions.",
-                Placeholder = "No additional player tags excluded"
-            })
-        @if (Model.GlobalVpnProtection.Rules.Count > 0)
-        {
-            <h6>Global Rules</h6>
-            <div class="table-responsive mb-4">
-                <table class="table table-striped table-hover">
-                    <thead><tr><th>Rule</th><th>Condition</th><th>Action</th><th>Observation forum posting</th><th>Status</th></tr></thead>
-                    <tbody>
-                    @foreach (var rule in Model.GlobalVpnProtection.Rules)
-                    {
-                        var inactive = !supportsDestructiveActions && rule.Action is VpnProtectionAction.Kick or VpnProtectionAction.Ban;
-                        <tr>
-                            <td>@rule.Id</td>
-                            <td>@await Html.PartialAsync("_RuleConditionSummary", rule.Condition)</td>
-                            <td>@VpnProtectionRuleEditorOptions.GetActionLabel(rule.Action)</td>
-                            <td>@(rule.PostObservationToForums ? "Enabled" : "Disabled")</td>
-                            <td><span class="badge @(inactive || !rule.Enabled ? "text-bg-secondary" : "text-bg-success")">@(inactive ? "Inactive for this game" : rule.Enabled ? "Active" : "Disabled")</span></td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        }
-        <p class="form-text text-muted">Local rules apply only to this server; the strongest matching action wins.
-            Unsupported saved actions must be changed before saving.</p>
-        @await Html.PartialAsync("_VpnRulesEditor", new VpnRulesEditorViewModel
-        {
-            Id = "server-vpn-rules",
-            Prefix = "VpnProtection.LocalRules",
-            Title = "Local Rules",
-            AddLabel = "Add Local Rule",
-            Rules = Model.VpnProtection.LocalRules,
-            SupportsDestructiveActions = supportsDestructiveActions
-        })
-        <p class="form-text text-muted">Overrides can inherit a complete global condition or replace it with a new condition tree.</p>
-        @await Html.PartialAsync("_VpnRulesEditor", new VpnRulesEditorViewModel
-        {
-            Id = "server-vpn-overrides",
-            Prefix = "VpnProtection.RuleOverrides",
-            Title = "Global Rule Overrides",
-            AddLabel = "Add Override",
-            IsOverride = true,
-            Overrides = Model.VpnProtection.RuleOverrides,
-            GlobalRules = Model.GlobalVpnProtection.Rules,
-            SupportsDestructiveActions = supportsDestructiveActions
-        })
-    </div>
-</div>
+@await Html.PartialAsync("_ServerFeatureRules", new ServerFeatureRulesViewModel
+{
+    Prefix = "VpnProtection",
+    Title = "VPN Protection",
+    FeatureId = RulesEngineCatalogueV1.VpnProtectionFeature,
+    Enabled = Model.VpnProtection.Enabled,
+    GlobalEnabled = Model.GlobalVpnProtection.Enabled,
+    InheritGlobalRules = Model.VpnProtection.InheritGlobalRules,
+    LocalRulesJson = Model.VpnProtection.LocalRulesJson,
+    RuleOverridesJson = Model.VpnProtection.RuleOverridesJson,
+    GlobalRulesJson = Model.GlobalVpnProtection.RulesJson,
+    Tags = Model.AvailableRequiredTags,
+    Compatibility = Model.VpnRuleCompatibility,
+    HasFreshCapabilitySnapshot = Model.HasFreshRuleCapabilitySnapshot
+})

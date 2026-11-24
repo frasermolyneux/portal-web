@@ -1,10 +1,11 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
-using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
-using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -220,8 +221,6 @@ public class GlobalSettingsViewModel : IValidatableObject
         ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
-        VpnProtection.AllowedExcludedPlayerTags = requiredTags.Select(static option => option.Name).ToArray();
-        VpnProtection.ExcludedPlayerTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public void SyncCod4xPowerTagMappings()
@@ -262,119 +261,55 @@ public class GlobalSettingsViewModel : IValidatableObject
 
 public sealed class SiegeModeGlobalSettingsViewModel : IValidatableObject
 {
+    [BindRequired]
+    public bool Enabled { get; set; }
+
     [DisplayName("Default Duration (minutes)")]
     [Range(1, int.MaxValue, ErrorMessage = "Siege Mode duration must be at least one minute.")]
     public int DurationMinutes { get; set; } = SiegeModeSettingsConstants.DefaultDurationMinutes;
 
-    public List<SiegeModeRuleViewModel> Rules { get; set; } = SiegeModeSettingsViewModelMapper.CreateDefaultRules();
+    public string RulesJson { get; set; } = "[]";
 
-    public int? SubmittedRuleCount { get; set; }
+    [BindNever]
+    public Dictionary<string, JsonElement> EnvelopeExtensionData { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        var validation = new SiegeModeSettingsValidator().Validate(SiegeModeSettingsViewModelMapper.ToDocument(this));
-        foreach (var error in validation.Errors)
+        if (!RuleSettingsJson.TryDeserializeRules(RulesJson, out var rules, out var error))
         {
-            yield return new ValidationResult(error, [nameof(Rules)]);
+            yield return new ValidationResult(error, [nameof(RulesJson)]);
+            yield break;
+        }
+
+        var validation = new SiegeModeSettingsValidator().Validate(new SiegeModeSettingsDocument
+        {
+            Enabled = Enabled,
+            DurationMinutes = DurationMinutes,
+            Rules = rules
+        });
+        foreach (var validationError in validation.Errors)
+        {
+            yield return new ValidationResult(validationError, [nameof(RulesJson)]);
         }
     }
-}
-
-public sealed class SiegeModeRuleViewModel
-{
-    [Required]
-    public string Id { get; set; } = string.Empty;
-
-    public bool Enabled { get; set; } = true;
-
-    public RuleConditionViewModel Condition { get; set; } = new();
-}
-
-public sealed class RuleConditionViewModel
-{
-    public RuleConditionGroupOperator? GroupOperator { get; set; }
-
-    public List<RuleConditionViewModel> Conditions { get; set; } = [];
-
-    public VpnProtectionSignal? Signal { get; set; }
-
-    public SiegePlayerSignal? PlayerSignal { get; set; }
-
-    public RuleComparisonOperator? Operator { get; set; }
-
-    public string? ExpectedValue { get; set; }
 }
 
 internal static class SiegeModeSettingsViewModelMapper
 {
-    public static List<SiegeModeRuleViewModel> CreateDefaultRules()
+    public static SiegeModeSettingsDocument ToDocument(SiegeModeGlobalSettingsViewModel model) => new()
     {
-        var defaults = new SiegeModeSettingsDocument();
-        return [.. defaults.Rules.Select(ToViewModel)];
-    }
-
-    public static SiegeModeSettingsDocument ToDocument(SiegeModeGlobalSettingsViewModel model)
-    {
-        var document = new SiegeModeSettingsDocument
-        {
-            DurationMinutes = model.DurationMinutes,
-            Rules = [.. (model.Rules ?? []).Select(rule => new SiegeModeRule
-            {
-                Id = rule.Id,
-                Enabled = rule.Enabled,
-                Condition = ToContract(rule.Condition)
-            })]
-        };
-
-        return document;
-    }
+        Enabled = model.Enabled,
+        DurationMinutes = model.DurationMinutes,
+        Rules = JsonSerializer.Deserialize<List<RuleDefinition>>(model.RulesJson, RuleSettingsJson.Options)
+            ?? throw new JsonException("Rules must be an array."),
+        ExtensionData = RuleSettingsJson.CloneExtensionData(model.EnvelopeExtensionData)
+    };
 
     public static void Populate(SiegeModeGlobalSettingsViewModel model, SiegeModeSettingsDocument document)
     {
         model.DurationMinutes = document.DurationMinutes;
-        model.Rules = [.. document.Rules.Select(ToViewModel)];
-    }
-
-    private static SiegeModeRuleViewModel ToViewModel(SiegeModeRule rule)
-    {
-        return new()
-        {
-            Id = rule.Id,
-            Enabled = rule.Enabled,
-            Condition = ToViewModel(rule.Condition)
-        };
-    }
-
-    private static RuleConditionViewModel ToViewModel(SiegeModeCondition? condition)
-    {
-        if (condition is null)
-        {
-            return new();
-        }
-
-        return new()
-        {
-            GroupOperator = condition.GroupOperator,
-            Conditions = [.. (condition.Conditions ?? []).Select(ToViewModel)],
-            Signal = condition.Signal,
-            PlayerSignal = condition.PlayerSignal,
-            Operator = condition.Operator,
-            ExpectedValue = condition.ExpectedValue
-        };
-    }
-
-    private static SiegeModeCondition ToContract(RuleConditionViewModel condition)
-    {
-        return new()
-        {
-            GroupOperator = condition.GroupOperator,
-            Conditions = condition.GroupOperator.HasValue
-                ? [.. (condition.Conditions ?? []).Select(ToContract)]
-                : null,
-            Signal = condition.Signal,
-            PlayerSignal = condition.PlayerSignal,
-            Operator = condition.Operator,
-            ExpectedValue = condition.ExpectedValue
-        };
+        model.Enabled = document.Enabled == true;
+        model.RulesJson = JsonSerializer.Serialize(document.Rules, RuleSettingsJson.Options);
+        model.EnvelopeExtensionData = RuleSettingsJson.CloneExtensionData(document.ExtensionData);
     }
 }

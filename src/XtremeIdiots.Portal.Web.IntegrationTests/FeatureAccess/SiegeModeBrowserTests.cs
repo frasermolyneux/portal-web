@@ -8,8 +8,10 @@ using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
@@ -166,7 +168,15 @@ public sealed class SiegeModeBrowserTests
             .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
         repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration("siegeMode", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.NotFound));
+            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(
+                JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = "siegeMode",
+                    Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabled":true,"durationMinutes":240,"rules":[]}"""
+                }))!)));
+        repository.Setup(r => r.GameServerConfigurations.V1.GetConfigurations(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
         repository.Setup(r => r.SiegeMode.V1.StartSession(id, It.IsAny<StartSiegeSessionDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<SiegeSessionDto>(HttpStatusCode.Created,
                 new ApiResponse<SiegeSessionDto>(new SiegeSessionDto { GameServerId = id, Mode = SiegeSessionMode.DryRun })));
@@ -174,9 +184,19 @@ public sealed class SiegeModeBrowserTests
         repository.Setup(r => r.SiegeMode.V1.GetCurrentSession(id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<SiegeSessionDto>(HttpStatusCode.OK, new ApiResponse<SiegeSessionDto>(
                 new SiegeSessionDto { GameServerId = id, SessionId = sessionId, Mode = SiegeSessionMode.DryRun, ExpiresAtUtc = DateTime.UtcNow.AddHours(1) })));
-        repository.Setup(r => r.SiegeMode.V1.GetActions(id, sessionId, 0, 50, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<SiegeActionDto>>(HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<SiegeActionDto>>(new CollectionModel<SiegeActionDto>([]))));
+        repository.Setup(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleActionExecutionDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<RuleActionExecutionDto>>(new CollectionModel<RuleActionExecutionDto>([
+                    new RuleActionExecutionDto
+                    {
+                        GameServerId = id,
+                        SiegeSessionId = sessionId,
+                        FeatureId = RulesEngineCatalogueV1.SiegeModeFeature,
+                        ActionTypeId = "message.private",
+                        RuleId = "test-rule",
+                        UpdatedAtUtc = DateTimeOffset.UtcNow
+                    }
+                ]))));
         repository.Setup(r => r.SiegeMode.V1.GetChecks(id, sessionId, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<SiegeCheckDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<SiegeCheckDto>>(new CollectionModel<SiegeCheckDto>([]))));
@@ -202,6 +222,7 @@ public sealed class SiegeModeBrowserTests
             """, id.ToString());
         await browser.Page.AddScriptTagAsync(new PageAddScriptTagOptions { Url = new Uri(browser.Host.BaseAddress, "/js/siege-mode.js").AbsoluteUri });
         await Assertions.Expect(browser.Page.Locator("#siege-status")).ToContainTextAsync("Siege Mode active: Dry Run");
+        await Assertions.Expect(browser.Page.Locator("#siege-status")).ToContainTextAsync("message.private");
         await Assertions.Expect(browser.Page.Locator("#siege-status form input[name='__RequestVerificationToken']")).ToHaveCountAsync(2);
         await Assertions.Expect(browser.Page.Locator("#siege-extension-minutes")).ToBeVisibleAsync();
 

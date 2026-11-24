@@ -388,6 +388,17 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             DeletedNamespaces.Add(VpnProtectionSettingsConstants.Namespace);
         }
 
+        if (SiegeModeServerSettingsMapper.HasOverrides(model.SiegeMode))
+        {
+            configurations.Add((
+                SiegeModeSettingsConstants.Namespace,
+                JsonSerializer.Serialize(SiegeModeServerSettingsMapper.ToDocument(model.SiegeMode), configJsonOptions)));
+        }
+        else
+        {
+            DeletedNamespaces.Add(SiegeModeSettingsConstants.Namespace);
+        }
+
         if (model.GameServer.BanFileSyncEnabled)
         {
             configurations.Add((

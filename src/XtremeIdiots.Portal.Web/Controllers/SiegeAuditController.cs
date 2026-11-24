@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 
 namespace XtremeIdiots.Portal.Web.Controllers;
@@ -44,21 +46,25 @@ public class SiegeAuditController(
         if (model!.Query.GameServerIds.Length == 0)
             return View(model);
 
-        var actions = await repository.SiegeMode.V1.SearchActions(model.Query, cancellationToken).ConfigureAwait(false);
+        var actions = await repository.RuleExecutions.V1.SearchRuleActions(new RuleActionAuditQueryDto
+        {
+            GameServerIds = model.Query.GameServerIds,
+            FeatureId = RulesEngineCatalogueV1.SiegeModeFeature,
+            FromUtc = model.Query.FromUtc,
+            ToUtc = model.Query.ToUtc,
+            SkipEntries = model.Query.SkipEntries,
+            TakeEntries = model.Query.TakeEntries
+        }, cancellationToken).ConfigureAwait(false);
         if (!actions.IsSuccess || actions.Result?.Data?.Items is null)
             return Unavailable("search actions");
-
-        var summary = await repository.SiegeMode.V1.SummarizeActions(model.Query, cancellationToken).ConfigureAwait(false);
-        if (!summary.IsSuccess || summary.Result?.Data is null)
-            return Unavailable("summarize actions");
 
         var checks = await repository.SiegeMode.V1.SearchChecks(model.Query, cancellationToken).ConfigureAwait(false);
         if (!checks.IsSuccess || checks.Result?.Data?.Items is null)
             return Unavailable("search checks");
 
-        model.Actions = [.. actions.Result.Data.Items.Where(a => model.Query.GameServerIds.Contains(a.GameServerId))];
+        model.Actions = [.. actions.Result.Data.Items.Where(a => model.Query.GameServerIds.Contains(a.GameServerId) &&
+            a.FeatureId == RulesEngineCatalogueV1.SiegeModeFeature)];
         model.Checks = [.. checks.Result.Data.Items.Where(c => model.Query.GameServerIds.Contains(c.GameServerId))];
-        model.Summary = summary.Result.Data.Counts ?? [];
         model.HasNext = (actions.Result.Data.Items.Count() == PageSize || checks.Result.Data.Items.Count() == PageSize) && ValidPage(page + 1);
         return View(model);
     }
@@ -106,7 +112,14 @@ public class SiegeAuditController(
         var events = await repository.SiegeMode.V1.GetSessionEvents(serverId, sessionId, eventPage * PageSize, PageSize, cancellationToken).ConfigureAwait(false);
         if (!events.IsSuccess || events.Result?.Data?.Items is null)
             return Unavailable("get session events");
-        var actions = await repository.SiegeMode.V1.GetActions(serverId, sessionId, actionPage * PageSize, PageSize, cancellationToken).ConfigureAwait(false);
+        var actions = await repository.RuleExecutions.V1.SearchRuleActions(new RuleActionAuditQueryDto
+        {
+            GameServerIds = [serverId],
+            FeatureId = RulesEngineCatalogueV1.SiegeModeFeature,
+            SiegeSessionId = sessionId,
+            SkipEntries = actionPage * PageSize,
+            TakeEntries = PageSize
+        }, cancellationToken).ConfigureAwait(false);
         if (!actions.IsSuccess || actions.Result?.Data?.Items is null)
             return Unavailable("get session actions");
         var checks = await repository.SiegeMode.V1.GetChecks(serverId, sessionId, checkPage * PageSize, PageSize, cancellationToken).ConfigureAwait(false);
@@ -121,7 +134,8 @@ public class SiegeAuditController(
             Server = server,
             Session = session,
             Events = [.. eventItems.Where(item => item.SessionId == sessionId)],
-            Actions = [.. actionItems.Where(item => item.SessionId == sessionId && item.GameServerId == serverId)],
+            Actions = [.. actionItems.Where(item => item.SiegeSessionId == sessionId && item.GameServerId == serverId &&
+                item.FeatureId == RulesEngineCatalogueV1.SiegeModeFeature)],
             Checks = [.. checkItems.Where(item => item.SessionId == sessionId && item.GameServerId == serverId)],
             EventPage = eventPage,
             ActionPage = actionPage,
@@ -214,9 +228,8 @@ public sealed class SiegeAuditViewModel
     public bool HasNext { get; set; }
     public SiegeAuditQueryDto Query { get; set; } = new();
     public List<SiegeSessionDto> Sessions { get; set; } = [];
-    public List<SiegeActionDto> Actions { get; set; } = [];
+    public List<RuleActionExecutionDto> Actions { get; set; } = [];
     public List<SiegeCheckDto> Checks { get; set; } = [];
-    public SiegeActionOutcomeCountDto[] Summary { get; set; } = [];
 }
 
 public sealed class SiegeSessionDetailViewModel
@@ -224,7 +237,7 @@ public sealed class SiegeSessionDetailViewModel
     public required GameServerDto Server { get; set; }
     public required SiegeSessionDto Session { get; set; }
     public List<SiegeSessionEventDto> Events { get; set; } = [];
-    public List<SiegeActionDto> Actions { get; set; } = [];
+    public List<RuleActionExecutionDto> Actions { get; set; } = [];
     public List<SiegeCheckDto> Checks { get; set; } = [];
     public int EventPage { get; set; }
     public int ActionPage { get; set; }

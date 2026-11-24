@@ -177,49 +177,39 @@ public class GameServerEditViewModelTests
     }
 
     [Fact]
-    public void Validate_UnsupportedGameWithDestructiveVpnRule_DefersGameSupportToController()
+    public void Validate_VpnProtectionServerOverride_AllowsInheritedEnablement()
     {
         var model = CreateValidModel();
-        model.GameServer.GameType = GameType.Insurgency;
-        model.VpnProtection.LocalRules =
-        [
-            new VpnProtectionRuleViewModel
-            {
-                Id = "vpn",
-                Condition = new RuleConditionViewModel
-                {
-                    Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                    Operator = RuleComparisonOperator.Equal,
-                    ExpectedValue = "true"
-                },
-                Action = VpnProtectionAction.Ban
-            }
-        ];
+        model.VpnProtection.Enabled = null;
+        model.VpnProtection.InheritGlobalRules = true;
+        model.VpnProtection.RuleOverridesJson = /*lang=json,strict*/ """
+            [{
+              "ruleId": "global-vpn",
+              "enabled": false,
+              "condition": null,
+              "actions": null,
+              "afterMatch": null
+            }]
+            """;
         var validationResults = new List<ValidationResult>();
 
         var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
 
-        Assert.True(isValid);
-        Assert.DoesNotContain(validationResults, result =>
-            result.MemberNames.Contains("VpnProtection.LocalRules[0].Action"));
+        Assert.True(isValid, string.Join("; ", validationResults.Select(static result => result.ErrorMessage)));
     }
 
     [Fact]
-    public void Validate_ExcludedVpnTagOutsideLoadedCatalog_ReturnsValidationError()
+    public void Validate_VpnProtectionServerSettingsWithMalformedRulesJson_ReturnsValidationError()
     {
         var model = CreateValidModel();
-        model.ApplyAvailableRequiredTags(
-        [
-            new RequiredTagOptionViewModel { Name = "Trusted VPN", DisplayName = "Trusted VPN" }
-        ]);
-        model.VpnProtection.ExcludedPlayerTagsCsv = "Unknown Tag";
+        model.VpnProtection.LocalRulesJson = "{";
         var validationResults = new List<ValidationResult>();
 
         var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
 
         Assert.False(isValid);
         Assert.Contains(validationResults, result =>
-            result.ErrorMessage?.Contains("Unknown Tag", StringComparison.Ordinal) == true);
+            result.MemberNames.Contains(nameof(VpnProtectionServerSettingsViewModel.LocalRulesJson)));
     }
 
     [Fact]

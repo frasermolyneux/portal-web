@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
-using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using GameType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType;
 using RepoFileTransportType = XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.FileTransportType;
 
@@ -285,6 +284,15 @@ public class GameServerEditViewModel : IValidatableObject
 
     public VpnProtectionGlobalSettingsViewModel GlobalVpnProtection { get; set; } = new();
 
+    public SiegeModeServerSettingsViewModel SiegeMode { get; set; } = new();
+
+    public SiegeModeGlobalSettingsViewModel GlobalSiegeMode { get; set; } = new();
+
+    public IReadOnlyDictionary<string, bool> VpnRuleCompatibility { get; set; } = new Dictionary<string, bool>();
+    public IReadOnlyDictionary<string, bool> SiegeRuleCompatibility { get; set; } = new Dictionary<string, bool>();
+    [BindNever]
+    public bool HasFreshRuleCapabilitySnapshot { get; set; }
+
     public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
     public bool IsRequiredTagsCatalogAvailable { get; private set; }
@@ -389,6 +397,11 @@ public class GameServerEditViewModel : IValidatableObject
             yield return validationResult;
         }
 
+        foreach (var validationResult in SiegeMode.Validate(validationContext))
+        {
+            yield return validationResult;
+        }
+
         if (IsCod4xGameServer && !Cod4xInheritPowerSettings)
         {
             var seenTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -443,10 +456,6 @@ public class GameServerEditViewModel : IValidatableObject
         GlobalChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         GlobalWelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         GlobalWelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
-        VpnProtection.AllowedExcludedPlayerTags = requiredTags.Select(static option => option.Name).ToArray();
-        VpnProtection.ExcludedPlayerTagsCatalogAvailable = requiredTagsCatalogAvailable;
-        GlobalVpnProtection.AllowedExcludedPlayerTags = requiredTags.Select(static option => option.Name).ToArray();
-        GlobalVpnProtection.ExcludedPlayerTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public void SyncCod4xPowerTagMappings()

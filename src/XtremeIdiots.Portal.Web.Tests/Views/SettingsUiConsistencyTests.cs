@@ -139,18 +139,14 @@ public class SettingsUiConsistencyTests
     public void VpnProtectionCheckboxMarkupPlacesHiddenFallbackAfterCheckbox()
     {
         var globalMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_VpnProtectionConfiguration.cshtml");
-        var serverMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_VpnProtectionConfiguration.cshtml");
+        var serverMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/Shared/_ServerFeatureRules.cshtml");
 
-        AssertCheckboxBeforeHidden(
-            globalMarkup,
-            "name=\"VpnProtection.Enabled\" value=\"true\"",
-            "name=\"VpnProtection.Enabled\" value=\"false\"",
-            "Global VPN Protection enabled");
+        Assert.Contains("asp-for=\"VpnProtection.Enabled\"", globalMarkup);
 
         AssertCheckboxBeforeHidden(
             serverMarkup,
-            "name=\"VpnProtection.InheritGlobalRules\" value=\"true\"",
-            "name=\"VpnProtection.InheritGlobalRules\" value=\"false\"",
+            "name=\"@(Model.Prefix).InheritGlobalRules\" value=\"true\"",
+            "name=\"@(Model.Prefix).InheritGlobalRules\" value=\"false\"",
             "Server VPN Protection inherit global rules");
     }
 

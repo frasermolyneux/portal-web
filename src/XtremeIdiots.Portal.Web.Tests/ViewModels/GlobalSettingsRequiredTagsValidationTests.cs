@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
@@ -69,16 +68,13 @@ public class GlobalSettingsRequiredTagsValidationTests
     }
 
     [Fact]
-    public void Validate_SiegeTagOutsideCatalog_PreservesContractDefault()
+    public void Validate_SiegeModeMalformedRulesJson_ReturnsValidationError()
     {
         var model = new GlobalSettingsViewModel();
-        model.ApplyAvailableRequiredTags(
-            [new RequiredTagOptionViewModel { Name = "SeniorAdmin" }],
-            requiredTagsCatalogAvailable: true);
+        model.SiegeMode.RulesJson = "{";
 
-        var rule = model.SiegeMode.Rules.Single(rule => rule.Id == "new-vpn-ip");
-        var tag = rule.Condition.Conditions.Single(condition => condition.PlayerSignal == SiegePlayerSignal.PlayerTag);
-        Assert.Equal("vpn-exempt", tag.ExpectedValue);
-        Assert.False(HasTagUnavailableError(model));
+        var errors = model.SiegeMode.Validate(new ValidationContext(model.SiegeMode)).ToArray();
+
+        Assert.Contains(errors, error => error.MemberNames.Contains(nameof(model.SiegeMode.RulesJson)));
     }
 }

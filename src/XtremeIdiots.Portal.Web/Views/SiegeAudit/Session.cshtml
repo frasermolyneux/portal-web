@@ -8,7 +8,7 @@
             <div class="ibox-title"><h5>Siege Session</h5></div>
             <div class="ibox-content">
                 <p>Server: @Model.Server.Title · Session: @Model.Session.SessionId · Mode: @Model.Session.Mode</p>
-                <p>Times are UTC. WouldKick is a dry-run decision; Pending, Queued and Dispatched are unconfirmed and do not establish a successful kick.</p>
+                <p>Times are UTC. Dry-run outcomes represent simulated actions; pending, claimed and dispatched actions are not confirmed effects.</p>
                 <h6>Session events</h6>
                 <div class="table-responsive">
                     <table class="table table-striped">
@@ -34,12 +34,12 @@
                 <h6>Actions</h6>
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead><tr><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <thead><tr><th>Occurred (UTC)</th><th>Updated (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
                         <tbody>
                         @foreach (var action in Model.Actions)
                         {
-                            <tr><td>@action.ClaimedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
-                                <td>@action.RuleId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
+                            <tr><td>@action.OccurredAtUtc?.ToString("u")</td><td>@action.UpdatedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                                <td>@action.RuleId</td><td>@action.ActionTypeId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
                         }
                         </tbody>
                     </table>

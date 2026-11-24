@@ -73,6 +73,60 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         return true;
     }
 
+    public bool TryParseVpnProtectionServerSettings(
+        ConfigurationDto config,
+        out VpnProtectionServerSettingsDocument? settings,
+        out IReadOnlyList<string> errors)
+    {
+        return TryParseServerSettings(config, VpnProtectionSettingsConstants.Namespace,
+            static document => new VpnProtectionSettingsValidator().ValidateServerOverride(document).Errors,
+            out settings, out errors);
+    }
+
+    public bool TryParseSiegeModeServerSettings(
+        ConfigurationDto config,
+        out SiegeModeServerSettingsOverrideDocument? settings,
+        out IReadOnlyList<string> errors)
+    {
+        return TryParseServerSettings(config, SiegeModeSettingsConstants.Namespace,
+            static document => new SiegeModeSettingsValidator().ValidateServerOverride(document).Errors,
+            out settings, out errors);
+    }
+
+    private static bool TryParseServerSettings<T>(
+        ConfigurationDto config,
+        string expectedNamespace,
+        Func<T, IReadOnlyList<string>> validate,
+        out T? settings,
+        out IReadOnlyList<string> errors) where T : class
+    {
+        settings = null;
+        if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
+        {
+            errors = [$"Configuration namespace must be '{expectedNamespace}'."];
+            return false;
+        }
+
+        try
+        {
+            settings = System.Text.Json.JsonSerializer.Deserialize<T>(config.Configuration, serializerOptions);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            errors = [$"{expectedNamespace} configuration is invalid JSON: {ex.Message}"];
+            return false;
+        }
+
+        if (settings is null)
+        {
+            errors = [$"{expectedNamespace} configuration did not contain a settings document."];
+            return false;
+        }
+
+        errors = validate(settings);
+        return errors.Count == 0;
+    }
+
     public bool TryParseSiegeModeSettings(
         ConfigurationDto config,
         out SiegeModeSettingsDocument? settings,
@@ -388,13 +442,24 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case VpnProtectionSettingsConstants.Namespace:
-                if (TryParseVpnProtectionSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
+                if (TryParseVpnProtectionServerSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
                 {
                     VpnProtectionSettingsJsonMapper.PopulateServer(model.VpnProtection, vpnProtectionDocument);
                 }
                 else
                 {
                     logger.LogWarning("Failed to parse server VPN Protection configuration: {Errors}", string.Join("; ", vpnErrors));
+                }
+
+                break;
+            case SiegeModeSettingsConstants.Namespace:
+                if (TryParseSiegeModeServerSettings(config, out var siegeDocument, out var siegeErrors) && siegeDocument is not null)
+                {
+                    SiegeModeServerSettingsMapper.Populate(model.SiegeMode, siegeDocument);
+                }
+                else
+                {
+                    logger.LogWarning("Failed to parse server Siege Mode configuration: {Errors}", string.Join("; ", siegeErrors));
                 }
 
                 break;
@@ -518,6 +583,17 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 else
                 {
                     logger.LogWarning("Failed to parse global VPN Protection configuration: {Errors}", string.Join("; ", vpnErrors));
+                }
+
+                break;
+            case SiegeModeSettingsConstants.Namespace:
+                if (TryParseSiegeModeSettings(config, out var siegeDocument, out var siegeErrors) && siegeDocument is not null)
+                {
+                    SiegeModeSettingsViewModelMapper.Populate(model.GlobalSiegeMode, siegeDocument);
+                }
+                else
+                {
+                    logger.LogWarning("Failed to parse global Siege Mode configuration: {Errors}", string.Join("; ", siegeErrors));
                 }
 
                 break;

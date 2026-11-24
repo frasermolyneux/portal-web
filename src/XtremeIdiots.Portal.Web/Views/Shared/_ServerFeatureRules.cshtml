@@ -1,0 +1,67 @@
+@model XtremeIdiots.Portal.Web.ViewModels.ServerFeatureRulesViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using XtremeIdiots.Portal.Web.ViewModels
+
+@{
+    var tags = Model.Tags.Where(tag => tag.TagId != Guid.Empty)
+        .Select(tag => new SelectListItem(tag.DisplayName, tag.TagId.ToString())).ToArray();
+}
+<div class="ibox" data-feature-server-state data-global-enabled="@Model.GlobalEnabled.ToString().ToLowerInvariant()">
+    <div class="ibox-title"><h5>@Model.Title</h5></div>
+    <div class="ibox-content">
+        @if (!Model.HasFreshCapabilitySnapshot)
+        {
+            <p class="alert alert-warning">A fresh server capability snapshot is unavailable. Runtime-dependent choices are unavailable until support is verified.</p>
+        }
+        @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml",
+            new TriStateOverrideSelectViewModel
+            {
+                FieldName = $"{Model.Prefix}.Enabled",
+                Label = "Enabled override",
+                Value = Model.Enabled,
+                InheritLabel = $"Inherit global ({(Model.GlobalEnabled ? "Enabled" : "Disabled")})",
+                HelpText = "Controls whether this feature is available on this server."
+            })
+        <p class="form-text" data-effective-feature-state role="status">Effective state: @((Model.Enabled ?? Model.GlobalEnabled) ? "Enabled" : "Disabled").</p>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="@(Model.Prefix)_InheritGlobalRules"
+                   name="@(Model.Prefix).InheritGlobalRules" value="true" checked="@(Model.InheritGlobalRules ? "checked" : null)" />
+            <input type="hidden" name="@(Model.Prefix).InheritGlobalRules" value="false" />
+            <label class="form-check-label" for="@(Model.Prefix)_InheritGlobalRules">Inherit global rules</label>
+            <small class="form-text text-muted d-block">When enabled, global rules run before local rules. When disabled, global rules and their overrides are ignored; saved overrides are retained.</small>
+        </div>
+        @if (Model.GlobalDurationMinutes.HasValue)
+        {
+            <div class="mb-3">
+                <label class="form-label" for="@(Model.Prefix)_DurationMinutesOverride">Duration override (minutes)</label>
+                <input class="form-control" type="number" min="1" id="@(Model.Prefix)_DurationMinutesOverride"
+                       name="@(Model.Prefix).DurationMinutesOverride" value="@Model.DurationMinutesOverride" placeholder="Inherit @Model.GlobalDurationMinutes minutes" />
+            </div>
+        }
+        <h6>Local rules</h6>
+        @await Html.PartialAsync("_RulesCatalogueEditor", new RulesCatalogueEditorViewModel
+        {
+            EditorId = $"{Model.Prefix}-local-rules",
+            FieldName = $"{Model.Prefix}.LocalRulesJson",
+            FeatureId = Model.FeatureId,
+            RulesJson = Model.LocalRulesJson,
+            IsServerContext = true,
+            Compatibility = Model.Compatibility,
+            TagOptions = tags
+        })
+        <h6>Global rule overrides</h6>
+        @await Html.PartialAsync("_RulesCatalogueEditor", new RulesCatalogueEditorViewModel
+        {
+            EditorId = $"{Model.Prefix}-rule-overrides",
+            FieldName = $"{Model.Prefix}.RuleOverridesJson",
+            FeatureId = Model.FeatureId,
+            RulesJson = Model.RuleOverridesJson,
+            IsOverride = true,
+            IsServerContext = true,
+            ShowInheritedRules = true,
+            Compatibility = Model.Compatibility,
+            GlobalRulesJson = Model.GlobalRulesJson,
+            TagOptions = tags
+        })
+    </div>
+</div>

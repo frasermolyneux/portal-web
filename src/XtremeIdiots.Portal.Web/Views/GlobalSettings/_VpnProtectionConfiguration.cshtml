@@ -1,4 +1,6 @@
 @model XtremeIdiots.Portal.Web.ViewModels.GlobalSettingsViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine
 @using XtremeIdiots.Portal.Web.ViewModels
 
 <div class="ibox">
@@ -7,31 +9,17 @@
     </div>
     <div class="ibox-content">
         <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="VpnProtection_Enabled" name="VpnProtection.Enabled"
-                   value="true" checked="@(Model.VpnProtection.Enabled ? "checked" : null)" />
-            <input type="hidden" name="VpnProtection.Enabled" value="false" />
-            <label class="form-check-label" for="VpnProtection_Enabled">Enabled by default</label>
-            <small class="form-text text-muted d-block">Rules run independently. Ban takes priority over Kick, then Observation;
-                equal-priority matches use the first rule. Missing provider data does not match.
-                Kick and Ban always retain forum posting.</small>
+            <input class="form-check-input" asp-for="VpnProtection.Enabled" />
+            <label class="form-check-label" asp-for="VpnProtection.Enabled">Enabled by default</label>
         </div>
-        @await Html.PartialAsync("~/Views/Shared/Components/RequiredTagsSelector.cshtml",
-            new RequiredTagsSelectorViewModel
-            {
-                FieldName = "VpnProtection.ExcludedPlayerTagsCsv",
-                Label = "Excluded Player Tags",
-                Value = Model.VpnProtection.ExcludedPlayerTagsCsv,
-                Options = Model.AvailableRequiredTags,
-                HelpText = "Players with any selected tag are excluded from event-side VPN Protection actions.",
-                Placeholder = "No player tags excluded"
-            })
-        @await Html.PartialAsync("_VpnRulesEditor", new VpnRulesEditorViewModel
+        @await Html.PartialAsync("_RulesCatalogueEditor", new RulesCatalogueEditorViewModel
         {
-            Id = "global-vpn-rules",
-            Prefix = "VpnProtection.Rules",
-            Title = "Rules",
-            AddLabel = "Add Rule",
-            Rules = Model.VpnProtection.Rules
+            EditorId = "global-vpn-rules",
+            FieldName = "VpnProtection.RulesJson",
+            FeatureId = RulesEngineCatalogueV1.VpnProtectionFeature,
+            RulesJson = Model.VpnProtection.RulesJson,
+            TagOptions = Model.AvailableRequiredTags.Where(tag => tag.TagId != Guid.Empty)
+                .Select(tag => new SelectListItem(tag.DisplayName, tag.TagId.ToString())).ToArray()
         })
     </div>
 </div>

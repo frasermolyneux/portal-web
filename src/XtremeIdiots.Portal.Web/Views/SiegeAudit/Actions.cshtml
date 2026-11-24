@@ -8,21 +8,14 @@
             <div class="ibox-title"><h5>Siege Actions Audit</h5></div>
             <div class="ibox-content">
                 <partial name="_Filters" model="Model" />
-                <p>Counts cover retained records in the selected server and time range, not just this page; deleting player-linked records reduces the counts. WouldKick is a dry-run decision; Pending, Queued and Dispatched are unconfirmed and do not establish a successful kick. Times are UTC.</p>
-                <h6>Action counts by mode and outcome</h6>
-                <div class="table-responsive">
-                    <table class="table table-striped"><thead><tr><th>Mode</th><th>Outcome</th><th>Count</th></tr></thead>
-                        <tbody>@foreach (var count in Model.Summary) { <tr><td>@count.Mode</td><td>@count.Outcome</td><td>@count.Count</td></tr> }</tbody>
-                    </table>
-                </div>
-                @if (Model.Summary.Length == 0) { <p>No action counts found.</p> }
+                <p>Dry-run outcomes represent simulated actions; pending, claimed and dispatched actions are not confirmed effects. Times are UTC.</p>
                 <h6>Actions</h6>
                 <div class="table-responsive">
-                    <table class="table table-striped"><thead><tr><th>Session</th><th>Server</th><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Outcome</th><th>Detail</th></tr></thead>
+                    <table class="table table-striped"><thead><tr><th>Session</th><th>Server</th><th>Occurred (UTC)</th><th>Updated (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
                         <tbody>@foreach (var action in Model.Actions) {
-                            <tr><td>@action.SessionId</td><td>@Model.Servers.FirstOrDefault(s => s.GameServerId == action.GameServerId)?.Title</td>
-                                <td>@action.ClaimedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
-                                <td>@action.RuleId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
+                            <tr><td>@action.SiegeSessionId</td><td>@Model.Servers.FirstOrDefault(s => s.GameServerId == action.GameServerId)?.Title</td>
+                                <td>@action.OccurredAtUtc?.ToString("u")</td><td>@action.UpdatedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                                <td>@action.RuleId</td><td>@action.ActionTypeId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
                         }</tbody>
                     </table>
                 </div>

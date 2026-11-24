@@ -51,42 +51,31 @@ public class GlobalSettingsController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var ruleCount = model.SiegeMode.SubmittedRuleCount;
-            var hasRuleFields = ModelState.Keys.Any(static key => key.StartsWith("SiegeMode.Rules[", StringComparison.OrdinalIgnoreCase));
             if (!ModelState.ContainsKey("SiegeMode.DurationMinutes")
-                || !ModelState.ContainsKey("SiegeMode.SubmittedRuleCount")
-                || ruleCount is null or < 0
-                || (ruleCount == 0 && hasRuleFields)
-                || (ruleCount > 0 && (!hasRuleFields || ruleCount != model.SiegeMode.Rules.Count)))
+                || !ModelState.ContainsKey("SiegeMode.Enabled")
+                || !ModelState.ContainsKey("SiegeMode.RulesJson")
+                || !ModelState.ContainsKey("VpnProtection.Enabled")
+                || !ModelState.ContainsKey("VpnProtection.RulesJson"))
             {
-                ModelState.AddModelError("SiegeMode", "The Siege Mode settings section is missing or incomplete.");
-            }
-            else if (ruleCount == 0)
-            {
-                model.SiegeMode.Rules.Clear();
+                ModelState.AddModelError(string.Empty, "A rules settings section is missing or incomplete.");
             }
 
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
-            if (isRequiredTagsCatalogAvailable)
-            {
-                foreach (var validationResult in VpnProtectionSettingsViewModelValidation.ValidateExcludedTags(
-                    model.VpnProtection.ExcludedPlayerTagsCsv,
-                    model.VpnProtection.AllowedExcludedPlayerTags))
-                {
-                    ModelState.AddModelError(
-                        $"{nameof(GlobalSettingsViewModel.VpnProtection)}.{nameof(VpnProtectionGlobalSettingsViewModel.ExcludedPlayerTagsCsv)}",
-                        validationResult.ErrorMessage ?? "The excluded player tag is invalid.");
-                }
-            }
-
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;
 
-            var (_, configurationError) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
+            var (currentConfigurations, configurationError) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
             if (configurationError is not null)
                 return configurationError;
+
+            var authoritative = new GlobalSettingsViewModel();
+            foreach (var config in currentConfigurations!.Where(static config =>
+                string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                PopulateModelFromNamespace(authoritative, config);
+            RuleSettingsEnvelopeData.CopyFromAuthoritative(authoritative, model);
 
             model.AgentName = NormalizeAgentName(model.AgentName);
 
@@ -252,6 +241,7 @@ public class GlobalSettingsController(
                 .Where(static tag => !string.IsNullOrWhiteSpace(tag.Name))
                 .Select(static tag => new RequiredTagOptionViewModel
                 {
+                    TagId = tag.TagId,
                     Name = tag.Name,
                     DisplayName = tag.Name
                 }));
