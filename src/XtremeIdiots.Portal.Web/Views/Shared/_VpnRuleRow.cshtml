@@ -1,0 +1,130 @@
+@model XtremeIdiots.Portal.Web.ViewModels.VpnRuleEditorRowViewModel
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection
+@using XtremeIdiots.Portal.Web.ViewModels
+
+@{
+    var prefix = Model.Prefix;
+    var isOverride = Model.Override is not null;
+    var id = isOverride ? Model.Override!.Id : Model.Rule!.Id;
+    var enabled = isOverride ? Model.Override!.Enabled : Model.Rule!.Enabled;
+    var action = isOverride ? Model.Override!.Action : Model.Rule!.Action;
+    var post = isOverride ? Model.Override!.PostObservationToForums : Model.Rule!.PostObservationToForums;
+    var reason = isOverride ? Model.Override!.ReasonTemplate : Model.Rule!.ReasonTemplate;
+    var condition = isOverride ? Model.Override!.Condition : Model.Rule!.Condition;
+    var conditionData = new ViewDataDictionary(ViewData)
+    {
+        ["ConditionPrefix"] = $"{prefix}.Condition",
+        ["SupportsPlayerConditions"] = false
+    };
+}
+<div class="border rounded p-3 mb-3" data-siege-rule-row>
+    <div class="row align-items-end">
+        <div class="col-lg-4 mb-3">
+            <label class="form-label" data-rule-label="Id">@(isOverride ? "Global rule" : "Rule Id")</label>
+            @if (isOverride)
+            {
+                <select class="form-select" name="@(prefix).Id" data-rule-field="Id" required>
+                    <option value="">Select a global rule</option>
+                    @if (!string.IsNullOrWhiteSpace(id) && !Model.GlobalRules.Any(r => string.Equals(r.Id, id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <option value="@id" selected>@id (not currently available)</option>
+                    }
+                    @foreach (var globalRule in Model.GlobalRules)
+                    {
+                        <option value="@globalRule.Id" selected="@(string.Equals(globalRule.Id, id, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@globalRule.Id</option>
+                    }
+                </select>
+            }
+            else
+            {
+                <input class="form-control" name="@(prefix).Id" data-rule-field="Id" value="@id" required maxlength="@VpnProtectionSettingsConstants.MaxRuleIdLength" />
+                <small class="form-text text-muted">Unique stable name used by server overrides.</small>
+            }
+        </div>
+        <div class="col-lg-3 mb-3">
+            <label class="form-label" data-rule-label="Action">Action</label>
+            <select class="form-select" name="@(prefix).Action" data-rule-field="Action">
+                @if (isOverride)
+                {
+                    <option value="">Inherit</option>
+                }
+                @if (!Model.SupportsDestructiveActions && action is VpnProtectionAction.Kick or VpnProtectionAction.Ban)
+                {
+                    <option value="@action" selected>@action (inactive for this game)</option>
+                }
+                @foreach (var option in Enum.GetValues<VpnProtectionAction>().Where(value =>
+                    value == VpnProtectionAction.Observation || (Model.SupportsDestructiveActions && value is VpnProtectionAction.Kick or VpnProtectionAction.Ban)))
+                {
+                    <option value="@option" selected="@(action == option ? "selected" : null)">@VpnProtectionRuleEditorOptions.GetActionLabel(option)</option>
+                }
+            </select>
+        </div>
+        <div class="col-lg-3 mb-3">
+            @if (isOverride)
+            {
+                <label class="form-label" data-rule-label="Enabled">Enabled override</label>
+                <select class="form-select" name="@(prefix).Enabled" data-rule-field="Enabled">
+                    <option value="" selected="@(!enabled.HasValue ? "selected" : null)">Inherit</option>
+                    <option value="true" selected="@(enabled == true ? "selected" : null)">Enabled</option>
+                    <option value="false" selected="@(enabled == false ? "selected" : null)">Disabled</option>
+                </select>
+            }
+            else
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="@(prefix).Enabled" data-rule-field="Enabled" value="true" checked="@(enabled == true ? "checked" : null)" />
+                    <input type="hidden" name="@(prefix).Enabled" data-rule-field="Enabled-hidden" value="false" />
+                    <label class="form-check-label" data-rule-label="Enabled">Enabled</label>
+                </div>
+            }
+        </div>
+        <div class="col-lg-2 text-end mb-3">
+            <button type="button" class="btn btn-outline-danger btn-sm" data-action="remove-siege-rule"><i class="fa-solid fa-fw fa-trash" aria-hidden="true"></i> Remove</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-4 mb-3">
+            @if (isOverride)
+            {
+                <label class="form-label" data-rule-label="PostObservationToForums">Observation forum posting</label>
+                <select class="form-select" name="@(prefix).PostObservationToForums" data-rule-field="PostObservationToForums">
+                    <option value="" selected="@(!post.HasValue ? "selected" : null)">Inherit</option>
+                    <option value="true" selected="@(post == true ? "selected" : null)">Enabled</option>
+                    <option value="false" selected="@(post == false ? "selected" : null)">Disabled (portal only)</option>
+                </select>
+            }
+            else
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="@(prefix).PostObservationToForums" data-rule-field="PostObservationToForums" value="true" checked="@(post == true ? "checked" : null)" />
+                    <input type="hidden" name="@(prefix).PostObservationToForums" data-rule-field="PostObservationToForums-hidden" value="false" />
+                    <label class="form-check-label" data-rule-label="PostObservationToForums">Post observations to forums</label>
+                </div>
+            }
+        </div>
+        <div class="col-lg-8 mb-3">
+            <label class="form-label" data-rule-label="ReasonTemplate">Reason template</label>
+            <input class="form-control" name="@(prefix).ReasonTemplate" data-rule-field="ReasonTemplate" value="@reason"
+                   placeholder="@(isOverride ? "Inherit" : VpnProtectionSettingsConstants.DefaultReasonTemplate)" maxlength="@VpnProtectionSettingsConstants.MaxReasonTemplateLength" />
+            <small class="form-text text-muted">Optional placeholders: <code>{ruleId}</code>, <code>{signal}</code>, <code>{actualValue}</code>, <code>{expectedValue}</code>.</small>
+        </div>
+    </div>
+    @if (isOverride)
+    {
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="@(prefix).UseConditionOverride" data-rule-field="UseConditionOverride" value="true" checked="@(Model.Override!.UseConditionOverride ? "checked" : null)" />
+            <input type="hidden" name="@(prefix).UseConditionOverride" data-rule-field="UseConditionOverride-hidden" value="false" />
+            <label class="form-check-label" data-rule-label="UseConditionOverride">Replace global condition</label>
+            <small class="form-text text-muted d-block">When unchecked, the complete global condition is inherited.</small>
+        </div>
+    }
+    @if (Model.IsTemplate)
+    {
+        <div data-siege-condition-mount></div>
+    }
+    else
+    {
+        @await Html.PartialAsync("_RuleConditionEditor", condition, conditionData)
+    }
+</div>

@@ -42,6 +42,42 @@
         }
     }
 
+    function configureVpnValue(node, kind) {
+        if (node.dataset.vpnTypedValues !== 'true') return;
+        var current = node.querySelector(':scope > [data-condition-leaf] [data-condition-field="ExpectedValue"]');
+        if (!current || current.dataset.valueKind === kind) return;
+
+        var value = current.value;
+        var replacement = document.createElement(kind === 'boolean' || kind === 'status' ? 'select' : 'input');
+        Array.from(current.attributes).forEach(function (attribute) {
+            if (!['type', 'value', 'class', 'min', 'max', 'step', 'list'].includes(attribute.name)) {
+                replacement.setAttribute(attribute.name, attribute.value);
+            }
+        });
+        replacement.className = replacement.tagName === 'SELECT' ? 'form-select' : 'form-control';
+        replacement.dataset.valueKind = kind;
+
+        if (replacement.tagName === 'SELECT') {
+            var values = kind === 'boolean'
+                ? [['true', 'True'], ['false', 'False']]
+                : [['Success', 'Success'], ['Failed', 'Failed'], ['Unavailable', 'Unavailable']];
+            replacement.add(new Option('Select a value', ''));
+            values.forEach(function (item) { replacement.add(new Option(item[1], item[0])); });
+            var match = values.find(function (item) { return item[0].toLowerCase() === value.toLowerCase(); });
+            if (value && !match) replacement.add(new Option(value + ' (invalid)', value));
+            replacement.value = match ? match[0] : value;
+        } else {
+            replacement.type = kind === 'numeric' ? 'number' : 'text';
+            if (kind === 'numeric') {
+                replacement.min = '0';
+                replacement.max = '100';
+                replacement.step = '1';
+            }
+            replacement.value = value;
+        }
+        current.replaceWith(replacement);
+    }
+
     function updateNode(node) {
         var kindSelector = node.querySelector(':scope > .row [data-condition-kind-selector]');
         if (kindSelector) kindSelector.disabled = false;
@@ -95,6 +131,7 @@
             var signalOption = vpnSignal?.selectedOptions[0];
             var valueKind = signalOption?.dataset.valueKind || 'string';
             configureOperator(node, valueKind);
+            configureVpnValue(node, valueKind);
 
             var signalHint = node.querySelector(':scope > [data-condition-leaf] [data-vpn-signal-hint]');
             var expectedHint = node.querySelector(':scope > [data-condition-leaf] [data-vpn-expected-hint]');
@@ -172,26 +209,30 @@
     }
 
     function initialize(root) {
-        var ruleTemplate = document.getElementById('global-siege-rule-template');
-        var conditionTemplate = document.getElementById('siege-mode-condition-template');
-        var addRule = document.getElementById('add-global-siege-rule');
+        var ruleTemplate = document.getElementById(root.dataset.ruleTemplate || 'global-siege-rule-template');
+        var conditionTemplate = document.getElementById(root.dataset.conditionTemplate || 'siege-mode-condition-template');
+        var addRule = document.getElementById(root.dataset.addButton || 'add-global-siege-rule');
+        var fieldPrefix = root.dataset.fieldPrefix || 'SiegeMode.Rules';
+        var defaultLeaf = root.dataset.defaultLeaf || 'player';
         if (!ruleTemplate || !conditionTemplate || !addRule) return;
 
         function reindexRules() {
             var rows = Array.from(root.querySelectorAll(':scope > [data-siege-rule-row]'));
-            var count = document.getElementById('SiegeMode_SubmittedRuleCount');
+            var countId = root.dataset.countField || (fieldPrefix === 'SiegeMode.Rules' ? 'SiegeMode_SubmittedRuleCount' : '');
+            var count = countId ? document.getElementById(countId) : null;
             if (count) count.value = rows.length.toString();
             rows.forEach(function (row, index) {
-                var rulePrefix = 'SiegeMode.Rules[' + index + ']';
+                var rulePrefix = fieldPrefix + '[' + index + ']';
                 row.querySelectorAll('[data-rule-field]').forEach(function (control) {
                     var field = control.dataset.ruleField;
-                    if (field === 'Enabled-hidden') return;
+                    if (field.endsWith('-hidden')) {
+                        control.name = rulePrefix + '.' + field.slice(0, -7);
+                        return;
+                    }
                     var name = rulePrefix + '.' + field;
                     control.name = name;
                     control.id = normalizeId(name);
                 });
-                var hiddenEnabled = row.querySelector('[data-rule-field="Enabled-hidden"]');
-                if (hiddenEnabled) hiddenEnabled.name = rulePrefix + '.Enabled';
                 row.querySelectorAll('[data-rule-label]').forEach(function (label) {
                     label.htmlFor = normalizeId(rulePrefix + '.' + label.dataset.ruleLabel);
                 });
@@ -206,6 +247,11 @@
                     }
                 }
                 if (condition) reindexNode(condition, rulePrefix + '.Condition');
+                var overrideCondition = row.querySelector('[data-rule-field="UseConditionOverride"]');
+                if (condition && overrideCondition) {
+                    condition.hidden = !overrideCondition.checked;
+                    if (!overrideCondition.checked) setDisabled(condition, true);
+                }
             });
         }
 
@@ -263,7 +309,7 @@
                 if (!parentNode) return;
                 if (button.dataset.action === 'add-siege-group') {
                     var groupNode = addCondition(parentNode, 'group');
-                    if (groupNode) addCondition(groupNode, 'player');
+                    if (groupNode) addCondition(groupNode, defaultLeaf);
                 } else if (button.dataset.action === 'add-siege-player-condition') {
                     addCondition(parentNode, 'player');
                 } else if (button.dataset.action === 'add-siege-vpn-condition') {
@@ -274,6 +320,10 @@
         });
 
         root.addEventListener('change', function (event) {
+            if (event.target.matches('[data-rule-field="UseConditionOverride"]')) {
+                reindexRules();
+                return;
+            }
             var node = event.target.closest('[data-siege-condition-node]');
             if (!node) return;
             if (event.target.matches('[data-condition-kind-selector]')) {
@@ -288,11 +338,11 @@
             root.appendChild(row);
             reindexRules();
             var condition = row.querySelector('[data-siege-condition-node]');
-            if (condition) addCondition(condition, 'player', 'NewGuid');
+            if (condition) addCondition(condition, defaultLeaf);
             reindexRules();
             var index = root.querySelectorAll(':scope > [data-siege-rule-row]').length - 1;
             var id = row.querySelector('[data-rule-field="Id"]');
-            if (id) id.value = 'new-rule-' + (index + 1);
+            if (id && id.tagName === 'INPUT') id.value = 'new-rule-' + (index + 1);
         });
 
         root.querySelectorAll('[data-siege-condition-node]').forEach(function (node) {
@@ -302,5 +352,5 @@
         root.closest('form')?.addEventListener('submit', reindexRules);
     }
 
-    document.querySelectorAll('#global-siege-rules').forEach(initialize);
+    document.querySelectorAll('#global-siege-rules, [data-nested-rule-editor]').forEach(initialize);
 }());

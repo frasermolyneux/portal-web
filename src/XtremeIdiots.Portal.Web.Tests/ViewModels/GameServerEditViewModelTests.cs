@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
@@ -185,9 +186,12 @@ public class GameServerEditViewModelTests
             new VpnProtectionRuleViewModel
             {
                 Id = "vpn",
-                Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                Operator = VpnProtectionComparisonOperator.Equal,
-                ExpectedValue = "true",
+                Condition = new RuleConditionViewModel
+                {
+                    Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                    Operator = RuleComparisonOperator.Equal,
+                    ExpectedValue = "true"
+                },
                 Action = VpnProtectionAction.Ban
             }
         ];

@@ -71,7 +71,7 @@
                             ["AvailablePlayerTags"] = Model.AvailableRequiredTags
                         };
                     }
-                    @await Html.PartialAsync("_SiegeModeConditionEditor", rule.Condition, conditionViewData)
+                    @await Html.PartialAsync("_RuleConditionEditor", rule.Condition, conditionViewData)
                 </div>
             }
         </div>
@@ -113,12 +113,12 @@
 
 <template id="siege-mode-condition-template">
     @{
-        var emptyCondition = new SiegeModeConditionViewModel();
+        var emptyCondition = new RuleConditionViewModel();
         var templateViewData = new ViewDataDictionary(ViewData)
         {
             ["ConditionPrefix"] = "__prefix__",
             ["AvailablePlayerTags"] = Model.AvailableRequiredTags
         };
     }
-    @await Html.PartialAsync("_SiegeModeConditionEditor", emptyCondition, templateViewData)
+    @await Html.PartialAsync("_RuleConditionEditor", emptyCondition, templateViewData)
 </template>

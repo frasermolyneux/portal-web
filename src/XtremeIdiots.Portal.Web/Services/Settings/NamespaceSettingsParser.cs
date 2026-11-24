@@ -27,6 +27,52 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly static System.Text.Json.JsonSerializerOptions vpnSerializerOptions = new(serializerOptions)
+    {
+        Converters = { new BooleanStringConverter() }
+    };
+
+    public bool TryParseVpnProtectionSettings(
+        ConfigurationDto config,
+        out VpnProtectionSettingsDocument? settings,
+        out IReadOnlyList<string> errors)
+    {
+        settings = null;
+        errors = [];
+        if (!string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+        {
+            errors = [$"Configuration namespace must be '{VpnProtectionSettingsConstants.Namespace}'."];
+            return false;
+        }
+
+        VpnProtectionSettingsDocument? parsed;
+        try
+        {
+            parsed = System.Text.Json.JsonSerializer.Deserialize<VpnProtectionSettingsDocument>(config.Configuration, vpnSerializerOptions);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            errors = [$"VPN Protection configuration is invalid JSON: {ex.Message}"];
+            return false;
+        }
+
+        if (parsed is null)
+        {
+            errors = ["VPN Protection configuration did not contain a settings document."];
+            return false;
+        }
+
+        var validation = new VpnProtectionSettingsValidator().Validate(parsed);
+        if (!validation.IsValid)
+        {
+            errors = validation.Errors;
+            return false;
+        }
+
+        settings = parsed;
+        return true;
+    }
+
     public bool TryParseSiegeModeSettings(
         ConfigurationDto config,
         out SiegeModeSettingsDocument? settings,
@@ -137,9 +183,13 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case VpnProtectionSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out VpnProtectionSettingsDocument? vpnProtectionDocument) && vpnProtectionDocument is not null)
+                if (TryParseVpnProtectionSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
                 {
                     VpnProtectionSettingsJsonMapper.PopulateGlobal(model.VpnProtection, vpnProtectionDocument);
+                }
+                else
+                {
+                    logger.LogWarning("Failed to parse global VPN Protection configuration: {Errors}", string.Join("; ", vpnErrors));
                 }
 
                 break;
@@ -338,9 +388,13 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case VpnProtectionSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out VpnProtectionSettingsDocument? vpnProtectionDocument) && vpnProtectionDocument is not null)
+                if (TryParseVpnProtectionSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
                 {
                     VpnProtectionSettingsJsonMapper.PopulateServer(model.VpnProtection, vpnProtectionDocument);
+                }
+                else
+                {
+                    logger.LogWarning("Failed to parse server VPN Protection configuration: {Errors}", string.Join("; ", vpnErrors));
                 }
 
                 break;
@@ -457,9 +511,13 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case VpnProtectionSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out VpnProtectionSettingsDocument? vpnProtectionDocument) && vpnProtectionDocument is not null)
+                if (TryParseVpnProtectionSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
                 {
                     VpnProtectionSettingsJsonMapper.PopulateGlobal(model.GlobalVpnProtection, vpnProtectionDocument);
+                }
+                else
+                {
+                    logger.LogWarning("Failed to parse global VPN Protection configuration: {Errors}", string.Join("; ", vpnErrors));
                 }
 
                 break;
@@ -633,6 +691,21 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 model.RconConfigPassword = rconDocument.Password;
             }
         }
+    }
+
+    private sealed class BooleanStringConverter : System.Text.Json.Serialization.JsonConverter<bool>
+    {
+        public override bool Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options)
+        {
+            if (reader.TokenType is System.Text.Json.JsonTokenType.True or System.Text.Json.JsonTokenType.False)
+                return reader.GetBoolean();
+            if (reader.TokenType == System.Text.Json.JsonTokenType.String && bool.TryParse(reader.GetString(), out var value))
+                return value;
+            throw new System.Text.Json.JsonException("Expected a boolean value.");
+        }
+
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, bool value, System.Text.Json.JsonSerializerOptions options)
+            => writer.WriteBooleanValue(value);
     }
 
     private static bool TryDeserialize<T>(ConfigurationDto config, ILogger logger, out T? document)

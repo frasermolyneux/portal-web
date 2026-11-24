@@ -1,3 +1,4 @@
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
@@ -108,18 +109,18 @@ public static class VpnProtectionRuleEditorOptions
         };
     }
 
-    public static string GetOperatorLabel(VpnProtectionComparisonOperator comparisonOperator)
+    public static string GetOperatorLabel(RuleComparisonOperator comparisonOperator)
     {
         return comparisonOperator switch
         {
-            VpnProtectionComparisonOperator.Equal => "Is equal to",
-            VpnProtectionComparisonOperator.NotEqual => "Is not equal to",
-            VpnProtectionComparisonOperator.GreaterThan => "Is greater than",
-            VpnProtectionComparisonOperator.GreaterThanOrEqual => "Is at least",
-            VpnProtectionComparisonOperator.LessThan => "Is less than",
-            VpnProtectionComparisonOperator.LessThanOrEqual => "Is at most",
-            VpnProtectionComparisonOperator.Contains => "Contains",
-            VpnProtectionComparisonOperator.Unknown => "Select an operator",
+            RuleComparisonOperator.Equal => "Is equal to",
+            RuleComparisonOperator.NotEqual => "Is not equal to",
+            RuleComparisonOperator.GreaterThan => "Is greater than",
+            RuleComparisonOperator.GreaterThanOrEqual => "Is at least",
+            RuleComparisonOperator.LessThan => "Is less than",
+            RuleComparisonOperator.LessThanOrEqual => "Is at most",
+            RuleComparisonOperator.Contains => "Contains",
+            RuleComparisonOperator.Unknown => "Select an operator",
             _ => throw new ArgumentOutOfRangeException(nameof(comparisonOperator), comparisonOperator, null)
         };
     }

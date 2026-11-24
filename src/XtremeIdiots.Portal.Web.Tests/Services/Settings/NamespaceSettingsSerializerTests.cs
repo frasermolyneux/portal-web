@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Agent;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.BanFiles;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
@@ -11,6 +10,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -185,9 +185,12 @@ public class NamespaceSettingsSerializerTests
                     new VpnProtectionRuleViewModel
                     {
                         Id = "vpn",
-                        Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                        Operator = VpnProtectionComparisonOperator.Equal,
-                        ExpectedValue = "true",
+                        Condition = new RuleConditionViewModel
+                        {
+                            Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                            Operator = RuleComparisonOperator.Equal,
+                            ExpectedValue = "true"
+                        },
                         Action = VpnProtectionAction.Observation,
                         PostObservationToForums = false
                     }
@@ -203,6 +206,8 @@ public class NamespaceSettingsSerializerTests
 
         Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
         Assert.Equal("vpn", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
+        Assert.Equal(2, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("ProxyCheckIsVpn", document.RootElement.GetProperty("rules")[0].GetProperty("condition").GetProperty("signal").GetString());
         Assert.False(document.RootElement.GetProperty("rules")[0].GetProperty("postObservationToForums").GetBoolean());
         Assert.Equal(2, document.RootElement.GetProperty("excludedPlayerTags").GetArrayLength());
     }
@@ -217,32 +222,32 @@ public class NamespaceSettingsSerializerTests
             new SiegeModeRuleViewModel
             {
                 Id = "new-vpn-ip",
-                Condition = new SiegeModeConditionViewModel
+                Condition = new RuleConditionViewModel
                 {
-                    GroupOperator = SiegeConditionGroupOperator.And,
+                    GroupOperator = RuleConditionGroupOperator.And,
                     Conditions =
                     [
-                        new SiegeModeConditionViewModel
+                        new RuleConditionViewModel
                         {
                             PlayerSignal = SiegePlayerSignal.NewIp,
-                            Operator = VpnProtectionComparisonOperator.Equal,
+                            Operator = RuleComparisonOperator.Equal,
                             ExpectedValue = "true"
                         },
-                        new SiegeModeConditionViewModel
+                        new RuleConditionViewModel
                         {
-                            GroupOperator = SiegeConditionGroupOperator.Or,
+                            GroupOperator = RuleConditionGroupOperator.Or,
                             Conditions =
                             [
-                                new SiegeModeConditionViewModel
+                                new RuleConditionViewModel
                                 {
                                     Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                                    Operator = VpnProtectionComparisonOperator.Equal,
+                                    Operator = RuleComparisonOperator.Equal,
                                     ExpectedValue = "true"
                                 },
-                                new SiegeModeConditionViewModel
+                                new RuleConditionViewModel
                                 {
                                     Signal = VpnProtectionSignal.MaxMindIsAnonymousVpn,
-                                    Operator = VpnProtectionComparisonOperator.Equal,
+                                    Operator = RuleComparisonOperator.Equal,
                                     ExpectedValue = "true"
                                 }
                             ]
@@ -290,9 +295,12 @@ public class NamespaceSettingsSerializerTests
             new VpnProtectionRuleViewModel
             {
                 Id = "local",
-                Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                Operator = VpnProtectionComparisonOperator.Equal,
-                ExpectedValue = "true",
+                Condition = new RuleConditionViewModel
+                {
+                    Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                    Operator = RuleComparisonOperator.Equal,
+                    ExpectedValue = "true"
+                },
                 Action = VpnProtectionAction.Observation,
                 PostObservationToForums = false
             }

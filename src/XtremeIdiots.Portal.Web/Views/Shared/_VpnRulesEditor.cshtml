@@ -1,0 +1,61 @@
+@model XtremeIdiots.Portal.Web.ViewModels.VpnRulesEditorViewModel
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@using XtremeIdiots.Portal.Web.ViewModels
+
+<div class="d-flex justify-content-between align-items-center mb-2 mt-4">
+    <h6 class="mb-0">@Model.Title</h6>
+    <button type="button" class="btn btn-primary btn-sm" id="@(Model.Id)-add"
+            disabled="@(Model.IsOverride && Model.GlobalRules.Count == 0 ? "disabled" : null)">
+        <i class="fa-solid fa-fw fa-plus" aria-hidden="true"></i> @Model.AddLabel
+    </button>
+</div>
+<div id="@Model.Id" data-nested-rule-editor data-field-prefix="@Model.Prefix"
+     data-rule-template="@(Model.Id)-rule-template" data-condition-template="@(Model.Id)-condition-template"
+     data-add-button="@(Model.Id)-add" data-default-leaf="vpn">
+    @if (Model.IsOverride)
+    {
+        @for (var index = 0; index < Model.Overrides.Count; index++)
+        {
+            @await Html.PartialAsync("_VpnRuleRow", new VpnRuleEditorRowViewModel
+            {
+                Prefix = $"{Model.Prefix}[{index}]",
+                Override = Model.Overrides[index],
+                GlobalRules = Model.GlobalRules,
+                SupportsDestructiveActions = Model.SupportsDestructiveActions
+            })
+        }
+    }
+    else
+    {
+        @for (var index = 0; index < Model.Rules.Count; index++)
+        {
+            @await Html.PartialAsync("_VpnRuleRow", new VpnRuleEditorRowViewModel
+            {
+                Prefix = $"{Model.Prefix}[{index}]",
+                Rule = Model.Rules[index],
+                SupportsDestructiveActions = Model.SupportsDestructiveActions
+            })
+        }
+    }
+</div>
+<template id="@(Model.Id)-rule-template">
+    @await Html.PartialAsync("_VpnRuleRow", new VpnRuleEditorRowViewModel
+    {
+        Prefix = "__rule__",
+        Rule = Model.IsOverride ? null : new VpnProtectionRuleViewModel { Action = XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection.VpnProtectionAction.Observation },
+        Override = Model.IsOverride ? new VpnProtectionRuleOverrideViewModel() : null,
+        GlobalRules = Model.GlobalRules,
+        SupportsDestructiveActions = Model.SupportsDestructiveActions,
+        IsTemplate = true
+    })
+</template>
+<template id="@(Model.Id)-condition-template">
+    @{
+        var templateData = new ViewDataDictionary(ViewData)
+        {
+            ["ConditionPrefix"] = "__prefix__",
+            ["SupportsPlayerConditions"] = false
+        };
+    }
+    @await Html.PartialAsync("_RuleConditionEditor", new RuleConditionViewModel(), templateData)
+</template>

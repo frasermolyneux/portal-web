@@ -169,6 +169,25 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
+    public async Task Index_Post_DoesNotReplaceLegacyVpnSettings()
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = VpnProtectionSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"enabled":false,"rules":[]}"""
+        }))!);
+        var model = new GlobalSettingsViewModel();
+        PrepareSiegeSubmission(sut, model);
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await sut.Index(model));
+
+        Assert.Contains("unsupported schema", Assert.IsType<string>(result.Value));
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Index_Post_DoesNotSaveWhenConfigurationsCannotBeRetrieved()
     {
         var sut = CreateSut();
