@@ -14,6 +14,11 @@ public sealed class GlobalSettingsService(
         namespaceSettingsParser.PopulateGlobalSettingsViewModel(model, config, logger);
     }
 
+    public bool TryValidateSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseSiegeModeSettings(config, out _, out errors);
+    }
+
     public IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(GlobalSettingsViewModel model)
     {
         return namespaceSettingsSerializer.BuildGlobalSettingsConfigurations(model);

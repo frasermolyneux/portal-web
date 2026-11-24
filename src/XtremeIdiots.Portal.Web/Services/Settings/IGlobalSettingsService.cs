@@ -9,5 +9,7 @@ public interface IGlobalSettingsService
 
     void PopulateModelFromNamespace(GlobalSettingsViewModel model, ConfigurationDto config, ILogger logger);
 
+    bool TryValidateSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
+
     IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(GlobalSettingsViewModel model);
 }

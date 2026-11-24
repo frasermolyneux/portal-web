@@ -16,6 +16,19 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.MapRotations;
 [Trait("Category", "Browser")]
 public sealed class MapRotationRecoveryBrowserTests
 {
+    [Fact]
+    public async Task Siege_banner_is_available_with_the_recovery_scenario()
+    {
+        var scenario = new MapRotationRecoveryScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/SiegeMode/Banner").AbsoluteUri);
+
+        Assert.NotNull(response);
+        Assert.Equal(200, response.Status);
+        browser.AssertNoBrowserErrors();
+    }
+
     [Theory]
     [InlineData(false, 1280)]
     [InlineData(true, 1280)]

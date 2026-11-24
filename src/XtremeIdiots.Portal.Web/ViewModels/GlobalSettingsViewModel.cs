@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
@@ -133,6 +135,8 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public VpnProtectionGlobalSettingsViewModel VpnProtection { get; set; } = new();
 
+    public SiegeModeGlobalSettingsViewModel SiegeMode { get; set; } = new();
+
     public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];
 
     public bool IsRequiredTagsCatalogAvailable { get; private set; }
@@ -141,15 +145,13 @@ public class GlobalSettingsViewModel : IValidatableObject
     {
         SyncCod4xPowerTagMappings();
 
-        if (BroadcastMessages is null)
-            yield break;
-
-        for (var i = 0; i < BroadcastMessages.Count; i++)
+        var broadcastMessages = BroadcastMessages ?? [];
+        for (var i = 0; i < broadcastMessages.Count; i++)
         {
-            if (string.IsNullOrWhiteSpace(BroadcastMessages[i].Message))
+            if (string.IsNullOrWhiteSpace(broadcastMessages[i].Message))
                 yield return new ValidationResult("Broadcast message is required.", [$"BroadcastMessages[{i}].Message"]);
 
-            if (BroadcastMessages[i].Message?.Length > MaxFunnyMessageLength)
+            if (broadcastMessages[i].Message?.Length > MaxFunnyMessageLength)
                 yield return new ValidationResult($"Broadcast message cannot exceed {MaxFunnyMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
         }
 
@@ -164,6 +166,11 @@ public class GlobalSettingsViewModel : IValidatableObject
         }
 
         foreach (var validationResult in VpnProtection.Validate(validationContext))
+        {
+            yield return validationResult;
+        }
+
+        foreach (var validationResult in SiegeMode.Validate(validationContext))
         {
             yield return validationResult;
         }
@@ -249,5 +256,124 @@ public class GlobalSettingsViewModel : IValidatableObject
         }
 
         return options;
+    }
+}
+
+public sealed class SiegeModeGlobalSettingsViewModel : IValidatableObject
+{
+    [DisplayName("Default Duration (minutes)")]
+    [Range(1, int.MaxValue, ErrorMessage = "Siege Mode duration must be at least one minute.")]
+    public int DurationMinutes { get; set; } = SiegeModeSettingsConstants.DefaultDurationMinutes;
+
+    public List<SiegeModeRuleViewModel> Rules { get; set; } = SiegeModeSettingsViewModelMapper.CreateDefaultRules();
+
+    public int? SubmittedRuleCount { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        var validation = new SiegeModeSettingsValidator().Validate(SiegeModeSettingsViewModelMapper.ToDocument(this));
+        foreach (var error in validation.Errors)
+        {
+            yield return new ValidationResult(error, [nameof(Rules)]);
+        }
+    }
+}
+
+public sealed class SiegeModeRuleViewModel
+{
+    [Required]
+    public string Id { get; set; } = string.Empty;
+
+    public bool Enabled { get; set; } = true;
+
+    public SiegeModeConditionViewModel Condition { get; set; } = new();
+}
+
+public sealed class SiegeModeConditionViewModel
+{
+    public SiegeConditionGroupOperator? GroupOperator { get; set; }
+
+    public List<SiegeModeConditionViewModel> Conditions { get; set; } = [];
+
+    public VpnProtectionSignal? Signal { get; set; }
+
+    public SiegePlayerSignal? PlayerSignal { get; set; }
+
+    public VpnProtectionComparisonOperator? Operator { get; set; }
+
+    public string? ExpectedValue { get; set; }
+}
+
+internal static class SiegeModeSettingsViewModelMapper
+{
+    public static List<SiegeModeRuleViewModel> CreateDefaultRules()
+    {
+        var defaults = new SiegeModeSettingsDocument();
+        return [.. defaults.Rules.Select(ToViewModel)];
+    }
+
+    public static SiegeModeSettingsDocument ToDocument(SiegeModeGlobalSettingsViewModel model)
+    {
+        var document = new SiegeModeSettingsDocument
+        {
+            DurationMinutes = model.DurationMinutes,
+            Rules = [.. (model.Rules ?? []).Select(rule => new SiegeModeRule
+            {
+                Id = rule.Id,
+                Enabled = rule.Enabled,
+                Condition = ToContract(rule.Condition)
+            })]
+        };
+
+        return document;
+    }
+
+    public static void Populate(SiegeModeGlobalSettingsViewModel model, SiegeModeSettingsDocument document)
+    {
+        model.DurationMinutes = document.DurationMinutes;
+        model.Rules = [.. document.Rules.Select(ToViewModel)];
+    }
+
+    private static SiegeModeRuleViewModel ToViewModel(SiegeModeRule rule)
+    {
+        return new()
+        {
+            Id = rule.Id,
+            Enabled = rule.Enabled,
+            Condition = ToViewModel(rule.Condition)
+        };
+    }
+
+    private static SiegeModeConditionViewModel ToViewModel(SiegeModeCondition? condition)
+    {
+        if (condition is null)
+        {
+            return new();
+        }
+
+        return new()
+        {
+            GroupOperator = condition.GroupOperator,
+            Conditions = [.. (condition.Conditions ?? []).Select(ToViewModel)],
+            Signal = condition.Signal,
+            PlayerSignal = condition.PlayerSignal,
+            Operator = condition.Operator,
+            ExpectedValue = condition.ExpectedValue
+        };
+    }
+
+    private static SiegeModeCondition ToContract(SiegeModeConditionViewModel condition)
+    {
+        return new()
+        {
+            GroupOperator = condition.GroupOperator,
+            Conditions = condition.GroupOperator.HasValue
+                ? [.. (condition.Conditions ?? []).Select(ToContract)]
+                : null,
+            Signal = condition.Signal,
+            PlayerSignal = condition.PlayerSignal,
+            Operator = condition.Operator,
+            ExpectedValue = condition.ExpectedValue
+        };
     }
 }

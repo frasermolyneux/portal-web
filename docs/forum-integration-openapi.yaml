@@ -7,6 +7,103 @@ servers:
 security:
   - portalCookie: []
 paths:
+  /api/integration/v1/siege-mode:
+    get:
+      summary: Authorized production Siege Mode servers and current sessions
+      description: Private no-store response. Resolve portalUrl against the Portal origin.
+      responses:
+        '200':
+          description: Portal identity, global duration and authorized servers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [portalUser, defaultDurationMinutes, servers]
+                properties:
+                  portalUser:
+                    type: object
+                    required: [displayName]
+                    properties:
+                      displayName:
+                        type: string
+                  defaultDurationMinutes:
+                    type: integer
+                  servers:
+                    type: array
+                    items:
+                      type: object
+                      required: [gameServerId, name, gameType, canActivate, currentSession, portalUrl]
+                      properties:
+                        gameServerId:
+                          type: string
+                          format: uuid
+                        name:
+                          type: string
+                        gameType:
+                          type: string
+                        canActivate:
+                          type: boolean
+                        currentSession:
+                          allOf:
+                            - $ref: '#/components/schemas/SiegeSession'
+                          nullable: true
+                        portalUrl:
+                          type: string
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: Siege Mode access denied or Portal identity unavailable.
+        '422':
+          description: Stored Siege Mode settings are invalid.
+        '503':
+          description: Required dependency unavailable.
+  /api/integration/v1/siege-mode/servers/{gameServerId}/activate:
+    post:
+      summary: Activate Siege Mode on a production server
+      description: Confirm the Portal identity, production server, selected mode and displayed default duration. A 409 requires refreshing and confirming again.
+      parameters:
+        - in: path
+          name: gameServerId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Antiforgery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, expectedDurationMinutes]
+              properties:
+                mode:
+                  type: string
+                  enum: [Enforce, DryRun]
+                expectedDurationMinutes:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Activated session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiegeSession'
+        '400':
+          description: Invalid input or antiforgery token. Mode and duration are validated after server lookup and authorization.
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: Server access denied or Portal identity unavailable.
+        '404':
+          description: Server not found.
+        '409':
+          description: Already active or displayed duration changed; refresh and reconfirm.
+        '422':
+          description: Stored Siege Mode settings are invalid.
+        '503':
+          description: Required dependency unavailable.
   /api/integration/v1/server-admin:
     get:
       summary: Server Admin index and authorized Portal action links
@@ -778,6 +875,22 @@ components:
       in: cookie
       name: XIPortal
   schemas:
+    SiegeSession:
+      type: object
+      required: [sessionId, startedAtUtc, expiresAtUtc, mode]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        startedAtUtc:
+          type: string
+          format: date-time
+        expiresAtUtc:
+          type: string
+          format: date-time
+        mode:
+          type: string
+          enum: [Enforce, DryRun]
     PlayerMapLocation:
       type: object
       required: [lat, lng, gameType, activity]

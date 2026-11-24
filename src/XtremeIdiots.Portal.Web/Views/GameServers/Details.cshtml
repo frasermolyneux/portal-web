@@ -26,6 +26,9 @@
                 <div class="ibox">
                     <div class="ibox-title">
                         <h5>@ViewData["Title"]</h5>
+                        <a policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@Model.GameType"
+                           asp-controller="SiegeMode" asp-action="Activate" asp-route-id="@Model.GameServerId"
+                           class="btn btn-danger fw-bold float-end">Enable Siege Mode</a>
                     </div>
                     <div class="ibox-content">
                         <div class="detail-fields row">

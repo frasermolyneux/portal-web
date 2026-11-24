@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
@@ -65,5 +66,19 @@ public class GlobalSettingsRequiredTagsValidationTests
 
         // With the catalog applied, the tag validation logic remains intact.
         Assert.True(HasTagUnavailableError(model));
+    }
+
+    [Fact]
+    public void Validate_SiegeTagOutsideCatalog_PreservesContractDefault()
+    {
+        var model = new GlobalSettingsViewModel();
+        model.ApplyAvailableRequiredTags(
+            [new RequiredTagOptionViewModel { Name = "SeniorAdmin" }],
+            requiredTagsCatalogAvailable: true);
+
+        var rule = model.SiegeMode.Rules.Single(rule => rule.Id == "new-vpn-ip");
+        var tag = rule.Condition.Conditions.Single(condition => condition.PlayerSignal == SiegePlayerSignal.PlayerTag);
+        Assert.Equal("vpn-exempt", tag.ExpectedValue);
+        Assert.False(HasTagUnavailableError(model));
     }
 }

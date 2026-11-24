@@ -33,6 +33,9 @@
                     }
                 </h4>
                 <div>
+                    <a policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType"
+                       asp-controller="SiegeMode" asp-action="Activate" asp-route-id="@serverId"
+                       class="btn btn-danger fw-bold">Enable Siege Mode</a>
                     @if (Model.CanEditServer)
                     {
                         <a asp-controller="GameServers" asp-action="Edit" asp-route-id="@serverId"
@@ -77,9 +80,19 @@
                 <i class="fa-solid fa-fw fa-chart-line"></i> Analytics
             </button>
         </li>
+        <li class="nav-item" role="presentation" policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType">
+            <button class="nav-link" id="siege-tab" data-bs-toggle="tab" data-bs-target="#siege"
+                    type="button" role="tab" aria-controls="siege" aria-selected="false">Siege Mode</button>
+        </li>
     </ul>
 
     <div class="tab-content pt-3" id="serverDetailTabContent">
+        <div class="tab-pane fade" id="siege" role="tabpanel" aria-labelledby="siege-tab"
+             policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType">
+            <div id="siege-status" data-url="@Url.Action("Status", "SiegeMode", new { id = serverId })">
+                <p class="text-muted" role="status">Loading Siege Mode status...</p>
+            </div>
+        </div>
 
         @* ═══ OVERVIEW TAB (merged with Live Players) ═══ *@
         <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
@@ -484,6 +497,7 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/siege-mode.js" asp-append-version="true"></script>
     <script src="~/js/overview-panels.js" asp-append-version="true"></script>
 
     <environment names="Development">

@@ -40,6 +40,11 @@
                                     aria-controls="vpn-protection-tab" aria-selected="false">VPN Protection</button>
                         </li>
                         <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="siege-mode-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#siege-mode-tab" type="button" role="tab"
+                                    aria-controls="siege-mode-tab" aria-selected="false">Siege Mode</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
                             <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
                                     aria-selected="false">Chat Moderation</button>
@@ -170,6 +175,11 @@
                                                     <div class="tab-pane fade" id="vpn-protection-tab" role="tabpanel"
                                                          aria-labelledby="vpn-protection-tab-btn">
                                                         @await Html.PartialAsync("_VpnProtectionConfiguration", Model)
+                                                    </div>
+
+                                                    <div class="tab-pane fade" id="siege-mode-tab" role="tabpanel"
+                                                         aria-labelledby="siege-mode-tab-btn">
+                                                        @await Html.PartialAsync("_SiegeModeConfiguration", Model)
                                                     </div>
 
                                                     <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
@@ -346,6 +356,7 @@
                                                                 <script src="~/js/welcome-rules-manager.js" asp-append-version="true"></script>
                                                                 <script src="~/js/settings-row-manager.js" asp-append-version="true"></script>
                                                                 <script src="~/js/vpn-protection-rules.js" asp-append-version="true"></script>
+                                                                <script src="~/js/siege-mode-settings.js" asp-append-version="true"></script>
                                                                 <script>
                                                                     (function initializeGlobalSettingsRowManagers() {
                                                                     var containers = document.querySelectorAll('[data-chat-command-messages-container]');

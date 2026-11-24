@@ -62,6 +62,10 @@ internal sealed class MapRotationRecoveryScenario
                 It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
                 new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+        Repository.Setup(x => x.GameServers.V1.GetGameServers(
+                null, null, null, It.IsAny<int>(), 100, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
         Repository.Setup(x => x.MapRotations.V1.GetMapRotations(
                 It.IsAny<GameType[]>(), null, null, 0, 100, MapRotationsOrder.TitleAsc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<MapRotationDto>>(HttpStatusCode.OK,

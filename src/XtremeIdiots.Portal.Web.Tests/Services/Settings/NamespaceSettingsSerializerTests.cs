@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -204,6 +205,67 @@ public class NamespaceSettingsSerializerTests
         Assert.Equal("vpn", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
         Assert.False(document.RootElement.GetProperty("rules")[0].GetProperty("postObservationToForums").GetBoolean());
         Assert.Equal(2, document.RootElement.GetProperty("excludedPlayerTags").GetArrayLength());
+    }
+
+    [Fact]
+    public void BuildGlobalSettingsConfigurations_IncludesSiegeModeDurationAndNestedConditionGroups()
+    {
+        var model = new GlobalSettingsViewModel();
+        model.SiegeMode.DurationMinutes = 90;
+        model.SiegeMode.Rules =
+        [
+            new SiegeModeRuleViewModel
+            {
+                Id = "new-vpn-ip",
+                Condition = new SiegeModeConditionViewModel
+                {
+                    GroupOperator = SiegeConditionGroupOperator.And,
+                    Conditions =
+                    [
+                        new SiegeModeConditionViewModel
+                        {
+                            PlayerSignal = SiegePlayerSignal.NewIp,
+                            Operator = VpnProtectionComparisonOperator.Equal,
+                            ExpectedValue = "true"
+                        },
+                        new SiegeModeConditionViewModel
+                        {
+                            GroupOperator = SiegeConditionGroupOperator.Or,
+                            Conditions =
+                            [
+                                new SiegeModeConditionViewModel
+                                {
+                                    Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                                    Operator = VpnProtectionComparisonOperator.Equal,
+                                    ExpectedValue = "true"
+                                },
+                                new SiegeModeConditionViewModel
+                                {
+                                    Signal = VpnProtectionSignal.MaxMindIsAnonymousVpn,
+                                    Operator = VpnProtectionComparisonOperator.Equal,
+                                    ExpectedValue = "true"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ];
+
+        var configurations = serializer.BuildGlobalSettingsConfigurations(model);
+
+        var (_, json) = Assert.Single(
+            configurations,
+            static configuration => configuration.Namespace == SiegeModeSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(json);
+        var rule = document.RootElement.GetProperty("rules")[0];
+        var condition = rule.GetProperty("condition");
+        Assert.Equal(90, document.RootElement.GetProperty("durationMinutes").GetInt32());
+        Assert.Equal("And", condition.GetProperty("groupOperator").GetString());
+        Assert.Equal("NewIp", condition.GetProperty("conditions")[0].GetProperty("playerSignal").GetString());
+        Assert.Equal("Or", condition.GetProperty("conditions")[1].GetProperty("groupOperator").GetString());
+        Assert.Equal("ProxyCheckIsVpn",
+            condition.GetProperty("conditions")[1].GetProperty("conditions")[0].GetProperty("signal").GetString());
     }
 
     [Theory]

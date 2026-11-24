@@ -86,6 +86,9 @@ public class GameServersAuthHandler : IAuthorizationHandler
                 case GameServersAdminCoD4xPluginLifecycle:
                     HandleAdminCoD4xPluginLifecycle(context, requirement);
                     break;
+                case GameServersAdminSiegeMode:
+                    HandleAdminSiegeMode(context, requirement);
+                    break;
                 case GameServersAdminScreenshotsRead:
                     HandleAdminScreenshotsRead(context, requirement);
                     break;
@@ -290,6 +293,22 @@ public class GameServersAuthHandler : IAuthorizationHandler
     {
         BaseAuthorizationHelper.CheckSeniorOrHeadAdminAccessWithResource(context, requirement);
         BaseAuthorizationHelper.CheckDirectPermissionGrant(context, requirement, AdditionalPermission.GameServers_Admin_CoD4xPluginLifecycle);
+    }
+
+    private static void HandleAdminSiegeMode(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)
+    {
+        if (context.Resource is GameType gameType && Enum.IsDefined(gameType))
+        {
+            BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
+            BaseAuthorizationHelper.CheckHeadAdminAccess(context, requirement, gameType);
+        }
+        else if (context.Resource is PotentialAccessProbe)
+        {
+            BaseAuthorizationHelper.CheckSeniorAdminAccess(context, requirement);
+            if (context.User.Claims.Any(c => c.Type == UserProfileClaimType.HeadAdmin &&
+                Enum.TryParse<GameType>(c.Value, out var claimedGame) && Enum.IsDefined(claimedGame)))
+                context.Succeed(requirement);
+        }
     }
 
     private static void HandleAdminScreenshotsRead(AuthorizationHandlerContext context, IAuthorizationRequirement requirement)

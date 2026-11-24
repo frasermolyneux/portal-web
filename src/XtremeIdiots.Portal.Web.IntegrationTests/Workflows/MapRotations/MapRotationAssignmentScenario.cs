@@ -36,6 +36,11 @@ internal sealed class MapRotationAssignmentScenario
         var permittedServer = CreateGameServer(PermittedServerId, GameType.CallOfDuty4x, "COD4x Permitted Server", fileTransportEnabled);
         var nonPermittedServer = CreateGameServer(NonPermittedServerId, GameType.CallOfDuty4x, "COD4x Non-Permitted Server");
 
+        RepositoryClient.Setup(x => x.GameServers.V1.GetGameServers(
+                null, null, null, 0, 100, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([]))));
+
         // GetMapRotation — returns the COD4 rotation
         RepositoryClient
             .Setup(x => x.MapRotations.V1.GetMapRotation(RotationId, It.IsAny<CancellationToken>()))

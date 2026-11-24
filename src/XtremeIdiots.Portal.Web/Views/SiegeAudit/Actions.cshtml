@@ -1,0 +1,45 @@
+@model XtremeIdiots.Portal.Web.Controllers.SiegeAuditViewModel
+@{
+    ViewData["Title"] = "Siege Actions Audit";
+}
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row"><div class="col-12"><div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title"><h5>Siege Actions Audit</h5></div>
+            <div class="ibox-content">
+                <partial name="_Filters" model="Model" />
+                <p>Counts cover retained records in the selected server and time range, not just this page; deleting player-linked records reduces the counts. WouldKick is a dry-run decision; Pending, Queued and Dispatched are unconfirmed and do not establish a successful kick. Times are UTC.</p>
+                <h6>Action counts by mode and outcome</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped"><thead><tr><th>Mode</th><th>Outcome</th><th>Count</th></tr></thead>
+                        <tbody>@foreach (var count in Model.Summary) { <tr><td>@count.Mode</td><td>@count.Outcome</td><td>@count.Count</td></tr> }</tbody>
+                    </table>
+                </div>
+                @if (Model.Summary.Length == 0) { <p>No action counts found.</p> }
+                <h6>Actions</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped"><thead><tr><th>Session</th><th>Server</th><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <tbody>@foreach (var action in Model.Actions) {
+                            <tr><td>@action.SessionId</td><td>@Model.Servers.FirstOrDefault(s => s.GameServerId == action.GameServerId)?.Title</td>
+                                <td>@action.ClaimedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                                <td>@action.RuleId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
+                        }</tbody>
+                    </table>
+                </div>
+                @if (Model.Actions.Count == 0) { <p>No actions found on this page.</p> }
+                <h6>Checks</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped"><thead><tr><th>Session</th><th>Server</th><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <tbody>@foreach (var check in Model.Checks) {
+                            <tr><td>@check.SessionId</td><td>@Model.Servers.FirstOrDefault(s => s.GameServerId == check.GameServerId)?.Title</td>
+                                <td>@check.OccurredAtUtc.ToString("u")</td><td>@check.Mode</td><td>@check.PlayerGuid</td>
+                                <td>@check.Outcome</td><td>@check.Detail</td></tr>
+                        }</tbody>
+                    </table>
+                </div>
+                @if (Model.Checks.Count == 0) { <p>No checks found on this page.</p> }
+                <partial name="_Pagination" model="Model" />
+            </div>
+        </div>
+    </div></div></div>
+</div>

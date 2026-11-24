@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Services.Settings;
 using XtremeIdiots.Portal.Web.ViewModels;
@@ -17,6 +18,105 @@ public class NamespaceSettingsParserTests
 {
     private readonly NamespaceSettingsParser parser = new();
     private readonly ILogger logger = Mock.Of<ILogger>();
+
+    [Fact]
+    public void TryParseSiegeModeSettings_ValidDocument_ReturnsTypedSettings()
+    {
+        var configuration = BuildConfiguration(SiegeModeSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "durationMinutes": 240,
+          "rules": [
+            {
+              "id": "new-guid",
+              "enabled": true,
+              "condition": {
+                "playerSignal": "NewGuid",
+                "operator": "Equal",
+                "expectedValue": "true"
+              }
+            }
+          ]
+        }
+        """);
+
+        var result = parser.TryParseSiegeModeSettings(configuration, out var settings, out var errors);
+
+        Assert.True(result);
+        Assert.Empty(errors);
+        Assert.NotNull(settings);
+        Assert.Equal(240, settings.DurationMinutes);
+        Assert.Equal("new-guid", Assert.Single(settings.Rules).Id);
+    }
+
+    [Fact]
+    public void PopulateGlobalSettingsViewModel_SiegeMode_MapsDurationAndNestedConditions()
+    {
+        var model = new GlobalSettingsViewModel();
+        var configuration = BuildConfiguration(SiegeModeSettingsConstants.Namespace, /*lang=json,strict*/ """
+        {
+          "schemaVersion": 1,
+          "durationMinutes": 75,
+          "rules": [
+            {
+              "id": "history-and-vpn",
+              "enabled": true,
+              "condition": {
+                "groupOperator": "And",
+                "conditions": [
+                  {
+                    "playerSignal": "NewIp",
+                    "operator": "Equal",
+                    "expectedValue": "true"
+                  },
+                  {
+                    "groupOperator": "Or",
+                    "conditions": [
+                      {
+                        "signal": "ProxyCheckIsVpn",
+                        "operator": "Equal",
+                        "expectedValue": "true"
+                      },
+                      {
+                        "signal": "MaxMindIsAnonymousVpn",
+                        "operator": "Equal",
+                        "expectedValue": "true"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        """);
+
+        parser.PopulateGlobalSettingsViewModel(model, configuration, logger);
+
+        Assert.Equal(75, model.SiegeMode.DurationMinutes);
+        var condition = Assert.Single(model.SiegeMode.Rules).Condition;
+        Assert.Equal(SiegeConditionGroupOperator.And, condition.GroupOperator);
+        Assert.Equal(SiegePlayerSignal.NewIp, condition.Conditions[0].PlayerSignal);
+        Assert.Equal(SiegeConditionGroupOperator.Or, condition.Conditions[1].GroupOperator);
+        Assert.Equal(VpnProtectionSignal.ProxyCheckIsVpn, condition.Conditions[1].Conditions[0].Signal);
+    }
+
+    [Theory]
+    [InlineData("siegeMode", "{")]
+    [InlineData("other", /*lang=json,strict*/ """{"schemaVersion":1,"durationMinutes":240,"rules":[]}""")]
+    [InlineData("siegeMode", /*lang=json,strict*/ """{"schemaVersion":1,"durationMinutes":0,"rules":[]}""")]
+    public void TryParseSiegeModeSettings_InvalidDocument_FailsClosed(
+        string configurationNamespace,
+        string configurationJson)
+    {
+        var configuration = BuildConfiguration(configurationNamespace, configurationJson);
+
+        var result = parser.TryParseSiegeModeSettings(configuration, out var settings, out var errors);
+
+        Assert.False(result);
+        Assert.Null(settings);
+        Assert.NotEmpty(errors);
+    }
 
     [Fact]
     public void PopulateGlobalSettingsViewModel_VpnProtection_MapsRulesAndExcludedTags()

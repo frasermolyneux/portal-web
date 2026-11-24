@@ -1,11 +1,24 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
 
 public class GlobalSettingsViewModelTests
 {
+    [Fact]
+    public void SiegeMode_DefaultsUsePublishedDurationAndRules()
+    {
+        var model = new GlobalSettingsViewModel();
+
+        Assert.Equal(SiegeModeSettingsConstants.DefaultDurationMinutes, model.SiegeMode.DurationMinutes);
+        Assert.Equal("new-guid", model.SiegeMode.Rules[0].Id);
+        Assert.Equal(SiegePlayerSignal.NewGuid, model.SiegeMode.Rules[0].Condition.PlayerSignal);
+        Assert.Equal("new-vpn-ip", model.SiegeMode.Rules[1].Id);
+        Assert.Equal(SiegeConditionGroupOperator.And, model.SiegeMode.Rules[1].Condition.GroupOperator);
+    }
+
     [Fact]
     public void Validate_WhenFunnyMessageExceeds120Characters_ReturnsValidationError()
     {
@@ -41,9 +54,10 @@ public class GlobalSettingsViewModelTests
             ]
         };
 
-        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), [], true);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(model, new ValidationContext(model), validationResults, true);
 
-        Assert.True(isValid);
+        Assert.True(isValid, string.Join("; ", validationResults.Select(static result => result.ErrorMessage)));
     }
 
     [Fact]

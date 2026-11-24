@@ -1,0 +1,14 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode
+@model IReadOnlyList<XtremeIdiots.Portal.Web.ViewModels.SiegeModeBannerItem>
+
+@if (Model.Count > 0)
+{
+    <div class="alert alert-warning mb-0" role="status">
+        <strong>Siege Mode active:</strong>
+        @foreach (var item in Model)
+        {
+            <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@item.ServerId">@item.ServerName</a>
+            <span>(@(item.Session.Mode switch { SiegeSessionMode.DryRun => "Dry Run", SiegeSessionMode.Enforce => "Enforcing", _ => "Unknown mode" }), until @item.Session.ExpiresAtUtc.ToString("u"))</span>
+        }
+    </div>
+}

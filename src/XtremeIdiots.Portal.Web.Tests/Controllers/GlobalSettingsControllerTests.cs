@@ -19,6 +19,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Controllers;
@@ -29,6 +30,20 @@ namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
 public class GlobalSettingsControllerTests
 {
+    private static void PrepareSiegeSubmission(GlobalSettingsController controller, GlobalSettingsViewModel model)
+    {
+        model.SiegeMode.SubmittedRuleCount = model.SiegeMode.Rules.Count;
+        controller.ModelState.SetModelValue("SiegeMode.DurationMinutes", model.SiegeMode.DurationMinutes, model.SiegeMode.DurationMinutes.ToString());
+        controller.ModelState.MarkFieldValid("SiegeMode.DurationMinutes");
+        controller.ModelState.SetModelValue("SiegeMode.SubmittedRuleCount", model.SiegeMode.SubmittedRuleCount, model.SiegeMode.SubmittedRuleCount.ToString());
+        controller.ModelState.MarkFieldValid("SiegeMode.SubmittedRuleCount");
+        if (model.SiegeMode.Rules.Count > 0)
+        {
+            controller.ModelState.SetModelValue("SiegeMode.Rules[0].Id", model.SiegeMode.Rules[0].Id, model.SiegeMode.Rules[0].Id);
+            controller.ModelState.MarkFieldValid("SiegeMode.Rules[0].Id");
+        }
+    }
+
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<GlobalSettingsController>> mockLogger = new();
@@ -40,6 +55,7 @@ public class GlobalSettingsControllerTests
 
     private GlobalSettingsController CreateSut(ClaimsPrincipal? user = null)
     {
+        SetupConfigurations();
         var controller = new GlobalSettingsController(
             mockRepositoryApiClient.Object,
             globalSettingsService,
@@ -101,6 +117,84 @@ public class GlobalSettingsControllerTests
                 mockLogger.Object,
                 null!,
                 auditLogger));
+    }
+
+    [Fact]
+    public async Task Index_Get_ReturnsUnavailableWhenConfigurationsCannotBeRetrieved()
+    {
+        var sut = CreateSut();
+        mockRepositoryApiClient
+            .Setup(client => client.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+
+        var result = Assert.IsType<StatusCodeResult>(await sut.Index(default));
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Index_Get_ReturnsUnprocessableEntityWhenSiegeSettingsAreUnreadable()
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SiegeModeSettingsConstants.Namespace,
+            Configuration = "not-json"
+        }))!);
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await sut.Index(default));
+
+        Assert.Contains("Saved Siege Mode settings are unreadable", Assert.IsType<string>(result.Value));
+    }
+
+    [Fact]
+    public async Task Index_Post_DoesNotSaveWhenExistingSiegeSettingsAreUnreadable()
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SiegeModeSettingsConstants.Namespace,
+            Configuration = "not-json"
+        }))!);
+        var model = new GlobalSettingsViewModel();
+        PrepareSiegeSubmission(sut, model);
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await sut.Index(model));
+
+        Assert.Contains("Saved Siege Mode settings are unreadable", Assert.IsType<string>(result.Value));
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.DeleteConfiguration(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Index_Post_DoesNotSaveWhenConfigurationsCannotBeRetrieved()
+    {
+        var sut = CreateSut();
+        mockRepositoryApiClient
+            .Setup(client => client.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+        var model = new GlobalSettingsViewModel();
+        PrepareSiegeSubmission(sut, model);
+
+        var result = Assert.IsType<StatusCodeResult>(await sut.Index(model));
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.DeleteConfiguration(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private void SetupConfigurations(params ConfigurationDto[] configurations)
+    {
+        mockRepositoryApiClient
+            .Setup(client => client.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(
+                    new CollectionModel<ConfigurationDto>(configurations))));
     }
 
     [Fact]
@@ -265,6 +359,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -322,6 +417,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -389,6 +485,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -447,6 +544,7 @@ public class GlobalSettingsControllerTests
             }
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -498,6 +596,7 @@ public class GlobalSettingsControllerTests
             ServerListHtmlBanner = "<b>Global banner</b>"
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -541,6 +640,7 @@ public class GlobalSettingsControllerTests
         kickCommand.Enabled = false;
         kickCommand.MinPower = 99;
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -575,6 +675,7 @@ public class GlobalSettingsControllerTests
             ]
         };
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);
@@ -609,6 +710,7 @@ public class GlobalSettingsControllerTests
         };
         var sut = CreateSut();
 
+        PrepareSiegeSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);

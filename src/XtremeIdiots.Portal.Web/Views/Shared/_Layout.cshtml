@@ -1,4 +1,6 @@
 ﻿@using XtremeIdiots.Portal.Web.Extensions
+@using XtremeIdiots.Portal.Web.Auth
+@using XtremeIdiots.Portal.Web.Auth.Constants
 @inject IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="en">
@@ -73,6 +75,8 @@
 
     <!-- Main Content -->
     <main id="page-wrapper" class="@Html.PageClass() gray-bg @ViewBag.SpecialClass">
+        <div policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@PotentialAccessProbe.Instance"
+             id="siege-banner" data-url="@Url.Action("Banner", "SiegeMode")"></div>
         <div class="animated fadeInRight alerts-container">
             <alerts></alerts>
         </div>
@@ -104,6 +108,7 @@
     <script src="~/js/enhanced-ui.js" asp-append-version="true"></script>
     <script src="~/js/vendor/dompurify.min.js" asp-append-version="true"></script>
     <script src="~/js/async-data.js" asp-append-version="true"></script>
+    <script src="~/js/siege-banner.js" asp-append-version="true"></script>
     <script src="~/js/notifications.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("scripts", false)
