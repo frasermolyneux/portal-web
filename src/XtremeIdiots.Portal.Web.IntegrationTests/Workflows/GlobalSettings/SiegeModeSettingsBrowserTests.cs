@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
@@ -19,6 +20,44 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 [Trait("Category", "Browser")]
 public sealed class SiegeModeSettingsBrowserTests
 {
+    [Fact]
+    public async Task VpnEditor_NestedRulesRoundTripWithoutChangingSiegeRules()
+    {
+        var scenario = new SettingsScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await OpenSettings(page, browser.Host.BaseAddress);
+        await page.Locator("#vpn-protection-tab-btn").ClickAsync();
+
+        await page.Locator("#global-vpn-rules-add").ClickAsync();
+        var rule = page.Locator("#global-vpn-rules > [data-siege-rule-row]").First;
+        await rule.Locator("[data-rule-field='Id']").FillAsync("nested-vpn");
+        await rule.Locator("[data-rule-field='PostObservationToForums']").UncheckAsync();
+        var root = rule.Locator("[data-siege-condition-mount] > [data-siege-condition-node]");
+        var firstCondition = root.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]").First;
+        await Assertions.Expect(firstCondition.Locator("select[data-condition-field='ExpectedValue']")).ToHaveValueAsync("true");
+        await root.Locator(":scope > .row [data-action='add-siege-group']").ClickAsync();
+        var children = root.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]");
+        var nested = children.Nth(1);
+        await nested.Locator(":scope > [data-condition-group] > .row [data-condition-field='GroupOperator']").SelectOptionAsync("Or");
+        await nested.Locator(":scope > .row [data-action='add-siege-vpn-condition']").ClickAsync();
+        var nestedChildren = nested.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]");
+        await nestedChildren.Nth(1).Locator("[data-condition-field='Signal']").SelectOptionAsync("MaxMindIsAnonymousVpn");
+        await Assertions.Expect(page.Locator("#SiegeMode_SubmittedRuleCount")).ToHaveValueAsync("2");
+
+        await SaveSettings(page);
+        using var saved = JsonDocument.Parse(scenario.VpnJson!);
+        var savedRule = saved.RootElement.GetProperty("rules")[0];
+        Assert.Equal(2, saved.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.False(savedRule.GetProperty("postObservationToForums").GetBoolean());
+        Assert.Equal("Or", savedRule.GetProperty("condition").GetProperty("conditions")[1].GetProperty("groupOperator").GetString());
+        Assert.Equal("MaxMindIsAnonymousVpn", savedRule.GetProperty("condition").GetProperty("conditions")[1].GetProperty("conditions")[1].GetProperty("signal").GetString());
+        await page.Locator("#vpn-protection-tab-btn").ClickAsync();
+        await Assertions.Expect(page.Locator("#global-vpn-rules [data-rule-field='Id']")).ToHaveValueAsync("nested-vpn");
+        await Assertions.Expect(page.Locator("#global-vpn-rules [name='VpnProtection.Rules[0].Condition.Conditions[1].GroupOperator']")).ToHaveValueAsync("Or");
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task Editor_AddsEditsAndRemovesNestedGroups_AndRoundTrips()
     {
@@ -186,6 +225,7 @@ public sealed class SiegeModeSettingsBrowserTests
         }
 
         public string? SiegeJson => configurations.GetValueOrDefault(SiegeModeSettingsConstants.Namespace);
+        public string? VpnJson => configurations.GetValueOrDefault(VpnProtectionSettingsConstants.Namespace);
 
         public void ConfigureServices(IServiceCollection services)
         {

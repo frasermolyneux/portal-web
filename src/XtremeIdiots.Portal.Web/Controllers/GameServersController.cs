@@ -330,6 +330,13 @@ public class GameServersController(
                 {
                     foreach (var config in configsResult.Result.Data.Items)
                     {
+                        if (string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                            && !gameServerSettingsService.TryValidateVpnProtectionSettings(config, out var vpnErrors))
+                        {
+                            Logger.LogWarning("Invalid VPN Protection settings for server {GameServerId}: {Errors}", id, string.Join("; ", vpnErrors));
+                            return UnprocessableEntity("Saved VPN Protection settings are unreadable or use an unsupported schema.");
+                        }
+
                         // Skip credential namespaces if user lacks permission
                         if ((config.Namespace == "ftp" || config.Namespace == "sftp") && !editModel.CanEditFileTransport)
                             continue;
@@ -355,6 +362,13 @@ public class GameServersController(
                 {
                     foreach (var config in globalConfigsResult.Result.Data.Items)
                     {
+                        if (string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                            && !gameServerSettingsService.TryValidateVpnProtectionSettings(config, out var vpnErrors))
+                        {
+                            Logger.LogWarning("Invalid global VPN Protection settings: {Errors}", string.Join("; ", vpnErrors));
+                            return UnprocessableEntity("Saved global VPN Protection settings are unreadable or use an unsupported schema.");
+                        }
+
                         PopulateGlobalDefaults(editModel, config);
                     }
                 }
@@ -405,6 +419,24 @@ public class GameServersController(
 
             if (authResult != null)
                 return authResult;
+
+            var savedConfigurations = await repositoryApiClient.GameServerConfigurations.V1
+                .GetConfigurations(gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
+            if (!savedConfigurations.IsSuccess || savedConfigurations.Result?.Data?.Items is null)
+            {
+                Logger.LogWarning("Failed to retrieve server configurations for {GameServerId}", gameServerData.GameServerId);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!gameServerSettingsService.TryValidateVpnProtectionSettings(config, out var vpnErrors))
+                {
+                    Logger.LogWarning("Invalid VPN Protection settings for server {GameServerId}: {Errors}", gameServerData.GameServerId, string.Join("; ", vpnErrors));
+                    return UnprocessableEntity("Saved VPN Protection settings are unreadable or use an unsupported schema.");
+                }
+            }
 
             if (!Enum.IsDefined(model.GameServer.Platform) || model.GameServer.Platform == GameServerPlatform.Unknown)
             {
@@ -458,7 +490,7 @@ public class GameServersController(
                 {
                     ModelState.AddModelError(
                         $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}",
-                        "The VPN Protection overrides produce an invalid effective rule. Override the signal, operator, and expected value together, or leave all three as Inherit.");
+                        "The VPN Protection overrides produce an invalid effective rule. Check the replacement condition and action.");
                 }
             }
             else if (model.VpnProtection.RuleOverrides.Count > 0)
@@ -779,6 +811,13 @@ public class GameServersController(
 
             foreach (var config in globalConfigsResult.Result.Data.Items)
             {
+                if (string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    && !gameServerSettingsService.TryValidateVpnProtectionSettings(config, out var vpnErrors))
+                {
+                    Logger.LogWarning("Invalid global VPN Protection settings: {Errors}", string.Join("; ", vpnErrors));
+                    return false;
+                }
+
                 PopulateGlobalDefaults(model, config);
             }
 

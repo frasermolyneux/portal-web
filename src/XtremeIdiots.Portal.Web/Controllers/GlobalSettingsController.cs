@@ -5,6 +5,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -150,6 +151,16 @@ public class GlobalSettingsController(
                 {
                     Logger.LogWarning("Invalid Siege Mode global settings: {Errors}", string.Join("; ", errors));
                     return (null, UnprocessableEntity("Saved Siege Mode settings are unreadable. Correct them before saving global settings."));
+                }
+            }
+
+            foreach (var config in configurations.Where(static config =>
+                         string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!globalSettingsService.TryValidateVpnProtectionSettings(config, out var errors))
+                {
+                    Logger.LogWarning("Invalid VPN Protection global settings: {Errors}", string.Join("; ", errors));
+                    return (null, UnprocessableEntity("Saved VPN Protection settings are unreadable or use an unsupported schema."));
                 }
             }
 

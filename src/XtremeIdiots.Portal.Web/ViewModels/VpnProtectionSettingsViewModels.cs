@@ -16,16 +16,7 @@ public sealed class VpnProtectionRuleViewModel
     [DisplayName("Enabled")]
     public bool Enabled { get; set; } = true;
 
-    [DisplayName("Signal")]
-    public VpnProtectionSignal Signal { get; set; }
-
-    [DisplayName("Operator")]
-    public VpnProtectionComparisonOperator Operator { get; set; }
-
-    [DisplayName("Expected Value")]
-    [Required]
-    [MaxLength(VpnProtectionSettingsConstants.MaxExpectedValueLength)]
-    public string ExpectedValue { get; set; } = string.Empty;
+    public RuleConditionViewModel Condition { get; set; } = new();
 
     [DisplayName("Action")]
     public VpnProtectionAction Action { get; set; }
@@ -48,15 +39,10 @@ public sealed class VpnProtectionRuleOverrideViewModel
     [DisplayName("Enabled Override")]
     public bool? Enabled { get; set; }
 
-    [DisplayName("Signal Override")]
-    public VpnProtectionSignal? Signal { get; set; }
+    [DisplayName("Replace global condition")]
+    public bool UseConditionOverride { get; set; }
 
-    [DisplayName("Operator Override")]
-    public VpnProtectionComparisonOperator? Operator { get; set; }
-
-    [DisplayName("Expected Value Override")]
-    [MaxLength(VpnProtectionSettingsConstants.MaxExpectedValueLength)]
-    public string? ExpectedValue { get; set; }
+    public RuleConditionViewModel Condition { get; set; } = new();
 
     [DisplayName("Action Override")]
     public VpnProtectionAction? Action { get; set; }
@@ -67,6 +53,29 @@ public sealed class VpnProtectionRuleOverrideViewModel
     [DisplayName("Reason Template Override")]
     [MaxLength(VpnProtectionSettingsConstants.MaxReasonTemplateLength)]
     public string? ReasonTemplate { get; set; }
+}
+
+public sealed class VpnRuleEditorRowViewModel
+{
+    public string Prefix { get; init; } = string.Empty;
+    public VpnProtectionRuleViewModel? Rule { get; init; }
+    public VpnProtectionRuleOverrideViewModel? Override { get; init; }
+    public IReadOnlyList<VpnProtectionRuleViewModel> GlobalRules { get; init; } = [];
+    public bool SupportsDestructiveActions { get; init; } = true;
+    public bool IsTemplate { get; init; }
+}
+
+public sealed class VpnRulesEditorViewModel
+{
+    public required string Id { get; init; }
+    public required string Prefix { get; init; }
+    public required string Title { get; init; }
+    public required string AddLabel { get; init; }
+    public bool IsOverride { get; init; }
+    public bool SupportsDestructiveActions { get; init; } = true;
+    public IReadOnlyList<VpnProtectionRuleViewModel> Rules { get; init; } = [];
+    public IReadOnlyList<VpnProtectionRuleOverrideViewModel> Overrides { get; init; } = [];
+    public IReadOnlyList<VpnProtectionRuleViewModel> GlobalRules { get; init; } = [];
 }
 
 public sealed class VpnProtectionGlobalSettingsViewModel : IValidatableObject
@@ -85,12 +94,23 @@ public sealed class VpnProtectionGlobalSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        return VpnProtectionSettingsViewModelValidation.Validate(
+        foreach (var rule in Rules ?? [])
+        {
+            if (VpnProtectionSettingsJsonMapper.HasPlayerCondition(rule.Condition))
+            {
+                yield return new ValidationResult("VPN rules cannot use player conditions.", [nameof(Rules)]);
+            }
+        }
+
+        foreach (var result in VpnProtectionSettingsViewModelValidation.Validate(
             VpnProtectionSettingsJsonMapper.ToDocument(this),
             ExcludedPlayerTagsCsv,
             AllowedExcludedPlayerTags,
             ExcludedPlayerTagsCatalogAvailable,
-            nameof(Rules));
+            nameof(Rules)))
+        {
+            yield return result;
+        }
     }
 }
 
@@ -121,12 +141,31 @@ public sealed class VpnProtectionServerSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        return VpnProtectionSettingsViewModelValidation.Validate(
+        foreach (var rule in LocalRules ?? [])
+        {
+            if (VpnProtectionSettingsJsonMapper.HasPlayerCondition(rule.Condition))
+            {
+                yield return new ValidationResult("VPN rules cannot use player conditions.", [nameof(LocalRules)]);
+            }
+        }
+
+        foreach (var rule in RuleOverrides ?? [])
+        {
+            if (rule.UseConditionOverride && VpnProtectionSettingsJsonMapper.HasPlayerCondition(rule.Condition))
+            {
+                yield return new ValidationResult("VPN rules cannot use player conditions.", [nameof(RuleOverrides)]);
+            }
+        }
+
+        foreach (var result in VpnProtectionSettingsViewModelValidation.Validate(
             VpnProtectionSettingsJsonMapper.ToDocument(this),
             ExcludedPlayerTagsCsv,
             AllowedExcludedPlayerTags,
             ExcludedPlayerTagsCatalogAvailable,
-            nameof(LocalRules));
+            nameof(LocalRules)))
+        {
+            yield return result;
+        }
     }
 }
 
@@ -247,9 +286,7 @@ internal static class VpnProtectionSettingsJsonMapper
         {
             Id = rule.Id,
             Enabled = rule.Enabled ?? true,
-            Signal = rule.Signal,
-            Operator = rule.Operator,
-            ExpectedValue = rule.ExpectedValue,
+            Condition = ToViewModel(rule.Condition),
             Action = rule.Action,
             PostObservationToForums = rule.PostObservationToForums,
             ReasonTemplate = rule.ReasonTemplate
@@ -262,9 +299,8 @@ internal static class VpnProtectionSettingsJsonMapper
         {
             Id = ruleOverride.Id,
             Enabled = ruleOverride.Enabled,
-            Signal = ruleOverride.Signal,
-            Operator = ruleOverride.Operator,
-            ExpectedValue = ruleOverride.ExpectedValue,
+            UseConditionOverride = ruleOverride.Condition is not null,
+            Condition = ToViewModel(ruleOverride.Condition),
             Action = ruleOverride.Action,
             PostObservationToForums = ruleOverride.PostObservationToForums,
             ReasonTemplate = ruleOverride.ReasonTemplate
@@ -277,9 +313,7 @@ internal static class VpnProtectionSettingsJsonMapper
         {
             Id = rule.Id?.Trim() ?? string.Empty,
             Enabled = rule.Enabled,
-            Signal = rule.Signal,
-            Operator = rule.Operator,
-            ExpectedValue = rule.ExpectedValue?.Trim() ?? string.Empty,
+            Condition = ToContract(rule.Condition),
             Action = rule.Action,
             PostObservationToForums = rule.PostObservationToForums,
             ReasonTemplate = NormalizeOptional(rule.ReasonTemplate)
@@ -292,9 +326,7 @@ internal static class VpnProtectionSettingsJsonMapper
         {
             Id = ruleOverride.Id?.Trim() ?? string.Empty,
             Enabled = ruleOverride.Enabled,
-            Signal = ruleOverride.Signal,
-            Operator = ruleOverride.Operator,
-            ExpectedValue = NormalizeOptional(ruleOverride.ExpectedValue),
+            Condition = ruleOverride.UseConditionOverride ? ToContract(ruleOverride.Condition) : null,
             Action = ruleOverride.Action,
             PostObservationToForums = ruleOverride.PostObservationToForums,
             ReasonTemplate = NormalizeOptional(ruleOverride.ReasonTemplate)
@@ -305,4 +337,30 @@ internal static class VpnProtectionSettingsJsonMapper
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
+
+    internal static bool HasPlayerCondition(RuleConditionViewModel? condition)
+        => condition is not null && (condition.PlayerSignal.HasValue ||
+            (condition.Conditions ?? []).Any(HasPlayerCondition));
+
+    private static RuleConditionViewModel ToViewModel(VpnProtectionCondition? condition)
+        => condition is null ? new() : new()
+        {
+            GroupOperator = condition.GroupOperator,
+            Conditions = [.. (condition.Conditions ?? []).Select(ToViewModel)],
+            Signal = condition.Signal,
+            Operator = condition.Operator,
+            ExpectedValue = condition.ExpectedValue
+        };
+
+    private static VpnProtectionCondition ToContract(RuleConditionViewModel? condition)
+        => condition is null ? new() : new()
+        {
+            GroupOperator = condition.GroupOperator,
+            Conditions = condition.GroupOperator.HasValue
+                ? [.. (condition.Conditions ?? []).Select(ToContract)]
+                : null,
+            Signal = condition.Signal,
+            Operator = condition.Operator,
+            ExpectedValue = NormalizeOptional(condition.ExpectedValue)
+        };
 }

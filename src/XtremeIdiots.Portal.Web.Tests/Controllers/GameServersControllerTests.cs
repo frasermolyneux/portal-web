@@ -24,6 +24,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -48,6 +49,13 @@ public class GameServersControllerTests
     private readonly IGameServerSettingsService gameServerSettingsService = new GameServerSettingsService(
         new NamespaceSettingsParser(),
         new NamespaceSettingsSerializer());
+
+    public GameServersControllerTests()
+    {
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK, new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
+    }
 
     private GameServersController CreateSut(ClaimsPrincipal? user = null)
     {
@@ -1521,15 +1529,13 @@ public class GameServersControllerTests
             Namespace = VpnProtectionSettingsConstants.Namespace,
             Configuration = /*lang=json,strict*/ """
                 {
-                  "schemaVersion": 1,
+                  "schemaVersion": 2,
                   "enabled": true,
                   "rules": [
                     {
                       "id": "proxy-type",
                       "enabled": true,
-                      "signal": "ProxyCheckProxyType",
-                      "operator": "Contains",
-                      "expectedValue": "VPN",
+                      "condition": {"signal": "ProxyCheckProxyType", "operator": "Contains", "expectedValue": "VPN"},
                       "action": "Observation"
                     }
                   ],
@@ -1567,7 +1573,8 @@ public class GameServersControllerTests
                     new VpnProtectionRuleOverrideViewModel
                     {
                         Id = "proxy-type",
-                        Signal = VpnProtectionSignal.ProxyCheckIsVpn
+                        UseConditionOverride = true,
+                        Condition = new RuleConditionViewModel { Signal = VpnProtectionSignal.ProxyCheckIsVpn }
                     }
                 ]
             }
@@ -1585,6 +1592,30 @@ public class GameServersControllerTests
         mockRepositoryApiClient.Verify(
             client => client.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task Edit_Post_DoesNotReplaceLegacyVpnOverride()
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var configuration = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = VpnProtectionSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"enabled":false,"rules":[]}"""
+        }))!;
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK, new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([configuration]))));
+        var model = new GameServerEditViewModel { GameServer = new GameServerViewModel { GameServerId = server.GameServerId } };
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await CreateSut().Edit(model));
+
+        Assert.Contains("unsupported schema", Assert.IsType<string>(result.Value));
+        mockRepositoryApiClient.Verify(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1622,9 +1653,12 @@ public class GameServersControllerTests
                     new VpnProtectionRuleViewModel
                     {
                         Id = "ban-vpn",
-                        Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                        Operator = VpnProtectionComparisonOperator.Equal,
-                        ExpectedValue = "true",
+                        Condition = new RuleConditionViewModel
+                        {
+                            Signal = VpnProtectionSignal.ProxyCheckIsVpn,
+                            Operator = RuleComparisonOperator.Equal,
+                            ExpectedValue = "true"
+                        },
                         Action = VpnProtectionAction.Ban
                     }
                 ]

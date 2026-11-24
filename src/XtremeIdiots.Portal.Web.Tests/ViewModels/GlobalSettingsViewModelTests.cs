@@ -1,12 +1,47 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
 
 public class GlobalSettingsViewModelTests
 {
+    [Fact]
+    public void VpnProtection_InvalidNestedSignalValue_IsRejected()
+    {
+        var model = new VpnProtectionGlobalSettingsViewModel
+        {
+            Rules =
+            [
+                new VpnProtectionRuleViewModel
+                {
+                    Id = "risk",
+                    Action = VpnProtectionAction.Observation,
+                    Condition = new RuleConditionViewModel
+                    {
+                        GroupOperator = RuleConditionGroupOperator.And,
+                        Conditions =
+                        [
+                            new RuleConditionViewModel
+                            {
+                                Signal = VpnProtectionSignal.ProxyCheckRiskScore,
+                                Operator = RuleComparisonOperator.GreaterThan,
+                                ExpectedValue = "101"
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+        var errors = new List<ValidationResult>();
+
+        Assert.False(Validator.TryValidateObject(model, new ValidationContext(model), errors, true));
+        Assert.Contains(errors, error => error.MemberNames.Contains(nameof(model.Rules)));
+    }
+
     [Fact]
     public void SiegeMode_DefaultsUsePublishedDurationAndRules()
     {
@@ -16,7 +51,7 @@ public class GlobalSettingsViewModelTests
         Assert.Equal("new-guid", model.SiegeMode.Rules[0].Id);
         Assert.Equal(SiegePlayerSignal.NewGuid, model.SiegeMode.Rules[0].Condition.PlayerSignal);
         Assert.Equal("new-vpn-ip", model.SiegeMode.Rules[1].Id);
-        Assert.Equal(SiegeConditionGroupOperator.And, model.SiegeMode.Rules[1].Condition.GroupOperator);
+        Assert.Equal(RuleConditionGroupOperator.And, model.SiegeMode.Rules[1].Condition.GroupOperator);
     }
 
     [Fact]

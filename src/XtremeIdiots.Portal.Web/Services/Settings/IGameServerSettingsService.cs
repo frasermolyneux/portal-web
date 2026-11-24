@@ -8,6 +8,8 @@ public interface IGameServerSettingsService
 {
     IReadOnlyCollection<string> DeletedNamespaces { get; }
 
+    bool TryValidateVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
+
     void PopulateConfigFromNamespace(GameServerEditViewModel model, ConfigurationDto config, ILogger logger);
 
     void PopulateGlobalDefaults(GameServerEditViewModel model, ConfigurationDto config, ILogger logger);

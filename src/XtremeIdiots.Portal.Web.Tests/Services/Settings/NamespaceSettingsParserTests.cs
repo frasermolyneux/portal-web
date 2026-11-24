@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -18,6 +19,32 @@ public class NamespaceSettingsParserTests
 {
     private readonly NamespaceSettingsParser parser = new();
     private readonly ILogger logger = Mock.Of<ILogger>();
+
+    [Fact]
+    public void TryParseVpnProtectionSettings_LegacyBooleanStrings_PreservesStringExpectedValue()
+    {
+        var config = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
+            {"schemaVersion":2,"enabled":"false","rules":[{"id":"vpn","enabled":"true",
+            "condition":{"signal":"ProxyCheckIsVpn","operator":"Equal","expectedValue":"true"},
+            "action":"Observation","postObservationToForums":"false"}]}
+            """);
+
+        Assert.True(parser.TryParseVpnProtectionSettings(config, out var settings, out var errors), string.Join("; ", errors));
+        Assert.False(settings!.Enabled);
+        Assert.Equal("true", Assert.Single(settings.Rules).Condition!.ExpectedValue);
+        Assert.False(settings.Rules[0].PostObservationToForums);
+    }
+
+    [Fact]
+    public void TryParseVpnProtectionSettings_LegacySchema_IsRejected()
+    {
+        var config = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
+            {"schemaVersion":1,"enabled":false,"rules":[]}
+            """);
+
+        Assert.False(parser.TryParseVpnProtectionSettings(config, out _, out var errors));
+        Assert.NotEmpty(errors);
+    }
 
     [Fact]
     public void TryParseSiegeModeSettings_ValidDocument_ReturnsTypedSettings()
@@ -95,9 +122,9 @@ public class NamespaceSettingsParserTests
 
         Assert.Equal(75, model.SiegeMode.DurationMinutes);
         var condition = Assert.Single(model.SiegeMode.Rules).Condition;
-        Assert.Equal(SiegeConditionGroupOperator.And, condition.GroupOperator);
+        Assert.Equal(RuleConditionGroupOperator.And, condition.GroupOperator);
         Assert.Equal(SiegePlayerSignal.NewIp, condition.Conditions[0].PlayerSignal);
-        Assert.Equal(SiegeConditionGroupOperator.Or, condition.Conditions[1].GroupOperator);
+        Assert.Equal(RuleConditionGroupOperator.Or, condition.Conditions[1].GroupOperator);
         Assert.Equal(VpnProtectionSignal.ProxyCheckIsVpn, condition.Conditions[1].Conditions[0].Signal);
     }
 
@@ -124,14 +151,12 @@ public class NamespaceSettingsParserTests
         var model = new GlobalSettingsViewModel();
         var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "enabled": true,
           "rules": [
             {
               "id": "vpn",
-              "signal": "ProxyCheckIsVpn",
-              "operator": "Equal",
-              "expectedValue": "true",
+              "condition": {"signal": "ProxyCheckIsVpn", "operator": "Equal", "expectedValue": "true"},
               "action": "Ban",
               "reasonTemplate": "VPN Protection {ruleId}"
             }
@@ -160,15 +185,13 @@ public class NamespaceSettingsParserTests
         var model = new GameServerEditViewModel();
         var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, $$"""
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "enabled": false,
           "inheritGlobalRules": true,
           "rules": [
             {
               "id": "local",
-              "signal": "MaxMindIsTorExitNode",
-              "operator": "Equal",
-              "expectedValue": "true",
+              "condition": {"signal": "MaxMindIsTorExitNode", "operator": "Equal", "expectedValue": "true"},
               "action": "Observation",
               "postObservationToForums": false
             }
@@ -195,8 +218,8 @@ public class NamespaceSettingsParserTests
     {
         var model = new GlobalSettingsViewModel();
         var configuration = BuildConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
-            {"enabled":true,"rules":[{"id":"vpn","signal":"ProxyCheckIsVpn",
-            "operator":"Equal","expectedValue":"true","action":"Observation","postObservationToForums":false}]}
+            {"schemaVersion":2,"enabled":true,"rules":[{"id":"vpn","condition":{"signal":"ProxyCheckIsVpn",
+            "operator":"Equal","expectedValue":"true"},"action":"Observation","postObservationToForums":false}]}
             """);
 
         parser.PopulateGlobalSettingsViewModel(model, configuration, logger);

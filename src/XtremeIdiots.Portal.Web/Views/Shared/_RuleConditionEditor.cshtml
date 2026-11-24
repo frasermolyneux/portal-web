@@ -1,22 +1,28 @@
-@model XtremeIdiots.Portal.Web.ViewModels.SiegeModeConditionViewModel
+@model XtremeIdiots.Portal.Web.ViewModels.RuleConditionViewModel
 @using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared
 @using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection
 @using XtremeIdiots.Portal.Web.ViewModels
 @using Microsoft.AspNetCore.Mvc.ViewFeatures
 
 @{
     var prefix = (string)ViewData["ConditionPrefix"]!;
+    var supportsPlayerConditions = (bool?)ViewData["SupportsPlayerConditions"] ?? true;
     var conditionKind = Model.GroupOperator.HasValue ? "group" : Model.PlayerSignal.HasValue ? "player" : Model.Signal.HasValue ? "vpn" : "group";
 }
 
-<div class="border rounded p-3 mb-2" data-siege-condition-node data-condition-prefix="@prefix" data-condition-kind="@conditionKind">
+<div class="border rounded p-3 mb-2" data-siege-condition-node data-condition-prefix="@prefix" data-condition-kind="@conditionKind"
+     data-vpn-typed-values="@(!supportsPlayerConditions ? "true" : "false")">
     <div class="row align-items-end">
         <div class="col-md-3">
             <div class="mb-3">
                 <label class="form-label" data-condition-label="Kind" for="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_Kind">Condition type</label>
                 <select class="form-select" data-condition-kind-selector id="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_Kind">
                     <option value="group" selected="@(conditionKind == "group" ? "selected" : null)">AND/OR group</option>
-                    <option value="player" selected="@(conditionKind == "player" ? "selected" : null)">Player/history/tag</option>
+                    @if (supportsPlayerConditions)
+                    {
+                        <option value="player" selected="@(conditionKind == "player" ? "selected" : null)">Player/history/tag</option>
+                    }
                     <option value="vpn" selected="@(conditionKind == "vpn" ? "selected" : null)">VPN Protection signal</option>
                 </select>
             </div>
@@ -25,9 +31,12 @@
             <button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-action="add-siege-group">
                 <i class="fa-solid fa-fw fa-folder-plus" aria-hidden="true"></i> Add Group
             </button>
-            <button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-action="add-siege-player-condition">
-                <i class="fa-solid fa-fw fa-user-plus" aria-hidden="true"></i> Add Player Condition
-            </button>
+            @if (supportsPlayerConditions)
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-action="add-siege-player-condition">
+                    <i class="fa-solid fa-fw fa-user-plus" aria-hidden="true"></i> Add Player Condition
+                </button>
+            }
             <button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-action="add-siege-vpn-condition">
                 <i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Add VPN Condition
             </button>
@@ -42,12 +51,12 @@
             <div class="col-md-4">
                 <div class="mb-3">
                     <label class="form-label" data-condition-label="GroupOperator" for="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_GroupOperator">Match conditions</label>
-                    <select class="form-select" data-condition-field="GroupOperator" name="@(prefix).GroupOperator"
+                    <select class="form-select" data-condition-field="GroupOperator" name="@(prefix).GroupOperator" required
                             id="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_GroupOperator">
                         <option value="">Select a group operator</option>
-                        @foreach (var op in Enum.GetValues<SiegeConditionGroupOperator>().Where(static value => value != SiegeConditionGroupOperator.Unknown))
+                        @foreach (var op in Enum.GetValues<RuleConditionGroupOperator>().Where(static value => value != RuleConditionGroupOperator.Unknown))
                         {
-                            <option value="@op" selected="@(Model.GroupOperator == op ? "selected" : null)">@(op == SiegeConditionGroupOperator.And ? "All conditions (AND)" : "Any condition (OR)")</option>
+                            <option value="@op" selected="@(Model.GroupOperator == op ? "selected" : null)">@(op == RuleConditionGroupOperator.And ? "All conditions (AND)" : "Any condition (OR)")</option>
                         }
                     </select>
                 </div>
@@ -60,7 +69,7 @@
                 {
                     ["ConditionPrefix"] = $"{prefix}.Conditions[{childIndex}]"
                 };
-                @await Html.PartialAsync("_SiegeModeConditionEditor", Model.Conditions[childIndex], childViewData)
+                @await Html.PartialAsync("_RuleConditionEditor", Model.Conditions[childIndex], childViewData)
             }
         </div>
     </div>
@@ -70,7 +79,7 @@
             <div class="col-md-4" data-player-signal-container>
                 <div class="mb-3">
                     <label class="form-label" data-condition-label="PlayerSignal" for="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_PlayerSignal">Player/history/tag signal</label>
-                    <select class="form-select" data-condition-field="PlayerSignal" name="@(prefix).PlayerSignal"
+                    <select class="form-select" data-condition-field="PlayerSignal" name="@(prefix).PlayerSignal" required
                             id="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_PlayerSignal">
                         <option value="">Select a player signal</option>
                         @foreach (var signal in Enum.GetValues<SiegePlayerSignal>().Where(static value => value != SiegePlayerSignal.Unknown))
@@ -94,7 +103,7 @@
             <div class="col-md-4" data-vpn-signal-container>
                 <div class="mb-3">
                     <label class="form-label" data-condition-label="Signal" for="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_Signal">VPN Protection signal</label>
-                    <select class="form-select" data-condition-field="Signal" data-role="vpn-signal" name="@(prefix).Signal"
+                    <select class="form-select" data-condition-field="Signal" data-role="vpn-signal" name="@(prefix).Signal" required
                             id="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_Signal">
                         <option value="">Select a VPN signal</option>
                         @foreach (var signal in Enum.GetValues<VpnProtectionSignal>().Where(static value => value != VpnProtectionSignal.Unknown))
@@ -116,10 +125,10 @@
             <div class="col-md-4">
                 <div class="mb-3">
                     <label class="form-label" data-condition-label="Operator" for="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_Operator">Comparison</label>
-                    <select class="form-select" data-condition-field="Operator" data-role="vpn-operator" name="@(prefix).Operator"
+                    <select class="form-select" data-condition-field="Operator" data-role="vpn-operator" name="@(prefix).Operator" required
                             id="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_Operator">
                         <option value="">Select a comparison</option>
-                        @foreach (var comparison in Enum.GetValues<VpnProtectionComparisonOperator>().Where(static value => value != VpnProtectionComparisonOperator.Unknown))
+                        @foreach (var comparison in Enum.GetValues<RuleComparisonOperator>().Where(static value => value != RuleComparisonOperator.Unknown))
                         {
                             <option value="@comparison" selected="@(Model.Operator == comparison ? "selected" : null)">
                                 @VpnProtectionRuleEditorOptions.GetOperatorLabel(comparison)
@@ -132,7 +141,7 @@
             <div class="col-md-8">
                 <div class="mb-3">
                     <label class="form-label" data-condition-label="ExpectedValue" for="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_ExpectedValue">Expected value</label>
-                    <input class="form-control" type="text" data-condition-field="ExpectedValue" data-role="vpn-expected-value"
+                    <input class="form-control" type="text" data-condition-field="ExpectedValue" data-role="vpn-expected-value" required maxlength="256"
                            name="@(prefix).ExpectedValue" id="@(prefix.Replace(".", "_").Replace("[", "_").Replace("]", ""))_ExpectedValue"
                            value="@Model.ExpectedValue" list="siege-mode-player-tags" />
                     <small class="form-text text-muted" data-vpn-expected-hint>

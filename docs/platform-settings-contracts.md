@@ -33,12 +33,19 @@ The winning rule supplies the observation publication preference. Kick and Ban
 always retain forum publication regardless of this observation-only setting.
 Existing observations and forum topics are not changed or backfilled.
 
-Release the updated `XtremeIdiots.Portal.Settings.Contracts.V1` package from
-`portal-repository` before deploying its consumers. The consumer changes target
-`4.2.70`; align that pin with the actual generated release version if necessary.
-Deploy `portal-server-events` before `portal-web` so the processor understands the
-setting before operators can save it. Then disable forum posting on the desired
-production observation rules; existing rules otherwise continue posting.
+### VPN and Siege rule conditions
+
+VPN Protection schema 2 uses nested AND/OR conditions, with VPN-specific signals
+and actions. Siege Mode uses the same condition editor and retains its player
+history and tag signals. Server VPN rules can replace a global rule's entire
+condition or inherit it; other override fields remain independent.
+
+Schema 1 VPN rules are not migrated. Replace the global configuration with a
+disabled, empty schema 2 document and remove old server overrides as part of the
+coordinated cutover. The settings editor rejects unsupported saved schemas rather
+than rewriting them. Publish the shared contracts package and coordinate the
+repository, event processor, cache expiry, and portal deployment before cutover.
+Do not activate Siege Mode as part of this change.
 
 ### Settings loading and runtime behavior
 

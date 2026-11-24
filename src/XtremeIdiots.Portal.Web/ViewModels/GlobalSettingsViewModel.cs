@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 
@@ -286,20 +287,20 @@ public sealed class SiegeModeRuleViewModel
 
     public bool Enabled { get; set; } = true;
 
-    public SiegeModeConditionViewModel Condition { get; set; } = new();
+    public RuleConditionViewModel Condition { get; set; } = new();
 }
 
-public sealed class SiegeModeConditionViewModel
+public sealed class RuleConditionViewModel
 {
-    public SiegeConditionGroupOperator? GroupOperator { get; set; }
+    public RuleConditionGroupOperator? GroupOperator { get; set; }
 
-    public List<SiegeModeConditionViewModel> Conditions { get; set; } = [];
+    public List<RuleConditionViewModel> Conditions { get; set; } = [];
 
     public VpnProtectionSignal? Signal { get; set; }
 
     public SiegePlayerSignal? PlayerSignal { get; set; }
 
-    public VpnProtectionComparisonOperator? Operator { get; set; }
+    public RuleComparisonOperator? Operator { get; set; }
 
     public string? ExpectedValue { get; set; }
 }
@@ -344,7 +345,7 @@ internal static class SiegeModeSettingsViewModelMapper
         };
     }
 
-    private static SiegeModeConditionViewModel ToViewModel(SiegeModeCondition? condition)
+    private static RuleConditionViewModel ToViewModel(SiegeModeCondition? condition)
     {
         if (condition is null)
         {
@@ -362,7 +363,7 @@ internal static class SiegeModeSettingsViewModelMapper
         };
     }
 
-    private static SiegeModeCondition ToContract(SiegeModeConditionViewModel condition)
+    private static SiegeModeCondition ToContract(RuleConditionViewModel condition)
     {
         return new()
         {

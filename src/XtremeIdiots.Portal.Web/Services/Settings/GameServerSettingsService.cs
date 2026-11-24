@@ -10,6 +10,11 @@ public sealed class GameServerSettingsService(
 {
     public IReadOnlyCollection<string> DeletedNamespaces => namespaceSettingsSerializer.DeletedNamespaces;
 
+    public bool TryValidateVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseVpnProtectionSettings(config, out _, out errors);
+    }
+
     public void PopulateConfigFromNamespace(GameServerEditViewModel model, ConfigurationDto config, ILogger logger)
     {
         namespaceSettingsParser.PopulateGameServerSettingsViewModel(model, config, logger);

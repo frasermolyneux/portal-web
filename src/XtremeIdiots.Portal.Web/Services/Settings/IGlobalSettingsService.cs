@@ -11,5 +11,7 @@ public interface IGlobalSettingsService
 
     bool TryValidateSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
 
+    bool TryValidateVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
+
     IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(GlobalSettingsViewModel model);
 }

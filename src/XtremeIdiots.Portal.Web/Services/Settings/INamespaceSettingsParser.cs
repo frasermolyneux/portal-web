@@ -1,12 +1,18 @@
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 public interface INamespaceSettingsParser
 {
+    bool TryParseVpnProtectionSettings(
+        ConfigurationDto config,
+        out VpnProtectionSettingsDocument? settings,
+        out IReadOnlyList<string> errors);
+
     bool TryParseSiegeModeSettings(
         ConfigurationDto config,
         out SiegeModeSettingsDocument? settings,
