@@ -146,7 +146,6 @@
         const vpnOperators = kind => kind === "number" ?
             ["Equal", "NotEqual", "GreaterThan", "GreaterThanOrEqual", "LessThan", "LessThanOrEqual"] :
             kind === "string" ? ["Equal", "NotEqual", "Contains"] : ["Equal", "NotEqual"];
-        const defaults = () => ({});
         const renderParameters = (parent, item, definition, isCondition) => {
             if (!object(item.parameters)) {
                 parent.append(element("p", "Malformed parameters are preserved. Replace this entry to edit it.", "alert alert-warning"));
@@ -282,7 +281,7 @@
                     const extras = object(node.parameters) ? { ...node.parameters } : {};
                     previous?.parameters.forEach(param => delete extras[param.name]);
                     next.parameters.forEach(param => delete extras[param.name]);
-                    node.conditionId = id; node.parameters = { ...extras, ...defaults(next) };
+                    node.conditionId = id; node.parameters = extras;
                     render();
                 });
                 const definition = conditions.find(item => item.conditionId === node.conditionId);
@@ -385,7 +384,7 @@
                     const extras = object(action.parameters) ? { ...action.parameters } : {};
                     previous?.parameters.forEach(param => delete extras[param.name]);
                     next.parameters.forEach(param => delete extras[param.name]);
-                    action.typeId = id; action.parameters = { ...extras, ...defaults(next) };
+                    action.typeId = id; action.parameters = extras;
                     render();
                 });
                 const definition = actions.find(item => item.actionTypeId === action.typeId);

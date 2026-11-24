@@ -290,6 +290,7 @@ public class GameServerEditViewModel : IValidatableObject
 
     public IReadOnlyDictionary<string, bool> VpnRuleCompatibility { get; set; } = new Dictionary<string, bool>();
     public IReadOnlyDictionary<string, bool> SiegeRuleCompatibility { get; set; } = new Dictionary<string, bool>();
+    [BindNever]
     public bool HasFreshRuleCapabilitySnapshot { get; set; }
 
     public IReadOnlyList<RequiredTagOptionViewModel> AvailableRequiredTags { get; set; } = [];

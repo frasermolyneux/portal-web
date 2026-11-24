@@ -261,6 +261,7 @@ public class GlobalSettingsViewModel : IValidatableObject
 
 public sealed class SiegeModeGlobalSettingsViewModel : IValidatableObject
 {
+    [BindRequired]
     public bool Enabled { get; set; }
 
     [DisplayName("Default Duration (minutes)")]

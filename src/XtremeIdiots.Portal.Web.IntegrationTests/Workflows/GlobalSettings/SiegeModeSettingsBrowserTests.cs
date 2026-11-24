@@ -21,6 +21,27 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 public sealed class SiegeModeSettingsBrowserTests
 {
     [Fact]
+    public async Task SiegeEditor_MissingEnabledFieldDoesNotOverwriteSettings()
+    {
+        var scenario = new SettingsScenario();
+        const string existing = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabled":true,"durationMinutes":180,"rules":[]}""";
+        scenario.SetConfiguration(SiegeModeSettingsConstants.Namespace, existing);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await OpenSettings(page, browser.Host.BaseAddress);
+        await page.Locator("[name='SiegeMode.Enabled']").EvaluateAllAsync<int>("inputs => { inputs.forEach(input => input.remove()); return inputs.length; }");
+
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByRole(AriaRole.Button, new() { Name = "Save Settings", Exact = true }).ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath == "/GlobalSettings");
+        Assert.Equal(200, response.Status);
+        Assert.Equal(existing, scenario.SiegeJson);
+        await page.Locator("#siege-mode-tab-btn").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-valmsg-for='SiegeMode.Enabled']")).Not.ToBeEmptyAsync();
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task SiegeEditor_RoundTripsNestedGroupsOrderedActionsAndMultipleRules()
     {
         var scenario = new SettingsScenario();
