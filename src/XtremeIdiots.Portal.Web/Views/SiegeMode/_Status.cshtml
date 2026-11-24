@@ -25,15 +25,15 @@ else
             <button type="submit" class="btn btn-outline-primary">Extend</button>
         </form>
     </div>
-    <p class="text-muted">Queued and dispatched actions are not confirmed kicks. Existing VPN Protection runs independently.</p>
+    <p class="text-muted">Pending, claimed and dispatched actions are not confirmed effects. Existing VPN Protection runs independently.</p>
     <h5>Recent protection actions</h5>
     <div class="table-responsive">
         <table class="table table-striped">
-            <thead><tr><th>Time (UTC)</th><th>Player GUID</th><th>Rule</th><th>Outcome</th><th>Details</th></tr></thead>
+            <thead><tr><th>Updated (UTC)</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Details</th></tr></thead>
             <tbody>
             @foreach (var action in Model.Actions)
             {
-                <tr><td>@action.ClaimedAtUtc.ToString("u")</td><td>@action.PlayerGuid</td><td>@action.RuleId</td>
+                <tr><td>@action.UpdatedAtUtc.ToString("u")</td><td>@action.PlayerGuid</td><td>@action.RuleId</td><td>@action.ActionTypeId</td>
                     <td>@action.Outcome</td><td>@action.Detail</td></tr>
             }
             </tbody>

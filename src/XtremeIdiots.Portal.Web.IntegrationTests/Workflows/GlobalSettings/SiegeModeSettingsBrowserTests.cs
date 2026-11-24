@@ -21,167 +21,263 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 public sealed class SiegeModeSettingsBrowserTests
 {
     [Fact]
-    public async Task VpnEditor_NestedRulesRoundTripWithoutChangingSiegeRules()
+    public async Task SiegeEditor_RoundTripsNestedGroupsOrderedActionsAndMultipleRules()
     {
         var scenario = new SettingsScenario();
+        scenario.SetConfiguration(SiegeModeSettingsConstants.Namespace, /*lang=json,strict*/ """
+            {
+              "schemaVersion": 1,
+              "featureId": "siege-mode",
+              "enabled": true,
+              "durationMinutes": 180,
+              "rules": [
+                {
+                  "id": "nested-rule",
+                  "enabled": true,
+                  "order": 0,
+                  "condition": {
+                    "groupOperator": "And",
+                    "conditions": [
+                      {
+                        "conditionId": "player.first-seen-ip",
+                        "parameters": { "operator": "IsNew", "referenceScope": "SiegeBaseline" }
+                      },
+                      {
+                        "groupOperator": "Or",
+                        "conditions": [
+                          {
+                            "conditionId": "vpn.intelligence",
+                            "parameters": { "signal": "ProxyCheckIsVpn", "operator": "Equal", "expectedValue": "true" }
+                          },
+                          {
+                            "conditionId": "vpn.intelligence",
+                            "parameters": { "signal": "MaxMindIsAnonymousVpn", "operator": "Equal", "expectedValue": "true" }
+                          },
+                          {
+                            "conditionId": "player.tags",
+                            "parameters": {
+                              "tags": ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"],
+                              "operator": "ContainsAny"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": [
+                    { "id": "observe", "typeId": "moderation.observation", "parameters": { "reason": "observe" }, "dependsOnActionIds": [] },
+                    { "id": "kick", "typeId": "player.kick", "parameters": { "reason": "kick" }, "dependsOnActionIds": [] }
+                  ],
+                  "afterMatch": "StopProcessingRules"
+                },
+                {
+                  "id": "fallback",
+                  "enabled": true,
+                  "order": 1,
+                  "condition": {
+                    "conditionId": "player.first-seen-guid",
+                    "parameters": { "operator": "IsNew", "referenceScope": "SiegeBaseline" }
+                  },
+                  "actions": [
+                    { "id": "fallback-kick", "typeId": "player.kick", "parameters": { "reason": "fallback" }, "dependsOnActionIds": [] }
+                  ],
+                  "afterMatch": "ContinueToNextRule"
+                }
+              ]
+            }
+            """);
+
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await OpenSettings(page, browser.Host.BaseAddress);
+
+        var rules = page.Locator("#global-siege-rules [data-rules-editor] > section");
+        await Assertions.Expect(rules).ToHaveCountAsync(2);
+        var firstRule = rules.Nth(0);
+        await Assertions.Expect(firstRule.GetByRole(AriaRole.Heading, new() { Name = "WHEN" })).ToBeVisibleAsync();
+        await Assertions.Expect(firstRule.GetByRole(AriaRole.Heading, new() { Name = "THEN" })).ToBeVisibleAsync();
+        await Assertions.Expect(firstRule).ToContainTextAsync("Any condition can match");
+        await Assertions.Expect(firstRule).ToContainTextAsync("All conditions must match");
+        var observation = firstRule.GetByRole(AriaRole.Heading, new() { Name = "Action 1", Exact = true }).Locator("..");
+        var kick = firstRule.GetByRole(AriaRole.Heading, new() { Name = "Action 2", Exact = true }).Locator("..");
+        await Assertions.Expect(observation.GetByText("Post to forums")).ToBeVisibleAsync();
+        await Assertions.Expect(kick.GetByText("Post to forums")).ToHaveCountAsync(0);
+        await Assertions.Expect(observation.GetByText("Action ID: observe")).Not.ToBeVisibleAsync();
+        await observation.GetByText("Advanced action settings").ClickAsync();
+        await Assertions.Expect(observation.GetByText("Action ID: observe")).ToBeVisibleAsync();
+        await kick.GetByText("Advanced action settings").ClickAsync();
+        await Assertions.Expect(kick.Locator("option[value='observe']")).ToHaveTextAsync("Action 1: Observation");
+        await firstRule.GetByRole(AriaRole.Button, new() { Name = "Move action up" }).Nth(1).ClickAsync();
+        await Assertions.Expect(firstRule.Locator("h6").Filter(new() { HasText = "Action 1" })).ToBeVisibleAsync();
+
+        await SaveSettings(page);
+
+        using var saved = JsonDocument.Parse(scenario.SiegeJson!);
+        var savedRules = saved.RootElement.GetProperty("rules");
+        Assert.Equal(2, savedRules.GetArrayLength());
+        Assert.Equal("nested-rule", savedRules[0].GetProperty("id").GetString());
+        Assert.Equal("fallback", savedRules[1].GetProperty("id").GetString());
+        var actions = savedRules[0].GetProperty("actions");
+        Assert.Equal("kick", actions[0].GetProperty("id").GetString());
+        Assert.Equal("observe", actions[1].GetProperty("id").GetString());
+        var conditions = savedRules[0].GetProperty("condition").GetProperty("conditions");
+        Assert.Equal("Or", conditions[1].GetProperty("groupOperator").GetString());
+        Assert.Equal(3, conditions[1].GetProperty("conditions").GetArrayLength());
+        var tags = conditions[1].GetProperty("conditions")[2].GetProperty("parameters").GetProperty("tags");
+        Assert.Equal(2, tags.GetArrayLength());
+        Assert.Equal("11111111-1111-1111-1111-111111111111", tags[0].GetString());
+        Assert.Equal("22222222-2222-2222-2222-222222222222", tags[1].GetString());
+
+        await page.Locator("#siege-mode-tab-btn").ClickAsync();
+        await Assertions.Expect(page.Locator("#global-siege-rules [data-rules-editor] > section")).ToHaveCountAsync(2);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task VpnEditor_ChangingSignalResetsValues_AndPreservesOtherRules()
+    {
+        var scenario = new SettingsScenario();
+        scenario.SetConfiguration(VpnProtectionSettingsConstants.Namespace, /*lang=json,strict*/ """
+            {
+              "schemaVersion": 1,
+              "featureId": "vpn-protection",
+              "enabled": true,
+              "rules": [
+                {
+                  "id": "risk",
+                  "enabled": true,
+                  "order": 0,
+                  "condition": {
+                    "conditionId": "vpn.intelligence",
+                    "parameters": { "signal": "ProxyCheckRiskScore", "operator": "GreaterThan", "expectedValue": "75" }
+                  },
+                  "actions": [
+                    { "id": "observe-risk", "typeId": "moderation.observation", "parameters": { "reason": "risk" }, "dependsOnActionIds": [] }
+                  ],
+                  "afterMatch": "StopProcessingRules"
+                },
+                {
+                  "id": "vpn",
+                  "enabled": true,
+                  "order": 1,
+                  "condition": {
+                    "conditionId": "vpn.intelligence",
+                    "parameters": { "signal": "ProxyCheckIsVpn", "operator": "Equal", "expectedValue": "true" }
+                  },
+                  "actions": [
+                    { "id": "observe-vpn", "typeId": "moderation.observation", "parameters": { "reason": "vpn" }, "dependsOnActionIds": [] }
+                  ],
+                  "afterMatch": "ContinueToNextRule"
+                }
+              ]
+            }
+            """);
+
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
         await OpenSettings(page, browser.Host.BaseAddress);
         await page.Locator("#vpn-protection-tab-btn").ClickAsync();
 
-        await page.Locator("#global-vpn-rules-add").ClickAsync();
-        var rule = page.Locator("#global-vpn-rules > [data-siege-rule-row]").First;
-        await rule.Locator("[data-rule-field='Id']").FillAsync("nested-vpn");
-        await rule.Locator("[data-rule-field='PostObservationToForums']").UncheckAsync();
-        var root = rule.Locator("[data-siege-condition-mount] > [data-siege-condition-node]");
-        var firstCondition = root.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]").First;
-        await Assertions.Expect(firstCondition.Locator("select[data-condition-field='ExpectedValue']")).ToHaveValueAsync("true");
-        await root.Locator(":scope > .row [data-action='add-siege-group']").ClickAsync();
-        var children = root.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]");
-        var nested = children.Nth(1);
-        await nested.Locator(":scope > [data-condition-group] > .row [data-condition-field='GroupOperator']").SelectOptionAsync("Or");
-        await nested.Locator(":scope > .row [data-action='add-siege-vpn-condition']").ClickAsync();
-        var nestedChildren = nested.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]");
-        await nestedChildren.Nth(1).Locator("[data-condition-field='Signal']").SelectOptionAsync("MaxMindIsAnonymousVpn");
-        await Assertions.Expect(page.Locator("#SiegeMode_SubmittedRuleCount")).ToHaveValueAsync("2");
+        var rules = page.Locator("#global-vpn-rules [data-rules-editor] > section");
+        await Assertions.Expect(rules).ToHaveCountAsync(2);
+        var condition = rules.Nth(0).Locator("[data-rules-editor], .border.rounded.p-3").First;
+        var signal = condition.Locator("label").Filter(new() { HasText = "Signal" }).Locator("select");
+        await signal.SelectOptionAsync("MaxMindStatus");
+        var comparison = condition.Locator("label").Filter(new() { HasText = "Operator" }).Locator("select");
+        var expectedValue = condition.Locator("label").Filter(new() { HasText = "Expected Value" }).Locator("select, input");
+        await Assertions.Expect(comparison).ToHaveValueAsync("");
+        await Assertions.Expect(expectedValue).ToHaveValueAsync("");
+        await comparison.SelectOptionAsync("Equal");
+        await expectedValue.SelectOptionAsync("Success");
 
         await SaveSettings(page);
+
         using var saved = JsonDocument.Parse(scenario.VpnJson!);
+        var savedRules = saved.RootElement.GetProperty("rules");
+        Assert.Equal(2, savedRules.GetArrayLength());
+        var firstCondition = savedRules[0].GetProperty("condition").GetProperty("parameters");
+        Assert.Equal("MaxMindStatus", firstCondition.GetProperty("signal").GetString());
+        Assert.Equal("Equal", firstCondition.GetProperty("operator").GetString());
+        Assert.Equal("Success", firstCondition.GetProperty("expectedValue").GetString());
+        Assert.Equal("vpn", savedRules[1].GetProperty("id").GetString());
+        Assert.Equal("ProxyCheckIsVpn", savedRules[1].GetProperty("condition").GetProperty("parameters").GetProperty("signal").GetString());
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task UnknownParameters_ShowGameSupportAndRemainPreserved()
+    {
+        var scenario = new SettingsScenario();
+        scenario.SetConfiguration(SiegeModeSettingsConstants.Namespace, /*lang=json,strict*/ $$"""
+            {
+              "schemaVersion": 1,
+              "featureId": "siege-mode",
+              "enabled": true,
+              "durationMinutes": 180,
+              "rules": [{
+                "id": "preserved-rule",
+                "enabled": true,
+                "order": 0,
+                "condition": {
+                  "conditionId": "vpn.intelligence",
+                  "parameters": {
+                    "signal": "ProxyCheckIsVpn",
+                    "operator": "Equal",
+                    "expectedValue": "true",
+                    "legacySignalMetadata": "keep-me"
+                  }
+                },
+                "actions": [{
+                  "id": "kick",
+                  "typeId": "player.kick",
+                  "parameters": { "reason": "legacy action", "legacyActionMetadata": "keep-action" },
+                  "dependsOnActionIds": []
+                }],
+                "afterMatch": "StopProcessingRules"
+              }, {
+                "id": "future-rule",
+                "enabled": true,
+                "order": 1,
+                "condition": {
+                  "conditionId": "future.condition",
+                  "parameters": { "futureValue": "keep-condition" }
+                },
+                "actions": [{
+                  "id": "future-action",
+                  "typeId": "future.action",
+                  "parameters": { "futureValue": "keep-future-action" },
+                  "dependsOnActionIds": []
+                }],
+                "afterMatch": "ContinueToNextRule"
+              }]
+            }
+            """);
+
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await OpenSettings(page, browser.Host.BaseAddress);
+
+        var rule = page.Locator("#global-siege-rules [data-rules-editor] > section").First;
+        await Assertions.Expect(rule.GetByText("Supported games:")).ToHaveCountAsync(2);
+        await Assertions.Expect(rule.Locator("img[src$='CallOfDuty4x.png']")).ToHaveCountAsync(2);
+        await Assertions.Expect(rule.Locator("img[src$='CallOfDuty4x.png']").First).ToBeVisibleAsync();
+        await Assertions.Expect(rule.Locator("img[src$='CallOfDuty4x.png']").First).ToHaveAttributeAsync("aria-label", "Call of Duty 4x");
+        await Assertions.Expect(rule).ToContainTextAsync("Call of Duty 4x");
+        await Assertions.Expect(rule).ToContainTextAsync("Additional preserved parameters");
+        var futureRule = page.Locator("#global-siege-rules [data-rules-editor] > section").Nth(1);
+        await Assertions.Expect(futureRule).ToContainTextAsync("Unsupported condition (preserved)");
+        await Assertions.Expect(futureRule).ToContainTextAsync("Unsupported action (preserved)");
+        await SaveSettings(page);
+
+        using var saved = JsonDocument.Parse(scenario.SiegeJson!);
         var savedRule = saved.RootElement.GetProperty("rules")[0];
-        Assert.Equal(2, saved.RootElement.GetProperty("schemaVersion").GetInt32());
-        Assert.False(savedRule.GetProperty("postObservationToForums").GetBoolean());
-        Assert.Equal("Or", savedRule.GetProperty("condition").GetProperty("conditions")[1].GetProperty("groupOperator").GetString());
-        Assert.Equal("MaxMindIsAnonymousVpn", savedRule.GetProperty("condition").GetProperty("conditions")[1].GetProperty("conditions")[1].GetProperty("signal").GetString());
-        await page.Locator("#vpn-protection-tab-btn").ClickAsync();
-        await Assertions.Expect(page.Locator("#global-vpn-rules [data-rule-field='Id']")).ToHaveValueAsync("nested-vpn");
-        await Assertions.Expect(page.Locator("#global-vpn-rules [name='VpnProtection.Rules[0].Condition.Conditions[1].GroupOperator']")).ToHaveValueAsync("Or");
-        browser.AssertNoBrowserErrors();
-    }
-
-    [Fact]
-    public async Task Editor_AddsEditsAndRemovesNestedGroups_AndRoundTrips()
-    {
-        var scenario = new SettingsScenario();
-        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
-        var page = browser.Page;
-        await OpenSettings(page, browser.Host.BaseAddress);
-
-        var rules = page.Locator("#global-siege-rules > [data-siege-rule-row]");
-        await Assertions.Expect(rules).ToHaveCountAsync(2);
-        await rules.Nth(1).Locator("[data-action='remove-siege-rule']").ClickAsync();
-        await rules.Nth(0).Locator("[data-action='remove-siege-rule']").ClickAsync();
-        await page.Locator("#add-global-siege-rule").ClickAsync();
-        await Assertions.Expect(rules).ToHaveCountAsync(1);
-        var rule = rules.Nth(0);
-        await rule.Locator("[data-rule-field='Id']").FillAsync("nested-test");
-        var root = rule.Locator(":scope > [data-siege-condition-mount] > [data-siege-condition-node]");
-        await Assertions.Expect(root).ToHaveCountAsync(1);
-        await root.Locator(":scope > .row [data-action='add-siege-group']").ClickAsync();
-        await Assertions.Expect(root).ToHaveCountAsync(1);
-        var children = root.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]");
-        await Assertions.Expect(children).ToHaveCountAsync(2);
-        var nested = children.Nth(1);
-        var nestedSelector = nested.Locator(":scope > .row [data-condition-kind-selector]");
-        await nestedSelector.SelectOptionAsync("player");
-        await nestedSelector.SelectOptionAsync("group");
-        var nestedChildren = nested.Locator(":scope > [data-condition-group] > [data-siege-children] > [data-siege-condition-node]");
-        var nestedChild = nestedChildren.Nth(0);
-        var childSelector = nestedChild.Locator(":scope > .row [data-condition-kind-selector]");
-        await Assertions.Expect(childSelector).ToBeEnabledAsync();
-        await childSelector.SelectOptionAsync("vpn");
-        await childSelector.SelectOptionAsync("player");
-        await nestedChild.Locator("[data-condition-field='PlayerSignal']").SelectOptionAsync("PlayerTag");
-        var comparison = nestedChild.Locator("[data-condition-field='Operator']");
-        await Assertions.Expect(comparison.Locator("option[value='Contains']")).ToBeHiddenAsync();
-        await comparison.SelectOptionAsync("NotEqual");
-        await nestedChild.Locator("[data-condition-field='ExpectedValue']").FillAsync("vpn-exempt");
-        await nested.Locator(":scope > [data-condition-group] > .row [data-condition-field='GroupOperator']").SelectOptionAsync("Or");
-        await nested.Locator(":scope > .row [data-action='add-siege-vpn-condition']").ClickAsync();
-        await Assertions.Expect(nestedChildren).ToHaveCountAsync(2);
-        await nested.Locator(":scope > .row [data-action='add-siege-player-condition']").ClickAsync();
-        await Assertions.Expect(nestedChildren).ToHaveCountAsync(3);
-        await nestedChildren.Nth(2).Locator(":scope > .row [data-action='remove-siege-condition']").ClickAsync();
-        await Assertions.Expect(nestedChildren).ToHaveCountAsync(2);
-        await Assertions.Expect(root).ToHaveCountAsync(1);
-        await page.Locator("#SiegeMode_DurationMinutes").FillAsync("75");
-
-        await SaveSettings(page);
-        await page.Locator("#siege-mode-tab-btn").ClickAsync();
-        await Assertions.Expect(page.Locator("#SiegeMode_DurationMinutes")).ToHaveValueAsync("75");
-        await Assertions.Expect(page.Locator("#global-siege-rules > [data-siege-rule-row]")).ToHaveCountAsync(1);
-        var reloaded = page.Locator("#global-siege-rules > [data-siege-rule-row]").First;
-        await Assertions.Expect(reloaded.Locator("[data-rule-field='Id']")).ToHaveValueAsync("nested-test");
-        await Assertions.Expect(reloaded.Locator("[name='SiegeMode.Rules[0].Condition.Conditions[1].GroupOperator']")).ToHaveValueAsync("Or");
-        await Assertions.Expect(reloaded.Locator("[name='SiegeMode.Rules[0].Condition.Conditions[1].Conditions[0].ExpectedValue']")).ToHaveValueAsync("vpn-exempt");
-        using var saved = JsonDocument.Parse(scenario.SiegeJson!);
-        var condition = saved.RootElement.GetProperty("rules")[0].GetProperty("condition");
-        Assert.Equal("Or", condition.GetProperty("conditions")[1].GetProperty("groupOperator").GetString());
-        Assert.Equal(2, condition.GetProperty("conditions")[1].GetProperty("conditions").GetArrayLength());
-        browser.AssertNoBrowserErrors();
-    }
-
-    [Fact]
-    public async Task Editor_DefaultTagOutsideCatalog_CanBeSaved()
-    {
-        var scenario = new SettingsScenario();
-        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
-        var page = browser.Page;
-        await OpenSettings(page, browser.Host.BaseAddress);
-
-        await SaveSettings(page);
-        using var saved = JsonDocument.Parse(scenario.SiegeJson!);
-        var condition = saved.RootElement.GetProperty("rules")[1].GetProperty("condition");
-        Assert.Equal("vpn-exempt", condition.GetProperty("conditions")[2].GetProperty("expectedValue").GetString());
-        browser.AssertNoBrowserErrors();
-    }
-
-    [Fact]
-    public async Task Editor_RemovingEveryRule_PersistsAnEmptyList()
-    {
-        var scenario = new SettingsScenario();
-        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
-        var page = browser.Page;
-        await OpenSettings(page, browser.Host.BaseAddress);
-        var rules = page.Locator("#global-siege-rules > [data-siege-rule-row]");
-        await Assertions.Expect(rules).ToHaveCountAsync(2);
-        await rules.Nth(1).Locator("[data-action='remove-siege-rule']").ClickAsync();
-        await rules.Nth(0).Locator("[data-action='remove-siege-rule']").ClickAsync();
-        await Assertions.Expect(rules).ToHaveCountAsync(0);
-        await Assertions.Expect(page.Locator("#SiegeMode_SubmittedRuleCount")).ToHaveValueAsync("0");
-
-        await SaveSettings(page);
-        using var saved = JsonDocument.Parse(scenario.SiegeJson!);
-        Assert.Equal(0, saved.RootElement.GetProperty("rules").GetArrayLength());
-        await page.Locator("#siege-mode-tab-btn").ClickAsync();
-        await Assertions.Expect(page.Locator("#global-siege-rules > [data-siege-rule-row]")).ToHaveCountAsync(0);
-        browser.AssertNoBrowserErrors();
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Editor_MissingOrMalformedSiegeSection_DoesNotOverwriteSettings(bool missing)
-    {
-        var scenario = new SettingsScenario();
-        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
-        var page = browser.Page;
-        await OpenSettings(page, browser.Host.BaseAddress);
-        if (missing)
-        {
-            await page.Locator("#siege-mode-tab").EvaluateAsync("element => element.remove()");
-        }
-        else
-        {
-            await page.Locator("form[action='/GlobalSettings']").EvaluateAsync(
-                "form => form.addEventListener('submit', () => document.getElementById('SiegeMode_SubmittedRuleCount').value = 'invalid')");
-        }
-
-        var response = await page.RunAndWaitForResponseAsync(
-            () => page.GetByRole(AriaRole.Button, new() { Name = "Save Settings", Exact = true }).ClickAsync(),
-            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/GlobalSettings");
-        Assert.Equal(200, response.Status);
-        await Assertions.Expect(page.Locator(".validation-summary-errors")).ToContainTextAsync("Siege Mode settings section is missing or incomplete");
-        Assert.Null(scenario.SiegeJson);
+        Assert.Equal("keep-me", savedRule.GetProperty("condition").GetProperty("parameters").GetProperty("legacySignalMetadata").GetString());
+        Assert.Equal("keep-action", savedRule.GetProperty("actions")[0].GetProperty("parameters").GetProperty("legacyActionMetadata").GetString());
+        var future = saved.RootElement.GetProperty("rules")[1];
+        Assert.Equal("future.condition", future.GetProperty("condition").GetProperty("conditionId").GetString());
+        Assert.Equal("keep-condition", future.GetProperty("condition").GetProperty("parameters").GetProperty("futureValue").GetString());
+        Assert.Equal("future.action", future.GetProperty("actions")[0].GetProperty("typeId").GetString());
+        Assert.Equal("keep-future-action", future.GetProperty("actions")[0].GetProperty("parameters").GetProperty("futureValue").GetString());
         browser.AssertNoBrowserErrors();
     }
 
@@ -221,11 +317,16 @@ public sealed class SiegeModeSettingsBrowserTests
                 .Setup(api => api.GetTags(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ApiResult<CollectionModel<TagDto>>(
                     HttpStatusCode.OK, new ApiResponse<CollectionModel<TagDto>>(
-                        new CollectionModel<TagDto>([new TagDto { TagId = Guid.NewGuid(), Name = "SeniorAdmin" }]))));
+                        new CollectionModel<TagDto>([
+                            new TagDto { TagId = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = "SeniorAdmin" },
+                            new TagDto { TagId = Guid.Parse("22222222-2222-2222-2222-222222222222"), Name = "GameAdmin" }
+                        ]))));
         }
 
         public string? SiegeJson => configurations.GetValueOrDefault(SiegeModeSettingsConstants.Namespace);
         public string? VpnJson => configurations.GetValueOrDefault(VpnProtectionSettingsConstants.Namespace);
+
+        public void SetConfiguration(string ns, string configuration) => configurations[ns] = configuration;
 
         public void ConfigureServices(IServiceCollection services)
         {

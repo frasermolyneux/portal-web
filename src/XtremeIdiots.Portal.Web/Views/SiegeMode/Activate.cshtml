@@ -17,7 +17,7 @@
                     <environment names="Production"><strong>This affects a production server.</strong></environment>
                     <environment exclude="Production">This affects the selected server.</environment>
                 </p>
-                <p>The current global rules will be used for this session. Existing VPN Protection runs
+                <p>The effective rules will be captured for this session. Existing VPN Protection runs
                     independently in either mode.</p>
                 <form asp-action="Activate" asp-route-id="@Model.GameServerId" method="post">
                     <input type="hidden" name="expectedDurationMinutes" value="@Model.DurationMinutes" />
@@ -28,7 +28,7 @@
                             <input class="form-check-input" type="radio" name="mode" id="siege-mode-dry-run"
                                    value="DryRun" required />
                             <label class="form-check-label" for="siege-mode-dry-run">
-                                <strong>Dry Run</strong> - log players who would be kicked without taking Siege enforcement actions.
+                                <strong>Dry Run</strong> - record what would happen without executing Siege actions.
                             </label>
                         </div>
                         <div class="form-check">

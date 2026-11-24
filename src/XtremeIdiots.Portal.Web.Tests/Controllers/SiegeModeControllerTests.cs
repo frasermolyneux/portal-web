@@ -15,8 +15,10 @@ using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -63,14 +65,41 @@ public sealed class SiegeModeControllerTests
     }
 
     [Fact]
-    public async Task ActivateForm_UsesDefaultDurationWhenNamespaceIsAbsent()
+    public async Task ActivateForm_DisabledWhenNamespaceIsAbsent()
     {
         SetupServer(true);
         repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration("siegeMode", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.NotFound));
+        repository.Setup(r => r.GameServerConfigurations.V1.GetConfigurations(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
+
+        var result = Assert.IsType<UnprocessableEntityObjectResult>(await CreateSut().Activate(serverId, default));
+        Assert.Contains("disabled", Assert.IsType<string>(result.Value));
+    }
+
+    [Fact]
+    public async Task ActivateForm_UsesServerDurationOverrideWhenEnabled()
+    {
+        SetupServer(true);
+        var globalConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "siegeMode",
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabled":true,"durationMinutes":240,"rules":[]}"""
+        }))!;
+        var serverConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = "siegeMode",
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabledOverride":"Inherit","inheritGlobalRules":true,"durationMinutesOverride":90,"rules":[],"ruleOverrides":[]}"""
+        }))!;
+        repository.Setup(r => r.GlobalConfigurations.V1.GetConfiguration("siegeMode", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(globalConfig)));
+        repository.Setup(r => r.GameServerConfigurations.V1.GetConfigurations(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([serverConfig]))));
 
         var view = Assert.IsType<ViewResult>(await CreateSut().Activate(serverId, default));
-        Assert.Equal(240, Assert.IsType<SiegeModeActivationViewModel>(view.Model).DurationMinutes);
+        Assert.Equal(90, Assert.IsType<SiegeModeActivationViewModel>(view.Model).DurationMinutes);
     }
 
     [Fact]
@@ -122,6 +151,33 @@ public sealed class SiegeModeControllerTests
             .ReturnsAsync(new ApiResult<SiegeSessionDto>(HttpStatusCode.ServiceUnavailable));
         var result = Assert.IsType<StatusCodeResult>(await CreateSut().Status(serverId, default));
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Status_ShowsOnlyGenericActionsForAuthorizedSession()
+    {
+        SetupServer(true);
+        var sessionId = Guid.NewGuid();
+        repository.Setup(r => r.SiegeMode.V1.GetCurrentSession(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<SiegeSessionDto>(HttpStatusCode.OK, new ApiResponse<SiegeSessionDto>(
+                new SiegeSessionDto { GameServerId = serverId, SessionId = sessionId })));
+        var action = new RuleActionExecutionDto
+        {
+            GameServerId = serverId, SiegeSessionId = sessionId, FeatureId = RulesEngineCatalogueV1.SiegeModeFeature, ActionTypeId = "message.private"
+        };
+        repository.Setup(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleActionExecutionDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<RuleActionExecutionDto>>(new CollectionModel<RuleActionExecutionDto>(
+                    [action, action with { SiegeSessionId = Guid.NewGuid() }]))));
+        repository.Setup(r => r.SiegeMode.V1.GetChecks(serverId, sessionId, 0, 50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<SiegeCheckDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<SiegeCheckDto>>(new CollectionModel<SiegeCheckDto>([]))));
+
+        var view = Assert.IsType<PartialViewResult>(await CreateSut().Status(serverId, default));
+        Assert.Same(action, Assert.Single(Assert.IsType<SiegeModeStatusViewModel>(view.Model).Actions));
+        repository.Verify(r => r.RuleExecutions.V1.SearchRuleActions(It.Is<RuleActionAuditQueryDto>(q =>
+            q.GameServerIds.Length == 1 && q.GameServerIds[0] == serverId && q.SiegeSessionId == sessionId &&
+            q.FeatureId == RulesEngineCatalogueV1.SiegeModeFeature && q.TakeEntries == 50), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

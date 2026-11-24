@@ -1,0 +1,30 @@
+@using System.Text.Json
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine
+@model RulesCatalogueEditorViewModel
+@{
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var catalogue = RulesEngineCatalogueV1.Current;
+    var gameTypes = Enum.GetValues<GameType>()
+        .SelectMany(game => new[]
+        {
+            KeyValuePair.Create(((int)game).ToString(), new { name = game.ToString(), label = game.ToDisplayName() }),
+            KeyValuePair.Create(game.ToString(), new { name = game.ToString(), label = game.ToDisplayName() })
+        })
+        .ToDictionary(item => item.Key, item => item.Value);
+}
+<div id="@Model.EditorId" data-rules-catalogue-editor
+     data-feature-id="@Model.FeatureId"
+     data-override="@Model.IsOverride.ToString().ToLowerInvariant()"
+     data-server-context="@Model.IsServerContext.ToString().ToLowerInvariant()"
+     data-show-inherited-rules="@Model.ShowInheritedRules.ToString().ToLowerInvariant()"
+     data-catalogue="@JsonSerializer.Serialize(catalogue, jsonOptions)"
+     data-game-types="@JsonSerializer.Serialize(gameTypes, jsonOptions)"
+     data-game-icon-base="@Url.Content("~/images/game-icons/")"
+     data-tags="@JsonSerializer.Serialize(Model.TagOptions.Select(item => new { value = item.Value, text = item.Text }), jsonOptions)"
+     data-compatibility="@JsonSerializer.Serialize(Model.Compatibility, jsonOptions)"
+     data-global-rules="@Model.GlobalRulesJson">
+    <input type="hidden" name="@Model.FieldName" value="@Model.RulesJson" data-rules-value />
+    <noscript><p class="alert alert-warning">JavaScript is required to edit rules. The existing rules will be preserved.</p></noscript>
+    <div data-rules-editor></div>
+</div>
+<script src="~/js/rules-catalogue-editor.js" asp-append-version="true" defer></script>

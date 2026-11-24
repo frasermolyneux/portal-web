@@ -25,6 +25,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -55,6 +56,9 @@ public class GameServersControllerTests
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
                 HttpStatusCode.OK, new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
+        mockRepositoryApiClient.Setup(x => x.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK, new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([]))));
     }
 
     private GameServersController CreateSut(ClaimsPrincipal? user = null)
@@ -76,6 +80,27 @@ public class GameServersControllerTests
         controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
         return controller;
+    }
+
+    private static void PrepareRulesSettingsSubmission(GameServersController controller, GameServerEditViewModel model)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["VpnProtection.Enabled"] = model.VpnProtection.Enabled?.ToString() ?? string.Empty,
+            ["VpnProtection.InheritGlobalRules"] = model.VpnProtection.InheritGlobalRules.ToString(),
+            ["VpnProtection.LocalRulesJson"] = model.VpnProtection.LocalRulesJson,
+            ["VpnProtection.RuleOverridesJson"] = model.VpnProtection.RuleOverridesJson,
+            ["SiegeMode.Enabled"] = model.SiegeMode.Enabled?.ToString() ?? string.Empty,
+            ["SiegeMode.InheritGlobalRules"] = model.SiegeMode.InheritGlobalRules.ToString(),
+            ["SiegeMode.DurationMinutesOverride"] = model.SiegeMode.DurationMinutesOverride?.ToString() ?? string.Empty,
+            ["SiegeMode.LocalRulesJson"] = model.SiegeMode.LocalRulesJson,
+            ["SiegeMode.RuleOverridesJson"] = model.SiegeMode.RuleOverridesJson
+        };
+        foreach (var (key, value) in fields)
+        {
+            controller.ModelState.SetModelValue(key, value, value);
+            controller.ModelState.MarkFieldValid(key);
+        }
     }
 
     [Fact]
@@ -1106,7 +1131,9 @@ public class GameServersControllerTests
         Assert.DoesNotContain(AgentSettingsConstants.Namespace, upsertedNamespaces);
         Assert.DoesNotContain(BanFileSettingsConstants.Namespace, upsertedNamespaces);
         Assert.DoesNotContain(ServerListSettingsConstants.Namespace, upsertedNamespaces);
-        Assert.Equal([VpnProtectionSettingsConstants.Namespace], deletedNamespaces);
+        Assert.Equal(
+            [VpnProtectionSettingsConstants.Namespace, SiegeModeSettingsConstants.Namespace],
+            deletedNamespaces);
     }
 
     [Fact]
@@ -1121,6 +1148,12 @@ public class GameServersControllerTests
             .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
                 gameServerId,
                 VpnProtectionSettingsConstants.Namespace,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                gameServerId,
+                SiegeModeSettingsConstants.Namespace,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
 
@@ -1299,6 +1332,7 @@ public class GameServersControllerTests
         };
 
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         // Act
         var result = await sut.Edit(model, CancellationToken.None);
@@ -1370,6 +1404,7 @@ public class GameServersControllerTests
         };
 
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         // Act
         var result = await sut.Edit(model, CancellationToken.None);
@@ -1448,6 +1483,7 @@ public class GameServersControllerTests
         };
 
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         // Act
         var result = await sut.Edit(model, CancellationToken.None);
@@ -1463,22 +1499,193 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public async Task Edit_UnknownVpnExclusionTag_DoesNotUpdateServer()
+    public async Task Edit_Get_WhenServerConfigurationsCannotBeRetrieved_Returns503()
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var result = Assert.IsType<StatusCodeResult>(await CreateSut().Edit(server.GameServerId));
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Edit_Get_WhenGlobalConfigurationsCannotBeRetrieved_Returns503()
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var result = Assert.IsType<StatusCodeResult>(await CreateSut().Edit(server.GameServerId));
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Edit_Post_WhenGlobalDefaultsCannotBeRetrieved_DoesNotSaveServerSettings()
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.ServiceUnavailable));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = server.GameServerId,
+                Title = server.Title,
+                GameType = server.GameType,
+                Platform = server.Platform,
+                Hostname = server.Hostname,
+                QueryPort = server.QueryPort
+            },
+            VpnProtection = new VpnProtectionServerSettingsViewModel
+            {
+                RuleOverridesJson = /*lang=json,strict*/ """
+                    [{
+                      "ruleId": "vpn-rule",
+                      "enabled": false,
+                      "condition": null,
+                      "actions": null,
+                      "afterMatch": null
+                    }]
+                    """
+            }
+        };
+        var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+
+        var result = Assert.IsType<ViewResult>(await sut.Edit(model));
+
+        Assert.Contains(sut.ModelState.Values.SelectMany(static value => value.Errors),
+            error => error.ErrorMessage.Contains("Global settings could not be loaded", StringComparison.Ordinal));
+        mockRepositoryApiClient.Verify(
+            x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        mockRepositoryApiClient.Verify(
+            x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Edit_Post_UsesOnlyAuthoritativeRuleEnvelopeExtensionData(bool hasSavedConfigurations)
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var configurations = hasSavedConfigurations
+            ? new[]
+            {
+                JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = VpnProtectionSettingsConstants.Namespace,
+                    Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"vpn-protection","enabledOverride":"Inherit","inheritGlobalRules":true,"rules":[],"ruleOverrides":[],"futureData":{"value":"saved-vpn"}}"""
+                }))!,
+                JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = SiegeModeSettingsConstants.Namespace,
+                    Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabledOverride":"Inherit","inheritGlobalRules":true,"rules":[],"ruleOverrides":[],"futureData":{"value":"saved-siege"}}"""
+                }))!
+            }
+            : [];
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>(configurations))));
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+        var upserted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+                server.GameServerId, It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upserted[ns] = dto.Configuration;
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                server.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = server.GameServerId,
+                Title = server.Title,
+                GameType = server.GameType,
+                Platform = server.Platform,
+                Hostname = server.Hostname,
+                QueryPort = server.QueryPort
+            }
+        };
+        model.VpnProtection.Enabled = true;
+        model.SiegeMode.DurationMinutesOverride = 90;
+        model.VpnProtection.EnvelopeExtensionData["futureData"] = System.Text.Json.JsonSerializer.SerializeToElement(new { value = "client-vpn" });
+        model.SiegeMode.EnvelopeExtensionData["futureData"] = System.Text.Json.JsonSerializer.SerializeToElement(new { value = "client-siege" });
+        model.VpnProtection.EnvelopeExtensionData["injected"] = System.Text.Json.JsonSerializer.SerializeToElement(true);
+        model.SiegeMode.EnvelopeExtensionData["injected"] = System.Text.Json.JsonSerializer.SerializeToElement(true);
+        var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+
+        Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
+
+        using var vpn = System.Text.Json.JsonDocument.Parse(upserted[VpnProtectionSettingsConstants.Namespace]);
+        using var siege = System.Text.Json.JsonDocument.Parse(upserted[SiegeModeSettingsConstants.Namespace]);
+        Assert.Equal("Enabled", vpn.RootElement.GetProperty("enabledOverride").GetString());
+        Assert.Equal(90, siege.RootElement.GetProperty("durationMinutesOverride").GetInt32());
+        Assert.False(vpn.RootElement.TryGetProperty("injected", out _));
+        Assert.False(siege.RootElement.TryGetProperty("injected", out _));
+        if (hasSavedConfigurations)
+        {
+            Assert.Equal("saved-vpn", vpn.RootElement.GetProperty("futureData").GetProperty("value").GetString());
+            Assert.Equal("saved-siege", siege.RootElement.GetProperty("futureData").GetProperty("value").GetString());
+        }
+        else
+        {
+            Assert.False(vpn.RootElement.TryGetProperty("futureData", out _));
+            Assert.False(siege.RootElement.TryGetProperty("futureData", out _));
+        }
+    }
+
+    [Fact]
+    public async Task Edit_MalformedVpnLocalRulesJson_DoesNotUpdateServer()
     {
         var existingServer = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
-
-        var tags = new CollectionModel<TagDto>([new TagDto { TagId = Guid.NewGuid(), Name = "Trusted" }]);
-        mockRepositoryApiClient
-            .Setup(x => x.Tags.V1.GetTags(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<TagDto>>(
-                HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<TagDto>>(tags)
-                {
-                    Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 100)
-                }));
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
@@ -1498,17 +1705,21 @@ public class GameServersControllerTests
             },
             VpnProtection = new VpnProtectionServerSettingsViewModel
             {
-                ExcludedPlayerTagsCsv = "Unknown"
+                LocalRulesJson = "{"
             }
         };
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+        sut.ModelState.AddModelError(
+            $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.LocalRulesJson)}",
+            "Invalid rules JSON.");
 
         var result = await sut.Edit(model, CancellationToken.None);
 
         Assert.IsType<ViewResult>(result);
         Assert.False(sut.ModelState.IsValid);
         Assert.Contains(sut.ModelState, entry =>
-            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.ExcludedPlayerTagsCsv)}");
+            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.LocalRulesJson)}");
         mockRepositoryApiClient.Verify(
             client => client.GameServers.V1.UpdateGameServer(
                 It.IsAny<EditGameServerDto>(),
@@ -1517,7 +1728,7 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public async Task Edit_IncompatibleVpnOverride_ReloadsGlobalRulesAndDoesNotUpdateServer()
+    public async Task Edit_UnknownVpnRuleOverride_ReloadsGlobalRulesAndDoesNotUpdateServer()
     {
         var existingServer = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
         mockRepositoryApiClient
@@ -1529,18 +1740,29 @@ public class GameServersControllerTests
             Namespace = VpnProtectionSettingsConstants.Namespace,
             Configuration = /*lang=json,strict*/ """
                 {
-                  "schemaVersion": 2,
+                  "schemaVersion": 1,
+                  "featureId": "vpn-protection",
                   "enabled": true,
-                  "rules": [
-                    {
-                      "id": "proxy-type",
-                      "enabled": true,
-                      "condition": {"signal": "ProxyCheckProxyType", "operator": "Contains", "expectedValue": "VPN"},
-                      "action": "Observation"
-                    }
-                  ],
-                  "ruleOverrides": [],
-                  "excludedPlayerTags": []
+                  "rules": [{
+                    "id": "vpn-rule",
+                    "enabled": true,
+                    "order": 0,
+                    "condition": {
+                      "conditionId": "vpn.intelligence",
+                      "parameters": {
+                        "signal": "ProxyCheckIsVpn",
+                        "operator": "Equal",
+                        "expectedValue": "true"
+                      }
+                    },
+                    "actions": [{
+                      "id": "observe",
+                      "typeId": "moderation.observation",
+                      "parameters": {"reason": "VPN rule"},
+                      "dependsOnActionIds": []
+                    }],
+                    "afterMatch": "StopProcessingRules"
+                  }]
                 }
                 """
         }))!;
@@ -1568,34 +1790,35 @@ public class GameServersControllerTests
             },
             VpnProtection = new VpnProtectionServerSettingsViewModel
             {
-                RuleOverrides =
-                [
-                    new VpnProtectionRuleOverrideViewModel
-                    {
-                        Id = "proxy-type",
-                        UseConditionOverride = true,
-                        Condition = new RuleConditionViewModel { Signal = VpnProtectionSignal.ProxyCheckIsVpn }
-                    }
-                ]
+                RuleOverridesJson = /*lang=json,strict*/ """
+                    [{
+                      "ruleId": "missing-rule",
+                      "enabled": false,
+                      "condition": null,
+                      "actions": null,
+                      "afterMatch": null
+                    }]
+                    """
             }
         };
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         var result = await sut.Edit(model, CancellationToken.None);
 
         var view = Assert.IsType<ViewResult>(result);
         var returnedModel = Assert.IsType<GameServerEditViewModel>(view.Model);
-        Assert.Single(returnedModel.GlobalVpnProtection.Rules);
-        Assert.Equal("proxy-type", returnedModel.GlobalVpnProtection.Rules[0].Id);
+        using var globalRules = System.Text.Json.JsonDocument.Parse(returnedModel.GlobalVpnProtection.RulesJson);
+        Assert.Equal("vpn-rule", globalRules.RootElement[0].GetProperty("id").GetString());
         Assert.Contains(sut.ModelState, entry =>
-            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}");
+            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverridesJson)}");
         mockRepositoryApiClient.Verify(
             client => client.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task Edit_Post_DoesNotReplaceLegacyVpnOverride()
+    public async Task Edit_Post_InvalidVpnServerSettings_ReturnsUnprocessableEntity()
     {
         var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
         mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
@@ -1605,7 +1828,7 @@ public class GameServersControllerTests
         var configuration = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = VpnProtectionSettingsConstants.Namespace,
-            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"enabled":false,"rules":[]}"""
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabledOverride":"Inherit","inheritGlobalRules":true,"rules":[],"ruleOverrides":[]}"""
         }))!;
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
@@ -1614,18 +1837,14 @@ public class GameServersControllerTests
 
         var result = Assert.IsType<UnprocessableEntityObjectResult>(await CreateSut().Edit(model));
 
-        Assert.Contains("unsupported schema", Assert.IsType<string>(result.Value));
+        Assert.Contains("Saved VPN Protection settings are unreadable", Assert.IsType<string>(result.Value));
         mockRepositoryApiClient.Verify(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Edit_PostedSupportedGameTypeForUnsupportedServer_RejectsDestructiveVpnAction()
+    public async Task Edit_UnknownSiegeRuleOverride_DoesNotUpdateServer()
     {
-        var existingServer = CreateGameServerDto(
-            ftpEnabled: false,
-            fileTransportEnabled: false,
-            fileTransportType: "Ftp",
-            gameType: RepositoryGameType.Insurgency);
+        var existingServer = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(existingServer.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(existingServer)));
@@ -1633,6 +1852,43 @@ public class GameServersControllerTests
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
+
+        var globalConfig = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = SiegeModeSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """
+                {
+                  "schemaVersion": 1,
+                  "featureId": "siege-mode",
+                  "enabled": true,
+                  "durationMinutes": 240,
+                  "rules": [{
+                    "id": "siege-rule",
+                    "enabled": true,
+                    "order": 0,
+                    "condition": {
+                      "conditionId": "player.first-seen-guid",
+                      "parameters": {
+                        "operator": "IsNew",
+                        "referenceScope": "SiegeBaseline"
+                      }
+                    },
+                    "actions": [{
+                      "id": "kick",
+                      "typeId": "player.kick",
+                      "parameters": {"reason": "Siege rule"},
+                      "dependsOnActionIds": []
+                    }],
+                    "afterMatch": "StopProcessingRules"
+                  }]
+                }
+                """
+        }))!;
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
+                HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([globalConfig]))));
 
         var model = new GameServerEditViewModel
         {
@@ -1646,32 +1902,26 @@ public class GameServersControllerTests
                 QueryPort = existingServer.QueryPort,
                 FileTransportType = existingServer.FileTransportType
             },
-            VpnProtection = new VpnProtectionServerSettingsViewModel
+            SiegeMode = new SiegeModeServerSettingsViewModel
             {
-                LocalRules =
-                [
-                    new VpnProtectionRuleViewModel
-                    {
-                        Id = "ban-vpn",
-                        Condition = new RuleConditionViewModel
-                        {
-                            Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                            Operator = RuleComparisonOperator.Equal,
-                            ExpectedValue = "true"
-                        },
-                        Action = VpnProtectionAction.Ban
-                    }
-                ]
+                RuleOverridesJson = /*lang=json,strict*/ """
+                    [{
+                      "ruleId": "missing-siege-rule",
+                      "enabled": false,
+                      "condition": null,
+                      "actions": null,
+                      "afterMatch": null
+                    }]
+                    """
             }
         };
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         var result = await sut.Edit(model, CancellationToken.None);
 
         Assert.IsType<ViewResult>(result);
-        Assert.Equal(RepositoryGameType.Insurgency, model.GameServer.GameType);
-        Assert.Contains(sut.ModelState, entry =>
-            entry.Key == $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.LocalRules)}[0].{nameof(VpnProtectionRuleViewModel.Action)}");
+        Assert.Contains(sut.ModelState, entry => entry.Key == nameof(GameServerEditViewModel.SiegeMode));
         mockRepositoryApiClient.Verify(
             client => client.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -1734,6 +1984,7 @@ public class GameServersControllerTests
         };
 
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         // Act
         var result = await sut.Edit(model, CancellationToken.None);
@@ -1967,6 +2218,7 @@ public class GameServersControllerTests
         };
 
         var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
 
         // Act
         var result = await sut.Edit(model, CancellationToken.None);

@@ -5,8 +5,10 @@ using MX.Observability.ApplicationInsights.Auditing;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -53,11 +55,32 @@ public sealed class SiegeModeController(
             return UnprocessableEntity("Siege Mode settings are invalid. Contact a senior administrator.");
         }
 
+        var serverConfigurations = await repository.GameServerConfigurations.V1.GetConfigurations(id, cancellationToken).ConfigureAwait(false);
+        if (!serverConfigurations.IsSuccess || serverConfigurations.Result?.Data?.Items is null)
+        {
+            Logger.LogWarning("Cannot retrieve Siege Mode server settings for {ServerId}: {StatusCode}", id, serverConfigurations.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        SiegeModeServerSettingsOverrideDocument? serverOverride = null;
+        var serverConfig = serverConfigurations.Result.Data.Items.FirstOrDefault(item =>
+            string.Equals(item.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase));
+        if (serverConfig is not null &&
+            (!settingsParser.TryParseSiegeModeServerSettings(serverConfig, out serverOverride, out var serverErrors) || serverOverride is null))
+        {
+            Logger.LogWarning("Invalid Siege Mode server settings for {ServerId}: {Errors}", id, string.Join("; ", serverErrors));
+            return UnprocessableEntity("Siege Mode server settings are invalid. Contact a server administrator.");
+        }
+
+        var effective = SiegeModeSettingsMerger.Merge(document, serverOverride);
+        if (!effective.Enabled)
+            return UnprocessableEntity("Siege Mode is disabled for this server.");
+
         return View(new SiegeModeActivationViewModel
         {
             GameServerId = id,
             ServerName = server!.Title,
-            DurationMinutes = document.DurationMinutes,
+            DurationMinutes = effective.DurationMinutes,
             Actor = User.Username() ?? actor,
             OperationId = Guid.NewGuid()
         });
@@ -115,7 +138,13 @@ public sealed class SiegeModeController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
-        var actions = await repository.SiegeMode.V1.GetActions(id, session.SessionId, 0, 50, cancellationToken).ConfigureAwait(false);
+        var actions = await repository.RuleExecutions.V1.SearchRuleActions(new RuleActionAuditQueryDto
+        {
+            GameServerIds = [id],
+            FeatureId = RulesEngineCatalogueV1.SiegeModeFeature,
+            SiegeSessionId = session.SessionId,
+            TakeEntries = 50
+        }, cancellationToken).ConfigureAwait(false);
         var checks = await repository.SiegeMode.V1.GetChecks(id, session.SessionId, 0, 50, cancellationToken).ConfigureAwait(false);
         if (!actions.IsSuccess || actions.Result?.Data?.Items is null || !checks.IsSuccess || checks.Result?.Data?.Items is null)
         {
@@ -127,7 +156,8 @@ public sealed class SiegeModeController(
         {
             ServerId = id,
             Session = session,
-            Actions = actions.Result.Data.Items.ToArray(),
+            Actions = [.. actions.Result.Data.Items.Where(action => action.GameServerId == id &&
+                action.SiegeSessionId == session.SessionId && action.FeatureId == RulesEngineCatalogueV1.SiegeModeFeature)],
             Checks = checks.Result.Data.Items.ToArray()
         });
     }

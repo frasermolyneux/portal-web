@@ -98,6 +98,11 @@
                                     data-bs-target="#vpn-protection-tab" type="button" role="tab"
                                     aria-controls="vpn-protection-tab" aria-selected="false">VPN Protection</button>
                         </li>
+                        <li class="nav-item" role="presentation" id="siege-mode-tab-item">
+                            <button class="nav-link" id="siege-mode-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#siege-mode-tab" type="button" role="tab"
+                                    aria-controls="siege-mode-tab" aria-selected="false">Siege Mode</button>
+                        </li>
                         @if (Model.IsCod4xGameServer)
                         {
                             <li class="nav-item" role="presentation" id="cod4x-tab-item">
@@ -182,6 +187,10 @@
                              aria-labelledby="vpn-protection-tab-btn">
                             @await Html.PartialAsync("ConfigurationSections/_VpnProtectionConfiguration", Model)
                         </div>
+                        <div class="tab-pane fade" id="siege-mode-tab" role="tabpanel"
+                             aria-labelledby="siege-mode-tab-btn">
+                            @await Html.PartialAsync("ConfigurationSections/_SiegeModeConfiguration", Model)
+                        </div>
 
                         @if (Model.IsCod4xGameServer)
                         {
@@ -227,7 +236,7 @@
     <script src="~/js/required-tags-selector.js" asp-append-version="true"></script>
     <script src="~/js/welcome-rules-manager.js" asp-append-version="true"></script>
     <script src="~/js/settings-row-manager.js" asp-append-version="true"></script>
-    <script src="~/js/rule-condition-editor.js" asp-append-version="true"></script>
+    <script src="~/js/feature-server-state.js" asp-append-version="true"></script>
     <script>
         // Password show/hide toggle
         function togglePasswordVisibility(inputId, button) {

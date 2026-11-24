@@ -1,366 +1,181 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
-
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 
 namespace XtremeIdiots.Portal.Web.ViewModels;
-
-public sealed class VpnProtectionRuleViewModel
-{
-    [DisplayName("Rule Id")]
-    [Required]
-    [MaxLength(VpnProtectionSettingsConstants.MaxRuleIdLength)]
-    public string Id { get; set; } = string.Empty;
-
-    [DisplayName("Enabled")]
-    public bool Enabled { get; set; } = true;
-
-    public RuleConditionViewModel Condition { get; set; } = new();
-
-    [DisplayName("Action")]
-    public VpnProtectionAction Action { get; set; }
-
-    [DisplayName("Post observations to forums")]
-    public bool PostObservationToForums { get; set; } = true;
-
-    [DisplayName("Reason Template")]
-    [MaxLength(VpnProtectionSettingsConstants.MaxReasonTemplateLength)]
-    public string? ReasonTemplate { get; set; }
-}
-
-public sealed class VpnProtectionRuleOverrideViewModel
-{
-    [DisplayName("Global Rule Id")]
-    [Required]
-    [MaxLength(VpnProtectionSettingsConstants.MaxRuleIdLength)]
-    public string Id { get; set; } = string.Empty;
-
-    [DisplayName("Enabled Override")]
-    public bool? Enabled { get; set; }
-
-    [DisplayName("Replace global condition")]
-    public bool UseConditionOverride { get; set; }
-
-    public RuleConditionViewModel Condition { get; set; } = new();
-
-    [DisplayName("Action Override")]
-    public VpnProtectionAction? Action { get; set; }
-
-    [DisplayName("Post observations to forums override")]
-    public bool? PostObservationToForums { get; set; }
-
-    [DisplayName("Reason Template Override")]
-    [MaxLength(VpnProtectionSettingsConstants.MaxReasonTemplateLength)]
-    public string? ReasonTemplate { get; set; }
-}
-
-public sealed class VpnRuleEditorRowViewModel
-{
-    public string Prefix { get; init; } = string.Empty;
-    public VpnProtectionRuleViewModel? Rule { get; init; }
-    public VpnProtectionRuleOverrideViewModel? Override { get; init; }
-    public IReadOnlyList<VpnProtectionRuleViewModel> GlobalRules { get; init; } = [];
-    public bool SupportsDestructiveActions { get; init; } = true;
-    public bool IsTemplate { get; init; }
-}
-
-public sealed class VpnRulesEditorViewModel
-{
-    public required string Id { get; init; }
-    public required string Prefix { get; init; }
-    public required string Title { get; init; }
-    public required string AddLabel { get; init; }
-    public bool IsOverride { get; init; }
-    public bool SupportsDestructiveActions { get; init; } = true;
-    public IReadOnlyList<VpnProtectionRuleViewModel> Rules { get; init; } = [];
-    public IReadOnlyList<VpnProtectionRuleOverrideViewModel> Overrides { get; init; } = [];
-    public IReadOnlyList<VpnProtectionRuleViewModel> GlobalRules { get; init; } = [];
-}
 
 public sealed class VpnProtectionGlobalSettingsViewModel : IValidatableObject
 {
     [DisplayName("Enabled")]
     public bool Enabled { get; set; }
 
-    public List<VpnProtectionRuleViewModel> Rules { get; set; } = [];
+    public string RulesJson { get; set; } = "[]";
 
-    [DisplayName("Excluded Player Tags")]
-    public string? ExcludedPlayerTagsCsv { get; set; }
-
-    public IReadOnlyList<string> AllowedExcludedPlayerTags { get; set; } = [];
-
-    public bool ExcludedPlayerTagsCatalogAvailable { get; set; }
+    [BindNever]
+    public Dictionary<string, JsonElement> EnvelopeExtensionData { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        foreach (var rule in Rules ?? [])
+        if (!RuleSettingsJson.TryDeserializeRules(RulesJson, out var rules, out var error))
         {
-            if (VpnProtectionSettingsJsonMapper.HasPlayerCondition(rule.Condition))
-            {
-                yield return new ValidationResult("VPN rules cannot use player conditions.", [nameof(Rules)]);
-            }
+            yield return new ValidationResult(error, [nameof(RulesJson)]);
+            yield break;
         }
 
-        foreach (var result in VpnProtectionSettingsViewModelValidation.Validate(
-            VpnProtectionSettingsJsonMapper.ToDocument(this),
-            ExcludedPlayerTagsCsv,
-            AllowedExcludedPlayerTags,
-            ExcludedPlayerTagsCatalogAvailable,
-            nameof(Rules)))
+        var validation = new VpnProtectionSettingsValidator().Validate(new VpnProtectionSettingsDocument
         {
-            yield return result;
-        }
+            Enabled = Enabled,
+            Rules = rules
+        });
+        foreach (var item in validation.Errors)
+            yield return new ValidationResult(item, [nameof(RulesJson)]);
     }
 }
 
 public sealed class VpnProtectionServerSettingsViewModel : IValidatableObject
 {
     [DisplayName("Enabled Override")]
-    public TriStateOverrideValue EnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
-
-    [DisplayName("Enabled Override")]
-    public bool? Enabled {
-        get => EnabledOverride?.Value;
-        set => EnabledOverride = TriStateOverrideValue.From(value);
-    }
-
-    [DisplayName("Inherit Global Rules")]
+    public bool? Enabled { get; set; }
     public bool InheritGlobalRules { get; set; } = true;
+    public string LocalRulesJson { get; set; } = "[]";
+    public string RuleOverridesJson { get; set; } = "[]";
 
-    public List<VpnProtectionRuleViewModel> LocalRules { get; set; } = [];
-
-    public List<VpnProtectionRuleOverrideViewModel> RuleOverrides { get; set; } = [];
-
-    [DisplayName("Additional Excluded Player Tags")]
-    public string? ExcludedPlayerTagsCsv { get; set; }
-
-    public IReadOnlyList<string> AllowedExcludedPlayerTags { get; set; } = [];
-
-    public bool ExcludedPlayerTagsCatalogAvailable { get; set; }
+    [BindNever]
+    public Dictionary<string, JsonElement> EnvelopeExtensionData { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        foreach (var rule in LocalRules ?? [])
+        if (!RuleSettingsJson.TryDeserializeRules(LocalRulesJson, out var rules, out var rulesError))
         {
-            if (VpnProtectionSettingsJsonMapper.HasPlayerCondition(rule.Condition))
-            {
-                yield return new ValidationResult("VPN rules cannot use player conditions.", [nameof(LocalRules)]);
-            }
-        }
-
-        foreach (var rule in RuleOverrides ?? [])
-        {
-            if (rule.UseConditionOverride && VpnProtectionSettingsJsonMapper.HasPlayerCondition(rule.Condition))
-            {
-                yield return new ValidationResult("VPN rules cannot use player conditions.", [nameof(RuleOverrides)]);
-            }
-        }
-
-        foreach (var result in VpnProtectionSettingsViewModelValidation.Validate(
-            VpnProtectionSettingsJsonMapper.ToDocument(this),
-            ExcludedPlayerTagsCsv,
-            AllowedExcludedPlayerTags,
-            ExcludedPlayerTagsCatalogAvailable,
-            nameof(LocalRules)))
-        {
-            yield return result;
-        }
-    }
-}
-
-internal static class VpnProtectionSettingsViewModelValidation
-{
-    public static IEnumerable<ValidationResult> Validate(
-        VpnProtectionSettingsDocument document,
-        string? excludedTagsCsv,
-        IReadOnlyList<string> allowedTags,
-        bool tagCatalogAvailable,
-        string rulesMemberName)
-    {
-        var validation = new VpnProtectionSettingsValidator().Validate(document);
-        foreach (var error in validation.Errors)
-        {
-            yield return new ValidationResult(error, [rulesMemberName]);
-        }
-
-        if (!tagCatalogAvailable)
-        {
+            yield return new ValidationResult(rulesError, [nameof(LocalRulesJson)]);
             yield break;
         }
 
-        foreach (var validationResult in ValidateExcludedTags(excludedTagsCsv, allowedTags))
+        if (!RuleSettingsJson.TryDeserializeOverrides(RuleOverridesJson, out var overrides, out var overridesError))
         {
-            yield return validationResult;
+            yield return new ValidationResult(overridesError, [nameof(RuleOverridesJson)]);
+            yield break;
+        }
+
+        var validation = new VpnProtectionSettingsValidator().ValidateServerOverride(new VpnProtectionServerSettingsDocument
+        {
+            EnabledOverride = RuleSettingsJson.ToOverride(Enabled),
+            InheritGlobalRules = InheritGlobalRules,
+            Rules = rules,
+            RuleOverrides = overrides
+        });
+        foreach (var item in validation.Errors)
+            yield return new ValidationResult(item, [nameof(LocalRulesJson)]);
+    }
+}
+
+internal static class RuleSettingsJson
+{
+    internal readonly static JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+
+    public static bool TryDeserializeRules(string? json, out List<RuleDefinition> rules, out string? error)
+        => TryDeserialize(json, out rules, out error);
+
+    public static bool TryDeserializeOverrides(string? json, out List<RuleDefinitionOverride> overrides, out string? error)
+        => TryDeserialize(json, out overrides, out error);
+
+    private static bool TryDeserialize<T>(string? json, out List<T> result, out string? error)
+    {
+        result = [];
+        error = null;
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<List<T>>(json ?? string.Empty, Options);
+            if (parsed is null)
+            {
+                error = "Rules must be an array.";
+                return false;
+            }
+
+            result = parsed;
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            error = $"Invalid rules: {ex.Message}";
+            return false;
         }
     }
 
-    public static IEnumerable<ValidationResult> ValidateExcludedTags(
-        string? excludedTagsCsv,
-        IReadOnlyList<string> allowedTags)
+    public static FeatureEnablementOverride ToOverride(bool? enabled) => enabled switch
     {
-        var allowedTagSet = allowedTags.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var tag in RequiredTagsSelection.SplitCsv(excludedTagsCsv))
-        {
-            if (!allowedTagSet.Contains(tag))
-            {
-                yield return new ValidationResult(
-                    $"Excluded player tag '{tag}' is not available.",
-                    [nameof(VpnProtectionGlobalSettingsViewModel.ExcludedPlayerTagsCsv)]);
-            }
-        }
-    }
+        true => FeatureEnablementOverride.Enabled,
+        false => FeatureEnablementOverride.Disabled,
+        null => FeatureEnablementOverride.Inherit
+    };
+
+    public static bool? FromOverride(FeatureEnablementOverride enabled) => enabled switch
+    {
+        FeatureEnablementOverride.Enabled => true,
+        FeatureEnablementOverride.Disabled => false,
+        FeatureEnablementOverride.Inherit => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(enabled))
+    };
+
+    public static Dictionary<string, JsonElement> CloneExtensionData(
+        IReadOnlyDictionary<string, JsonElement>? extensionData)
+        => extensionData?.ToDictionary(
+            static entry => entry.Key,
+            static entry => entry.Value.Clone(),
+            StringComparer.Ordinal) ?? [];
 }
 
 internal static class VpnProtectionSettingsJsonMapper
 {
-    private readonly static JsonSerializerOptions jsonOptions = new(JsonSerializerDefaults.Web)
+    public static void PopulateGlobal(VpnProtectionGlobalSettingsViewModel model, VpnProtectionSettingsDocument document)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        model.Enabled = document.Enabled == true;
+        model.RulesJson = JsonSerializer.Serialize(document.Rules, RuleSettingsJson.Options);
+        model.EnvelopeExtensionData = RuleSettingsJson.CloneExtensionData(document.ExtensionData);
+    }
+
+    public static void PopulateServer(VpnProtectionServerSettingsViewModel model, VpnProtectionServerSettingsDocument document)
+    {
+        model.Enabled = RuleSettingsJson.FromOverride(document.EnabledOverride);
+        model.InheritGlobalRules = document.InheritGlobalRules;
+        model.LocalRulesJson = JsonSerializer.Serialize(document.Rules, RuleSettingsJson.Options);
+        model.RuleOverridesJson = JsonSerializer.Serialize(document.RuleOverrides, RuleSettingsJson.Options);
+        model.EnvelopeExtensionData = RuleSettingsJson.CloneExtensionData(document.ExtensionData);
+    }
+
+    public static VpnProtectionSettingsDocument ToDocument(VpnProtectionGlobalSettingsViewModel model) => new()
+    {
+        Enabled = model.Enabled,
+        Rules = JsonSerializer.Deserialize<List<RuleDefinition>>(model.RulesJson, RuleSettingsJson.Options)
+            ?? throw new JsonException("Rules must be an array."),
+        ExtensionData = RuleSettingsJson.CloneExtensionData(model.EnvelopeExtensionData)
     };
 
-    public static void PopulateGlobal(
-        VpnProtectionGlobalSettingsViewModel model,
-        VpnProtectionSettingsDocument document)
+    public static VpnProtectionServerSettingsDocument ToDocument(VpnProtectionServerSettingsViewModel model) => new()
     {
-        model.Enabled = document.Enabled ?? false;
-        model.Rules = [.. document.Rules.Select(ToViewModel)];
-        model.ExcludedPlayerTagsCsv = string.Join(", ", document.ExcludedPlayerTags);
-    }
-
-    public static void PopulateServer(
-        VpnProtectionServerSettingsViewModel model,
-        VpnProtectionSettingsDocument document)
-    {
-        model.Enabled = document.Enabled;
-        model.InheritGlobalRules = document.InheritGlobalRules ?? true;
-        model.LocalRules = [.. document.Rules.Select(ToViewModel)];
-        model.RuleOverrides = [.. document.RuleOverrides.Select(ToViewModel)];
-        model.ExcludedPlayerTagsCsv = string.Join(", ", document.ExcludedPlayerTags);
-    }
+        EnabledOverride = RuleSettingsJson.ToOverride(model.Enabled),
+        InheritGlobalRules = model.InheritGlobalRules,
+        Rules = JsonSerializer.Deserialize<List<RuleDefinition>>(model.LocalRulesJson, RuleSettingsJson.Options)
+            ?? throw new JsonException("Rules must be an array."),
+        RuleOverrides = JsonSerializer.Deserialize<List<RuleDefinitionOverride>>(model.RuleOverridesJson, RuleSettingsJson.Options)
+            ?? throw new JsonException("Overrides must be an array."),
+        ExtensionData = RuleSettingsJson.CloneExtensionData(model.EnvelopeExtensionData)
+    };
 
     public static string BuildGlobalConfigurationJson(VpnProtectionGlobalSettingsViewModel model)
-    {
-        return JsonSerializer.Serialize(ToDocument(model), jsonOptions);
-    }
+        => JsonSerializer.Serialize(ToDocument(model), RuleSettingsJson.Options);
 
     public static string BuildServerConfigurationJson(VpnProtectionServerSettingsViewModel model)
-    {
-        return JsonSerializer.Serialize(ToDocument(model), jsonOptions);
-    }
-
-    public static VpnProtectionSettingsDocument ToDocument(VpnProtectionGlobalSettingsViewModel model)
-    {
-        return new()
-        {
-            Enabled = model.Enabled,
-            Rules = [.. (model.Rules ?? []).Select(ToContract)],
-            ExcludedPlayerTags = RequiredTagsSelection.SplitCsv(model.ExcludedPlayerTagsCsv)
-        };
-    }
-
-    public static VpnProtectionSettingsDocument ToDocument(VpnProtectionServerSettingsViewModel model)
-    {
-        return new()
-        {
-            Enabled = model.Enabled,
-            InheritGlobalRules = model.InheritGlobalRules,
-            Rules = [.. (model.LocalRules ?? []).Select(ToContract)],
-            RuleOverrides = [.. (model.RuleOverrides ?? []).Select(ToContract)],
-            ExcludedPlayerTags = RequiredTagsSelection.SplitCsv(model.ExcludedPlayerTagsCsv)
-        };
-    }
+        => JsonSerializer.Serialize(ToDocument(model), RuleSettingsJson.Options);
 
     public static bool HasServerOverrides(VpnProtectionServerSettingsViewModel model)
     {
-        return model.Enabled.HasValue ||
-            !model.InheritGlobalRules ||
-            model.LocalRules.Count > 0 ||
-            model.RuleOverrides.Count > 0 ||
-            RequiredTagsSelection.SplitCsv(model.ExcludedPlayerTagsCsv).Length > 0;
+        var document = ToDocument(model);
+        return document.EnabledOverride != FeatureEnablementOverride.Inherit ||
+            !document.InheritGlobalRules || document.Rules.Count > 0 || document.RuleOverrides.Count > 0 ||
+            document.ExtensionData is { Count: > 0 };
     }
-
-    private static VpnProtectionRuleViewModel ToViewModel(VpnProtectionRule rule)
-    {
-        return new()
-        {
-            Id = rule.Id,
-            Enabled = rule.Enabled ?? true,
-            Condition = ToViewModel(rule.Condition),
-            Action = rule.Action,
-            PostObservationToForums = rule.PostObservationToForums,
-            ReasonTemplate = rule.ReasonTemplate
-        };
-    }
-
-    private static VpnProtectionRuleOverrideViewModel ToViewModel(VpnProtectionRuleOverride ruleOverride)
-    {
-        return new()
-        {
-            Id = ruleOverride.Id,
-            Enabled = ruleOverride.Enabled,
-            UseConditionOverride = ruleOverride.Condition is not null,
-            Condition = ToViewModel(ruleOverride.Condition),
-            Action = ruleOverride.Action,
-            PostObservationToForums = ruleOverride.PostObservationToForums,
-            ReasonTemplate = ruleOverride.ReasonTemplate
-        };
-    }
-
-    private static VpnProtectionRule ToContract(VpnProtectionRuleViewModel rule)
-    {
-        return new()
-        {
-            Id = rule.Id?.Trim() ?? string.Empty,
-            Enabled = rule.Enabled,
-            Condition = ToContract(rule.Condition),
-            Action = rule.Action,
-            PostObservationToForums = rule.PostObservationToForums,
-            ReasonTemplate = NormalizeOptional(rule.ReasonTemplate)
-        };
-    }
-
-    private static VpnProtectionRuleOverride ToContract(VpnProtectionRuleOverrideViewModel ruleOverride)
-    {
-        return new()
-        {
-            Id = ruleOverride.Id?.Trim() ?? string.Empty,
-            Enabled = ruleOverride.Enabled,
-            Condition = ruleOverride.UseConditionOverride ? ToContract(ruleOverride.Condition) : null,
-            Action = ruleOverride.Action,
-            PostObservationToForums = ruleOverride.PostObservationToForums,
-            ReasonTemplate = NormalizeOptional(ruleOverride.ReasonTemplate)
-        };
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    }
-
-    internal static bool HasPlayerCondition(RuleConditionViewModel? condition)
-        => condition is not null && (condition.PlayerSignal.HasValue ||
-            (condition.Conditions ?? []).Any(HasPlayerCondition));
-
-    private static RuleConditionViewModel ToViewModel(VpnProtectionCondition? condition)
-        => condition is null ? new() : new()
-        {
-            GroupOperator = condition.GroupOperator,
-            Conditions = [.. (condition.Conditions ?? []).Select(ToViewModel)],
-            Signal = condition.Signal,
-            Operator = condition.Operator,
-            ExpectedValue = condition.ExpectedValue
-        };
-
-    private static VpnProtectionCondition ToContract(RuleConditionViewModel? condition)
-        => condition is null ? new() : new()
-        {
-            GroupOperator = condition.GroupOperator,
-            Conditions = condition.GroupOperator.HasValue
-                ? [.. (condition.Conditions ?? []).Select(ToContract)]
-                : null,
-            Signal = condition.Signal,
-            Operator = condition.Operator,
-            ExpectedValue = NormalizeOptional(condition.ExpectedValue)
-        };
 }

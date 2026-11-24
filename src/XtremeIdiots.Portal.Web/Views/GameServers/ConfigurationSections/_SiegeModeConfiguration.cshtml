@@ -1,0 +1,21 @@
+@model XtremeIdiots.Portal.Web.ViewModels.GameServerEditViewModel
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine
+@using XtremeIdiots.Portal.Web.ViewModels
+
+@await Html.PartialAsync("_ServerFeatureRules", new ServerFeatureRulesViewModel
+{
+    Prefix = "SiegeMode",
+    Title = "Siege Mode",
+    FeatureId = RulesEngineCatalogueV1.SiegeModeFeature,
+    Enabled = Model.SiegeMode.Enabled,
+    GlobalEnabled = Model.GlobalSiegeMode.Enabled,
+    InheritGlobalRules = Model.SiegeMode.InheritGlobalRules,
+    LocalRulesJson = Model.SiegeMode.LocalRulesJson,
+    RuleOverridesJson = Model.SiegeMode.RuleOverridesJson,
+    GlobalRulesJson = Model.GlobalSiegeMode.RulesJson,
+    DurationMinutesOverride = Model.SiegeMode.DurationMinutesOverride,
+    GlobalDurationMinutes = Model.GlobalSiegeMode.DurationMinutes,
+    Tags = Model.AvailableRequiredTags,
+    Compatibility = Model.SiegeRuleCompatibility,
+    HasFreshCapabilitySnapshot = Model.HasFreshRuleCapabilitySnapshot
+})

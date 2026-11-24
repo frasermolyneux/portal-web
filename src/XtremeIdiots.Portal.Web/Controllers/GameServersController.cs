@@ -7,9 +7,12 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -319,12 +322,19 @@ public class GameServersController(
             };
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             editModel.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
+            await PopulateRuleCapabilitiesAsync(editModel, gameServerData.GameServerId, gameServerData.GameType, cancellationToken).ConfigureAwait(false);
 
             // Fetch configuration namespaces
             try
             {
                 var configsResult = await repositoryApiClient.GameServerConfigurations.V1
                     .GetConfigurations(gameServerData.GameServerId, cancellationToken).ConfigureAwait(false);
+
+                if (!configsResult.IsSuccess || configsResult.Result?.Data?.Items is null)
+                {
+                    Logger.LogWarning("Failed to retrieve server configurations for {GameServerId}", id);
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                }
 
                 if (configsResult.IsSuccess && configsResult.Result?.Data?.Items != null)
                 {
@@ -335,6 +345,13 @@ public class GameServersController(
                         {
                             Logger.LogWarning("Invalid VPN Protection settings for server {GameServerId}: {Errors}", id, string.Join("; ", vpnErrors));
                             return UnprocessableEntity("Saved VPN Protection settings are unreadable or use an unsupported schema.");
+                        }
+
+                        if (string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                            && !gameServerSettingsService.TryValidateSiegeModeSettings(config, out var siegeErrors))
+                        {
+                            Logger.LogWarning("Invalid Siege Mode settings for server {GameServerId}: {Errors}", id, string.Join("; ", siegeErrors));
+                            return UnprocessableEntity("Saved Siege Mode settings are unreadable or use an unsupported schema.");
                         }
 
                         // Skip credential namespaces if user lacks permission
@@ -350,6 +367,7 @@ public class GameServersController(
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Failed to fetch configurations for game server {GameServerId}", id);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
             // Fetch global defaults for moderation and events override placeholders
@@ -358,15 +376,28 @@ public class GameServersController(
                 var globalConfigsResult = await repositoryApiClient.GlobalConfigurations.V1
                     .GetConfigurations(cancellationToken).ConfigureAwait(false);
 
+                if (!globalConfigsResult.IsSuccess || globalConfigsResult.Result?.Data?.Items is null)
+                {
+                    Logger.LogWarning("Failed to retrieve global configurations for game server {GameServerId}", id);
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                }
+
                 if (globalConfigsResult.IsSuccess && globalConfigsResult.Result?.Data?.Items != null)
                 {
                     foreach (var config in globalConfigsResult.Result.Data.Items)
                     {
                         if (string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
-                            && !gameServerSettingsService.TryValidateVpnProtectionSettings(config, out var vpnErrors))
+                            && !gameServerSettingsService.TryValidateGlobalVpnProtectionSettings(config, out var vpnErrors))
                         {
                             Logger.LogWarning("Invalid global VPN Protection settings: {Errors}", string.Join("; ", vpnErrors));
                             return UnprocessableEntity("Saved global VPN Protection settings are unreadable or use an unsupported schema.");
+                        }
+
+                        if (string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                            && !gameServerSettingsService.TryValidateGlobalSiegeModeSettings(config, out var siegeErrors))
+                        {
+                            Logger.LogWarning("Invalid global Siege Mode settings: {Errors}", string.Join("; ", siegeErrors));
+                            return UnprocessableEntity("Saved global Siege Mode settings are unreadable or use an unsupported schema.");
                         }
 
                         PopulateGlobalDefaults(editModel, config);
@@ -376,6 +407,7 @@ public class GameServersController(
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Failed to fetch global configurations for placeholder defaults");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
             return View(editModel);
@@ -438,6 +470,16 @@ public class GameServersController(
                 }
             }
 
+            foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!gameServerSettingsService.TryValidateSiegeModeSettings(config, out var siegeErrors))
+                {
+                    Logger.LogWarning("Invalid Siege Mode settings for server {GameServerId}: {Errors}", gameServerData.GameServerId, string.Join("; ", siegeErrors));
+                    return UnprocessableEntity("Saved Siege Mode settings are unreadable or use an unsupported schema.");
+                }
+            }
+
             if (!Enum.IsDefined(model.GameServer.Platform) || model.GameServer.Platform == GameServerPlatform.Unknown)
             {
                 var platformFieldName = $"{nameof(GameServerEditViewModel.GameServer)}.{nameof(GameServerViewModel.Platform)}";
@@ -467,37 +509,104 @@ public class GameServersController(
 
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
+            await PopulateRuleCapabilitiesAsync(model, gameServerData.GameServerId, gameServerData.GameType, cancellationToken).ConfigureAwait(false);
             var globalDefaultsLoaded = await PopulateGlobalDefaultsAsync(model, cancellationToken).ConfigureAwait(false);
-            if (isRequiredTagsCatalogAvailable)
+            if (!globalDefaultsLoaded)
+                ModelState.AddModelError(string.Empty, "Global settings could not be loaded. Retry before saving.");
+            if (!ModelState.ContainsKey("VpnProtection.Enabled")
+                || !ModelState.ContainsKey("VpnProtection.InheritGlobalRules")
+                || !ModelState.ContainsKey("VpnProtection.LocalRulesJson")
+                || !ModelState.ContainsKey("VpnProtection.RuleOverridesJson"))
             {
-                foreach (var validationResult in VpnProtectionSettingsViewModelValidation.ValidateExcludedTags(
-                    model.VpnProtection.ExcludedPlayerTagsCsv,
-                    model.VpnProtection.AllowedExcludedPlayerTags))
+                ModelState.AddModelError(nameof(GameServerEditViewModel.VpnProtection), "The VPN Protection settings section is missing or incomplete.");
+            }
+
+            if (!ModelState.ContainsKey("SiegeMode.Enabled")
+                || !ModelState.ContainsKey("SiegeMode.InheritGlobalRules")
+                || !ModelState.ContainsKey("SiegeMode.DurationMinutesOverride")
+                || !ModelState.ContainsKey("SiegeMode.LocalRulesJson")
+                || !ModelState.ContainsKey("SiegeMode.RuleOverridesJson"))
+            {
+                ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode), "The Siege Mode settings section is missing or incomplete.");
+            }
+
+            if (ModelState.IsValid)
+            {
+                var existing = new GameServerEditViewModel();
+                foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                    string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    gameServerSettingsService.PopulateConfigFromNamespace(existing, config, Logger);
+                RuleSettingsEnvelopeData.CopyFromAuthoritative(existing, model);
+
+                var vpnErrors = RulesCapabilityResolver.FindNewUnsupported(
+                    VpnProtectionSettingsJsonMapper.ToDocument(existing.VpnProtection),
+                    VpnProtectionSettingsJsonMapper.ToDocument(model.VpnProtection), model.VpnRuleCompatibility);
+                foreach (var error in vpnErrors)
+                    ModelState.AddModelError(nameof(GameServerEditViewModel.VpnProtection), error);
+
+                var siegeErrors = RulesCapabilityResolver.FindNewUnsupported(
+                    SiegeModeServerSettingsMapper.ToDocument(existing.SiegeMode),
+                    SiegeModeServerSettingsMapper.ToDocument(model.SiegeMode), model.SiegeRuleCompatibility);
+                foreach (var error in siegeErrors)
+                    ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode), error);
+            }
+
+            if (ModelState.IsValid
+                && RuleSettingsJson.TryDeserializeRules(model.VpnProtection.LocalRulesJson, out _, out _)
+                && RuleSettingsJson.TryDeserializeOverrides(model.VpnProtection.RuleOverridesJson, out var overrides, out _))
+            {
+                if (!globalDefaultsLoaded && overrides.Count > 0)
                 {
                     ModelState.AddModelError(
-                        $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.ExcludedPlayerTagsCsv)}",
-                        validationResult.ErrorMessage ?? "The excluded player tag is invalid.");
+                        $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverridesJson)}",
+                        "Global VPN Protection rules could not be loaded. Retry before saving overrides.");
+                }
+                else if (globalDefaultsLoaded)
+                {
+                    var global = VpnProtectionSettingsJsonMapper.ToDocument(model.GlobalVpnProtection);
+                    var server = VpnProtectionSettingsJsonMapper.ToDocument(model.VpnProtection);
+                    var knownIds = global.Rules.Select(static rule => rule.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    if (server.InheritGlobalRules && overrides.Any(item => !knownIds.Contains(item.RuleId)))
+                    {
+                        ModelState.AddModelError(
+                            $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverridesJson)}",
+                            "An override refers to a global rule that is no longer available.");
+                    }
+
+                    var effective = FeatureRuleSetMerger.Merge(global, server);
+                    var validation = new VpnProtectionSettingsValidator().Validate(new VpnProtectionSettingsDocument
+                    {
+                        Enabled = effective.Enabled,
+                        Rules = [.. effective.Rules]
+                    });
+                    foreach (var error in validation.Errors)
+                        ModelState.AddModelError(nameof(GameServerEditViewModel.VpnProtection), error);
                 }
             }
 
-            ValidateVpnProtectionActions(model, gameServerData.GameType);
-            if (globalDefaultsLoaded)
+            if (ModelState.IsValid
+                && RuleSettingsJson.TryDeserializeRules(model.SiegeMode.LocalRulesJson, out _, out _)
+                && RuleSettingsJson.TryDeserializeOverrides(model.SiegeMode.RuleOverridesJson, out var siegeOverrides, out _))
             {
-                var effectiveSettings = new VpnProtectionSettingsMerger().Merge(
-                    VpnProtectionSettingsJsonMapper.ToDocument(model.GlobalVpnProtection),
-                    VpnProtectionSettingsJsonMapper.ToDocument(model.VpnProtection));
-                if (effectiveSettings.ValidationFailed)
+                if (!globalDefaultsLoaded && siegeOverrides.Count > 0)
                 {
-                    ModelState.AddModelError(
-                        $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}",
-                        "The VPN Protection overrides produce an invalid effective rule. Check the replacement condition and action.");
+                    ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode),
+                        "Global Siege Mode rules could not be loaded. Retry before saving overrides.");
                 }
-            }
-            else if (model.VpnProtection.RuleOverrides.Count > 0)
-            {
-                ModelState.AddModelError(
-                    $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}",
-                    "Global VPN Protection rules could not be loaded. Retry before saving overrides.");
+                else if (globalDefaultsLoaded)
+                {
+                    var global = SiegeModeSettingsViewModelMapper.ToDocument(model.GlobalSiegeMode);
+                    var server = SiegeModeServerSettingsMapper.ToDocument(model.SiegeMode);
+                    var knownIds = global.Rules.Select(static rule => rule.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    if (server.InheritGlobalRules && siegeOverrides.Any(item => !knownIds.Contains(item.RuleId)))
+                        ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode),
+                            "An override refers to a global Siege Mode rule that is no longer available.");
+                    var effective = SiegeModeSettingsMerger.Merge(global, server);
+                    var validation = new SiegeModeSettingsValidator().Validate(SiegeModeSettingsMerger.Freeze(effective));
+                    foreach (var error in validation.Errors)
+                        ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode), error);
+                }
             }
 
             if (gameServerData.GameType == GameType.CallOfDuty4x)
@@ -795,6 +904,28 @@ public class GameServersController(
         gameServerSettingsService.PopulateGlobalDefaults(editModel, config, Logger);
     }
 
+    private async Task PopulateRuleCapabilitiesAsync(GameServerEditViewModel model, Guid serverId, GameType gameType, CancellationToken cancellationToken)
+    {
+        RuleServerCapabilitiesDto? snapshot = null;
+        try
+        {
+            var response = await repositoryApiClient.RuleConnectionBindings.V1
+                .GetCurrentCapabilities(serverId, cancellationToken).ConfigureAwait(false);
+            if (response.IsSuccess && response.Result?.Data is { } data && data.GameServerId == serverId && data.GameType == gameType)
+                snapshot = data;
+            else
+                Logger.LogWarning("Cannot retrieve rule capability snapshot for game server {GameServerId}", serverId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogWarning(ex, "Cannot retrieve rule capability snapshot for game server {GameServerId}", serverId);
+        }
+
+        model.HasFreshRuleCapabilitySnapshot = snapshot is not null && snapshot.HasFreshStatus && snapshot.ExpiresAtUtc > DateTimeOffset.UtcNow;
+        model.VpnRuleCompatibility = RulesCapabilityResolver.Resolve(gameType, RulesEngineCatalogueV1.VpnProtectionFeature, snapshot);
+        model.SiegeRuleCompatibility = RulesCapabilityResolver.Resolve(gameType, RulesEngineCatalogueV1.SiegeModeFeature, snapshot);
+    }
+
     private async Task<bool> PopulateGlobalDefaultsAsync(
         GameServerEditViewModel model,
         CancellationToken cancellationToken)
@@ -812,9 +943,16 @@ public class GameServersController(
             foreach (var config in globalConfigsResult.Result.Data.Items)
             {
                 if (string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
-                    && !gameServerSettingsService.TryValidateVpnProtectionSettings(config, out var vpnErrors))
+                    && !gameServerSettingsService.TryValidateGlobalVpnProtectionSettings(config, out var vpnErrors))
                 {
                     Logger.LogWarning("Invalid global VPN Protection settings: {Errors}", string.Join("; ", vpnErrors));
+                    return false;
+                }
+
+                if (string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    && !gameServerSettingsService.TryValidateGlobalSiegeModeSettings(config, out var siegeErrors))
+                {
+                    Logger.LogWarning("Invalid global Siege Mode settings: {Errors}", string.Join("; ", siegeErrors));
                     return false;
                 }
 
@@ -827,36 +965,6 @@ public class GameServersController(
         {
             Logger.LogWarning(ex, "Failed to retrieve global configurations for server settings validation");
             return false;
-        }
-    }
-
-    private void ValidateVpnProtectionActions(GameServerEditViewModel model, GameType gameType)
-    {
-        if (gameType is GameType.CallOfDuty2 or GameType.CallOfDuty4 or GameType.CallOfDuty5 or GameType.CallOfDuty4x)
-        {
-            return;
-        }
-
-        for (var index = 0; index < model.VpnProtection.LocalRules.Count; index++)
-        {
-            var action = model.VpnProtection.LocalRules[index].Action;
-            if (action is VpnProtectionAction.Kick or VpnProtectionAction.Ban)
-            {
-                ModelState.AddModelError(
-                    $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.LocalRules)}[{index}].{nameof(VpnProtectionRuleViewModel.Action)}",
-                    $"{action} VPN Protection actions are not supported for {gameType}.");
-            }
-        }
-
-        for (var index = 0; index < model.VpnProtection.RuleOverrides.Count; index++)
-        {
-            var action = model.VpnProtection.RuleOverrides[index].Action;
-            if (action is VpnProtectionAction.Kick or VpnProtectionAction.Ban)
-            {
-                ModelState.AddModelError(
-                    $"{nameof(GameServerEditViewModel.VpnProtection)}.{nameof(VpnProtectionServerSettingsViewModel.RuleOverrides)}[{index}].{nameof(VpnProtectionRuleOverrideViewModel.Action)}",
-                    $"{action} VPN Protection overrides are not supported for {gameType}.");
-            }
         }
     }
 
@@ -1161,6 +1269,7 @@ public class GameServersController(
                 .Where(static tag => !string.IsNullOrWhiteSpace(tag.Name))
                 .Select(static tag => new RequiredTagOptionViewModel
                 {
+                    TagId = tag.TagId,
                     Name = tag.Name,
                     DisplayName = tag.Name
                 }));

@@ -32,15 +32,18 @@ public class GlobalSettingsControllerTests
 {
     private static void PrepareSiegeSubmission(GlobalSettingsController controller, GlobalSettingsViewModel model)
     {
-        model.SiegeMode.SubmittedRuleCount = model.SiegeMode.Rules.Count;
-        controller.ModelState.SetModelValue("SiegeMode.DurationMinutes", model.SiegeMode.DurationMinutes, model.SiegeMode.DurationMinutes.ToString());
-        controller.ModelState.MarkFieldValid("SiegeMode.DurationMinutes");
-        controller.ModelState.SetModelValue("SiegeMode.SubmittedRuleCount", model.SiegeMode.SubmittedRuleCount, model.SiegeMode.SubmittedRuleCount.ToString());
-        controller.ModelState.MarkFieldValid("SiegeMode.SubmittedRuleCount");
-        if (model.SiegeMode.Rules.Count > 0)
+        var fields = new Dictionary<string, string>
         {
-            controller.ModelState.SetModelValue("SiegeMode.Rules[0].Id", model.SiegeMode.Rules[0].Id, model.SiegeMode.Rules[0].Id);
-            controller.ModelState.MarkFieldValid("SiegeMode.Rules[0].Id");
+            ["SiegeMode.DurationMinutes"] = model.SiegeMode.DurationMinutes.ToString(),
+            ["SiegeMode.Enabled"] = model.SiegeMode.Enabled.ToString(),
+            ["SiegeMode.RulesJson"] = model.SiegeMode.RulesJson,
+            ["VpnProtection.Enabled"] = model.VpnProtection.Enabled.ToString(),
+            ["VpnProtection.RulesJson"] = model.VpnProtection.RulesJson
+        };
+        foreach (var (key, value) in fields)
+        {
+            controller.ModelState.SetModelValue(key, value, value);
+            controller.ModelState.MarkFieldValid(key);
         }
     }
 
@@ -169,20 +172,20 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
-    public async Task Index_Post_DoesNotReplaceLegacyVpnSettings()
+    public async Task Index_Post_DoesNotSaveWhenExistingVpnSettingsAreInvalid()
     {
         var sut = CreateSut();
         SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = VpnProtectionSettingsConstants.Namespace,
-            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"enabled":false,"rules":[]}"""
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabled":false,"rules":[]}"""
         }))!);
         var model = new GlobalSettingsViewModel();
         PrepareSiegeSubmission(sut, model);
 
         var result = Assert.IsType<UnprocessableEntityObjectResult>(await sut.Index(model));
 
-        Assert.Contains("unsupported schema", Assert.IsType<string>(result.Value));
+        Assert.Contains("Saved VPN Protection settings are unreadable", Assert.IsType<string>(result.Value));
         mockRepositoryApiClient.Verify(client => client.GlobalConfigurations.V1.UpsertConfiguration(
             It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -389,6 +392,66 @@ public class GlobalSettingsControllerTests
         var defaults = doc.RootElement.GetProperty("defaults");
 
         Assert.False(defaults.TryGetProperty("requiredTags", out _));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Index_Post_UsesOnlyAuthoritativeRuleEnvelopeExtensionData(bool hasSavedConfigurations)
+    {
+        var sut = CreateSut();
+        if (hasSavedConfigurations)
+        {
+            SetupConfigurations(
+                JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = VpnProtectionSettingsConstants.Namespace,
+                    Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"vpn-protection","enabled":false,"rules":[],"futureData":{"value":"saved-vpn"}}"""
+                }))!,
+                JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = SiegeModeSettingsConstants.Namespace,
+                    Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"featureId":"siege-mode","enabled":false,"durationMinutes":240,"rules":[],"futureData":{"value":"saved-siege"}}"""
+                }))!);
+        }
+
+        var upserted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+                It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto dto, CancellationToken _) =>
+            {
+                upserted[ns] = dto.Configuration;
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(new ConfigurationDto()));
+            });
+
+        var model = new GlobalSettingsViewModel();
+        model.VpnProtection.Enabled = true;
+        model.SiegeMode.DurationMinutes = 90;
+        model.VpnProtection.EnvelopeExtensionData["futureData"] = System.Text.Json.JsonSerializer.SerializeToElement(new { value = "client-vpn" });
+        model.SiegeMode.EnvelopeExtensionData["futureData"] = System.Text.Json.JsonSerializer.SerializeToElement(new { value = "client-siege" });
+        model.VpnProtection.EnvelopeExtensionData["injected"] = System.Text.Json.JsonSerializer.SerializeToElement(true);
+        model.SiegeMode.EnvelopeExtensionData["injected"] = System.Text.Json.JsonSerializer.SerializeToElement(true);
+        PrepareSiegeSubmission(sut, model);
+
+        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+
+        using var vpn = System.Text.Json.JsonDocument.Parse(upserted[VpnProtectionSettingsConstants.Namespace]);
+        using var siege = System.Text.Json.JsonDocument.Parse(upserted[SiegeModeSettingsConstants.Namespace]);
+        Assert.True(vpn.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal(90, siege.RootElement.GetProperty("durationMinutes").GetInt32());
+        Assert.False(vpn.RootElement.TryGetProperty("injected", out _));
+        Assert.False(siege.RootElement.TryGetProperty("injected", out _));
+        if (hasSavedConfigurations)
+        {
+            Assert.Equal("saved-vpn", vpn.RootElement.GetProperty("futureData").GetProperty("value").GetString());
+            Assert.Equal("saved-siege", siege.RootElement.GetProperty("futureData").GetProperty("value").GetString());
+        }
+        else
+        {
+            Assert.False(vpn.RootElement.TryGetProperty("futureData", out _));
+            Assert.False(siege.RootElement.TryGetProperty("futureData", out _));
+        }
     }
 
     [Fact]
@@ -707,35 +770,28 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
-    public async Task Index_Post_UnknownVpnExclusionTag_DoesNotCallUpsert()
+    public async Task Index_Post_InvalidVpnRulesJson_DoesNotCallUpsert()
     {
-        var tags = new CollectionModel<TagDto>([new TagDto { TagId = Guid.NewGuid(), Name = "Trusted" }]);
-        mockRepositoryApiClient
-            .Setup(x => x.Tags.V1.GetTags(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<TagDto>>(
-                HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<TagDto>>(tags)
-                {
-                    Pagination = new ApiPagination(totalCount: 1, filteredCount: 1, skip: 0, top: 100)
-                }));
-
         var model = new GlobalSettingsViewModel
         {
             VpnProtection = new VpnProtectionGlobalSettingsViewModel
             {
                 Enabled = true,
-                ExcludedPlayerTagsCsv = "Unknown"
+                RulesJson = "{"
             }
         };
         var sut = CreateSut();
 
         PrepareSiegeSubmission(sut, model);
+        sut.ModelState.AddModelError(
+            $"{nameof(GlobalSettingsViewModel.VpnProtection)}.{nameof(VpnProtectionGlobalSettingsViewModel.RulesJson)}",
+            "Invalid rules JSON.");
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);
         Assert.False(sut.ModelState.IsValid);
         Assert.Contains(sut.ModelState, entry =>
-            entry.Key == $"{nameof(GlobalSettingsViewModel.VpnProtection)}.{nameof(VpnProtectionGlobalSettingsViewModel.ExcludedPlayerTagsCsv)}");
+            entry.Key == $"{nameof(GlobalSettingsViewModel.VpnProtection)}.{nameof(VpnProtectionGlobalSettingsViewModel.RulesJson)}");
         mockRepositoryApiClient.Verify(
             client => client.GlobalConfigurations.V1.UpsertConfiguration(
                 VpnProtectionSettingsConstants.Namespace,

@@ -8,8 +8,10 @@ using System.Net;
 using System.Security.Claims;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Controllers;
 
@@ -68,25 +70,30 @@ public class SiegeAuditControllerTests
     {
         var controller = CreateController();
         Assert.IsType<ForbidResult>(await controller.Actions(deniedId, null, null));
-        repository.Verify(r => r.SiegeMode.V1.SearchActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
-        repository.Verify(r => r.SiegeMode.V1.SummarizeActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
         repository.Verify(r => r.SiegeMode.V1.SearchChecks(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Actions_UsesSameAuthorizedScopeForSummaryAndChecks()
+    public async Task Actions_UsesAuthorizedScopeAndSiegeFeatureForActionsAndChecks()
     {
         var controller = CreateController();
-        repository.Setup(r => r.SiegeMode.V1.SearchActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(OkCollection<SiegeActionDto>());
+        var allowed = new RuleActionExecutionDto { GameServerId = allowedId, FeatureId = RulesEngineCatalogueV1.SiegeModeFeature, ActionTypeId = "message.public" };
+        var foreignServer = allowed with { GameServerId = deniedId };
+        var foreignFeature = allowed with { FeatureId = RulesEngineCatalogueV1.VpnProtectionFeature };
+        repository.Setup(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(allowed, foreignServer, foreignFeature));
         repository.Setup(r => r.SiegeMode.V1.SearchChecks(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(OkCollection<SiegeCheckDto>());
-        repository.Setup(r => r.SiegeMode.V1.SummarizeActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<SiegeActionSummaryDto>(HttpStatusCode.OK, new ApiResponse<SiegeActionSummaryDto>(new SiegeActionSummaryDto())));
 
-        Assert.IsType<ViewResult>(await controller.Actions(allowedId, null, null));
-        repository.Verify(r => r.SiegeMode.V1.SummarizeActions(
-            It.Is<SiegeAuditQueryDto>(q => q.GameServerIds.Length == 1 && q.GameServerIds[0] == allowedId),
+        var from = new DateTime(2026, 1, 1);
+        var to = new DateTime(2026, 2, 1);
+        var view = Assert.IsType<ViewResult>(await controller.Actions(allowedId, from, to));
+        Assert.Same(allowed, Assert.Single(Assert.IsType<SiegeAuditViewModel>(view.Model).Actions));
+        repository.Verify(r => r.RuleExecutions.V1.SearchRuleActions(
+            It.Is<RuleActionAuditQueryDto>(q => q.GameServerIds.Length == 1 && q.GameServerIds[0] == allowedId &&
+                q.FeatureId == RulesEngineCatalogueV1.SiegeModeFeature && q.FromUtc == DateTime.SpecifyKind(from, DateTimeKind.Utc) &&
+                q.ToUtc == DateTime.SpecifyKind(to, DateTimeKind.Utc) && q.SkipEntries == 0 && q.TakeEntries == 50),
             It.IsAny<CancellationToken>()), Times.Once);
         repository.Verify(r => r.SiegeMode.V1.SearchChecks(
             It.Is<SiegeAuditQueryDto>(q => q.GameServerIds.Length == 1 && q.GameServerIds[0] == allowedId),
@@ -106,15 +113,13 @@ public class SiegeAuditControllerTests
     }
 
     [Fact]
-    public async Task Actions_WhenSummaryFailsDoesNotPresentPartialResults()
+    public async Task Actions_WhenActionSearchFailsDoesNotPresentPartialResults()
     {
         var controller = CreateController();
-        repository.Setup(r => r.SiegeMode.V1.SearchActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(OkCollection<SiegeActionDto>());
+        repository.Setup(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleActionExecutionDto>>(HttpStatusCode.InternalServerError));
         repository.Setup(r => r.SiegeMode.V1.SearchChecks(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(OkCollection<SiegeCheckDto>());
-        repository.Setup(r => r.SiegeMode.V1.SummarizeActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<SiegeActionSummaryDto>(HttpStatusCode.InternalServerError));
 
         Assert.Equal(503, Assert.IsType<StatusCodeResult>(await controller.Actions(null, null, null)).StatusCode);
         VerifyWarning();
@@ -189,14 +194,20 @@ public class SiegeAuditControllerTests
             .ReturnsAsync(OkCollection(session));
         repository.Setup(r => r.SiegeMode.V1.GetSessionEvents(allowedId, sessionId, 50, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(OkCollection(entry, foreign));
-        repository.Setup(r => r.SiegeMode.V1.GetActions(allowedId, sessionId, 100, 50, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(OkCollection<SiegeActionDto>());
+        var action = new RuleActionExecutionDto { GameServerId = allowedId, SiegeSessionId = sessionId, FeatureId = RulesEngineCatalogueV1.SiegeModeFeature, ActionTypeId = "moderation.ban" };
+        repository.Setup(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(action, action with { SiegeSessionId = Guid.NewGuid() }, action with { GameServerId = deniedId }));
         repository.Setup(r => r.SiegeMode.V1.GetChecks(allowedId, sessionId, 150, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(OkCollection<SiegeCheckDto>());
 
         var view = Assert.IsType<ViewResult>(await controller.Session(allowedId, sessionId, 1, 2, 3));
         var model = Assert.IsType<SiegeSessionDetailViewModel>(view.Model);
         Assert.Same(entry, Assert.Single(model.Events));
+        Assert.Same(action, Assert.Single(model.Actions));
+        repository.Verify(r => r.RuleExecutions.V1.SearchRuleActions(
+            It.Is<RuleActionAuditQueryDto>(q => q.GameServerIds.Length == 1 && q.GameServerIds[0] == allowedId &&
+                q.SiegeSessionId == sessionId && q.FeatureId == RulesEngineCatalogueV1.SiegeModeFeature &&
+                q.SkipEntries == 100 && q.TakeEntries == 50), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(1, model.EventPage);
         Assert.Equal(2, model.ActionPage);
         Assert.Equal(3, model.CheckPage);
@@ -233,8 +244,8 @@ public class SiegeAuditControllerTests
             .ReturnsAsync(OkCollection(session));
         repository.Setup(r => r.SiegeMode.V1.GetSessionEvents(allowedId, sessionId, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(failure == "events" ? new ApiResult<CollectionModel<SiegeSessionEventDto>>(HttpStatusCode.ServiceUnavailable) : OkCollection<SiegeSessionEventDto>());
-        repository.Setup(r => r.SiegeMode.V1.GetActions(allowedId, sessionId, 0, 50, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(failure == "actions" ? new ApiResult<CollectionModel<SiegeActionDto>>(HttpStatusCode.ServiceUnavailable) : OkCollection<SiegeActionDto>());
+        repository.Setup(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failure == "actions" ? new ApiResult<CollectionModel<RuleActionExecutionDto>>(HttpStatusCode.ServiceUnavailable) : OkCollection<RuleActionExecutionDto>());
         repository.Setup(r => r.SiegeMode.V1.GetChecks(allowedId, sessionId, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(failure == "checks" ? new ApiResult<CollectionModel<SiegeCheckDto>>(HttpStatusCode.ServiceUnavailable) : OkCollection<SiegeCheckDto>());
 
@@ -262,7 +273,7 @@ public class SiegeAuditControllerTests
         Assert.IsType<ForbidResult>(await controller.Session(deniedId, Guid.NewGuid(), int.MaxValue));
         Assert.IsType<ForbidResult>(await controller.Actions(deniedId, null, null, -1));
         repository.Verify(r => r.SiegeMode.V1.GetSessions(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
-        repository.Verify(r => r.SiegeMode.V1.SearchActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(r => r.RuleExecutions.V1.SearchRuleActions(It.IsAny<RuleActionAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private void VerifyWarning()

@@ -13,6 +13,16 @@ public interface INamespaceSettingsParser
         out VpnProtectionSettingsDocument? settings,
         out IReadOnlyList<string> errors);
 
+    bool TryParseVpnProtectionServerSettings(
+        ConfigurationDto config,
+        out VpnProtectionServerSettingsDocument? settings,
+        out IReadOnlyList<string> errors);
+
+    bool TryParseSiegeModeServerSettings(
+        ConfigurationDto config,
+        out SiegeModeServerSettingsOverrideDocument? settings,
+        out IReadOnlyList<string> errors);
+
     bool TryParseSiegeModeSettings(
         ConfigurationDto config,
         out SiegeModeSettingsDocument? settings,

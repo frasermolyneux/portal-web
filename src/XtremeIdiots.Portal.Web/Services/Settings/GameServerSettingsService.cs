@@ -12,7 +12,22 @@ public sealed class GameServerSettingsService(
 
     public bool TryValidateVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
     {
+        return namespaceSettingsParser.TryParseVpnProtectionServerSettings(config, out _, out errors);
+    }
+
+    public bool TryValidateGlobalVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
         return namespaceSettingsParser.TryParseVpnProtectionSettings(config, out _, out errors);
+    }
+
+    public bool TryValidateSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseSiegeModeServerSettings(config, out _, out errors);
+    }
+
+    public bool TryValidateGlobalSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseSiegeModeSettings(config, out _, out errors);
     }
 
     public void PopulateConfigFromNamespace(GameServerEditViewModel model, ConfigurationDto config, ILogger logger)

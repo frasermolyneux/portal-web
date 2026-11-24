@@ -10,7 +10,6 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Rcon;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
-using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -172,29 +171,38 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
-    public void BuildGlobalSettingsConfigurations_IncludesVpnProtectionRulesAndExclusions()
+    public void BuildGlobalSettingsConfigurations_IncludesUniversalVpnProtectionRules()
     {
         var model = new GlobalSettingsViewModel
         {
             VpnProtection = new VpnProtectionGlobalSettingsViewModel
             {
                 Enabled = true,
-                ExcludedPlayerTagsCsv = "Trusted VPN, SeniorAdmin",
-                Rules =
-                [
-                    new VpnProtectionRuleViewModel
-                    {
-                        Id = "vpn",
-                        Condition = new RuleConditionViewModel
-                        {
-                            Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                            Operator = RuleComparisonOperator.Equal,
-                            ExpectedValue = "true"
+                RulesJson = /*lang=json,strict*/ """
+                    [{
+                      "id": "vpn",
+                      "enabled": true,
+                      "order": 0,
+                      "condition": {
+                        "conditionId": "vpn.intelligence",
+                        "parameters": {
+                          "signal": "ProxyCheckIsVpn",
+                          "operator": "Equal",
+                          "expectedValue": "true"
+                        }
+                      },
+                      "actions": [{
+                        "id": "observe",
+                        "typeId": "moderation.observation",
+                        "parameters": {
+                          "reason": "VPN Protection {ruleId}",
+                          "postToForums": false
                         },
-                        Action = VpnProtectionAction.Observation,
-                        PostObservationToForums = false
-                    }
-                ]
+                        "dependsOnActionIds": []
+                      }],
+                      "afterMatch": "StopProcessingRules"
+                    }]
+                    """
             }
         };
 
@@ -204,58 +212,71 @@ public class NamespaceSettingsSerializerTests
             static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
         using var document = JsonDocument.Parse(json);
 
+        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("vpn-protection", document.RootElement.GetProperty("featureId").GetString());
         Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
-        Assert.Equal("vpn", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
-        Assert.Equal(2, document.RootElement.GetProperty("schemaVersion").GetInt32());
-        Assert.Equal("ProxyCheckIsVpn", document.RootElement.GetProperty("rules")[0].GetProperty("condition").GetProperty("signal").GetString());
-        Assert.False(document.RootElement.GetProperty("rules")[0].GetProperty("postObservationToForums").GetBoolean());
-        Assert.Equal(2, document.RootElement.GetProperty("excludedPlayerTags").GetArrayLength());
+        var rule = document.RootElement.GetProperty("rules")[0];
+        Assert.Equal("vpn", rule.GetProperty("id").GetString());
+        Assert.Equal("vpn.intelligence", rule.GetProperty("condition").GetProperty("conditionId").GetString());
+        Assert.Equal("ProxyCheckIsVpn",
+            rule.GetProperty("condition").GetProperty("parameters").GetProperty("signal").GetString());
+        Assert.Equal("moderation.observation", rule.GetProperty("actions")[0].GetProperty("typeId").GetString());
+        Assert.False(rule.GetProperty("actions")[0].GetProperty("parameters").GetProperty("postToForums").GetBoolean());
     }
 
     [Fact]
     public void BuildGlobalSettingsConfigurations_IncludesSiegeModeDurationAndNestedConditionGroups()
     {
         var model = new GlobalSettingsViewModel();
+        model.SiegeMode.Enabled = true;
         model.SiegeMode.DurationMinutes = 90;
-        model.SiegeMode.Rules =
-        [
-            new SiegeModeRuleViewModel
-            {
-                Id = "new-vpn-ip",
-                Condition = new RuleConditionViewModel
-                {
-                    GroupOperator = RuleConditionGroupOperator.And,
-                    Conditions =
-                    [
-                        new RuleConditionViewModel
-                        {
-                            PlayerSignal = SiegePlayerSignal.NewIp,
-                            Operator = RuleComparisonOperator.Equal,
-                            ExpectedValue = "true"
-                        },
-                        new RuleConditionViewModel
-                        {
-                            GroupOperator = RuleConditionGroupOperator.Or,
-                            Conditions =
-                            [
-                                new RuleConditionViewModel
-                                {
-                                    Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                                    Operator = RuleComparisonOperator.Equal,
-                                    ExpectedValue = "true"
-                                },
-                                new RuleConditionViewModel
-                                {
-                                    Signal = VpnProtectionSignal.MaxMindIsAnonymousVpn,
-                                    Operator = RuleComparisonOperator.Equal,
-                                    ExpectedValue = "true"
-                                }
-                            ]
+        model.SiegeMode.RulesJson = /*lang=json,strict*/ """
+            [{
+              "id": "new-vpn-ip",
+              "enabled": true,
+              "order": 0,
+              "condition": {
+                "groupOperator": "And",
+                "conditions": [
+                  {
+                    "conditionId": "player.first-seen-ip",
+                    "parameters": {
+                      "operator": "IsNew",
+                      "referenceScope": "SiegeBaseline"
+                    }
+                  },
+                  {
+                    "groupOperator": "Or",
+                    "conditions": [
+                      {
+                        "conditionId": "vpn.intelligence",
+                        "parameters": {
+                          "signal": "ProxyCheckIsVpn",
+                          "operator": "Equal",
+                          "expectedValue": "true"
                         }
+                      },
+                      {
+                        "conditionId": "vpn.intelligence",
+                        "parameters": {
+                          "signal": "MaxMindIsAnonymousVpn",
+                          "operator": "Equal",
+                          "expectedValue": "true"
+                        }
+                      }
                     ]
-                }
-            }
-        ];
+                  }
+                ]
+              },
+              "actions": [{
+                "id": "kick",
+                "typeId": "player.kick",
+                "parameters": {"reason": "Siege Mode"},
+                "dependsOnActionIds": []
+              }],
+              "afterMatch": "StopProcessingRules"
+            }]
+            """;
 
         var configurations = serializer.BuildGlobalSettingsConfigurations(model);
 
@@ -265,46 +286,85 @@ public class NamespaceSettingsSerializerTests
         using var document = JsonDocument.Parse(json);
         var rule = document.RootElement.GetProperty("rules")[0];
         var condition = rule.GetProperty("condition");
+        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("siege-mode", document.RootElement.GetProperty("featureId").GetString());
+        Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
         Assert.Equal(90, document.RootElement.GetProperty("durationMinutes").GetInt32());
         Assert.Equal("And", condition.GetProperty("groupOperator").GetString());
-        Assert.Equal("NewIp", condition.GetProperty("conditions")[0].GetProperty("playerSignal").GetString());
+        Assert.Equal("player.first-seen-ip", condition.GetProperty("conditions")[0].GetProperty("conditionId").GetString());
         Assert.Equal("Or", condition.GetProperty("conditions")[1].GetProperty("groupOperator").GetString());
         Assert.Equal("ProxyCheckIsVpn",
-            condition.GetProperty("conditions")[1].GetProperty("conditions")[0].GetProperty("signal").GetString());
+            condition.GetProperty("conditions")[1].GetProperty("conditions")[0]
+                .GetProperty("parameters").GetProperty("signal").GetString());
+    }
+
+    [Fact]
+    public void BuildGlobalSettingsConfigurations_PreservesRuleEnvelopeExtensionData()
+    {
+        var model = new GlobalSettingsViewModel();
+        model.VpnProtection.EnvelopeExtensionData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            /*lang=json,strict*/ """{"providerMetadata":{"source":"saved-global","revision":7}}""")!;
+        model.SiegeMode.EnvelopeExtensionData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            /*lang=json,strict*/ """{"futureSiegePolicy":{"mode":"strict"}}""")!;
+
+        var configurations = serializer.BuildGlobalSettingsConfigurations(model);
+
+        var vpnConfiguration = Assert.Single(configurations,
+            static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
+        using var vpnDocument = JsonDocument.Parse(vpnConfiguration.Configuration);
+        Assert.Equal("saved-global", vpnDocument.RootElement.GetProperty("providerMetadata")
+            .GetProperty("source").GetString());
+        Assert.Equal(7, vpnDocument.RootElement.GetProperty("providerMetadata")
+            .GetProperty("revision").GetInt32());
+
+        var siegeConfiguration = Assert.Single(configurations,
+            static configuration => configuration.Namespace == SiegeModeSettingsConstants.Namespace);
+        using var siegeDocument = JsonDocument.Parse(siegeConfiguration.Configuration);
+        Assert.Equal("strict", siegeDocument.RootElement.GetProperty("futureSiegePolicy")
+            .GetProperty("mode").GetString());
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BuildGameServerConfigurations_VpnProtectionOverride_SerializesThenDeletesWhenInherited(bool? postObservationToForums)
+    [InlineData(null, "Inherit")]
+    [InlineData(false, "Disabled")]
+    [InlineData(true, "Enabled")]
+    public void BuildGameServerConfigurations_VpnProtectionOverride_SerializesThenDeletesWhenInherited(
+        bool? enabledOverride, string expectedEnabledOverride)
     {
         var model = BuildDefaultModel();
-        model.VpnProtection.Enabled = true;
-        model.VpnProtection.RuleOverrides =
-        [
-            new VpnProtectionRuleOverrideViewModel
-            {
-                Id = "vpn",
-                Action = VpnProtectionAction.Observation,
-                PostObservationToForums = postObservationToForums
-            }
-        ];
-        model.VpnProtection.LocalRules =
-        [
-            new VpnProtectionRuleViewModel
-            {
-                Id = "local",
-                Condition = new RuleConditionViewModel
-                {
-                    Signal = VpnProtectionSignal.ProxyCheckIsVpn,
-                    Operator = RuleComparisonOperator.Equal,
-                    ExpectedValue = "true"
-                },
-                Action = VpnProtectionAction.Observation,
-                PostObservationToForums = false
-            }
-        ];
+        model.VpnProtection.Enabled = enabledOverride;
+        model.VpnProtection.InheritGlobalRules = true;
+        model.VpnProtection.LocalRulesJson = /*lang=json,strict*/ """
+            [{
+              "id": "local",
+              "enabled": true,
+              "order": 0,
+              "condition": {
+                "conditionId": "vpn.intelligence",
+                "parameters": {
+                  "signal": "ProxyCheckIsVpn",
+                  "operator": "Equal",
+                  "expectedValue": "true"
+                }
+              },
+              "actions": [{
+                "id": "observe",
+                "typeId": "moderation.observation",
+                "parameters": {"reason": "Local rule"},
+                "dependsOnActionIds": []
+              }],
+              "afterMatch": "StopProcessingRules"
+            }]
+            """;
+        model.VpnProtection.RuleOverridesJson = /*lang=json,strict*/ """
+            [{
+              "ruleId": "global-vpn",
+              "enabled": false,
+              "condition": null,
+              "actions": null,
+              "afterMatch": null
+            }]
+            """;
 
         var configurations = serializer.BuildGameServerConfigurations(
             model,
@@ -315,11 +375,13 @@ public class NamespaceSettingsSerializerTests
             configurations,
             static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
         using var document = JsonDocument.Parse(json);
-        Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
-        Assert.Equal("Observation", document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("action").GetString());
-        var publicationOverride = document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("postObservationToForums");
-        Assert.Equal(postObservationToForums, publicationOverride.ValueKind == JsonValueKind.Null ? null : publicationOverride.GetBoolean());
-        Assert.False(document.RootElement.GetProperty("rules")[0].GetProperty("postObservationToForums").GetBoolean());
+        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("vpn-protection", document.RootElement.GetProperty("featureId").GetString());
+        Assert.Equal(expectedEnabledOverride, document.RootElement.GetProperty("enabledOverride").GetString());
+        Assert.True(document.RootElement.GetProperty("inheritGlobalRules").GetBoolean());
+        Assert.Equal("local", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
+        Assert.Equal("global-vpn", document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("ruleId").GetString());
+        Assert.False(document.RootElement.GetProperty("ruleOverrides")[0].GetProperty("enabled").GetBoolean());
 
         model.VpnProtection = new VpnProtectionServerSettingsViewModel();
         configurations = serializer.BuildGameServerConfigurations(
@@ -330,6 +392,93 @@ public class NamespaceSettingsSerializerTests
 
         Assert.DoesNotContain(configurations, static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
         Assert.Contains(VpnProtectionSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_SiegeModeOverride_SerializesAndDeletesWhenInherited()
+    {
+        var model = BuildDefaultModel();
+        model.SiegeMode.Enabled = false;
+        model.SiegeMode.InheritGlobalRules = true;
+        model.SiegeMode.DurationMinutesOverride = 120;
+        model.SiegeMode.LocalRulesJson = /*lang=json,strict*/ """
+            [{
+              "id": "local-siege",
+              "enabled": true,
+              "order": 0,
+              "condition": {
+                "conditionId": "player.first-seen-guid",
+                "parameters": {
+                  "operator": "IsNew",
+                  "referenceScope": "SiegeBaseline"
+                }
+              },
+              "actions": [{
+                "id": "kick",
+                "typeId": "player.kick",
+                "parameters": {"reason": "Local Siege rule"},
+                "dependsOnActionIds": []
+              }],
+              "afterMatch": "StopProcessingRules"
+            }]
+            """;
+        model.SiegeMode.RuleOverridesJson = "[]";
+
+        var configurations = serializer.BuildGameServerConfigurations(
+            model,
+            canEditFileTransport: false,
+            canEditRcon: false,
+            canConfigureScreenshots: false);
+        var (_, json) = Assert.Single(
+            configurations,
+            static configuration => configuration.Namespace == SiegeModeSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal("siege-mode", document.RootElement.GetProperty("featureId").GetString());
+        Assert.Equal("Disabled", document.RootElement.GetProperty("enabledOverride").GetString());
+        Assert.Equal(120, document.RootElement.GetProperty("durationMinutesOverride").GetInt32());
+        Assert.Equal("local-siege", document.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
+
+        model.SiegeMode = new SiegeModeServerSettingsViewModel();
+        configurations = serializer.BuildGameServerConfigurations(
+            model,
+            canEditFileTransport: false,
+            canEditRcon: false,
+            canConfigureScreenshots: false);
+
+        Assert.DoesNotContain(configurations, static configuration => configuration.Namespace == SiegeModeSettingsConstants.Namespace);
+        Assert.Contains(SiegeModeSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void BuildGameServerConfigurations_PreservesRuleEnvelopeExtensionDataWithoutOtherOverrides()
+    {
+        var model = BuildDefaultModel();
+        model.VpnProtection.EnvelopeExtensionData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            /*lang=json,strict*/ """{"providerMetadata":{"source":"saved-server","revision":3}}""")!;
+        model.SiegeMode.EnvelopeExtensionData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            /*lang=json,strict*/ """{"futureSiegePolicy":{"mode":"relaxed"}}""")!;
+
+        var configurations = serializer.BuildGameServerConfigurations(
+            model,
+            canEditFileTransport: false,
+            canEditRcon: false,
+            canConfigureScreenshots: false);
+
+        var vpnConfiguration = Assert.Single(configurations,
+            static configuration => configuration.Namespace == VpnProtectionSettingsConstants.Namespace);
+        using var vpnDocument = JsonDocument.Parse(vpnConfiguration.Configuration);
+        Assert.Equal("saved-server", vpnDocument.RootElement.GetProperty("providerMetadata")
+            .GetProperty("source").GetString());
+        Assert.Equal(3, vpnDocument.RootElement.GetProperty("providerMetadata")
+            .GetProperty("revision").GetInt32());
+
+        var siegeConfiguration = Assert.Single(configurations,
+            static configuration => configuration.Namespace == SiegeModeSettingsConstants.Namespace);
+        using var siegeDocument = JsonDocument.Parse(siegeConfiguration.Configuration);
+        Assert.Equal("relaxed", siegeDocument.RootElement.GetProperty("futureSiegePolicy")
+            .GetProperty("mode").GetString());
+        Assert.DoesNotContain(VpnProtectionSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(SiegeModeSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
     [Fact]

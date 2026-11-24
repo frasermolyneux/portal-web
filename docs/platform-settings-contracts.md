@@ -20,32 +20,23 @@ This document describes the current settings architecture used by `portal-web` a
 
 ## Troubleshooting Runbook
 
-### VPN observation forum posting
+### VPN and Siege rules
 
-VPN rules expose `postObservationToForums` through **Post observations to forums** in
-the global and server-local rule editors. Set it to `false` to retain the portal
-observation, automation deduplication, server event, and audit without creating or
-linking a forum topic. Missing values default to `true` for backward compatibility.
-Server rule overrides use `null` to inherit and `true`/`false` to override.
+VPN Protection and Siege Mode use the shared rules-engine contracts and editor.
+Rules contain nested AND/OR conditions, ordered actions and a feature-scoped
+stop/continue choice. Forum publication is configured on record-producing
+actions, rather than on the rule itself. Unknown conditions are retained and
+evaluate as unknown; unsupported actions are retained but cannot execute.
 
-The strongest matching action wins (Ban, Kick, Observation); ties use rule order.
-The winning rule supplies the observation publication preference. Kick and Ban
-always retain forum publication regardless of this observation-only setting.
-Existing observations and forum topics are not changed or backfilled.
+Global settings provide feature enablement and rules. Each server independently
+overrides enablement, chooses whether to inherit global rules, and can configure
+local rules and overrides of individual global rules. Inherited global rules run
+before local rules; disabling inheritance retains but ignores the global
+overrides. Siege duration is an independent global setting and server override.
 
-### VPN and Siege rule conditions
-
-VPN Protection schema 2 uses nested AND/OR conditions, with VPN-specific signals
-and actions. Siege Mode uses the same condition editor and retains its player
-history and tag signals. Server VPN rules can replace a global rule's entire
-condition or inherit it; other override fields remain independent.
-
-Schema 1 VPN rules are not migrated. Replace the global configuration with a
-disabled, empty schema 2 document and remove old server overrides as part of the
-coordinated cutover. The settings editor rejects unsupported saved schemas rather
-than rewriting them. Publish the shared contracts package and coordinate the
-repository, event processor, cache expiry, and portal deployment before cutover.
-Do not activate Siege Mode as part of this change.
+This is a clean-slate settings change: older VPN and Siege rule documents are
+not migrated or read by the new editor. Coordinate the settings reset and
+repository, runtime and portal deployments before the production cutover.
 
 ### Settings loading and runtime behavior
 

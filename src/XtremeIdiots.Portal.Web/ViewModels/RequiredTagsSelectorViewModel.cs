@@ -2,6 +2,8 @@ namespace XtremeIdiots.Portal.Web.ViewModels;
 
 public sealed class RequiredTagOptionViewModel
 {
+    public Guid TagId { get; init; }
+
     public required string Name { get; init; }
 
     public string DisplayName { get; init; } = string.Empty;
