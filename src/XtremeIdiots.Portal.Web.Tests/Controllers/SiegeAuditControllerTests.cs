@@ -121,14 +121,12 @@ public class SiegeAuditControllerTests
     }
 
     [Fact]
-    public async Task Sessions_RejectsEqualBoundsBeforeCallingRepository()
+    public async Task Sessions_RejectsEqualBoundsAfterAuthorizationWithoutSearching()
     {
         var controller = CreateController();
         var time = DateTime.UtcNow;
         Assert.IsType<BadRequestResult>(await controller.Sessions(null, time, time));
-        repository.Verify(r => r.GameServers.V1.GetGameServers(
-            It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), It.IsAny<GameServerFilter?>(), It.IsAny<int>(), It.IsAny<int>(),
-            It.IsAny<GameServerOrder?>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(r => r.SiegeMode.V1.SearchSessions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -245,11 +243,26 @@ public class SiegeAuditControllerTests
     }
 
     [Fact]
-    public async Task Session_RejectsOverflowingPageBeforeRepositoryCall()
+    public async Task Session_RejectsOverflowingPageAfterServerAuthorization()
     {
         var controller = CreateController();
+        repository.Setup(r => r.GameServers.V1.GetGameServer(allowedId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(Server(allowedId, GameType.CallOfDuty4))));
         Assert.IsType<BadRequestResult>(await controller.Session(allowedId, Guid.NewGuid(), int.MaxValue));
-        repository.Verify(r => r.GameServers.V1.GetGameServer(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(r => r.SiegeMode.V1.GetSessions(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvalidInput_DoesNotBypassServerAuthorization()
+    {
+        var controller = CreateController();
+        repository.Setup(r => r.GameServers.V1.GetGameServer(deniedId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(Server(deniedId, GameType.CallOfDuty2))));
+
+        Assert.IsType<ForbidResult>(await controller.Session(deniedId, Guid.NewGuid(), int.MaxValue));
+        Assert.IsType<ForbidResult>(await controller.Actions(deniedId, null, null, -1));
+        repository.Verify(r => r.SiegeMode.V1.GetSessions(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.Verify(r => r.SiegeMode.V1.SearchActions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private void VerifyWarning()

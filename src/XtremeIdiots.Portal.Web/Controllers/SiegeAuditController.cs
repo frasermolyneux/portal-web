@@ -68,10 +68,6 @@ public class SiegeAuditController(
         Guid serverId, Guid sessionId, int eventPage = 0, int actionPage = 0, int checkPage = 0,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid || serverId == Guid.Empty || sessionId == Guid.Empty ||
-            !ValidPage(eventPage) || !ValidPage(actionPage) || !ValidPage(checkPage))
-            return BadRequest();
-
         var serverResponse = await repository.GameServers.V1.GetGameServer(serverId, cancellationToken).ConfigureAwait(false);
         if (serverResponse.IsNotFound)
             return NotFound();
@@ -81,6 +77,10 @@ public class SiegeAuditController(
         var server = serverResponse.Result.Data;
         if (!(await authorization.AuthorizeAsync(User, server.GameType, AuthPolicies.GameServers_Admin_SiegeMode).ConfigureAwait(false)).Succeeded)
             return Forbid();
+
+        if (!ModelState.IsValid || serverId == Guid.Empty || sessionId == Guid.Empty ||
+            !ValidPage(eventPage) || !ValidPage(actionPage) || !ValidPage(checkPage))
+            return BadRequest();
 
         var seen = new HashSet<Guid>();
         SiegeSessionDto? session = null;
@@ -135,9 +135,6 @@ public class SiegeAuditController(
     private async Task<(SiegeAuditViewModel? Model, IActionResult? Error)> PrepareAsync(
         Guid? serverId, DateTime? fromUtc, DateTime? toUtc, int page, CancellationToken cancellationToken)
     {
-        if (!ValidPage(page) || (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value) || !ModelState.IsValid)
-            return (null, BadRequest());
-
         var permittedGames = new List<GameType>();
         foreach (var game in Enum.GetValues<GameType>().Distinct())
         {
@@ -178,6 +175,9 @@ public class SiegeAuditController(
 
         if (serverId.HasValue && !servers.Any(s => s.GameServerId == serverId.Value))
             return (null, Forbid());
+
+        if (!ValidPage(page) || (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value) || !ModelState.IsValid)
+            return (null, BadRequest());
 
         var ids = servers.Where(s => !serverId.HasValue || s.GameServerId == serverId.Value)
             .Select(s => s.GameServerId).Distinct().ToArray();

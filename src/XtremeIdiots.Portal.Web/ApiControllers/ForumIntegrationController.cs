@@ -135,9 +135,6 @@ public sealed class ForumIntegrationController(
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> ActivateSiegeMode(Guid gameServerId, SiegeActivationRequest request, CancellationToken cancellationToken)
     {
-        if (request.Mode is not ("DryRun" or "Enforce") || request.ExpectedDurationMinutes <= 0)
-            return BadRequest();
-
         var serverResponse = await repository.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
         if (serverResponse.IsNotFound)
             return NotFound();
@@ -152,6 +149,9 @@ public sealed class ForumIntegrationController(
         var actor = User.XtremeIdiotsId();
         if (string.IsNullOrWhiteSpace(actor))
             return Forbid();
+
+        if (request.Mode is not ("DryRun" or "Enforce") || request.ExpectedDurationMinutes <= 0)
+            return BadRequest();
 
         var response = await repository.SiegeMode.V1.StartSession(gameServerId, new StartSiegeSessionDto
         {

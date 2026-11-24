@@ -91,7 +91,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SiegeSession'
         '400':
-          description: Invalid input or antiforgery token.
+          description: Invalid input or antiforgery token. Mode and duration are validated after server lookup and authorization.
         '401':
           description: Portal sign-in required.
         '403':

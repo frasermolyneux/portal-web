@@ -137,6 +137,8 @@ public sealed class ForumIntegrationHttpTests
 
         using var denied = await Send(TestPrincipalProfiles.HeadAdminCod5, new { mode, expectedDurationMinutes = 240, gameType = "CallOfDuty5" });
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var deniedInvalid = await Send(TestPrincipalProfiles.HeadAdminCod5, new { mode = "Unknown", expectedDurationMinutes = 0 });
+        Assert.Equal(HttpStatusCode.Forbidden, deniedInvalid.StatusCode);
         using var invalid = await Send(TestPrincipalProfiles.HeadAdmin, new { expectedDurationMinutes = 240 });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         using var unknown = await Send(TestPrincipalProfiles.HeadAdmin, new { mode = "Unknown", expectedDurationMinutes = 240 });
