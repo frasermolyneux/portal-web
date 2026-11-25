@@ -24,7 +24,7 @@ internal static class PortalActionManifest
     public static IReadOnlyDictionary<PortalActionKind, int> ApprovedCounts { get; } =
         new Dictionary<PortalActionKind, int>
         {
-            [PortalActionKind.BrowserPage] = 97,
+            [PortalActionKind.BrowserPage] = 98,
             [PortalActionKind.DownloadOrStream] = 3,
             [PortalActionKind.ExternalCallback] = 3,
             [PortalActionKind.HttpEndpoint] = 136,

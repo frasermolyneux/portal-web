@@ -1,7 +1,7 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using System.Text.Json;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -59,6 +59,7 @@ public sealed class RulesPreviewController(
         var diagnostics = new List<string>();
         var warnings = new List<string>();
         var fragments = new List<PreparedMessageFragment>();
+        var useCodColorCodes = true;
 
         string? Render(string name, string text)
         {
@@ -79,6 +80,7 @@ public sealed class RulesPreviewController(
                 errors.Add($"{name} must be a string.");
                 return null;
             }
+
             return value.GetString();
         }
 
@@ -139,6 +141,7 @@ public sealed class RulesPreviewController(
 
                 var preparation = MessagePreparation.Prepare(renderedMessage, renderedMessages,
                     budget);
+                useCodColorCodes = budget.UseCodColorCodes;
                 errors.AddRange(preparation.Errors.Select(error => error.Message));
                 if (errors.Count == 0)
                     fragments.AddRange(preparation.Fragments);
@@ -149,7 +152,7 @@ public sealed class RulesPreviewController(
             text = Render(parameter.Name, input);
         }
 
-        return Json(new { text, errors, diagnostics, warnings, fragments });
+        return Json(new { text, errors, diagnostics, warnings, fragments, useCodColorCodes });
     }
 
     private async Task<RuleMessageChannelBudgetDto?> GetRconBudgetAsync(Guid serverId, string channel, CancellationToken cancellationToken)
@@ -195,6 +198,7 @@ public sealed class RulesPreviewController(
             {
                 errors.Add($"Message {index + 1} contains characters unsupported by the RCON provider.");
             }
+
             index++;
         }
     }
@@ -206,6 +210,7 @@ public sealed class RulesPreviewController(
             if (text[index] == '&' && text[index + 1] == '&' && text[index + 2] is >= '0' and <= '9')
                 return true;
         }
+
         return false;
     }
 }

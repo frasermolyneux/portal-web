@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +6,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MX.Api.Abstractions;
 using System.Net;
+using System.Security.Claims;
+using System.Text.Json;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
@@ -81,7 +81,7 @@ public class RulesPreviewControllerTests
     [Fact]
     public async Task Preview_RequiresGlobalSettingsPermission()
     {
-        var result = await CreateController(false).Preview(Request("""{"message":"hello"}"""), default);
+        var result = await CreateController(false).Preview(Request(/*lang=json,strict*/ """{"message":"hello"}"""), default);
         Assert.IsType<ForbidResult>(result);
     }
 
@@ -112,7 +112,7 @@ public class RulesPreviewControllerTests
     [Fact]
     public async Task Preview_UsesSharedRendererAndFragmentationForOptedInListOnly()
     {
-        var request = Request("""{"message":"literal {context.player.Name}","messages":["hello {context.player.Name}","next"]}""", "messages");
+        var request = Request(/*lang=json,strict*/ """{"message":"literal {context.player.Name}","messages":["hello {context.player.Name}","next"]}""", "messages");
         var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         var root = json.RootElement;
@@ -130,7 +130,7 @@ public class RulesPreviewControllerTests
     public async Task Preview_ReportsInvalidTokensWithoutProducingFragments()
     {
         var result = Assert.IsType<JsonResult>(await CreateController().Preview(
-            Request("""{"message":"hello {unknown.token}"}""", "message"), default));
+            Request(/*lang=json,strict*/ """{"message":"hello {unknown.token}"}""", "message"), default));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         Assert.NotEmpty(json.RootElement.GetProperty("errors").EnumerateArray());
         Assert.Empty(json.RootElement.GetProperty("fragments").EnumerateArray());
@@ -139,7 +139,7 @@ public class RulesPreviewControllerTests
     [Fact]
     public async Task Preview_RejectsTemplateOptInForUnsupportedParameter()
     {
-        var result = await CreateController().Preview(Request("""{"message":"hello"}""", "recipientTags"), default);
+        var result = await CreateController().Preview(Request(/*lang=json,strict*/ """{"message":"hello"}""", "recipientTags"), default);
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
@@ -176,6 +176,33 @@ public class RulesPreviewControllerTests
         await controller.Preview(request, default);
         servers.Verify(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
             serverId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Preview_PreservesBudgetColourModeForSegmentationAndDisplay()
+    {
+        var serverId = Guid.NewGuid();
+        const string message = "^1abcdefghijabcdefghij";
+        var request = ServerRequest(serverId, message);
+        var budget = new MessageChannelBudget(RuleMessageChannels.RconPrivateChat, 10) { UseCodColorCodes = false };
+        servers.Setup(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+                serverId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleMessageChannelBudgetDto>(HttpStatusCode.OK,
+                new ApiResponse<RuleMessageChannelBudgetDto>(new RuleMessageChannelBudgetDto
+                {
+                    Status = RuleMessageBudgetStatus.Available,
+                    Budget = budget,
+                    Constraints = new RconMessageCharacterConstraintsDto()
+                })));
+
+        var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.False(json.RootElement.GetProperty("useCodColorCodes").GetBoolean());
+        Assert.Empty(json.RootElement.GetProperty("errors").EnumerateArray());
+        var fragments = json.RootElement.GetProperty("fragments").EnumerateArray()
+            .Select(fragment => fragment.GetProperty("text").GetString()).ToArray();
+        Assert.Equal(MessagePreparation.Prepare(message, [], budget).Fragments.Select(fragment => fragment.Text), fragments);
+        Assert.Equal(message, string.Concat(fragments));
     }
 
     [Fact]

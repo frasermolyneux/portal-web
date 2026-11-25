@@ -1,14 +1,15 @@
-using System.Text.Json;
-using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Playwright;
 using Moq;
 using MX.Api.Abstractions;
 using Newtonsoft.Json;
+using System.Net;
+using System.Text.Json;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
@@ -26,8 +27,8 @@ public sealed class WelcomeRulesEditorBrowserTests
         var scenario = new FileTransportScenario();
         static ConfigurationDto Configuration(string json) => JsonConvert.DeserializeObject<ConfigurationDto>(
             JsonConvert.SerializeObject(new { Namespace = WelcomeRulesSettingsConstants.Namespace, Configuration = json }))!;
-        var global = Configuration("""{"schemaVersion":1,"featureId":"welcome-messages","enabled":true,"timing":{"connectionDelaySeconds":5,"freshnessSeconds":120},"rules":[]}""");
-        var server = Configuration("""
+        var global = Configuration(/*lang=json,strict*/ """{"schemaVersion":1,"featureId":"welcome-messages","enabled":true,"timing":{"connectionDelaySeconds":5,"freshnessSeconds":120},"rules":[]}""");
+        var server = Configuration(/*lang=json,strict*/ """
             {"schemaVersion":1,"featureId":"welcome-messages","enabledOverride":"Enabled","inheritGlobalRules":true,
              "rules":[{"id":"local","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},
              "actions":[{"id":"message","typeId":"message.private","parameters":{"message":"Hello {context.player.Name}"},
@@ -205,8 +206,10 @@ public sealed class WelcomeRulesEditorBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
-    [Fact]
-    public async Task Editor_PreviewsFragmentsSafely_AndShowsFallbacksAndErrors()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Editor_PreviewsFragmentsSafely_AndShowsFallbacksAndErrors(bool useCodColorCodes)
     {
         await using var browser = await BrowserFixture.CreateAsync();
         var page = browser.Page;
@@ -217,10 +220,11 @@ public sealed class WelcomeRulesEditorBrowserTests
             var mode = request.RootElement.GetProperty("mode").GetString();
             var message = request.RootElement.GetProperty("parameters").GetProperty("message").GetString();
             var body = message == "bad"
-                ? """{"errors":["Unknown token"],"diagnostics":[],"warnings":[],"fragments":[]}"""
+                ? /*lang=json,strict*/ """{"errors":["Unknown token"],"diagnostics":[],"warnings":[],"fragments":[]}"""
                 : mode == "missing"
-                    ? """{"errors":[],"diagnostics":["Fallback used"],"warnings":[],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"player","utf8ByteCount":6,"totalPayloadByteCount":6}]}"""
-                    : """{"errors":[],"diagnostics":[],"warnings":["Budget includes prefix"],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"^1<img src=x>","utf8ByteCount":13,"totalPayloadByteCount":16}]}""";
+                    ? /*lang=json,strict*/ """{"errors":[],"diagnostics":["Fallback used"],"warnings":[],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"player","utf8ByteCount":6,"totalPayloadByteCount":6}]}"""
+                    : /*lang=json,strict*/ """{"errors":[],"diagnostics":[],"warnings":["Budget includes prefix"],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"^1<img src=x>","utf8ByteCount":13,"totalPayloadByteCount":16}]}""";
+            body = body.Replace("\"fragments\":", $"\"useCodColorCodes\":{useCodColorCodes.ToString().ToLowerInvariant()},\"fragments\":", StringComparison.Ordinal);
             return route.FulfillAsync(new() { ContentType = "application/json", Body = body });
         });
         await page.SetContentAsync("""
@@ -262,13 +266,99 @@ public sealed class WelcomeRulesEditorBrowserTests
         var preview = page.Locator("[data-action-preview='message']");
         await Assertions.Expect(preview).ToContainTextAsync("13 UTF-8 bytes (16 including reserved prefix)");
         await Assertions.Expect(preview).ToContainTextAsync("Budget includes prefix");
-        await Assertions.Expect(preview.Locator(".cod-color-1")).ToHaveTextAsync("<img src=x>");
+        if (useCodColorCodes)
+            await Assertions.Expect(preview.Locator(".cod-color-1")).ToHaveTextAsync("<img src=x>");
+        else
+        {
+            await Assertions.Expect(preview.Locator(".cod-message-preview")).ToHaveTextAsync("^1<img src=x>");
+            await Assertions.Expect(preview.Locator(".cod-color-1")).ToHaveCountAsync(0);
+        }
+
         await Assertions.Expect(preview.Locator("img")).ToHaveCountAsync(0);
         await preview.GetByLabel("Message preview data").SelectOptionAsync("missing");
         await Assertions.Expect(preview).ToContainTextAsync("Fallback used");
         await Assertions.Expect(preview.Locator(".cod-message-preview")).ToHaveTextAsync("player");
         await page.GetByLabel("Message", new() { Exact = true }).FillAsync("bad");
         await Assertions.Expect(preview).ToContainTextAsync("Unknown token");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task ExecutionDiagnostics_ShowWaitingAndNoActionReasonsWithoutParsingSnapshots()
+    {
+        var scenario = new FileTransportScenario();
+        var waitingId = Guid.NewGuid();
+        var completedId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+        RuleFeatureExecutionDto Execution(Guid id, RuleFeatureExecutionState state) => new()
+        {
+            ExecutionId = id,
+            GameServerId = scenario.GameServerId,
+            FeatureId = RulesEngineCatalogueV1.WelcomeMessagesFeature,
+            State = state,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+            Trigger = new RuleTriggerEnvelope { Username = "<img src=x>" },
+            Coordination = new RuleExecutionCoordination
+            {
+                DueAtUtc = now,
+                ExpiresAtUtc = now.AddMinutes(2),
+                WaitingReason = state == RuleFeatureExecutionState.Waiting ? "Waiting for protection evidence" : "Obsolete waiting reason"
+            },
+            DecisionSnapshotJson = /*lang=json,strict*/ """{"internal":"Do not display opaque processor state"}"""
+        };
+        var waiting = Execution(waitingId, RuleFeatureExecutionState.Waiting) with
+        {
+            Diagnostics =
+            [
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.WaitingForProtection, Detail = "<b>Protection pending</b>" },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.FallbackUsed, TokenKey = "context.player.Country", Source = "GeoLocation", Detail = "Fallback selected" },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.DiagnosticsOmitted, OmittedCount = 7 }
+            ],
+            PreparedActions =
+            [
+                new RulePreparedActionDto
+                {
+                    ActionId = "greet",
+                    Outcome = RuleActionExecutionOutcome.OutcomeUnknown,
+                    CompletedFragmentCount = 1,
+                    TotalFragmentCount = 2,
+                    Commands =
+                    [
+                        new RuleActionCommand
+                        {
+                            Effect = new RuleNativeEffect { Type = RuleNativeEffectType.PrivateMessage, Message = "<script>unsafe</script>" },
+                            DeliveryIdentity = new RuleDeliveryIdentity { MessageIndex = 0, FragmentIndex = 1 }
+                        }
+                    ]
+                }
+            ]
+        };
+        var completed = Execution(completedId, RuleFeatureExecutionState.Completed) with
+        {
+            Diagnostics = [new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.NoMatch }]
+        };
+        Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1)
+            .Setup(api => api.SearchRuleExecutions(It.IsAny<RuleFeatureExecutionQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleFeatureExecutionDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<RuleFeatureExecutionDto>>(new CollectionModel<RuleFeatureExecutionDto>([waiting, completed]))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/WelcomeExecutions?id={scenario.GameServerId}").AbsoluteUri);
+        var waitingSection = page.Locator($"[data-execution-id='{waitingId}']");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Waiting for protection evidence");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("FallbackUsed");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("context.player.Country");
+        await Assertions.Expect(waitingSection.Locator(".alert-warning")).ToContainTextAsync("7 additional diagnostics omitted");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("<b>Protection pending</b>");
+        await waitingSection.Locator("summary").ClickAsync();
+        await Assertions.Expect(waitingSection).ToContainTextAsync("OutcomeUnknown - 1 / 2 fragments completed");
+        await Assertions.Expect(waitingSection.Locator("pre")).ToHaveTextAsync("<script>unsafe</script>");
+        await Assertions.Expect(waitingSection.Locator("img, script, b")).ToHaveCountAsync(0);
+        var completedSection = page.Locator($"[data-execution-id='{completedId}']");
+        await Assertions.Expect(completedSection).ToContainTextAsync("NoMatch");
+        await Assertions.Expect(completedSection).Not.ToContainTextAsync("Obsolete waiting reason");
+        await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync("Do not display opaque processor state");
         browser.AssertNoBrowserErrors();
     }
 

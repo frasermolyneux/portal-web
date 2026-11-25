@@ -319,3 +319,4 @@ XtremeIdiots.Portal.Web.Controllers.UserController#PermissionsReport#GET#User/Pe
 XtremeIdiots.Portal.Web.Controllers.UserController#RemoveUserClaim#POST#User/RemoveUserClaim#(System.Guid,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.UserController#TeamAccess#GET#User/TeamAccess#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.UserController#UpdateUserNotificationPreferences#POST#User/UpdateUserNotificationPreferences#(XtremeIdiots.Portal.Web.ViewModels.ManageUserNotificationPreferencesUpdateModel)|StateChange
+XtremeIdiots.Portal.Web.Controllers.WelcomeExecutionsController#Index#GET#WelcomeExecutions/Index#(System.Guid,System.Nullable<System.DateTime>,System.Nullable<System.DateTime>,System.Int32)|BrowserPage

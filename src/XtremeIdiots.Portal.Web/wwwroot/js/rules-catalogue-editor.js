@@ -489,7 +489,7 @@
                             preview.warnings.forEach(message => result.append(element("p", message, "alert alert-warning py-1")));
                             const showText = text => {
                                 const output = element("div", undefined, "cod-message-preview mb-2");
-                                if (typeof CodColors !== "undefined" && typeof CodColors.renderInto === "function")
+                                if (preview.useCodColorCodes !== false && typeof CodColors !== "undefined" && typeof CodColors.renderInto === "function")
                                     CodColors.renderInto(output, text);
                                 else output.textContent = text;
                                 result.append(output);
