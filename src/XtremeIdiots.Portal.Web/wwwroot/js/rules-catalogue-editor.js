@@ -91,7 +91,7 @@
         }, true);
         const sync = () => { hidden.value = JSON.stringify(rules); };
         form?.addEventListener("submit", event => {
-            const invalid = host.querySelector("[data-rule-timing]:invalid");
+            const invalid = host.querySelector(":invalid");
             if (invalid) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -796,7 +796,6 @@
                                     rule.timing = timing;
                                 }
                             }, "number");
-                            control.dataset.ruleTiming = "";
                             control.min = min;
                             control.max = max;
                             control.step = "1";

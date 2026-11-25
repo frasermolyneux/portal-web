@@ -167,6 +167,15 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(preview).ToContainTextAsync("another provider");
         await preview.GetByLabel("Message preview data").SelectOptionAsync("missing");
         await Assertions.Expect(preview).ToContainTextAsync("Hello player");
+        await editor.GetByLabel("Rule ID").FillAsync("");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Collapse all" }).ClickAsync();
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.GetByTestId("game-server-save").ClickAsync();
+        await Assertions.Expect(page.Locator("#welcome-messages-tab-btn")).ToHaveClassAsync(new System.Text.RegularExpressions.Regex("active"));
+        await Assertions.Expect(editor.Locator("[data-rule-disclosure='rule']")).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(editor.GetByLabel("Rule ID")).ToBeFocusedAsync();
+        Assert.Empty(scenario.UpsertedConfigurations);
+        await editor.GetByLabel("Rule ID").FillAsync("local");
         await editor.GetByLabel("Connection delay override (seconds)").FillAsync("61");
         await editor.GetByRole(AriaRole.Button, new() { Name = "Collapse all" }).ClickAsync();
         await page.Locator("#general-tab-btn").ClickAsync();
