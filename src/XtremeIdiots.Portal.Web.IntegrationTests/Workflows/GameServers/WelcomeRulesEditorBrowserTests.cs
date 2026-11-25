@@ -6,7 +6,10 @@ using Microsoft.Playwright;
 using Moq;
 using MX.Api.Abstractions;
 using Newtonsoft.Json;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
@@ -38,10 +41,23 @@ public sealed class WelcomeRulesEditorBrowserTests
             .Setup(api => api.GetConfigurations(scenario.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(
                 HttpStatusCode.OK, new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([scenario.SftpConfiguration, server]))));
+        var servers = new Mock<IServersApiClient> { DefaultValue = DefaultValue.Mock };
+        var budget = new RuleMessageChannelBudgetDto
+        {
+            Status = RuleMessageBudgetStatus.Available,
+            Budget = new MessageChannelBudget(RuleMessageChannels.RconPrivateChat, 149, "rcon", "Synthetic evidence", 32, "CallOfDuty4"),
+            Constraints = new RconMessageCharacterConstraintsDto { AsciiOnly = true },
+            Detail = "Synthetic evidence"
+        };
+        servers.Setup(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+                scenario.GameServerId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleMessageChannelBudgetDto>(HttpStatusCode.OK, new ApiResponse<RuleMessageChannelBudgetDto>(budget)));
 
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
         {
             scenario.ConfigureServices(services);
+            services.RemoveAll<IServersApiClient>();
+            services.AddSingleton(servers.Object);
             services.RemoveAll<IGameServerSettingsService>();
             services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
         });
@@ -53,7 +69,8 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(editor).ToContainTextAsync("Effective at page load: 5 second delay; 120 second freshness");
         var preview = editor.Locator("[data-action-preview='message']");
         await Assertions.Expect(preview).ToContainTextAsync("Hello ExamplePlayer");
-        await Assertions.Expect(preview).ToContainTextAsync("Estimated fragments only");
+        await Assertions.Expect(preview).ToContainTextAsync("RCON preview for CallOfDuty4: 149 total bytes, including 32 reserved prefix bytes.");
+        await Assertions.Expect(preview).ToContainTextAsync("another provider");
         await preview.GetByLabel("Message preview data").SelectOptionAsync("missing");
         await Assertions.Expect(preview).ToContainTextAsync("Hello player");
         await page.Locator("#WelcomeRules_FreshnessSeconds").FillAsync("4");

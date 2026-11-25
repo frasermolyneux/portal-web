@@ -3,9 +3,13 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MX.Api.Abstractions;
 using System.Net;
+using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
+using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -20,13 +24,15 @@ public class RulesPreviewControllerTests
 {
     private readonly Mock<IAuthorizationService> authorization = new();
     private readonly Mock<IRepositoryApiClient> repository = new() { DefaultValue = DefaultValue.Mock };
+    private readonly Mock<IServersApiClient> servers = new() { DefaultValue = DefaultValue.Mock };
+    private readonly MemoryCache cache = new(new MemoryCacheOptions());
 
     private RulesPreviewController CreateController(bool allowed = true)
     {
         authorization.Setup(service => service.AuthorizeAsync(
                 It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), AuthPolicies.GlobalSettings_Admin))
             .ReturnsAsync(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        return new RulesPreviewController(repository.Object, authorization.Object)
+        return new RulesPreviewController(repository.Object, authorization.Object, servers.Object, cache, NullLogger<RulesPreviewController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -44,6 +50,33 @@ public class RulesPreviewControllerTests
         Parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!,
         TemplateParameters = [.. templates]
     };
+
+    private RulesPreviewRequest ServerRequest(Guid serverId, string message, string actionTypeId = "message.private")
+    {
+        var server = NewtonsoftJson.DeserializeObject<GameServerDto>(NewtonsoftJson.SerializeObject(new
+        {
+            GameServerId = serverId,
+            GameType = GameType.CallOfDuty4,
+            Title = "Test server",
+            Hostname = "127.0.0.1",
+            QueryPort = 28960
+        }))!;
+        repository.Setup(client => client.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        authorization.Setup(service => service.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.GameServers_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+        return new RulesPreviewRequest
+        {
+            GameServerId = serverId,
+            FeatureId = RulesEngineCatalogueV1.WelcomeMessagesFeature,
+            ActionTypeId = actionTypeId,
+            ParameterName = "message",
+            Mode = "sample",
+            Parameters = new Dictionary<string, JsonElement> { ["message"] = JsonSerializer.SerializeToElement(message) },
+            TemplateParameters = []
+        };
+    }
 
     [Fact]
     public async Task Preview_RequiresGlobalSettingsPermission()
@@ -72,6 +105,8 @@ public class RulesPreviewControllerTests
         var request = new RulesPreviewRequest { GameServerId = serverId };
 
         Assert.IsType<ForbidResult>(await CreateController().Preview(request, default));
+        servers.Verify(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -106,5 +141,94 @@ public class RulesPreviewControllerTests
     {
         var result = await CreateController().Preview(Request("""{"message":"hello"}""", "recipientTags"), default);
         Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Preview_UsesServerRconBudgetAndCachesItBriefly()
+    {
+        var serverId = Guid.NewGuid();
+        var request = ServerRequest(serverId, new string('A', 120));
+        var budget = new RuleMessageChannelBudgetDto
+        {
+            Status = RuleMessageBudgetStatus.Available,
+            Budget = new MessageChannelBudget(RuleMessageChannels.RconPrivateChat, 149, "rcon", "Test evidence", 32, "CallOfDuty4"),
+            Constraints = new RconMessageCharacterConstraintsDto { AsciiOnly = true },
+            Detail = "Test evidence"
+        };
+        servers.Setup(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+                serverId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleMessageChannelBudgetDto>(HttpStatusCode.OK, new ApiResponse<RuleMessageChannelBudgetDto>(budget)));
+        var controller = CreateController();
+
+        var result = Assert.IsType<JsonResult>(await controller.Preview(request, default));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var root = json.RootElement;
+        Assert.Empty(root.GetProperty("errors").EnumerateArray());
+        Assert.Equal(2, root.GetProperty("fragments").GetArrayLength());
+        Assert.All(root.GetProperty("fragments").EnumerateArray(), fragment =>
+        {
+            Assert.Equal(32, fragment.GetProperty("reservedPrefixUtf8Bytes").GetInt32());
+            Assert.InRange(fragment.GetProperty("totalPayloadByteCount").GetInt32(), 0, 149);
+        });
+        Assert.Contains("RCON preview for CallOfDuty4", root.GetProperty("warnings")[0].GetString());
+        Assert.Contains("another provider", root.GetProperty("warnings")[1].GetString());
+
+        await controller.Preview(request, default);
+        servers.Verify(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+            serverId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Preview_RejectsRconLocalizationInsertsBeforeProducingFragments()
+    {
+        var serverId = Guid.NewGuid();
+        var request = ServerRequest(serverId, "hello &&1");
+        var budget = new RuleMessageChannelBudgetDto
+        {
+            Status = RuleMessageBudgetStatus.Available,
+            Budget = new MessageChannelBudget(RuleMessageChannels.RconPrivateChat, 149),
+            Constraints = new RconMessageCharacterConstraintsDto { DisallowLocalizationInserts = true }
+        };
+        servers.Setup(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+                serverId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleMessageChannelBudgetDto>(HttpStatusCode.OK, new ApiResponse<RuleMessageChannelBudgetDto>(budget)));
+
+        var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.NotEmpty(json.RootElement.GetProperty("errors").EnumerateArray());
+        Assert.Empty(json.RootElement.GetProperty("fragments").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Preview_WhenRconBudgetIsUnavailable_LabelsFallbackAsAnEstimate()
+    {
+        var serverId = Guid.NewGuid();
+        var request = ServerRequest(serverId, "hello");
+        var budget = new RuleMessageChannelBudgetDto { Status = RuleMessageBudgetStatus.Unavailable, Detail = "Prefix unavailable." };
+        servers.Setup(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+                serverId, RuleMessageChannels.RconPrivateChat, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleMessageChannelBudgetDto>(HttpStatusCode.OK, new ApiResponse<RuleMessageChannelBudgetDto>(budget)));
+
+        var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Contains("Prefix unavailable", json.RootElement.GetProperty("warnings")[0].GetString());
+        Assert.Contains("Estimated fragments only", json.RootElement.GetProperty("warnings")[1].GetString());
+        Assert.Single(json.RootElement.GetProperty("fragments").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Preview_PublicMessage_UsesPublicRconChannel()
+    {
+        var serverId = Guid.NewGuid();
+        var request = ServerRequest(serverId, "hello", "message.public");
+        servers.Setup(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+                serverId, RuleMessageChannels.RconPublicChat, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleMessageChannelBudgetDto>(HttpStatusCode.ServiceUnavailable));
+
+        var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Contains("Estimated fragments only", json.RootElement.GetProperty("warnings")[1].GetString());
+        servers.Verify(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
+            serverId, RuleMessageChannels.RconPublicChat, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

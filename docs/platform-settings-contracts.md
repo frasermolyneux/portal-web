@@ -49,9 +49,11 @@ Connection delay and freshness inherit from global settings, with server and
 per-rule overrides resolved by the shared merger. Message and reason templates
 are opt-in; literal text remains literal. The ordered message list follows the
 single message when both are supplied. Preview uses the shared renderer and
-segmenter with sample or missing values. Until the actual channel and prefix
-are known, its byte budget is an explicitly labelled estimate, not a delivery
-guarantee.
+segmenter with sample or missing values. Server previews use the RCON channel
+budget and character constraints when available, caching the lookup for ten
+seconds; otherwise they show a labelled interim estimate without a prefix.
+Global previews have no selected server. A later trigger may use another
+provider or a changed prefix, so runtime-frozen fragments remain authoritative.
 
 ### Settings loading and runtime behavior
 
