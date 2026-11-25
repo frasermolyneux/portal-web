@@ -1224,6 +1224,9 @@ public class ServerAdminControllerTests
         var jsonResult = Assert.IsType<JsonResult>(result);
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("RconFailed", payload.Value<string>("error"));
+        mockRepositoryApiClient.Verify(x => x.AdminActions.V1.CreateAdminAction(
+            It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()), Times.Never);
 
         mockServersApiClient.Verify(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
             serverId,
@@ -1271,6 +1274,9 @@ public class ServerAdminControllerTests
         var jsonResult = Assert.IsType<JsonResult>(result);
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("RconFailed", payload.Value<string>("error"));
+        mockRepositoryApiClient.Verify(x => x.AdminActions.V1.CreateAdminAction(
+            It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()), Times.Never);
 
         mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
             serverId,
