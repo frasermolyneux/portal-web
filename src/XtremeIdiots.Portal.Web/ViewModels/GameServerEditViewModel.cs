@@ -276,9 +276,9 @@ public class GameServerEditViewModel : IValidatableObject
 
     public ChatCommandGlobalSettingsViewModel GlobalChatCommands { get; set; } = new();
 
-    public WelcomeMessageServerSettingsViewModel WelcomeMessages { get; set; } = new();
+    public WelcomeRulesServerSettingsViewModel WelcomeRules { get; set; } = new();
 
-    public WelcomeMessageGlobalSettingsViewModel GlobalWelcomeMessages { get; set; } = new();
+    public WelcomeRulesGlobalSettingsViewModel GlobalWelcomeRules { get; set; } = new();
 
     public VpnProtectionServerSettingsViewModel VpnProtection { get; set; } = new();
 
@@ -290,6 +290,7 @@ public class GameServerEditViewModel : IValidatableObject
 
     public IReadOnlyDictionary<string, bool> VpnRuleCompatibility { get; set; } = new Dictionary<string, bool>();
     public IReadOnlyDictionary<string, bool> SiegeRuleCompatibility { get; set; } = new Dictionary<string, bool>();
+    public IReadOnlyDictionary<string, bool> WelcomeRuleCompatibility { get; set; } = new Dictionary<string, bool>();
     [BindNever]
     public bool HasFreshRuleCapabilitySnapshot { get; set; }
 
@@ -387,7 +388,7 @@ public class GameServerEditViewModel : IValidatableObject
             yield return validationResult;
         }
 
-        foreach (var validationResult in WelcomeMessages.Validate(validationContext))
+        foreach (var validationResult in WelcomeRules.Validate(validationContext))
         {
             yield return validationResult;
         }
@@ -450,12 +451,8 @@ public class GameServerEditViewModel : IValidatableObject
         SyncCod4xPowerTagMappings();
         ChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
-        WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
-        WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
         GlobalChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         GlobalChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
-        GlobalWelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
-        GlobalWelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public void SyncCod4xPowerTagMappings()

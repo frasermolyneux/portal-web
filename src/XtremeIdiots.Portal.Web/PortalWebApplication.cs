@@ -213,6 +213,7 @@ public static class PortalWebApplication
                     .AllowCredentials());
         });
 
+        builder.Services.AddAntiforgery(options => options.HeaderName = "RequestVerificationToken");
         var mvcBuilder = builder.Services.AddControllersWithViews()
             .AddJsonOptions(jsonOptions =>
                 jsonOptions.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

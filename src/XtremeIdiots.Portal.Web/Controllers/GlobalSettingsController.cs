@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -55,7 +56,11 @@ public class GlobalSettingsController(
                 || !ModelState.ContainsKey("SiegeMode.Enabled")
                 || !ModelState.ContainsKey("SiegeMode.RulesJson")
                 || !ModelState.ContainsKey("VpnProtection.Enabled")
-                || !ModelState.ContainsKey("VpnProtection.RulesJson"))
+                || !ModelState.ContainsKey("VpnProtection.RulesJson")
+                || !ModelState.ContainsKey("WelcomeRules.Enabled")
+                || !ModelState.ContainsKey("WelcomeRules.ConnectionDelaySeconds")
+                || !ModelState.ContainsKey("WelcomeRules.FreshnessSeconds")
+                || !ModelState.ContainsKey("WelcomeRules.RulesJson"))
             {
                 ModelState.AddModelError(string.Empty, "A rules settings section is missing or incomplete.");
             }
@@ -73,7 +78,8 @@ public class GlobalSettingsController(
             var authoritative = new GlobalSettingsViewModel();
             foreach (var config in currentConfigurations!.Where(static config =>
                 string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                || string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
                 PopulateModelFromNamespace(authoritative, config);
             RuleSettingsEnvelopeData.CopyFromAuthoritative(authoritative, model);
 
@@ -150,6 +156,16 @@ public class GlobalSettingsController(
                 {
                     Logger.LogWarning("Invalid VPN Protection global settings: {Errors}", string.Join("; ", errors));
                     return (null, UnprocessableEntity("Saved VPN Protection settings are unreadable or use an unsupported schema."));
+                }
+            }
+
+            foreach (var config in configurations.Where(static config =>
+                         string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!globalSettingsService.TryValidateWelcomeRulesSettings(config, out var errors))
+                {
+                    Logger.LogWarning("Invalid Welcome Rules global settings: {Errors}", string.Join("; ", errors));
+                    return (null, UnprocessableEntity("Saved Welcome Rules settings are unreadable or use an unsupported schema."));
                 }
             }
 

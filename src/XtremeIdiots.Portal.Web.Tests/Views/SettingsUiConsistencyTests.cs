@@ -18,10 +18,12 @@ public class SettingsUiConsistencyTests
     [Fact]
     public void WelcomeMessagesConfiguration_UsesSharedTriStateComponentForEnabledOverride()
     {
-        var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+        var welcomeMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+        var viewMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/Shared/_ServerFeatureRules.cshtml");
 
+        Assert.Contains("Prefix = \"WelcomeRules\"", welcomeMarkup);
         Assert.Contains("Views/Shared/Components/TriStateOverrideSelect.cshtml", viewMarkup);
-        Assert.Contains("FieldName = \"WelcomeMessages.Enabled\"", viewMarkup);
+        Assert.Contains("FieldName = $\"{Model.Prefix}.Enabled\"", viewMarkup);
         Assert.Contains("Inherit global", viewMarkup);
     }
 
@@ -109,11 +111,7 @@ public class SettingsUiConsistencyTests
         var welcomeMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
         var chatMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
 
-        var welcomeCheckboxIndex = welcomeMarkup.IndexOf("name=\"WelcomeMessages.Enabled\" value=\"true\"", StringComparison.Ordinal);
-        var welcomeHiddenIndex = welcomeMarkup.IndexOf("name=\"WelcomeMessages.Enabled\" value=\"false\"", StringComparison.Ordinal);
-        Assert.True(welcomeCheckboxIndex >= 0, "WelcomeMessages.Enabled checkbox markup not found.");
-        Assert.True(welcomeHiddenIndex > welcomeCheckboxIndex,
-            "WelcomeMessages.Enabled hidden fallback must be rendered after the checkbox.");
+        Assert.Contains("asp-for=\"WelcomeRules.Enabled\"", welcomeMarkup);
 
         var chatCheckboxIndex = chatMarkup.IndexOf("name=\"ChatCommands.DefaultsEnabled\" value=\"true\"", StringComparison.Ordinal);
         var chatHiddenIndex = chatMarkup.IndexOf("name=\"ChatCommands.DefaultsEnabled\" value=\"false\"", StringComparison.Ordinal);
@@ -125,10 +123,10 @@ public class SettingsUiConsistencyTests
     [Fact]
     public void ServerWelcomeInheritGlobalRules_CheckboxMarkupPlacesHiddenFallbackAfterCheckbox()
     {
-        var welcomeServerMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
+        var welcomeServerMarkup = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/Shared/_ServerFeatureRules.cshtml");
 
-        var checkboxIndex = welcomeServerMarkup.IndexOf("name=\"WelcomeMessages.InheritGlobalRules\" value=\"true\"", StringComparison.Ordinal);
-        var hiddenIndex = welcomeServerMarkup.IndexOf("name=\"WelcomeMessages.InheritGlobalRules\" value=\"false\"", StringComparison.Ordinal);
+        var checkboxIndex = welcomeServerMarkup.IndexOf("name=\"@(Model.Prefix).InheritGlobalRules\" value=\"true\"", StringComparison.Ordinal);
+        var hiddenIndex = welcomeServerMarkup.IndexOf("name=\"@(Model.Prefix).InheritGlobalRules\" value=\"false\"", StringComparison.Ordinal);
 
         Assert.True(checkboxIndex >= 0, "WelcomeMessages.InheritGlobalRules checkbox markup not found.");
         Assert.True(hiddenIndex > checkboxIndex,
@@ -155,7 +153,6 @@ public class SettingsUiConsistencyTests
     {
         var globalBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_BroadcastsConfiguration.cshtml");
         var globalChatCommands = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ChatCommandsConfiguration.cshtml");
-        var globalWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
 
         AssertCheckboxBeforeHidden(globalBroadcasts,
             "name=\"BroadcastMessages[@i].Enabled\" value=\"true\"",
@@ -167,10 +164,6 @@ public class SettingsUiConsistencyTests
             "name=\"ChatCommands.Commands[@i].Messages[@j].Enabled\" value=\"false\"",
             "Global chat command message row enabled");
 
-        AssertCheckboxBeforeHidden(globalWelcomeMessages,
-            "name=\"WelcomeMessages.Rules[@i].Enabled\" value=\"true\"",
-            "name=\"WelcomeMessages.Rules[@i].Enabled\" value=\"false\"",
-            "Global welcome rule row enabled");
     }
 
     [Fact]
@@ -178,7 +171,6 @@ public class SettingsUiConsistencyTests
     {
         var serverBroadcasts = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_BroadcastsConfiguration.cshtml");
         var serverChatCommands = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_ChatCommandsConfiguration.cshtml");
-        var serverWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
 
         AssertCheckboxBeforeHidden(serverBroadcasts,
             "name=\"BroadcastMessages[@i].Enabled\" value=\"true\"",
@@ -190,54 +182,18 @@ public class SettingsUiConsistencyTests
             "name=\"ChatCommands.Commands[@i].Messages[@j].Enabled\" value=\"false\"",
             "Server chat command message row enabled");
 
-        AssertCheckboxBeforeHidden(serverWelcomeMessages,
-            "name=\"WelcomeMessages.LocalRules[@i].Enabled\"",
-            "data-field=\"enabled-hidden\" name=\"WelcomeMessages.LocalRules[@i].Enabled\"",
-            "Server welcome local rule row enabled");
     }
 
     [Fact]
-    public void WelcomeMessagePriorityFields_AreHiddenButRemainInDomForBindingAndReindexing()
+    public void WelcomeMessages_UseTheSharedRulesEditor()
     {
         var globalWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_WelcomeMessagesConfiguration.cshtml");
         var serverWelcomeMessages = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_WelcomeMessagesConfiguration.cshtml");
 
-        AssertContainsNormalized(
-            globalWelcomeMessages,
-            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label asp-for=\"WelcomeMessages.Rules[i].Priority\" class=\"form-label\"></label>",
-            "Global welcome existing-rule priority should be hidden.");
-        AssertContainsNormalized(
-            globalWelcomeMessages,
-            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label class=\"form-label\" data-field=\"priority-label\" for=\"WelcomeMessages_Rules_0__Priority\">Priority</label>",
-            "Global welcome template-rule priority should be hidden.");
-
-        AssertContainsNormalized(
-            serverWelcomeMessages,
-            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label asp-for=\"WelcomeMessages.LocalRules[i].Priority\" class=\"form-label\"></label>",
-            "Server welcome local existing-rule priority should be hidden.");
-        AssertContainsNormalized(
-            serverWelcomeMessages,
-            "<div class=\"col-lg-2 d-none\"> <div class=\"mb-3\"> <label class=\"form-label\" data-field=\"priority-label\" for=\"WelcomeMessages_LocalRules_0__Priority\">Priority</label>",
-            "Server welcome local template-rule priority should be hidden.");
-
-        AssertContainsNormalized(
-            serverWelcomeMessages,
-            "<div class=\"col-lg-3 d-none\"> <div class=\"mb-3\"> <label asp-for=\"WelcomeMessages.RuleOverrides[i].Priority\" class=\"form-label\"></label>",
-            "Server welcome override existing-rule priority should be hidden.");
-        AssertContainsNormalized(
-            serverWelcomeMessages,
-            "<div class=\"col-lg-3 d-none\"> <div class=\"mb-3\"> <label class=\"form-label\" data-field=\"priority-label\" for=\"WelcomeMessages_RuleOverrides_0__Priority\">Priority Override</label>",
-            "Server welcome override template-rule priority should be hidden.");
-
-        Assert.Contains("asp-for=\"WelcomeMessages.Rules[i].Priority\"", globalWelcomeMessages);
-        Assert.Contains("name=\"WelcomeMessages.Rules[0].Priority\"", globalWelcomeMessages);
-        Assert.Contains("data-field=\"priority\"", globalWelcomeMessages);
-
-        Assert.Contains("asp-for=\"WelcomeMessages.LocalRules[i].Priority\"", serverWelcomeMessages);
-        Assert.Contains("name=\"WelcomeMessages.LocalRules[0].Priority\"", serverWelcomeMessages);
-        Assert.Contains("asp-for=\"WelcomeMessages.RuleOverrides[i].Priority\"", serverWelcomeMessages);
-        Assert.Contains("name=\"WelcomeMessages.RuleOverrides[0].Priority\"", serverWelcomeMessages);
-        Assert.Contains("data-field=\"priority\"", serverWelcomeMessages);
+        Assert.Contains("_RulesCatalogueEditor", globalWelcomeMessages);
+        Assert.Contains("WelcomeRules.RulesJson", globalWelcomeMessages);
+        Assert.Contains("_ServerFeatureRules", serverWelcomeMessages);
+        Assert.Contains("Model.WelcomeRules.RuleOverridesJson", serverWelcomeMessages);
     }
 
     [Fact]

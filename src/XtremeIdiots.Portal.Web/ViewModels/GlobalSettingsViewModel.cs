@@ -133,7 +133,7 @@ public class GlobalSettingsViewModel : IValidatableObject
 
     public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
 
-    public WelcomeMessageGlobalSettingsViewModel WelcomeMessages { get; set; } = new();
+    public WelcomeRulesGlobalSettingsViewModel WelcomeRules { get; set; } = new();
 
     public VpnProtectionGlobalSettingsViewModel VpnProtection { get; set; } = new();
 
@@ -162,7 +162,7 @@ public class GlobalSettingsViewModel : IValidatableObject
             yield return validationResult;
         }
 
-        foreach (var validationResult in WelcomeMessages.Validate(validationContext))
+        foreach (var validationResult in WelcomeRules.Validate(validationContext))
         {
             yield return validationResult;
         }
@@ -219,8 +219,6 @@ public class GlobalSettingsViewModel : IValidatableObject
         SyncCod4xPowerTagMappings();
         ChatCommands.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
         ChatCommands.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
-        WelcomeMessages.AllowedRequiredTags = requiredTags.Select(static option => option.Name).ToArray();
-        WelcomeMessages.RequiredTagsCatalogAvailable = requiredTagsCatalogAvailable;
     }
 
     public void SyncCod4xPowerTagMappings()

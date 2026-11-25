@@ -65,11 +65,6 @@
                                         data-bs-target="#chat-commands-tab" type="button" role="tab"
                                         aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
                             </li>
-                            <li class="nav-item" role="presentation" id="welcome-messages-tab-item">
-                                <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
-                                        data-bs-target="#welcome-messages-tab" type="button" role="tab"
-                                        aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
-                            </li>
                             <li class="nav-item" role="presentation" id="moderation-tab-item">
                                 <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
                                         data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
@@ -81,6 +76,11 @@
                                         aria-selected="false">Event Processing</button>
                             </li>
                         }
+                        <li class="nav-item" role="presentation" id="welcome-messages-tab-item">
+                            <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#welcome-messages-tab" type="button" role="tab"
+                                    aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
+                        </li>
                         <li class="nav-item @(Model.GameServer.BanFileSyncEnabled ? "" : "d-none")" role="presentation"
                             id="banfilesync-tab-item">
                             <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
@@ -158,11 +158,6 @@
                                 @await Html.PartialAsync("ConfigurationSections/_ChatCommandsConfiguration", Model)
                             </div>
 
-                            <div class="tab-pane fade" id="welcome-messages-tab" role="tabpanel"
-                                 aria-labelledby="welcome-messages-tab-btn">
-                                @await Html.PartialAsync("ConfigurationSections/_WelcomeMessagesConfiguration", Model)
-                            </div>
-
                             <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
                                  aria-labelledby="moderation-tab-btn">
                                 @await Html.PartialAsync("ConfigurationSections/_ModerationConfiguration", Model)
@@ -172,6 +167,11 @@
                                 @await Html.PartialAsync("ConfigurationSections/_EventsConfiguration", Model)
                             </div>
                         }
+
+                        <div class="tab-pane fade" id="welcome-messages-tab" role="tabpanel"
+                             aria-labelledby="welcome-messages-tab-btn">
+                            @await Html.PartialAsync("ConfigurationSections/_WelcomeMessagesConfiguration", Model)
+                        </div>
 
                         <div class="tab-pane fade" id="banfilesync-tab" role="tabpanel"
                              aria-labelledby="banfilesync-tab-btn">
@@ -234,7 +234,6 @@
     }
     <script src="~/js/file-browse.js" asp-append-version="true"></script>
     <script src="~/js/required-tags-selector.js" asp-append-version="true"></script>
-    <script src="~/js/welcome-rules-manager.js" asp-append-version="true"></script>
     <script src="~/js/settings-row-manager.js" asp-append-version="true"></script>
     <script src="~/js/feature-server-state.js" asp-append-version="true"></script>
     <script>
@@ -540,8 +539,6 @@
         }
         });
 
-        XIWelcomeRulesManager.initializeEditor('server-welcome-local-rules-container', 'add-server-welcome-local-rule');
-        XIWelcomeRulesManager.initializeEditor('server-welcome-rule-overrides-container', 'add-server-welcome-rule-override');
 
         document.querySelectorAll('[data-chat-command-card]').forEach(function (card) {
         function updateOverrideVisibility() {

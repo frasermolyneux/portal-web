@@ -20,6 +20,16 @@ public sealed class GameServerSettingsService(
         return namespaceSettingsParser.TryParseVpnProtectionSettings(config, out _, out errors);
     }
 
+    public bool TryValidateWelcomeRulesSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseWelcomeRulesServerSettings(config, out _, out errors);
+    }
+
+    public bool TryValidateGlobalWelcomeRulesSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseWelcomeRulesSettings(config, out _, out errors);
+    }
+
     public bool TryValidateSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
     {
         return namespaceSettingsParser.TryParseSiegeModeServerSettings(config, out _, out errors);

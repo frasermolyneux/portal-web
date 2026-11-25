@@ -94,7 +94,13 @@ public class GameServersControllerTests
             ["SiegeMode.InheritGlobalRules"] = model.SiegeMode.InheritGlobalRules.ToString(),
             ["SiegeMode.DurationMinutesOverride"] = model.SiegeMode.DurationMinutesOverride?.ToString() ?? string.Empty,
             ["SiegeMode.LocalRulesJson"] = model.SiegeMode.LocalRulesJson,
-            ["SiegeMode.RuleOverridesJson"] = model.SiegeMode.RuleOverridesJson
+            ["SiegeMode.RuleOverridesJson"] = model.SiegeMode.RuleOverridesJson,
+            ["WelcomeRules.Enabled"] = model.WelcomeRules.Enabled?.ToString() ?? string.Empty,
+            ["WelcomeRules.InheritGlobalRules"] = model.WelcomeRules.InheritGlobalRules.ToString(),
+            ["WelcomeRules.ConnectionDelaySeconds"] = model.WelcomeRules.ConnectionDelaySeconds?.ToString() ?? string.Empty,
+            ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds?.ToString() ?? string.Empty,
+            ["WelcomeRules.LocalRulesJson"] = model.WelcomeRules.LocalRulesJson,
+            ["WelcomeRules.RuleOverridesJson"] = model.WelcomeRules.RuleOverridesJson
         };
         foreach (var (key, value) in fields)
         {
@@ -593,8 +599,10 @@ public class GameServersControllerTests
         Assert.Contains(ChatCommandSettingsConstants.Namespace, deletedNamespaces);
     }
 
-    [Fact]
-    public async Task SaveConfigNamespacesAsync_AgentEnabled_UpsertsWelcomeMessagesContract()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SaveConfigNamespacesAsync_UpsertsWelcomeRulesRegardlessOfAgent(bool agentEnabled)
     {
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
@@ -620,61 +628,36 @@ public class GameServersControllerTests
             {
                 GameServerId = gameServerId,
                 Title = "Server Alpha",
-                AgentEnabled = true
+                AgentEnabled = agentEnabled
             },
-            WelcomeMessages = new WelcomeMessageServerSettingsViewModel
+            WelcomeRules = new WelcomeRulesServerSettingsViewModel
             {
                 Enabled = true,
                 InheritGlobalRules = true,
-                CountryFallback = "Unknown",
-                DefaultConnectionDelaySeconds = 4,
-                StaleThresholdSeconds = 180,
-                LocalRules =
-                [
-                    new WelcomeMessageRuleEntryViewModel
-                    {
-                        Id = "server-rule",
-                        Enabled = true,
-                        Priority = 100,
-                        Visibility = WelcomeMessageVisibility.Private,
-                        MessageTemplate = "Welcome local {name}",
-                        RequiredTagsCsv = "vip",
-                        ConnectionDelaySeconds = 2
-                    }
-                ],
-                RuleOverrides =
-                [
-                    new WelcomeMessageRuleOverrideEntryViewModel
-                    {
-                        Id = "global-rule",
-                        Enabled = false,
-                        Priority = 90,
-                        Visibility = WelcomeMessageVisibility.Public,
-                        MessageTemplate = "Overridden template",
-                        OverrideRequiredTags = true,
-                        RequiredTagsCsv = string.Empty,
-                        ConnectionDelaySeconds = 6
-                    }
-                ]
+                ConnectionDelaySeconds = 4,
+                FreshnessSeconds = 180,
+                LocalRulesJson = """[{"id":"server-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.private","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]""",
+                RuleOverridesJson = """[{"ruleId":"global-rule","enabled":false,"timing":{"connectionDelaySeconds":6}}]"""
             }
         };
 
         var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
         await task;
 
-        Assert.True(upsertPayloads.TryGetValue("welcomeMessages", out var welcomeMessagesJson));
+        Assert.False(upsertPayloads.ContainsKey("welcomeMessages"));
+        Assert.True(upsertPayloads.TryGetValue(WelcomeRulesSettingsConstants.Namespace, out var welcomeMessagesJson));
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
-        Assert.Equal(WelcomeMessageSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
-        Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal(WelcomeRulesSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Enabled", doc.RootElement.GetProperty("enabledOverride").GetString());
         Assert.True(doc.RootElement.GetProperty("inheritGlobalRules").GetBoolean());
 
         var localRule = doc.RootElement.GetProperty("rules")[0];
         Assert.Equal("server-rule", localRule.GetProperty("id").GetString());
-        Assert.Equal("vip", localRule.GetProperty("requiredTags")[0].GetString());
+        Assert.Equal("message.private", localRule.GetProperty("actions")[0].GetProperty("typeId").GetString());
 
         var overrideRule = doc.RootElement.GetProperty("ruleOverrides")[0];
-        Assert.Equal("global-rule", overrideRule.GetProperty("id").GetString());
-        Assert.Equal(0, overrideRule.GetProperty("requiredTags").GetArrayLength());
+        Assert.Equal("global-rule", overrideRule.GetProperty("ruleId").GetString());
+        Assert.Equal(6, overrideRule.GetProperty("timing").GetProperty("connectionDelaySeconds").GetInt32());
     }
 
     [Fact]
@@ -1132,7 +1115,7 @@ public class GameServersControllerTests
         Assert.DoesNotContain(BanFileSettingsConstants.Namespace, upsertedNamespaces);
         Assert.DoesNotContain(ServerListSettingsConstants.Namespace, upsertedNamespaces);
         Assert.Equal(
-            [VpnProtectionSettingsConstants.Namespace, SiegeModeSettingsConstants.Namespace],
+            [WelcomeRulesSettingsConstants.Namespace, VpnProtectionSettingsConstants.Namespace, SiegeModeSettingsConstants.Namespace],
             deletedNamespaces);
     }
 
@@ -1154,6 +1137,12 @@ public class GameServersControllerTests
             .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
                 gameServerId,
                 SiegeModeSettingsConstants.Namespace,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        mockRepositoryApiClient
+            .Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+                gameServerId,
+                WelcomeRulesSettingsConstants.Namespace,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
 

@@ -14,10 +14,14 @@
 }
 <div id="@Model.EditorId" data-rules-catalogue-editor
      data-feature-id="@Model.FeatureId"
+     data-preview-url="@Url.Action("Preview", "RulesPreview")"
+     data-game-server-id="@Model.GameServerId"
      data-override="@Model.IsOverride.ToString().ToLowerInvariant()"
      data-server-context="@Model.IsServerContext.ToString().ToLowerInvariant()"
      data-show-inherited-rules="@Model.ShowInheritedRules.ToString().ToLowerInvariant()"
      data-catalogue="@JsonSerializer.Serialize(catalogue, jsonOptions)"
+     data-tokens="@JsonSerializer.Serialize(RuleTextTokens.Definitions, jsonOptions)"
+     data-effective-timings="@JsonSerializer.Serialize(Model.EffectiveTimings, jsonOptions)"
      data-game-types="@JsonSerializer.Serialize(gameTypes, jsonOptions)"
      data-game-icon-base="@Url.Content("~/images/game-icons/")"
      data-tags="@JsonSerializer.Serialize(Model.TagOptions.Select(item => new { value = item.Value, text = item.Text }), jsonOptions)"

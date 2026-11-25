@@ -38,7 +38,11 @@ public class GlobalSettingsControllerTests
             ["SiegeMode.Enabled"] = model.SiegeMode.Enabled.ToString(),
             ["SiegeMode.RulesJson"] = model.SiegeMode.RulesJson,
             ["VpnProtection.Enabled"] = model.VpnProtection.Enabled.ToString(),
-            ["VpnProtection.RulesJson"] = model.VpnProtection.RulesJson
+            ["VpnProtection.RulesJson"] = model.VpnProtection.RulesJson,
+            ["WelcomeRules.Enabled"] = model.WelcomeRules.Enabled.ToString(),
+            ["WelcomeRules.ConnectionDelaySeconds"] = model.WelcomeRules.ConnectionDelaySeconds.ToString(),
+            ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds.ToString(),
+            ["WelcomeRules.RulesJson"] = model.WelcomeRules.RulesJson
         };
         foreach (var (key, value) in fields)
         {
@@ -526,7 +530,7 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
-    public async Task Index_Post_WelcomeMessagesRules_UpsertsWelcomeMessageContract()
+    public async Task Index_Post_WelcomeRules_UpsertsNewContractWithoutWritingLegacyNamespace()
     {
         var sut = CreateSut();
         var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -545,25 +549,12 @@ public class GlobalSettingsControllerTests
 
         var model = new GlobalSettingsViewModel
         {
-            WelcomeMessages = new WelcomeMessageGlobalSettingsViewModel
+            WelcomeRules = new WelcomeRulesGlobalSettingsViewModel
             {
                 Enabled = true,
-                CountryFallback = "Unknown",
-                DefaultConnectionDelaySeconds = 5,
-                StaleThresholdSeconds = 180,
-                Rules =
-                [
-                    new WelcomeMessageRuleEntryViewModel
-                    {
-                        Id = "global-rule",
-                        Enabled = true,
-                        Priority = 10,
-                        Visibility = WelcomeMessageVisibility.Public,
-                        MessageTemplate = "Welcome {name}",
-                        RequiredTagsCsv = "vip, staff",
-                        ConnectionDelaySeconds = 3
-                    }
-                ]
+                ConnectionDelaySeconds = 5,
+                FreshnessSeconds = 180,
+                RulesJson = """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome {context.player.Name}"},"dependsOnActionIds":[],"templateParameters":["message"]}],"afterMatch":"StopProcessingRules"}]"""
             }
         };
 
@@ -571,21 +562,21 @@ public class GlobalSettingsControllerTests
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.True(upsertPayloads.TryGetValue("welcomeMessages", out var welcomeMessagesJson));
+        Assert.False(upsertPayloads.ContainsKey("welcomeMessages"));
+        Assert.True(upsertPayloads.TryGetValue(WelcomeRulesSettingsConstants.Namespace, out var welcomeMessagesJson));
 
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
-        Assert.Equal(WelcomeMessageSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(WelcomeRulesSettingsConstants.SchemaVersion, doc.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.True(doc.RootElement.GetProperty("enabled").GetBoolean());
-        Assert.Equal(5, doc.RootElement.GetProperty("defaults").GetProperty("connectionDelaySeconds").GetInt32());
+        Assert.Equal(5, doc.RootElement.GetProperty("timing").GetProperty("connectionDelaySeconds").GetInt32());
         var firstRule = doc.RootElement.GetProperty("rules")[0];
         Assert.Equal("global-rule", firstRule.GetProperty("id").GetString());
-        Assert.Equal("Public", firstRule.GetProperty("visibility").GetString());
-        Assert.Equal("vip", firstRule.GetProperty("requiredTags")[0].GetString());
-        Assert.Equal("staff", firstRule.GetProperty("requiredTags")[1].GetString());
+        Assert.Equal("message.public", firstRule.GetProperty("actions")[0].GetProperty("typeId").GetString());
+        Assert.Equal("message", firstRule.GetProperty("actions")[0].GetProperty("templateParameters")[0].GetString());
     }
 
     [Fact]
-    public async Task Index_Post_WelcomeMessagesDisabled_PreservesRulesAndDoesNotDeleteNamespace()
+    public async Task Index_Post_WelcomeRulesDisabled_PreservesRulesAndLegacyNamespace()
     {
         var sut = CreateSut();
         var upsertPayloads = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -604,25 +595,10 @@ public class GlobalSettingsControllerTests
 
         var model = new GlobalSettingsViewModel
         {
-            WelcomeMessages = new WelcomeMessageGlobalSettingsViewModel
+            WelcomeRules = new WelcomeRulesGlobalSettingsViewModel
             {
                 Enabled = false,
-                CountryFallback = "Unknown",
-                DefaultConnectionDelaySeconds = 5,
-                StaleThresholdSeconds = 180,
-                Rules =
-                [
-                    new WelcomeMessageRuleEntryViewModel
-                    {
-                        Id = "global-rule",
-                        Enabled = true,
-                        Priority = 10,
-                        Visibility = WelcomeMessageVisibility.Public,
-                        MessageTemplate = "Welcome {name}",
-                        RequiredTagsCsv = "vip",
-                        ConnectionDelaySeconds = 3
-                    }
-                ]
+                RulesJson = """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]"""
             }
         };
 
@@ -630,17 +606,18 @@ public class GlobalSettingsControllerTests
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.True(upsertPayloads.TryGetValue(WelcomeMessageSettingsViewModelConstants.Namespace, out var welcomeMessagesJson));
+        Assert.False(upsertPayloads.ContainsKey(WelcomeMessageSettingsConstants.Namespace));
+        Assert.True(upsertPayloads.TryGetValue(WelcomeRulesSettingsConstants.Namespace, out var welcomeMessagesJson));
 
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
         Assert.False(doc.RootElement.GetProperty("enabled").GetBoolean());
         var firstRule = doc.RootElement.GetProperty("rules")[0];
         Assert.Equal("global-rule", firstRule.GetProperty("id").GetString());
-        Assert.Equal("Welcome {name}", firstRule.GetProperty("messageTemplate").GetString());
+        Assert.Equal("Welcome", firstRule.GetProperty("actions")[0].GetProperty("parameters").GetProperty("message").GetString());
 
         mockRepositoryApiClient.Verify(
             client => client.GlobalConfigurations.V1.DeleteConfiguration(
-                WelcomeMessageSettingsViewModelConstants.Namespace,
+                WelcomeMessageSettingsConstants.Namespace,
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }

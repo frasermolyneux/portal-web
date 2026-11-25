@@ -38,6 +38,21 @@ This is a clean-slate settings change: older VPN and Siege rule documents are
 not migrated or read by the new editor. Coordinate the settings reset and
 repository, runtime and portal deployments before the production cutover.
 
+### Welcome rules
+
+Welcome Messages uses the shared editor and the `welcomeRules` namespace;
+legacy `welcomeMessages` documents are neither migrated nor rewritten by the
+editor. Coordinate their removal with the runtime cutover before enabling the
+new feature. Server rules are available independently of the agent toggle.
+
+Connection delay and freshness inherit from global settings, with server and
+per-rule overrides resolved by the shared merger. Message and reason templates
+are opt-in; literal text remains literal. The ordered message list follows the
+single message when both are supplied. Preview uses the shared renderer and
+segmenter with sample or missing values. Until the actual channel and prefix
+are known, its byte budget is an explicitly labelled estimate, not a delivery
+guarantee.
+
 ### Settings loading and runtime behavior
 
 1. A settings page fails to load expected values.

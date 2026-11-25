@@ -24,6 +24,11 @@ public sealed class GlobalSettingsService(
         return namespaceSettingsParser.TryParseVpnProtectionSettings(config, out _, out errors);
     }
 
+    public bool TryValidateWelcomeRulesSettings(ConfigurationDto config, out IReadOnlyList<string> errors)
+    {
+        return namespaceSettingsParser.TryParseWelcomeRulesSettings(config, out _, out errors);
+    }
+
     public IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(GlobalSettingsViewModel model)
     {
         return namespaceSettingsSerializer.BuildGlobalSettingsConfigurations(model);

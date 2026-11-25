@@ -21,14 +21,12 @@ public class GlobalSettingsRequiredTagsValidationTests
     public void RequiredTagsCatalogAvailable_DefaultsToFalse()
     {
         Assert.False(new ChatCommandGlobalSettingsViewModel().RequiredTagsCatalogAvailable);
-        Assert.False(new WelcomeMessageGlobalSettingsViewModel().RequiredTagsCatalogAvailable);
     }
 
     [Fact]
     public void RequiredTagsCatalogAvailable_ServerVariants_DefaultToFalse()
     {
         Assert.False(new ChatCommandServerSettingsViewModel().RequiredTagsCatalogAvailable);
-        Assert.False(new WelcomeMessageServerSettingsViewModel().RequiredTagsCatalogAvailable);
     }
 
     [Fact]

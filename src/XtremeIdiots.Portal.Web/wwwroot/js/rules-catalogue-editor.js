@@ -16,13 +16,15 @@
         const hidden = root.querySelector("[data-rules-value]");
         const host = root.querySelector("[data-rules-editor]");
         const form = root.closest("form");
-        let catalogue, tags, compatibility, globals, rules, gameTypes;
+        let catalogue, tags, compatibility, globals, rules, gameTypes, tokens, effectiveTimings;
         let error = "";
         try {
             catalogue = JSON.parse(root.dataset.catalogue);
             tags = JSON.parse(root.dataset.tags);
             compatibility = JSON.parse(root.dataset.compatibility);
             gameTypes = JSON.parse(root.dataset.gameTypes || "{}");
+            tokens = JSON.parse(root.dataset.tokens || "[]");
+            effectiveTimings = JSON.parse(root.dataset.effectiveTimings || "null");
             globals = JSON.parse(root.dataset.globalRules);
             rules = JSON.parse(hidden.value);
             if (!Array.isArray(rules)) throw new Error("Rules must be a JSON array.");
@@ -50,8 +52,8 @@
             return control;
         };
         const input = (parent, title, value, change, type = "text", required = false) => {
-            const node = element("input", undefined, "form-control");
-            node.type = type;
+            const node = element(type === "textarea" ? "textarea" : "input", undefined, "form-control");
+            if (type !== "textarea") node.type = type;
             node.value = value ?? "";
             node.required = required;
             node.addEventListener("input", () => { change(node.value, node); sync(); });
@@ -146,6 +148,65 @@
         const vpnOperators = kind => kind === "number" ?
             ["Equal", "NotEqual", "GreaterThan", "GreaterThanOrEqual", "LessThan", "LessThanOrEqual"] :
             kind === "string" ? ["Equal", "NotEqual", "Contains"] : ["Equal", "NotEqual"];
+        const tokenPicker = (parent, control, item, name, parameterHost = parent) => {
+            if (!Array.isArray(tokens) || !tokens.length ||
+                (item.templateParameters != null && (!Array.isArray(item.templateParameters) || item.templateParameters.some(value => typeof value !== "string")))) return;
+            const picker = element("details", undefined, "mb-3");
+            picker.append(element("summary", "Insert a token"));
+            const search = element("input", undefined, "form-control my-2");
+            search.type = "search";
+            search.placeholder = "Search tokens";
+            search.setAttribute("aria-label", "Search tokens");
+            picker.append(search);
+            const groups = new Map();
+            tokens.filter(token => token && typeof token.token === "string").forEach(token => {
+                const group = token.group || "Other";
+                if (!groups.has(group)) {
+                    const section = element("section", undefined, "mb-2");
+                    section.append(element("h6", group));
+                    groups.set(group, section);
+                    picker.append(section);
+                }
+                const row = element("div", undefined, "mb-2");
+                const text = [token.label, token.token, token.description, token.availability, token.sampleValue, token.fallback,
+                    ...(Array.isArray(token.requiredSources) ? token.requiredSources : [])]
+                    .filter(value => value != null).join(" ");
+                row.dataset.search = text.toLowerCase();
+                row.append(button(token.label || token.token, () => {
+                    const start = control.selectionStart ?? control.value.length;
+                    const end = control.selectionEnd ?? start;
+                    control.setRangeText(token.token, start, end, "end");
+                    control.dispatchEvent(new Event("input", { bubbles: true }));
+                    const checkbox = [...parameterHost.querySelectorAll("[data-template-parameter]")]
+                        .find(input => input.dataset.templateParameter === name);
+                    if (checkbox && !checkbox.checked) {
+                        checkbox.checked = true;
+                        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+                    }
+                    control.focus();
+                }));
+                row.append(element("span", `${token.token}${token.isSensitive ? " - sensitive" : ""}`,
+                    token.isSensitive ? "form-text text-danger" : "form-text"));
+                const description = [
+                    token.description,
+                    token.sampleValue != null ? `Sample: ${token.sampleValue}` : null,
+                    token.fallback != null ? `Fallback: ${token.fallback}` : null,
+                    token.requiredSources?.length ? `Source: ${token.requiredSources.join(", ")}` : null,
+                    token.availability ? `Availability: ${token.availability}` : null
+                ].filter(Boolean).join(" ");
+                if (description) row.append(element("div", description, "form-text"));
+                groups.get(group).append(row);
+            });
+            search.addEventListener("input", () => {
+                const query = search.value.toLowerCase().trim();
+                groups.forEach(section => {
+                    const rows = [...section.querySelectorAll("[data-search]")];
+                    rows.forEach(row => { row.hidden = !row.dataset.search.includes(query); });
+                    section.hidden = rows.every(row => row.hidden);
+                });
+            });
+            parent.append(picker);
+        };
         const renderParameters = (parent, item, definition, isCondition) => {
             if (!object(item.parameters)) {
                 parent.append(element("p", "Malformed parameters are preserved. Replace this entry to edit it.", "alert alert-warning"));
@@ -171,14 +232,34 @@
                     parent.append(element("p", `${title}: choose a signal first.`, "form-text"));
                     return;
                 }
-                if (name === "tags" && isCondition) {
-                    select(parent, "Player tags", p[name], tags.map(t => ({ value: t.value, text: t.text })), set, true).required = schema.required;
+                if ((name === "tags" && isCondition) || name === "recipientTags") {
+                    select(parent, isCondition ? "Player tags" : "Recipient tags", p[name], tags.map(t => ({ value: t.value, text: t.text })), set, true).required = schema.required;
                 } else if (schema.type === "boolean") {
                     check(parent, title, p[name], set);
                 } else if (isVpn && name === "expectedValue" && vpnKind(p.signal) === "boolean") {
                     select(parent, title, p[name], ["true", "false"], set);
                 } else if (isVpn && name === "expectedValue" && vpnKind(p.signal) === "status") {
                     select(parent, title, p[name], ["Success", "Failed", "Unavailable"], set);
+                } else if (!isCondition && name === "messages" && schema.supportsMessageList) {
+                    if (p[name] != null && (!Array.isArray(p[name]) || p[name].some(value => typeof value !== "string"))) {
+                        parent.append(element("p", "Malformed messages are preserved. Replace this action to edit them.", "alert alert-warning"));
+                        details(parent, "Stored messages", p[name]);
+                    } else {
+                        const messages = p[name] ?? [];
+                        const section = element("div", undefined, "mb-3");
+                        section.append(element("div", title, "form-label"));
+                        messages.forEach((message, index) => {
+                            const row = element("div", undefined, "border rounded p-2 mb-2");
+                            const control = input(row, `Message ${index + 1}`, message, value => { messages[index] = value; }, "textarea", true);
+                            if (schema.supportsTemplates) tokenPicker(row, control, item, name, parent);
+                            row.append(button("Move message up", () => move(messages, index, -1), false, index === 0));
+                            row.append(button("Move message down", () => move(messages, index, 1), false, index === messages.length - 1));
+                            row.append(button("Remove message", () => { messages.splice(index, 1); sync(); render(); }, true));
+                            section.append(row);
+                        });
+                        section.append(button("Add message", () => { p[name] = messages; messages.push(""); sync(); render(); }, false, messages.length >= 100));
+                        parent.append(section);
+                    }
                 } else if (schema.allowedValues.length) {
                     let choices = schema.allowedValues;
                     if (isVpn && name === "operator") choices = vpnOperators(vpnKind(p.signal));
@@ -199,9 +280,17 @@
                         if (number) {
                             if (value !== "" && node.validity.valid) set(Number(value));
                             else delete p[name];
+                        } else if (name === "message" && schema.supportsMessageList && value === "") {
+                            delete p[name];
+                            if (Array.isArray(item.templateParameters)) {
+                                item.templateParameters = item.templateParameters.filter(parameter => parameter !== name);
+                                const checkbox = [...parent.querySelectorAll("[data-template-parameter]")]
+                                    .find(node => node.dataset.templateParameter === name);
+                                if (checkbox) checkbox.checked = false;
+                            }
                         } else set(value);
-                    }, number ? "number" : "text", schema.required || (firstSeen(item.conditionId) && name === "value"));
-                    if (schema.maxLength != null) control.maxLength = schema.maxLength;
+                    }, number ? "number" : schema.supportsTemplates ? "textarea" : "text", schema.required || (firstSeen(item.conditionId) && name === "value"));
+                    if (schema.maxLength != null && !schema.supportsTemplates && !schema.supportsMessageList) control.maxLength = schema.maxLength;
                     if (schema.minimum != null) control.min = schema.minimum;
                     if (schema.maximum != null) control.max = schema.maximum;
                     if (isVpn && name === "expectedValue" && vpnKind(p.signal) === "number") {
@@ -222,8 +311,22 @@
                         validate();
                     }
                     if (schema.description) parent.append(element("p", schema.description, "form-text"));
+                    if (!isCondition && schema.supportsTemplates) tokenPicker(parent, control, item, name);
                     if (schema.type === "duration" || (firstSeen(item.conditionId) && name === "value"))
                         parent.append(element("p", firstSeen(item.conditionId) && p.operator !== "WithinAge" ? "Enter an ISO date and time, including timezone." : "Enter a duration, for example 7.00:00:00 for seven days.", "form-text"));
+                }
+                if (!isCondition && schema.supportsTemplates) {
+                    if (item.templateParameters != null && (!Array.isArray(item.templateParameters) || item.templateParameters.some(value => typeof value !== "string"))) {
+                        parent.append(element("p", "Malformed template settings are preserved. Replace this action to edit them.", "alert alert-warning"));
+                    } else {
+                        check(parent, `Use tokens in ${title.toLowerCase()}`, item.templateParameters?.includes(name), enabled => {
+                            const templates = item.templateParameters ?? [];
+                            if (enabled && !Object.hasOwn(p, name)) p[name] = name === "messages" ? [] : "";
+                            if (!enabled && name === "message" && schema.supportsMessageList && p[name] === "") delete p[name];
+                            item.templateParameters = enabled ? [...new Set([...templates, name])] : templates.filter(value => value !== name);
+                        });
+                        parent.lastElementChild.querySelector("input").dataset.templateParameter = name;
+                    }
                 }
             });
             const known = new Set(definition.parameters.map(parameter => parameter.name));
@@ -319,6 +422,91 @@
                 });
             ids.forEach(({ id, kind }) => info(parent, id, `Inherited ${kind} ${id}`));
         };
+        const actionPreviews = (panel, action, definition) => {
+            if (!root.dataset.previewUrl || !object(action.parameters)) return;
+            const names = [...new Set(definition.parameters
+                .filter(schema => schema.supportsTemplates)
+                .map(schema => schema.supportsMessageList ? "message" : schema.name))];
+            names.forEach(name => {
+                const container = element("section", undefined, "border rounded p-3 mb-3");
+                container.setAttribute("data-action-preview", name);
+                container.append(element("h6", name === "message" ? "Message preview" : `${labelText(name)} preview`));
+                const mode = element("select", undefined, "form-select mb-2");
+                mode.setAttribute("aria-label", `${labelText(name)} preview data`);
+                [{ value: "sample", text: "Sample values" }, { value: "missing", text: "Missing values / fallbacks" }]
+                    .forEach(choice => {
+                        const option = element("option", choice.text);
+                        option.value = choice.value;
+                        mode.append(option);
+                    });
+                container.append(mode, element("p", "Samples are illustrative and may differ from live values.", "form-text"));
+                const result = element("div");
+                result.setAttribute("aria-live", "polite");
+                container.append(result);
+                panel.append(container);
+                let timer, pending, revision = 0;
+                const schedule = () => {
+                    clearTimeout(timer);
+                    pending?.abort();
+                    const current = ++revision;
+                    result.replaceChildren(element("p", "Updating preview...", "form-text"));
+                    timer = setTimeout(async () => {
+                        if (!host.contains(panel)) return;
+                        pending = new AbortController();
+                        const token = form?.querySelector('[name="__RequestVerificationToken"]')?.value;
+                        try {
+                            const response = await fetch(root.dataset.previewUrl, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", ...(token ? { RequestVerificationToken: token } : {}) },
+                                body: JSON.stringify({
+                                    featureId: root.dataset.featureId,
+                                    gameServerId: root.dataset.gameServerId || null,
+                                    actionTypeId: action.typeId,
+                                    parameters: action.parameters,
+                                    templateParameters: action.templateParameters ?? [],
+                                    parameterName: name,
+                                    mode: mode.value
+                                }),
+                                signal: pending.signal
+                            });
+                            if (!response.ok) throw new Error(`Preview request failed (${response.status}).`);
+                            const preview = await response.json();
+                            if (current !== revision || !host.contains(panel)) return;
+                            if (!object(preview) || !Array.isArray(preview.errors) || !Array.isArray(preview.diagnostics) ||
+                                !Array.isArray(preview.warnings) || !Array.isArray(preview.fragments))
+                                throw new Error("Preview response is invalid.");
+                            result.replaceChildren();
+                            preview.errors.forEach(message => result.append(element("p", message, "alert alert-danger py-1")));
+                            preview.diagnostics.forEach(message => result.append(element("p", message, "form-text")));
+                            preview.warnings.forEach(message => result.append(element("p", message, "alert alert-warning py-1")));
+                            const showText = text => {
+                                const output = element("div", undefined, "cod-message-preview mb-2");
+                                if (typeof CodColors !== "undefined" && typeof CodColors.renderSafe === "function")
+                                    output.innerHTML = CodColors.renderSafe(text);
+                                else output.textContent = text;
+                                result.append(output);
+                            };
+                            if (typeof preview.text === "string") showText(preview.text);
+                            preview.fragments.forEach(fragment => {
+                                if (!object(fragment) || typeof fragment.text !== "string" ||
+                                    !Number.isInteger(fragment.itemIndex) || !Number.isInteger(fragment.fragmentIndex) ||
+                                    !Number.isInteger(fragment.utf8ByteCount) || !Number.isInteger(fragment.totalPayloadByteCount))
+                                    throw new Error("Preview fragment is invalid.");
+                                result.append(element("p", `Message ${fragment.itemIndex + 1}, fragment ${fragment.fragmentIndex + 1}: ${fragment.utf8ByteCount} UTF-8 bytes (${fragment.totalPayloadByteCount} including reserved prefix).`, "form-text"));
+                                showText(fragment.text);
+                            });
+                        } catch (error) {
+                            if (error.name !== "AbortError" && current === revision && host.contains(panel))
+                                result.replaceChildren(element("p", error.message || "Preview is unavailable.", "alert alert-danger py-1"));
+                        }
+                    }, 250);
+                };
+                panel.addEventListener("input", event => { if (!container.contains(event.target)) schedule(); });
+                panel.addEventListener("change", event => { if (!container.contains(event.target)) schedule(); });
+                mode.addEventListener("change", schedule);
+                schedule();
+            });
+        };
         const renderInheritedRules = parent => {
             const container = element("section", undefined, "mb-4");
             container.append(element("h5", "Inherited global rules (before overrides)"));
@@ -384,13 +572,20 @@
                     const extras = object(action.parameters) ? { ...action.parameters } : {};
                     previous?.parameters.forEach(param => delete extras[param.name]);
                     next.parameters.forEach(param => delete extras[param.name]);
+                    if (Array.isArray(action.templateParameters)) {
+                        const previousNames = previous?.parameters.filter(param => param.supportsTemplates).map(param => param.name) ?? [];
+                        action.templateParameters = action.templateParameters.filter(name => !previousNames.includes(name));
+                    }
                     action.typeId = id; action.parameters = extras;
                     render();
                 });
                 const definition = actions.find(item => item.actionTypeId === action.typeId);
                 gameSupport(panel, definition);
                 if (server && action.typeId) info(panel, action.typeId, "Action compatibility");
-                if (definition) renderParameters(panel, action, definition, false);
+                if (definition) {
+                    renderParameters(panel, action, definition, false);
+                    actionPreviews(panel, action, definition);
+                }
                 else if (action.typeId) details(panel, "Unsupported action (preserved)", action);
                 const advanced = element("details", undefined, "mb-3");
                 advanced.append(element("summary", "Advanced action settings"));
@@ -404,7 +599,7 @@
                     select(advanced, "Depends on earlier actions", action.dependsOnActionIds, earlier, value => { action.dependsOnActionIds = value; }, true);
                 } else details(advanced, "Malformed dependencies (preserved)", action.dependsOnActionIds);
                 panel.append(advanced);
-                extensions(panel, action, ["id", "typeId", "parameters", "dependsOnActionIds"]);
+                extensions(panel, action, ["id", "typeId", "parameters", "dependsOnActionIds", "templateParameters"]);
                 panel.append(button("Move action up", () => move(rule.actions, index, -1)));
                 panel.append(button("Move action down", () => move(rule.actions, index, 1)));
                 panel.append(button("Remove action", () => { rule.actions.splice(index, 1); sync(); render(); }, true));
@@ -468,8 +663,38 @@
                 section("actions", "THEN", () => [newAction()], () => renderActions(panel, rule));
                 section("afterMatch", "After match", () => "StopProcessingRules", () =>
                     select(panel, "Continue processing", rule.afterMatch, ["StopProcessingRules", "ContinueToNextRule"], value => { rule.afterMatch = value; }));
-                extensions(panel, rule, override ? ["ruleId", "enabled", "condition", "actions", "afterMatch"] :
-                    ["id", "enabled", "order", "condition", "actions", "afterMatch"]);
+                if (root.dataset.featureId === "welcome-messages") {
+                    const effective = effectiveTimings?.[override ? rule.ruleId : rule.id];
+                    if (effective && Number.isInteger(effective.connectionDelaySeconds) && Number.isInteger(effective.freshnessSeconds))
+                        panel.append(element("p", `Effective at page load: ${effective.connectionDelaySeconds} second delay; ${effective.freshnessSeconds} second freshness. Save changes to refresh.`, "form-text"));
+                    if (rule.timing != null && !object(rule.timing)) {
+                        panel.append(element("p", "Malformed timing is preserved. Replace this rule to edit it.", "alert alert-warning"));
+                        details(panel, "Stored timing", rule.timing);
+                    } else {
+                        const timing = rule.timing ?? {};
+                        const timingField = (name, title, min, max) => {
+                            const control = input(panel, title, timing[name], (value, node) => {
+                                if (value === "") {
+                                    delete timing[name];
+                                    if (Object.keys(timing).length === 0) delete rule.timing;
+                                } else if (node.validity.valid) {
+                                    timing[name] = Number(value);
+                                    rule.timing = timing;
+                                }
+                            }, "number");
+                            control.min = min;
+                            control.max = max;
+                            control.step = "1";
+                            control.placeholder = "Inherit";
+                        };
+                        timingField("connectionDelaySeconds", "Connection delay override (seconds)", "0", "60");
+                        timingField("freshnessSeconds", "Freshness override (seconds)", "1", "900");
+                    }
+                }
+                const ruleKeys = override ? ["ruleId", "enabled", "condition", "actions", "afterMatch"] :
+                    ["id", "enabled", "order", "condition", "actions", "afterMatch"];
+                if (root.dataset.featureId === "welcome-messages") ruleKeys.push("timing");
+                extensions(panel, rule, ruleKeys);
                 panel.append(button("Move rule up", () => { move(rules, index, -1); if (!override) { rules.forEach((r, i) => { if (object(r)) r.order = i; }); sync(); } }));
                 panel.append(button("Move rule down", () => { move(rules, index, 1); if (!override) { rules.forEach((r, i) => { if (object(r)) r.order = i; }); sync(); } }));
                 panel.append(button("Remove rule", () => { rules.splice(index, 1); if (!override) rules.forEach((r, i) => { if (object(r)) r.order = i; }); sync(); render(); }, true));

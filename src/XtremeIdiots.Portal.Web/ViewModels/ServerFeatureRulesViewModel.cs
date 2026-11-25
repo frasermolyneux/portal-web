@@ -1,9 +1,13 @@
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
+
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
 public sealed class ServerFeatureRulesViewModel
 {
     public required string Prefix { get; init; }
     public required string FeatureId { get; init; }
+    public Guid? GameServerId { get; init; }
+    public IReadOnlyDictionary<string, RuleTimingSettings>? EffectiveTimings { get; init; }
     public required string Title { get; init; }
     public bool? Enabled { get; init; }
     public bool GlobalEnabled { get; init; }
@@ -13,6 +17,10 @@ public sealed class ServerFeatureRulesViewModel
     public string GlobalRulesJson { get; init; } = "[]";
     public int? DurationMinutesOverride { get; init; }
     public int? GlobalDurationMinutes { get; init; }
+    public int? ConnectionDelaySeconds { get; init; }
+    public int? FreshnessSeconds { get; init; }
+    public int? GlobalConnectionDelaySeconds { get; init; }
+    public int? GlobalFreshnessSeconds { get; init; }
     public IReadOnlyList<RequiredTagOptionViewModel> Tags { get; init; } = [];
     public IReadOnlyDictionary<string, bool> Compatibility { get; init; } = new Dictionary<string, bool>();
     public bool HasFreshCapabilitySnapshot { get; init; }

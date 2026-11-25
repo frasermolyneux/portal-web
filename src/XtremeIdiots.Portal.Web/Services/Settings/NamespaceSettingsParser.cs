@@ -32,6 +32,22 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         Converters = { new BooleanStringConverter() }
     };
 
+    public bool TryParseWelcomeRulesSettings(
+        ConfigurationDto config, out WelcomeRulesSettingsDocument? settings, out IReadOnlyList<string> errors)
+    {
+        return TryParseServerSettings(config, WelcomeRulesSettingsConstants.Namespace,
+            static document => new WelcomeRulesSettingsValidator().Validate(document).Errors,
+            out settings, out errors, vpnSerializerOptions);
+    }
+
+    public bool TryParseWelcomeRulesServerSettings(
+        ConfigurationDto config, out WelcomeRulesServerSettingsDocument? settings, out IReadOnlyList<string> errors)
+    {
+        return TryParseServerSettings(config, WelcomeRulesSettingsConstants.Namespace,
+            static document => new WelcomeRulesSettingsValidator().ValidateServerOverride(document).Errors,
+            out settings, out errors, vpnSerializerOptions);
+    }
+
     public bool TryParseVpnProtectionSettings(
         ConfigurationDto config,
         out VpnProtectionSettingsDocument? settings,
@@ -98,7 +114,8 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         string expectedNamespace,
         Func<T, IReadOnlyList<string>> validate,
         out T? settings,
-        out IReadOnlyList<string> errors) where T : class
+        out IReadOnlyList<string> errors,
+        System.Text.Json.JsonSerializerOptions? options = null) where T : class
     {
         settings = null;
         if (!string.Equals(config.Namespace, expectedNamespace, StringComparison.OrdinalIgnoreCase))
@@ -109,7 +126,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
         try
         {
-            settings = System.Text.Json.JsonSerializer.Deserialize<T>(config.Configuration, serializerOptions);
+            settings = System.Text.Json.JsonSerializer.Deserialize<T>(config.Configuration, options ?? serializerOptions);
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -229,12 +246,11 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case WelcomeMessageSettingsViewModelConstants.Namespace:
-                if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
-                {
-                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.WelcomeMessages, welcomeMessagesDocument);
-                }
-
+            case WelcomeRulesSettingsConstants.Namespace:
+                if (TryParseWelcomeRulesSettings(config, out var welcomeRules, out var welcomeErrors) && welcomeRules is not null)
+                    WelcomeRulesSettingsMapper.PopulateGlobal(model.WelcomeRules, welcomeRules);
+                else
+                    logger.LogWarning("Failed to parse global welcome rules: {Errors}", string.Join("; ", welcomeErrors));
                 break;
             case VpnProtectionSettingsConstants.Namespace:
                 if (TryParseVpnProtectionSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
@@ -434,12 +450,11 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case WelcomeMessageSettingsViewModelConstants.Namespace:
-                if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
-                {
-                    WelcomeMessageSettingsJsonMapper.PopulateServer(model.WelcomeMessages, welcomeMessagesDocument);
-                }
-
+            case WelcomeRulesSettingsConstants.Namespace:
+                if (TryParseWelcomeRulesServerSettings(config, out var welcomeRules, out var welcomeErrors) && welcomeRules is not null)
+                    WelcomeRulesSettingsMapper.PopulateServer(model.WelcomeRules, welcomeRules);
+                else
+                    logger.LogWarning("Failed to parse server welcome rules: {Errors}", string.Join("; ", welcomeErrors));
                 break;
             case VpnProtectionSettingsConstants.Namespace:
                 if (TryParseVpnProtectionServerSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)
@@ -568,12 +583,11 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case WelcomeMessageSettingsViewModelConstants.Namespace:
-                if (TryDeserialize(config, logger, out WelcomeMessageSettingsDocument? welcomeMessagesDocument) && welcomeMessagesDocument is not null)
-                {
-                    WelcomeMessageSettingsJsonMapper.PopulateGlobal(model.GlobalWelcomeMessages, welcomeMessagesDocument);
-                }
-
+            case WelcomeRulesSettingsConstants.Namespace:
+                if (TryParseWelcomeRulesSettings(config, out var welcomeRules, out var welcomeErrors) && welcomeRules is not null)
+                    WelcomeRulesSettingsMapper.PopulateGlobal(model.GlobalWelcomeRules, welcomeRules);
+                else
+                    logger.LogWarning("Failed to parse global welcome rules: {Errors}", string.Join("; ", welcomeErrors));
                 break;
             case VpnProtectionSettingsConstants.Namespace:
                 if (TryParseVpnProtectionSettings(config, out var vpnProtectionDocument, out var vpnErrors) && vpnProtectionDocument is not null)

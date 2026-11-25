@@ -59,68 +59,6 @@ public class SettingsMappingFixtureTests
     }
 
     [Fact]
-    public void WelcomeMessages_GlobalFixture_RoundTripsWithParity()
-    {
-        var fixtureJson = ReadFixture("welcomeMessages.global.json");
-        var sourceModel = new WelcomeMessageGlobalSettingsViewModel();
-
-        PopulateGlobalWelcome(sourceModel, fixtureJson);
-        var builtJson = BuildGlobalWelcome(sourceModel);
-
-        var roundTripModel = new WelcomeMessageGlobalSettingsViewModel();
-        PopulateGlobalWelcome(roundTripModel, builtJson);
-
-        Assert.Equal(sourceModel.Enabled, roundTripModel.Enabled);
-        Assert.Equal(sourceModel.CountryFallback, roundTripModel.CountryFallback);
-        Assert.Equal(sourceModel.DefaultConnectionDelaySeconds, roundTripModel.DefaultConnectionDelaySeconds);
-        Assert.Equal(sourceModel.StaleThresholdSeconds, roundTripModel.StaleThresholdSeconds);
-
-        var sourceRule = sourceModel.Rules.Single();
-        var roundTripRule = roundTripModel.Rules.Single();
-
-        Assert.Equal(sourceRule.Id, roundTripRule.Id);
-        Assert.Equal(sourceRule.Enabled, roundTripRule.Enabled);
-        Assert.Equal(sourceRule.Priority, roundTripRule.Priority);
-        Assert.Equal(sourceRule.Visibility, roundTripRule.Visibility);
-        Assert.Equal(sourceRule.MessageTemplate, roundTripRule.MessageTemplate);
-        Assert.Equal(sourceRule.RequiredTagsCsv, roundTripRule.RequiredTagsCsv);
-        Assert.Equal(sourceRule.ConnectionDelaySeconds, roundTripRule.ConnectionDelaySeconds);
-    }
-
-    [Fact]
-    public void WelcomeMessages_ServerFixture_RoundTripsWithParity()
-    {
-        var fixtureJson = ReadFixture("welcomeMessages.server.json");
-        var sourceModel = new WelcomeMessageServerSettingsViewModel();
-
-        PopulateServerWelcome(sourceModel, fixtureJson);
-        var builtJson = BuildServerWelcome(sourceModel);
-
-        var roundTripModel = new WelcomeMessageServerSettingsViewModel();
-        PopulateServerWelcome(roundTripModel, builtJson);
-
-        Assert.Equal(sourceModel.Enabled, roundTripModel.Enabled);
-        Assert.Equal(sourceModel.InheritGlobalRules, roundTripModel.InheritGlobalRules);
-        Assert.Equal(sourceModel.CountryFallback, roundTripModel.CountryFallback);
-        Assert.Equal(sourceModel.DefaultConnectionDelaySeconds, roundTripModel.DefaultConnectionDelaySeconds);
-        Assert.Equal(sourceModel.StaleThresholdSeconds, roundTripModel.StaleThresholdSeconds);
-
-        var sourceLocalRule = sourceModel.LocalRules.Single();
-        var roundTripLocalRule = roundTripModel.LocalRules.Single();
-
-        Assert.Equal(sourceLocalRule.Id, roundTripLocalRule.Id);
-        Assert.Equal(sourceLocalRule.RequiredTagsCsv, roundTripLocalRule.RequiredTagsCsv);
-
-        var sourceOverrideRule = sourceModel.RuleOverrides.Single();
-        var roundTripOverrideRule = roundTripModel.RuleOverrides.Single();
-
-        Assert.Equal(sourceOverrideRule.Id, roundTripOverrideRule.Id);
-        Assert.Equal(sourceOverrideRule.OverrideRequiredTags, roundTripOverrideRule.OverrideRequiredTags);
-        Assert.Equal(sourceOverrideRule.RequiredTagsCsv, roundTripOverrideRule.RequiredTagsCsv);
-        Assert.Equal(sourceOverrideRule.ConnectionDelaySeconds, roundTripOverrideRule.ConnectionDelaySeconds);
-    }
-
-    [Fact]
     public void ChatCommands_ServerDependencyDisableAndReenable_PreservesValues()
     {
         var model = new ChatCommandServerSettingsViewModel();
@@ -158,42 +96,6 @@ public class SettingsMappingFixtureTests
         Assert.Equal("message-one", reenabledFu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
     }
 
-    [Fact]
-    public void WelcomeMessages_ServerDependencyDisableAndReenable_PreservesValues()
-    {
-        var model = new WelcomeMessageServerSettingsViewModel
-        {
-            RuleOverrides =
-            [
-                new WelcomeMessageRuleOverrideEntryViewModel
-                {
-                    Id = "global-rule",
-                    OverrideRequiredTags = true,
-                    RequiredTagsCsv = "vip, trusted"
-                }
-            ]
-        };
-
-        var enabledJson = BuildServerWelcome(model);
-        using var enabledDoc = JsonDocument.Parse(enabledJson);
-        var enabledOverride = enabledDoc.RootElement.GetProperty("ruleOverrides")[0];
-        Assert.Equal(2, enabledOverride.GetProperty("requiredTags").GetArrayLength());
-
-        model.RuleOverrides[0].OverrideRequiredTags = false;
-
-        var disabledJson = BuildServerWelcome(model);
-        using var disabledDoc = JsonDocument.Parse(disabledJson);
-        var disabledOverride = disabledDoc.RootElement.GetProperty("ruleOverrides")[0];
-        Assert.False(disabledOverride.TryGetProperty("requiredTags", out _));
-
-        model.RuleOverrides[0].OverrideRequiredTags = true;
-
-        var reenabledJson = BuildServerWelcome(model);
-        using var reenabledDoc = JsonDocument.Parse(reenabledJson);
-        var reenabledOverride = reenabledDoc.RootElement.GetProperty("ruleOverrides")[0];
-        Assert.Equal(2, reenabledOverride.GetProperty("requiredTags").GetArrayLength());
-    }
-
     private static void PopulateGlobalChat(ChatCommandGlobalSettingsViewModel model, string json)
     {
         using var document = JsonDocument.Parse(json);
@@ -214,28 +116,6 @@ public class SettingsMappingFixtureTests
     private static string BuildServerChat(ChatCommandServerSettingsViewModel model)
     {
         return ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model);
-    }
-
-    private static void PopulateGlobalWelcome(WelcomeMessageGlobalSettingsViewModel model, string json)
-    {
-        using var document = JsonDocument.Parse(json);
-        WelcomeMessageSettingsJsonMapper.PopulateGlobal(model, document.RootElement);
-    }
-
-    private static void PopulateServerWelcome(WelcomeMessageServerSettingsViewModel model, string json)
-    {
-        using var document = JsonDocument.Parse(json);
-        WelcomeMessageSettingsJsonMapper.PopulateServer(model, document.RootElement);
-    }
-
-    private static string BuildGlobalWelcome(WelcomeMessageGlobalSettingsViewModel model)
-    {
-        return WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model);
-    }
-
-    private static string BuildServerWelcome(WelcomeMessageServerSettingsViewModel model)
-    {
-        return WelcomeMessageSettingsJsonMapper.BuildServerConfigurationJson(model);
     }
 
     private static string ReadFixture(string fileName)
