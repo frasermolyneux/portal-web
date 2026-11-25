@@ -25,7 +25,7 @@ public sealed class SiegeModeSettingsBrowserTests
     public async Task WelcomeEditor_PreservesTemplateAndSavesTiming()
     {
         var scenario = new SettingsScenario();
-        scenario.SetConfiguration(WelcomeRulesSettingsConstants.Namespace, """
+        scenario.SetConfiguration(WelcomeRulesSettingsConstants.Namespace, /*lang=json,strict*/ """
             {"schemaVersion":1,"featureId":"welcome-messages","enabled":true,
              "timing":{"connectionDelaySeconds":5,"freshnessSeconds":120},
              "rules":[{"id":"global","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},

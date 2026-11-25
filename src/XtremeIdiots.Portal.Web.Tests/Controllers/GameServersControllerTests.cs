@@ -636,8 +636,8 @@ public class GameServersControllerTests
                 InheritGlobalRules = true,
                 ConnectionDelaySeconds = 4,
                 FreshnessSeconds = 180,
-                LocalRulesJson = """[{"id":"server-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.private","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]""",
-                RuleOverridesJson = """[{"ruleId":"global-rule","enabled":false,"timing":{"connectionDelaySeconds":6}}]"""
+                LocalRulesJson = /*lang=json,strict*/ """[{"id":"server-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.private","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]""",
+                RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global-rule","enabled":false,"timing":{"connectionDelaySeconds":6}}]"""
             }
         };
 

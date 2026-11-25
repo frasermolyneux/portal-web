@@ -1,8 +1,8 @@
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Services.Settings;
@@ -12,7 +12,7 @@ namespace XtremeIdiots.Portal.Web.Tests.ViewModels;
 
 public class WelcomeRulesSettingsViewModelTests
 {
-    private const string Rule = """{"id":"global","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"message","typeId":"message.private","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules","timing":{"connectionDelaySeconds":9}}""";
+    private const string Rule = /*lang=json,strict*/ """{"id":"global","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"message","typeId":"message.private","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules","timing":{"connectionDelaySeconds":9}}""";
 
     [Fact]
     public void EffectiveTiming_RespectsGlobalRuleAndServerRuleOverridePrecedence()
@@ -21,7 +21,7 @@ public class WelcomeRulesSettingsViewModelTests
         var server = new WelcomeRulesServerSettingsViewModel
         {
             ConnectionDelaySeconds = 12,
-            RuleOverridesJson = """[{"ruleId":"global","timing":{"freshnessSeconds":90}}]"""
+            RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global","timing":{"freshnessSeconds":90}}]"""
         };
         Assert.True(WelcomeRulesSettingsMapper.TryGetEffectiveTimings(global, server, out var timings));
         Assert.Equal(9, timings["global"].ConnectionDelaySeconds);

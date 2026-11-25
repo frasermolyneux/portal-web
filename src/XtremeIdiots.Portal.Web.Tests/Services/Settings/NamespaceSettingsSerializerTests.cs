@@ -489,7 +489,7 @@ public class NamespaceSettingsSerializerTests
             WelcomeRules = new WelcomeRulesGlobalSettingsViewModel
             {
                 Enabled = false,
-                RulesJson = """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]"""
+                RulesJson = /*lang=json,strict*/ """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]"""
             }
         };
 
@@ -545,7 +545,7 @@ public class NamespaceSettingsSerializerTests
     {
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = true;
-        model.WelcomeRules.RuleOverridesJson = """[{"ruleId":"global-rule","enabled":false}]""";
+        model.WelcomeRules.RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global-rule","enabled":false}]""";
 
         var enabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         var enabledJson = Assert.Single(enabledConfigurations, x => x.Namespace == WelcomeRulesSettingsConstants.Namespace).Configuration;
@@ -556,7 +556,7 @@ public class NamespaceSettingsSerializerTests
         Assert.DoesNotContain(disabledConfigurations, x => x.Namespace == WelcomeRulesSettingsConstants.Namespace);
         Assert.Contains(WelcomeRulesSettingsConstants.Namespace, serializer.DeletedNamespaces);
 
-        model.WelcomeRules.RuleOverridesJson = """[{"ruleId":"global-rule","enabled":false}]""";
+        model.WelcomeRules.RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global-rule","enabled":false}]""";
 
         var reenabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         var reenabledJson = Assert.Single(reenabledConfigurations, x => x.Namespace == WelcomeRulesSettingsConstants.Namespace).Configuration;
@@ -665,7 +665,7 @@ public class NamespaceSettingsSerializerTests
         Assert.Contains(WelcomeRulesSettingsConstants.Namespace, serializer.DeletedNamespaces);
         Assert.DoesNotContain(WelcomeMessageSettingsConstants.Namespace, serializer.DeletedNamespaces);
 
-        model.WelcomeRules.RuleOverridesJson = """[{"ruleId":"global-rule","enabled":false}]""";
+        model.WelcomeRules.RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global-rule","enabled":false}]""";
 
         var overrideConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         Assert.Contains(overrideConfigurations, x => x.Namespace == WelcomeRulesSettingsConstants.Namespace);
@@ -801,7 +801,7 @@ public class NamespaceSettingsSerializerTests
         model.GameServer.AgentEnabled = false;
         model.BroadcastsEnabled = true;
         model.ChatCommands.Commands.Single(x => x.Name == "fu").OverrideMessages = true;
-        model.WelcomeRules.RuleOverridesJson = """[{"ruleId":"global-rule","enabled":false}]""";
+        model.WelcomeRules.RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global-rule","enabled":false}]""";
 
         _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
 

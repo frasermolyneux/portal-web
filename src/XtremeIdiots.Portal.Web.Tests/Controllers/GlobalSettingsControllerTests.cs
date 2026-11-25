@@ -554,7 +554,7 @@ public class GlobalSettingsControllerTests
                 Enabled = true,
                 ConnectionDelaySeconds = 5,
                 FreshnessSeconds = 180,
-                RulesJson = """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome {context.player.Name}"},"dependsOnActionIds":[],"templateParameters":["message"]}],"afterMatch":"StopProcessingRules"}]"""
+                RulesJson = /*lang=json,strict*/ """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome {context.player.Name}"},"dependsOnActionIds":[],"templateParameters":["message"]}],"afterMatch":"StopProcessingRules"}]"""
             }
         };
 
@@ -598,7 +598,7 @@ public class GlobalSettingsControllerTests
             WelcomeRules = new WelcomeRulesGlobalSettingsViewModel
             {
                 Enabled = false,
-                RulesJson = """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]"""
+                RulesJson = /*lang=json,strict*/ """[{"id":"global-rule","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},"actions":[{"id":"a","typeId":"message.public","parameters":{"message":"Welcome"},"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]"""
             }
         };
 
