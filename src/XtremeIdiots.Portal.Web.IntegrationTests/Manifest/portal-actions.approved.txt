@@ -242,6 +242,7 @@ XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Add#POST#ProtectedN
 XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Delete#GET#ProtectedNames/Delete#(System.Guid,System.Nullable<System.Guid>)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Index#GET#ProtectedNames/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Report#GET#ProtectedNames/Report#(System.Guid)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.RulesPreviewController#Preview#POST#RulesPreview/Preview#(XtremeIdiots.Portal.Web.Controllers.RulesPreviewRequest)|StateChange
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#BanRconPlayer#POST#ServerAdmin/BanRconPlayer#(System.Guid,System.Int32,System.String,System.String)|StateChange
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#ChatLogIndex#GET#ServerAdmin/ChatLogIndex#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#ChatLogPermaLink#GET#ServerAdmin/ChatLogPermaLink#(System.Guid)|BrowserPage
