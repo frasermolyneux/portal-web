@@ -242,6 +242,8 @@ XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Add#POST#ProtectedN
 XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Delete#GET#ProtectedNames/Delete#(System.Guid,System.Nullable<System.Guid>)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Index#GET#ProtectedNames/Index#()|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.ProtectedNamesController#Report#GET#ProtectedNames/Report#(System.Guid)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.RulesAuditController#Execution#GET#RulesAudit/Execution#(System.Guid)|BrowserPage
+XtremeIdiots.Portal.Web.Controllers.RulesAuditController#Index#GET#RulesAudit/Index#(System.Nullable<System.Guid>,System.String,System.String,System.String,System.Int32)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.RulesPreviewController#Preview#POST#RulesPreview/Preview#(XtremeIdiots.Portal.Web.Controllers.RulesPreviewRequest)|StateChange
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#BanRconPlayer#POST#ServerAdmin/BanRconPlayer#(System.Guid,System.Int32,System.String,System.String)|StateChange
 XtremeIdiots.Portal.Web.Controllers.ServerAdminController#ChatLogIndex#GET#ServerAdmin/ChatLogIndex#()|BrowserPage
@@ -319,4 +321,3 @@ XtremeIdiots.Portal.Web.Controllers.UserController#PermissionsReport#GET#User/Pe
 XtremeIdiots.Portal.Web.Controllers.UserController#RemoveUserClaim#POST#User/RemoveUserClaim#(System.Guid,System.Guid)|StateChange
 XtremeIdiots.Portal.Web.Controllers.UserController#TeamAccess#GET#User/TeamAccess#(System.Nullable<XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType>)|BrowserPage
 XtremeIdiots.Portal.Web.Controllers.UserController#UpdateUserNotificationPreferences#POST#User/UpdateUserNotificationPreferences#(XtremeIdiots.Portal.Web.ViewModels.ManageUserNotificationPreferencesUpdateModel)|StateChange
-XtremeIdiots.Portal.Web.Controllers.WelcomeExecutionsController#Index#GET#WelcomeExecutions/Index#(System.Guid,System.Nullable<System.DateTime>,System.Nullable<System.DateTime>,System.Int32)|BrowserPage

@@ -74,6 +74,7 @@ internal static class NavigationItemCatalog
         new("Server Admin (toggle)", "[data-testid='nav-serveradmin-toggle']", AllAdmins),
         new("Server Admin - Dashboard", "[data-testid='nav-serveradmin-dashboard']", AllAdmins),
         new("Server Admin - Server Events", "[data-testid='nav-serveradmin-serverevents']", AllAdmins),
+        new("Server Admin - Rules Engine Audit", "[data-testid='nav-rules-audit']", SeniorAdminOnly),
 
         // GameServers_BanFileMonitors_Read (HeadAdmin and above).
         new("Server Admin - Agent Status", "[data-testid='nav-serveradmin-agentstatus']", HeadAdminAndAbove),

@@ -1,0 +1,26 @@
+@model XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine.RuleExecutionFlowConditionDto
+
+<li class="list-group-item">
+    @if (Model.GroupOperator is not null)
+    {
+        <strong>@Model.GroupOperator</strong>
+        <span class="text-muted"> - group outcome unavailable</span>
+        <ul class="list-group mt-2">
+            @foreach (var child in Model.Conditions)
+            {
+                <partial name="_FlowCondition" model="child" />
+            }
+        </ul>
+    }
+    else
+    {
+        <strong>@(Model.DisplayName ?? Model.ConditionId ?? "Unknown condition")</strong>
+        @if (Model.Operator is not null) { <span> - @Model.Operator</span> }
+        <span class="text-muted"> - outcome unavailable</span>
+        @foreach (var parameter in Model.SafeParameters)
+        {
+            <div>@parameter.Name: @parameter.Value</div>
+        }
+        @if (Model.HasUnavailableParameters) { <div class="text-muted">Some condition values are unavailable.</div> }
+    }
+</li>

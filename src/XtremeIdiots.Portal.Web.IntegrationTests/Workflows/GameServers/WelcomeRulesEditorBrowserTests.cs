@@ -396,32 +396,27 @@ public sealed class WelcomeRulesEditorBrowserTests
     }
 
     [Fact]
-    public async Task ExecutionDiagnostics_ShowWaitingAndNoActionReasonsWithoutParsingSnapshots()
+    public async Task RulesAudit_ShowsDiagnosticsAcrossFeaturesWithoutRenderingHtml()
     {
         var scenario = new FileTransportScenario();
         var waitingId = Guid.NewGuid();
         var completedId = Guid.NewGuid();
-        var recipientId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
-        RuleFeatureExecutionDto Execution(Guid id, RuleFeatureExecutionState state) => new()
+        var waiting = new RuleExecutionAuditDto
         {
-            ExecutionId = id,
+            ExecutionId = waitingId,
             GameServerId = scenario.GameServerId,
-            FeatureId = RulesEngineCatalogueV1.WelcomeMessagesFeature,
-            State = state,
+            FeatureId = "welcome-messages",
+            State = RuleFeatureExecutionState.Waiting,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
-            Trigger = new RuleTriggerEnvelope { Username = "<img src=x>" },
-            Coordination = new RuleExecutionCoordination
+            Username = "<img src=x>",
+            Coordination = new RuleExecutionAuditCoordinationDto
             {
                 DueAtUtc = now,
                 ExpiresAtUtc = now.AddMinutes(2),
-                WaitingReason = state == RuleFeatureExecutionState.Waiting ? "Waiting for protection evidence" : "Obsolete waiting reason"
+                WaitingReason = "Waiting for protection evidence"
             },
-            DecisionSnapshotJson = /*lang=json,strict*/ """{"internal":"Do not display opaque processor state"}"""
-        };
-        var waiting = Execution(waitingId, RuleFeatureExecutionState.Waiting) with
-        {
             Diagnostics =
             [
                 new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.WaitingForProtection, Detail = "<b>Protection pending</b>" },
@@ -430,71 +425,236 @@ public sealed class WelcomeRulesEditorBrowserTests
             ],
             Actions =
             [
-                new RuleActionExecutionDto
+                new RuleExecutionAuditActionDto
                 {
                     RuleId = "welcome",
                     ActionId = "greet",
                     Outcome = RuleActionExecutionOutcome.OutcomeUnknown,
                     Detail = "Fragment result unknown",
-                    Command = new RuleActionCommand
-                    {
-                        DeliveryIdentity = new RuleDeliveryIdentity
-                        {
-                            MessageIndex = 0,
-                            FragmentIndex = 1,
-                            RecipientConnectionId = recipientId
-                        }
-                    }
+                    MessageIndex = 0,
+                    FragmentIndex = 1
+                },
+                new RuleExecutionAuditActionDto
+                {
+                    RuleId = "welcome",
+                    ActionId = "dispatch",
+                    Outcome = RuleActionExecutionOutcome.Dispatched,
+                    UpdatedAtUtc = now
+                },
+                new RuleExecutionAuditActionDto
+                {
+                    RuleId = "welcome",
+                    ActionId = "apply",
+                    Outcome = RuleActionExecutionOutcome.Applied,
+                    UpdatedAtUtc = now
+                },
+                new RuleExecutionAuditActionDto
+                {
+                    RuleId = "welcome",
+                    ActionId = "simulate",
+                    Mode = RuleExecutionMode.DryRun,
+                    Outcome = RuleActionExecutionOutcome.WouldExecute,
+                    UpdatedAtUtc = now
                 }
             ],
             PreparedActions =
             [
-                new RulePreparedActionDto
+                new RuleExecutionAuditPreparationDto
                 {
                     ActionId = "greet",
                     Outcome = RuleActionExecutionOutcome.OutcomeUnknown,
                     CompletedFragmentCount = 1,
-                    TotalFragmentCount = 2,
-                    Commands =
-                    [
-                        new RuleActionCommand
-                        {
-                            Effect = new RuleNativeEffect { Type = RuleNativeEffectType.PrivateMessage, Message = "<script>unsafe</script>" },
-                            DeliveryIdentity = new RuleDeliveryIdentity { MessageIndex = 0, FragmentIndex = 1 }
-                        }
-                    ]
+                    TotalFragmentCount = 2
                 }
             ]
         };
-        var completed = Execution(completedId, RuleFeatureExecutionState.Completed) with
+        var completed = new RuleExecutionAuditDto
         {
+            ExecutionId = completedId,
+            GameServerId = scenario.GameServerId,
+            FeatureId = "vpn-protection",
+            State = RuleFeatureExecutionState.Completed,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
             Diagnostics = [new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.NoMatch }]
         };
         Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1)
-            .Setup(api => api.SearchRuleExecutions(It.IsAny<RuleFeatureExecutionQueryDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<RuleFeatureExecutionDto>>(HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<RuleFeatureExecutionDto>>(new CollectionModel<RuleFeatureExecutionDto>([waiting, completed]))));
-        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, scenario.ConfigureServices);
+            .Setup(api => api.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(new CollectionModel<RuleExecutionAuditDto>([waiting, completed]))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
-        await page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/WelcomeExecutions?id={scenario.GameServerId}").AbsoluteUri);
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
         var waitingSection = page.Locator($"[data-execution-id='{waitingId}']");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("welcome-messages");
+        await waitingSection.Locator("summary").ClickAsync();
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Individual condition results are not available");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("they do not establish the order");
         await Assertions.Expect(waitingSection).ToContainTextAsync("Waiting for protection evidence");
         await Assertions.Expect(waitingSection).ToContainTextAsync("FallbackUsed");
         await Assertions.Expect(waitingSection).ToContainTextAsync("context.player.Country");
         await Assertions.Expect(waitingSection.Locator(".alert-warning")).ToContainTextAsync("7 additional diagnostics omitted");
         await Assertions.Expect(waitingSection).ToContainTextAsync("<b>Protection pending</b>");
-        await waitingSection.Locator("summary").ClickAsync();
         await Assertions.Expect(waitingSection).ToContainTextAsync("OutcomeUnknown - 1 / 2 fragments completed");
-        await Assertions.Expect(waitingSection.Locator("pre")).ToHaveTextAsync("<script>unsafe</script>");
-        var outcomeRow = waitingSection.Locator("tr", new() { HasText = "Fragment result unknown" });
-        await Assertions.Expect(outcomeRow).ToContainTextAsync("Item 1, fragment 2");
-        await Assertions.Expect(outcomeRow).ToContainTextAsync(recipientId.ToString());
-        await Assertions.Expect(outcomeRow).ToContainTextAsync("OutcomeUnknown");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Item 1, fragment 2");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Fragment result unknown");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Dispatched; application is not confirmed.");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Applied, as recorded by the execution service.");
+        await Assertions.Expect(waitingSection).ToContainTextAsync("Simulated; no live application is implied.");
         await Assertions.Expect(waitingSection.Locator("img, script, b")).ToHaveCountAsync(0);
         var completedSection = page.Locator($"[data-execution-id='{completedId}']");
+        await Assertions.Expect(completedSection).ToContainTextAsync("vpn-protection");
+        await completedSection.Locator("summary").ClickAsync();
         await Assertions.Expect(completedSection).ToContainTextAsync("NoMatch");
-        await Assertions.Expect(completedSection).Not.ToContainTextAsync("Obsolete waiting reason");
-        await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync("Do not display opaque processor state");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task RulesAudit_FiltersAndPagesWithoutLosingUtcBounds()
+    {
+        var scenario = new FileTransportScenario();
+        var items = Enumerable.Range(1, 21).Select(index => new RuleExecutionAuditDto
+        {
+            ExecutionId = Guid.NewGuid(),
+            GameServerId = scenario.GameServerId,
+            FeatureId = "welcome-messages",
+            Username = $"Player {index}",
+            CreatedAtUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero),
+            UpdatedAtUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
+        }).ToArray();
+        var audit = Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1);
+        audit.Setup(api => api.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((RuleExecutionAuditQueryDto query, CancellationToken _) =>
+                new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.OK,
+                    new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(
+                        new CollectionModel<RuleExecutionAuditDto>(items.Skip(query.SkipEntries).Take(query.TakeEntries).ToArray()))));
+        audit.Setup(api => api.GetRuleExecutionFlow(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+                new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK,
+                    new ApiResponse<RuleExecutionFlowDto>(new RuleExecutionFlowDto
+                    {
+                        Execution = items.Single(item => item.ExecutionId == id)
+                    })));
+
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
+        await page.GetByLabel("Server", new() { Exact = true }).SelectOptionAsync(scenario.GameServerId.ToString());
+        await page.GetByLabel("Feature ID").FillAsync("welcome-messages");
+        await page.GetByLabel("Created from (UTC, inclusive)").FillAsync("2026-01-01T10:00");
+        await page.GetByLabel("Created before (UTC, exclusive)").FillAsync("2026-01-02T10:00");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Filter" }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Link, new() { Name = "Next" })).ToBeVisibleAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Next" }).ClickAsync();
+        await Assertions.Expect(page.Locator($"[data-execution-id='{items[20].ExecutionId}']")).ToContainTextAsync("Player 21");
+        await Assertions.Expect(page.GetByLabel("Feature ID")).ToHaveValueAsync("welcome-messages");
+        await Assertions.Expect(page.GetByLabel("Server", new() { Exact = true })).ToHaveValueAsync(scenario.GameServerId.ToString());
+        audit.Verify(api => api.SearchRuleExecutionAudit(It.Is<RuleExecutionAuditQueryDto>(query =>
+            query.GameServerId == scenario.GameServerId && query.FeatureId == "welcome-messages" &&
+            query.FromUtc == new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc) &&
+            query.ToUtc == new DateTime(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc) &&
+            query.SkipEntries == 20), It.IsAny<CancellationToken>()), Times.Once);
+        await page.Locator($"[data-execution-id='{items[20].ExecutionId}'] summary").ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Inspect historical rules" }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Rules Execution Flow" })).ToBeVisibleAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Back to audit" }).ClickAsync();
+        await Assertions.Expect(page.Locator($"[data-execution-id='{items[20].ExecutionId}']")).ToContainTextAsync("Player 21");
+        await Assertions.Expect(page.GetByLabel("Feature ID")).ToHaveValueAsync("welcome-messages");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task RulesAudit_OpensHistoricalRuleFlowWithoutInventingConditionOutcomes()
+    {
+        var scenario = new FileTransportScenario();
+        var execution = new RuleExecutionAuditDto
+        {
+            ExecutionId = Guid.NewGuid(),
+            GameServerId = scenario.GameServerId,
+            FeatureId = "welcome-messages",
+            Actions =
+            [
+                new RuleExecutionAuditActionDto
+                {
+                    RuleId = "welcome", ActionId = "greet", RuleIndex = 0, ActionIndex = 0,
+                    Outcome = RuleActionExecutionOutcome.Dispatched, Mode = RuleExecutionMode.Enforce
+                }
+            ]
+        };
+        var flow = new RuleExecutionFlowDto
+        {
+            Execution = execution,
+            StructureStatus = RuleExecutionStructureStatus.Available,
+            RuleSetRevision = "revision-1",
+            Rules =
+            [
+                new RuleExecutionFlowRuleDto
+                {
+                    Id = "welcome", RuleIndex = 0, Enabled = true, AfterMatch = "StopProcessingRules",
+                    Condition = new RuleExecutionFlowConditionDto
+                    {
+                        GroupOperator = "And",
+                        Conditions =
+                        [
+                            new RuleExecutionFlowConditionDto
+                            {
+                                ConditionId = "player.first-seen-guid", DisplayName = "GUID first seen",
+                                Operator = "WithinAge",
+                                SafeParameters = [new RuleExecutionFlowParameterDto { Name = "Duration", Value = "7.00:00:00" }],
+                                HasUnavailableParameters = true
+                            },
+                            new RuleExecutionFlowConditionDto
+                            {
+                                ConditionId = "unknown", DisplayName = "<img src=x>",
+                                SafeParameters = [new RuleExecutionFlowParameterDto { Name = "Value", Value = "<script>unsafe</script>" }]
+                            }
+                        ]
+                    },
+                    Actions = [new RuleExecutionFlowActionDto { Id = "greet", TypeId = "message.private", DependsOnActionIds = [] }]
+                }
+            ]
+        };
+        var audit = Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1);
+        audit.Setup(api => api.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(new CollectionModel<RuleExecutionAuditDto>([execution]))));
+        audit.Setup(api => api.GetRuleExecutionFlow(execution.ExecutionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK, new ApiResponse<RuleExecutionFlowDto>(flow)));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
+        await page.Locator($"[data-execution-id='{execution.ExecutionId}'] summary").ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Inspect historical rules" }).ClickAsync();
+        var rule = page.Locator("[data-rule-id='welcome']");
+        await Assertions.Expect(rule).ToContainTextAsync("GUID first seen - WithinAge - outcome unavailable");
+        await Assertions.Expect(rule).ToContainTextAsync("Duration: 7.00:00:00");
+        await Assertions.Expect(rule).ToContainTextAsync("Some condition values are unavailable");
+        await Assertions.Expect(rule).ToContainTextAsync("Match outcome: unavailable");
+        await Assertions.Expect(rule).ToContainTextAsync("Dispatched - application not confirmed");
+        await Assertions.Expect(rule).ToContainTextAsync("<script>unsafe</script>");
+        await Assertions.Expect(rule.Locator("script, img")).ToHaveCountAsync(0);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(RuleExecutionStructureStatus.Missing, "Historical rule structure was not recorded")]
+    [InlineData(RuleExecutionStructureStatus.Malformed, "Historical rule structure is malformed")]
+    [InlineData(RuleExecutionStructureStatus.Available, "The recorded rule set is empty")]
+    public async Task RulesAudit_DistinguishesUnavailableAndEmptyRuleStructure(RuleExecutionStructureStatus status, string message)
+    {
+        var scenario = new FileTransportScenario();
+        var id = Guid.NewGuid();
+        var flow = new RuleExecutionFlowDto
+        {
+            Execution = new RuleExecutionAuditDto { ExecutionId = id },
+            StructureStatus = status
+        };
+        Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1)
+            .Setup(api => api.GetRuleExecutionFlow(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK, new ApiResponse<RuleExecutionFlowDto>(flow)));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/RulesAudit/Execution/{id}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("main")).ToContainTextAsync(message);
         browser.AssertNoBrowserErrors();
     }
 

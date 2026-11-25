@@ -1,0 +1,104 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@model RuleExecutionAuditDto
+
+<p class="text-muted mt-2">These stages group recorded evidence; they do not establish the order of every internal step.</p>
+<ol class="list-group list-group-numbered mt-2">
+    <li class="list-group-item">
+        <strong>Trigger and execution</strong>
+        <dl class="detail-fields row mt-2">
+            <div class="detail-field col-sm-6"><dt class="detail-label">Execution</dt><dd class="detail-value">@Model.ExecutionId</dd></div>
+            <div class="detail-field col-sm-6"><dt class="detail-label">Connection</dt><dd class="detail-value">@Model.ConnectionId</dd></div>
+            <div class="detail-field col-sm-6"><dt class="detail-label">Player GUID</dt><dd class="detail-value">@Model.PlayerGuid</dd></div>
+            <div class="detail-field col-sm-6"><dt class="detail-label">Trigger</dt><dd class="detail-value">@Model.TriggerId</dd></div>
+            <div class="detail-field col-sm-6"><dt class="detail-label">Updated</dt><dd class="detail-value"><time time-ago utc="@Model.UpdatedAtUtc.UtcDateTime"></time></dd></div>
+            @if (Model.Coordination is { } coordination)
+            {
+                <div class="detail-field col-sm-6"><dt class="detail-label">Due</dt><dd class="detail-value"><time time-ago utc="@coordination.DueAtUtc.UtcDateTime"></time></dd></div>
+                <div class="detail-field col-sm-6"><dt class="detail-label">Expires</dt><dd class="detail-value"><time time-ago utc="@coordination.ExpiresAtUtc.UtcDateTime"></time></dd></div>
+                @if (Model.State == RuleFeatureExecutionState.Waiting && !string.IsNullOrEmpty(coordination.WaitingReason))
+                {
+                    <div class="detail-field col-12"><dt class="detail-label">Current waiting reason</dt><dd class="detail-value">@coordination.WaitingReason</dd></div>
+                }
+            }
+        </dl>
+    </li>
+    <li class="list-group-item">
+        <strong>Condition evaluation</strong>
+        <p class="mb-0">Individual condition results are not available in the recorded execution evidence.</p>
+    </li>
+    <li class="list-group-item">
+        <strong>Recorded diagnostics</strong>
+        @if (Model.Diagnostics.Length == 0)
+        {
+            <p>No typed diagnostics recorded; older executions may not provide these details.</p>
+        }
+        @foreach (var diagnostic in Model.Diagnostics)
+        {
+            <div class="@(diagnostic.Code == RuleExecutionDiagnosticCode.DiagnosticsOmitted ? "alert alert-warning" : "border-bottom py-2")">
+                <strong>@diagnostic.Code</strong>
+                @if (diagnostic.Code == RuleExecutionDiagnosticCode.DiagnosticsOmitted)
+                {
+                    <span> - @diagnostic.OmittedCount additional diagnostics omitted.</span>
+                }
+                <span>@diagnostic.Detail</span>
+                <div class="small text-muted">
+                    <time time-ago utc="@diagnostic.ObservedAtUtc.UtcDateTime"></time>
+                    @if (diagnostic.RuleId is not null) { <span> Rule: @diagnostic.RuleId</span> }
+                    @if (diagnostic.ActionId is not null) { <span> Action: @diagnostic.ActionId</span> }
+                    @if (diagnostic.TokenKey is not null) { <span> Token: @diagnostic.TokenKey</span> }
+                    @if (diagnostic.Source is not null) { <span> Source: @diagnostic.Source</span> }
+                </div>
+            </div>
+        }
+    </li>
+    <li class="list-group-item">
+        <strong>Prepared actions</strong>
+        @if (Model.PreparedActions.Length == 0)
+        {
+            <p class="mb-0">No prepared actions recorded.</p>
+        }
+        @foreach (var prepared in Model.PreparedActions)
+        {
+            <div class="border-bottom py-2">
+                <strong>@prepared.ActionId</strong> (rule @(prepared.RuleIndex + 1), action @(prepared.ActionIndex + 1)):
+                @prepared.Outcome - @prepared.CompletedFragmentCount / @prepared.TotalFragmentCount fragments completed
+                <div>@prepared.Detail</div>
+            </div>
+        }
+    </li>
+    <li class="list-group-item">
+        <strong>Recorded action outcomes</strong>
+        @if (Model.Actions.Length == 0)
+        {
+            <p class="mb-0">No action outcomes recorded.</p>
+        }
+        @foreach (var action in Model.Actions)
+        {
+            <div class="border-bottom py-2">
+                <strong>@action.RuleId / @action.ActionId</strong> (rule @(action.RuleIndex + 1), action @(action.ActionIndex + 1))
+                <div>@action.ActionTypeId - @action.Mode - @action.Outcome</div>
+                @if (action.Outcome == RuleActionExecutionOutcome.WouldExecute || action.Mode == RuleExecutionMode.DryRun)
+                {
+                    <div class="text-muted">Simulated; no live application is implied.</div>
+                }
+                else if (action.Outcome == RuleActionExecutionOutcome.Dispatched)
+                {
+                    <div class="text-muted">Dispatched; application is not confirmed.</div>
+                }
+                else if (action.Outcome == RuleActionExecutionOutcome.Applied)
+                {
+                    <div class="text-muted">Applied, as recorded by the execution service.</div>
+                }
+                @if (action.MessageIndex.HasValue && action.FragmentIndex.HasValue)
+                {
+                    <div>Item @(action.MessageIndex.Value + 1), fragment @(action.FragmentIndex.Value + 1)</div>
+                }
+                <div>@action.Detail</div>
+                <div class="small text-muted">
+                    Updated <time time-ago utc="@action.UpdatedAtUtc.UtcDateTime"></time>
+                    @if (action.AdminActionId.HasValue) { <span> Admin action: @action.AdminActionId</span> }
+                </div>
+            </div>
+        }
+    </li>
+</ol>

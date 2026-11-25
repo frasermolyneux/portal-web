@@ -9,8 +9,6 @@
 {
     <p class="alert alert-warning">Effective timing is unavailable until global and server rule settings are valid.</p>
 }
-<p><a asp-controller="WelcomeExecutions" asp-action="Index" asp-route-id="@Model.GameServer.GameServerId"
-      class="btn btn-outline-secondary btn-sm">Welcome execution diagnostics</a></p>
 @await Html.PartialAsync("_ServerFeatureRules", new ServerFeatureRulesViewModel
 {
     Prefix = "WelcomeRules",

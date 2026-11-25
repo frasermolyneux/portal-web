@@ -1,0 +1,65 @@
+@model XtremeIdiots.Portal.Web.ViewModels.RulesAuditViewModel
+@{
+    ViewData["Title"] = "Rules Engine Audit";
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-12">
+            <partial name="_Filters" model="Model" />
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5><i class="fa-solid fa-fw fa-list" aria-hidden="true"></i> @ViewData["Title"]</h5>
+                </div>
+                <div class="ibox-content">
+                    <p class="text-muted">Recorded executions currently include VPN protection, Siege mode and welcome messages. Other features may use separate audit histories. Executions can be reused for a connection and do not represent every event or action.</p>
+                    <p class="text-muted">Pending, claimed and dispatched actions do not confirm receipt. Dry-run outcomes are simulated. An empty history does not prove that no rules matched.</p>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover w-100">
+                            <thead><tr><th>Created</th><th>Server</th><th>Feature</th><th>Player</th><th>State</th></tr></thead>
+                                @foreach (var execution in Model.Executions)
+                                {
+                                    var server = Model.Servers.FirstOrDefault(item => item.GameServerId == execution.GameServerId);
+                                    <tbody data-execution-id="@execution.ExecutionId">
+                                    <tr>
+                                        <td><time time-ago utc="@execution.CreatedAtUtc.UtcDateTime"></time></td>
+                                        <td>@(server?.Title ?? execution.GameServerId.ToString())</td>
+                                        <td>@execution.FeatureId</td>
+                                        <td>@(execution.Username ?? execution.PlayerGuid ?? "Unknown")</td>
+                                        <td>@execution.State</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5">
+                                            <details>
+                                                <summary>View execution flow</summary>
+                                                <a class="btn btn-outline-secondary btn-sm mt-2" asp-action="Execution" asp-route-id="@execution.ExecutionId"
+                                                   asp-route-serverId="@Model.ServerId" asp-route-featureId="@Model.FeatureId"
+                                                   asp-route-fromUtc="@(Model.FromUtc?.ToString("O"))" asp-route-toUtc="@(Model.ToUtc?.ToString("O"))"
+                                                   asp-route-page="@Model.Page">Inspect historical rules</a>
+                                                <partial name="_ExecutionEvidence" model="execution" />
+                                            </details>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                }
+                        </table>
+                    </div>
+                    @if (Model.Executions.Count == 0)
+                    {
+                        <p>No recorded executions found for these filters.</p>
+                    }
+                    <nav aria-label="Execution pages">
+                        @if (Model.Page > 0)
+                        {
+                            <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-serverId="@Model.ServerId" asp-route-featureId="@Model.FeatureId" asp-route-fromUtc="@(Model.FromUtc?.ToString("O"))" asp-route-toUtc="@(Model.ToUtc?.ToString("O"))" asp-route-page="@(Model.Page - 1)">Previous</a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-serverId="@Model.ServerId" asp-route-featureId="@Model.FeatureId" asp-route-fromUtc="@(Model.FromUtc?.ToString("O"))" asp-route-toUtc="@(Model.ToUtc?.ToString("O"))" asp-route-page="@(Model.Page + 1)">Next</a>
+                        }
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
