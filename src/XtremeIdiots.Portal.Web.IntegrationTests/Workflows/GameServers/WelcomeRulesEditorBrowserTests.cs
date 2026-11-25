@@ -97,6 +97,49 @@ public sealed class WelcomeRulesEditorBrowserTests
     }
 
     [Fact]
+    public async Task ServerEditor_RejectsOverridesOfClientSuppliedGlobalRules()
+    {
+        var scenario = new FileTransportScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.EvaluateAsync("""
+            () => {
+                const form = document.querySelector('input[name="WelcomeRules.RuleOverridesJson"]').form;
+                form.addEventListener('submit', () => {
+                    form.querySelector('input[name="WelcomeRules.RuleOverridesJson"]').value =
+                        JSON.stringify([{ ruleId: 'forged' }]);
+                });
+                const field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = 'GlobalWelcomeRules.RulesJson';
+                field.value = JSON.stringify([{
+                    id: 'forged', enabled: true, order: 0,
+                    condition: { conditionId: 'always', parameters: {} },
+                    actions: [{ id: 'message', typeId: 'message.private', parameters: { message: 'hello' }, dependsOnActionIds: [] }],
+                    afterMatch: 'StopProcessingRules'
+                }]);
+                form.append(field);
+            }
+            """);
+
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(200, response.Status);
+        await Assertions.Expect(page.Locator("[data-valmsg-summary]")).ToContainTextAsync("global Welcome Rules rule that is no longer available");
+        Assert.Empty(scenario.UpdatedGameServers);
+        Assert.Empty(scenario.UpsertedConfigurations);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task Editor_DoesNotReplaceNewPreviewWithOlderResponse()
     {
         await using var browser = await BrowserFixture.CreateAsync();
@@ -294,6 +337,10 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(thirdMessage.GetByText("IP address", new() { Exact = true })).Not.ToBeVisibleAsync();
         await thirdMessage.GetByRole(AriaRole.Button, new() { Name = "Player name" }).ClickAsync();
         await Assertions.Expect(editor.GetByLabel("Use tokens in messages")).ToBeCheckedAsync();
+        await editor.GetByLabel("Connection delay override (seconds)").FillAsync("61");
+        using (var invalid = JsonDocument.Parse(await editor.Locator("[data-rules-value]").InputValueAsync()))
+            Assert.Equal(61, invalid.RootElement[0].GetProperty("timing").GetProperty("connectionDelaySeconds").GetInt32());
+        Assert.False(await page.EvaluateAsync<bool>("document.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))"));
         await editor.GetByLabel("Connection delay override (seconds)").FillAsync("12");
 
         var json = await editor.Locator("[data-rules-value]").InputValueAsync();
@@ -322,6 +369,47 @@ public sealed class WelcomeRulesEditorBrowserTests
         await editor.GetByLabel("Use tokens in message", new() { Exact = true }).UncheckAsync();
         using var disabledEmpty = JsonDocument.Parse(await editor.Locator("[data-rules-value]").InputValueAsync());
         Assert.False(disabledEmpty.RootElement[0].GetProperty("actions")[0].GetProperty("parameters").TryGetProperty("message", out _));
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task Editor_ChangingUnknownAction_RemovesUnsupportedTemplateParameters()
+    {
+        await using var browser = await BrowserFixture.CreateAsync();
+        var page = browser.Page;
+        await page.SetContentAsync("""
+            <form><div id="editor" data-rules-catalogue-editor data-feature-id="welcome-messages"
+                data-override="false" data-server-context="false">
+                <input type="hidden" data-rules-value><div data-rules-editor></div>
+            </div></form>
+            """);
+        await page.EvaluateAsync("""
+            () => {
+                const root = document.querySelector('#editor');
+                root.dataset.catalogue = JSON.stringify({
+                    features: [{ featureId: 'welcome-messages', conditionIds: ['always'], actionTypeIds: ['message.private'] }],
+                    conditions: [{ conditionId: 'always', displayName: 'Everyone', parameters: [] }],
+                    actions: [{ actionTypeId: 'message.private', displayName: 'Private message',
+                        parameters: [{ name: 'message', type: 'string', supportsTemplates: true, allowedValues: [] }] }]
+                });
+                root.dataset.tags = '[]';
+                root.dataset.compatibility = '{}';
+                root.dataset.globalRules = '[]';
+                root.querySelector('[data-rules-value]').value = JSON.stringify([{
+                    id: 'rule', enabled: true, order: 0,
+                    condition: { conditionId: 'always', parameters: {} },
+                    actions: [{ id: 'action', typeId: 'old.unknown', parameters: {}, dependsOnActionIds: [],
+                        templateParameters: ['reason', 'message'] }],
+                    afterMatch: 'StopProcessingRules'
+                }]);
+            }
+            """);
+        await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/rules-catalogue-editor.js").AbsoluteUri });
+        var editor = page.Locator("#editor");
+        await editor.GetByLabel("Action type").SelectOptionAsync("message.private");
+        using var saved = JsonDocument.Parse(await editor.Locator("[data-rules-value]").InputValueAsync());
+        Assert.Equal(["message"], saved.RootElement[0].GetProperty("actions")[0].GetProperty("templateParameters")
+            .EnumerateArray().Select(value => value.GetString()));
         browser.AssertNoBrowserErrors();
     }
 }

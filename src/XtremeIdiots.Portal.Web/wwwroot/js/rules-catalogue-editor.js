@@ -35,6 +35,14 @@
         const override = root.dataset.override === "true";
         const server = root.dataset.serverContext === "true";
         const sync = () => { hidden.value = JSON.stringify(rules); };
+        form?.addEventListener("submit", event => {
+            const invalid = host.querySelector("[data-rule-timing]:invalid");
+            if (invalid) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                invalid.reportValidity();
+            }
+        }, true);
         const button = (text, fn, danger = false, disabled = false) => {
             const b = element("button", text, `btn btn-sm ${danger ? "btn-outline-danger" : "btn-outline-secondary"} me-1 mb-2`);
             b.type = "button";
@@ -574,7 +582,9 @@
                     next.parameters.forEach(param => delete extras[param.name]);
                     if (Array.isArray(action.templateParameters)) {
                         const previousNames = previous?.parameters.filter(param => param.supportsTemplates).map(param => param.name) ?? [];
-                        action.templateParameters = action.templateParameters.filter(name => !previousNames.includes(name));
+                        const nextNames = next.parameters.filter(param => param.supportsTemplates).map(param => param.name);
+                        action.templateParameters = action.templateParameters.filter(name =>
+                            !previousNames.includes(name) && nextNames.includes(name));
                     }
                     action.typeId = id; action.parameters = extras;
                     render();
@@ -674,14 +684,17 @@
                         const timing = rule.timing ?? {};
                         const timingField = (name, title, min, max) => {
                             const control = input(panel, title, timing[name], (value, node) => {
-                                if (value === "") {
+                                if (node.validity.badInput) {
+                                    return;
+                                } else if (value === "") {
                                     delete timing[name];
                                     if (Object.keys(timing).length === 0) delete rule.timing;
-                                } else if (node.validity.valid) {
+                                } else {
                                     timing[name] = Number(value);
                                     rule.timing = timing;
                                 }
                             }, "number");
+                            control.dataset.ruleTiming = "";
                             control.min = min;
                             control.max = max;
                             control.step = "1";

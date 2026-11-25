@@ -278,6 +278,7 @@ public class GameServerEditViewModel : IValidatableObject
 
     public WelcomeRulesServerSettingsViewModel WelcomeRules { get; set; } = new();
 
+    [BindNever]
     public WelcomeRulesGlobalSettingsViewModel GlobalWelcomeRules { get; set; } = new();
 
     public VpnProtectionServerSettingsViewModel VpnProtection { get; set; } = new();
