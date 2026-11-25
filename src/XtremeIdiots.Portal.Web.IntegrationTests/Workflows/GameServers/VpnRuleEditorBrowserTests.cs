@@ -78,7 +78,7 @@ public sealed class VpnRuleEditorBrowserTests
                 "afterMatch": "StopProcessingRules"
               }],
               "ruleOverrides": [{
-                "ruleId": "global-vpn",
+                "ruleId": "GLOBAL-VPN",
                 "enabled": false,
                 "condition": null,
                 "actions": null,
@@ -116,7 +116,7 @@ public sealed class VpnRuleEditorBrowserTests
         await Assertions.Expect(overrides).ToContainTextAsync("Inherited global rules");
         await Assertions.Expect(overrides).ToContainTextAsync("unknown; server capability evidence is unavailable");
         await Assertions.Expect(overrides.Locator("[data-rule-disclosure='inherited'] > summary")).ToContainTextAsync("global-vpn | Enabled");
-        await Assertions.Expect(overrides.Locator("[data-rule-disclosure='rule'] > summary")).ToContainTextAsync("global-vpn | Disabled");
+        await Assertions.Expect(overrides.Locator("[data-rule-disclosure='rule'] > summary")).ToContainTextAsync("GLOBAL-VPN | Disabled | 1 conditions, 1 actions");
         await page.Locator("#VpnProtection-local-rules").GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         var localRules = page.Locator("#VpnProtection-local-rules [data-rules-editor] > section");
         await Assertions.Expect(localRules).ToContainTextAsync("supported for this server");
@@ -155,7 +155,7 @@ public sealed class VpnRuleEditorBrowserTests
         Assert.Equal("preserve-local", localRule.GetProperty("condition").GetProperty("parameters").GetProperty("legacySignalMetadata").GetString());
         Assert.Equal("preserve-action", localRule.GetProperty("actions")[0].GetProperty("parameters").GetProperty("legacyActionMetadata").GetString());
         var ruleOverride = saved.RootElement.GetProperty("ruleOverrides")[0];
-        Assert.Equal("global-vpn", ruleOverride.GetProperty("ruleId").GetString());
+        Assert.Equal("GLOBAL-VPN", ruleOverride.GetProperty("ruleId").GetString());
         Assert.False(ruleOverride.GetProperty("enabled").GetBoolean());
         Assert.Equal(JsonValueKind.Null, ruleOverride.GetProperty("condition").ValueKind);
         Assert.Equal(JsonValueKind.Null, ruleOverride.GetProperty("actions").ValueKind);

@@ -174,6 +174,8 @@
         const feature = catalogue?.features?.find(item => item.featureId === root.dataset.featureId);
         const conditions = catalogue?.conditions?.filter(item => feature?.conditionIds?.includes(item.conditionId)) || [];
         const actions = catalogue?.actions?.filter(item => feature?.actionTypeIds?.includes(item.actionTypeId)) || [];
+        const globalRule = id => typeof id === "string" ?
+            globals.find(item => object(item) && typeof item.id === "string" && item.id.toLowerCase() === id.toLowerCase()) : null;
         const availableConditions = conditions.filter(item => !server || compatibility[item.conditionId] === true);
         const availableActions = actions.filter(item => !server || compatibility[item.actionTypeId] === true);
         const conditionChoices = availableConditions.map(item => ({ value: item.conditionId, text: item.displayName }));
@@ -731,7 +733,7 @@
                 host.append(sectionHost);
                 const panel = disclosure(sectionHost, rule, () => {
                     if (!object(rule)) return `Unsupported rule ${index + 1}`;
-                    const inherited = override ? globals.find(item => object(item) && item.id === rule.ruleId) : null;
+                    const inherited = override ? globalRule(rule.ruleId) : null;
                     const enabled = rule.enabled == null && override ? `Inherited (${inherited?.enabled === true ? "enabled" : inherited?.enabled === false ? "disabled" : "unknown"})` :
                         rule.enabled === true ? "Enabled" : rule.enabled === false ? "Disabled" : "Enabled state unknown";
                     const condition = rule.condition ?? inherited?.condition;
@@ -745,9 +747,11 @@
                     return;
                 }
                 if (override) {
-                    const choices = globals.filter(object).filter(r => typeof r.id === "string").map(r => ({ value: r.id, text: r.id }));
+                    const inherited = globalRule(rule.ruleId);
+                    const choices = globals.filter(object).filter(r => typeof r.id === "string").map(r => ({
+                        value: inherited === r ? rule.ruleId : r.id, text: r.id
+                    }));
                     select(panel, "Global rule", rule.ruleId, choices, value => { rule.ruleId = value; render(); });
-                    const inherited = globals.find(item => object(item) && item.id === rule.ruleId);
                     if (inherited) {
                         inheritedCompatibility(panel, inherited, rule);
                         details(panel, "Global rule inherited values", inherited);
@@ -776,7 +780,7 @@
                 section("afterMatch", "After match", () => "StopProcessingRules", () =>
                     select(panel, "Continue processing", rule.afterMatch, ["StopProcessingRules", "ContinueToNextRule"], value => { rule.afterMatch = value; }));
                 if (root.dataset.featureId === "welcome-messages") {
-                    const effective = effectiveTimings?.[override ? rule.ruleId : rule.id];
+                    const effective = effectiveTimings?.[override ? globalRule(rule.ruleId)?.id ?? rule.ruleId : rule.id];
                     if (effective && Number.isInteger(effective.connectionDelaySeconds) && Number.isInteger(effective.freshnessSeconds))
                         panel.append(element("p", `Effective at page load: ${effective.connectionDelaySeconds} second delay; ${effective.freshnessSeconds} second freshness. Save changes to refresh.`, "form-text"));
                     if (rule.timing != null && !object(rule.timing)) {
