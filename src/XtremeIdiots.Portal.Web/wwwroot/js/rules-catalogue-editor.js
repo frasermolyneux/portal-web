@@ -11,6 +11,7 @@
     };
     const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
     const labelText = value => value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, c => c.toUpperCase());
+    const revealingForms = new WeakSet();
 
     document.querySelectorAll("[data-rules-catalogue-editor]").forEach(root => {
         const hidden = root.querySelector("[data-rules-value]");
@@ -34,12 +35,67 @@
         }
         const override = root.dataset.override === "true";
         const server = root.dataset.serverContext === "true";
+        const expansion = new WeakMap();
+        let disclosures = [];
+        const openNew = value => {
+            if (object(value)) expansion.set(value, true);
+            return value;
+        };
+        const setOpen = (panel, open) => {
+            panel.open = open;
+            if (object(panel.disclosureValue)) expansion.set(panel.disclosureValue, open);
+        };
+        const reveal = control => {
+            for (let parent = control.parentElement; parent && parent !== host; parent = parent.parentElement) {
+                if (parent.tagName === "DETAILS") setOpen(parent, true);
+            }
+            const tab = control.closest(".tab-pane");
+            const trigger = tab && document.getElementById(tab.getAttribute("aria-labelledby"));
+            if (form && !revealingForms.has(form) && tab && !tab.classList.contains("active") && trigger && window.bootstrap?.Tab) {
+                revealingForms.add(form);
+                setTimeout(() => revealingForms.delete(form), 0);
+                trigger.addEventListener("shown.bs.tab", () => control.focus(), { once: true });
+                window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+            }
+        };
+        const updateSummaries = () => [...disclosures].reverse().forEach(({ panel, summary, describe }) => {
+            const indicators = [];
+            if (panel.querySelector(".alert-warning") ||
+                [...panel.querySelectorAll("summary")].some(child => child !== summary && child.textContent.includes("Unsupported")))
+                indicators.push("Needs attention");
+            if (panel.querySelector(".alert-danger")) indicators.push("Errors");
+            if (panel.querySelector(":invalid")) indicators.push("Invalid fields");
+            summary.textContent = [describe(), ...indicators].join(" | ");
+        });
+        const disclosure = (parent, value, describe, kind) => {
+            const panel = element("details", undefined, "border rounded p-3 mb-2");
+            panel.dataset.ruleDisclosure = kind;
+            panel.disclosureValue = value;
+            panel.open = object(value) ? expansion.get(value) === true : true;
+            const summary = element("summary", undefined, "fw-bold");
+            panel.append(summary);
+            panel.addEventListener("toggle", () => {
+                if (panel.isConnected && object(value)) expansion.set(value, panel.open);
+            });
+            parent.append(panel);
+            disclosures.push({ panel, summary, describe });
+            return panel;
+        };
+        host.addEventListener("input", updateSummaries);
+        host.addEventListener("change", updateSummaries);
+        form?.addEventListener("invalid", event => {
+            if (host.contains(event.target)) {
+                reveal(event.target);
+                updateSummaries();
+            }
+        }, true);
         const sync = () => { hidden.value = JSON.stringify(rules); };
         form?.addEventListener("submit", event => {
             const invalid = host.querySelector("[data-rule-timing]:invalid");
             if (invalid) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
+                reveal(invalid);
                 invalid.reportValidity();
             }
         }, true);
@@ -352,9 +408,39 @@
             const children = node.conditions.map(conditionStats);
             return { count: 1 + children.reduce((sum, item) => sum + item.count, 0), height: 1 + Math.max(0, ...children.map(item => item.height)) };
         };
+        const snippet = value => {
+            const text = String(value).replace(/\s+/g, " ").trim();
+            return text.length > 80 ? `${text.slice(0, 77)}...` : text;
+        };
+        const parameterSummary = (parameters, definition) => {
+            if (!object(parameters)) return "Malformed parameters";
+            const names = new Set(definition?.parameters.map(parameter => parameter.name) ?? []);
+            const text = Object.entries(parameters).filter(([key, value]) => names.has(key) && value != null && value !== "" &&
+                (!Array.isArray(value) || value.length)).map(([key, value]) => {
+                const values = Array.isArray(value) ? value : [value];
+                const display = values.map(item => tags.find(tag => tag.value === item)?.text ?? item).join(", ");
+                return `${labelText(key)}: ${snippet(display)}`;
+            }).join("; ");
+            return text.length > 240 ? `${text.slice(0, 237)}...` : text;
+        };
+        const conditionSummary = node => {
+            if (!object(node)) return "Unsupported condition";
+            if (node.groupOperator != null && Array.isArray(node.conditions))
+                return `${node.groupOperator === "And" ? "All" : node.groupOperator === "Or" ? "Any" : "Unsupported group"}: ${node.conditions.length} conditions`;
+            const definition = conditions.find(item => item.conditionId === node.conditionId);
+            return [definition?.displayName ?? (node.conditionId ? `Unsupported condition: ${node.conditionId}` : "New condition"),
+                parameterSummary(node.parameters, definition)].filter(Boolean).join(" - ");
+        };
+        const actionSummary = action => {
+            if (!object(action)) return "Unsupported action";
+            const definition = actions.find(item => item.actionTypeId === action.typeId);
+            return [definition?.displayName ?? (action.typeId ? `Unsupported action: ${action.typeId}` : "New action"),
+                parameterSummary(action.parameters, definition)].filter(Boolean).join(" - ");
+        };
+        const conditionCount = node => object(node) && Array.isArray(node.conditions) ?
+            node.conditions.reduce((count, child) => count + conditionCount(child), 0) : 1;
         const renderCondition = (parent, node, replace, depth = 1, rootNode = node) => {
-            const panel = element("div", undefined, "border rounded p-3 mb-2");
-            parent.append(panel);
+            const panel = disclosure(parent, node, () => conditionSummary(node), "condition");
             if (!object(node)) {
                 panel.append(element("p", "Unsupported or missing condition (preserved).", "alert alert-warning"));
                 details(panel, "Stored condition", node);
@@ -381,8 +467,8 @@
                     panel.append(row);
                 });
                 if (depth < 8 && conditionStats(rootNode).count < 100) {
-                    panel.append(button("Add condition", () => { node.conditions.push(newLeaf()); sync(); render(); }, false, !conditionChoices.length));
-                    if (depth < 7 && conditionStats(rootNode).count < 99) panel.append(button("Add group", () => { node.conditions.push({ groupOperator: "And", conditions: [newLeaf()] }); sync(); render(); }, false, !conditionChoices.length));
+                    panel.append(button("Add condition", () => { node.conditions.push(openNew(newLeaf())); sync(); render(); }, false, !conditionChoices.length));
+                    if (depth < 7 && conditionStats(rootNode).count < 99) panel.append(button("Add group", () => { node.conditions.push(openNew({ groupOperator: "And", conditions: [openNew(newLeaf())] })); sync(); render(); }, false, !conditionChoices.length));
                 }
             } else if (typeof node.conditionId === "string" && node.groupOperator == null && node.conditions == null) {
                 select(panel, "Condition", node.conditionId, conditionChoices, id => {
@@ -406,7 +492,7 @@
             }
             extensions(panel, node, ["groupOperator", "conditions", "conditionId", "parameters"]);
             if (depth + conditionStats(node).height <= 8 && conditionStats(rootNode).count < 100) panel.append(button("Wrap in AND/OR group", () => {
-                replace({ groupOperator: "And", conditions: [node] }); sync(); render();
+                replace(openNew({ groupOperator: "And", conditions: [node] })); sync(); render();
             }));
         };
         const newLeaf = () => {
@@ -506,6 +592,8 @@
                         } catch (error) {
                             if (error.name !== "AbortError" && current === revision && host.contains(panel))
                                 result.replaceChildren(element("p", error.message || "Preview is unavailable.", "alert alert-danger py-1"));
+                        } finally {
+                            if (current === revision && host.contains(panel)) updateSummaries();
                         }
                     }, 250);
                 };
@@ -536,11 +624,11 @@
                 } else details(target, "Unrecognized inherited condition", condition);
             };
             globals.forEach((rule, index) => {
-                const panel = element("div", undefined, "border rounded p-3 mb-2");
+                const panel = disclosure(container, rule, () => !object(rule) ? `Unrecognized inherited rule ${index + 1}` :
+                    `Inherited rule: ${rule.id ?? `Rule ${index + 1}`} | ${rule.enabled === true ? "Enabled" : rule.enabled === false ? "Disabled" : "Enabled state unknown"} | ${rule.condition == null ? 0 : conditionCount(rule.condition)} conditions, ${Array.isArray(rule.actions) ? rule.actions.length : "unknown"} actions`, "inherited");
                 if (!object(rule)) {
                     details(panel, `Unrecognized global rule ${index + 1}`, rule);
                 } else {
-                    panel.append(element("h6", `${rule.id ?? `Rule ${index + 1}`} (${rule.enabled === true ? "enabled" : rule.enabled === false ? "disabled" : "enabled state unknown"})`));
                     panel.append(element("strong", "WHEN"));
                     describeCondition(panel, rule.condition);
                     panel.append(element("strong", "THEN"));
@@ -554,7 +642,6 @@
                     else details(panel, "Unrecognized inherited actions", rule.actions);
                     panel.append(element("p", `After match: ${rule.afterMatch ?? "unknown"}`, "form-text"));
                 }
-                container.append(panel);
             });
             parent.append(container);
         };
@@ -565,14 +652,12 @@
                 return;
             }
             rule.actions.forEach((action, index) => {
-                const panel = element("div", undefined, "border rounded p-3 mb-2");
-                parent.append(panel);
+                const panel = disclosure(parent, action, () => `Action ${index + 1}: ${actionSummary(action)}`, "action");
                 if (!object(action)) {
                     details(panel, "Unsupported action (preserved)", action);
                     panel.append(button("Remove action", () => { rule.actions.splice(index, 1); sync(); render(); }, true));
                     return;
                 }
-                panel.append(element("h6", `Action ${index + 1}`));
                 select(panel, "Action type", action.typeId, actionChoices, id => {
                     const previous = actions.find(item => item.actionTypeId === action.typeId);
                     const next = availableActions.find(item => item.actionTypeId === id);
@@ -614,10 +699,14 @@
                 panel.append(button("Move action down", () => move(rule.actions, index, 1)));
                 panel.append(button("Remove action", () => { rule.actions.splice(index, 1); sync(); render(); }, true));
             });
-            if (rule.actions.length < 32) parent.append(button("Add action", () => { rule.actions.push(newAction()); sync(); render(); }, false, !actionChoices.length));
+            if (rule.actions.length < 32) parent.append(button("Add action", () => { rule.actions.push(openNew(newAction())); sync(); render(); }, false, !actionChoices.length));
         };
         const render = () => {
+            disclosures.forEach(({ panel }) => {
+                if (object(panel.disclosureValue)) expansion.set(panel.disclosureValue, panel.open);
+            });
             host.replaceChildren();
+            disclosures = [];
             if (error) {
                 host.append(element("p", error, "alert alert-danger"));
                 const raw = element("textarea", undefined, "form-control");
@@ -635,10 +724,21 @@
             }
             if (!feature) host.append(element("p", "This feature is not in the catalogue. Existing data will be preserved.", "alert alert-warning"));
             if (server && root.dataset.showInheritedRules === "true") renderInheritedRules(host);
+            host.append(button("Expand all", () => disclosures.forEach(({ panel }) => setOpen(panel, true))),
+                button("Collapse all", () => disclosures.forEach(({ panel }) => setOpen(panel, false))));
             rules.forEach((rule, index) => {
-                const panel = element("section", undefined, "border rounded p-3 mb-3");
-                panel.append(element("h5", `${override ? "Rule override" : "Rule"} ${index + 1}`));
-                host.append(panel);
+                const sectionHost = element("section", undefined, "mb-3");
+                host.append(sectionHost);
+                const panel = disclosure(sectionHost, rule, () => {
+                    if (!object(rule)) return `Unsupported rule ${index + 1}`;
+                    const inherited = override ? globals.find(item => object(item) && item.id === rule.ruleId) : null;
+                    const enabled = rule.enabled == null && override ? `Inherited (${inherited?.enabled === true ? "enabled" : inherited?.enabled === false ? "disabled" : "unknown"})` :
+                        rule.enabled === true ? "Enabled" : rule.enabled === false ? "Disabled" : "Enabled state unknown";
+                    const condition = rule.condition ?? inherited?.condition;
+                    const actionsForRule = rule.actions ?? inherited?.actions;
+                    const count = condition == null ? 0 : conditionCount(condition);
+                    return `${override ? "Rule override" : "Rule"} ${index + 1}: ${rule.ruleId ?? rule.id ?? "Unnamed"} | ${enabled} | ${count} conditions, ${Array.isArray(actionsForRule) ? actionsForRule.length : "unknown"} actions${override ? " | Inherited values available" : ""}`;
+                }, "rule");
                 if (!object(rule)) {
                     details(panel, "Unsupported entry (preserved)", rule);
                     panel.append(button("Remove rule", () => { rules.splice(index, 1); sync(); render(); }, true));
@@ -662,7 +762,9 @@
                 const section = (key, title, create, draw) => {
                     const noChoices = key === "condition" ? !conditionChoices.length : key === "actions" ? !actionChoices.length : false;
                     if (override) check(panel, `Override ${title}`, rule[key] != null, checked => {
-                        rule[key] = checked ? create() : null; render();
+                        rule[key] = checked ? create() : null;
+                        if (Array.isArray(rule[key])) rule[key].forEach(openNew); else openNew(rule[key]);
+                        render();
                     }, noChoices && rule[key] == null);
                     if (!override || rule[key] != null) {
                         panel.append(element("h6", title));
@@ -717,10 +819,11 @@
             if (server && (!conditionChoices.length || !actionChoices.length))
                 host.append(element("p", "New conditions and actions require verified server compatibility.", "alert alert-warning"));
             if (feature && rules.length < 100 && (!override || globals.some(item => object(item) && typeof item.id === "string" && item.id))) host.append(button(override ? "Add rule override" : "Add rule", () => {
-                rules.push(override ? { ruleId: globals.find(object)?.id ?? "", enabled: null, condition: null, actions: null, afterMatch: null } :
-                    { id: crypto.randomUUID(), enabled: true, order: rules.length, condition: newLeaf(), actions: [newAction()], afterMatch: "StopProcessingRules" });
+                rules.push(openNew(override ? { ruleId: globals.find(object)?.id ?? "", enabled: null, condition: null, actions: null, afterMatch: null } :
+                    { id: crypto.randomUUID(), enabled: true, order: rules.length, condition: openNew(newLeaf()), actions: [openNew(newAction())], afterMatch: "StopProcessingRules" }));
                 sync(); render();
             }, false, !override && (!conditionChoices.length || !actionChoices.length)));
+            updateSummaries();
         };
         if (form) form.addEventListener("submit", event => {
             if (error) {
