@@ -22,6 +22,98 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 public sealed class WelcomeRulesEditorBrowserTests
 {
     [Fact]
+    public async Task Editor_DisclosuresPreserveStateAndRevealInvalidFields()
+    {
+        await using var browser = await BrowserFixture.CreateAsync();
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/js/cod-colors.js").AbsoluteUri);
+        await page.SetContentAsync("""
+            <form>
+              <div id="first" data-rules-catalogue-editor data-feature-id="welcome-messages"
+                   data-override="false" data-server-context="true">
+                <input type="hidden" data-rules-value><div data-rules-editor></div>
+              </div>
+              <div id="second" data-rules-catalogue-editor data-feature-id="welcome-messages"
+                   data-override="false" data-server-context="true">
+                <input type="hidden" data-rules-value><div data-rules-editor></div>
+              </div>
+              <button type="submit">Save</button>
+            </form>
+            """);
+        await page.EvaluateAsync("""
+            () => {
+                for (const root of document.querySelectorAll('[data-rules-catalogue-editor]')) {
+                    root.dataset.catalogue = JSON.stringify({
+                        features: [{ featureId: 'welcome-messages', conditionIds: ['tagged'], actionTypeIds: ['message.private'] }],
+                        conditions: [{ conditionId: 'tagged', displayName: 'Tagged player', parameters: [
+                            { name: 'tags', type: 'string[]', allowedValues: [] },
+                            { name: 'operator', type: 'string', allowedValues: ['Any', 'All'] }
+                        ] }],
+                        actions: [{ actionTypeId: 'message.private', displayName: 'Private message',
+                            parameters: [{ name: 'message', type: 'string', allowedValues: [], supportsTemplates: true, required: true }] }]
+                    });
+                    root.dataset.tags = JSON.stringify([{ value: 'tag-a', text: 'Admin' }]);
+                    root.dataset.compatibility = JSON.stringify({ tagged: true, 'message.private': true });
+                    root.dataset.globalRules = '[]';
+                    root.querySelector('[data-rules-value]').value = JSON.stringify([{
+                        id: 'existing', enabled: false, order: 0,
+                        condition: { conditionId: 'tagged', parameters: { tags: ['tag-a'], operator: 'Any' } },
+                        actions: [
+                            { id: 'message', typeId: 'message.private', parameters: { message: 'Hello player' }, dependsOnActionIds: [] },
+                            { id: 'old', typeId: 'old.unknown', parameters: {}, dependsOnActionIds: [] }
+                        ],
+                        afterMatch: 'StopProcessingRules'
+                    }]);
+                }
+            }
+            """);
+        await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/rules-catalogue-editor.js").AbsoluteUri });
+        var editor = page.Locator("#first");
+        var other = page.Locator("#second");
+        var rule = editor.Locator("[data-rule-disclosure='rule']").First;
+        var condition = editor.Locator("[data-rule-disclosure='condition']").First;
+        var action = editor.Locator("[data-rule-disclosure='action']").First;
+        var original = await editor.Locator("[data-rules-value]").InputValueAsync();
+        await Assertions.Expect(rule).Not.ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(rule.Locator(":scope > summary")).ToContainTextAsync("existing | Disabled | 1 conditions, 2 actions");
+        await Assertions.Expect(rule.Locator(":scope > summary")).ToContainTextAsync("Needs attention");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
+        await Assertions.Expect(other.Locator("[data-rule-disclosure='rule']")).Not.ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(condition.Locator(":scope > summary")).ToContainTextAsync("Tags: Admin; Operator: Any");
+        await Assertions.Expect(action.Locator(":scope > summary")).ToContainTextAsync("Message: Hello player");
+        await editor.GetByLabel("Message", new() { Exact = true }).FillAsync("Updated message");
+        await Assertions.Expect(action.Locator(":scope > summary")).ToContainTextAsync("Updated message");
+        await condition.Locator(":scope > summary").ClickAsync();
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Add action" }).ClickAsync();
+        await Assertions.Expect(condition).Not.ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(editor.Locator("[data-rule-disclosure='action']").Last).ToHaveAttributeAsync("open", "");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Remove action" }).Last.ClickAsync();
+        await editor.GetByLabel("Message", new() { Exact = true }).FillAsync("Hello player");
+        Assert.Equal(original, await editor.Locator("[data-rules-value]").InputValueAsync());
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Add rule", Exact = true }).ClickAsync();
+        var newRule = editor.Locator("[data-rule-disclosure='rule']").Last;
+        await Assertions.Expect(newRule).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(newRule.Locator("[data-rule-disclosure='condition']")).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(newRule.Locator("[data-rule-disclosure='action']")).ToHaveAttributeAsync("open", "");
+        await newRule.GetByRole(AriaRole.Button, new() { Name = "Remove rule" }).ClickAsync();
+        Assert.Equal(original, await editor.Locator("[data-rules-value]").InputValueAsync());
+        await editor.GetByLabel("Message", new() { Exact = true }).FillAsync("");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Collapse all" }).ClickAsync();
+        await page.EvaluateAsync("document.querySelector('form').requestSubmit()");
+        await Assertions.Expect(rule).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(action).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(editor.GetByLabel("Message", new() { Exact = true })).ToBeFocusedAsync();
+        await editor.GetByLabel("Message", new() { Exact = true }).FillAsync("Hello player");
+        await editor.GetByLabel("Rule ID").FillAsync("");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Collapse all" }).ClickAsync();
+        await Assertions.Expect(rule.Locator(":scope > summary")).ToContainTextAsync("Invalid fields");
+        await page.EvaluateAsync("document.querySelector('form').requestSubmit()");
+        await Assertions.Expect(rule).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(editor.GetByLabel("Rule ID")).ToBeFocusedAsync();
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task ServerEditor_PreviewsAndSavesWelcomeRulesWithoutAgent()
     {
         var scenario = new FileTransportScenario();
@@ -67,6 +159,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
         await page.Locator("#welcome-messages-tab-btn").ClickAsync();
         var editor = page.Locator("#WelcomeRules-local-rules");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         await Assertions.Expect(editor).ToContainTextAsync("Effective at page load: 5 second delay; 120 second freshness");
         var preview = editor.Locator("[data-action-preview='message']");
         await Assertions.Expect(preview).ToContainTextAsync("Hello ExamplePlayer");
@@ -74,6 +167,23 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(preview).ToContainTextAsync("another provider");
         await preview.GetByLabel("Message preview data").SelectOptionAsync("missing");
         await Assertions.Expect(preview).ToContainTextAsync("Hello player");
+        await editor.GetByLabel("Rule ID").FillAsync("");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Collapse all" }).ClickAsync();
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.GetByTestId("game-server-save").ClickAsync();
+        await Assertions.Expect(page.Locator("#welcome-messages-tab-btn")).ToHaveClassAsync(new System.Text.RegularExpressions.Regex("active"));
+        await Assertions.Expect(editor.Locator("[data-rule-disclosure='rule']")).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(editor.GetByLabel("Rule ID")).ToBeFocusedAsync();
+        Assert.Empty(scenario.UpsertedConfigurations);
+        await editor.GetByLabel("Rule ID").FillAsync("local");
+        await editor.GetByLabel("Connection delay override (seconds)").FillAsync("61");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Collapse all" }).ClickAsync();
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.GetByTestId("game-server-save").ClickAsync();
+        await Assertions.Expect(page.Locator("#welcome-messages-tab-btn")).ToHaveClassAsync(new System.Text.RegularExpressions.Regex("active"));
+        await Assertions.Expect(editor.Locator("[data-rule-disclosure='rule']")).ToHaveAttributeAsync("open", "");
+        await Assertions.Expect(editor.GetByLabel("Connection delay override (seconds)")).ToBeFocusedAsync();
+        await editor.GetByLabel("Connection delay override (seconds)").FillAsync("");
         await page.Locator("#WelcomeRules_FreshnessSeconds").FillAsync("4");
         var invalidResponse = await page.RunAndWaitForResponseAsync(
             () => page.GetByTestId("game-server-save").ClickAsync(),
@@ -187,6 +297,7 @@ public sealed class WelcomeRulesEditorBrowserTests
             }
             """);
         await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/rules-catalogue-editor.js").AbsoluteUri });
+        await page.GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         await page.WaitForFunctionAsync("window.previewRequests.length === 1");
         await page.GetByLabel("Message", new() { Exact = true }).FillAsync("new");
         await page.WaitForFunctionAsync("window.previewRequests.length === 2");
@@ -262,6 +373,7 @@ public sealed class WelcomeRulesEditorBrowserTests
             """, new Uri(browser.Host.BaseAddress, "/test-rules-preview").AbsoluteUri);
         await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/cod-colors.js").AbsoluteUri });
         await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/rules-catalogue-editor.js").AbsoluteUri });
+        await page.GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
 
         var preview = page.Locator("[data-action-preview='message']");
         await Assertions.Expect(preview).ToContainTextAsync("13 UTF-8 bytes (16 including reserved prefix)");
@@ -440,6 +552,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/rules-catalogue-editor.js").AbsoluteUri });
 
         var editor = page.Locator("#editor");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         await editor.GetByLabel("Recipient tags").SelectOptionAsync(["tag-a", "tag-b"]);
         await editor.GetByLabel("Recipient tag match").SelectOptionAsync("All");
         await editor.GetByRole(AriaRole.Button, new() { Name = "Move message down" }).First.ClickAsync();
@@ -520,6 +633,7 @@ public sealed class WelcomeRulesEditorBrowserTests
             """);
         await page.AddScriptTagAsync(new() { Url = new Uri(browser.Host.BaseAddress, "/js/rules-catalogue-editor.js").AbsoluteUri });
         var editor = page.Locator("#editor");
+        await editor.GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         await editor.GetByLabel("Action type").SelectOptionAsync("message.private");
         using var saved = JsonDocument.Parse(await editor.Locator("[data-rules-value]").InputValueAsync());
         Assert.Equal(["message"], saved.RootElement[0].GetProperty("actions")[0].GetProperty("templateParameters")

@@ -138,6 +138,7 @@ public sealed class SiegeModeSettingsBrowserTests
         var page = browser.Page;
         await OpenSettings(page, browser.Host.BaseAddress);
 
+        await page.Locator("#global-siege-rules").GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         var rules = page.Locator("#global-siege-rules [data-rules-editor] > section");
         await Assertions.Expect(rules).ToHaveCountAsync(2);
         var firstRule = rules.Nth(0);
@@ -145,8 +146,8 @@ public sealed class SiegeModeSettingsBrowserTests
         await Assertions.Expect(firstRule.GetByRole(AriaRole.Heading, new() { Name = "THEN" })).ToBeVisibleAsync();
         await Assertions.Expect(firstRule).ToContainTextAsync("Any condition can match");
         await Assertions.Expect(firstRule).ToContainTextAsync("All conditions must match");
-        var observation = firstRule.GetByRole(AriaRole.Heading, new() { Name = "Action 1", Exact = true }).Locator("..");
-        var kick = firstRule.GetByRole(AriaRole.Heading, new() { Name = "Action 2", Exact = true }).Locator("..");
+        var observation = firstRule.Locator("[data-rule-disclosure='action']").Nth(0);
+        var kick = firstRule.Locator("[data-rule-disclosure='action']").Nth(1);
         await Assertions.Expect(observation.GetByText("Post to forums")).ToBeVisibleAsync();
         await Assertions.Expect(kick.GetByText("Post to forums")).ToHaveCountAsync(0);
         await Assertions.Expect(observation.GetByText("Action ID: observe")).Not.ToBeVisibleAsync();
@@ -155,7 +156,8 @@ public sealed class SiegeModeSettingsBrowserTests
         await kick.GetByText("Advanced action settings").ClickAsync();
         await Assertions.Expect(kick.Locator("option[value='observe']")).ToHaveTextAsync("Action 1: Observation");
         await firstRule.GetByRole(AriaRole.Button, new() { Name = "Move action up" }).Nth(1).ClickAsync();
-        await Assertions.Expect(firstRule.Locator("h6").Filter(new() { HasText = "Action 1" })).ToBeVisibleAsync();
+        await Assertions.Expect(firstRule.Locator("[data-rule-disclosure='action']").First.Locator(":scope > summary")).ToContainTextAsync("Action 1:");
+        await Assertions.Expect(page.Locator("#global-siege-rules [data-action-preview] p").Filter(new() { HasText = "Updating preview..." })).ToHaveCountAsync(0);
 
         await SaveSettings(page);
 
@@ -224,6 +226,7 @@ public sealed class SiegeModeSettingsBrowserTests
         var page = browser.Page;
         await OpenSettings(page, browser.Host.BaseAddress);
         await page.Locator("#vpn-protection-tab-btn").ClickAsync();
+        await page.Locator("#global-vpn-rules").GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
 
         var rules = page.Locator("#global-vpn-rules [data-rules-editor] > section");
         await Assertions.Expect(rules).ToHaveCountAsync(2);
@@ -236,6 +239,7 @@ public sealed class SiegeModeSettingsBrowserTests
         await Assertions.Expect(expectedValue).ToHaveValueAsync("");
         await comparison.SelectOptionAsync("Equal");
         await expectedValue.SelectOptionAsync("Success");
+        await Assertions.Expect(page.Locator("#global-vpn-rules [data-action-preview] p").Filter(new() { HasText = "Updating preview..." })).ToHaveCountAsync(0);
 
         await SaveSettings(page);
 
@@ -304,6 +308,7 @@ public sealed class SiegeModeSettingsBrowserTests
         var page = browser.Page;
         await OpenSettings(page, browser.Host.BaseAddress);
 
+        await page.Locator("#global-siege-rules").GetByRole(AriaRole.Button, new() { Name = "Expand all" }).ClickAsync();
         var rule = page.Locator("#global-siege-rules [data-rules-editor] > section").First;
         await Assertions.Expect(rule.GetByText("Supported games:")).ToHaveCountAsync(2);
         await Assertions.Expect(rule.Locator("img[src$='CallOfDuty4x.png']")).ToHaveCountAsync(2);
