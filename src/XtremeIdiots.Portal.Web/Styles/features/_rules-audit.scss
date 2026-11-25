@@ -1,0 +1,111 @@
+@media (max-width: 991.98px) {
+  .rules-audit__inline-flow {
+    position: sticky;
+    inset-inline-start: 0;
+    width: calc(100vw - 7rem);
+    max-width: 100%;
+  }
+}
+
+.rules-flow {
+  overflow-wrap: anywhere;
+
+  &__node {
+    min-width: 0;
+    padding: .875rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    background: var(--bs-body-bg);
+  }
+
+  &__trigger {
+    width: fit-content;
+    max-width: 100%;
+    border-inline-start: .25rem solid var(--bs-primary);
+  }
+
+  &__label {
+    margin-bottom: .5rem;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+  }
+
+  &__rules, &__actions, &__conditions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__rules {
+    border-inline-start: 2px solid var(--bs-border-color);
+    margin-inline-start: 1rem;
+    padding-block-start: 1rem;
+    padding-inline-start: 1rem;
+  }
+
+  &__rule {
+    position: relative;
+    margin-bottom: 1rem;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-inline-start: -1rem;
+      top: 1.15rem;
+      width: 1rem;
+      border-top: 2px solid var(--bs-border-color);
+    }
+  }
+
+  &__rule-title {
+    padding: .5rem .75rem;
+    margin-bottom: .5rem;
+    border-radius: var(--bs-border-radius);
+    background: var(--bs-tertiary-bg);
+  }
+
+  &__path {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, .7fr) auto minmax(0, 1fr);
+    align-items: start;
+    gap: .5rem;
+  }
+
+  &__decision {
+    border-inline-start-width: .25rem;
+  }
+
+  &__arrow {
+    margin-top: 1rem;
+    color: var(--bs-secondary-color);
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  &__condition, &__action {
+    padding: .4rem 0 .4rem .55rem;
+    border-inline-start: 2px solid var(--bs-border-color);
+
+    + li, > ul {
+      margin-top: .35rem;
+    }
+  }
+
+  .badge {
+    max-width: 100%;
+    white-space: normal;
+    text-align: start;
+  }
+
+  @media (max-width: 991.98px) {
+    &__path {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__arrow {
+      justify-self: center;
+      margin: 0;
+      transform: rotate(90deg);
+    }
+  }
+}

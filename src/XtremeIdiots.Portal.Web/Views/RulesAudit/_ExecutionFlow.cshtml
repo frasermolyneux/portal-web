@@ -1,0 +1,168 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@model RuleExecutionFlowDto
+@{
+    var execution = Model.Execution;
+    var ruleDiagnostics = execution.Diagnostics
+        .Where(diagnostic => diagnostic.RuleId is not null && diagnostic.ActionId is null &&
+            (diagnostic.Code == RuleExecutionDiagnosticCode.NoMatch ||
+             diagnostic.Code == RuleExecutionDiagnosticCode.WaitingForContext ||
+             diagnostic.Code == RuleExecutionDiagnosticCode.Expired))
+        .ToLookup(diagnostic => diagnostic.RuleId, StringComparer.OrdinalIgnoreCase);
+    var outcomes = execution.Actions.ToLookup(item => (item.RuleIndex, item.ActionIndex, item.RuleId, item.ActionId));
+    var preparations = execution.PreparedActions.ToLookup(item => (item.RuleIndex, item.ActionIndex, item.ActionId));
+}
+
+<div class="rules-flow" data-execution-flow>
+    <p class="text-muted">Arrows show the configured path, not an execution timeline. Individual condition results are not recorded.</p>
+    @if (!string.IsNullOrEmpty(Model.RuleSetRevision))
+    {
+        <p class="small text-muted">Rule set revision: @Model.RuleSetRevision</p>
+    }
+    <div class="rules-flow__node rules-flow__trigger">
+        <div class="rules-flow__label"><i class="fa-solid fa-fw fa-bolt" aria-hidden="true"></i> Trigger</div>
+        <strong>@(execution.TriggerId ?? "Unknown trigger")</strong>
+        <div>@execution.FeatureId &middot; @(execution.Username ?? execution.PlayerGuid ?? "Unknown player")</div>
+        <span class="badge text-bg-secondary mt-2">Execution: @execution.State</span>
+        <div class="mt-2">Rule matched: <partial name="_MatchStatus" model="execution.MatchStatus" /></div>
+        @if (execution.State == RuleFeatureExecutionState.Waiting &&
+             execution.Coordination is { } coordination && !string.IsNullOrEmpty(coordination.WaitingReason))
+        {
+            <div class="mt-2">Recorded waiting reason: @coordination.WaitingReason</div>
+        }
+    </div>
+    @if (Model.StructureStatus == RuleExecutionStructureStatus.Missing)
+    {
+        <div class="alert alert-warning mt-3">Historical rule structure was not recorded for this execution. Any recorded results are still available below.</div>
+    }
+    else if (Model.StructureStatus == RuleExecutionStructureStatus.Malformed)
+    {
+        <div class="alert alert-warning mt-3">Historical rule structure is malformed and cannot be displayed. Any recorded results are still available below.</div>
+    }
+    else if (Model.Rules.Length == 0)
+    {
+        <p class="mt-3">The recorded rule set is empty.</p>
+    }
+    else
+    {
+        <ol class="rules-flow__rules">
+            @foreach (var rule in Model.Rules)
+            {
+                var diagnostics = ruleDiagnostics[rule.Id];
+                var noMatch = diagnostics.Where(diagnostic => diagnostic.Code == RuleExecutionDiagnosticCode.NoMatch)
+                    .MaxBy(diagnostic => diagnostic.ObservedAtUtc);
+                var waiting = diagnostics.Where(diagnostic => diagnostic.Code == RuleExecutionDiagnosticCode.WaitingForContext)
+                    .MaxBy(diagnostic => diagnostic.ObservedAtUtc);
+                var expired = diagnostics.Where(diagnostic => diagnostic.Code == RuleExecutionDiagnosticCode.Expired)
+                    .MaxBy(diagnostic => diagnostic.ObservedAtUtc);
+                <li class="rules-flow__rule" data-rule-id="@rule.Id">
+                    <div class="rules-flow__rule-title">
+                        <strong>Rule @(rule.RuleIndex + 1): @(rule.DisplayName ?? rule.Id)</strong>
+                        <span class="badge text-bg-secondary">@(rule.Enabled switch { true => "Configured on", false => "Configured off", _ => "Configuration unknown" })</span>
+                    </div>
+                    <div class="rules-flow__path">
+                        <div class="rules-flow__node">
+                            <div class="rules-flow__label"><i class="fa-solid fa-fw fa-code-branch" aria-hidden="true"></i> If &middot; Conditions</div>
+                            <ul class="rules-flow__conditions"><partial name="_FlowCondition" model="rule.Condition" /></ul>
+                        </div>
+                        <span class="rules-flow__arrow" aria-hidden="true">&#8594;</span>
+                        <div class="rules-flow__node rules-flow__decision">
+                            <div class="rules-flow__label"><i class="fa-solid fa-fw fa-diamond" aria-hidden="true"></i> Decision</div>
+                            @if (noMatch is not null)
+                            {
+                                <span class="badge text-bg-info">No match recorded</span>
+                                <div class="small mt-2">Observed <time time-ago utc="@noMatch.ObservedAtUtc.UtcDateTime"></time></div>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Match outcome unknown</span>
+                            }
+                            @if (waiting is not null)
+                            {
+                                <div class="small mt-2">Waiting for rule context recorded &middot; <time time-ago utc="@waiting.ObservedAtUtc.UtcDateTime"></time></div>
+                            }
+                            @if (expired is not null)
+                            {
+                                <div class="small mt-2">Rule freshness window expiry recorded &middot; <time time-ago utc="@expired.ObservedAtUtc.UtcDateTime"></time></div>
+                            }
+                            @if (rule.AfterMatch is not null)
+                            {
+                                <div class="small mt-2">After a match: @rule.AfterMatch</div>
+                            }
+                        </div>
+                        <span class="rules-flow__arrow" aria-hidden="true">&#8594;</span>
+                        <div class="rules-flow__node">
+                            <div class="rules-flow__label"><i class="fa-solid fa-fw fa-list-check" aria-hidden="true"></i> If matched &middot; Actions</div>
+                            @if (rule.Actions.Length == 0)
+                            {
+                                <p class="mb-0">No configured actions.</p>
+                            }
+                            <ol class="rules-flow__actions">
+                                @foreach (var action in rule.Actions)
+                                {
+                                    var recorded = outcomes[(rule.RuleIndex, action.ActionIndex, rule.Id, action.Id)];
+                                    var prepared = preparations[(rule.RuleIndex, action.ActionIndex, action.Id)];
+                                    var actionDiagnostics = execution.Diagnostics.Where(diagnostic =>
+                                        diagnostic.RuleId is not null && diagnostic.ActionId is not null &&
+                                        string.Equals(diagnostic.RuleId, rule.Id, StringComparison.OrdinalIgnoreCase) &&
+                                        string.Equals(diagnostic.ActionId, action.Id, StringComparison.OrdinalIgnoreCase));
+                                    <li class="rules-flow__action" data-action-id="@action.Id">
+                                        <strong>@(action.DisplayName ?? action.TypeId)</strong>
+                                        <div class="small text-muted">@action.Id</div>
+                                        @if (action.DependsOnActionIds is { Length: > 0 } dependencies)
+                                        {
+                                            <div class="small">Depends on: @string.Join(", ", dependencies)</div>
+                                        }
+                                        else if (action.DependsOnActionIds is null)
+                                        {
+                                            <div class="small text-muted">Dependencies unknown</div>
+                                        }
+                                        @if (!recorded.Any())
+                                        {
+                                            <span class="badge text-bg-secondary">Action outcome unknown</span>
+                                        }
+                                        @foreach (var preparation in prepared)
+                                        {
+                                            <div class="small">Preparation: @preparation.Outcome &middot; @preparation.CompletedFragmentCount / @preparation.TotalFragmentCount fragments completed</div>
+                                        }
+                                        @foreach (var outcome in recorded)
+                                        {
+                                            var simulated = outcome.Mode == RuleExecutionMode.DryRun || outcome.Outcome == RuleActionExecutionOutcome.WouldExecute;
+                                            var label = simulated ? $"Simulated ({outcome.Outcome})" : outcome.Outcome switch
+                                            {
+                                                RuleActionExecutionOutcome.Applied => "Applied as recorded",
+                                                RuleActionExecutionOutcome.Dispatched => "Dispatched - application not confirmed",
+                                                RuleActionExecutionOutcome.OutcomeUnknown => "Outcome unknown (recorded)",
+                                                _ => outcome.Outcome.ToString()
+                                            };
+                                            var style = simulated || outcome.Outcome == RuleActionExecutionOutcome.Dispatched ? "text-bg-info"
+                                                : outcome.Outcome == RuleActionExecutionOutcome.Applied ? "text-bg-success" : "text-bg-secondary";
+                                            <div>
+                                                <span class="badge @style">@label</span>
+                                                @if (outcome.MessageIndex is int messageIndex && outcome.FragmentIndex is int fragmentIndex)
+                                                {
+                                                    <span class="small">Item @(messageIndex + 1), fragment @(fragmentIndex + 1)</span>
+                                                }
+                                            </div>
+                                        }
+                                        @foreach (var diagnostic in actionDiagnostics)
+                                        {
+                                            <div class="small mt-2">
+                                                Recorded diagnostic: @diagnostic.Code
+                                                @if (!string.IsNullOrEmpty(diagnostic.Detail)) { <span> - @diagnostic.Detail</span> }
+                                                &middot; <time time-ago utc="@diagnostic.ObservedAtUtc.UtcDateTime"></time>
+                                            </div>
+                                        }
+                                    </li>
+                                }
+                            </ol>
+                        </div>
+                    </div>
+                </li>
+            }
+        </ol>
+    }
+    <details class="mt-3" open="@(Model.StructureStatus != RuleExecutionStructureStatus.Available || Model.Rules.Length == 0)">
+        <summary>Raw execution evidence</summary>
+        <partial name="_ExecutionEvidence" model="execution" />
+    </details>
+</div>

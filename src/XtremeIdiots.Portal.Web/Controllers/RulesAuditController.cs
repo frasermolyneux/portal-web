@@ -22,10 +22,12 @@ public sealed class RulesAuditController(
     [HttpGet]
     public async Task<IActionResult> Index(
         Guid? serverId, string? featureId, string? fromUtc, string? toUtc, int page = 0,
+        RuleExecutionMatchStatus? matchStatus = null,
         CancellationToken cancellationToken = default)
     {
         featureId = string.IsNullOrWhiteSpace(featureId) ? null : featureId.Trim();
         if (!ModelState.IsValid || serverId == Guid.Empty || featureId?.Length > 64 || !ValidPage(page) ||
+            (matchStatus.HasValue && !Enum.IsDefined(matchStatus.Value)) ||
             !TryParseUtc(fromUtc, out var from) || !TryParseUtc(toUtc, out var to) ||
             (from.HasValue && to.HasValue && from >= to))
             return BadRequest();
@@ -40,6 +42,7 @@ public sealed class RulesAuditController(
             FeatureId = featureId,
             FromUtc = from,
             ToUtc = to,
+            MatchStatus = matchStatus,
             SkipEntries = page * PageSize,
             TakeEntries = PageSize
         }, cancellationToken).ConfigureAwait(false);
@@ -50,6 +53,7 @@ public sealed class RulesAuditController(
         if (items.Length > PageSize || items.Any(item =>
                 (serverId.HasValue && item.GameServerId != serverId) ||
                 (featureId is not null && !string.Equals(item.FeatureId, featureId, StringComparison.OrdinalIgnoreCase)) ||
+                !Enum.IsDefined(item.MatchStatus) || (matchStatus.HasValue && item.MatchStatus != matchStatus) ||
                 (from.HasValue && item.CreatedAtUtc.UtcDateTime < from) ||
                 (to.HasValue && item.CreatedAtUtc.UtcDateTime >= to) ||
                 item.Diagnostics is null || item.Actions is null || item.PreparedActions is null))
@@ -62,6 +66,7 @@ public sealed class RulesAuditController(
             FeatureId = featureId,
             FromUtc = from,
             ToUtc = to,
+            MatchStatus = matchStatus,
             Page = page,
             HasNext = ValidPage(page + 1) && (response.Result.Pagination is { } pagination
                 ? (long)page * PageSize + items.Length < pagination.FilteredCount
@@ -71,7 +76,7 @@ public sealed class RulesAuditController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> Execution(Guid id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Execution(Guid id, bool fragment = false, CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid || id == Guid.Empty)
             return BadRequest();
@@ -80,12 +85,15 @@ public sealed class RulesAuditController(
         if (response.IsNotFound)
             return NotFound();
         if (!response.IsSuccess || response.Result?.Data is not { } flow ||
-            flow.Execution is null || flow.Execution.ExecutionId != id ||
+            flow.Execution is null || flow.Execution.ExecutionId != id || !Enum.IsDefined(flow.Execution.MatchStatus) ||
             flow.Execution.Diagnostics is null || flow.Execution.Actions is null ||
             flow.Execution.PreparedActions is null || flow.Rules is null ||
             !Enum.IsDefined(flow.StructureStatus) ||
             flow.Rules.Any(rule => rule is null || rule.Condition is null || rule.Actions is null))
             return Unavailable("load execution flow");
+
+        if (fragment)
+            return PartialView("_ExecutionFlow", flow);
 
         return View(flow);
     }

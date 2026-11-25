@@ -401,6 +401,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         var scenario = new FileTransportScenario();
         var waitingId = Guid.NewGuid();
         var completedId = Guid.NewGuid();
+        var noMatchId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
         var waiting = new RuleExecutionAuditDto
         {
@@ -478,22 +479,38 @@ public sealed class WelcomeRulesEditorBrowserTests
             UpdatedAtUtc = now,
             Diagnostics = [new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.NoMatch }]
         };
-        Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1)
-            .Setup(api => api.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+        var noMatch = new RuleExecutionAuditDto
+        {
+            ExecutionId = noMatchId,
+            GameServerId = scenario.GameServerId,
+            FeatureId = "vpn-protection",
+            MatchStatus = RuleExecutionMatchStatus.NoMatch,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+        var audit = Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1);
+        audit.Setup(api => api.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(new CollectionModel<RuleExecutionAuditDto>([waiting, completed]))));
+                new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(new CollectionModel<RuleExecutionAuditDto>([waiting, completed, noMatch]))));
+        audit.Setup(api => api.GetRuleExecutionFlow(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) => new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK,
+                new ApiResponse<RuleExecutionFlowDto>(new RuleExecutionFlowDto
+                {
+                    Execution = id == waitingId ? waiting : completed,
+                    StructureStatus = RuleExecutionStructureStatus.Missing
+                })));
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
         await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
         var waitingSection = page.Locator($"[data-execution-id='{waitingId}']");
         await Assertions.Expect(waitingSection).ToContainTextAsync("welcome-messages");
-        await waitingSection.Locator("summary").ClickAsync();
+        await waitingSection.GetByText("View execution flow", new() { Exact = true }).ClickAsync();
         await Assertions.Expect(waitingSection).ToContainTextAsync("Individual condition results are not available");
         await Assertions.Expect(waitingSection).ToContainTextAsync("they do not establish the order");
         await Assertions.Expect(waitingSection).ToContainTextAsync("Waiting for protection evidence");
         await Assertions.Expect(waitingSection).ToContainTextAsync("FallbackUsed");
         await Assertions.Expect(waitingSection).ToContainTextAsync("context.player.Country");
-        await Assertions.Expect(waitingSection.Locator(".alert-warning")).ToContainTextAsync("7 additional diagnostics omitted");
+        await Assertions.Expect(waitingSection.GetByText("7 additional diagnostics omitted.", new() { Exact = false })).ToBeVisibleAsync();
         await Assertions.Expect(waitingSection).ToContainTextAsync("<b>Protection pending</b>");
         await Assertions.Expect(waitingSection).ToContainTextAsync("OutcomeUnknown - 1 / 2 fragments completed");
         await Assertions.Expect(waitingSection).ToContainTextAsync("Item 1, fragment 2");
@@ -504,7 +521,9 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(waitingSection.Locator("img, script, b")).ToHaveCountAsync(0);
         var completedSection = page.Locator($"[data-execution-id='{completedId}']");
         await Assertions.Expect(completedSection).ToContainTextAsync("vpn-protection");
-        await completedSection.Locator("summary").ClickAsync();
+        await Assertions.Expect(completedSection.Locator("tr").First.Locator("td").Last).ToHaveTextAsync("Unknown");
+        await Assertions.Expect(page.Locator($"[data-execution-id='{noMatchId}'] tr").First.Locator("td").Last).ToHaveTextAsync("No match");
+        await completedSection.GetByText("View execution flow", new() { Exact = true }).ClickAsync();
         await Assertions.Expect(completedSection).ToContainTextAsync("NoMatch");
         browser.AssertNoBrowserErrors();
     }
@@ -519,6 +538,7 @@ public sealed class WelcomeRulesEditorBrowserTests
             GameServerId = scenario.GameServerId,
             FeatureId = "welcome-messages",
             Username = $"Player {index}",
+            MatchStatus = RuleExecutionMatchStatus.Matched,
             CreatedAtUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero),
             UpdatedAtUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
         }).ToArray();
@@ -527,7 +547,9 @@ public sealed class WelcomeRulesEditorBrowserTests
             .ReturnsAsync((RuleExecutionAuditQueryDto query, CancellationToken _) =>
                 new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.OK,
                     new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(
-                        new CollectionModel<RuleExecutionAuditDto>(items.Skip(query.SkipEntries).Take(query.TakeEntries).ToArray()))));
+                        new CollectionModel<RuleExecutionAuditDto>(items
+                            .Where(item => !query.MatchStatus.HasValue || item.MatchStatus == query.MatchStatus)
+                            .Skip(query.SkipEntries).Take(query.TakeEntries).ToArray()))));
         audit.Setup(api => api.GetRuleExecutionFlow(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) =>
                 new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK,
@@ -541,6 +563,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
         await page.GetByLabel("Server", new() { Exact = true }).SelectOptionAsync(scenario.GameServerId.ToString());
         await page.GetByLabel("Feature ID").FillAsync("welcome-messages");
+        await page.GetByLabel("Rule matched").SelectOptionAsync("Matched");
         await page.GetByLabel("Created from (UTC, inclusive)").FillAsync("2026-01-01T10:00");
         await page.GetByLabel("Created before (UTC, exclusive)").FillAsync("2026-01-02T10:00");
         await page.GetByRole(AriaRole.Button, new() { Name = "Filter" }).ClickAsync();
@@ -548,18 +571,22 @@ public sealed class WelcomeRulesEditorBrowserTests
         await page.GetByRole(AriaRole.Link, new() { Name = "Next" }).ClickAsync();
         await Assertions.Expect(page.Locator($"[data-execution-id='{items[20].ExecutionId}']")).ToContainTextAsync("Player 21");
         await Assertions.Expect(page.GetByLabel("Feature ID")).ToHaveValueAsync("welcome-messages");
+        await Assertions.Expect(page.GetByLabel("Rule matched")).ToHaveValueAsync("Matched");
+        await Assertions.Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Matched", Exact = true })).ToBeVisibleAsync();
         await Assertions.Expect(page.GetByLabel("Server", new() { Exact = true })).ToHaveValueAsync(scenario.GameServerId.ToString());
         audit.Verify(api => api.SearchRuleExecutionAudit(It.Is<RuleExecutionAuditQueryDto>(query =>
             query.GameServerId == scenario.GameServerId && query.FeatureId == "welcome-messages" &&
+            query.MatchStatus == RuleExecutionMatchStatus.Matched &&
             query.FromUtc == new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc) &&
             query.ToUtc == new DateTime(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc) &&
             query.SkipEntries == 20), It.IsAny<CancellationToken>()), Times.Once);
         await page.Locator($"[data-execution-id='{items[20].ExecutionId}'] summary").ClickAsync();
-        await page.GetByRole(AriaRole.Link, new() { Name = "Inspect historical rules" }).ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Open full execution page" }).ClickAsync();
         await Assertions.Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Rules Execution Flow" })).ToBeVisibleAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Back to audit" }).ClickAsync();
         await Assertions.Expect(page.Locator($"[data-execution-id='{items[20].ExecutionId}']")).ToContainTextAsync("Player 21");
         await Assertions.Expect(page.GetByLabel("Feature ID")).ToHaveValueAsync("welcome-messages");
+        await Assertions.Expect(page.GetByLabel("Rule matched")).ToHaveValueAsync("Matched");
         browser.AssertNoBrowserErrors();
     }
 
@@ -572,12 +599,27 @@ public sealed class WelcomeRulesEditorBrowserTests
             ExecutionId = Guid.NewGuid(),
             GameServerId = scenario.GameServerId,
             FeatureId = "welcome-messages",
+            TriggerId = "player.connected",
+            Diagnostics =
+            [
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.NoMatch, RuleId = "other", ObservedAtUtc = DateTimeOffset.UtcNow },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.WaitingForContext, RuleId = "welcome", ObservedAtUtc = DateTimeOffset.UtcNow },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.Expired, RuleId = "welcome", ObservedAtUtc = DateTimeOffset.UtcNow },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.WaitingForContext, RuleId = "welcome", ActionId = "greet", ObservedAtUtc = DateTimeOffset.UtcNow },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.Expired, RuleId = "welcome", ActionId = "greet", ObservedAtUtc = DateTimeOffset.UtcNow },
+                new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.WaitingForContext, RuleId = "only-action", ActionId = "send", ObservedAtUtc = DateTimeOffset.UtcNow }
+            ],
             Actions =
             [
                 new RuleExecutionAuditActionDto
                 {
                     RuleId = "welcome", ActionId = "greet", RuleIndex = 0, ActionIndex = 0,
                     Outcome = RuleActionExecutionOutcome.Dispatched, Mode = RuleExecutionMode.Enforce
+                },
+                new RuleExecutionAuditActionDto
+                {
+                    RuleId = "welcome", ActionId = "simulate", RuleIndex = 0, ActionIndex = 2,
+                    Outcome = RuleActionExecutionOutcome.WouldExecute, Mode = RuleExecutionMode.DryRun
                 }
             ]
         };
@@ -610,7 +652,23 @@ public sealed class WelcomeRulesEditorBrowserTests
                             }
                         ]
                     },
-                    Actions = [new RuleExecutionFlowActionDto { Id = "greet", TypeId = "message.private", DependsOnActionIds = [] }]
+                    Actions =
+                    [
+                        new RuleExecutionFlowActionDto { Id = "greet", TypeId = "message.private", DependsOnActionIds = [] },
+                        new RuleExecutionFlowActionDto { Id = "ungated", ActionIndex = 1, TypeId = "message.private" },
+                        new RuleExecutionFlowActionDto { Id = "simulate", ActionIndex = 2, TypeId = "message.private" }
+                    ]
+                },
+                new RuleExecutionFlowRuleDto
+                {
+                    Id = "other", RuleIndex = 1,
+                    Condition = new RuleExecutionFlowConditionDto { ConditionId = "other-condition" }
+                },
+                new RuleExecutionFlowRuleDto
+                {
+                    Id = "only-action", RuleIndex = 2,
+                    Condition = new RuleExecutionFlowConditionDto { ConditionId = "only-action-condition" },
+                    Actions = [new RuleExecutionFlowActionDto { Id = "send", TypeId = "message.private" }]
                 }
             ]
         };
@@ -623,16 +681,43 @@ public sealed class WelcomeRulesEditorBrowserTests
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
         await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
-        await page.Locator($"[data-execution-id='{execution.ExecutionId}'] summary").ClickAsync();
-        await page.GetByRole(AriaRole.Link, new() { Name = "Inspect historical rules" }).ClickAsync();
+        audit.Verify(api => api.GetRuleExecutionFlow(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        var section = page.Locator($"[data-execution-id='{execution.ExecutionId}']");
+        var toggle = section.GetByText("View execution flow", new() { Exact = true });
+        await toggle.ClickAsync();
+        await Assertions.Expect(section.Locator("[data-execution-flow]")).ToBeVisibleAsync();
+        await Assertions.Expect(section.Locator(".rules-flow__trigger")).ToContainTextAsync("player.connected");
         var rule = page.Locator("[data-rule-id='welcome']");
-        await Assertions.Expect(rule).ToContainTextAsync("GUID first seen - WithinAge - outcome unavailable");
+        await Assertions.Expect(rule).ToContainTextAsync("GUID first seen - WithinAge");
+        await Assertions.Expect(rule).ToContainTextAsync("Condition outcome unknown");
         await Assertions.Expect(rule).ToContainTextAsync("Duration: 7.00:00:00");
         await Assertions.Expect(rule).ToContainTextAsync("Some condition values are unavailable");
-        await Assertions.Expect(rule).ToContainTextAsync("Match outcome: unavailable");
+        await Assertions.Expect(rule).ToContainTextAsync("Match outcome unknown");
+        await Assertions.Expect(rule.Locator(".rules-flow__decision")).ToContainTextAsync("Waiting for rule context recorded");
+        await Assertions.Expect(rule.Locator(".rules-flow__decision")).ToContainTextAsync("Rule freshness window expiry recorded");
+        await Assertions.Expect(page.Locator("[data-rule-id='other']")).ToContainTextAsync("No match recorded");
         await Assertions.Expect(rule).ToContainTextAsync("Dispatched - application not confirmed");
+        await Assertions.Expect(rule.Locator("[data-action-id='greet']")).ToContainTextAsync("Recorded diagnostic: WaitingForContext");
+        await Assertions.Expect(rule.Locator("[data-action-id='greet']")).ToContainTextAsync("Recorded diagnostic: Expired");
+        await Assertions.Expect(rule.Locator("[data-action-id='ungated']")).ToContainTextAsync("Action outcome unknown");
+        await Assertions.Expect(rule.Locator("[data-action-id='ungated']")).Not.ToContainTextAsync("Recorded diagnostic");
+        var onlyActionRule = page.Locator("[data-rule-id='only-action']");
+        await Assertions.Expect(onlyActionRule.Locator(".rules-flow__decision")).ToContainTextAsync("Match outcome unknown");
+        await Assertions.Expect(onlyActionRule.Locator(".rules-flow__decision")).Not.ToContainTextAsync("Waiting for rule context recorded");
+        await Assertions.Expect(onlyActionRule.Locator("[data-action-id='send']")).ToContainTextAsync("Recorded diagnostic: WaitingForContext");
         await Assertions.Expect(rule).ToContainTextAsync("<script>unsafe</script>");
         await Assertions.Expect(rule.Locator("script, img")).ToHaveCountAsync(0);
+        await page.SetViewportSizeAsync(390, 844);
+        var path = rule.Locator(".rules-flow__path");
+        await Assertions.Expect(rule.Locator("[data-action-id='simulate']")).ToContainTextAsync("Simulated (WouldExecute)");
+        await Assertions.Expect(path).ToHaveCSSAsync("grid-template-columns", new System.Text.RegularExpressions.Regex(@"^[\d.]+px$"));
+        Assert.True(await section.Locator(".rules-flow").EvaluateAsync<bool>("el => el.getBoundingClientRect().right <= el.closest('.table-responsive').getBoundingClientRect().right + 1"));
+        Assert.True(await section.Locator(".rules-flow").EvaluateAsync<bool>("el => { const container = el.closest('.table-responsive'); container.scrollLeft = container.scrollWidth; const flow = el.getBoundingClientRect(); const viewport = container.getBoundingClientRect(); return flow.left >= viewport.left - 1 && flow.right <= viewport.right + 1; }"));
+        await toggle.ClickAsync();
+        await Assertions.Expect(path).ToBeHiddenAsync();
+        await toggle.ClickAsync();
+        await Assertions.Expect(path).ToBeVisibleAsync();
+        audit.Verify(api => api.GetRuleExecutionFlow(execution.ExecutionId, It.IsAny<CancellationToken>()), Times.Once);
         browser.AssertNoBrowserErrors();
     }
 
@@ -656,6 +741,45 @@ public sealed class WelcomeRulesEditorBrowserTests
         await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/RulesAudit/Execution/{id}").AbsoluteUri);
         await Assertions.Expect(browser.Page.Locator("main")).ToContainTextAsync(message);
         browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task RulesAudit_RetriesUnavailableInlineFlow()
+    {
+        var scenario = new FileTransportScenario();
+        var execution = new RuleExecutionAuditDto
+        {
+            ExecutionId = Guid.NewGuid(),
+            GameServerId = scenario.GameServerId,
+            FeatureId = "vpn-protection"
+        };
+        var audit = Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1);
+        audit.Setup(api => api.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<RuleExecutionAuditDto>>(new CollectionModel<RuleExecutionAuditDto>([execution]))));
+        audit.Setup(api => api.GetRuleExecutionFlow(execution.ExecutionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK,
+                new ApiResponse<RuleExecutionFlowDto>(new RuleExecutionFlowDto { Execution = execution })));
+
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var attempts = 0;
+        await browser.Page.RouteAsync("**/RulesAudit/Execution/**", async route =>
+        {
+            if (Interlocked.Increment(ref attempts) == 1)
+                await route.FulfillAsync(new RouteFulfillOptions { Status = 503 });
+            else
+                await route.ContinueAsync();
+        });
+
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/RulesAudit").AbsoluteUri);
+        var section = browser.Page.Locator($"[data-execution-id='{execution.ExecutionId}']");
+        await section.GetByText("View execution flow", new() { Exact = true }).ClickAsync();
+        await Assertions.Expect(section.GetByText("Data unavailable.", new() { Exact = false })).ToBeVisibleAsync();
+        await Assertions.Expect(section.GetByRole(AriaRole.Link, new() { Name = "Open full execution page" })).ToBeVisibleAsync();
+        await section.GetByRole(AriaRole.Button, new() { Name = "Retry" }).ClickAsync();
+        await Assertions.Expect(section.Locator("[data-execution-flow]")).ToBeVisibleAsync();
+        Assert.Equal(2, attempts);
+        audit.Verify(api => api.GetRuleExecutionFlow(execution.ExecutionId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

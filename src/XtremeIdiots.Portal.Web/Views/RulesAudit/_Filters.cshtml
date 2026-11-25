@@ -1,3 +1,4 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
 @model XtremeIdiots.Portal.Web.ViewModels.RulesAuditViewModel
 
 <form method="get" class="list-filters mb-3">
@@ -23,6 +24,15 @@
             <option value="siege-mode"></option>
             <option value="welcome-messages"></option>
         </datalist>
+    </div>
+    <div class="filter-group">
+        <label class="form-label" for="matchStatus">Rule matched</label>
+        <select class="form-select" id="matchStatus" name="matchStatus">
+            <option value="">All match outcomes</option>
+            <option value="@RuleExecutionMatchStatus.Matched" selected="@(Model.MatchStatus == RuleExecutionMatchStatus.Matched)">Matched</option>
+            <option value="@RuleExecutionMatchStatus.NoMatch" selected="@(Model.MatchStatus == RuleExecutionMatchStatus.NoMatch)">No match</option>
+            <option value="@RuleExecutionMatchStatus.Unknown" selected="@(Model.MatchStatus == RuleExecutionMatchStatus.Unknown)">Unknown</option>
+        </select>
     </div>
     <div class="filter-group">
         <label class="form-label" for="fromUtc">Created from (UTC, inclusive)</label>

@@ -50,7 +50,7 @@ public sealed class RulesAuditControllerTests
         Assert.Equal(items, model.Executions);
         repository.Verify(api => api.RuleExecutions.V1.SearchRuleExecutionAudit(
             It.Is<RuleExecutionAuditQueryDto>(query => query.GameServerId == null && query.FeatureId == null &&
-                query.FromUtc == null && query.ToUtc == null && query.SkipEntries == 0 && query.TakeEntries == 20),
+                query.FromUtc == null && query.ToUtc == null && query.MatchStatus == null && query.SkipEntries == 0 && query.TakeEntries == 20),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -62,16 +62,19 @@ public sealed class RulesAuditControllerTests
         {
             GameServerId = serverId,
             FeatureId = "welcome-messages",
+            MatchStatus = RuleExecutionMatchStatus.Matched,
             CreatedAtUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
         });
 
         var view = Assert.IsType<ViewResult>(await controller.Index(serverId, "welcome-messages",
-            "2026-01-01T10:00", "2026-01-01T15:00:00+02:00", 2));
+            "2026-01-01T10:00", "2026-01-01T15:00:00+02:00", 2, RuleExecutionMatchStatus.Matched));
         var model = Assert.IsType<RulesAuditViewModel>(view.Model);
         Assert.Single(model.Executions);
+        Assert.Equal(RuleExecutionMatchStatus.Matched, model.MatchStatus);
         repository.Verify(api => api.RuleExecutions.V1.SearchRuleExecutionAudit(
             It.Is<RuleExecutionAuditQueryDto>(query => query.GameServerId == serverId &&
-                query.FeatureId == "welcome-messages" && query.SkipEntries == 40 && query.TakeEntries == 20 &&
+                query.FeatureId == "welcome-messages" && query.MatchStatus == RuleExecutionMatchStatus.Matched &&
+                query.SkipEntries == 40 && query.TakeEntries == 20 &&
                 query.FromUtc == new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc) &&
                 query.ToUtc == new DateTime(2026, 1, 1, 13, 0, 0, DateTimeKind.Utc) &&
                 query.FromUtc.Value.Kind == DateTimeKind.Utc && query.ToUtc.Value.Kind == DateTimeKind.Utc),
@@ -94,6 +97,7 @@ public sealed class RulesAuditControllerTests
         Assert.IsType<BadRequestResult>(await controller.Index(null, new string('x', 65), null, null));
         Assert.IsType<BadRequestResult>(await controller.Index(null, null, "not a date", null));
         Assert.IsType<BadRequestResult>(await controller.Index(null, null, "2026-01-01T00:00Z", "2026-01-01T00:00Z"));
+        Assert.IsType<BadRequestResult>(await controller.Index(null, null, null, null, matchStatus: (RuleExecutionMatchStatus)99));
         controller.ModelState.AddModelError("serverId", "Invalid server");
         Assert.IsType<BadRequestResult>(await controller.Index(null, null, null, null));
         repository.Verify(api => api.RuleExecutions.V1.SearchRuleExecutionAudit(
@@ -149,6 +153,39 @@ public sealed class RulesAuditControllerTests
         repository.Setup(api => api.RuleExecutions.V1.SearchRuleExecutionAudit(It.IsAny<RuleExecutionAuditQueryDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<RuleExecutionAuditDto>>(HttpStatusCode.InternalServerError));
         Assert.Equal(503, Assert.IsType<StatusCodeResult>(await controller.Index(null, null, null, null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Index_DoesNotTreatUnknownAsNoMatch()
+    {
+        var controller = CreateController();
+        SetExecutions(new RuleExecutionAuditDto { GameServerId = serverId, MatchStatus = RuleExecutionMatchStatus.Unknown });
+        var result = Assert.IsType<StatusCodeResult>(await controller.Index(
+            serverId, null, null, null, matchStatus: RuleExecutionMatchStatus.NoMatch));
+        Assert.Equal(503, result.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(RuleExecutionMatchStatus.Matched)]
+    [InlineData(RuleExecutionMatchStatus.NoMatch)]
+    [InlineData(RuleExecutionMatchStatus.Unknown)]
+    public async Task Index_CombinesMatchStatusWithFeatureAndPagination(RuleExecutionMatchStatus matchStatus)
+    {
+        var controller = CreateController();
+        SetExecutions(new RuleExecutionAuditDto
+        {
+            GameServerId = serverId,
+            FeatureId = "vpn-protection",
+            MatchStatus = matchStatus
+        });
+
+        var view = Assert.IsType<ViewResult>(await controller.Index(serverId, "vpn-protection", null, null, 1, matchStatus));
+        Assert.Equal(matchStatus, Assert.IsType<RulesAuditViewModel>(view.Model).MatchStatus);
+        repository.Verify(api => api.RuleExecutions.V1.SearchRuleExecutionAudit(
+            It.Is<RuleExecutionAuditQueryDto>(query => query.GameServerId == serverId &&
+                query.FeatureId == "vpn-protection" && query.MatchStatus == matchStatus &&
+                query.SkipEntries == 20 && query.TakeEntries == 20),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -223,6 +260,9 @@ public sealed class RulesAuditControllerTests
             .ReturnsAsync(new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK, new ApiResponse<RuleExecutionFlowDto>(flow)));
 
         Assert.Same(flow, Assert.IsType<ViewResult>(await controller.Execution(id)).Model);
+        var partial = Assert.IsType<PartialViewResult>(await controller.Execution(id, fragment: true));
+        Assert.Equal("_ExecutionFlow", partial.ViewName);
+        Assert.Same(flow, partial.Model);
         Assert.IsType<BadRequestResult>(await controller.Execution(Guid.Empty));
     }
 
