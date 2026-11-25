@@ -90,9 +90,13 @@ public sealed class SayCommandSteps
     [Then("the Say failure toast should be displayed")]
     public async Task ThenFailureToastIsDisplayed()
     {
+        const string message = "Message delivery could not be confirmed. Some fragments may have been sent; check the server feed before resending.";
         Assert.Equal(200, responseStatus);
-        Assert.Contains("Failed to send message to server", responseBody);
-        await Assertions.Expect(Browser.Page.Locator("#toast-container .toast-error")).ToBeVisibleAsync();
+        Assert.Contains("\"success\":false", responseBody, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(message, responseBody);
+        var toast = Browser.Page.Locator("#toast-container .toast-error");
+        await Assertions.Expect(toast).ToBeVisibleAsync();
+        await Assertions.Expect(toast.Locator(".toast-message")).ToHaveTextAsync(message);
     }
 
     [Then("the Say message field should be cleared")]
