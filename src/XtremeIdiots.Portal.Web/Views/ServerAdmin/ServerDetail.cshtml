@@ -33,10 +33,10 @@
                     }
                 </h4>
                 <div>
-                    <span policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType">
+                    <span class="d-inline-flex" policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType">
                         <a id="siege-enable" asp-controller="SiegeMode" asp-action="Activate" asp-route-id="@serverId"
                            class="btn btn-danger fw-bold" hidden>Enable Siege Mode</a>
-                        <form id="siege-disable" asp-controller="SiegeMode" asp-action="End" asp-route-id="@serverId" method="post" class="d-inline" hidden>
+                        <form id="siege-disable" asp-controller="SiegeMode" asp-action="End" asp-route-id="@serverId" method="post" hidden>
                             <input type="hidden" name="sessionId" />
                             <input type="hidden" name="operationId" value="@Guid.NewGuid()" />
                             <button type="submit" class="btn btn-warning fw-bold" data-confirm="End this Siege Mode session early?">Disable Siege Mode</button>

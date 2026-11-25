@@ -14,12 +14,78 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
+using XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.FeatureAccess;
 
 [Trait("Category", "Browser")]
 public sealed class SiegeModeBrowserTests
 {
+    [Fact]
+    public async Task ServerDetail_ShowsOnlyTheActionMatchingTheCurrentSiegeStatus()
+    {
+        var scenario = new SayCommandScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        var requested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sessionId = Guid.NewGuid().ToString();
+        var state = 0;
+        await page.RouteAsync("**/SiegeMode/Status/**", async route =>
+        {
+            var current = Volatile.Read(ref state);
+            if (current == 0)
+            {
+                requested.TrySetResult();
+                await release.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            }
+
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                Status = current == 2 ? 503 : 200,
+                ContentType = "text/html",
+                Body = current == 1
+                    ? $"""<p>Siege Mode active</p><form><input name="sessionId" value="{sessionId}"><input id="siege-extension-minutes" value="60"></form>"""
+                    : "<p>Siege Mode is not active.</p>"
+            });
+        });
+
+        await page.Clock.InstallAsync();
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+        var enable = page.Locator("#siege-enable");
+        var disable = page.Locator("#siege-disable");
+        var settings = page.GetByRole(AriaRole.Link, new() { Name = "Settings", Exact = true });
+        try
+        {
+            await requested.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assertions.Expect(enable).ToBeHiddenAsync();
+            await Assertions.Expect(disable).ToBeHiddenAsync();
+            await Assertions.Expect(settings).ToBeVisibleAsync();
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+
+        await Assertions.Expect(page.Locator("#siege-status")).ToContainTextAsync("Siege Mode is not active.");
+        await Assertions.Expect(enable).ToBeVisibleAsync();
+        await Assertions.Expect(disable).ToBeHiddenAsync();
+        Interlocked.Exchange(ref state, 1);
+        await page.Clock.FastForwardAsync(10000);
+        await Assertions.Expect(page.Locator("#siege-status")).ToContainTextAsync("Siege Mode active");
+        await Assertions.Expect(enable).ToBeHiddenAsync();
+        await Assertions.Expect(disable).ToBeVisibleAsync();
+        await Assertions.Expect(disable.Locator("[name='sessionId']")).ToHaveValueAsync(sessionId);
+        await Assertions.Expect(settings).ToBeVisibleAsync();
+        Interlocked.Exchange(ref state, 2);
+        await page.Clock.FastForwardAsync(10000);
+        await Assertions.Expect(page.GetByText("Siege Mode status is unavailable. Retrying..."))
+            .ToHaveTextAsync("Siege Mode status is unavailable. Retrying...");
+        await Assertions.Expect(enable).ToBeHiddenAsync();
+        await Assertions.Expect(disable).ToBeHiddenAsync();
+        await Assertions.Expect(settings).ToBeVisibleAsync();
+    }
+
     [Fact]
     public async Task StatusPolling_PreservesEditsAndControlsAcrossFocusRacesAndErrorsOnlyForSameSession()
     {
