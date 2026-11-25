@@ -385,6 +385,65 @@ public class ServerAdminControllerTests
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(GameType.CallOfDuty4, "RCON_MESSAGE_PARTIAL_FAILURE", "Dispatched 1 of 2 fragments. Do not retry the whole batch.")]
+    [InlineData(GameType.CallOfDuty4x, "RCON_MESSAGE_PARTIAL_FAILURE", "Dispatched 1 of 2 fragments. Do not retry the whole batch.")]
+    [InlineData(GameType.CallOfDuty4x, "RCON_OPERATION_FAILED", "Delivery outcome is unknown. Do not retry the whole batch.")]
+    public async Task SendSayCommand_WithDeliveryFailure_ReturnsDeliveryDetails(GameType gameType, string errorCode, string detail)
+    {
+        var serverId = Guid.NewGuid();
+        var error = new ApiError(errorCode, detail);
+
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, gameType))));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Say))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockServersApiClient
+            .Setup(x => x.Cod4Rcon.V1.Say(serverId, It.IsAny<SayRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.BadGateway, new ApiResponse(error)));
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.Say(serverId, It.IsAny<CoD4xMessageRequestDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(HttpStatusCode.BadGateway, new ApiResponse<string>(error)));
+
+        var result = await CreateSut().SendSayCommand(serverId, "message", CancellationToken.None);
+
+        var payload = JObject.Parse(JsonConvert.SerializeObject(Assert.IsType<JsonResult>(result).Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal(detail, payload.Value<string>("message"));
+    }
+
+    [Fact]
+    public async Task SendSayCommand_WhenTransportFails_WarnsDeliveryIsUnconfirmed()
+    {
+        var serverId = Guid.NewGuid();
+        mockRepositoryApiClient
+            .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.GameServers_Admin_Rcon_Say))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockServersApiClient
+            .Setup(x => x.CoD4xRcon.V1.Say(serverId, It.IsAny<CoD4xMessageRequestDto>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("connection failed"));
+
+        var result = await CreateSut().SendSayCommand(serverId, "message", CancellationToken.None);
+
+        var payload = JObject.Parse(JsonConvert.SerializeObject(Assert.IsType<JsonResult>(result).Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Contains("could not be confirmed", payload.Value<string>("message"));
+        Assert.Contains("before resending", payload.Value<string>("message"));
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.Say(
+            serverId, It.IsAny<CoD4xMessageRequestDto>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task ServerDetail_WhenAuthorized_ShowsFeedEventsFlag()
     {

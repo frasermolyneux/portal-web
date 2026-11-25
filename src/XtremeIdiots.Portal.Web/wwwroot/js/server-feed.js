@@ -117,7 +117,11 @@ var ServerFeed = (function () {
                     RconUtils.showToast('error', result.message || 'Failed to send message');
                 },
                 error: function (xhr) {
-                    RconUtils.showToast('error', 'Error sending message: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error'));
+                    var message = 'Error sending message: ' + (xhr.responseJSON?.message || xhr.statusText || 'Unknown error');
+                    if (xhr.status === 0 || xhr.status >= 500) {
+                        message += ' Delivery could not be confirmed; check the server feed before resending.';
+                    }
+                    RconUtils.showToast('error', message);
                 }
             });
         });

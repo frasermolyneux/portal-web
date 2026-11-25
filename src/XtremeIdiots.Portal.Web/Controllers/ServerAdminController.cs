@@ -702,12 +702,28 @@ public class ServerAdminController(
 
             message = message.Trim();
 
-            var sayResult = await SendSayAsync(id, gameServerData!.GameType, message, cancellationToken).ConfigureAwait(false);
+            ApiResult sayResult;
+            try
+            {
+                sayResult = await SendSayAsync(id, gameServerData!.GameType, message, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is HttpRequestException
+                || ex is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+            {
+                Logger.LogWarning(ex, "Say command delivery could not be confirmed for server {ServerId}", id);
+                return Json(new { success = false, message = UnconfirmedSayDeliveryMessage });
+            }
 
             if (!sayResult.IsSuccess)
             {
-                Logger.LogWarning("Failed to send say command to server {ServerId}", id);
-                return Json(new { success = false, message = "Failed to send message to server" });
+                Logger.LogWarning("Failed to send say command to server {ServerId}: {StatusCode}", id, sayResult.StatusCode);
+                var deliveryError = sayResult.Result?.Errors?.FirstOrDefault(error =>
+                    error.Code is "RCON_MESSAGE_PARTIAL_FAILURE" or "RCON_OPERATION_FAILED");
+                return Json(new
+                {
+                    success = false,
+                    message = string.IsNullOrWhiteSpace(deliveryError?.Message) ? UnconfirmedSayDeliveryMessage : deliveryError.Message
+                });
             }
 
             TrackSuccessTelemetry("SayCommandSent", nameof(SendSayCommand), new Dictionary<string, string>
@@ -2232,7 +2248,7 @@ public class ServerAdminController(
             (int)GameType.Insurgency => serversApiClient.InsurgencyRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
             (int)GameType.Rust => serversApiClient.RustRcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
             (int)GameType.Left4Dead2 => serversApiClient.L4d2Rcon.V1.Say(serverId, new SayRequest { Message = message }, cancellationToken),
-            (int)GameType.CallOfDuty4x => ToApiResultTask(serversApiClient.CoD4xRcon.V1.Say(
+            (int)GameType.CallOfDuty4x => ToSayApiResultTask(serversApiClient.CoD4xRcon.V1.Say(
                 serverId,
                 new CoD4xMessageRequestDto { Message = message },
                 cancellationToken)),
@@ -2240,6 +2256,15 @@ public class ServerAdminController(
         };
 
         return await sendTask.ConfigureAwait(false);
+    }
+
+    private const string UnconfirmedSayDeliveryMessage =
+        "Message delivery could not be confirmed. Some fragments may have been sent; check the server feed before resending.";
+
+    private async static Task<ApiResult> ToSayApiResultTask(Task<ApiResult<string>> apiResultTask)
+    {
+        var result = await apiResultTask.ConfigureAwait(false);
+        return new ApiResult(result.StatusCode, new ApiResponse(result.Result?.Errors?.ToArray() ?? []));
     }
 
     private Task<ApiResult<RconMapCollectionDto>> GetServerMapsAsync(Guid serverId, GameType gameType)
