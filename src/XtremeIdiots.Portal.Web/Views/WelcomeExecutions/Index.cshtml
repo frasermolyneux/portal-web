@@ -102,11 +102,24 @@
                             <h6 class="mt-3">Action outcomes</h6>
                             <div class="table-responsive">
                                 <table class="table table-striped">
-                                    <thead><tr><th>Rule / action</th><th>Mode</th><th>Outcome</th><th>Detail</th></tr></thead>
+                                    <thead><tr><th>Rule / action</th><th>Delivery</th><th>Mode</th><th>Outcome</th><th>Detail</th></tr></thead>
                                     <tbody>
                                         @foreach (var action in execution.Actions)
                                         {
-                                            <tr><td>@action.RuleId / @action.ActionId</td><td>@action.Mode</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
+                                            <tr>
+                                                <td>@action.RuleId / @action.ActionId</td>
+                                                <td>
+                                                    @if (action.Command.DeliveryIdentity is { } delivery)
+                                                    {
+                                                        <span>Item @(delivery.MessageIndex + 1), fragment @(delivery.FragmentIndex + 1)</span>
+                                                        @if (delivery.RecipientConnectionId.HasValue)
+                                                        {
+                                                            <div>Recipient connection: @delivery.RecipientConnectionId</div>
+                                                        }
+                                                    }
+                                                </td>
+                                                <td>@action.Mode</td><td>@action.Outcome</td><td>@action.Detail</td>
+                                            </tr>
                                         }
                                     </tbody>
                                 </table>

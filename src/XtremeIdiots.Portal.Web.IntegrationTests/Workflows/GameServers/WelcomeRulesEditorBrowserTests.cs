@@ -289,6 +289,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         var scenario = new FileTransportScenario();
         var waitingId = Guid.NewGuid();
         var completedId = Guid.NewGuid();
+        var recipientId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
         RuleFeatureExecutionDto Execution(Guid id, RuleFeatureExecutionState state) => new()
         {
@@ -314,6 +315,25 @@ public sealed class WelcomeRulesEditorBrowserTests
                 new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.WaitingForProtection, Detail = "<b>Protection pending</b>" },
                 new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.FallbackUsed, TokenKey = "context.player.Country", Source = "GeoLocation", Detail = "Fallback selected" },
                 new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.DiagnosticsOmitted, OmittedCount = 7 }
+            ],
+            Actions =
+            [
+                new RuleActionExecutionDto
+                {
+                    RuleId = "welcome",
+                    ActionId = "greet",
+                    Outcome = RuleActionExecutionOutcome.OutcomeUnknown,
+                    Detail = "Fragment result unknown",
+                    Command = new RuleActionCommand
+                    {
+                        DeliveryIdentity = new RuleDeliveryIdentity
+                        {
+                            MessageIndex = 0,
+                            FragmentIndex = 1,
+                            RecipientConnectionId = recipientId
+                        }
+                    }
+                }
             ],
             PreparedActions =
             [
@@ -354,6 +374,10 @@ public sealed class WelcomeRulesEditorBrowserTests
         await waitingSection.Locator("summary").ClickAsync();
         await Assertions.Expect(waitingSection).ToContainTextAsync("OutcomeUnknown - 1 / 2 fragments completed");
         await Assertions.Expect(waitingSection.Locator("pre")).ToHaveTextAsync("<script>unsafe</script>");
+        var outcomeRow = waitingSection.Locator("tr", new() { HasText = "Fragment result unknown" });
+        await Assertions.Expect(outcomeRow).ToContainTextAsync("Item 1, fragment 2");
+        await Assertions.Expect(outcomeRow).ToContainTextAsync(recipientId.ToString());
+        await Assertions.Expect(outcomeRow).ToContainTextAsync("OutcomeUnknown");
         await Assertions.Expect(waitingSection.Locator("img, script, b")).ToHaveCountAsync(0);
         var completedSection = page.Locator($"[data-execution-id='{completedId}']");
         await Assertions.Expect(completedSection).ToContainTextAsync("NoMatch");
