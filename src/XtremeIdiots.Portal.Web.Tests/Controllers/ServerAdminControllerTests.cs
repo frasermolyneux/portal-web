@@ -967,10 +967,13 @@ public class ServerAdminControllerTests
         Assert.Contains("token=***", rawEventData, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task TempBanRconPlayer_CoD4xWithGuid_UsesCoD4xIdentifierEndpoint()
+    [Theory]
+    [InlineData("1", 1440)]
+    [InlineData("30", 43200)]
+    public async Task TempBanRconPlayer_CoD4xWithGuid_UsesCoD4xIdentifierEndpoint(string configuredDuration, int expectedMinutes)
     {
         var serverId = Guid.NewGuid();
+        mockConfiguration.Setup(c => c["XtremeIdiots:Forums:DefaultTempBanDays"]).Returns(configuredDuration);
 
         mockRepositoryApiClient
             .Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
@@ -1003,7 +1006,7 @@ public class ServerAdminControllerTests
             serverId,
             It.Is<CoD4xTempBanRequestDto>(r =>
                 r.PlayerIdentifier == "guid-abc" &&
-                r.DurationMinutes > 0),
+                r.DurationMinutes == expectedMinutes),
             It.IsAny<CancellationToken>()), Times.Once);
 
         mockServersApiClient.Verify(x => x.CoD4xRcon.V1.BanClient(
@@ -1014,6 +1017,29 @@ public class ServerAdminControllerTests
             It.IsAny<Guid>(),
             It.IsAny<CoD4xPermBanRequestDto>(),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("31")]
+    [InlineData("invalid")]
+    public async Task TempBanRconPlayer_CoD4x_InvalidConfiguredDurationDoesNotSendBan(string configuredDuration)
+    {
+        var serverId = Guid.NewGuid();
+        mockConfiguration.Setup(c => c["XtremeIdiots:Forums:DefaultTempBanDays"]).Returns(configuredDuration);
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 4, "guid", "Player");
+
+        var result = Assert.IsType<JsonResult>(await CreateSut().TempBanRconPlayer(serverId, 4, "guid", "Player", CancellationToken.None));
+        var payload = JObject.Parse(JsonConvert.SerializeObject(result.Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("InvalidDuration", payload.Value<string>("error"));
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(It.IsAny<Guid>(),
+            It.IsAny<CoD4xTempBanRequestDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.AdminActions.V1.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1059,6 +1085,36 @@ public class ServerAdminControllerTests
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CoD4xBan_InvalidIdentifierReportsIntegrationRejection(bool temporary)
+    {
+        var serverId = Guid.NewGuid();
+        const string identifier = "123456";
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 4, identifier, "Player");
+        var failure = new ApiResult<CoD4xBanCommandResponseDto>(HttpStatusCode.BadRequest,
+            new ApiResponse<CoD4xBanCommandResponseDto>(new ApiError("INVALID_PLAYER_IDENTIFIER", "invalid identifier")));
+        mockServersApiClient.Setup(x => x.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(serverId,
+            It.Is<CoD4xTempBanRequestDto>(r => r.PlayerIdentifier == identifier), It.IsAny<CancellationToken>())).ReturnsAsync(failure);
+        mockServersApiClient.Setup(x => x.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(serverId,
+            It.Is<CoD4xPermBanRequestDto>(r => r.PlayerIdentifier == identifier), It.IsAny<CancellationToken>())).ReturnsAsync(failure);
+
+        var controller = CreateSut();
+        var result = temporary
+            ? await controller.TempBanRconPlayer(serverId, 4, identifier, "Player", CancellationToken.None)
+            : await controller.BanRconPlayer(serverId, 4, identifier, "Player", CancellationToken.None);
+        var payload = JObject.Parse(JsonConvert.SerializeObject(Assert.IsType<JsonResult>(result).Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal("RconFailed", payload.Value<string>("error"));
+        Assert.Contains("rejected this player's identifier", payload.Value<string>("message"));
+        mockRepositoryApiClient.Verify(x => x.AdminActions.V1.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task KickRconPlayer_CoD4x_IgnoresCachedOccupantAndUsesFreshStatus()
     {
@@ -1089,7 +1145,7 @@ public class ServerAdminControllerTests
         mockServersApiClient
             .Setup(x => x.CoD4xRcon.V1.ClientKick(
                 serverId,
-                It.Is<CoD4xClientReasonRequestDto>(request => request.ClientId == playerSlot),
+                It.Is<CoD4xClientReasonRequestDto>(request => request.ClientId == playerSlot && !string.IsNullOrWhiteSpace(request.Reason)),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<string>(HttpStatusCode.OK, new ApiResponse<string>("ok")));
 
@@ -1110,6 +1166,31 @@ public class ServerAdminControllerTests
             It.IsAny<string>(),
             It.IsAny<string?>(),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false, "RconFailed")]
+    [InlineData(true, "RecordFailed")]
+    public async Task KickRconPlayer_CoD4x_DistinguishesCommandAndAuditFailure(bool commandSucceeded, string expectedError)
+    {
+        var serverId = Guid.NewGuid();
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(CreateGameServerDto(serverId, GameType.CallOfDuty4x))));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        ConfigureModerationTarget(serverId, GameType.CallOfDuty4x, 9, "guid", "Player");
+        mockServersApiClient.Setup(x => x.CoD4xRcon.V1.ClientKick(serverId,
+                It.Is<CoD4xClientReasonRequestDto>(r => r.ClientId == 9 && !string.IsNullOrWhiteSpace(r.Reason)), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<string>(commandSucceeded ? HttpStatusCode.OK : HttpStatusCode.BadRequest));
+        mockRepositoryApiClient.Setup(x => x.AdminActions.V1.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.ServiceUnavailable));
+
+        var result = Assert.IsType<JsonResult>(await CreateSut().KickRconPlayer(serverId, 9, "guid", "Player", CancellationToken.None));
+        var payload = JObject.Parse(JsonConvert.SerializeObject(result.Value));
+        Assert.False(payload.Value<bool>("success"));
+        Assert.Equal(expectedError, payload.Value<string>("error"));
+        mockRepositoryApiClient.Verify(x => x.AdminActions.V1.CreateAdminAction(It.IsAny<CreateAdminActionDto>(),
+            It.IsAny<CancellationToken>()), commandSucceeded ? Times.Once() : Times.Never());
     }
 
     [Fact]

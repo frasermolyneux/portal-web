@@ -33,9 +33,15 @@
                     }
                 </h4>
                 <div>
-                    <a policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType"
-                       asp-controller="SiegeMode" asp-action="Activate" asp-route-id="@serverId"
-                       class="btn btn-danger fw-bold">Enable Siege Mode</a>
+                    <span policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType">
+                        <a id="siege-enable" asp-controller="SiegeMode" asp-action="Activate" asp-route-id="@serverId"
+                           class="btn btn-danger fw-bold" hidden>Enable Siege Mode</a>
+                        <form id="siege-disable" asp-controller="SiegeMode" asp-action="End" asp-route-id="@serverId" method="post" class="d-inline" hidden>
+                            <input type="hidden" name="sessionId" />
+                            <input type="hidden" name="operationId" value="@Guid.NewGuid()" />
+                            <button type="submit" class="btn btn-warning fw-bold" data-confirm="End this Siege Mode session early?">Disable Siege Mode</button>
+                        </form>
+                    </span>
                     @if (Model.CanEditServer)
                     {
                         <a asp-controller="GameServers" asp-action="Edit" asp-route-id="@serverId"
@@ -82,7 +88,7 @@
         </li>
         <li class="nav-item" role="presentation" policy="@AuthPolicies.GameServers_Admin_SiegeMode" policy-resource="@gs.GameType">
             <button class="nav-link" id="siege-tab" data-bs-toggle="tab" data-bs-target="#siege"
-                    type="button" role="tab" aria-controls="siege" aria-selected="false">Siege Mode</button>
+                    type="button" role="tab" aria-controls="siege" aria-selected="false"><i class="fa-solid fa-fw fa-dungeon" aria-hidden="true"></i> Siege Mode</button>
         </li>
     </ul>
 

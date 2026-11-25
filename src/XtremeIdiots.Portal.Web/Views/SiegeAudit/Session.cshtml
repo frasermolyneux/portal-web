@@ -7,17 +7,16 @@
         <div class="ibox">
             <div class="ibox-title"><h5>Siege Session</h5></div>
             <div class="ibox-content">
-                <p>Server: @Model.Server.Title · Session: @Model.Session.SessionId · Mode: @Model.Session.Mode</p>
-                <p>Times are UTC. Dry-run outcomes represent simulated actions; pending, claimed and dispatched actions are not confirmed effects.</p>
+                <p>Server: <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@Model.Server.GameServerId"><game-type-icon game="@Model.Server.GameType"></game-type-icon> @Model.Server.Title</a> · Session: @Model.Session.SessionId · Mode: @Model.Session.Mode</p>
                 <h6>Session events</h6>
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead><tr><th>Event</th><th>Time (UTC)</th><th>Actor</th><th>Expiry (UTC)</th><th>Extension (minutes)</th><th>Mode</th></tr></thead>
+                        <thead><tr><th>Event</th><th>Time</th><th>Actor</th><th>Expiry</th><th>Extension (minutes)</th><th>Mode</th></tr></thead>
                         <tbody>
                         @foreach (var entry in Model.Events)
                         {
-                            <tr><td>@entry.EventType</td><td>@entry.OccurredAtUtc.ToString("u")</td><td>@entry.Actor</td>
-                                <td>@entry.ExpiresAtUtc.ToString("u")</td><td>@entry.ExtensionMinutes</td><td>@entry.Mode</td></tr>
+                            <tr><td>@entry.EventType</td><td><time time-ago utc="@entry.OccurredAtUtc" show-absolute="false"></time></td><td>@entry.Actor</td>
+                                <td><time time-ago utc="@entry.ExpiresAtUtc" show-absolute="false"></time></td><td>@entry.ExtensionMinutes</td><td>@entry.Mode</td></tr>
                         }
                         </tbody>
                     </table>
@@ -34,11 +33,11 @@
                 <h6>Actions</h6>
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead><tr><th>Occurred (UTC)</th><th>Updated (UTC)</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <thead><tr><th>Occurred</th><th>Updated</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
                         <tbody>
                         @foreach (var action in Model.Actions)
                         {
-                            <tr><td>@action.OccurredAtUtc?.ToString("u")</td><td>@action.UpdatedAtUtc.ToString("u")</td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                            <tr><td>@if (action.OccurredAtUtc.HasValue) { <time time-ago utc="@action.OccurredAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</td><td><time time-ago utc="@action.UpdatedAtUtc.UtcDateTime" show-absolute="false"></time></td><td>@action.Mode</td><td>@action.PlayerGuid</td>
                                 <td>@action.RuleId</td><td>@action.ActionTypeId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
                         }
                         </tbody>
@@ -56,11 +55,11 @@
                 <h6>Checks</h6>
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead><tr><th>Time (UTC)</th><th>Mode</th><th>Player GUID</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <thead><tr><th>Time</th><th>Mode</th><th>Player GUID</th><th>Outcome</th><th>Detail</th></tr></thead>
                         <tbody>
                         @foreach (var check in Model.Checks)
                         {
-                            <tr><td>@check.OccurredAtUtc.ToString("u")</td><td>@check.Mode</td><td>@check.PlayerGuid</td><td>@check.Outcome</td><td>@check.Detail</td></tr>
+                            <tr><td><time time-ago utc="@check.OccurredAtUtc" show-absolute="false"></time></td><td>@check.Mode</td><td>@check.PlayerGuid</td><td>@check.Outcome</td><td>@check.Detail</td></tr>
                         }
                         </tbody>
                     </table>

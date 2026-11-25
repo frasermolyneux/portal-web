@@ -9,20 +9,21 @@
             <div class="ibox-title"><h5>Siege Sessions</h5></div>
             <div class="ibox-content">
                 <partial name="_Filters" model="Model" />
-                <p>Active and historical sessions. Times are UTC; refresh the page to update.</p>
+                <p>Active and historical sessions. Refresh the page to update.</p>
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead><tr><th>Session</th><th>Server</th><th>Status</th><th>Mode</th><th>Started (UTC)</th><th>Expires (UTC)</th><th>Ended (UTC)</th><th>Started by</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Session</th><th>Server</th><th>Status</th><th>Mode</th><th>Started</th><th>Expires</th><th>Ended</th><th>Started by</th><th>Actions</th></tr></thead>
                         <tbody>
                         @foreach (var session in Model.Sessions)
                         {
                             var server = Model.Servers.FirstOrDefault(s => s.GameServerId == session.GameServerId);
                             <tr>
-                                <td><a asp-action="Session" asp-route-serverId="@session.GameServerId" asp-route-sessionId="@session.SessionId">@session.SessionId</a></td><td>@server?.Title</td>
+                                <td><a asp-action="Session" asp-route-serverId="@session.GameServerId" asp-route-sessionId="@session.SessionId">@session.SessionId</a></td>
+                                <td>@if (server is not null) { <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.GameServerId"><game-type-icon game="@server.GameType"></game-type-icon> @server.Title</a> }</td>
                                 <td>@(session.EndedAtUtc.HasValue ? "Ended" : session.ExpiresAtUtc <= now ? "Expired" : "Active")</td>
-                                <td>@session.Mode</td><td>@session.StartedAtUtc.ToString("u")</td>
-                                <td>@session.ExpiresAtUtc.ToString("u")</td><td>@session.EndedAtUtc?.ToString("u")</td>
-                                <td>@session.StartedBy</td><td>@session.ActionCount</td>
+                                <td>@session.Mode</td><td><time time-ago utc="@session.StartedAtUtc" show-absolute="false"></time></td>
+                                <td><time time-ago utc="@session.ExpiresAtUtc" show-absolute="false"></time></td><td>@if (session.EndedAtUtc.HasValue) { <time time-ago utc="@session.EndedAtUtc.Value" show-absolute="false"></time> }</td>
+                                <td>@if (session.StartedBy is not null && Model.StartingUsers.TryGetValue(session.StartedBy, out var displayName)) { <a href="https://www.xtremeidiots.com/profile/@session.StartedBy/">@displayName</a> } else { @session.StartedBy }</td><td>@session.ActionCount</td>
                             </tr>
                         }
                         </tbody>

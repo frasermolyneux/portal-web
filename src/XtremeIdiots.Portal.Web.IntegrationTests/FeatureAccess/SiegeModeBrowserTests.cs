@@ -49,6 +49,8 @@ public sealed class SiegeModeBrowserTests
             ContentType = "text/html",
             Body = """
                 <div id="siege-status" data-url="/siege-poll-status"></div>
+                <a id="siege-enable" hidden>Enable Siege Mode</a>
+                <form id="siege-disable" hidden><input name="sessionId"><button>Disable Siege Mode</button></form>
                 <button id="outside">Outside</button>
                 <script src="/js/vendor/dompurify.min.js"></script>
                 <script src="/js/async-data.js"></script>
@@ -93,6 +95,9 @@ public sealed class SiegeModeBrowserTests
         var status = page.Locator("#siege-status");
         var minutes = page.Locator("#siege-extension-minutes");
         await Assertions.Expect(status).ToContainTextAsync("Revision 1");
+        await Assertions.Expect(page.Locator("#siege-enable")).ToBeHiddenAsync();
+        await Assertions.Expect(page.Locator("#siege-disable")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("#siege-disable [name='sessionId']")).ToHaveValueAsync(sessionId);
         await page.Clock.FastForwardAsync(10000);
         await pending.Task.WaitAsync(TimeSpan.FromSeconds(10));
         try
@@ -122,6 +127,8 @@ public sealed class SiegeModeBrowserTests
             await minutes.FillAsync("145");
             releaseError.TrySetResult();
             await Assertions.Expect(page.GetByText("Siege Mode status is unavailable. Retrying...")).ToBeVisibleAsync();
+            await Assertions.Expect(page.Locator("#siege-enable")).ToBeHiddenAsync();
+            await Assertions.Expect(page.Locator("#siege-disable")).ToBeHiddenAsync();
             await Assertions.Expect(minutes).ToBeFocusedAsync();
         }
         finally
@@ -140,11 +147,14 @@ public sealed class SiegeModeBrowserTests
 
         await page.Clock.FastForwardAsync(10000);
         await Assertions.Expect(status).ToContainTextAsync("Revision 6");
+        await Assertions.Expect(page.Locator("#siege-disable [name='sessionId']")).ToHaveValueAsync(nextSessionId);
         await Assertions.Expect(minutes).ToHaveValueAsync("60");
         await minutes.FillAsync("210");
         await page.Locator("#outside").ClickAsync();
         await page.Clock.FastForwardAsync(10000);
         await Assertions.Expect(status).ToContainTextAsync("Siege Mode is not active.");
+        await Assertions.Expect(page.Locator("#siege-enable")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("#siege-disable")).ToBeHiddenAsync();
         await page.Clock.FastForwardAsync(10000);
         await Assertions.Expect(status).ToContainTextAsync("Revision 8");
         await Assertions.Expect(minutes).ToHaveValueAsync("60");

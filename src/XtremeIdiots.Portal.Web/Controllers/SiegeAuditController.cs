@@ -33,6 +33,15 @@ public class SiegeAuditController(
             return Unavailable("search sessions");
 
         model.Sessions = [.. response.Result.Data.Items.Where(s => model.Query.GameServerIds.Contains(s.GameServerId))];
+        foreach (var actor in model.Sessions.Select(s => s.StartedBy).Where(s => !string.IsNullOrWhiteSpace(s) && s.All(char.IsAsciiDigit)).Distinct())
+        {
+            var profile = await repository.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(actor, cancellationToken).ConfigureAwait(false);
+            if (profile.IsSuccess && profile.Result?.Data is { } user &&
+                string.Equals(user.XtremeIdiotsForumId, actor, StringComparison.Ordinal))
+                model.StartingUsers[actor] = user.DisplayName ?? actor;
+            else if (!profile.IsNotFound)
+                logger.LogWarning("Could not resolve Siege session starting user {Actor}", actor);
+        }
         model.HasNext = response.Result.Data.Items.Count() == PageSize && ValidPage(page + 1);
         return View(model);
     }
@@ -228,6 +237,7 @@ public sealed class SiegeAuditViewModel
     public bool HasNext { get; set; }
     public SiegeAuditQueryDto Query { get; set; } = new();
     public List<SiegeSessionDto> Sessions { get; set; } = [];
+    public Dictionary<string, string> StartingUsers { get; } = new(StringComparer.Ordinal);
     public List<RuleActionExecutionDto> Actions { get; set; } = [];
     public List<SiegeCheckDto> Checks { get; set; } = [];
 }

@@ -8,7 +8,7 @@
         @foreach (var item in Model)
         {
             <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@item.ServerId">@item.ServerName</a>
-            <span>(@(item.Session.Mode switch { SiegeSessionMode.DryRun => "Dry Run", SiegeSessionMode.Enforce => "Enforcing", _ => "Unknown mode" }), until @item.Session.ExpiresAtUtc.ToString("u"))</span>
+            <span>(@(item.Session.Mode switch { SiegeSessionMode.DryRun => "Dry Run", SiegeSessionMode.Enforce => "Enforcing", _ => "Unknown mode" }), expires <time time-ago utc="@item.Session.ExpiresAtUtc" show-absolute="false"></time>)</span>
         }
     </div>
 }

@@ -9,7 +9,7 @@ else
 {
     <div class="alert alert-warning" role="status">
         <strong>Siege Mode active: @(session.Mode switch { SiegeSessionMode.DryRun => "Dry Run", SiegeSessionMode.Enforce => "Enforcing", _ => "Unknown mode" })</strong>
-        <span>Expires @session.ExpiresAtUtc.ToString("u")</span>
+        <span>Expires <time time-ago utc="@session.ExpiresAtUtc" show-absolute="false"></time></span>
     </div>
     <div class="d-flex flex-wrap gap-2 mb-3">
         <form asp-controller="SiegeMode" asp-action="End" asp-route-id="@Model.ServerId" method="post">
@@ -29,11 +29,11 @@ else
     <h5>Recent protection actions</h5>
     <div class="table-responsive">
         <table class="table table-striped">
-            <thead><tr><th>Updated (UTC)</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Details</th></tr></thead>
+            <thead><tr><th>Updated</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Details</th></tr></thead>
             <tbody>
             @foreach (var action in Model.Actions)
             {
-                <tr><td>@action.UpdatedAtUtc.ToString("u")</td><td>@action.PlayerGuid</td><td>@action.RuleId</td><td>@action.ActionTypeId</td>
+                <tr><td><time time-ago utc="@action.UpdatedAtUtc.UtcDateTime" show-absolute="false"></time></td><td>@action.PlayerGuid</td><td>@action.RuleId</td><td>@action.ActionTypeId</td>
                     <td>@action.Outcome</td><td>@action.Detail</td></tr>
             }
             </tbody>
@@ -43,11 +43,11 @@ else
     <h5>Recent protection checks</h5>
     <div class="table-responsive">
         <table class="table table-striped">
-            <thead><tr><th>Time (UTC)</th><th>Player GUID</th><th>Outcome</th><th>Details</th></tr></thead>
+            <thead><tr><th>Time</th><th>Player GUID</th><th>Outcome</th><th>Details</th></tr></thead>
             <tbody>
             @foreach (var check in Model.Checks)
             {
-                <tr><td>@check.OccurredAtUtc.ToString("u")</td><td>@check.PlayerGuid</td>
+                <tr><td><time time-ago utc="@check.OccurredAtUtc" show-absolute="false"></time></td><td>@check.PlayerGuid</td>
                     <td>@check.Outcome</td><td>@check.Detail</td></tr>
             }
             </tbody>
