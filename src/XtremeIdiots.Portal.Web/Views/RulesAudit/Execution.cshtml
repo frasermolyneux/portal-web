@@ -1,0 +1,87 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@model RuleExecutionFlowDto
+@{
+    ViewData["Title"] = "Rules Execution Flow";
+    var backRoute = new Dictionary<string, string>();
+    foreach (var key in new[] { "serverId", "featureId", "fromUtc", "toUtc", "page" })
+    {
+        var value = Context.Request.Query[key].ToString();
+        if (!string.IsNullOrEmpty(value))
+            backRoute[key] = value;
+    }
+}
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row"><div class="col-12"><div class="container-fluid">
+        <div class="ibox">
+            <div class="ibox-title"><h5>@ViewData["Title"]</h5></div>
+            <div class="ibox-content">
+                <p><strong>@Model.Execution.FeatureId</strong> - @Model.Execution.State - @(Model.Execution.Username ?? Model.Execution.PlayerGuid ?? "Unknown player")</p>
+                <p class="text-muted">This is the frozen rule structure, not a complete execution timeline. Individual condition and rule outcomes are unavailable unless explicitly recorded. Dispatched is not confirmation of application; dry runs are simulated.</p>
+                @if (Model.StructureStatus == RuleExecutionStructureStatus.Missing)
+                {
+                    <div class="alert alert-warning">Historical rule structure was not recorded for this execution.</div>
+                }
+                else if (Model.StructureStatus == RuleExecutionStructureStatus.Malformed)
+                {
+                    <div class="alert alert-warning">Historical rule structure is malformed and cannot be displayed.</div>
+                }
+                else if (Model.Rules.Length == 0)
+                {
+                    <p>The recorded rule set is empty.</p>
+                }
+                else
+                {
+                    <h6>Recorded rule structure</h6>
+                    <p class="text-muted">Rule set revision: @(string.IsNullOrEmpty(Model.RuleSetRevision) ? "Unavailable" : Model.RuleSetRevision)</p>
+                    @foreach (var rule in Model.Rules)
+                    {
+                        <section class="border rounded p-3 mb-3" data-rule-id="@rule.Id">
+                            <h6>Rule @(rule.RuleIndex + 1): @(rule.DisplayName ?? rule.Id)</h6>
+                            <p>Configured: @(rule.Enabled == true ? "Enabled" : rule.Enabled == false ? "Disabled" : "Unavailable") |
+                                After match: @(rule.AfterMatch ?? "Unavailable") | Match outcome: unavailable</p>
+                            <strong><span class="badge bg-secondary">IF</span> Conditions</strong>
+                            <ul class="list-group mt-2 mb-3"><partial name="_FlowCondition" model="rule.Condition" /></ul>
+                            <div class="text-muted mb-2"><i class="fa-solid fa-fw fa-arrow-down" aria-hidden="true"></i> If this rule matches</div>
+                            <strong><span class="badge bg-secondary">THEN</span> Actions</strong>
+                            <ol class="list-group list-group-numbered mt-2">
+                                @foreach (var action in rule.Actions)
+                                {
+                                    var outcomes = Model.Execution.Actions.Where(item => item.RuleIndex == rule.RuleIndex &&
+                                        item.ActionIndex == action.ActionIndex && item.RuleId == rule.Id && item.ActionId == action.Id).ToArray();
+                                    var preparations = Model.Execution.PreparedActions.Where(item => item.RuleIndex == rule.RuleIndex &&
+                                        item.ActionIndex == action.ActionIndex && item.ActionId == action.Id).ToArray();
+                                    <li class="list-group-item" data-action-id="@action.Id">
+                                        <strong>@(action.DisplayName ?? action.TypeId)</strong> - @action.Id
+                                        <div class="text-muted">Depends on: @(action.DependsOnActionIds is null ? "Unavailable" : action.DependsOnActionIds.Length == 0 ? "None" : string.Join(", ", action.DependsOnActionIds))</div>
+                                        @if (outcomes.Length == 0 && preparations.Length == 0)
+                                        {
+                                            <div>Recorded outcome unavailable.</div>
+                                        }
+                                        @foreach (var preparation in preparations)
+                                        {
+                                            <div>Preparation: @preparation.Outcome - @preparation.CompletedFragmentCount / @preparation.TotalFragmentCount fragments completed</div>
+                                        }
+                                        @foreach (var outcome in outcomes)
+                                        {
+                                            <div>@outcome.Mode - @outcome.Outcome
+                                                @if (outcome.Mode == RuleExecutionMode.DryRun || outcome.Outcome == RuleActionExecutionOutcome.WouldExecute) { <span> - simulated</span> }
+                                                else if (outcome.Outcome == RuleActionExecutionOutcome.Dispatched) { <span> - application not confirmed</span> }
+                                                else if (outcome.Outcome == RuleActionExecutionOutcome.Applied) { <span> - applied as recorded</span> }
+                                            </div>
+                                        }
+                                    </li>
+                                }
+                            </ol>
+                        </section>
+                    }
+                }
+                <h6>Recorded execution evidence</h6>
+                <partial name="_ExecutionEvidence" model="Model.Execution" />
+            </div>
+            <div class="ibox-footer">
+                <a class="btn btn-outline-secondary" asp-action="Index" asp-all-route-data="backRoute">Back to audit</a>
+            </div>
+        </div>
+    </div></div></div>
+</div>

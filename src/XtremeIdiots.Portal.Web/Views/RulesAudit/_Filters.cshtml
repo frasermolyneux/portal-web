@@ -1,0 +1,36 @@
+@model XtremeIdiots.Portal.Web.ViewModels.RulesAuditViewModel
+
+<form method="get" class="list-filters mb-3">
+    <div class="filter-group">
+        <label class="form-label" for="serverId">Server</label>
+        <select class="form-select" id="serverId" name="serverId">
+            <option value="">All servers</option>
+            @if (Model.ServerId.HasValue && !Model.Servers.Any(server => server.GameServerId == Model.ServerId))
+            {
+                <option value="@Model.ServerId" selected>@Model.ServerId</option>
+            }
+            @foreach (var server in Model.Servers)
+            {
+                <option value="@server.GameServerId" selected="@(server.GameServerId == Model.ServerId)">@server.Title</option>
+            }
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="form-label" for="featureId">Feature ID</label>
+        <input class="form-control" id="featureId" name="featureId" value="@Model.FeatureId" list="ruleAuditFeatures" maxlength="64" />
+        <datalist id="ruleAuditFeatures">
+            <option value="vpn-protection"></option>
+            <option value="siege-mode"></option>
+            <option value="welcome-messages"></option>
+        </datalist>
+    </div>
+    <div class="filter-group">
+        <label class="form-label" for="fromUtc">Created from (UTC, inclusive)</label>
+        <input class="form-control" type="datetime-local" id="fromUtc" name="fromUtc" step="any" value="@(Model.FromUtc?.ToString("yyyy-MM-ddTHH:mm:ss.fff"))" />
+    </div>
+    <div class="filter-group">
+        <label class="form-label" for="toUtc">Created before (UTC, exclusive)</label>
+        <input class="form-control" type="datetime-local" id="toUtc" name="toUtc" step="any" value="@(Model.ToUtc?.ToString("yyyy-MM-ddTHH:mm:ss.fff"))" />
+    </div>
+    <div class="filter-group"><button class="btn btn-primary" type="submit">Filter</button></div>
+</form>
