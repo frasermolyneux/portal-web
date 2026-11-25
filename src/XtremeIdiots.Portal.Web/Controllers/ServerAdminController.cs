@@ -1739,10 +1739,19 @@ public class ServerAdminController(
 
             try
             {
-                var tempBanDurationDays = int.TryParse(Configuration["XtremeIdiots:Forums:DefaultTempBanDays"], out var days) ? days : 7;
+                var configuredDuration = Configuration["XtremeIdiots:Forums:DefaultTempBanDays"];
+                var validDuration = int.TryParse(configuredDuration, out var days);
+                var tempBanDurationDays = validDuration ? days : 7;
+                if (gameServerData.GameType == GameType.CallOfDuty4x &&
+                    ((configuredDuration is not null && !validDuration) || tempBanDurationDays is < 1 or > 30))
+                {
+                    Logger.LogWarning("Configured CoD4x temp ban duration must be between 1 and 30 days");
+                    return Json(new { success = false, error = "InvalidDuration", message = "The configured temp ban duration must be between 1 and 30 days; no ban was sent." });
+                }
+
                 var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
-                var rconSuccess = await TempBanPlayerAsync(
+                var rconResult = await TempBanPlayerAsync(
                     id,
                     gameServerData.GameType,
                     moderationTarget.PlayerSlot,
@@ -1750,11 +1759,14 @@ public class ServerAdminController(
                     tempBanDurationMinutes,
                     cancellationToken).ConfigureAwait(false);
 
-                if (!rconSuccess)
+                if (!rconResult.Success)
                 {
                     Logger.LogWarning("Failed to temp ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
                         moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
-                    return Json(new { success = false, error = "RconFailed", message = "Failed to temp ban player from server" });
+                    var message = rconResult.InvalidIdentifier
+                        ? "The server integration rejected this player's identifier; the temp ban was not sent."
+                        : "Failed to temp ban player from server";
+                    return Json(new { success = false, error = "RconFailed", message });
                 }
 
                 TrackSuccessTelemetry("RconPlayerTempBanned", nameof(TempBanRconPlayer), new Dictionary<string, string>
@@ -1846,18 +1858,21 @@ public class ServerAdminController(
 
             try
             {
-                var rconSuccess = await BanPlayerAsync(
+                var rconResult = await BanPlayerAsync(
                     id,
                     gameServerData.GameType,
                     moderationTarget.PlayerSlot,
                     moderationTarget.PlayerGuid,
                     cancellationToken).ConfigureAwait(false);
 
-                if (!rconSuccess)
+                if (!rconResult.Success)
                 {
                     Logger.LogWarning("Failed to ban player {PlayerName} (slot {PlayerSlot}) from server {ServerId}",
                         moderationTarget.PlayerName, moderationTarget.PlayerSlot, id);
-                    return Json(new { success = false, error = "RconFailed", message = "Failed to ban player from server" });
+                    var message = rconResult.InvalidIdentifier
+                        ? "The server integration rejected this player's identifier; the ban was not sent."
+                        : "Failed to ban player from server";
+                    return Json(new { success = false, error = "RconFailed", message });
                 }
 
                 TrackSuccessTelemetry("RconPlayerBanned", nameof(BanRconPlayer), new Dictionary<string, string>
@@ -1886,7 +1901,7 @@ public class ServerAdminController(
         }, nameof(BanRconPlayer)).ConfigureAwait(false);
     }
 
-    private async Task<bool> TempBanPlayerAsync(
+    private async Task<(bool Success, bool InvalidIdentifier)> TempBanPlayerAsync(
         Guid serverId,
         GameType gameType,
         int playerSlot,
@@ -1898,7 +1913,7 @@ public class ServerAdminController(
         {
             if (string.IsNullOrWhiteSpace(playerIdentifier))
             {
-                return false;
+                return (false, false);
             }
 
             var cod4xBanResult = await serversApiClient.CoD4xRcon.V1.TempBanPlayerByPlayerIdentifier(
@@ -1910,7 +1925,8 @@ public class ServerAdminController(
                 },
                 cancellationToken).ConfigureAwait(false);
 
-            return cod4xBanResult.IsSuccess && cod4xBanResult.Result?.Data?.IsSuccess == true;
+            return (cod4xBanResult.IsSuccess && cod4xBanResult.Result?.Data?.IsSuccess == true,
+                IsInvalidPlayerIdentifier(cod4xBanResult));
         }
 
         var tempBanResult = (int)gameType switch
@@ -1930,10 +1946,10 @@ public class ServerAdminController(
             _ => throw CreateUnsupportedGameTypeException(nameof(TempBanPlayerAsync), gameType),
         };
 
-        return tempBanResult.IsSuccess;
+        return (tempBanResult.IsSuccess, false);
     }
 
-    private async Task<bool> BanPlayerAsync(
+    private async Task<(bool Success, bool InvalidIdentifier)> BanPlayerAsync(
         Guid serverId,
         GameType gameType,
         int playerSlot,
@@ -1944,7 +1960,7 @@ public class ServerAdminController(
         {
             return !string.IsNullOrWhiteSpace(playerIdentifier)
                 ? await BanCoD4xPlayerByIdentifierAsync(serverId, playerIdentifier, cancellationToken).ConfigureAwait(false)
-                : await BanCoD4xPlayerBySlotAsync(serverId, playerSlot, cancellationToken).ConfigureAwait(false);
+                : (await BanCoD4xPlayerBySlotAsync(serverId, playerSlot, cancellationToken).ConfigureAwait(false), false);
         }
 
         var banResult = (int)gameType switch
@@ -1964,10 +1980,10 @@ public class ServerAdminController(
             _ => throw CreateUnsupportedGameTypeException(nameof(BanPlayerAsync), gameType),
         };
 
-        return banResult.IsSuccess;
+        return (banResult.IsSuccess, false);
     }
 
-    private async Task<bool> BanCoD4xPlayerByIdentifierAsync(Guid serverId, string playerIdentifier, CancellationToken cancellationToken)
+    private async Task<(bool Success, bool InvalidIdentifier)> BanCoD4xPlayerByIdentifierAsync(Guid serverId, string playerIdentifier, CancellationToken cancellationToken)
     {
         var banResult = await serversApiClient.CoD4xRcon.V1.BanPlayerByPlayerIdentifier(
             serverId,
@@ -1977,8 +1993,11 @@ public class ServerAdminController(
             },
             cancellationToken).ConfigureAwait(false);
 
-        return banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true;
+        return (banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true, IsInvalidPlayerIdentifier(banResult));
     }
+
+    private static bool IsInvalidPlayerIdentifier(ApiResult<CoD4xBanCommandResponseDto> result)
+        => result.Result?.Errors?.Any(error => error.Code == "INVALID_PLAYER_IDENTIFIER") == true;
 
     private async Task<bool> BanCoD4xPlayerBySlotAsync(Guid serverId, int playerSlot, CancellationToken cancellationToken)
     {
@@ -1986,7 +2005,8 @@ public class ServerAdminController(
             serverId,
             new CoD4xClientReasonRequestDto
             {
-                ClientId = playerSlot
+                ClientId = playerSlot,
+                Reason = "Banned by an administrator"
             },
             cancellationToken).ConfigureAwait(false);
 
@@ -2332,7 +2352,7 @@ public class ServerAdminController(
                 cancellationToken).ConfigureAwait(false)),
             (int)GameType.CallOfDuty4x => ToApiResult(await serversApiClient.CoD4xRcon.V1.ClientKick(
                 serverId,
-                new CoD4xClientReasonRequestDto { ClientId = playerSlot },
+                new CoD4xClientReasonRequestDto { ClientId = playerSlot, Reason = "Kicked by an administrator" },
                 cancellationToken).ConfigureAwait(false)),
             _ => throw CreateUnsupportedGameTypeException(nameof(KickPlayerAsync), gameType),
         };

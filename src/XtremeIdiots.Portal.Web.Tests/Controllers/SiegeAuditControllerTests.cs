@@ -10,6 +10,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.SiegeMode;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.UserProfiles;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Web.Auth.Constants;
@@ -63,6 +64,34 @@ public class SiegeAuditControllerTests
         repository.Verify(r => r.SiegeMode.V1.SearchSessions(
             It.Is<SiegeAuditQueryDto>(q => q.GameServerIds.Length == 1 && q.GameServerIds[0] == allowedId),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Sessions_OnlyLinksVerifiedStartingUsers()
+    {
+        var controller = CreateController();
+        var resolved = new SiegeSessionDto();
+        var mismatch = new SiegeSessionDto();
+        var nonUser = new SiegeSessionDto();
+        Set(resolved, nameof(SiegeSessionDto.GameServerId), allowedId);
+        Set(mismatch, nameof(SiegeSessionDto.GameServerId), allowedId);
+        Set(nonUser, nameof(SiegeSessionDto.GameServerId), allowedId);
+        Set(resolved, nameof(SiegeSessionDto.StartedBy), "123");
+        Set(mismatch, nameof(SiegeSessionDto.StartedBy), "456");
+        Set(nonUser, nameof(SiegeSessionDto.StartedBy), "system");
+        var user = new UserProfileDto();
+        Set(user, nameof(UserProfileDto.XtremeIdiotsForumId), "123");
+        Set(user, nameof(UserProfileDto.DisplayName), "Admin");
+        repository.Setup(r => r.SiegeMode.V1.SearchSessions(It.IsAny<SiegeAuditQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OkCollection(resolved, mismatch, nonUser));
+        repository.Setup(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<UserProfileDto>(HttpStatusCode.OK, new ApiResponse<UserProfileDto>(user)));
+
+        var view = Assert.IsType<ViewResult>(await controller.Sessions(null, null, null));
+        var model = Assert.IsType<SiegeAuditViewModel>(view.Model);
+        Assert.Equal("Admin", Assert.Single(model.StartingUsers).Value);
+        Assert.True(model.StartingUsers.ContainsKey("123"));
+        repository.Verify(r => r.UserProfiles.V1.GetUserProfileByXtremeIdiotsId("system", It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

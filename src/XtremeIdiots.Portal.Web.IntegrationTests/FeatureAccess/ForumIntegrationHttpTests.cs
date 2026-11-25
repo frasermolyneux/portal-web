@@ -55,6 +55,59 @@ public sealed class ForumIntegrationHttpTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.OK, HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.NotFound, HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Conflict, HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, HttpStatusCode.ServiceUnavailable)]
+    public async Task SiegeDeactivation_RequiresAuthorizationAndUsesSessionActor(HttpStatusCode upstream, HttpStatusCode expected)
+    {
+        await using var host = await PortalWebTestHost.CreateAsync();
+        var repository = Mock.Get(host.Services.GetRequiredService<IRepositoryApiClient>());
+        var serverId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var path = $"/api/integration/v1/siege-mode/servers/{serverId}/deactivate";
+        repository.Setup(r => r.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(
+                Fixture<GameServerDto>(new { GameServerId = serverId, GameType = GameType.CallOfDuty4 }))));
+        repository.Setup(r => r.SiegeMode.V1.EndSession(serverId, sessionId, It.IsAny<ChangeSiegeSessionDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<SiegeSessionDto>(upstream,
+                upstream == HttpStatusCode.OK ? new ApiResponse<SiegeSessionDto>(new SiegeSessionDto { SessionId = sessionId }) : null));
+
+        using var anonymous = await host.Client.PostAsJsonAsync(path, new { sessionId });
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/integration/v1/session");
+        sessionRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.HeadAdmin);
+        using var session = await host.Client.SendAsync(sessionRequest);
+        var tokens = await session.Content.ReadFromJsonAsync<JsonElement>();
+        var cookie = Assert.Single(session.Headers.GetValues("Set-Cookie")).Split(';')[0];
+
+        async Task<HttpResponseMessage> Send(string profile, Guid id, bool token = true)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(new { sessionId = id, actor = "attacker" }) };
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+            if (token)
+            {
+                request.Headers.Add("Cookie", cookie);
+                request.Headers.Add(tokens.GetProperty("headerName").GetString()!, tokens.GetProperty("requestVerificationToken").GetString()!);
+            }
+
+            return await host.Client.SendAsync(request);
+        }
+
+        using var noToken = await Send(TestPrincipalProfiles.HeadAdmin, sessionId, false);
+        Assert.Equal(HttpStatusCode.BadRequest, noToken.StatusCode);
+        using var denied = await Send(TestPrincipalProfiles.HeadAdminCod5, sessionId);
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var invalid = await Send(TestPrincipalProfiles.HeadAdmin, Guid.Empty);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        using var response = await Send(TestPrincipalProfiles.HeadAdmin, sessionId);
+        Assert.Equal(expected, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        repository.Verify(r => r.SiegeMode.V1.EndSession(serverId, sessionId, It.Is<ChangeSiegeSessionDto>(
+            dto => dto.OperationId != Guid.Empty && dto.Actor == "12345"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task SiegeMode_LoadsAllPagesAndReturnsOnlyAuthorizedServers()
     {

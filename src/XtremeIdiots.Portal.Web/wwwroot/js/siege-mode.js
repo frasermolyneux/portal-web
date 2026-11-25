@@ -2,6 +2,8 @@
     'use strict';
     var status = document.getElementById('siege-status');
     if (!status || !window.PortalAsync) return;
+    var enable = document.getElementById('siege-enable');
+    var disable = document.getElementById('siege-disable');
 
     var errorMessage = document.createElement('p');
     errorMessage.className = 'text-warning';
@@ -30,12 +32,19 @@
 
                     var nextInput = status.querySelector('#siege-extension-minutes');
                     var nextSession = nextInput && nextInput.form && nextInput.form.querySelector('[name="sessionId"]');
+                    if (enable && disable) {
+                        enable.hidden = !!nextSession;
+                        disable.hidden = !nextSession;
+                        disable.querySelector('[name="sessionId"]').value = nextSession ? nextSession.value : '';
+                    }
                     if (sessionId && nextSession && nextSession.value === sessionId) {
                         nextInput.value = minutes;
                     }
                 });
         },
         onError: function () {
+            if (enable) enable.hidden = true;
+            if (disable) disable.hidden = true;
             errorMessage.textContent = 'Siege Mode status is unavailable. Retrying...';
             errorMessage.hidden = false;
         }

@@ -59,6 +59,13 @@ dependencies 503. The test forum connects to production Portal and can activate 
 servers. Dry Run records would-kick decisions without Siege enforcement; existing
 VPN Protection continues independently.
 
+To end an active session, send `POST
+/api/integration/v1/siege-mode/servers/{gameServerId}/deactivate` with JSON
+`{"sessionId":"<current session UUID>"}`, credentials and the same antiforgery
+header. A successful response is 204. A stale or missing session returns 404
+or 409; reload before confirming another action. Server authorization and
+the actor are determined from the Portal session, not the request body.
+
 `GET /api/integration/v1/player-links/linked-players` requires a Portal session
 and returns a no-store page of the signed-in member's linked game profiles. The
 profile is resolved from the authenticated Portal principal; callers cannot

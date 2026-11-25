@@ -178,6 +178,47 @@ public sealed class ForumIntegrationController(
 
     public sealed record SiegeActivationRequest(string? Mode, int ExpectedDurationMinutes);
 
+    [HttpPost("siege-mode/servers/{gameServerId:guid}/deactivate")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> DeactivateSiegeMode(Guid gameServerId, SiegeDeactivationRequest request, CancellationToken cancellationToken)
+    {
+        var serverResponse = await repository.GameServers.V1.GetGameServer(gameServerId, cancellationToken).ConfigureAwait(false);
+        if (serverResponse.IsNotFound)
+            return NotFound();
+        if (!serverResponse.IsSuccess || serverResponse.Result?.Data is not { } server || server.GameServerId != gameServerId)
+        {
+            logger.LogWarning("Forum Siege server lookup failed for {ServerId}: {StatusCode}", gameServerId, serverResponse.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (!(await authorization.AuthorizeAsync(User, server.GameType, AuthPolicies.GameServers_Admin_SiegeMode).ConfigureAwait(false)).Succeeded)
+            return Forbid();
+        var actor = User.XtremeIdiotsId();
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+        if (request.SessionId == Guid.Empty)
+            return BadRequest();
+
+        var response = await repository.SiegeMode.V1.EndSession(gameServerId, request.SessionId, new ChangeSiegeSessionDto
+        {
+            OperationId = Guid.NewGuid(),
+            Actor = actor
+        }, cancellationToken).ConfigureAwait(false);
+        if (response.IsSuccess)
+            return NoContent();
+        if (response.IsNotFound)
+            return NotFound();
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            return Conflict();
+
+        logger.LogWarning("Forum Siege deactivation failed for {ServerId}: {StatusCode}", gameServerId, response.StatusCode);
+        return StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    public sealed record SiegeDeactivationRequest(Guid SessionId);
+
     [HttpGet("session")]
     [AllowAnonymous]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]

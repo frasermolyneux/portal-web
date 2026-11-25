@@ -104,6 +104,44 @@ paths:
           description: Stored Siege Mode settings are invalid.
         '503':
           description: Required dependency unavailable.
+  /api/integration/v1/siege-mode/servers/{gameServerId}/deactivate:
+    post:
+      summary: End an active Siege Mode session
+      description: Uses the authenticated Portal identity and server-scoped Siege Mode authorization.
+      parameters:
+        - in: path
+          name: gameServerId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Antiforgery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId]
+              properties:
+                sessionId:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Session ended.
+        '400':
+          description: Invalid input or antiforgery token.
+        '401':
+          description: Portal sign-in required.
+        '403':
+          description: Server access denied or Portal identity unavailable.
+        '404':
+          description: Server or session not found.
+        '409':
+          description: Session is no longer active; refresh.
+        '503':
+          description: Required dependency unavailable.
   /api/integration/v1/server-admin:
     get:
       summary: Server Admin index and authorized Portal action links
