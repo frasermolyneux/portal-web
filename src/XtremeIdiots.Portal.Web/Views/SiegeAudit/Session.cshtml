@@ -33,11 +33,11 @@
                 <h6>Actions</h6>
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead><tr><th>Occurred</th><th>Updated</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
+                        <thead><tr><th>Occurred</th><th>Updated</th><th>Mode</th><th>Player GUID</th><th>IP</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
                         <tbody>
                         @foreach (var action in Model.Actions)
                         {
-                            <tr><td>@if (action.OccurredAtUtc.HasValue) { <time time-ago utc="@action.OccurredAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</td><td><time time-ago utc="@action.UpdatedAtUtc.UtcDateTime" show-absolute="false"></time></td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                            <tr><td>@if (action.OccurredAtUtc.HasValue) { <time time-ago utc="@action.OccurredAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</td><td><time time-ago utc="@action.UpdatedAtUtc.UtcDateTime" show-absolute="false"></time></td><td>@action.Mode</td><td>@if (action.PlayerId.HasValue) { <a asp-controller="Players" asp-action="Details" asp-route-id="@action.PlayerId">@action.PlayerGuid</a> } else { @action.PlayerGuid }</td><td>@if (!string.IsNullOrEmpty(action.ObservedIpAddress)) { <ip-address ip="@action.ObservedIpAddress"></ip-address> if (action.ObservedIpSource != "Trigger") { <div class="text-muted small">Not event-time (@(action.ObservedIpSource == "FactSnapshot" ? "snapshot" : "later enrichment"))@if (action.ObservedIpRecordedAtUtc.HasValue) { <text> </text><time time-ago utc="@action.ObservedIpRecordedAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</div> } }</td>
                                 <td>@action.RuleId</td><td>@action.ActionTypeId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
                         }
                         </tbody>

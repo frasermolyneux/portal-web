@@ -1748,6 +1748,7 @@ public class ServerAdminController(
                     Logger.LogWarning("Configured CoD4x temp ban duration must be between 1 and 30 days");
                     return Json(new { success = false, error = "InvalidDuration", message = "The configured temp ban duration must be between 1 and 30 days; no ban was sent." });
                 }
+
                 var tempBanDurationMinutes = Math.Max(1, tempBanDurationDays * 24 * 60);
 
                 var rconResult = await TempBanPlayerAsync(
@@ -1995,8 +1996,8 @@ public class ServerAdminController(
         return (banResult.IsSuccess && banResult.Result?.Data?.IsSuccess == true, IsInvalidPlayerIdentifier(banResult));
     }
 
-    private static bool IsInvalidPlayerIdentifier(ApiResult<CoD4xBanCommandResponseDto> result) =>
-        result.Result?.Errors?.Any(error => error.Code == "INVALID_PLAYER_IDENTIFIER") == true;
+    private static bool IsInvalidPlayerIdentifier(ApiResult<CoD4xBanCommandResponseDto> result)
+        => result.Result?.Errors?.Any(error => error.Code == "INVALID_PLAYER_IDENTIFIER") == true;
 
     private async Task<bool> BanCoD4xPlayerBySlotAsync(Guid serverId, int playerSlot, CancellationToken cancellationToken)
     {

@@ -42,6 +42,7 @@ public class SiegeAuditController(
             else if (!profile.IsNotFound)
                 logger.LogWarning("Could not resolve Siege session starting user {Actor}", actor);
         }
+
         model.HasNext = response.Result.Data.Items.Count() == PageSize && ValidPage(page + 1);
         return View(model);
     }

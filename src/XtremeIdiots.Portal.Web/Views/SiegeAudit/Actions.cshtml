@@ -11,11 +11,11 @@
                 <p>Dry-run outcomes represent simulated actions; pending, claimed and dispatched actions are not confirmed effects.</p>
                 <h6>Actions</h6>
                 <div class="table-responsive">
-                    <table class="table table-striped"><thead><tr><th>Session</th><th>Server</th><th>Occurred</th><th>Updated</th><th>Mode</th><th>Player GUID</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
+                    <table class="table table-striped"><thead><tr><th>Session</th><th>Server</th><th>Occurred</th><th>Updated</th><th>Mode</th><th>Player GUID</th><th>IP</th><th>Rule</th><th>Action</th><th>Outcome</th><th>Detail</th></tr></thead>
                         <tbody>@foreach (var action in Model.Actions) {
                             var server = Model.Servers.FirstOrDefault(s => s.GameServerId == action.GameServerId);
                             <tr><td>@if (action.SiegeSessionId.HasValue) { <a asp-action="Session" asp-route-serverId="@action.GameServerId" asp-route-sessionId="@action.SiegeSessionId">@action.SiegeSessionId</a> }</td><td>@if (server is not null) { <a asp-controller="ServerAdmin" asp-action="ServerDetail" asp-route-id="@server.GameServerId"><game-type-icon game="@server.GameType"></game-type-icon> @server.Title</a> }</td>
-                                <td>@if (action.OccurredAtUtc.HasValue) { <time time-ago utc="@action.OccurredAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</td><td><time time-ago utc="@action.UpdatedAtUtc.UtcDateTime" show-absolute="false"></time></td><td>@action.Mode</td><td>@action.PlayerGuid</td>
+                                <td>@if (action.OccurredAtUtc.HasValue) { <time time-ago utc="@action.OccurredAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</td><td><time time-ago utc="@action.UpdatedAtUtc.UtcDateTime" show-absolute="false"></time></td><td>@action.Mode</td><td>@if (action.PlayerId.HasValue) { <a asp-controller="Players" asp-action="Details" asp-route-id="@action.PlayerId">@action.PlayerGuid</a> } else { @action.PlayerGuid }</td><td>@if (!string.IsNullOrEmpty(action.ObservedIpAddress)) { <ip-address ip="@action.ObservedIpAddress"></ip-address> if (action.ObservedIpSource != "Trigger") { <div class="text-muted small">Not event-time (@(action.ObservedIpSource == "FactSnapshot" ? "snapshot" : "later enrichment"))@if (action.ObservedIpRecordedAtUtc.HasValue) { <text> </text><time time-ago utc="@action.ObservedIpRecordedAtUtc.Value.UtcDateTime" show-absolute="false"></time> }</div> } }</td>
                                 <td>@action.RuleId</td><td>@action.ActionTypeId</td><td>@action.Outcome</td><td>@action.Detail</td></tr>
                         }</tbody>
                     </table>

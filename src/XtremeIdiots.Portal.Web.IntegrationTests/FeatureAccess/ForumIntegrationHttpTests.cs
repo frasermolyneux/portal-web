@@ -91,6 +91,7 @@ public sealed class ForumIntegrationHttpTests
                 request.Headers.Add("Cookie", cookie);
                 request.Headers.Add(tokens.GetProperty("headerName").GetString()!, tokens.GetProperty("requestVerificationToken").GetString()!);
             }
+
             return await host.Client.SendAsync(request);
         }
 
