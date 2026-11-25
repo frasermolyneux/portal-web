@@ -1,11 +1,11 @@
-using System.Text.Json;
-using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Playwright;
 using Moq;
 using MX.Api.Abstractions;
 using Newtonsoft.Json;
+using System.Net;
+using System.Text.Json;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
@@ -26,8 +26,8 @@ public sealed class WelcomeRulesEditorBrowserTests
         var scenario = new FileTransportScenario();
         static ConfigurationDto Configuration(string json) => JsonConvert.DeserializeObject<ConfigurationDto>(
             JsonConvert.SerializeObject(new { Namespace = WelcomeRulesSettingsConstants.Namespace, Configuration = json }))!;
-        var global = Configuration("""{"schemaVersion":1,"featureId":"welcome-messages","enabled":true,"timing":{"connectionDelaySeconds":5,"freshnessSeconds":120},"rules":[]}""");
-        var server = Configuration("""
+        var global = Configuration(/*lang=json,strict*/ """{"schemaVersion":1,"featureId":"welcome-messages","enabled":true,"timing":{"connectionDelaySeconds":5,"freshnessSeconds":120},"rules":[]}""");
+        var server = Configuration(/*lang=json,strict*/ """
             {"schemaVersion":1,"featureId":"welcome-messages","enabledOverride":"Enabled","inheritGlobalRules":true,
              "rules":[{"id":"local","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},
              "actions":[{"id":"message","typeId":"message.private","parameters":{"message":"Hello {context.player.Name}"},
@@ -217,10 +217,10 @@ public sealed class WelcomeRulesEditorBrowserTests
             var mode = request.RootElement.GetProperty("mode").GetString();
             var message = request.RootElement.GetProperty("parameters").GetProperty("message").GetString();
             var body = message == "bad"
-                ? """{"errors":["Unknown token"],"diagnostics":[],"warnings":[],"fragments":[]}"""
+                ? /*lang=json,strict*/ """{"errors":["Unknown token"],"diagnostics":[],"warnings":[],"fragments":[]}"""
                 : mode == "missing"
-                    ? """{"errors":[],"diagnostics":["Fallback used"],"warnings":[],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"player","utf8ByteCount":6,"totalPayloadByteCount":6}]}"""
-                    : """{"errors":[],"diagnostics":[],"warnings":["Budget includes prefix"],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"^1<img src=x>","utf8ByteCount":13,"totalPayloadByteCount":16}]}""";
+                    ? /*lang=json,strict*/ """{"errors":[],"diagnostics":["Fallback used"],"warnings":[],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"player","utf8ByteCount":6,"totalPayloadByteCount":6}]}"""
+                    : /*lang=json,strict*/ """{"errors":[],"diagnostics":[],"warnings":["Budget includes prefix"],"fragments":[{"itemIndex":0,"fragmentIndex":0,"text":"^1<img src=x>","utf8ByteCount":13,"totalPayloadByteCount":16}]}""";
             return route.FulfillAsync(new() { ContentType = "application/json", Body = body });
         });
         await page.SetContentAsync("""

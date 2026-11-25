@@ -1,6 +1,6 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 
@@ -142,6 +142,7 @@ internal static class WelcomeRulesSettingsMapper
                 if (!resolved.TryAdd(rule.Id, effective.Timing.Apply(rule.Timing)))
                     return false;
             }
+
             timings = resolved;
             return true;
         }
