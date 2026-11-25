@@ -14,6 +14,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.Auth;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
@@ -354,6 +355,13 @@ public class GameServersController(
                             return UnprocessableEntity("Saved Siege Mode settings are unreadable or use an unsupported schema.");
                         }
 
+                        if (string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                            && !gameServerSettingsService.TryValidateWelcomeRulesSettings(config, out var welcomeErrors))
+                        {
+                            Logger.LogWarning("Invalid Welcome Rules settings for server {GameServerId}: {Errors}", id, string.Join("; ", welcomeErrors));
+                            return UnprocessableEntity("Saved Welcome Rules settings are unreadable or use an unsupported schema.");
+                        }
+
                         // Skip credential namespaces if user lacks permission
                         if ((config.Namespace == "ftp" || config.Namespace == "sftp") && !editModel.CanEditFileTransport)
                             continue;
@@ -398,6 +406,13 @@ public class GameServersController(
                         {
                             Logger.LogWarning("Invalid global Siege Mode settings: {Errors}", string.Join("; ", siegeErrors));
                             return UnprocessableEntity("Saved global Siege Mode settings are unreadable or use an unsupported schema.");
+                        }
+
+                        if (string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                            && !gameServerSettingsService.TryValidateGlobalWelcomeRulesSettings(config, out var welcomeErrors))
+                        {
+                            Logger.LogWarning("Invalid global Welcome Rules settings: {Errors}", string.Join("; ", welcomeErrors));
+                            return UnprocessableEntity("Saved global Welcome Rules settings are unreadable or use an unsupported schema.");
                         }
 
                         PopulateGlobalDefaults(editModel, config);
@@ -480,6 +495,16 @@ public class GameServersController(
                 }
             }
 
+            foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!gameServerSettingsService.TryValidateWelcomeRulesSettings(config, out var welcomeErrors))
+                {
+                    Logger.LogWarning("Invalid Welcome Rules settings for server {GameServerId}: {Errors}", gameServerData.GameServerId, string.Join("; ", welcomeErrors));
+                    return UnprocessableEntity("Saved Welcome Rules settings are unreadable or use an unsupported schema.");
+                }
+            }
+
             if (!Enum.IsDefined(model.GameServer.Platform) || model.GameServer.Platform == GameServerPlatform.Unknown)
             {
                 var platformFieldName = $"{nameof(GameServerEditViewModel.GameServer)}.{nameof(GameServerViewModel.Platform)}";
@@ -530,12 +555,23 @@ public class GameServersController(
                 ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode), "The Siege Mode settings section is missing or incomplete.");
             }
 
+            if (!ModelState.ContainsKey("WelcomeRules.Enabled")
+                || !ModelState.ContainsKey("WelcomeRules.InheritGlobalRules")
+                || !ModelState.ContainsKey("WelcomeRules.ConnectionDelaySeconds")
+                || !ModelState.ContainsKey("WelcomeRules.FreshnessSeconds")
+                || !ModelState.ContainsKey("WelcomeRules.LocalRulesJson")
+                || !ModelState.ContainsKey("WelcomeRules.RuleOverridesJson"))
+            {
+                ModelState.AddModelError(nameof(GameServerEditViewModel.WelcomeRules), "The Welcome Rules settings section is missing or incomplete.");
+            }
+
             if (ModelState.IsValid)
             {
                 var existing = new GameServerEditViewModel();
                 foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
                     string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    || string.Equals(config.Namespace, SiegeModeSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
                     gameServerSettingsService.PopulateConfigFromNamespace(existing, config, Logger);
                 RuleSettingsEnvelopeData.CopyFromAuthoritative(existing, model);
 
@@ -550,6 +586,40 @@ public class GameServersController(
                     SiegeModeServerSettingsMapper.ToDocument(model.SiegeMode), model.SiegeRuleCompatibility);
                 foreach (var error in siegeErrors)
                     ModelState.AddModelError(nameof(GameServerEditViewModel.SiegeMode), error);
+
+                var welcomeErrors = RulesCapabilityResolver.FindNewUnsupported(
+                    WelcomeRulesSettingsMapper.ToDocument(existing.WelcomeRules),
+                    WelcomeRulesSettingsMapper.ToDocument(model.WelcomeRules), model.WelcomeRuleCompatibility);
+                foreach (var error in welcomeErrors)
+                    ModelState.AddModelError(nameof(GameServerEditViewModel.WelcomeRules), error);
+            }
+
+            if (ModelState.IsValid && globalDefaultsLoaded
+                && RuleSettingsJson.TryDeserializeRules(model.WelcomeRules.LocalRulesJson, out _, out _)
+                && RuleSettingsJson.TryDeserializeOverrides(model.WelcomeRules.RuleOverridesJson, out var welcomeOverrides, out _))
+            {
+                var global = WelcomeRulesSettingsMapper.ToDocument(model.GlobalWelcomeRules);
+                var server = WelcomeRulesSettingsMapper.ToDocument(model.WelcomeRules);
+                var knownIds = global.Rules.Select(static rule => rule.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                if (server.InheritGlobalRules && welcomeOverrides.Any(item => !knownIds.Contains(item.RuleId)))
+                    ModelState.AddModelError(nameof(GameServerEditViewModel.WelcomeRules),
+                        "An override refers to a global Welcome Rules rule that is no longer available.");
+                try
+                {
+                    var effective = FeatureRuleSetMerger.Merge(global, server);
+                    var validation = new WelcomeRulesSettingsValidator().Validate(new WelcomeRulesSettingsDocument
+                    {
+                        Enabled = effective.Enabled,
+                        Timing = effective.Timing,
+                        Rules = [.. effective.Rules]
+                    });
+                    foreach (var error in validation.Errors)
+                        ModelState.AddModelError(nameof(GameServerEditViewModel.WelcomeRules), error);
+                }
+                catch (ArgumentException ex)
+                {
+                    ModelState.AddModelError(nameof(GameServerEditViewModel.WelcomeRules), ex.Message);
+                }
             }
 
             if (ModelState.IsValid
@@ -924,6 +994,7 @@ public class GameServersController(
         model.HasFreshRuleCapabilitySnapshot = snapshot is not null && snapshot.HasFreshStatus && snapshot.ExpiresAtUtc > DateTimeOffset.UtcNow;
         model.VpnRuleCompatibility = RulesCapabilityResolver.Resolve(gameType, RulesEngineCatalogueV1.VpnProtectionFeature, snapshot);
         model.SiegeRuleCompatibility = RulesCapabilityResolver.Resolve(gameType, RulesEngineCatalogueV1.SiegeModeFeature, snapshot);
+        model.WelcomeRuleCompatibility = RulesCapabilityResolver.Resolve(gameType, RulesEngineCatalogueV1.WelcomeMessagesFeature, snapshot);
     }
 
     private async Task<bool> PopulateGlobalDefaultsAsync(
@@ -953,6 +1024,13 @@ public class GameServersController(
                     && !gameServerSettingsService.TryValidateGlobalSiegeModeSettings(config, out var siegeErrors))
                 {
                     Logger.LogWarning("Invalid global Siege Mode settings: {Errors}", string.Join("; ", siegeErrors));
+                    return false;
+                }
+
+                if (string.Equals(config.Namespace, WelcomeRulesSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)
+                    && !gameServerSettingsService.TryValidateGlobalWelcomeRulesSettings(config, out var welcomeErrors))
+                {
+                    Logger.LogWarning("Invalid global Welcome Rules settings: {Errors}", string.Join("; ", welcomeErrors));
                     return false;
                 }
 

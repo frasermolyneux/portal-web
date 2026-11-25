@@ -38,6 +38,37 @@ This is a clean-slate settings change: older VPN and Siege rule documents are
 not migrated or read by the new editor. Coordinate the settings reset and
 repository, runtime and portal deployments before the production cutover.
 
+### Welcome rules
+
+Welcome Messages uses the shared editor and the `welcomeRules` namespace;
+legacy `welcomeMessages` documents are neither migrated nor rewritten by the
+editor. Coordinate their removal with the runtime cutover before enabling the
+new feature. Server rules are available independently of the agent toggle.
+
+Connection delay and freshness inherit from global settings, with server and
+per-rule overrides resolved by the shared merger. Message and reason templates
+are opt-in; literal text remains literal. The ordered message list follows the
+single message when both are supplied. Preview uses the shared renderer and
+segmenter with sample or missing values. Server previews use the RCON channel
+budget and character constraints when available, caching the lookup for ten
+seconds; otherwise they show a labelled interim estimate without a prefix.
+Global previews have no selected server. A later trigger may use another
+provider or a changed prefix, so runtime-frozen fragments remain authoritative.
+Both segmentation and display honor the returned budget's CoD colour mode;
+literal caret-digit text is retained when that mode is disabled. This does not
+enable any additional rules-native provider.
+
+The server welcome settings link to **Welcome execution diagnostics**, protected
+by the same game-scoped server-write policy. The page defaults to the last 24
+hours and queries 20 executions at a time, including waiting and no-action
+executions. UTC created-time bounds are inclusive from/exclusive to. Typed
+diagnostic codes expose recorded waiting, protection, expiry and token fallback
+reasons; `DiagnosticsOmitted` is shown as a warning with the omitted count.
+Prepared action windows, frozen fragments and individual outcomes provide
+delivery evidence without parsing the processor's opaque decision snapshot.
+Waiting text is current only while the execution state is `Waiting`; empty
+diagnostics or action collections do not imply no match or suppression.
+
 ### Settings loading and runtime behavior
 
 1. A settings page fails to load expected values.

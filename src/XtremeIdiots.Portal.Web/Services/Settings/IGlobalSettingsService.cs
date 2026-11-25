@@ -13,5 +13,7 @@ public interface IGlobalSettingsService
 
     bool TryValidateVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
 
+    bool TryValidateWelcomeRulesSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
+
     IReadOnlyList<(string Namespace, string Configuration)> BuildNamespaceConfigurations(GlobalSettingsViewModel model);
 }

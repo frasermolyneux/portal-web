@@ -2,12 +2,19 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 public interface INamespaceSettingsParser
 {
+    bool TryParseWelcomeRulesSettings(
+        ConfigurationDto config, out WelcomeRulesSettingsDocument? settings, out IReadOnlyList<string> errors);
+
+    bool TryParseWelcomeRulesServerSettings(
+        ConfigurationDto config, out WelcomeRulesServerSettingsDocument? settings, out IReadOnlyList<string> errors);
+
     bool TryParseVpnProtectionSettings(
         ConfigurationDto config,
         out VpnProtectionSettingsDocument? settings,

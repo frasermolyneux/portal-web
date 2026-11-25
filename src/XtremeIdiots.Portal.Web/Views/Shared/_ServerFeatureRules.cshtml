@@ -38,12 +38,32 @@
                        name="@(Model.Prefix).DurationMinutesOverride" value="@Model.DurationMinutesOverride" placeholder="Inherit @Model.GlobalDurationMinutes minutes" />
             </div>
         }
+        @if (Model.GlobalConnectionDelaySeconds.HasValue && Model.GlobalFreshnessSeconds.HasValue)
+        {
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label" for="@(Model.Prefix)_ConnectionDelaySeconds">Default connection delay override (seconds)</label>
+                    <input class="form-control" type="number" min="0" max="60" id="@(Model.Prefix)_ConnectionDelaySeconds"
+                           name="@(Model.Prefix).ConnectionDelaySeconds" value="@Model.ConnectionDelaySeconds"
+                           placeholder="Inherit @Model.GlobalConnectionDelaySeconds seconds" />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label" for="@(Model.Prefix)_FreshnessSeconds">Freshness override (seconds)</label>
+                    <input class="form-control" type="number" min="1" max="900" id="@(Model.Prefix)_FreshnessSeconds"
+                           name="@(Model.Prefix).FreshnessSeconds" value="@Model.FreshnessSeconds"
+                           placeholder="Inherit @Model.GlobalFreshnessSeconds seconds" />
+                </div>
+            </div>
+            <p class="form-text">Defaults before rule overrides: @(Model.ConnectionDelaySeconds ?? Model.GlobalConnectionDelaySeconds) second delay; @(Model.FreshnessSeconds ?? Model.GlobalFreshnessSeconds) second freshness.</p>
+        }
         <h6>Local rules</h6>
         @await Html.PartialAsync("_RulesCatalogueEditor", new RulesCatalogueEditorViewModel
         {
             EditorId = $"{Model.Prefix}-local-rules",
             FieldName = $"{Model.Prefix}.LocalRulesJson",
             FeatureId = Model.FeatureId,
+            GameServerId = Model.GameServerId,
+            EffectiveTimings = Model.EffectiveTimings,
             RulesJson = Model.LocalRulesJson,
             IsServerContext = true,
             Compatibility = Model.Compatibility,
@@ -55,6 +75,8 @@
             EditorId = $"{Model.Prefix}-rule-overrides",
             FieldName = $"{Model.Prefix}.RuleOverridesJson",
             FeatureId = Model.FeatureId,
+            GameServerId = Model.GameServerId,
+            EffectiveTimings = Model.EffectiveTimings,
             RulesJson = Model.RuleOverridesJson,
             IsOverride = true,
             IsServerContext = true,

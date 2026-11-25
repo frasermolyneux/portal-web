@@ -13,6 +13,8 @@ public static class RuleSettingsEnvelopeData
             RuleSettingsJson.CloneExtensionData(source.VpnProtection.EnvelopeExtensionData);
         destination.SiegeMode.EnvelopeExtensionData =
             RuleSettingsJson.CloneExtensionData(source.SiegeMode.EnvelopeExtensionData);
+        destination.WelcomeRules.EnvelopeExtensionData =
+            RuleSettingsJson.CloneExtensionData(source.WelcomeRules.EnvelopeExtensionData);
     }
 
     public static void CopyFromAuthoritative(GameServerEditViewModel source, GameServerEditViewModel destination)
@@ -24,5 +26,7 @@ public static class RuleSettingsEnvelopeData
             RuleSettingsJson.CloneExtensionData(source.VpnProtection.EnvelopeExtensionData);
         destination.SiegeMode.EnvelopeExtensionData =
             RuleSettingsJson.CloneExtensionData(source.SiegeMode.EnvelopeExtensionData);
+        destination.WelcomeRules.EnvelopeExtensionData =
+            RuleSettingsJson.CloneExtensionData(source.WelcomeRules.EnvelopeExtensionData);
     }
 }

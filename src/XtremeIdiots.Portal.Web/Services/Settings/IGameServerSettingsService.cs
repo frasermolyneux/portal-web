@@ -12,6 +12,10 @@ public interface IGameServerSettingsService
 
     bool TryValidateGlobalVpnProtectionSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
 
+    bool TryValidateWelcomeRulesSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
+
+    bool TryValidateGlobalWelcomeRulesSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
+
     bool TryValidateSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors);
 
     bool TryValidateGlobalSiegeModeSettings(ConfigurationDto config, out IReadOnlyList<string> errors);

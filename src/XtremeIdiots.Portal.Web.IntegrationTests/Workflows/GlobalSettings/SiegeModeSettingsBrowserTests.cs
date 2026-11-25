@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 
@@ -20,6 +21,31 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 [Trait("Category", "Browser")]
 public sealed class SiegeModeSettingsBrowserTests
 {
+    [Fact]
+    public async Task WelcomeEditor_PreservesTemplateAndSavesTiming()
+    {
+        var scenario = new SettingsScenario();
+        scenario.SetConfiguration(WelcomeRulesSettingsConstants.Namespace, /*lang=json,strict*/ """
+            {"schemaVersion":1,"featureId":"welcome-messages","enabled":true,
+             "timing":{"connectionDelaySeconds":5,"freshnessSeconds":120},
+             "rules":[{"id":"global","enabled":true,"order":0,"condition":{"conditionId":"always","parameters":{}},
+             "actions":[{"id":"say","typeId":"message.public","parameters":{"message":"Hello {context.player.Name}"},
+             "templateParameters":["message"],"dependsOnActionIds":[]}],"afterMatch":"StopProcessingRules"}]}
+            """);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        await page.Locator("#welcome-messages-tab-btn").ClickAsync();
+        var editor = page.Locator("#global-welcome-rules");
+        await Assertions.Expect(editor.Locator("[data-action-preview='message']")).ToContainTextAsync("Hello ExamplePlayer");
+        await page.Locator("#WelcomeRules_ConnectionDelaySeconds").FillAsync("8");
+        await SaveSettings(page);
+        using var saved = JsonDocument.Parse(scenario.WelcomeJson!);
+        Assert.Equal(8, saved.RootElement.GetProperty("timing").GetProperty("connectionDelaySeconds").GetInt32());
+        Assert.Equal("message", saved.RootElement.GetProperty("rules")[0].GetProperty("actions")[0].GetProperty("templateParameters")[0].GetString());
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task SiegeEditor_MissingEnabledFieldDoesNotOverwriteSettings()
     {
@@ -346,6 +372,7 @@ public sealed class SiegeModeSettingsBrowserTests
 
         public string? SiegeJson => configurations.GetValueOrDefault(SiegeModeSettingsConstants.Namespace);
         public string? VpnJson => configurations.GetValueOrDefault(VpnProtectionSettingsConstants.Namespace);
+        public string? WelcomeJson => configurations.GetValueOrDefault(WelcomeRulesSettingsConstants.Namespace);
 
         public void SetConfiguration(string ns, string configuration) => configurations[ns] = configuration;
 

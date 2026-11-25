@@ -14,6 +14,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Screenshots;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.ViewModels;
 
 namespace XtremeIdiots.Portal.Web.Services.Settings;
@@ -81,15 +82,13 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             ChatCommandSettingsConstants.Namespace,
             ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)));
 
-        // Keep the welcomeMessages namespace even when disabled so rule/message definitions
-        // survive toggle changes and can be re-enabled without data loss.
-        configurations.Add((
-            WelcomeMessageSettingsViewModelConstants.Namespace,
-            WelcomeMessageSettingsJsonMapper.BuildGlobalConfigurationJson(model.WelcomeMessages)));
-
         configurations.Add((
             VpnProtectionSettingsConstants.Namespace,
             VpnProtectionSettingsJsonMapper.BuildGlobalConfigurationJson(model.VpnProtection)));
+
+        configurations.Add((
+            WelcomeRulesSettingsConstants.Namespace,
+            JsonSerializer.Serialize(WelcomeRulesSettingsMapper.ToDocument(model.WelcomeRules), configJsonOptions)));
 
         configurations.Add((
             SiegeModeSettingsConstants.Namespace,
@@ -333,16 +332,6 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
             }
 
-            configurations.Add((
-                WelcomeMessageSettingsViewModelConstants.Namespace,
-                WelcomeMessageSettingsJsonMapper.BuildServerConfigurationJson(model.WelcomeMessages)));
-
-            if (!HasWelcomeMessageServerOverrides(model.WelcomeMessages))
-            {
-                configurations.RemoveAll(x => x.Namespace == WelcomeMessageSettingsViewModelConstants.Namespace);
-                DeletedNamespaces.Add(WelcomeMessageSettingsViewModelConstants.Namespace);
-            }
-
             var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);
             if (broadcastsIntervalSeconds <= 0)
             {
@@ -376,6 +365,17 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
         }
         // Agent acts as a runtime feature flag. When disabled, keep persisted
         // namespace settings intact so re-enabling restores prior configuration.
+
+        if (WelcomeRulesSettingsMapper.HasServerOverrides(model.WelcomeRules))
+        {
+            configurations.Add((
+                WelcomeRulesSettingsConstants.Namespace,
+                JsonSerializer.Serialize(WelcomeRulesSettingsMapper.ToDocument(model.WelcomeRules), configJsonOptions)));
+        }
+        else
+        {
+            DeletedNamespaces.Add(WelcomeRulesSettingsConstants.Namespace);
+        }
 
         if (VpnProtectionSettingsJsonMapper.HasServerOverrides(model.VpnProtection))
         {
@@ -515,17 +515,6 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             || command.OverrideFreshness
             || command.OverrideRequiredTags
             || command.OverrideMessages);
-    }
-
-    private static bool HasWelcomeMessageServerOverrides(WelcomeMessageServerSettingsViewModel model)
-    {
-        return model.Enabled.HasValue
-            || !model.InheritGlobalRules
-            || !string.IsNullOrWhiteSpace(model.CountryFallback)
-            || model.StaleThresholdSeconds.HasValue
-            || model.DefaultConnectionDelaySeconds.HasValue
-            || model.LocalRules.Count > 0
-            || model.RuleOverrides.Count > 0;
     }
 
     private static string NormalizeAgentName(string? value)
