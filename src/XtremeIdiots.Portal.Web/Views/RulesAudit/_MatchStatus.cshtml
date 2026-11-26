@@ -1,0 +1,11 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@model RuleExecutionMatchStatus
+@{
+    var (label, style) = Model switch
+    {
+        RuleExecutionMatchStatus.Matched => ("Matched", "text-bg-success"),
+        RuleExecutionMatchStatus.NoMatch => ("No match", "text-bg-info"),
+        _ => ("Unknown", "text-bg-secondary")
+    };
+}
+<span class="badge @style">@label</span>

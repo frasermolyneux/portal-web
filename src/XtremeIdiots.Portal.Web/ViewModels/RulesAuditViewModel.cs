@@ -10,6 +10,7 @@ public sealed class RulesAuditViewModel
     public string? FeatureId { get; init; }
     public DateTime? FromUtc { get; init; }
     public DateTime? ToUtc { get; init; }
+    public RuleExecutionMatchStatus? MatchStatus { get; init; }
     public int Page { get; init; }
     public bool HasNext { get; init; }
     public IReadOnlyList<RuleExecutionAuditDto> Executions { get; init; } = [];

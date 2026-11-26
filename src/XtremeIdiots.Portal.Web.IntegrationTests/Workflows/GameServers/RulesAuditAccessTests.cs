@@ -48,10 +48,14 @@ public sealed class RulesAuditAccessTests
     {
         var scenario = new FileTransportScenario();
         await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"/RulesAudit/Execution/{Guid.NewGuid()}");
-        request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
-        using var response = await host.Client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        foreach (var query in new[] { "", "?fragment=true" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/RulesAudit/Execution/{Guid.NewGuid()}{query}");
+            request.Headers.Add(TestAuthenticationDefaults.HeaderName, profile);
+            using var response = await host.Client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
         Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1).Verify(api =>
             api.GetRuleExecutionFlow(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
