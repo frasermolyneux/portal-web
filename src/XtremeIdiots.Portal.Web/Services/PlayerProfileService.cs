@@ -27,10 +27,13 @@ public sealed class PlayerProfileService(
             PlayerProfileResult result;
             try
             {
-                var response = await client.Players.V1.GetPlayerByGameType(gameType, playerGuid, PlayerEntityOptions.None).ConfigureAwait(false);
+                var response = await client.Players.V1.GetPlayerByGameType(gameType, playerGuid, PlayerEntityOptions.Tags).ConfigureAwait(false);
                 result = response.IsSuccess && response.Result?.Data is { } player &&
                     player.GameType == gameType && string.Equals(player.Guid, playerGuid, StringComparison.OrdinalIgnoreCase)
                     ? new(player.PlayerId, player.Username, "available", DateTime.UtcNow.AddMinutes(10))
+                    {
+                        Tags = (player.Tags ?? []).Select(tag => new PlayerProfileTag(tag.TagId, tag.Tag?.Name, tag.Tag?.TagHtml)).ToArray()
+                    }
                     : response.IsNotFound
                     ? new(null, null, "notFound", DateTime.UtcNow.AddMinutes(1))
                     : new(null, null, "unavailable", DateTime.UtcNow.AddSeconds(30));

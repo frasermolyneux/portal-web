@@ -77,7 +77,7 @@ $(document).ready(function () {
 
     const columns = [
         { data: 'username', name: 'username', orderable: true, render: function (data, type, row) { return renderPlayerName(row['gameType'], row['username'], row['playerId']); } },
-        { data: 'tags', name: 'tags', orderable: false, render: function (data, type) { return renderPlayerTags(data, type); } },
+        { data: 'tags', name: 'tags', orderable: false, render: function (data, type) { return PlayerTags.render(data, type); } },
         {
             data: 'ipAddress', name: 'ipAddress', orderable: false, render: function (data, type, row) {
                 if (!data) return '';
@@ -250,50 +250,6 @@ $(document).ready(function () {
             .replace(/>/g, '&gt;')
             .replace(/\"/g, '&quot;')
             .replace(/'/g, '&#39;');
-    }
-
-    function isRenderableTagHtml(value) {
-        if (typeof value !== 'string') return false;
-
-        const trimmed = value.trim();
-        const sanitizedPattern = /^<span\s+class="[a-zA-Z0-9_\- ]+">(?:<i\s+class="[a-zA-Z0-9_\- ]+"><\/i>\s*)?[^<>]+<\/span>$/;
-        return sanitizedPattern.test(trimmed);
-    }
-
-    function renderPlayerTags(tags, type) {
-        if (!Array.isArray(tags) || tags.length === 0) {
-            return type === 'display' ? '<span class="text-muted">-</span>' : '';
-        }
-
-        if (type !== 'display') {
-            return tags
-                .map(function (t) { return t?.name || ''; })
-                .filter(function (n) { return n.length > 0; })
-                .join(', ');
-        }
-
-        const maxVisibleTags = 3;
-        const visibleTagHtml = tags
-            .slice(0, maxVisibleTags)
-            .map(function (tag) {
-                if (isRenderableTagHtml(tag?.tagHtml)) {
-                    return '<span class="me-1">' + tag.tagHtml + '</span>';
-                }
-
-                if (tag?.name) {
-                    return '<span class="badge bg-secondary me-1">' + escapeHtml(tag.name) + '</span>';
-                }
-
-                return '';
-            })
-            .join('');
-
-        const remainingTagCount = tags.length - maxVisibleTags;
-        const overflow = remainingTagCount > 0
-            ? '<span class="badge bg-light text-dark border">+' + remainingTagCount + '</span>'
-            : '';
-
-        return '<div class="d-flex flex-wrap align-items-center">' + visibleTagHtml + overflow + '</div>';
     }
 
     function relocateSearch() {

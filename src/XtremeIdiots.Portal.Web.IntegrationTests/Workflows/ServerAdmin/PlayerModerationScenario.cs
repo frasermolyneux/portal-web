@@ -43,7 +43,7 @@ internal sealed class PlayerModerationScenario
             .Setup(api => api.GetPlayerByGameType(
                 GameType.CallOfDuty4,
                 PlayerGuid,
-                PlayerEntityOptions.None))
+                It.IsAny<PlayerEntityOptions>()))
             .ReturnsAsync(new ApiResult<PlayerDto>(
                 HttpStatusCode.OK,
                 new ApiResponse<PlayerDto>(Player)));

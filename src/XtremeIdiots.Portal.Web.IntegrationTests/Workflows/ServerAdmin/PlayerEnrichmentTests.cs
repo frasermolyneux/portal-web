@@ -9,6 +9,147 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "Browser")]
 public sealed class PlayerEnrichmentTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefreshRetainsSessionWhilePendingThenClearsMissingOrFailedEvidence(bool failLookup)
+    {
+        var scenario = new PlayerModerationScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.LiveServerKick, scenario.ConfigureServices);
+        var sessionGate = new RequestGate(hold: true);
+        var sessionRequests = 0;
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayers/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = LivePlayers("first-guid", "203.0.113.7", "First player")
+            }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions { ContentType = "application/json", Body = Enrichment(scenario.PlayerId) }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", async route =>
+        {
+            var request = Interlocked.Increment(ref sessionRequests);
+            if (request > 1)
+                await sessionGate.WaitAsync();
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                Status = request > 2 && failLookup ? 503 : 200,
+                ContentType = "application/json",
+                Body = request == 1
+                    ? /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+                    : request == 2
+                    ? /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7320}]}"""
+                    : /*lang=json,strict*/ """{"data":[]}"""
+            });
+        });
+        try
+        {
+            await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+            var row = browser.Page.Locator("#sd-playersTable tbody tr");
+            await Assertions.Expect(row).ToContainTextAsync("2h 1m");
+            await browser.Page.RunAndWaitForResponseAsync(
+                () => browser.Page.EvaluateAsync("() => RconPlayers.reload()"), IsLivePlayersResponse);
+            await sessionGate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assertions.Expect(row).ToContainTextAsync("2h 1m");
+            await Assertions.Expect(row).Not.ToContainTextAsync("Unknown");
+            sessionGate.Release();
+            await Assertions.Expect(row).ToContainTextAsync("2h 2m");
+
+            await browser.Page.RunAndWaitForResponseAsync(
+                () => browser.Page.EvaluateAsync("() => RconPlayers.reload()"), IsLivePlayersResponse);
+            await Assertions.Expect(row).ToContainTextAsync("Unknown");
+            await Assertions.Expect(row).Not.ToContainTextAsync("2h 2m");
+            if (!failLookup)
+                browser.AssertNoBrowserErrors();
+        }
+        finally
+        {
+            sessionGate.Release();
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RefreshClearsSessionImmediatelyForDuplicateSlotsOrCaseInsensitiveGuids(bool duplicateSlot)
+    {
+        var scenario = new PlayerModerationScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.LiveServerKick, scenario.ConfigureServices);
+        var sessionGate = new RequestGate(hold: true);
+        var liveRequests = 0;
+        var sessionRequests = 0;
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayers/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = Interlocked.Increment(ref liveRequests) == 1
+                    ? LivePlayers("first-guid", "203.0.113.7", "First player")
+                    : JsonSerializer.Serialize(new
+                    {
+                        data = new[]
+                        {
+                            new { num = 7, guid = "first-guid", ipAddress = "203.0.113.7", name = "First player", rate = 25000 },
+                            new { num = duplicateSlot ? 7 : 8, guid = duplicateSlot ? "other-guid" : "FIRST-GUID", ipAddress = "203.0.113.8", name = "Duplicate player", rate = 25000 }
+                        }
+                    })
+            }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions { ContentType = "application/json", Body = Enrichment(scenario.PlayerId) }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", async route =>
+        {
+            if (Interlocked.Increment(ref sessionRequests) > 1)
+                await sessionGate.WaitAsync();
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+            });
+        });
+        try
+        {
+            await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+            var rows = browser.Page.Locator("#sd-playersTable tbody tr");
+            await Assertions.Expect(rows).ToContainTextAsync(["2h 1m"]);
+            await browser.Page.RunAndWaitForResponseAsync(
+                () => browser.Page.EvaluateAsync("() => RconPlayers.reload()"), IsLivePlayersResponse);
+            await sessionGate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assertions.Expect(rows).ToContainTextAsync(["Unknown", "Unknown"]);
+            await Assertions.Expect(rows.Locator($"a[href='/Players/Details/{scenario.PlayerId}']")).ToHaveCountAsync(2);
+            var table = browser.Page.Locator("#sd-playersTable");
+            await table.EvaluateAsync("""
+                table => $(table).one('draw.dt', () => { table.dataset.sessionDraw = 'complete'; })
+                """);
+            sessionGate.Release();
+            await Assertions.Expect(table).ToHaveAttributeAsync("data-session-draw", "complete");
+            await Assertions.Expect(rows).ToContainTextAsync(["Unknown", "Unknown"]);
+            browser.AssertNoBrowserErrors();
+        }
+        finally
+        {
+            sessionGate.Release();
+        }
+    }
+
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(390)]
+    public async Task ProfileTagsUseSafeBadgesBesideTheLiveUsername(int viewportWidth)
+    {
+        var scenario = new PlayerModerationScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.LiveServerKick, scenario.ConfigureServices);
+        await browser.Page.SetViewportSizeAsync(viewportWidth, 900);
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions { ContentType = "application/json", Body = Enrichment(scenario.PlayerId) }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+        var row = browser.Page.Locator("#sd-playersTable tbody tr").First;
+        await Assertions.Expect(row.Locator($"a[href='/Players/Details/{scenario.PlayerId}']")).ToHaveTextAsync(PlayerModerationScenario.PlayerName);
+        await Assertions.Expect(row.GetByText("Trusted", new LocatorGetByTextOptions { Exact = true })).ToBeVisibleAsync();
+        await Assertions.Expect(row.GetByText("<img src=x onerror=alert(1)>", new LocatorGetByTextOptions { Exact = true })).ToBeVisibleAsync();
+        await Assertions.Expect(row.Locator(".badge.bg-light")).ToHaveTextAsync("+1");
+        await Assertions.Expect(row.Locator("img[src='x']")).ToHaveCountAsync(0);
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task FailedRosterRefreshRetainsPlayersButClearsSessionDuration()
     {
@@ -144,6 +285,12 @@ public sealed class PlayerEnrichmentTests
                 Body = Enrichment(scenario.PlayerId)
             });
         });
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+            }));
 
         try
         {
@@ -277,6 +424,13 @@ public sealed class PlayerEnrichmentTests
         {
             playerId,
             profileStatus = "available",
+            tags = new[]
+            {
+                new { name = "Trusted", tagHtml = (string?)"<span class=\"badge bg-success\">Trusted</span>" },
+                new { name = "<img src=x onerror=alert(1)>", tagHtml = (string?)"<img src=x onerror=alert(1)>" },
+                new { name = "Member", tagHtml = (string?)null },
+                new { name = "VIP", tagHtml = (string?)null }
+            },
             countryCode = "GB",
             proxyCheckRiskScore = 80,
             isProxy = true,
