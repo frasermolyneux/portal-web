@@ -4,7 +4,6 @@
     @if (Model.GroupOperator is not null)
     {
         <strong>@Model.GroupOperator</strong>
-        <span class="badge text-bg-secondary">Group outcome unknown</span>
         <ul class="rules-flow__conditions">
             @foreach (var child in Model.Conditions)
             {
@@ -16,7 +15,6 @@
     {
         <strong>@(Model.DisplayName ?? Model.ConditionId ?? "Unknown condition")</strong>
         @if (Model.Operator is not null) { <span> - @Model.Operator</span> }
-        <span class="badge text-bg-secondary">Condition outcome unknown</span>
         @foreach (var parameter in Model.SafeParameters)
         {
             <div>@parameter.Name: @parameter.Value</div>
