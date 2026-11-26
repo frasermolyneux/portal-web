@@ -51,8 +51,10 @@ are opt-in; literal text remains literal. The ordered message list follows the
 single message when both are supplied. Preview uses the shared renderer and
 segmenter with sample or missing values. Server previews use the RCON channel
 budget and character constraints when available, caching the lookup for ten
-seconds; otherwise they show a labelled interim estimate without a prefix.
-Global previews have no selected server. A later trigger may use another
+seconds; otherwise they retain the budget-unavailability warning and use an
+interim 149-byte budget without a prefix. Global previews have no selected server
+and use the same interim budget. Neither preview adds an estimate disclaimer.
+A later trigger may use another
 provider or a changed prefix, so runtime-frozen fragments remain authoritative.
 Both segmentation and display honor the returned budget's CoD colour mode;
 literal caret-digit text is retained when that mode is disabled. This does not
