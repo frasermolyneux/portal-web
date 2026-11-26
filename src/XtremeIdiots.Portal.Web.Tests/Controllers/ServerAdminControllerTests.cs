@@ -305,7 +305,7 @@ public class ServerAdminControllerTests
             .Setup(x => x.Players.V1.GetPlayerByGameType(GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.Tags))
             .ReturnsAsync(new ApiResult<PlayerDto>(HttpStatusCode.OK, new ApiResponse<PlayerDto>(profile)));
         mockAuthorizationService
-            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Players_Read))
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.Players_Read))
             .ReturnsAsync(AuthorizationResult.Success());
 
         var allowed = Assert.IsType<RconPlayerEnrichmentViewModel>(
@@ -317,12 +317,17 @@ public class ServerAdminControllerTests
 
         mockAuthorizationService
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), AuthPolicies.Players_Read))
+            .ReturnsAsync(AuthorizationResult.Success());
+        mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.Players_Read))
             .ReturnsAsync(AuthorizationResult.Failed());
         var denied = Assert.IsType<RconPlayerEnrichmentViewModel>(
             Assert.IsType<JsonResult>(await CreateSut().GetRconPlayerEnrichment(id, 7, "live-guid", "")).Value);
         Assert.Empty(denied.Tags);
         mockRepositoryApiClient.Verify(x => x.Players.V1.GetPlayerByGameType(
             GameType.CallOfDuty4, "live-guid", PlayerEntityOptions.Tags), Times.Once);
+        mockAuthorizationService.Verify(x => x.AuthorizeAsync(
+            It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.Players_Read), Times.Exactly(2));
     }
 
     private Guid ConfigureEnrichmentTarget(string ipAddress = "", string playerGuid = "live-guid")

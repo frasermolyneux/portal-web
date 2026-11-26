@@ -180,8 +180,10 @@ var RconPlayers = (function () {
                     });
                     return {
                         ...player,
-                        currentSessionObservedSeconds: player.currentSessionObservedSeconds ??
-                            (matches.length === 1 ? matches[0].currentSessionObservedSeconds : null),
+                        currentSessionObservedSeconds: hasUniqueSessionIdentity(player, json.data)
+                            ? player.currentSessionObservedSeconds ??
+                                (matches.length === 1 && hasUniqueSessionIdentity(matches[0], previousPlayers) ? matches[0].currentSessionObservedSeconds : null)
+                            : null,
                         ...cachedEnrichment(playerKey(player))
                     };
                 });
@@ -219,12 +221,14 @@ var RconPlayers = (function () {
             timeout: 10000,
             success: function (json) {
                 if (_disposed || generation !== _rosterGeneration || !_table) return;
+                var players = _table.rows().data().toArray();
                 _table.rows().every(function () {
                     var player = this.data();
                     var matches = json.data.filter(function (session) {
                         return sameSessionPlayer(session, player);
                     });
-                    this.data({ ...player, currentSessionObservedSeconds: matches.length === 1 ? matches[0].currentSessionObservedSeconds : null });
+                    this.data({ ...player, currentSessionObservedSeconds: matches.length === 1 && hasUniqueSessionIdentity(player, players)
+                        ? matches[0].currentSessionObservedSeconds : null });
                 });
                 _table.draw(false);
             },
@@ -245,6 +249,12 @@ var RconPlayers = (function () {
 
     function sameSessionPlayer(first, second) {
         return first.num === second.num && first.guid === second.guid && first.ipAddress === second.ipAddress;
+    }
+
+    function hasUniqueSessionIdentity(player, players) {
+        return player.num != null && typeof player.guid === 'string' && player.guid.trim().length > 0 &&
+            players.filter(function (current) { return current.num === player.num; }).length === 1 &&
+            players.filter(function (current) { return (current.guid || '').toLowerCase() === player.guid.toLowerCase(); }).length === 1;
     }
 
     function applyEnrichment(key, value) {

@@ -444,7 +444,7 @@ public class ServerAdminController(
             var profileTask = playerProfileService.GetAsync(server.GameType, player.Guid, cancellationToken);
             var intelligenceTask = ipIntelligenceService.GetAsync(player.IpAddress, cancellationToken);
             await Task.WhenAll(profileTask, intelligenceTask).ConfigureAwait(false);
-            var canReadPlayer = (await authorizationService.AuthorizeAsync(User, AuthPolicies.Players_Read).ConfigureAwait(false)).Succeeded;
+            var canReadPlayer = (await authorizationService.AuthorizeAsync(User, server.GameType, AuthPolicies.Players_Read).ConfigureAwait(false)).Succeeded;
             return Json(ToEnrichmentViewModel(await profileTask.ConfigureAwait(false), await intelligenceTask.ConfigureAwait(false), canReadPlayer));
         }, nameof(GetRconPlayerEnrichment)).ConfigureAwait(false);
     }

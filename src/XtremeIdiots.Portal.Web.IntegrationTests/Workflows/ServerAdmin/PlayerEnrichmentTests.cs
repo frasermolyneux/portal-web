@@ -69,6 +69,68 @@ public sealed class PlayerEnrichmentTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RefreshClearsSessionImmediatelyForDuplicateSlotsOrCaseInsensitiveGuids(bool duplicateSlot)
+    {
+        var scenario = new PlayerModerationScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.LiveServerKick, scenario.ConfigureServices);
+        var sessionGate = new RequestGate(hold: true);
+        var liveRequests = 0;
+        var sessionRequests = 0;
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayers/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = Interlocked.Increment(ref liveRequests) == 1
+                    ? LivePlayers("first-guid", "203.0.113.7", "First player")
+                    : JsonSerializer.Serialize(new
+                    {
+                        data = new[]
+                        {
+                            new { num = 7, guid = "first-guid", ipAddress = "203.0.113.7", name = "First player", rate = 25000 },
+                            new { num = duplicateSlot ? 7 : 8, guid = duplicateSlot ? "other-guid" : "FIRST-GUID", ipAddress = "203.0.113.8", name = "Duplicate player", rate = 25000 }
+                        }
+                    })
+            }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerEnrichment/**", route =>
+            route.FulfillAsync(new RouteFulfillOptions { ContentType = "application/json", Body = Enrichment(scenario.PlayerId) }));
+        await browser.Page.RouteAsync("**/ServerAdmin/GetRconPlayerSessions/**", async route =>
+        {
+            if (Interlocked.Increment(ref sessionRequests) > 1)
+                await sessionGate.WaitAsync();
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "application/json",
+                Body = /*lang=json,strict*/ """{"data":[{"num":7,"guid":"first-guid","ipAddress":"203.0.113.7","currentSessionObservedSeconds":7260}]}"""
+            });
+        });
+        try
+        {
+            await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/ServerAdmin/ServerDetail/{scenario.GameServerId}").AbsoluteUri);
+            var rows = browser.Page.Locator("#sd-playersTable tbody tr");
+            await Assertions.Expect(rows).ToContainTextAsync(["2h 1m"]);
+            await browser.Page.RunAndWaitForResponseAsync(
+                () => browser.Page.EvaluateAsync("() => RconPlayers.reload()"), IsLivePlayersResponse);
+            await sessionGate.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assertions.Expect(rows).ToContainTextAsync(["Unknown", "Unknown"]);
+            await Assertions.Expect(rows.Locator($"a[href='/Players/Details/{scenario.PlayerId}']")).ToHaveCountAsync(2);
+            var table = browser.Page.Locator("#sd-playersTable");
+            await table.EvaluateAsync("""
+                table => $(table).one('draw.dt', () => { table.dataset.sessionDraw = 'complete'; })
+                """);
+            sessionGate.Release();
+            await Assertions.Expect(table).ToHaveAttributeAsync("data-session-draw", "complete");
+            await Assertions.Expect(rows).ToContainTextAsync(["Unknown", "Unknown"]);
+            browser.AssertNoBrowserErrors();
+        }
+        finally
+        {
+            sessionGate.Release();
+        }
+    }
+
+    [Theory]
     [InlineData(1280)]
     [InlineData(390)]
     public async Task ProfileTagsUseSafeBadgesBesideTheLiveUsername(int viewportWidth)

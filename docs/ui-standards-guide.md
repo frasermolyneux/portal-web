@@ -179,10 +179,12 @@ Use the `list-filters` class for filter bars on list/index pages:
 The server-admin connected-player table keeps the last observed current-session
 duration for the same slot/GUID/IP while its session refresh is pending. Completed
 lookups replace the value; missing evidence, lookup failures, roster failures, or
-changed player identity clear it to `Unknown`. It never extrapolates elapsed time.
+changed player identity clear it to `Unknown`. Blank GUIDs, duplicate slots, and
+case-insensitive duplicate GUIDs are immediately unknown. It never extrapolates elapsed time.
 Player profile tags appear beside the live username using the shared `PlayerTags`
 renderer (up to three safe badges plus an overflow count), populated by the existing
-cached profile enrichment lookup and visible only with player-read permission.
+cached profile enrichment lookup and visible only with player-read permission for
+the server's game.
 
 ### Table Classes
 
