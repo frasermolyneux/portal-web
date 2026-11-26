@@ -104,6 +104,12 @@ versions when migrating a counted table. Keep retention messages beside history
 tables, including shared player chat. Server events retain 30 days; unlocked chat
 retains six months, while locked messages are preserved.
 
+Server Events uses a content-sized date/time column without appended relative time.
+Its scoped table styles leave the remaining width for wrapping event data, including
+responsive inline details. Server names follow the public server listing's colour
+formatting and link to `Servers/Details` only when the server exists and
+`serverListEnabled` is true; otherwise the formatted name remains plain text.
+
 Ordinary entity lists keep their numbered pagination, totals and page-jump
 controls. Do not apply the history variant globally.
 

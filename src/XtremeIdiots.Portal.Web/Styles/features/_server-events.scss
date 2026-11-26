@@ -1,0 +1,25 @@
+.server-events-table-wrapper {
+    #dataTable {
+        th:nth-child(2),
+        td:nth-child(2) {
+            width: 15%;
+            overflow-wrap: anywhere;
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+            width: 25%;
+            overflow-wrap: anywhere;
+        }
+
+        th:nth-child(4),
+        td:nth-child(4) {
+            width: auto;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    .dtr-data {
+        overflow-wrap: anywhere;
+    }
+}
