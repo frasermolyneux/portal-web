@@ -48,9 +48,10 @@
         const recorded = new Map(data.daily.map(day => [day.dateUtc.slice(0, 10), day.measuredSeconds]));
         const labels = [];
         const values = [];
-        const date = new Date(data.fromUtc.slice(0, 10) + 'T00:00:00Z');
-        const end = utcDate(data.toUtc);
-        for (; date < end; date.setUTCDate(date.getUTCDate() + 1)) {
+        const start = new Date(data.fromUtc.slice(0, 10) + 'T00:00:00Z').getTime();
+        const end = utcDate(data.toUtc).getTime();
+        for (let dayMillis = start; dayMillis < end; dayMillis += 24 * 60 * 60 * 1000) {
+            const date = new Date(dayMillis);
             const day = date.toISOString().slice(0, 10);
             const seconds = recorded.get(day) ?? null;
             labels.push(dayLabel.format(date));
