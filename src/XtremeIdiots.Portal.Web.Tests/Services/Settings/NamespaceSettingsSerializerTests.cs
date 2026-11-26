@@ -21,6 +21,8 @@ namespace XtremeIdiots.Portal.Web.Tests.Services.Settings;
 
 public class NamespaceSettingsSerializerTests
 {
+    private const string LegacyWelcomeNamespace = "welcomeMessages";
+
     private readonly NamespaceSettingsSerializer serializer = new();
 
     [Fact]
@@ -501,8 +503,8 @@ public class NamespaceSettingsSerializerTests
         Assert.False(welcomeDoc.RootElement.GetProperty("enabled").GetBoolean());
         Assert.Equal("global-rule", welcomeDoc.RootElement.GetProperty("rules")[0].GetProperty("id").GetString());
         Assert.Equal("Welcome", welcomeDoc.RootElement.GetProperty("rules")[0].GetProperty("actions")[0].GetProperty("parameters").GetProperty("message").GetString());
-        Assert.DoesNotContain(configurations, configuration => configuration.Namespace == WelcomeMessageSettingsConstants.Namespace);
-        Assert.DoesNotContain(WelcomeMessageSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(configurations, configuration => configuration.Namespace == LegacyWelcomeNamespace);
+        Assert.DoesNotContain(LegacyWelcomeNamespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
@@ -663,7 +665,7 @@ public class NamespaceSettingsSerializerTests
         // allowing us to test state transitions without reinitializing the model.
         _ = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         Assert.Contains(WelcomeRulesSettingsConstants.Namespace, serializer.DeletedNamespaces);
-        Assert.DoesNotContain(WelcomeMessageSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(LegacyWelcomeNamespace, serializer.DeletedNamespaces);
 
         model.WelcomeRules.RuleOverridesJson = /*lang=json,strict*/ """[{"ruleId":"global-rule","enabled":false}]""";
 
@@ -675,7 +677,7 @@ public class NamespaceSettingsSerializerTests
         var finalConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         Assert.DoesNotContain(finalConfigurations, x => x.Namespace == WelcomeRulesSettingsConstants.Namespace);
         Assert.Contains(WelcomeRulesSettingsConstants.Namespace, serializer.DeletedNamespaces);
-        Assert.DoesNotContain(WelcomeMessageSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(LegacyWelcomeNamespace, serializer.DeletedNamespaces);
     }
 
     [Fact]
@@ -809,7 +811,7 @@ public class NamespaceSettingsSerializerTests
         // intact for later re-enable.
         Assert.DoesNotContain(AgentSettingsConstants.Namespace, serializer.DeletedNamespaces);
         Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, serializer.DeletedNamespaces);
-        Assert.DoesNotContain(WelcomeMessageSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        Assert.DoesNotContain(LegacyWelcomeNamespace, serializer.DeletedNamespaces);
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
     }
 
