@@ -53,7 +53,7 @@ $(document).ready(function () {
             if (eventTypeInput && typeof data.eventType !== 'undefined') eventTypeInput.value = data.eventType;
         },
         columnDefs: [
-            { targets: 0, responsivePriority: 1 },
+            { targets: 0, responsivePriority: 1, className: 'table-date-col' },
             { targets: 1, responsivePriority: 2 },
             { targets: 2, responsivePriority: 3 },
             { targets: 3, responsivePriority: 4 }
@@ -89,7 +89,7 @@ $(document).ready(function () {
                 data: 'timestamp', name: 'timestamp', orderable: true,
                 render: function (data) {
                     if (!data) return '';
-                    return '<span title="' + portalDate.formatDateTime(data) + '">' + portalDate.formatDateTime(data, { showRelative: true }) + '</span>';
+                    return escapeHtml(portalDate.formatDateTime(data));
                 }
             },
             {
@@ -101,7 +101,11 @@ $(document).ready(function () {
             {
                 data: null, name: 'serverName', orderable: false,
                 render: function (data, type, row) {
-                    return CodColors.renderSafe(row['gameServer']?.['liveTitle'] || row['gameServer']?.['title'] || '');
+                    var server = row.gameServer;
+                    var title = server?.liveTitle?.trim() ? server.liveTitle : server?.title || '';
+                    var name = '<span class="cod-colored">' + CodColors.renderSafe(title) + '</span>';
+                    if (!server?.gameServerId || server.serverListEnabled !== true) return name;
+                    return '<a href="/Servers/Details/' + encodeURIComponent(server.gameServerId) + '">' + name + '</a>';
                 }
             },
             {

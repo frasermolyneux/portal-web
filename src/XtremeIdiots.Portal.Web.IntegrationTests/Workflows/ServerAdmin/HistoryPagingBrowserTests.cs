@@ -126,6 +126,95 @@ public sealed partial class HistoryPagingBrowserTests
     }
 
     [Theory]
+    [InlineData(1440)]
+    [InlineData(390)]
+    public async Task ServerEvents_UsesCompactDatesAndSafeResponsiveServerLinks(int viewportWidth)
+    {
+        await using var fixture = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin);
+        var page = fixture.Page;
+        await page.SetViewportSizeAsync(viewportWidth, 900);
+        var serverId = Guid.NewGuid();
+        var privateServerId = Guid.NewGuid();
+        var timestamp = "2026-11-26T19:45:00Z";
+        var payload = "<img src=x onerror=alert(1)>" + new string('x', 240);
+        await page.RouteAsync("**/ServerAdmin/GetGameServers", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = "[]"
+        }));
+        await page.RouteAsync("**/ServerAdmin/GetServerEventsAjax*", async route =>
+        {
+            using var request = JsonDocument.Parse(route.Request.PostData!);
+            await route.FulfillAsync(new()
+            {
+                ContentType = "application/json",
+                Body = JsonSerializer.Serialize(new
+                {
+                    draw = request.RootElement.GetProperty("draw").GetInt32(),
+                    start = 0,
+                    hasMore = false,
+                    data = new object[]
+                {
+                    new { timestamp, eventType = "RconKickPlayer", eventData = JsonSerializer.Serialize(new { reason = payload }),
+                        gameServer = new { gameServerId = serverId, serverListEnabled = true, title = "Stored title", liveTitle = "^1Live <server>" } },
+                    new { timestamp, eventType = "MapChange", eventData = payload,
+                        gameServer = new { gameServerId = serverId, serverListEnabled = true, title = "^2Stored title", liveTitle = " " } },
+                    new { timestamp, eventType = "MapChange", eventData = "",
+                        gameServer = new { gameServerId = privateServerId, serverListEnabled = false, title = "Private server" } },
+                    new { timestamp, eventType = "MapChange", eventData = "", gameServer = (object?)null }
+                }
+                })
+            });
+        });
+        await page.GotoAsync(new Uri(fixture.Host.BaseAddress, "/ServerAdmin/ServerEventsIndex").AbsoluteUri);
+        var rows = page.Locator("#dataTable tbody tr:not(.child)");
+        await Assertions.Expect(rows).ToHaveCountAsync(4);
+        var first = rows.Nth(0);
+        var expectedDate = await page.EvaluateAsync<string>("date => portalDate.formatDateTime(date)", timestamp);
+        await Assertions.Expect(first.Locator("td").First).ToHaveTextAsync(expectedDate);
+
+        if (viewportWidth == 1440)
+        {
+            var widths = await first.Locator("td").EvaluateAllAsync<double[]>(
+                "cells => cells.map(cell => cell.getBoundingClientRect().width)");
+            Assert.True(widths[0] < 300, $"Timestamp width was {widths[0]}px");
+            Assert.True(widths[3] > widths[0] && widths[3] > widths[2],
+                $"Event data width {widths[3]}px must exceed timestamp {widths[0]}px and server {widths[2]}px");
+        }
+        else
+        {
+            await Assertions.Expect(first.Locator("td").First).ToHaveClassAsync(new Regex("dtr-control"));
+            await first.Locator("td").First.ClickAsync();
+        }
+
+        var displayedFirst = viewportWidth == 1440 ? first : page.Locator("#dataTable tbody tr.child");
+        var link = displayedFirst.GetByRole(AriaRole.Link, new() { Name = "Live <server>", Exact = true });
+        await Assertions.Expect(link).ToHaveAttributeAsync("href", $"/Servers/Details/{serverId}");
+        await Assertions.Expect(link.Locator(":scope > .cod-colored")).ToHaveCountAsync(1);
+        await displayedFirst.Locator("details summary").ClickAsync();
+        await Assertions.Expect(displayedFirst.Locator("details > div")).ToContainTextAsync("reason: " + payload);
+        await Assertions.Expect(displayedFirst.Locator("img")).ToHaveCountAsync(0);
+
+        if (viewportWidth == 390)
+        {
+            await first.Locator("td").First.ClickAsync();
+            await rows.Nth(1).Locator("td").First.ClickAsync();
+        }
+
+        var displayedSecond = viewportWidth == 1440 ? rows.Nth(1) : page.Locator("#dataTable tbody tr.child");
+        await Assertions.Expect(displayedSecond.GetByRole(AriaRole.Link, new() { Name = "Stored title", Exact = true }))
+            .ToHaveAttributeAsync("href", $"/Servers/Details/{serverId}");
+        await Assertions.Expect(displayedSecond.Locator("img")).ToHaveCountAsync(0);
+        await Assertions.Expect(page.Locator($"#dataTable a[href='/Servers/Details/{privateServerId}']")).ToHaveCountAsync(0);
+        await Assertions.Expect(rows.Nth(2).Locator("td").Nth(2)).ToHaveTextAsync("Private server");
+        await Assertions.Expect(rows.Nth(3).Locator("td").Nth(2)).ToBeEmptyAsync();
+        var overflow = await page.Locator(".server-events-table-wrapper").EvaluateAsync<int>(
+            "element => element.scrollWidth - element.clientWidth");
+        Assert.True(overflow <= 1, $"Table overflows by {overflow}px");
+        fixture.AssertNoBrowserErrors();
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task History_NavigatesLookaheadWithoutTotalsOrNumberedPages(bool events)
