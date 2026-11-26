@@ -689,7 +689,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(section.Locator(".rules-flow__trigger")).ToContainTextAsync("player.connected");
         var rule = page.Locator("[data-rule-id='welcome']");
         await Assertions.Expect(rule).ToContainTextAsync("GUID first seen - WithinAge");
-        await Assertions.Expect(rule).ToContainTextAsync("Condition outcome unknown");
+        await Assertions.Expect(rule.Locator(".rules-flow__condition .badge")).ToHaveCountAsync(0);
         await Assertions.Expect(rule).ToContainTextAsync("Duration: 7.00:00:00");
         await Assertions.Expect(rule).ToContainTextAsync("Some condition values are unavailable");
         await Assertions.Expect(rule).ToContainTextAsync("Match outcome unknown");
