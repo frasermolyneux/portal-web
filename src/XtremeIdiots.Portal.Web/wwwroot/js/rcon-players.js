@@ -70,7 +70,8 @@ var RconPlayers = (function () {
                     render: function (data, type, row) {
                         if (type !== 'display') return data;
                         if (row.playerId) {
-                            return '<a href="/Players/Details/' + row.playerId + '" target="_blank" rel="noopener noreferrer">' + CodColors.renderSafe(row.name) + '</a>';
+                            return '<a href="/Players/Details/' + row.playerId + '" target="_blank" rel="noopener noreferrer">' + CodColors.renderSafe(row.name) + '</a>' +
+                                (row.tags?.length ? PlayerTags.render(row.tags, type) : '');
                         }
                         var profileLabels = { unavailable: 'Profile unavailable', notFound: 'No profile', notApplicable: '' };
                         var profileLabel = profileLabels[row.profileStatus] ?? 'Profile pending';
@@ -172,8 +173,19 @@ var RconPlayers = (function () {
             type: 'GET',
             success: function (json) {
                 if (_disposed) return;
+                var previousPlayers = _table ? _table.rows().data().toArray() : [];
                 json.data = json.data.map(function (player) {
-                    return { ...player, ...cachedEnrichment(playerKey(player)) };
+                    var matches = previousPlayers.filter(function (previous) {
+                        return sameSessionPlayer(previous, player);
+                    });
+                    return {
+                        ...player,
+                        currentSessionObservedSeconds: hasUniqueSessionIdentity(player, json.data)
+                            ? player.currentSessionObservedSeconds ??
+                                (matches.length === 1 && hasUniqueSessionIdentity(matches[0], previousPlayers) ? matches[0].currentSessionObservedSeconds : null)
+                            : null,
+                        ...cachedEnrichment(playerKey(player))
+                    };
                 });
                 _lastRefreshTime = new Date();
                 RconUtils.updateRefreshBadge(_refreshBadgeId, _lastRefreshTime);
@@ -206,24 +218,43 @@ var RconPlayers = (function () {
         var request = $.ajax({
             url: '/ServerAdmin/GetRconPlayerSessions/' + _serverId,
             type: 'GET',
+            timeout: 10000,
             success: function (json) {
                 if (_disposed || generation !== _rosterGeneration || !_table) return;
+                var players = _table.rows().data().toArray();
                 _table.rows().every(function () {
                     var player = this.data();
                     var matches = json.data.filter(function (session) {
-                        return session.num === player.num && session.guid === player.guid &&
-                            session.ipAddress === player.ipAddress;
+                        return sameSessionPlayer(session, player);
                     });
-                    if (matches.length === 1) this.data({ ...player, currentSessionObservedSeconds: matches[0].currentSessionObservedSeconds });
+                    this.data({ ...player, currentSessionObservedSeconds: matches.length === 1 && hasUniqueSessionIdentity(player, players)
+                        ? matches[0].currentSessionObservedSeconds : null });
                 });
                 _table.draw(false);
             },
             error: function (xhr, textStatus) {
-                if (!_disposed && textStatus !== 'abort') console.warn('Current sessions unavailable:', xhr.status);
+                if (_disposed || textStatus === 'abort' || generation !== _rosterGeneration) return;
+                console.warn('Current sessions unavailable:', xhr.status);
+                if (_table) {
+                    _table.rows().every(function () {
+                        this.data({ ...this.data(), currentSessionObservedSeconds: null });
+                    });
+                    _table.draw(false);
+                }
             },
             complete: function () { if (_sessionRequest === request) _sessionRequest = null; }
         });
         _sessionRequest = request;
+    }
+
+    function sameSessionPlayer(first, second) {
+        return first.num === second.num && first.guid === second.guid && first.ipAddress === second.ipAddress;
+    }
+
+    function hasUniqueSessionIdentity(player, players) {
+        return player.num != null && typeof player.guid === 'string' && player.guid.trim().length > 0 &&
+            players.filter(function (current) { return current.num === player.num; }).length === 1 &&
+            players.filter(function (current) { return (current.guid || '').toLowerCase() === player.guid.toLowerCase(); }).length === 1;
     }
 
     function applyEnrichment(key, value) {
