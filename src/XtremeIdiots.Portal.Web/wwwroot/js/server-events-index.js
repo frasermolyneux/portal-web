@@ -103,14 +103,9 @@ $(document).ready(function () {
                 render: function (data, type, row) {
                     var server = row.gameServer;
                     var title = server?.liveTitle?.trim() ? server.liveTitle : server?.title || '';
-                    var name = document.createElement('span');
-                    name.className = 'cod-colored';
-                    name.innerHTML = CodColors.renderSafe(title);
-                    if (!server?.gameServerId || server.serverListEnabled !== true) return name.outerHTML;
-                    var link = document.createElement('a');
-                    link.href = '/Servers/Details/' + encodeURIComponent(server.gameServerId);
-                    link.appendChild(name);
-                    return link.outerHTML;
+                    var name = '<span class="cod-colored">' + CodColors.renderSafe(title) + '</span>';
+                    if (!server?.gameServerId || server.serverListEnabled !== true) return name;
+                    return '<a href="/Servers/Details/' + encodeURIComponent(server.gameServerId) + '">' + name + '</a>';
                 }
             },
             {
