@@ -123,7 +123,7 @@ public class RulesPreviewControllerTests
             new MessageChannelBudget("message.private", 149));
         Assert.Equal(expected.Fragments.Select(fragment => fragment.Text),
             fragments.EnumerateArray().Select(fragment => fragment.GetProperty("text").GetString()));
-        Assert.Contains("interim assumption", root.GetProperty("warnings")[0].GetString());
+        Assert.Empty(root.GetProperty("warnings").EnumerateArray());
     }
 
     [Fact]
@@ -227,7 +227,7 @@ public class RulesPreviewControllerTests
     }
 
     [Fact]
-    public async Task Preview_WhenRconBudgetIsUnavailable_LabelsFallbackAsAnEstimate()
+    public async Task Preview_WhenRconBudgetIsUnavailable_PreservesBudgetWarningWithoutEstimateDisclaimer()
     {
         var serverId = Guid.NewGuid();
         var request = ServerRequest(serverId, "hello");
@@ -238,8 +238,8 @@ public class RulesPreviewControllerTests
 
         var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-        Assert.Contains("Prefix unavailable", json.RootElement.GetProperty("warnings")[0].GetString());
-        Assert.Contains("Estimated fragments only", json.RootElement.GetProperty("warnings")[1].GetString());
+        var warning = Assert.Single(json.RootElement.GetProperty("warnings").EnumerateArray());
+        Assert.Contains("Prefix unavailable", warning.GetString());
         Assert.Single(json.RootElement.GetProperty("fragments").EnumerateArray());
     }
 
@@ -254,7 +254,9 @@ public class RulesPreviewControllerTests
 
         var result = Assert.IsType<JsonResult>(await CreateController().Preview(request, default));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-        Assert.Contains("Estimated fragments only", json.RootElement.GetProperty("warnings")[1].GetString());
+        var warning = Assert.Single(json.RootElement.GetProperty("warnings").EnumerateArray());
+        Assert.Contains("RCON budget for CallOfDuty4 is unavailable", warning.GetString());
+        Assert.Single(json.RootElement.GetProperty("fragments").EnumerateArray());
         servers.Verify(client => client.RulesNativeAction.V1.GetMessageChannelBudget(
             serverId, RuleMessageChannels.RconPublicChat, It.IsAny<CancellationToken>()), Times.Once);
     }

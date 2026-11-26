@@ -131,12 +131,7 @@ public sealed class RulesPreviewController(
                             ? "unavailable"
                             : rcon.Status.ToString().ToLowerInvariant();
                         warnings.Add($"RCON budget for {gameType} is {status}: {rcon?.Detail ?? "the budget lookup failed or returned incomplete data"}");
-                        warnings.Add("Estimated fragments only: the 149-byte limit is an interim assumption and the server's configurable prefix is not included. Actual delivery may split differently.");
                     }
-                }
-                else
-                {
-                    warnings.Add("Estimated fragments only: no server or provider is selected; the 149-byte limit is an interim assumption and any server prefix is not included. Actual delivery may split differently.");
                 }
 
                 var preparation = MessagePreparation.Prepare(renderedMessage, renderedMessages,
