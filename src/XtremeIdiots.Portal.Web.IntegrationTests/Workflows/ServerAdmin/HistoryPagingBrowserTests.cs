@@ -200,6 +200,7 @@ public sealed partial class HistoryPagingBrowserTests
             await first.Locator("td").First.ClickAsync();
             await rows.Nth(1).Locator("td").First.ClickAsync();
         }
+
         var displayedSecond = viewportWidth == 1440 ? rows.Nth(1) : page.Locator("#dataTable tbody tr.child");
         await Assertions.Expect(displayedSecond.GetByRole(AriaRole.Link, new() { Name = "Stored title", Exact = true }))
             .ToHaveAttributeAsync("href", $"/Servers/Details/{serverId}");
