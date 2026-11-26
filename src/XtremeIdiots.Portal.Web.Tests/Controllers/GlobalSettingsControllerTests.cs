@@ -30,6 +30,8 @@ namespace XtremeIdiots.Portal.Web.Tests.Controllers;
 
 public class GlobalSettingsControllerTests
 {
+    private const string LegacyWelcomeNamespace = "welcomeMessages";
+
     private static void PrepareSiegeSubmission(GlobalSettingsController controller, GlobalSettingsViewModel model)
     {
         var fields = new Dictionary<string, string>
@@ -562,7 +564,7 @@ public class GlobalSettingsControllerTests
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.False(upsertPayloads.ContainsKey("welcomeMessages"));
+        Assert.False(upsertPayloads.ContainsKey(LegacyWelcomeNamespace));
         Assert.True(upsertPayloads.TryGetValue(WelcomeRulesSettingsConstants.Namespace, out var welcomeMessagesJson));
 
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
@@ -606,7 +608,7 @@ public class GlobalSettingsControllerTests
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.False(upsertPayloads.ContainsKey(WelcomeMessageSettingsConstants.Namespace));
+        Assert.False(upsertPayloads.ContainsKey(LegacyWelcomeNamespace));
         Assert.True(upsertPayloads.TryGetValue(WelcomeRulesSettingsConstants.Namespace, out var welcomeMessagesJson));
 
         using var doc = System.Text.Json.JsonDocument.Parse(welcomeMessagesJson);
@@ -617,7 +619,7 @@ public class GlobalSettingsControllerTests
 
         mockRepositoryApiClient.Verify(
             client => client.GlobalConfigurations.V1.DeleteConfiguration(
-                WelcomeMessageSettingsConstants.Namespace,
+                LegacyWelcomeNamespace,
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
