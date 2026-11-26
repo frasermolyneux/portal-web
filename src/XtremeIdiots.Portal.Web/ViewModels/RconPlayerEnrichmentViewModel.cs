@@ -1,3 +1,5 @@
+using XtremeIdiots.Portal.Web.Services;
+
 namespace XtremeIdiots.Portal.Web.ViewModels;
 
 public sealed record RconPlayerEnrichmentViewModel(
@@ -10,4 +12,7 @@ public sealed record RconPlayerEnrichmentViewModel(
     bool? IsVpn,
     string? ProxyType,
     string IpIntelligenceStatus,
-    DateTime ExpiresAtUtc);
+    DateTime ExpiresAtUtc)
+{
+    public IReadOnlyList<PlayerProfileTag> Tags { get; init; } = [];
+}

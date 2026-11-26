@@ -444,17 +444,21 @@ public class ServerAdminController(
             var profileTask = playerProfileService.GetAsync(server.GameType, player.Guid, cancellationToken);
             var intelligenceTask = ipIntelligenceService.GetAsync(player.IpAddress, cancellationToken);
             await Task.WhenAll(profileTask, intelligenceTask).ConfigureAwait(false);
-            return Json(ToEnrichmentViewModel(await profileTask.ConfigureAwait(false), await intelligenceTask.ConfigureAwait(false)));
+            var canReadPlayer = (await authorizationService.AuthorizeAsync(User, AuthPolicies.Players_Read).ConfigureAwait(false)).Succeeded;
+            return Json(ToEnrichmentViewModel(await profileTask.ConfigureAwait(false), await intelligenceTask.ConfigureAwait(false), canReadPlayer));
         }, nameof(GetRconPlayerEnrichment)).ConfigureAwait(false);
     }
 
-    private static RconPlayerEnrichmentViewModel ToEnrichmentViewModel(PlayerProfileResult profile, IpIntelligenceResult intelligence)
+    private static RconPlayerEnrichmentViewModel ToEnrichmentViewModel(PlayerProfileResult profile, IpIntelligenceResult intelligence, bool canReadPlayer)
     {
         return new(
             profile.PlayerId, profile.Username, profile.Status,
             intelligence.Intelligence?.CountryCode, intelligence.RiskScore, intelligence.IsProxy,
             intelligence.IsVpn, intelligence.ProxyType, intelligence.Status,
-            profile.ExpiresAtUtc < intelligence.ExpiresAtUtc ? profile.ExpiresAtUtc : intelligence.ExpiresAtUtc);
+            profile.ExpiresAtUtc < intelligence.ExpiresAtUtc ? profile.ExpiresAtUtc : intelligence.ExpiresAtUtc)
+        {
+            Tags = canReadPlayer ? profile.Tags : []
+        };
     }
 
     /// <summary>
