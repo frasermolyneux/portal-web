@@ -10,6 +10,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 
 using XtremeIdiots.Portal.Web.Auth.Constants;
+using XtremeIdiots.Portal.Web.Constants;
 using XtremeIdiots.Portal.Web.Extensions;
 
 namespace XtremeIdiots.Portal.Web.ApiControllers;
@@ -22,6 +23,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [Route("api/[controller]")]
 public class AnalyticsController(
     IRepositoryApiClient repositoryApiClient,
+    IAuthorizationService authorizationService,
     TelemetryClient telemetryClient,
     ILogger<AnalyticsController> logger,
     IConfiguration configuration,
@@ -227,6 +229,100 @@ public class AnalyticsController(
         return Json(() => repositoryApiClient.PlayerAnalyticsV2.V1.GetPlayerDetail(playerId, Utc(from), Utc(to), cancellationToken), nameof(PlayerDetail));
     }
 
+    [HttpGet("player/{playerId:guid}/activity")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public Task<IActionResult> PlayerActivity(
+        Guid playerId, DateTime from, DateTime to, Guid? serverId, CancellationToken cancellationToken = default)
+    {
+        return ExecuteWithErrorHandlingAsync(async () =>
+        {
+            var fromUtc = Utc(from);
+            var toUtc = Utc(to);
+            if (from == default || to == default || fromUtc >= toUtc || toUtc - fromUtc > TimeSpan.FromDays(90))
+                return BadRequest("Provide an increasing UTC activity window of at most 90 days.");
+
+            var playerResponse = await repositoryApiClient.Players.V1
+                .GetPlayer(playerId, PlayerEntityOptions.None).ConfigureAwait(false);
+            if (playerResponse.IsNotFound)
+                return NotFound();
+            if (!playerResponse.IsSuccess || playerResponse.Result?.Data is not { } player)
+                return PlayerActivityUnavailable("load player");
+
+            var playerAuthorization = await CheckAuthorizationAsync(authorizationService, player.GameType,
+                AuthPolicies.Players_Read, nameof(PlayerActivity), "Player", $"PlayerId:{playerId}").ConfigureAwait(false);
+            if (playerAuthorization is not null)
+                return playerAuthorization;
+
+            const int pageSize = 100;
+            Guid[]? requestedIds = serverId is Guid selectedId ? [selectedId] : null;
+            var authorizedServers = new Dictionary<Guid, string>();
+            var seenIds = new HashSet<Guid>();
+            var expectedCount = -1;
+            for (var skip = 0; ;)
+            {
+                var serversResponse = await repositoryApiClient.GameServers.V1.GetGameServers(
+                    [player.GameType], requestedIds, null, skip, pageSize, GameServerOrder.ServerListPosition, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!serversResponse.IsSuccess || serversResponse.Result?.Data?.Items is not { } items)
+                    return PlayerActivityUnavailable("load game servers");
+
+                if (serversResponse.Result.Pagination?.FilteredCount is int count)
+                {
+                    if (count < 0 || (expectedCount >= 0 && count != expectedCount))
+                        return PlayerActivityUnavailable("page game servers");
+                    expectedCount = count;
+                }
+
+                var page = items.ToArray();
+                foreach (var server in page)
+                {
+                    if (!seenIds.Add(server.GameServerId))
+                        return PlayerActivityUnavailable("page game servers");
+
+                    if (server.GameType == player.GameType && (serverId is null || server.GameServerId == serverId) &&
+                        (await authorizationService.AuthorizeAsync(User, (server.GameType, server.GameServerId),
+                            AuthPolicies.GameServers_Admin_Read).ConfigureAwait(false)).Succeeded)
+                        authorizedServers.Add(server.GameServerId,
+                            string.IsNullOrWhiteSpace(server.Title) ? server.GameServerId.ToString() : server.Title);
+                }
+
+                if (expectedCount >= 0 && (seenIds.Count > expectedCount || (page.Length == 0 && seenIds.Count < expectedCount)))
+                    return PlayerActivityUnavailable("page game servers");
+                if (expectedCount >= 0 ? seenIds.Count == expectedCount : page.Length < pageSize)
+                    break;
+                if (skip > int.MaxValue - page.Length)
+                    return PlayerActivityUnavailable("page game servers");
+                skip += page.Length;
+            }
+
+            if (authorizedServers.Count == 0)
+            {
+                if (serverId is null && seenIds.Count == 0)
+                    return PlayerActivityUnavailable("find game servers");
+
+                TrackUnauthorizedAccessAttempt(nameof(PlayerActivity), "GameServer", $"ServerId:{serverId}");
+                return Forbid();
+            }
+
+            var includeChat = ChatLogSupportedGames.IsSupported(player.GameType) &&
+                (await authorizationService.AuthorizeAsync(User, player.GameType, AuthPolicies.ChatLog_ReadServer)
+                    .ConfigureAwait(false)).Succeeded;
+
+            var response = await repositoryApiClient.PlayerAnalyticsV2.V1
+                .GetPlayerActivity(playerId, fromUtc, toUtc, authorizedServers.Keys, includeChat, cancellationToken).ConfigureAwait(false);
+            if (response.IsNotFound)
+                return NotFound();
+            if (!response.IsSuccess || response.Result?.Data is not { } activity)
+                return PlayerActivityUnavailable("load activity");
+
+            return Ok(new
+            {
+                Activity = activity,
+                AvailableServers = authorizedServers.Select(server => new { ServerId = server.Key, ServerName = server.Value }).ToArray()
+            });
+        }, nameof(PlayerActivity));
+    }
+
     [HttpGet("player/{playerId:guid}/timeseries")]
     public Task<IActionResult> PlayerDetailTimeseries(
         Guid playerId, DateTime from, DateTime to,
@@ -305,6 +401,12 @@ public class AnalyticsController(
     }
 
     #endregion
+
+    private IActionResult PlayerActivityUnavailable(string operation)
+    {
+        Logger.LogWarning("Failed to {Operation} for player activity for user {UserId}", operation, User.XtremeIdiotsId());
+        return StatusCode(503, "Player activity is unavailable.");
+    }
 
     private async Task<IActionResult> Json<T>(Func<Task<ApiResult<T>>> call, string action) where T : class
     {

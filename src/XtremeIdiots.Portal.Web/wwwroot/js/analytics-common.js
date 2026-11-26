@@ -232,8 +232,8 @@
                 datasets: [{
                     label: opts.label || '',
                     data: data,
-                    backgroundColor: labels.map(function (_, i) { return hexToRgba(color(i), 0.6); }),
-                    borderColor: labels.map(function (_, i) { return color(i); }),
+                    backgroundColor: labels.map(function (_, i) { return hexToRgba(color(opts.singleColor ? 0 : i), 0.6); }),
+                    borderColor: labels.map(function (_, i) { return color(opts.singleColor ? 0 : i); }),
                     borderWidth: 1
                 }]
             },

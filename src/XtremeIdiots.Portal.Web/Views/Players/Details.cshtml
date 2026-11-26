@@ -523,21 +523,65 @@
 </div>
 }
 
-    var analyticsPlayerId = ViewContext.RouteData.Values["id"];
     <div class="row" policy="@AuthPolicies.Dashboard_Read">
     <div class="col-12">
-        <div class="ibox" id="analytics-embed-player" data-player-id="@analyticsPlayerId">
+        <div class="ibox" id="analytics-embed-player" data-player-id="@player.PlayerId">
             <div class="ibox-title d-flex justify-content-between align-items-center">
-                <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player analytics &mdash; last 90 days</h5>
+                <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player activity</h5>
                 <a asp-controller="Analytics" asp-action="Player" class="btn btn-outline-secondary btn-sm">
                     <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Analytics
                 </a>
             </div>
             <div class="ibox-content">
-                <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2 mb-3" id="analytics-embed-player-kpis"></div>
-                <div id="analytics-embed-player-summary" class="mb-2"></div>
-                <div style="position: relative; height: 260px;"><canvas id="analytics-embed-player-trend"></canvas></div>
-                <pre id="analytics-embed-player-trend-fallback" class="mt-2 analytics-fallback"></pre>
+                <div class="list-filters mb-3">
+                    <div class="filter-group">
+                        <label for="analytics-embed-player-range" class="form-label">Date range (UTC)</label>
+                        <select id="analytics-embed-player-range" class="form-select">
+                            <option value="7d">Last 7 days</option>
+                            <option value="30d">Last 30 days</option>
+                            <option value="90d" selected>Last 90 days</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="analytics-embed-player-server" class="form-label">Server</label>
+                        <select id="analytics-embed-player-server" class="form-select" disabled>
+                            <option value="">All available servers</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="analytics-embed-player-status" role="status" class="text-muted mb-0">Loading activity&hellip;</p>
+                <div id="analytics-embed-player-results" hidden>
+                    <div class="row row-cols-2 row-cols-lg-4 g-2 mb-2" id="analytics-embed-player-kpis"></div>
+                    <p class="small text-muted mb-3" id="analytics-embed-player-observation"></p>
+
+                    <div id="analytics-embed-player-playtime" class="mb-4" hidden>
+                        <h6>Daily measured play time</h6>
+                        <div style="position: relative; height: 260px;" id="analytics-embed-player-chart">
+                            <canvas id="analytics-embed-player-trend" role="img" aria-label="Measured play time by UTC day"></canvas>
+                        </div>
+                        <details class="mt-2" id="analytics-embed-player-daily">
+                            <summary>View daily data</summary>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm">
+                                    <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Play time</th></tr></thead>
+                                    <tbody id="analytics-embed-player-daily-rows"></tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div id="analytics-embed-player-breakdown" hidden>
+                        <h6>Where they played</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr><th scope="col">Server</th><th scope="col">Play time</th><th scope="col">Sessions</th></tr>
+                                </thead>
+                                <tbody id="analytics-embed-player-server-rows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

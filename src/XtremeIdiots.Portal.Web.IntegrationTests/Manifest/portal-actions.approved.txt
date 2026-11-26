@@ -24,6 +24,7 @@ XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#MapsHotspots#GET#api/
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#MapsOverview#GET#api/Analytics/maps/overview#(System.DateTime,System.DateTime)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#MapsTopPlayed#GET#api/Analytics/maps/top-played#(System.DateTime,System.DateTime,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#MapsTopVoted#GET#api/Analytics/maps/top-voted#(System.DateTime,System.DateTime,System.Int32)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#PlayerActivity#GET#api/Analytics/player/{playerId:guid}/activity#(System.Guid,System.DateTime,System.DateTime,System.Nullable<System.Guid>)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#PlayerByGame#GET#api/Analytics/player/by-game#(System.DateTime,System.DateTime)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#PlayerByServer#GET#api/Analytics/player/by-server#(System.DateTime,System.DateTime,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#PlayerDetail#GET#api/Analytics/player/{playerId:guid}/detail#(System.Guid,System.DateTime,System.DateTime)|HttpEndpoint

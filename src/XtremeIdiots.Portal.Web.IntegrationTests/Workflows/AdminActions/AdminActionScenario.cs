@@ -6,9 +6,9 @@ using Newtonsoft.Json;
 using System.Net;
 using XtremeIdiots.Portal.Integrations.Forums;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Players;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Services;
@@ -17,6 +17,8 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.AdminActions;
 
 internal sealed class AdminActionScenario
 {
+    public readonly static Guid ActivityServerId = Guid.Parse("88888888-8888-4888-8888-888888888888");
+
     public AdminActionScenario(
         Guid? playerId = null,
         GameType gameType = GameType.CallOfDuty4,
@@ -36,30 +38,28 @@ internal sealed class AdminActionScenario
         Mock.Get(RepositoryClient.Object.Players.V1)
             .Setup(api => api.GetPlayer(PlayerId, It.IsAny<PlayerEntityOptions>()))
             .ReturnsAsync(new ApiResult<PlayerDto>(HttpStatusCode.OK, new ApiResponse<PlayerDto>(Player)));
+        var server = JsonConvert.DeserializeObject<GameServerDto>(JsonConvert.SerializeObject(new
+        {
+            GameServerId = ActivityServerId,
+            GameType = gameType.ToString(),
+            Title = "Activity server",
+        }))!;
+        Mock.Get(RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServers(It.IsAny<GameType[]>(), It.IsAny<Guid[]?>(), null,
+                0, It.IsAny<int>(), GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(
+                HttpStatusCode.OK, new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([server]))));
         Mock.Get(RepositoryClient.Object.PlayerAnalyticsV2.V1)
-            .Setup(api => api.GetPlayerDetail(
+            .Setup(api => api.GetPlayerActivity(
                 PlayerId,
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<PlayerDetailDto>(
-                HttpStatusCode.OK,
-                new ApiResponse<PlayerDetailDto>(CreatePlayerDetail(PlayerId, gameType, username))));
-        Mock.Get(RepositoryClient.Object.PlayerAnalyticsV2.V1)
-            .Setup(api => api.GetPlayerTimeseries(
-                PlayerId,
-                It.IsAny<DateTime>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<AnalyticsBucket>(),
-                It.IsAny<AnalyticsCompareMode>(),
-                It.IsAny<int>(),
-                It.IsAny<AnalyticsAlignMode>(),
-                It.IsAny<string>(),
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(ActivityServerId)),
                 It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<PlayerTrendsDto>(
-                HttpStatusCode.OK,
-                new ApiResponse<PlayerTrendsDto>(CreatePlayerTrends())));
+            .ReturnsAsync((Guid _, DateTime from, DateTime to, IReadOnlyCollection<Guid> _, bool includeChat, CancellationToken _) =>
+                new ApiResult<PlayerActivityDto>(HttpStatusCode.OK,
+                    new ApiResponse<PlayerActivityDto>(CreatePlayerActivity(from, to, includeChat))));
         Mock.Get(RepositoryClient.Object.AdminActions.V1)
             .Setup(api => api.CreateAdminAction(It.IsAny<CreateAdminActionDto>(), It.IsAny<CancellationToken>()))
             .Callback<CreateAdminActionDto, CancellationToken>((dto, _) => CreatedAdminActions.Enqueue(dto))
@@ -124,34 +124,21 @@ internal sealed class AdminActionScenario
         return JsonConvert.DeserializeObject<PlayerDto>(json)!;
     }
 
-    private static PlayerDetailDto CreatePlayerDetail(Guid playerId, GameType gameType, string username)
+    private static PlayerActivityDto CreatePlayerActivity(DateTime from, DateTime to, bool includeChat)
     {
         var json = JsonConvert.SerializeObject(new
         {
-            PlayerId = playerId,
-            Username = username,
-            GameType = gameType.ToString(),
-            FirstSeenUtc = DateTime.UtcNow.AddDays(-30),
-            LastSeenUtc = DateTime.UtcNow,
-            SessionsCount = 0,
-            TotalPlayTimeMinutes = 0,
-            Moderation = new
-            {
-                WarningsCount = 0,
-                KicksCount = 0,
-                BansCount = 0,
-            },
-            Related = new
-            {
-                RelatedPlayersCount = 0,
-            },
+            FromUtc = from,
+            ToUtc = to,
+            PlaytimeCoverage = "unknown",
+            MeasuredSeconds = 4500,
+            TrackedSessions = 2,
+            ActiveDays = 1,
+            ChatMessages = includeChat ? (long?)10 : null,
+            Daily = new[] { new { DateUtc = to.AddMinutes(-1).Date, MeasuredSeconds = 4500 } },
+            Servers = new[] { new { ServerId = ActivityServerId, ServerName = "Activity server", MeasuredSeconds = 4500, TrackedSessions = 2 } },
         });
 
-        return JsonConvert.DeserializeObject<PlayerDetailDto>(json)!;
-    }
-
-    private static PlayerTrendsDto CreatePlayerTrends()
-    {
-        return JsonConvert.DeserializeObject<PlayerTrendsDto>("{}")!;
+        return JsonConvert.DeserializeObject<PlayerActivityDto>(json)!;
     }
 }
