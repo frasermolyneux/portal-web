@@ -4,6 +4,11 @@
     var broadcastMessages = Model.BroadcastMessages ?? [];
 }
 
+@if (Model.BroadcastsReadOnly)
+{
+    <div class="alert alert-warning">These broadcast settings use fields this editor cannot safely change. They will be preserved when other settings are saved.</div>
+}
+<fieldset disabled="@Model.BroadcastsReadOnly">
 <div class="ibox">
     <div class="ibox-title">
         <h5><i class="fa-solid fa-fw fa-bullhorn" aria-hidden="true"></i> Broadcast Messages</h5>
@@ -12,8 +17,8 @@
         <div class="form-check mb-3">
             <input class="form-check-input" asp-for="BroadcastsEnabled" />
             <label class="form-check-label" asp-for="BroadcastsEnabled"></label>
-            <small class="form-text text-muted d-block">Saved as a fleet-wide setting. The current agent reads
-                broadcasts from server configuration; these settings do not currently provide agent inheritance.</small>
+            <small class="form-text text-muted d-block">Agents that support broadcast inheritance use these global defaults
+                when a server has no broadcast settings. Older agents default to disabled.</small>
             </div>
 
             <div class="mb-3">
@@ -114,3 +119,4 @@
             <span class="text-danger" data-field="validation"></span>
         </div>
     </template>
+</fieldset>

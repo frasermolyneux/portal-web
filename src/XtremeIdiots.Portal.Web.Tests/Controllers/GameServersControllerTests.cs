@@ -1580,6 +1580,66 @@ public class GameServersControllerTests
     }
 
     [Theory]
+    [InlineData(true, false)]
+    [InlineData(null, false)]
+    [InlineData(null, true)]
+    public async Task Edit_Post_PreservesNewBroadcastDocumentAndSavesOtherSettings(bool? requestedEnabled, bool editableAtPost)
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace,
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"schemaVersion":1,"enabled":true,"intervalSeconds":500,"messages":[]}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","messages":[]}"""
+        }))!;
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([config]))));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = server.GameServerId, Title = server.Title, GameType = server.GameType,
+                Platform = server.Platform, Hostname = server.Hostname, QueryPort = server.QueryPort, AgentEnabled = true
+            },
+            BroadcastsEnabled = requestedEnabled,
+            BroadcastsReadOnly = false
+        };
+        var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+        if (!editableAtPost)
+        {
+            sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
+            sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+        }
+
+        Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
+        Assert.True(model.BroadcastsReadOnly);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task Edit_Post_UsesOnlyAuthoritativeRuleEnvelopeExtensionData(bool hasSavedConfigurations)

@@ -4,13 +4,18 @@
     var broadcastMessages = Model.BroadcastMessages ?? [];
 }
 
+@if (Model.BroadcastsReadOnly)
+{
+    <div class="alert alert-warning">These broadcast settings use fields this editor cannot safely change. They will be preserved when other settings are saved.</div>
+}
+<fieldset disabled="@Model.BroadcastsReadOnly">
 <div class="ibox">
     <div class="ibox-title">
         <h5>Broadcast Messages</h5>
     </div>
     <div class="ibox-content">
-        <p class="text-muted mb-3">The current agent reads broadcasts from server configuration. Global settings
-            are shown for reference, but agent inheritance is not currently supported.</p>
+        <p class="text-muted mb-3">Agents that support broadcast inheritance use global defaults when a server has
+            no broadcast settings. Older agents default to disabled.</p>
 
             @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml", new
             TriStateOverrideSelectViewModel
@@ -19,7 +24,7 @@
                 Label = Html.DisplayNameFor(m => m.BroadcastsEnabled).ToString(),
                 Value = Model.BroadcastsEnabled,
                 InheritLabel = $"Not set (global: {(Model.GlobalBroadcastsEnabled ? "Enabled" : "Disabled")})",
-                HelpText = "Choose Enabled or Disabled to save this server's interval and messages. Not set removes this server's broadcast configuration when saved; the agent does not read the global setting."
+                HelpText = "Choose Enabled or Disabled to save this server's interval and messages. Not set removes this server's broadcast configuration when saved."
             })
 
             <div class="mb-3">
@@ -118,3 +123,4 @@
                 <span class="text-danger" data-field="validation"></span>
             </div>
         </template>
+</fieldset>

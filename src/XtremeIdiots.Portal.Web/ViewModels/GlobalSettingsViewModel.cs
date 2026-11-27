@@ -75,6 +75,8 @@ public class GlobalSettingsViewModel : IValidatableObject
     public int EventsPlayerCacheExpirationSeconds { get; set; } = 900;
 
     // Broadcast defaults
+    [BindNever]
+    public bool BroadcastsReadOnly { get; set; }
 
     [DisplayName("Enabled")]
     public bool BroadcastsEnabled { get; set; }

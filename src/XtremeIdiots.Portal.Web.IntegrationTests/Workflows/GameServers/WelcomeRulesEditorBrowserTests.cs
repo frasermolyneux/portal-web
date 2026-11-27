@@ -41,7 +41,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(tabs).ToContainTextAsync("Access Protection");
         await Assertions.Expect(tabs).ToContainTextAsync("Server Operations");
         await tabs.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
-        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("agent inheritance is not currently supported");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Older agents default to disabled");
         await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("removes this server's broadcast configuration");
         browser.AssertNoBrowserErrors();
     }

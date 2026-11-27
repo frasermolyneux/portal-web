@@ -226,6 +226,36 @@ public class GlobalSettingsControllerTests
     }
 
     [Fact]
+    public async Task Index_Post_PreservesNewBroadcastDocumentAndSavesOtherSettings()
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace,
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}"""
+        }))!);
+        var upserted = new List<string>();
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(JsonConvert.DeserializeObject<ConfigurationDto>("{}")));
+            });
+        var model = new GlobalSettingsViewModel { BroadcastsReadOnly = false, BroadcastsEnabled = true };
+        PrepareSiegeSubmission(sut, model);
+        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
+        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+
+        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+        Assert.True(model.BroadcastsReadOnly);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
+            BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public void PopulateModelFromNamespace_ChatCommandsNamespace_MapsDefaultsAndFuMessages()
     {
         var sut = CreateSut();
@@ -658,6 +688,8 @@ public class GlobalSettingsControllerTests
         };
 
         PrepareSiegeSubmission(sut, model);
+        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "900", "900");
+        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);

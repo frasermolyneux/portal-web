@@ -94,21 +94,24 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             SiegeModeSettingsConstants.Namespace,
             JsonSerializer.Serialize(SiegeModeSettingsViewModelMapper.ToDocument(model.SiegeMode), configJsonOptions)));
 
-        configurations.Add((
-            BroadcastSettingsConstants.Namespace,
-            JsonSerializer.Serialize(new BroadcastSettingsDocument
-            {
-                Enabled = model.BroadcastsEnabled,
-                IntervalSeconds = model.BroadcastsIntervalSeconds,
-                Messages =
-                [
-                    .. (model.BroadcastMessages ?? []).Select(message => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
-                    {
-                        Message = message.Message,
-                        Enabled = message.Enabled
-                    })
-                ]
-            }, configJsonOptions)));
+        if (!model.BroadcastsReadOnly)
+        {
+            configurations.Add((
+                BroadcastSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new BroadcastSettingsDocument
+                {
+                    Enabled = model.BroadcastsEnabled,
+                    IntervalSeconds = model.BroadcastsIntervalSeconds,
+                    Messages =
+                    [
+                        .. (model.BroadcastMessages ?? []).Select(message => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
+                        {
+                            Message = message.Message,
+                            Enabled = message.Enabled
+                        })
+                    ]
+                }, configJsonOptions)));
+        }
 
         configurations.Add((
             ServerListSettingsConstants.Namespace,
@@ -340,7 +343,7 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
 
             var hasBroadcastOverrides = model.BroadcastsEnabled.HasValue;
 
-            if (hasBroadcastOverrides)
+            if (!model.BroadcastsReadOnly && hasBroadcastOverrides)
             {
                 configurations.Add((
                     BroadcastSettingsConstants.Namespace,
@@ -358,7 +361,7 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                         ]
                     }, configJsonOptions)));
             }
-            else
+            else if (!model.BroadcastsReadOnly)
             {
                 DeletedNamespaces.Add(BroadcastSettingsConstants.Namespace);
             }

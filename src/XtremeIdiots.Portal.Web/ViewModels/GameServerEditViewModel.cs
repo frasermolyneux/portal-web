@@ -149,6 +149,9 @@ public class GameServerEditViewModel : IValidatableObject
 
     // Broadcasts configuration (parsed from "broadcasts" config namespace)
 
+    [BindNever]
+    public bool BroadcastsReadOnly { get; set; }
+
     [DisplayName("Enabled Override")]
     public TriStateOverrideValue BroadcastsEnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
