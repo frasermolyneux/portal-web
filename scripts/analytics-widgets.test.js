@@ -62,6 +62,7 @@ test('Dashboard uses recorded players and observed interval duration, not legacy
     const h = harness('analytics-embed-dashboard.js', { recordedActivity, recordedActivityCoverage: 'unknown', trendPoints: [{ value: 999 }], summary: { uniquePlayersCount: 999 } });
     await settled();
     assert.equal(h.calls.length, 1);
+    assert.match(h.calls[0], /includeComposition=false/);
     assert.equal(h.charts[0].timezone, 'UTC');
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
     assert.equal(h.tables.get('dashboard-analytics-activity').rows[0][4], '2.50');

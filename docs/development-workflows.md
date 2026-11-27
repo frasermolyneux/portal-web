@@ -67,6 +67,8 @@ sessions remain. Neither returned buckets nor status samples prove complete
 coverage. Status-sample map averages/peaks/shares are not map plays or elapsed time.
 The host currently reports `RecordedActivityCoverage` as `unknown`; missing or
 unrecognized values must not be interpreted as complete coverage.
+The Dashboard requests `includeComposition=false` to avoid unused rankings;
+the Repository API defaults that option to true for existing callers.
 The admin server embed loads history on tab activation and event/chat/map
 summaries only when expanded.
 

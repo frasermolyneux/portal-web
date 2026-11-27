@@ -10,7 +10,7 @@
     async function load() {
         const r = A.range('30d');
         try {
-            const d = await A.fetchJson('/api/Analytics/dashboard/home' + A.buildQuery({ from: r.from, to: r.to, bucket: 'OneDay', top: 6 }));
+            const d = await A.fetchJson('/api/Analytics/dashboard/home' + A.buildQuery({ from: r.from, to: r.to, bucket: 'OneDay', includeComposition: false }));
 
             document.getElementById('dashboard-analytics-coverage').textContent =
                 'Recorded activity coverage: ' + (d.recordedActivityCoverage === 'unknown' ? 'unknown' : 'not established') + '.';
