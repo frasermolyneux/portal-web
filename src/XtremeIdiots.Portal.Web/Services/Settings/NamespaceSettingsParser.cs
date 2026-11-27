@@ -278,7 +278,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case BroadcastSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
+                if (TryDeserializeBroadcast(config, logger, out var broadcastDocument) && broadcastDocument is not null)
                 {
                     model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
@@ -479,7 +479,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case BroadcastSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
+                if (TryDeserializeBroadcast(config, logger, out var broadcastDocument) && broadcastDocument is not null)
                 {
                     model.BroadcastsEnabled = broadcastDocument.Enabled;
                     model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
@@ -612,7 +612,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case BroadcastSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out BroadcastSettingsDocument? broadcastDocument) && broadcastDocument is not null)
+                if (TryDeserializeBroadcast(config, logger, out var broadcastDocument) && broadcastDocument is not null)
                 {
                     model.GlobalBroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.GlobalBroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? model.GlobalBroadcastsIntervalSeconds;
@@ -796,6 +796,21 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
         public override void Write(System.Text.Json.Utf8JsonWriter writer, bool value, System.Text.Json.JsonSerializerOptions options)
             => writer.WriteBooleanValue(value);
+    }
+
+    private static bool TryDeserializeBroadcast(ConfigurationDto config, ILogger logger, out BroadcastSettingsDocument? document)
+    {
+        try
+        {
+            document = BroadcastEditorCompatibility.Deserialize(config.Configuration);
+            return document is not null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse configuration for namespace '{Namespace}'", config.Namespace);
+            document = null;
+            return false;
+        }
     }
 
     private static bool TryDeserialize<T>(ConfigurationDto config, ILogger logger, out T? document)

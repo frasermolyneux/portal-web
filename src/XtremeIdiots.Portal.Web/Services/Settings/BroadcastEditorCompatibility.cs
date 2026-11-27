@@ -16,7 +16,7 @@ internal static class BroadcastEditorCompatibility
     {
         try
         {
-            var document = JsonSerializer.Deserialize<BroadcastSettingsDocument>(json, Options);
+            var document = Deserialize(json);
             return document is null || !new BroadcastSettingsValidator().Validate(document).IsValid ||
                 document.MessagesMode is not null || document.Enabled is null || document.IntervalSeconds is null ||
                 document.ExtensionData is { Count: > 0 } ||
@@ -27,6 +27,8 @@ internal static class BroadcastEditorCompatibility
             return true;
         }
     }
+
+    public static BroadcastSettingsDocument? Deserialize(string json) => JsonSerializer.Deserialize<BroadcastSettingsDocument>(json, Options);
 
     private sealed class LegacyBooleanConverter : JsonConverter<bool>
     {

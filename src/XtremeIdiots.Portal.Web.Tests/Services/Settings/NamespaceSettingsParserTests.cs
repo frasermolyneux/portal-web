@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
@@ -20,6 +21,26 @@ public class NamespaceSettingsParserTests
 {
     private readonly NamespaceSettingsParser parser = new();
     private readonly ILogger logger = Mock.Of<ILogger>();
+
+    [Fact]
+    public void BroadcastMapping_LegacyBooleanStrings_DoNotConvertMessageText()
+    {
+        const string json = /*lang=json,strict*/ """{"enabled":"false","intervalSeconds":500,"messages":[{"message":"true","enabled":"true"}]}""";
+        var config = BuildConfiguration(BroadcastSettingsConstants.Namespace, json);
+        var global = new GlobalSettingsViewModel();
+        var server = new GameServerEditViewModel();
+        parser.PopulateGlobalSettingsViewModel(global, config, logger);
+        parser.PopulateGameServerSettingsViewModel(server, config, logger);
+        parser.PopulateGameServerGlobalDefaults(server, config, logger);
+
+        Assert.False(BroadcastEditorCompatibility.RequiresReadOnly(json));
+        Assert.False(global.BroadcastsEnabled);
+        Assert.Equal("true", Assert.Single(global.BroadcastMessages).Message);
+        Assert.False(server.BroadcastsEnabled);
+        Assert.Equal("true", Assert.Single(server.BroadcastMessages).Message);
+        Assert.False(server.GlobalBroadcastsEnabled);
+        Assert.Equal("true", Assert.Single(server.GlobalBroadcastMessages).Message);
+    }
 
     [Fact]
     public void TryParseVpnProtectionSettings_UniversalDocument_ReturnsTypedSettings()
