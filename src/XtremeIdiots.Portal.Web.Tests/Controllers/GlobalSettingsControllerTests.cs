@@ -44,7 +44,8 @@ public class GlobalSettingsControllerTests
             ["WelcomeRules.Enabled"] = model.WelcomeRules.Enabled.ToString(),
             ["WelcomeRules.ConnectionDelaySeconds"] = model.WelcomeRules.ConnectionDelaySeconds.ToString(),
             ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds.ToString(),
-            ["WelcomeRules.RulesJson"] = model.WelcomeRules.RulesJson
+            ["WelcomeRules.RulesJson"] = model.WelcomeRules.RulesJson,
+            ["ChatCommands.DefaultFreshnessSeconds"] = model.ChatCommands.DefaultFreshnessSeconds.ToString()
         };
         foreach (var (key, value) in fields)
         {
@@ -253,6 +254,47 @@ public class GlobalSettingsControllerTests
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
             BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Index_Post_PreservesUneditableOrOmittedChatCommandsAndSavesOtherSettings(bool editableAtPost)
+    {
+        var sut = CreateSut();
+        var configuration = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ChatCommandSettingsConstants.Namespace,
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}"""
+        }))!;
+        SetupConfigurations(configuration);
+        var upserted = new List<string>();
+        mockRepositoryApiClient
+            .Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult<ConfigurationDto>(HttpStatusCode.OK, new ApiResponse<ConfigurationDto>(new ConfigurationDto()));
+            });
+        var model = new GlobalSettingsViewModel { ChatCommandsReadOnly = false };
+        model.ChatCommands.Commands.Single(command => command.Name == "fu").Enabled = false;
+        PrepareSiegeSubmission(sut, model);
+        if (editableAtPost)
+            sut.ModelState.Remove("ChatCommands.DefaultFreshnessSeconds");
+        sut.ModelState.AddModelError("ChatCommands.Commands[3].FreshnessSeconds", "Invalid value");
+        sut.ModelState.AddModelError("Commands[3].Messages[0].Message", "Invalid value");
+        sut.ModelState.AddModelError("DefaultRequiredTags", "Invalid value");
+
+        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+        Assert.True(model.ChatCommandsReadOnly);
+        Assert.True(model.ChatCommands.Commands.Single(command => command.Name == "fu").Enabled);
+        Assert.True(sut.ModelState.IsValid);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
+            ChatCommandSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

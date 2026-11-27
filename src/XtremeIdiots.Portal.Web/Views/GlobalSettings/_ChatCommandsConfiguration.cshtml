@@ -4,6 +4,11 @@
     var commands = Model.ChatCommands.Commands ?? [];
 }
 
+@if (Model.ChatCommandsReadOnly)
+{
+    <div class="alert alert-warning">These chat command settings cannot be safely edited here. They will be preserved when other settings are saved.</div>
+}
+<fieldset disabled="@Model.ChatCommandsReadOnly">
 <div class="ibox">
     <div class="ibox-title">
         <h5><i class="fa-solid fa-fw fa-terminal" aria-hidden="true"></i> Chat Command Defaults</h5>
@@ -297,3 +302,4 @@
                                 <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
                             </div>
                         </template>
+</fieldset>

@@ -275,6 +275,9 @@ public class GameServerEditViewModel : IValidatableObject
     public int GlobalEventsPlayerCacheExpirationSeconds { get; set; } = 900;
     public string GlobalAgentName { get; set; } = GlobalSettingsViewModel.DefaultAgentName;
 
+    [BindNever]
+    public bool ChatCommandsReadOnly { get; set; }
+
     public ChatCommandServerSettingsViewModel ChatCommands { get; set; } = new();
 
     public ChatCommandGlobalSettingsViewModel GlobalChatCommands { get; set; } = new();

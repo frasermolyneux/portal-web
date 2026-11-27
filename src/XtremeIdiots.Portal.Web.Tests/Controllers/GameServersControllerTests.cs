@@ -100,7 +100,8 @@ public class GameServersControllerTests
             ["WelcomeRules.ConnectionDelaySeconds"] = model.WelcomeRules.ConnectionDelaySeconds?.ToString() ?? string.Empty,
             ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds?.ToString() ?? string.Empty,
             ["WelcomeRules.LocalRulesJson"] = model.WelcomeRules.LocalRulesJson,
-            ["WelcomeRules.RuleOverridesJson"] = model.WelcomeRules.RuleOverridesJson
+            ["WelcomeRules.RuleOverridesJson"] = model.WelcomeRules.RuleOverridesJson,
+            ["ChatCommands.Commands[0].Name"] = "commands"
         };
         foreach (var (key, value) in fields)
         {
@@ -1637,6 +1638,68 @@ public class GameServersControllerTests
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
             server.GameServerId, BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task Edit_Post_PreservesUneditableOrOmittedChatCommandsAndSavesOtherSettings(bool editableAtPost, bool forgedOverride)
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ChatCommandSettingsConstants.Namespace,
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}"""
+        }))!;
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([config]))));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = server.GameServerId, Title = server.Title, GameType = server.GameType,
+                Platform = server.Platform, Hostname = server.Hostname, QueryPort = server.QueryPort, AgentEnabled = true
+            },
+            ChatCommandsReadOnly = false
+        };
+        if (forgedOverride)
+            model.ChatCommands.Commands.Single(command => command.Name == "fu").Enabled = false;
+        var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+        if (editableAtPost)
+            sut.ModelState.Remove("ChatCommands.Commands[0].Name");
+        sut.ModelState.AddModelError("ChatCommands.Commands[3].FreshnessSeconds", "Invalid value");
+        sut.ModelState.AddModelError("Commands[3].Messages[0].Message", "Invalid value");
+
+        Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
+        Assert.True(model.ChatCommandsReadOnly);
+        Assert.True(model.ChatCommands.Commands.Single(command => command.Name == "fu").Enabled);
+        Assert.True(sut.ModelState.IsValid);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, ChatCommandSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

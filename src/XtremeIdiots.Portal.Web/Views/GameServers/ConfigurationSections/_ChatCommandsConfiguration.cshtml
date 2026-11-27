@@ -17,6 +17,11 @@
         .ToList();
 }
 
+@if (Model.ChatCommandsReadOnly)
+{
+    <div class="alert alert-warning">These chat command settings cannot be safely edited here. They will be preserved when other settings are saved.</div>
+}
+<fieldset disabled="@Model.ChatCommandsReadOnly">
 <div class="ibox">
     <div class="ibox-title">
         <h5>Chat Commands</h5>
@@ -302,3 +307,4 @@ StringComparison.OrdinalIgnoreCase));
             <span class="text-danger" data-field="validation" data-valmsg-replace="true"></span>
         </div>
     </template>
+</fieldset>

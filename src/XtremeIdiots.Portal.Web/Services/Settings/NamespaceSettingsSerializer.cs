@@ -76,11 +76,13 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
             )
         ];
 
-        // Keep the chatCommands namespace even when defaults are disabled so command payloads
-        // (for example !fu messages) are not dropped on save.
-        configurations.Add((
-            ChatCommandSettingsConstants.Namespace,
-            ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)));
+        if (!model.ChatCommandsReadOnly)
+        {
+            // Keep the namespace when defaults are disabled so command payloads are not dropped.
+            configurations.Add((
+                ChatCommandSettingsConstants.Namespace,
+                ChatCommandSettingsJsonMapper.BuildGlobalConfigurationJson(model.ChatCommands)));
+        }
 
         configurations.Add((
             VpnProtectionSettingsConstants.Namespace,
@@ -325,14 +327,18 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 configurations.Add((EventSettingsConstants.Namespace, JsonSerializer.Serialize(new EventSettingsDocument(), configJsonOptions)));
             }
 
-            configurations.Add((
-                ChatCommandSettingsConstants.Namespace,
-                ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands)));
-
-            if (!HasChatCommandServerOverrides(model.ChatCommands))
+            if (!model.ChatCommandsReadOnly)
             {
-                configurations.RemoveAll(x => x.Namespace == ChatCommandSettingsConstants.Namespace);
-                DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
+                if (HasChatCommandServerOverrides(model.ChatCommands))
+                {
+                    configurations.Add((
+                        ChatCommandSettingsConstants.Namespace,
+                        ChatCommandSettingsJsonMapper.BuildServerConfigurationJson(model.ChatCommands)));
+                }
+                else
+                {
+                    DeletedNamespaces.Add(ChatCommandSettingsConstants.Namespace);
+                }
             }
 
             var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);

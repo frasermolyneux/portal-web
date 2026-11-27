@@ -5,6 +5,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -45,6 +46,8 @@ public class GlobalSettingsController(
                 PopulateModelFromNamespace(model, config);
                 if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                     model.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+                if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                    model.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration);
             }
 
             return View(model);
@@ -71,7 +74,6 @@ public class GlobalSettingsController(
             }
 
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
-            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var (currentConfigurations, configurationError) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
             if (configurationError is not null)
                 return configurationError;
@@ -81,6 +83,21 @@ public class GlobalSettingsController(
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
 
+            model.ChatCommandsReadOnly = !ModelState.ContainsKey("ChatCommands.DefaultFreshnessSeconds")
+                || currentConfigurations!.Any(config =>
+                string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            if (model.ChatCommandsReadOnly)
+            {
+                ChatCommandEditorCompatibility.ClearSubmittedModelState(ModelState);
+                model.ChatCommands = new ChatCommandGlobalSettingsViewModel();
+                foreach (var config in currentConfigurations!.Where(static config =>
+                    string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    PopulateModelFromNamespace(model, config);
+            }
+
+            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;

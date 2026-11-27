@@ -10,6 +10,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
@@ -371,6 +372,8 @@ public class GameServersController(
 
                         if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                             editModel.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+                        if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                            editModel.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType);
 
                         PopulateConfigFromNamespace(editModel, config);
                     }
@@ -483,6 +486,20 @@ public class GameServersController(
                 || savedConfigurations.Result.Data.Items.Any(config =>
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            model.ChatCommandsReadOnly = !ModelState.ContainsKey("ChatCommands.Commands[0].Name")
+                || savedConfigurations.Result.Data.Items.Any(config =>
+                string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType));
+
+            if (model.ChatCommandsReadOnly)
+            {
+                ChatCommandEditorCompatibility.ClearSubmittedModelState(ModelState);
+                model.ChatCommands = new ChatCommandServerSettingsViewModel();
+                foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                    string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    PopulateConfigFromNamespace(model, config);
+            }
 
             foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
                 string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))

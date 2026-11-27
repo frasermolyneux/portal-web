@@ -20,6 +20,14 @@ This document describes the current settings architecture used by `portal-web` a
 
 ## Troubleshooting Runbook
 
+### Chat commands
+
+The global and server editors make chat-command settings read-only when the
+saved document contains fields or values they cannot preserve, including newer
+command policies and replies. Saving other settings leaves that namespace
+unchanged. Editing those settings requires a compatible editor; the read-only
+warning does not indicate whether a command is enabled at runtime.
+
 ### VPN and Siege rules
 
 VPN Protection and Siege Mode use the shared rules-engine contracts and editor.

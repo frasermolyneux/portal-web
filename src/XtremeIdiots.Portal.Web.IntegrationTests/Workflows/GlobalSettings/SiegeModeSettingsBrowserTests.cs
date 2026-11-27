@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -22,6 +23,89 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 [Trait("Category", "Browser")]
 public sealed class SiegeModeSettingsBrowserTests
 {
+    [Theory]
+    [InlineData("protected")]
+    [InlineData("transition")]
+    [InlineData("legacy")]
+    [InlineData("changed")]
+    [InlineData("multiline")]
+    [InlineData("redisplay")]
+    public async Task ChatCommandEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
+    {
+        const string unsupported = /*lang=json,strict*/ """{"schemaVersion":1,"defaults":{"enabled":false},"commands":{"fu":{"enabled":false,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}""";
+        const string legacy = /*lang=json,strict*/ """{"schemaVersion":1,"defaults":{"enabled":"false"},"commands":{"fu":{"enabled":"true","settings":{"messages":[{"message":"true","enabled":"false"}]}}}}""";
+        const string multiline = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"settings":{"messages":[{"message":"first\nsecond","enabled":true}]}}}}""";
+        const string replacement = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}""";
+        var scenario = new SettingsScenario();
+        var initial = scenarioType switch { "legacy" or "changed" => legacy, "multiline" => multiline, _ => unsupported };
+        scenario.SetConfiguration(ChatCommandSettingsConstants.Namespace, initial);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        await page.Locator("#chat-commands-tab-btn").ClickAsync();
+        var freshness = page.Locator("#ChatCommands_DefaultFreshnessSeconds");
+        if (scenarioType is "legacy" or "changed")
+        {
+            await Assertions.Expect(freshness).ToBeEnabledAsync();
+            await freshness.FillAsync("9");
+            if (scenarioType == "changed")
+                scenario.SetConfiguration(ChatCommandSettingsConstants.Namespace, unsupported);
+        }
+        else
+        {
+            await Assertions.Expect(page.Locator("#chat-commands-tab .alert-warning")).ToContainTextAsync("will be preserved");
+            await Assertions.Expect(freshness).ToBeDisabledAsync();
+            if (scenarioType == "transition")
+                scenario.SetConfiguration(ChatCommandSettingsConstants.Namespace, replacement);
+        }
+
+        await page.Locator("#siege-mode-tab-btn").ClickAsync();
+        await page.Locator("#SiegeMode_DurationMinutes").FillAsync("90");
+        if (scenarioType is "changed" or "redisplay")
+        {
+            var fieldName = scenarioType == "changed" ? "ChatCommands.DefaultFreshnessSeconds" : "SiegeMode.DurationMinutes";
+            await page.EvaluateAsync("""
+                name => {
+                    const field = document.querySelector(`[name="${name}"]`);
+                    field.form.addEventListener('submit', () => { field.type = 'text'; field.value = 'invalid'; }, { once: true });
+                }
+                """, fieldName);
+        }
+
+        if (scenarioType == "redisplay")
+        {
+            var response = await page.RunAndWaitForResponseAsync(
+                () => page.GetByRole(AriaRole.Button, new() { Name = "Save Settings", Exact = true }).ClickAsync(),
+                result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath == "/GlobalSettings");
+            Assert.Equal(200, response.Status);
+            await page.Locator("#chat-commands-tab-btn").ClickAsync();
+            await Assertions.Expect(page.Locator("#ChatCommands_DefaultsEnabled")).Not.ToBeCheckedAsync();
+            await Assertions.Expect(page.Locator("#ChatCommands_DefaultsEnabled")).ToBeDisabledAsync();
+            Assert.Equal(unsupported, scenario.ChatCommandsJson);
+            browser.AssertNoBrowserErrors();
+            return;
+        }
+
+        await SaveSettings(page);
+        using var siege = JsonDocument.Parse(scenario.SiegeJson!);
+        Assert.Equal(90, siege.RootElement.GetProperty("durationMinutes").GetInt32());
+        if (scenarioType == "legacy")
+        {
+            using var saved = JsonDocument.Parse(scenario.ChatCommandsJson!);
+            Assert.Equal(9, saved.RootElement.GetProperty("defaults").GetProperty("freshnessSeconds").GetProperty("default").GetInt32());
+            var message = saved.RootElement.GetProperty("commands").GetProperty("fu").GetProperty("settings").GetProperty("messages")[0];
+            Assert.Equal("true", message.GetProperty("message").GetString());
+            Assert.False(message.GetProperty("enabled").GetBoolean());
+        }
+        else
+        {
+            var expected = scenarioType switch { "transition" => replacement, "multiline" => multiline, _ => unsupported };
+            Assert.Equal(expected, scenario.ChatCommandsJson);
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task BroadcastEditor_ProtectsNewDocumentsWhileSavingOtherSettings()
     {
@@ -435,6 +519,7 @@ public sealed class SiegeModeSettingsBrowserTests
 
         public string? SiegeJson => configurations.GetValueOrDefault(SiegeModeSettingsConstants.Namespace);
         public string? BroadcastJson => configurations.GetValueOrDefault(BroadcastSettingsConstants.Namespace);
+        public string? ChatCommandsJson => configurations.GetValueOrDefault(ChatCommandSettingsConstants.Namespace);
         public string? VpnJson => configurations.GetValueOrDefault(VpnProtectionSettingsConstants.Namespace);
         public string? WelcomeJson => configurations.GetValueOrDefault(WelcomeRulesSettingsConstants.Namespace);
 
