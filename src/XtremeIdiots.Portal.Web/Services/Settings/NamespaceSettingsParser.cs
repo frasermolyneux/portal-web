@@ -807,7 +807,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         }
         catch (System.Text.Json.JsonException ex)
         {
-            logger.LogWarning(ex, "Failed to parse configuration for namespace '{Namespace}'", config.Namespace);
+            logger.LogWarning(ex, "Failed to parse broadcast configuration");
             document = null;
             return false;
         }
