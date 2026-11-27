@@ -232,9 +232,10 @@ public sealed class AdminActionCreationSteps
                 await Browser.Page.WaitForURLAsync(new Uri(Browser.Host.BaseAddress, $"/Players/Details/{Scenario.PlayerId}").AbsoluteUri);
             },
             browserResponse => browserResponse.Request.Method == "GET" &&
-                new Uri(browserResponse.Url).AbsolutePath == $"/api/Analytics/player/{Scenario.PlayerId}/timeseries");
+                new Uri(browserResponse.Url).AbsolutePath == $"/api/Analytics/player/{Scenario.PlayerId}/activity");
         Assert.True(analyticsResponse.Ok);
-        await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-summary")).Not.ToBeEmptyAsync();
+        await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-kpis")).ToContainTextAsync("1 h 15 min");
+        await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-server-rows")).ToContainTextAsync("Activity server");
     }
 
     private async Task FillReasonAsync(string reason)
