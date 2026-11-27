@@ -13,10 +13,19 @@
 
             <div class="ibox">
                 <div class="ibox-title">
-                    <h5>Players Online in the last 48 Hours (@Model.Count) across public game servers</h5>
+                    <h5>Recent player location observations across public game servers</h5>
                 </div>
 
                 <div class="ibox-content">
+                    <p class="text-muted">Latest geolocated presence observations from the last 48 hours, from a capped query of up to 200 records before public-server filtering. Not live players, sessions, or a complete player count.</p>
+                    @if (ViewData["MapUnavailable"] is true)
+                    {
+                        <p class="text-warning" role="status">Recent player observations are currently unavailable.</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">@Model.Count location observations shown.</p>
+                    }
                     <div id="map" style="height: 600px; width: 100%;"></div>
                 </div>
             </div>
@@ -38,23 +47,16 @@
                     center: { lat: 0.00, lng: 0.00 }
                 });
 
-            var locations = [
-                            @foreach (var player in Model)
-                {
-                    <text>
-                        ['Player', @player.Lat, @player.Lng, '@player.GameType'],
-                    </text>
-                            }
-                        ];
+            var locations = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model));
 
             var count;
             for (count = 0; count < locations.length; count++) {
                 new google.maps.Marker({
-                    position: new google.maps.LatLng(locations[count][1], locations[count][2]),
+                    position: new google.maps.LatLng(locations[count].Lat, locations[count].Lng),
                     map: map,
-                    title: locations[count][0],
+                    title: 'Recent location observation',
                     icon: {
-                        url: "/images/game-icons/" + locations[count][3] + ".png"
+                        url: "/images/game-icons/" + locations[count].GameType + ".png"
                     }
                 });
             }

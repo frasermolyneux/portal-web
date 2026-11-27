@@ -6,7 +6,7 @@
     var timeline = ViewData["ChartKind"] as string == "timeline";
 }
 <div class="ibox">
-    <div class="ibox-title"><h5>@(timeline ? "Map Timeline" : "Player Count") <small class="text-muted">(48h)</small></h5></div>
+    <div class="ibox-title"><h5>@(timeline ? "Sampled Map History" : "Sampled Player Count") <small class="text-muted">(48h)</small></h5></div>
     <div class="ibox-content">
         @if (Model.State == OptionalDataState.Unavailable)
         {
@@ -14,6 +14,7 @@
         }
         else if (Model.Data is not null)
         {
+            <p class="text-muted small">Recorded status samples, not continuous coverage or player sessions. Map spans end at the last matching observation; gaps and changes between samples are unknown.</p>
             @if (Model.State == OptionalDataState.Stale)
             {
                 <p class="text-warning" role="status">Showing cached statistics from @Model.ObservedAt?.ToString("u").</p>
@@ -21,6 +22,10 @@
             @if (Model.Data.PlayerCounts.Count == 0)
             {
                 <p class="text-muted mb-0">No server statistics recorded in the last 48 hours.</p>
+            }
+            else if (timeline && Model.Data.MapTimeline.Count == 0)
+            {
+                <p class="text-muted mb-0">Not enough matching map observations to show a span.</p>
             }
             else if (Configuration.GetValue("ExternalAssets:Enabled", true))
             {

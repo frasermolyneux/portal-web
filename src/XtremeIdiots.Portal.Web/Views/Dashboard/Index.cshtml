@@ -12,20 +12,18 @@
         <div class="col-12">
             <div class="ibox">
                 <div class="ibox-title d-flex justify-content-between align-items-center">
-                    <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Analytics &mdash; last 30 days</h5>
+                    <h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Recorded Player Activity &mdash; last 30 days</h5>
                     <a asp-controller="Analytics" asp-action="Index" class="btn btn-outline-secondary btn-sm">
                         <i class="fa-solid fa-fw fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Analytics
                     </a>
                 </div>
                 <div class="ibox-content">
+                    <p class="text-muted small">Daily UTC buckets count distinct recorded players whose sessions start in or overlap the day, and sessions starting that day. A session starting in a bucket counts even if its observed duration is zero. Observed session-interval player-hours are clipped session durations through the last confirmation, including time between confirmations and unknown-map time. They are not measured map-segment playtime, server uptime, or average session length. Known bots are excluded; unclassified sessions remain. Recording may be incomplete; missing history is not zero activity. First and last buckets may be partial days.</p>
+                    <p class="text-muted small" id="dashboard-analytics-coverage" role="status">Recorded activity coverage: not established.</p>
                     <div class="row row-cols-2 row-cols-md-4 g-2 mb-3" id="dashboard-analytics-kpis"></div>
                     <div style="position: relative; height: 260px;"><canvas id="dashboard-analytics-trend"></canvas></div>
                     <pre id="dashboard-analytics-trend-fallback" class="mt-2 analytics-fallback"></pre>
-                    <div class="row mt-3">
-                        <div class="col-md-4"><h6>Top games</h6><div id="dashboard-analytics-games"></div></div>
-                        <div class="col-md-4"><h6>Top servers</h6><div id="dashboard-analytics-servers"></div></div>
-                        <div class="col-md-4"><h6>Top maps</h6><div id="dashboard-analytics-maps"></div></div>
-                    </div>
+                    <div class="mt-3 table-responsive" id="dashboard-analytics-activity"></div>
                 </div>
             </div>
         </div>

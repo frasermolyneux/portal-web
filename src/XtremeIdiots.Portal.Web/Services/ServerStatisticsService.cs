@@ -26,20 +26,28 @@ public sealed class ServerStatisticsService(
             if (!response.IsSuccess || response.Result?.Data?.Items is null)
                 throw new InvalidOperationException("Server statistics are unavailable.");
 
-            var stats = response.Result.Data.Items.OrderBy(s => s.Timestamp).ToList();
+            var stats = response.Result.Data.Items
+                .Where(s => s.Timestamp >= now.AddDays(-2) && s.Timestamp <= now)
+                .OrderBy(s => s.Timestamp).ToList();
             var timeline = new List<MapTimelineDataPoint>();
             if (stats.Count > 0)
             {
                 var current = stats[0];
+                var last = current;
                 foreach (var stat in stats.Skip(1))
                 {
-                    if (current.MapName == stat.MapName)
-                        continue;
-                    timeline.Add(new MapTimelineDataPoint(current.MapName, current.Timestamp, stat.Timestamp));
-                    current = stat;
+                    if (current.MapName != stat.MapName)
+                    {
+                        if (!string.IsNullOrWhiteSpace(current.MapName) && last.Timestamp > current.Timestamp)
+                            timeline.Add(new MapTimelineDataPoint(current.MapName, current.Timestamp, last.Timestamp));
+                        current = stat;
+                    }
+
+                    last = stat;
                 }
 
-                timeline.Add(new MapTimelineDataPoint(current.MapName, current.Timestamp, now));
+                if (!string.IsNullOrWhiteSpace(current.MapName) && last.Timestamp > current.Timestamp)
+                    timeline.Add(new MapTimelineDataPoint(current.MapName, current.Timestamp, last.Timestamp));
             }
 
             return new ServerStatisticsOverview(
