@@ -58,7 +58,8 @@ node --test scripts/analytics-widgets.test.js
 These widgets use the Repository SDK's nullable `RecordedActivity` buckets, never
 legacy latest-presence trends as historical activity. Older API hosts without
 that field display unavailable history. Deploy the compatible Repository API and
-SDK before the Web update. Recorded players overlap the clipped UTC bucket;
+SDK before the Web update. Recorded players have a session that starts in or
+overlaps the clipped UTC bucket, including starts with zero observed duration;
 session starts occur within it, and observed session-interval player-hours use
 clipped duration through the last confirmation, including intervals between
 confirmations and unknown-map time. They are not profile measured map-segment

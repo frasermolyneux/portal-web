@@ -92,6 +92,19 @@ test('Missing or unrecognized coverage never claims complete recording', async (
     }
 });
 
+test('A recorded player with zero observed duration is not omitted', async () => {
+    const point = { ...recordedActivity[0], recordedPlayers: 1, sessionStarts: 1, observedSeconds: 0 };
+    for (const script of ['analytics-embed-dashboard.js', 'analytics-embed-server.js', 'analytics-server.js']) {
+        const h = harness(script, { recordedActivity: [point], recordedActivityCoverage: 'unknown', bucket: 'OneDay' });
+        await settled();
+        assert.equal(h.charts[0].timeseries.series[0].values[0].value, 1);
+        assert.match(h.charts[0].timeseries.series[0].label, /starting or overlapping/);
+        const tableId = script === 'analytics-embed-dashboard.js' ? 'dashboard-analytics-activity'
+            : script === 'analytics-embed-server.js' ? 'analytics-embed-server-summary' : 'server-trend-summary';
+        assert.equal(h.tables.get(tableId).rows[0][4], '0.00');
+    }
+});
+
 test('Admin embed initially requests only recorded history, without comparisons; detail requests are lazy and failures explicit', async () => {
     const h = harness('analytics-embed-server.js', url => {
         if (url.includes('timeseries')) { return { recordedActivity, recordedActivityCoverage: 'unknown', bucket: 'OneDay' }; }

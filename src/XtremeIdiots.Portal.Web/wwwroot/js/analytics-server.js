@@ -64,7 +64,7 @@
         trendChart = A.renderComparisonChart({
             canvasId: 'server-trend', fallbackId: 'server-trend-fallback',
             timeseries: { bucket: ts.bucket, labels: points.map(function (p) { return p.bucketStartUtc; }),
-                series: [{ label: 'Recorded players overlapping bucket (UTC)', role: 'current',
+                series: [{ label: 'Recorded players with sessions starting or overlapping bucket (UTC)', role: 'current',
                     values: points.map(function (p) { return { bucketStartUtc: p.bucketStartUtc, value: p.recordedPlayers }; }) }] },
             timezone: tz, index100: false, chart: trendChart
         });

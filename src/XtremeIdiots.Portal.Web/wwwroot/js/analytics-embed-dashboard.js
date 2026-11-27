@@ -33,7 +33,7 @@
             ]);
 
             const series = [{
-                key: 'players', label: 'Recorded players overlapping day (UTC)', role: 'current', periodLabel: '',
+                key: 'players', label: 'Recorded players with sessions starting or overlapping day (UTC)', role: 'current', periodLabel: '',
                 values: points.map(function (p) { return { bucketStartUtc: p.bucketStartUtc, value: p.recordedPlayers }; })
             }];
             trendChart = A.renderComparisonChart({
