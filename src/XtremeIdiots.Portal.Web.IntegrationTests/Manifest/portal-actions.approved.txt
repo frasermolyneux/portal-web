@@ -1,5 +1,6 @@
-XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogAjax#POST#User/GetActivityLogAjax#(System.String,System.String,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogAjax#POST#User/GetActivityLogAjax#(System.String,System.String,System.String,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogEvents#GET#User/GetActivityLogEvents#(System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogUsers#GET#User/GetActivityLogUsers#(System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AdminActionsController#GetAdminActionsAjax#POST#AdminActions/GetAdminActionsAjax#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AdminActionsController#GetMyAdminActionsAjax#POST#AdminActions/GetMyAdminActionsAjax#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AdminActionsController#GetUnclaimedAdminActionsAjax#POST#AdminActions/GetUnclaimedAdminActionsAjax#()|HttpEndpoint

@@ -6,22 +6,34 @@
         const $hidden = $(cfg.hiddenSelector);
         const $container = $('<div class="user-suggestions list-group position-absolute bg-white shadow" role="listbox" aria-label="User suggestions" style="z-index:1050; max-height:240px; overflow-y:auto; display:none;"></div>');
         $input.after($container);
-        let timer = null, lastQuery = '';
+        let timer = null, lastQuery = '', requestVersion = 0;
 
         function clearSuggestions() { $container.hide().empty(); }
+        function clear() {
+            clearTimeout(timer);
+            requestVersion++;
+            lastQuery = '';
+            clearSuggestions();
+        }
         function selectItem($item) {
             $input.val($item.text());
             $hidden.val($item.data('value'));
-            clearSuggestions();
+            clear();
             if (typeof cfg.onSelect === 'function') cfg.onSelect($item.data('value'));
         }
         function search(term) {
             if (!term || term.length < cfg.minLength) { clearSuggestions(); return; }
             if (term === lastQuery) return;
             lastQuery = term;
+            const version = requestVersion;
             fetch(cfg.searchUrl + '?term=' + encodeURIComponent(term))
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('User search failed: ' + r.status);
+                    return r.json();
+                })
                 .then(results => {
+                    if (version !== requestVersion) return;
+                    if (typeof cfg.onResults === 'function') cfg.onResults();
                     $container.empty();
                     if (!Array.isArray(results) || results.length === 0) { clearSuggestions(); return; }
                     results.forEach((r, i) => {
@@ -32,11 +44,17 @@
                     });
                     $container.css({ width: $input.outerWidth(), position: 'absolute' }).show();
                 })
-                .catch(() => clearSuggestions());
+                .catch(error => {
+                    if (version !== requestVersion) return;
+                    lastQuery = '';
+                    clearSuggestions();
+                    if (typeof cfg.onError === 'function') cfg.onError(error);
+                    else console.error('User search failed:', error);
+                });
         }
         $input.on('input', function () {
             $hidden.val('');
-            clearTimeout(timer);
+            clear();
             const term = $(this).val().trim();
             timer = setTimeout(() => search(term), cfg.delay);
         });
@@ -57,6 +75,7 @@
         $(document).on('click.userSearch', function (e) {
             if (!$(e.target).closest(cfg.inputSelector).length && !$(e.target).closest('.user-suggestions').length) { clearSuggestions(); }
         });
+        return { clear: clear };
     }
     global.initUserSearchAutocomplete = initUserSearchAutocomplete;
 })(window, jQuery);

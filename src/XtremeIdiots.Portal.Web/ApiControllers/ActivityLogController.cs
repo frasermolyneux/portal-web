@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
 using Newtonsoft.Json;
+using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
+using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Web.Auth.Constants;
 using XtremeIdiots.Portal.Web.Models;
 using XtremeIdiots.Portal.Web.Models.ActivityLog;
@@ -17,6 +19,7 @@ namespace XtremeIdiots.Portal.Web.ApiControllers;
 [Route("User")]
 public class ActivityLogController(
     IActivityLogService activityLogService,
+    IRepositoryApiClient repositoryApiClient,
     TelemetryClient telemetryClient,
     ILogger<ActivityLogController> logger,
     IConfiguration configuration,
@@ -41,6 +44,7 @@ public class ActivityLogController(
         [FromQuery] string? timeRange,
         [FromQuery] string? categories,
         [FromQuery] string? eventNames,
+        [FromQuery] string? actorId,
         CancellationToken cancellationToken = default)
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
@@ -85,6 +89,7 @@ public class ActivityLogController(
                 model.Length,
                 sortColumn,
                 sortDirection,
+                actorId,
                 cancellationToken).ConfigureAwait(false);
 
             return Ok(new
@@ -95,6 +100,28 @@ public class ActivityLogController(
                 data = result.Entries
             });
         }, nameof(GetActivityLogAjax)).ConfigureAwait(false);
+    }
+
+    /// <summary>Searches users with an audit actor ID for the activity log filter.</summary>
+    [HttpGet("GetActivityLogUsers")]
+    public async Task<IActionResult> GetActivityLogUsers([FromQuery] string? term, CancellationToken cancellationToken = default)
+    {
+        var search = term?.Trim();
+        if (string.IsNullOrEmpty(search) || search.Length < 2)
+            return Ok(Array.Empty<object>());
+
+        var response = await repositoryApiClient.UserProfiles.V1.GetUserProfiles(
+            search, null, 0, 15, UserProfilesOrder.DisplayNameAsc, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess || response.Result?.Data?.Items is null)
+        {
+            logger.LogWarning("Activity log user search failed: {StatusCode}", response.StatusCode);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        return Ok(response.Result.Data.Items
+            .Where(user => !string.IsNullOrWhiteSpace(user.DisplayName) && !string.IsNullOrWhiteSpace(user.XtremeIdiotsForumId))
+            .Select(user => new { id = user.XtremeIdiotsForumId, text = user.DisplayName })
+            .ToArray());
     }
 
     /// <summary>
