@@ -270,12 +270,13 @@ public class GlobalSettingsControllerTests
     [InlineData(true, nameof(GlobalSettingsViewModel.ModerationSexualSeverityThreshold))]
     [InlineData(true, nameof(GlobalSettingsViewModel.ModerationSelfHarmSeverityThreshold))]
     [InlineData(true, nameof(GlobalSettingsViewModel.ModerationMinMessageLength))]
+    [InlineData(true, "redisplay")]
     public async Task Index_Post_ProtectsUnsupportedOrIncompleteModerationAndSavesOtherSettings(bool editableAtPost, string? omittedField)
     {
         var sut = CreateSut();
         SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
-            Namespace = ModerationSettingsConstants.Namespace,
+            Namespace = ModerationSettingsConstants.Namespace.ToUpperInvariant(),
             Configuration = editableAtPost
                 ? /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7}"""
                 : /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7,"futureRules":{"enabled":false}}"""
@@ -293,10 +294,19 @@ public class GlobalSettingsControllerTests
         var preservesModeration = !editableAtPost || omittedField is not null;
         if (preservesModeration)
             sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
-        if (omittedField is not null)
+        if (omittedField == "redisplay")
+        {
+            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
+            sut.ModelState.AddModelError(nameof(model.AgentName), "Invalid agent name");
+        }
+        else if (omittedField is not null)
             sut.ModelState.Remove(omittedField);
 
-        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+        var result = await sut.Index(model);
+        if (omittedField == "redisplay")
+            Assert.IsType<ViewResult>(result);
+        else
+            Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(preservesModeration, model.ModerationReadOnly);
         if (preservesModeration)
         {
@@ -312,8 +322,12 @@ public class GlobalSettingsControllerTests
             Assert.Equal(6, model.ModerationHateSeverityThreshold);
             Assert.Contains(ModerationSettingsConstants.Namespace, upserted);
         }
-        Assert.True(sut.ModelState.IsValid);
-        Assert.NotEmpty(upserted);
+
+        Assert.Equal(omittedField != "redisplay", sut.ModelState.IsValid);
+        if (omittedField == "redisplay")
+            Assert.Empty(upserted);
+        else
+            Assert.NotEmpty(upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
             ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }

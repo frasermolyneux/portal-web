@@ -1656,6 +1656,7 @@ public class GameServersControllerTests
     [InlineData(true, nameof(GameServerEditViewModel.ModerationSexualSeverityThreshold))]
     [InlineData(true, nameof(GameServerEditViewModel.ModerationSelfHarmSeverityThreshold))]
     [InlineData(true, nameof(GameServerEditViewModel.ModerationMinMessageLength))]
+    [InlineData(true, "redisplay")]
     public async Task Edit_Post_ProtectsUnsupportedOrIncompleteModerationAndSavesOtherSettings(bool editableAtPost, string? omittedField)
     {
         var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
@@ -1665,7 +1666,7 @@ public class GameServersControllerTests
             .ReturnsAsync(AuthorizationResult.Success());
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
-            Namespace = ModerationSettingsConstants.Namespace,
+            Namespace = ModerationSettingsConstants.Namespace.ToUpperInvariant(),
             Configuration = editableAtPost
                 ? /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7}"""
                 : /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7,"futureRules":{"enabled":false}}"""
@@ -1702,10 +1703,19 @@ public class GameServersControllerTests
         var preservesModeration = !editableAtPost || omittedField is not null;
         if (preservesModeration)
             sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
-        if (omittedField is not null)
+        if (omittedField == "redisplay")
+        {
+            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
+            sut.ModelState.AddModelError("GameServer.QueryPort", "Invalid query port");
+        }
+        else if (omittedField is not null)
             sut.ModelState.Remove(omittedField);
 
-        Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
+        var result = await sut.Edit(model);
+        if (omittedField == "redisplay")
+            Assert.IsType<ViewResult>(result);
+        else
+            Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(preservesModeration, model.ModerationReadOnly);
         if (preservesModeration)
         {
@@ -1723,8 +1733,12 @@ public class GameServersControllerTests
             Assert.Equal(6, model.ModerationHateSeverityThreshold);
             Assert.Contains(ModerationSettingsConstants.Namespace, upserted);
         }
-        Assert.True(sut.ModelState.IsValid);
-        Assert.NotEmpty(upserted);
+
+        Assert.Equal(omittedField != "redisplay", sut.ModelState.IsValid);
+        if (omittedField == "redisplay")
+            Assert.Empty(upserted);
+        else
+            Assert.NotEmpty(upserted);
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
             server.GameServerId, ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }

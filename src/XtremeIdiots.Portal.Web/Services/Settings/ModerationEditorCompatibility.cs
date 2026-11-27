@@ -16,8 +16,7 @@ internal static class ModerationEditorCompatibility
         nameof(GlobalSettingsViewModel.ModerationMinMessageLength)
     ];
 
-    public static bool HasCompleteSubmission(ModelStateDictionary modelState, bool server = false) =>
-        CommonFields.All(modelState.ContainsKey)
+    public static bool HasCompleteSubmission(ModelStateDictionary modelState, bool server = false) => CommonFields.All(modelState.ContainsKey)
         && (!server || modelState.ContainsKey(nameof(GameServerEditViewModel.ModerationProtectedNameEnforcementEnabled)));
 
     public static bool RequiresReadOnly(string json, bool global = false)

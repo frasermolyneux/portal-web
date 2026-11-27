@@ -219,7 +219,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case ModerationSettingsConstants.Namespace:
+            case var ns when string.Equals(ns, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase):
                 if (TryDeserialize(config, logger, out ModerationSettingsDocument? moderationDocument) && moderationDocument is not null)
                 {
                     var legacyThreshold = moderationDocument.ContentSafetySeverityThreshold;
@@ -422,7 +422,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case ModerationSettingsConstants.Namespace:
+            case var ns when string.Equals(ns, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase):
                 if (TryDeserialize(config, logger, out ModerationSettingsDocument? moderationDocument) && moderationDocument is not null)
                 {
                     var legacyThreshold = moderationDocument.ContentSafetySeverityThreshold;
@@ -556,7 +556,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case ModerationSettingsConstants.Namespace:
+            case var ns when string.Equals(ns, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase):
                 if (TryDeserialize(config, logger, out ModerationSettingsDocument? moderationDocument) && moderationDocument is not null)
                 {
                     var legacyThreshold = moderationDocument.ContentSafetySeverityThreshold;
