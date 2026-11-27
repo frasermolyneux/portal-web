@@ -537,9 +537,9 @@
                     <div class="filter-group">
                         <label for="analytics-embed-player-range" class="form-label">Date range (UTC)</label>
                         <select id="analytics-embed-player-range" class="form-select">
-                            <option value="7d">Last 7 days</option>
+                            <option value="7d" selected>Last 7 days</option>
                             <option value="30d">Last 30 days</option>
-                            <option value="90d" selected>Last 90 days</option>
+                            <option value="90d">Last 90 days</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -555,19 +555,11 @@
                     <p class="small text-muted mb-3" id="analytics-embed-player-observation"></p>
 
                     <div id="analytics-embed-player-playtime" class="mb-4" hidden>
-                        <h6>Daily measured play time</h6>
+                        <h6>Daily measured play time (hours)</h6>
                         <div style="position: relative; height: 260px;" id="analytics-embed-player-chart">
-                            <canvas id="analytics-embed-player-trend" role="img" aria-label="Measured play time by UTC day"></canvas>
+                            <canvas id="analytics-embed-player-trend" role="img" aria-label="Measured play time in hours by UTC day"></canvas>
                         </div>
-                        <details class="mt-2" id="analytics-embed-player-daily">
-                            <summary>View daily data</summary>
-                            <div class="table-responsive mt-2">
-                                <table class="table table-sm">
-                                    <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Play time</th></tr></thead>
-                                    <tbody id="analytics-embed-player-daily-rows"></tbody>
-                                </table>
-                            </div>
-                        </details>
+                        <p id="analytics-embed-player-chart-unavailable" class="small text-muted" hidden>Activity chart unavailable.</p>
                     </div>
 
                     <div id="analytics-embed-player-breakdown" hidden>

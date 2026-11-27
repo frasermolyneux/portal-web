@@ -546,7 +546,7 @@ public sealed class ForumIntegrationController(
             (category.HasValue && !Enum.IsDefined(category.Value)))
             return BadRequest();
         var result = await activity.QueryEventsAsync(TimeSpan.FromHours(hours),
-            category.HasValue ? [category.Value] : [], [], search, skip, take, "timestamp", "desc", cancellationToken).ConfigureAwait(false);
+            category.HasValue ? [category.Value] : [], [], search, skip, take, "timestamp", "desc", null, cancellationToken).ConfigureAwait(false);
         return Ok(new ActivityPage(result.Entries, skip, take, result.TotalCount, result.FilteredCount));
     }
 

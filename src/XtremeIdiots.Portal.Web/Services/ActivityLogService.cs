@@ -29,6 +29,7 @@ public class ActivityLogService(
         int take,
         string sortColumn,
         string sortDirection,
+        string? actorId,
         CancellationToken cancellationToken = default)
     {
         var resourceId = GetAppInsightsResourceId();
@@ -45,26 +46,31 @@ public class ActivityLogService(
 
         var eventFilter = BuildEventNameFilter(allowedEvents);
         var searchFilter = BuildSearchFilter(searchTerm);
+        var actorFilter = string.IsNullOrWhiteSpace(actorId)
+            ? null
+            : $"tostring(customDimensions.[\"Audit.ActorId\"]) == '{EscapeKql(actorId)}'";
+        var filters = new[] { searchFilter, actorFilter }.Where(filter => filter is not null);
+        var combinedFilter = string.Join(" and ", filters);
         var orderBy = BuildOrderBy(sortColumn, sortDirection);
 
         // Query for total count (matching time range + event filter only)
         var countQuery = BuildCountQuery(timeRange, eventFilter);
         var totalCount = await ExecuteCountQueryAsync(resourceId, countQuery, timeRange, cancellationToken).ConfigureAwait(false);
 
-        // Query for filtered count (including search)
+        // Query for filtered count (including search and actor)
         int filteredCount;
-        if (string.IsNullOrWhiteSpace(searchTerm))
+        if (string.IsNullOrEmpty(combinedFilter))
         {
             filteredCount = totalCount;
         }
         else
         {
-            var filteredCountQuery = BuildCountQuery(timeRange, eventFilter, searchFilter);
+            var filteredCountQuery = BuildCountQuery(timeRange, eventFilter, combinedFilter);
             filteredCount = await ExecuteCountQueryAsync(resourceId, filteredCountQuery, timeRange, cancellationToken).ConfigureAwait(false);
         }
 
         // Query for page of data
-        var dataQuery = BuildDataQuery(timeRange, eventFilter, searchFilter, orderBy, skip, take);
+        var dataQuery = BuildDataQuery(timeRange, eventFilter, combinedFilter, orderBy, skip, take);
         var entries = await ExecuteDataQueryAsync(resourceId, dataQuery, timeRange, cancellationToken).ConfigureAwait(false);
 
         return new ActivityLogQueryResult

@@ -1,9 +1,10 @@
-XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogAjax#POST#User/GetActivityLogAjax#(System.String,System.String,System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogAjax#POST#User/GetActivityLogAjax#(System.String,System.String,System.String,System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogEvents#GET#User/GetActivityLogEvents#(System.String)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.ActivityLogController#GetActivityLogUsers#GET#User/GetActivityLogUsers#(System.String)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AdminActionsController#GetAdminActionsAjax#POST#AdminActions/GetAdminActionsAjax#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AdminActionsController#GetMyAdminActionsAjax#POST#AdminActions/GetMyAdminActionsAjax#()|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AdminActionsController#GetUnclaimedAdminActionsAjax#POST#AdminActions/GetUnclaimedAdminActionsAjax#()|HttpEndpoint
-XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#DashboardHome#GET#api/Analytics/dashboard/home#(System.DateTime,System.DateTime,XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics.AnalyticsBucket,System.Int32)|HttpEndpoint
+XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#DashboardHome#GET#api/Analytics/dashboard/home#(System.DateTime,System.DateTime,XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics.AnalyticsBucket,System.Int32,System.Boolean)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#DashboardServer#GET#api/Analytics/dashboard/server#(System.Guid,System.DateTime,System.DateTime,XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics.AnalyticsBucket)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#GameMaps#GET#api/Analytics/game/maps#(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType,System.DateTime,System.DateTime,System.Int32)|HttpEndpoint
 XtremeIdiots.Portal.Web.ApiControllers.AnalyticsController#GameOverview#GET#api/Analytics/game/overview#(XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.GameType,System.DateTime,System.DateTime)|HttpEndpoint

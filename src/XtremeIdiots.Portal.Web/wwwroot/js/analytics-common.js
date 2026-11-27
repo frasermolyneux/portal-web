@@ -46,8 +46,8 @@
         return parts.length ? ('?' + parts.join('&')) : '';
     }
 
-    async function fetchJson(url) {
-        const resp = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+    async function fetchJson(url, signal) {
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin', signal });
         if (!resp.ok) {
             throw new Error('Request failed (' + resp.status + ') for ' + url);
         }

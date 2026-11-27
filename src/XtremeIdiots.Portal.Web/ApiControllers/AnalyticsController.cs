@@ -389,9 +389,11 @@ public class AnalyticsController(
     #region Dashboard
 
     [HttpGet("dashboard/home")]
-    public Task<IActionResult> DashboardHome(DateTime from, DateTime to, AnalyticsBucket bucket = AnalyticsBucket.OneDay, int top = AnalyticsQueryDefaults.DefaultTop, CancellationToken cancellationToken = default)
+    public Task<IActionResult> DashboardHome(DateTime from, DateTime to, AnalyticsBucket bucket = AnalyticsBucket.OneDay,
+        int top = AnalyticsQueryDefaults.DefaultTop, bool includeComposition = true, CancellationToken cancellationToken = default)
     {
-        return Json(() => repositoryApiClient.DashboardAnalytics.V1.GetHome(Utc(from), Utc(to), bucket, top, cancellationToken), nameof(DashboardHome));
+        return Json(() => repositoryApiClient.DashboardAnalytics.V1.GetHome(
+            Utc(from), Utc(to), bucket, top, includeComposition, cancellationToken), nameof(DashboardHome));
     }
 
     [HttpGet("dashboard/server")]

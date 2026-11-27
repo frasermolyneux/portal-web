@@ -49,6 +49,30 @@ pwsh -NoProfile -File scripts/run-tests.ps1 -Suite Unit
 pwsh -NoProfile -File scripts/run-tests.ps1 -Suite HttpIntegration
 ```
 
+Dashboard and Server analytics widget behavior can be checked without a browser:
+
+```pwsh
+node --test scripts/analytics-widgets.test.js
+```
+
+These widgets use the Repository SDK's nullable `RecordedActivity` buckets, never
+legacy latest-presence trends as historical activity. Older API hosts without
+that field display unavailable history. Deploy the compatible Repository API and
+SDK before the Web update. Recorded players have a session that starts in or
+overlaps the clipped UTC bucket, including starts with zero observed duration;
+session starts occur within it, and observed session-interval player-hours use
+clipped duration through the last confirmation, including intervals between
+confirmations and unknown-map time. They are not profile measured map-segment
+playtime, server uptime, or average session length. Known bots are excluded, but unclassified
+sessions remain. Neither returned buckets nor status samples prove complete
+coverage. Status-sample map averages/peaks/shares are not map plays or elapsed time.
+The host currently reports `RecordedActivityCoverage` as `unknown`; missing or
+unrecognized values must not be interpreted as complete coverage.
+The Dashboard requests `includeComposition=false` to avoid unused rankings;
+the Repository API defaults that option to true for existing callers.
+The admin server embed loads history on tab activation and event/chat/map
+summaries only when expanded.
+
 ### Feature Branch → PR → Merge Flow
 
 **Note**: This diagram shows the standard flow for `feature/*`, `bugfix/*`, and `hotfix/*` branches. For `copilot/*` branches, Terraform plans are skipped by default unless explicitly enabled with labels (see "Copilot Agent Flow" section below).

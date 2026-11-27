@@ -19,6 +19,52 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 public sealed class OverviewPanelTests
 {
     [Fact]
+    public async Task ServerAnalyticsRendersRecordedPlayersAndTimeWithoutLegacyPresenceOrInferredActions()
+    {
+        var scenario = new MapControlScenario();
+        scenario.RepositoryClient.Setup(r => r.GameServers.V1.GetGameServers(
+                null, null, null, 0, 200, GameServerOrder.ServerListPosition, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<GameServerDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<GameServerDto>>(new CollectionModel<GameServerDto>([scenario.GameServer]))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var requests = new ConcurrentQueue<string>();
+        await browser.Page.RouteAsync("**/api/Analytics/server/*", route =>
+        {
+            requests.Enqueue(route.Request.Url);
+            var body = route.Request.Url.Contains("/timeseries", StringComparison.Ordinal)
+                ? /*lang=json,strict*/ """
+                  {"bucket":"OneDay","recordedActivityCoverage":"unknown","series":[{"values":[{"value":999}]}],"recordedActivity":[
+                    {"bucketStartUtc":"2026-11-01T00:00:00Z","bucketEndUtc":"2026-11-02T00:00:00Z",
+                     "recordedPlayers":7,"sessionStarts":4,"observedSeconds":9000}]}
+                  """
+                : /*lang=json,strict*/ """{"lastUpdatedUtc":null,"byType":[],"topChatters":[],"maps":[]}""";
+            return route.FulfillAsync(new() { ContentType = "application/json", Body = body });
+        });
+
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Analytics/Server/{scenario.GameServerId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+        var row = browser.Page.Locator("#server-trend-summary tbody tr");
+        await Assertions.Expect(row).ToHaveCountAsync(1);
+        await Assertions.Expect(row.Locator("td")).ToHaveTextAsync(["2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z", "7", "4", "2.50"]);
+        await Assertions.Expect(browser.Page.Locator("#server-trend-coverage")).ToHaveTextAsync("Recorded activity coverage: unknown.");
+        await Assertions.Expect(browser.Page.Locator("#server-live")).ToContainTextAsync("Live status has not been observed.");
+        await Assertions.Expect(browser.Page.Locator("#server-maps")).ToContainTextAsync("No data");
+        Assert.Equal(7, await browser.Page.EvaluateAsync<int>("Chart.getChart('server-trend').data.datasets[0].data[0]"));
+        Assert.Equal(5, requests.Count);
+        Assert.DoesNotContain(requests, url => url.Contains("/overview", StringComparison.Ordinal));
+        Assert.Contains(requests, url => url.Contains("compareMode=None", StringComparison.Ordinal));
+        await Assertions.Expect(browser.Page.Locator("#af-compare")).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.Locator("#af-bucket option[value='FifteenMinutes']")).ToBeDisabledAsync();
+        await browser.Page.SelectOptionAsync("#af-range", "24h");
+        await Assertions.Expect(browser.Page.Locator("#af-bucket option[value='FifteenMinutes']")).ToBeEnabledAsync();
+        await browser.Page.SelectOptionAsync("#af-bucket", "FifteenMinutes");
+        await browser.Page.SelectOptionAsync("#af-range", "90d");
+        await Assertions.Expect(browser.Page.Locator("#af-bucket")).ToHaveValueAsync("OneDay");
+        await Assertions.Expect(browser.Page.Locator("#af-bucket option[value='OneHour']")).ToBeDisabledAsync();
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task PublicLiveRosterWithoutConnectionEvidenceShowsUnknownSession()
     {
         var scenario = new MapControlScenario();
