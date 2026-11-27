@@ -18,7 +18,8 @@
                     </a>
                 </div>
                 <div class="ibox-content">
-                    <p class="text-muted small">Daily UTC buckets count distinct recorded players whose sessions overlap the day, and sessions starting that day. Observed session-interval player-hours are clipped session durations through the last confirmation, including time between confirmations and unknown-map time. They are not measured map-segment playtime, server uptime, or average session length. Known bots are excluded; unclassified sessions remain. Recording is partial; missing history is not zero activity. First and last buckets may be partial days.</p>
+                    <p class="text-muted small">Daily UTC buckets count distinct recorded players whose sessions overlap the day, and sessions starting that day. Observed session-interval player-hours are clipped session durations through the last confirmation, including time between confirmations and unknown-map time. They are not measured map-segment playtime, server uptime, or average session length. Known bots are excluded; unclassified sessions remain. Recording may be incomplete; missing history is not zero activity. First and last buckets may be partial days.</p>
+                    <p class="text-muted small" id="dashboard-analytics-coverage" role="status">Recorded activity coverage: not established.</p>
                     <div class="row row-cols-2 row-cols-md-4 g-2 mb-3" id="dashboard-analytics-kpis"></div>
                     <div style="position: relative; height: 260px;"><canvas id="dashboard-analytics-trend"></canvas></div>
                     <pre id="dashboard-analytics-trend-fallback" class="mt-2 analytics-fallback"></pre>

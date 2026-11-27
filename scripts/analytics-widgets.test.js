@@ -50,13 +50,14 @@ const recordedActivity = [{
 }];
 
 test('Dashboard uses recorded players and observed interval duration, not legacy presence', async () => {
-    const h = harness('analytics-embed-dashboard.js', { recordedActivity, trendPoints: [{ value: 999 }], summary: { uniquePlayersCount: 999 } });
+    const h = harness('analytics-embed-dashboard.js', { recordedActivity, recordedActivityCoverage: 'unknown', trendPoints: [{ value: 999 }], summary: { uniquePlayersCount: 999 } });
     await settled();
     assert.equal(h.calls.length, 1);
     assert.equal(h.charts[0].timezone, 'UTC');
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
     assert.equal(h.tables.get('dashboard-analytics-activity').rows[0][4], '2.50');
     assert.equal(h.kpis[0][0].value, '4');
+    assert.equal(h.node('dashboard-analytics-coverage').textContent, 'Recorded activity coverage: unknown.');
 });
 
 test('Old API or absent recording does not render legacy values or invented zero activity', async () => {
@@ -73,9 +74,17 @@ test('Old API or absent recording does not render legacy values or invented zero
     }
 });
 
+test('Missing or unrecognized coverage never claims complete recording', async () => {
+    for (const coverage of [undefined, null, 'complete']) {
+        const h = harness('analytics-embed-dashboard.js', { recordedActivity, recordedActivityCoverage: coverage });
+        await settled();
+        assert.equal(h.node('dashboard-analytics-coverage').textContent, 'Recorded activity coverage: not established.');
+    }
+});
+
 test('Admin embed initially requests only recorded history, without comparisons; detail requests are lazy and failures explicit', async () => {
     const h = harness('analytics-embed-server.js', url => {
-        if (url.includes('timeseries')) { return { recordedActivity, bucket: 'OneDay' }; }
+        if (url.includes('timeseries')) { return { recordedActivity, recordedActivityCoverage: 'unknown', bucket: 'OneDay' }; }
         throw new Error('upstream failed');
     }, 'full');
     await settled();
@@ -83,6 +92,7 @@ test('Admin embed initially requests only recorded history, without comparisons;
     assert.match(h.calls[0], /compareMode=None/);
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
     assert.equal(h.tables.get('analytics-embed-server-summary').rows[0][4], '2.50');
+    assert.equal(h.node('analytics-embed-server-coverage').textContent, 'Recorded activity coverage: unknown.');
     const details = h.node('analytics-embed-server-details');
     details.open = true;
     details.listeners.toggle();
@@ -100,7 +110,7 @@ test('Admin embed initially requests only recorded history, without comparisons;
 test('Server selection changes cannot render a late response from the old server', async () => {
     let release;
     const pending = new Promise(resolve => { release = resolve; });
-    const h = harness('analytics-server.js', url => url.includes('id=first') ? pending : { recordedActivity, bucket: 'OneDay' });
+    const h = harness('analytics-server.js', url => url.includes('id=first') ? pending : { recordedActivity, recordedActivityCoverage: 'unknown', bucket: 'OneDay' });
     h.node('af-server').value = 'second';
     h.node('af-server').listeners.change();
     await settled();
@@ -111,4 +121,5 @@ test('Server selection changes cannot render a late response from the old server
     await settled();
     assert.equal(h.charts.length, 1);
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
+    assert.equal(h.node('server-trend-coverage').textContent, 'Recorded activity coverage: unknown.');
 });

@@ -33,6 +33,8 @@
         delete query.generation;
         const ts = await A.fetchJson('/api/Analytics/server/timeseries' + A.buildQuery(query));
         if (c.generation !== generation) { return; }
+        document.getElementById('server-trend-coverage').textContent =
+            'Recorded activity coverage: ' + (ts.recordedActivityCoverage === 'unknown' ? 'unknown' : 'not established') + '.';
         const points = ts.recordedActivity;
         if (!Array.isArray(points) || !points.length) {
             A.showFallback('server-trend-fallback', Array.isArray(points)
@@ -100,7 +102,7 @@
         const c = controls();
         if (!c.id) { return; }
         if (trendChart) { trendChart.destroy(); trendChart = null; }
-        ['server-live', 'server-events', 'server-chat', 'server-maps', 'server-trend-summary'].forEach(function (id) {
+        ['server-live', 'server-events', 'server-chat', 'server-maps', 'server-trend-summary', 'server-trend-coverage'].forEach(function (id) {
             document.getElementById(id).replaceChildren();
         });
         A.showFallback('server-trend-fallback', 'Loading recorded activity...');

@@ -65,6 +65,8 @@ confirmations and unknown-map time. They are not profile measured map-segment
 playtime, server uptime, or average session length. Known bots are excluded, but unclassified
 sessions remain. Neither returned buckets nor status samples prove complete
 coverage. Status-sample map averages/peaks/shares are not map plays or elapsed time.
+The host currently reports `RecordedActivityCoverage` as `unknown`; missing or
+unrecognized values must not be interpreted as complete coverage.
 The admin server embed loads history on tab activation and event/chat/map
 summaries only when expanded.
 

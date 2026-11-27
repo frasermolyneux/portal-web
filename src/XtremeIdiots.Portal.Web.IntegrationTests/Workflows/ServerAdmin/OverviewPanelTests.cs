@@ -33,7 +33,7 @@ public sealed class OverviewPanelTests
             requests.Enqueue(route.Request.Url);
             var body = route.Request.Url.Contains("/timeseries", StringComparison.Ordinal)
                 ? /*lang=json,strict*/ """
-                  {"bucket":"OneDay","series":[{"values":[{"value":999}]}],"recordedActivity":[
+                  {"bucket":"OneDay","recordedActivityCoverage":"unknown","series":[{"values":[{"value":999}]}],"recordedActivity":[
                     {"bucketStartUtc":"2026-11-01T00:00:00Z","bucketEndUtc":"2026-11-02T00:00:00Z",
                      "recordedPlayers":7,"sessionStarts":4,"observedSeconds":9000}]}
                   """
@@ -46,6 +46,7 @@ public sealed class OverviewPanelTests
         var row = browser.Page.Locator("#server-trend-summary tbody tr");
         await Assertions.Expect(row).ToHaveCountAsync(1);
         await Assertions.Expect(row.Locator("td")).ToHaveTextAsync(["2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z", "7", "4", "2.50"]);
+        await Assertions.Expect(browser.Page.Locator("#server-trend-coverage")).ToHaveTextAsync("Recorded activity coverage: unknown.");
         await Assertions.Expect(browser.Page.Locator("#server-live")).ToContainTextAsync("Live status has not been observed.");
         await Assertions.Expect(browser.Page.Locator("#server-maps")).ToContainTextAsync("No data");
         Assert.Equal(7, await browser.Page.EvaluateAsync<int>("Chart.getChart('server-trend').data.datasets[0].data[0]"));

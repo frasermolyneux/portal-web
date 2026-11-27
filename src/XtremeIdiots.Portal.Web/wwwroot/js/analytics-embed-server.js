@@ -20,6 +20,8 @@
             id: serverId, from: r.from, to: r.to, bucket: 'OneDay',
             compareMode: 'None', alignMode: 'None', timezone: tz, normalize: false
         }));
+        document.getElementById('analytics-embed-server-coverage').textContent =
+            'Recorded activity coverage: ' + (ts.recordedActivityCoverage === 'unknown' ? 'unknown' : 'not established') + '.';
         const points = ts.recordedActivity;
         if (!Array.isArray(points) || !points.length) {
             A.showFallback('analytics-embed-server-trend-fallback', Array.isArray(points)

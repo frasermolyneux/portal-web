@@ -12,6 +12,8 @@
         try {
             const d = await A.fetchJson('/api/Analytics/dashboard/home' + A.buildQuery({ from: r.from, to: r.to, bucket: 'OneDay', top: 6 }));
 
+            document.getElementById('dashboard-analytics-coverage').textContent =
+                'Recorded activity coverage: ' + (d.recordedActivityCoverage === 'unknown' ? 'unknown' : 'not established') + '.';
             const points = d.recordedActivity;
             if (!Array.isArray(points)) {
                 A.showFallback('dashboard-analytics-trend-fallback', 'Recorded session activity is unavailable from this API version.');
