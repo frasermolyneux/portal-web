@@ -5,6 +5,7 @@ using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -45,6 +46,8 @@ public class GlobalSettingsController(
                 PopulateModelFromNamespace(model, config);
                 if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                     model.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+                if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                    model.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration);
             }
 
             return View(model);
@@ -80,6 +83,11 @@ public class GlobalSettingsController(
                 || currentConfigurations!.Any(config =>
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            model.ChatCommandsReadOnly = !ModelState.ContainsKey("ChatCommands.DefaultFreshnessSeconds")
+                || currentConfigurations!.Any(config =>
+                string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration));
 
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)

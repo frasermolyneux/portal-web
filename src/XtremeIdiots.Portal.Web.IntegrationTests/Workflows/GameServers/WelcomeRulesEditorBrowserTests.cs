@@ -11,6 +11,7 @@ using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
@@ -22,6 +23,91 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 [Trait("Category", "Browser")]
 public sealed class WelcomeRulesEditorBrowserTests
 {
+    [Theory]
+    [InlineData("protected")]
+    [InlineData("transition")]
+    [InlineData("legacy")]
+    [InlineData("changed")]
+    public async Task ChatCommandEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
+    {
+        const string unsupported = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}""";
+        const string legacy = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true,"settings":{"messages":[{"message":"true","enabled":"false"}]}}}}""";
+        const string replacement = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}""";
+        var scenario = new FileTransportScenario();
+        var serverJson = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        serverJson["AgentEnabled"] = true;
+        var server = serverJson.ToObject<GameServerDto>()!;
+        Mock.Get(scenario.RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        var currentChatJson = scenarioType is "legacy" or "changed" ? legacy : unsupported;
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.GetConfigurations(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                var chat = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = ChatCommandSettingsConstants.Namespace,
+                    Configuration = currentChatJson
+                }))!;
+                return new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                    new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([scenario.SftpConfiguration, chat])));
+            });
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.DeleteConfiguration(scenario.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#chat-commands-tab-btn").ClickAsync();
+        var enabled = page.Locator("[name='ChatCommands.Commands[3].Enabled']");
+        if (scenarioType is "legacy" or "changed")
+        {
+            await Assertions.Expect(enabled).ToBeEnabledAsync();
+            await enabled.SelectOptionAsync("false");
+            if (scenarioType == "changed")
+                currentChatJson = unsupported;
+        }
+        else
+        {
+            await Assertions.Expect(page.Locator("#chat-commands-tab .alert-warning")).ToContainTextAsync("will be preserved");
+            await Assertions.Expect(enabled).ToBeDisabledAsync();
+            if (scenarioType == "transition")
+                currentChatJson = replacement;
+        }
+
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.Locator("#GameServer_Title").FillAsync("Updated Server");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(302, response.Status);
+        Assert.Contains(scenario.UpdatedGameServers, entry => entry.Title == "Updated Server");
+        if (scenarioType == "legacy")
+        {
+            var saved = Assert.Single(scenario.UpsertedConfigurations, entry => entry.Namespace == ChatCommandSettingsConstants.Namespace);
+            using var document = JsonDocument.Parse(saved.Configuration);
+            var fu = document.RootElement.GetProperty("commands").GetProperty("fu");
+            Assert.False(fu.GetProperty("enabled").GetBoolean());
+            Assert.Equal("true", fu.GetProperty("settings").GetProperty("messages")[0].GetProperty("message").GetString());
+        }
+        else
+        {
+            Assert.DoesNotContain(scenario.UpsertedConfigurations, entry => entry.Namespace == ChatCommandSettingsConstants.Namespace);
+            Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1).Verify(
+                api => api.DeleteConfiguration(scenario.GameServerId, ChatCommandSettingsConstants.Namespace, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task ServerFeatures_NavigationKeepsExistingEditorsAndClarifiesBroadcasts()
     {

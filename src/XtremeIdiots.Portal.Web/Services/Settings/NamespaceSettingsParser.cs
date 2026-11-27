@@ -27,7 +27,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly static System.Text.Json.JsonSerializerOptions vpnSerializerOptions = new(serializerOptions)
+    internal readonly static System.Text.Json.JsonSerializerOptions LegacyBooleanSerializerOptions = new(serializerOptions)
     {
         Converters = { new BooleanStringConverter() }
     };
@@ -37,7 +37,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
     {
         return TryParseServerSettings(config, WelcomeRulesSettingsConstants.Namespace,
             static document => new WelcomeRulesSettingsValidator().Validate(document).Errors,
-            out settings, out errors, vpnSerializerOptions);
+            out settings, out errors, LegacyBooleanSerializerOptions);
     }
 
     public bool TryParseWelcomeRulesServerSettings(
@@ -45,7 +45,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
     {
         return TryParseServerSettings(config, WelcomeRulesSettingsConstants.Namespace,
             static document => new WelcomeRulesSettingsValidator().ValidateServerOverride(document).Errors,
-            out settings, out errors, vpnSerializerOptions);
+            out settings, out errors, LegacyBooleanSerializerOptions);
     }
 
     public bool TryParseVpnProtectionSettings(
@@ -64,7 +64,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         VpnProtectionSettingsDocument? parsed;
         try
         {
-            parsed = System.Text.Json.JsonSerializer.Deserialize<VpnProtectionSettingsDocument>(config.Configuration, vpnSerializerOptions);
+            parsed = System.Text.Json.JsonSerializer.Deserialize<VpnProtectionSettingsDocument>(config.Configuration, LegacyBooleanSerializerOptions);
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -240,7 +240,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case ChatCommandSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out ChatCommandSettingsDocument? chatCommandsDocument) && chatCommandsDocument is not null)
+                if (TryDeserializeChatCommands(config, logger, out var chatCommandsDocument) && chatCommandsDocument is not null)
                 {
                     ChatCommandSettingsJsonMapper.PopulateGlobal(model.ChatCommands, chatCommandsDocument);
                 }
@@ -444,7 +444,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case ChatCommandSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out ChatCommandSettingsDocument? chatCommandDocument) && chatCommandDocument is not null)
+                if (TryDeserializeChatCommands(config, logger, out var chatCommandDocument) && chatCommandDocument is not null)
                 {
                     ChatCommandSettingsJsonMapper.PopulateServer(model.ChatCommands, chatCommandDocument);
                 }
@@ -577,7 +577,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
 
                 break;
             case ChatCommandSettingsConstants.Namespace:
-                if (TryDeserialize(config, logger, out ChatCommandSettingsDocument? chatCommandsDocument) && chatCommandsDocument is not null)
+                if (TryDeserializeChatCommands(config, logger, out var chatCommandsDocument) && chatCommandsDocument is not null)
                 {
                     ChatCommandSettingsJsonMapper.PopulateGlobal(model.GlobalChatCommands, chatCommandsDocument);
                 }
@@ -808,6 +808,21 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
         catch (System.Text.Json.JsonException ex)
         {
             logger.LogWarning(ex, "Failed to parse broadcast configuration");
+            document = null;
+            return false;
+        }
+    }
+
+    private static bool TryDeserializeChatCommands(ConfigurationDto config, ILogger logger, out ChatCommandSettingsDocument? document)
+    {
+        try
+        {
+            document = ChatCommandEditorCompatibility.Deserialize(config.Configuration);
+            return document is not null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse chat command configuration");
             document = null;
             return false;
         }

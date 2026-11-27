@@ -5,6 +5,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
@@ -40,6 +41,30 @@ public class NamespaceSettingsParserTests
         Assert.Equal("true", Assert.Single(server.BroadcastMessages).Message);
         Assert.False(server.GlobalBroadcastsEnabled);
         Assert.Equal("true", Assert.Single(server.GlobalBroadcastMessages).Message);
+    }
+
+    [Fact]
+    public void ChatCommandsMapping_LegacyBooleanStrings_DoNotConvertMessageText()
+    {
+        const string json = /*lang=json,strict*/ """{"defaults":{"enabled":"false"},"commands":{"fu":{"enabled":"true","settings":{"messages":[{"message":"true","enabled":"false"}]}}}}""";
+        var config = BuildConfiguration(ChatCommandSettingsConstants.Namespace, json);
+        var global = new GlobalSettingsViewModel();
+        var server = new GameServerEditViewModel();
+        parser.PopulateGlobalSettingsViewModel(global, config, logger);
+        parser.PopulateGameServerSettingsViewModel(server, config, logger);
+        parser.PopulateGameServerGlobalDefaults(server, config, logger);
+
+        Assert.False(ChatCommandEditorCompatibility.RequiresReadOnly(json));
+        Assert.False(global.ChatCommands.DefaultsEnabled);
+        var globalFu = global.ChatCommands.Commands.Single(command => command.Name == "fu");
+        Assert.True(globalFu.Enabled);
+        Assert.Equal("true", Assert.Single(globalFu.Messages).Message);
+        Assert.False(globalFu.Messages[0].Enabled);
+        var serverFu = server.ChatCommands.Commands.Single(command => command.Name == "fu");
+        Assert.True(serverFu.Enabled);
+        Assert.Equal("true", Assert.Single(serverFu.Messages).Message);
+        Assert.False(server.GlobalChatCommands.DefaultsEnabled);
+        Assert.Equal("true", Assert.Single(server.GlobalChatCommands.Commands.Single(command => command.Name == "fu").Messages).Message);
     }
 
     [Fact]

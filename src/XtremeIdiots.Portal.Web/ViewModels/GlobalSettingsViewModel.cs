@@ -133,6 +133,9 @@ public class GlobalSettingsViewModel : IValidatableObject
         set => BroadcastMessages = value ?? [];
     }
 
+    [BindNever]
+    public bool ChatCommandsReadOnly { get; set; }
+
     public ChatCommandGlobalSettingsViewModel ChatCommands { get; set; } = new();
 
     public WelcomeRulesGlobalSettingsViewModel WelcomeRules { get; set; } = new();
