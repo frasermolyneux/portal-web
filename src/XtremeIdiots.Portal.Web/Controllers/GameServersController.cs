@@ -495,7 +495,7 @@ public class GameServersController(
                 string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType));
 
-            model.ModerationReadOnly = !ModelState.ContainsKey(nameof(GameServerEditViewModel.ModerationMinMessageLength))
+            model.ModerationReadOnly = !ModerationEditorCompatibility.HasCompleteSubmission(ModelState, server: true)
                 || savedConfigurations.Result.Data.Items.Any(config =>
                 string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ModerationEditorCompatibility.RequiresReadOnly(config.Configuration));

@@ -7,6 +7,19 @@ namespace XtremeIdiots.Portal.Web.Services.Settings;
 
 internal static class ModerationEditorCompatibility
 {
+    private readonly static string[] CommonFields =
+    [
+        nameof(GlobalSettingsViewModel.ModerationHateSeverityThreshold),
+        nameof(GlobalSettingsViewModel.ModerationViolenceSeverityThreshold),
+        nameof(GlobalSettingsViewModel.ModerationSexualSeverityThreshold),
+        nameof(GlobalSettingsViewModel.ModerationSelfHarmSeverityThreshold),
+        nameof(GlobalSettingsViewModel.ModerationMinMessageLength)
+    ];
+
+    public static bool HasCompleteSubmission(ModelStateDictionary modelState, bool server = false) =>
+        CommonFields.All(modelState.ContainsKey)
+        && (!server || modelState.ContainsKey(nameof(GameServerEditViewModel.ModerationProtectedNameEnforcementEnabled)));
+
     public static bool RequiresReadOnly(string json, bool global = false)
     {
         try

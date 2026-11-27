@@ -91,7 +91,7 @@ public class GlobalSettingsController(
                 string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration));
 
-            model.ModerationReadOnly = !ModelState.ContainsKey(nameof(GlobalSettingsViewModel.ModerationMinMessageLength))
+            model.ModerationReadOnly = !ModerationEditorCompatibility.HasCompleteSubmission(ModelState)
                 || currentConfigurations!.Any(config =>
                 string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ModerationEditorCompatibility.RequiresReadOnly(config.Configuration, global: true));

@@ -47,7 +47,11 @@ public class GlobalSettingsControllerTests
             ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds.ToString(),
             ["WelcomeRules.RulesJson"] = model.WelcomeRules.RulesJson,
             ["ChatCommands.DefaultFreshnessSeconds"] = model.ChatCommands.DefaultFreshnessSeconds.ToString(),
-            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength.ToString()
+            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength.ToString(),
+            [nameof(model.ModerationHateSeverityThreshold)] = model.ModerationHateSeverityThreshold.ToString(),
+            [nameof(model.ModerationViolenceSeverityThreshold)] = model.ModerationViolenceSeverityThreshold.ToString(),
+            [nameof(model.ModerationSexualSeverityThreshold)] = model.ModerationSexualSeverityThreshold.ToString(),
+            [nameof(model.ModerationSelfHarmSeverityThreshold)] = model.ModerationSelfHarmSeverityThreshold.ToString()
         };
         foreach (var (key, value) in fields)
         {
@@ -259,17 +263,22 @@ public class GlobalSettingsControllerTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Index_Post_PreservesUnsupportedOrOmittedModerationAndSavesOtherSettings(bool editableAtPost)
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationHateSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationViolenceSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationSexualSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationSelfHarmSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationMinMessageLength))]
+    public async Task Index_Post_ProtectsUnsupportedOrIncompleteModerationAndSavesOtherSettings(bool editableAtPost, string? omittedField)
     {
         var sut = CreateSut();
         SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = ModerationSettingsConstants.Namespace,
             Configuration = editableAtPost
-                ? /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7}"""
-                : /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7,"futureRules":{"enabled":false}}"""
+                ? /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7}"""
+                : /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7,"futureRules":{"enabled":false}}"""
         }))!);
         var upserted = new List<string>();
         mockRepositoryApiClient.Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
@@ -281,17 +290,30 @@ public class GlobalSettingsControllerTests
             });
         var model = new GlobalSettingsViewModel { ModerationHateSeverityThreshold = 6, ModerationReadOnly = false };
         PrepareSiegeSubmission(sut, model);
-        if (editableAtPost)
-            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
-        sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+        var preservesModeration = !editableAtPost || omittedField is not null;
+        if (preservesModeration)
+            sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+        if (omittedField is not null)
+            sut.ModelState.Remove(omittedField);
 
         Assert.IsType<RedirectToActionResult>(await sut.Index(model));
-        Assert.True(model.ModerationReadOnly);
-        Assert.Equal(2, model.ModerationHateSeverityThreshold);
-        Assert.Equal(7, model.ModerationMinMessageLength);
+        Assert.Equal(preservesModeration, model.ModerationReadOnly);
+        if (preservesModeration)
+        {
+            Assert.Equal(2, model.ModerationHateSeverityThreshold);
+            Assert.Equal(4, model.ModerationViolenceSeverityThreshold);
+            Assert.Equal(6, model.ModerationSexualSeverityThreshold);
+            Assert.Equal(0, model.ModerationSelfHarmSeverityThreshold);
+            Assert.Equal(7, model.ModerationMinMessageLength);
+            Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
+        }
+        else
+        {
+            Assert.Equal(6, model.ModerationHateSeverityThreshold);
+            Assert.Contains(ModerationSettingsConstants.Namespace, upserted);
+        }
         Assert.True(sut.ModelState.IsValid);
         Assert.NotEmpty(upserted);
-        Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
             ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }

@@ -31,9 +31,10 @@ warning does not indicate whether a command is enabled at runtime.
 ### Moderation
 
 The global and server editors make the existing moderation namespace read-only
-when its saved document contains unsupported fields or values. Saving other
-settings leaves that namespace unchanged, including protected-name settings.
-This does not affect a separate rules namespace.
+when its saved document contains unsupported fields or values, or any of the
+section's fields are omitted from a submission. Saving other settings leaves
+that namespace unchanged, including protected-name settings. This does not affect
+a separate rules namespace.
 
 ### VPN and Siege rules
 

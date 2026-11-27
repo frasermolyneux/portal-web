@@ -103,7 +103,12 @@ public class GameServersControllerTests
             ["WelcomeRules.LocalRulesJson"] = model.WelcomeRules.LocalRulesJson,
             ["WelcomeRules.RuleOverridesJson"] = model.WelcomeRules.RuleOverridesJson,
             ["ChatCommands.Commands[0].Name"] = "commands",
-            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength?.ToString() ?? string.Empty
+            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength?.ToString() ?? string.Empty,
+            [nameof(model.ModerationHateSeverityThreshold)] = model.ModerationHateSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationViolenceSeverityThreshold)] = model.ModerationViolenceSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationSexualSeverityThreshold)] = model.ModerationSexualSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationSelfHarmSeverityThreshold)] = model.ModerationSelfHarmSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationProtectedNameEnforcementEnabled)] = model.ModerationProtectedNameEnforcementEnabled.ToString()
         };
         foreach (var (key, value) in fields)
         {
@@ -1643,9 +1648,15 @@ public class GameServersControllerTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Edit_Post_PreservesUnsupportedOrOmittedModerationAndSavesOtherSettings(bool editableAtPost)
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationProtectedNameEnforcementEnabled))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationHateSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationViolenceSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationSexualSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationSelfHarmSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationMinMessageLength))]
+    public async Task Edit_Post_ProtectsUnsupportedOrIncompleteModerationAndSavesOtherSettings(bool editableAtPost, string? omittedField)
     {
         var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
         mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
@@ -1656,8 +1667,8 @@ public class GameServersControllerTests
         {
             Namespace = ModerationSettingsConstants.Namespace,
             Configuration = editableAtPost
-                ? /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2}"""
-                : /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"futureRules":{"enabled":false}}"""
+                ? /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7}"""
+                : /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7,"futureRules":{"enabled":false}}"""
         }))!;
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
@@ -1688,17 +1699,32 @@ public class GameServersControllerTests
         };
         var sut = CreateSut();
         PrepareRulesSettingsSubmission(sut, model);
-        if (editableAtPost)
-            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
-        sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+        var preservesModeration = !editableAtPost || omittedField is not null;
+        if (preservesModeration)
+            sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+        if (omittedField is not null)
+            sut.ModelState.Remove(omittedField);
 
         Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
-        Assert.True(model.ModerationReadOnly);
-        Assert.False(model.ModerationProtectedNameEnforcementEnabled);
-        Assert.Equal(2, model.ModerationHateSeverityThreshold);
+        Assert.Equal(preservesModeration, model.ModerationReadOnly);
+        if (preservesModeration)
+        {
+            Assert.False(model.ModerationProtectedNameEnforcementEnabled);
+            Assert.Equal(2, model.ModerationHateSeverityThreshold);
+            Assert.Equal(4, model.ModerationViolenceSeverityThreshold);
+            Assert.Equal(6, model.ModerationSexualSeverityThreshold);
+            Assert.Equal(0, model.ModerationSelfHarmSeverityThreshold);
+            Assert.Equal(7, model.ModerationMinMessageLength);
+            Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
+        }
+        else
+        {
+            Assert.True(model.ModerationProtectedNameEnforcementEnabled);
+            Assert.Equal(6, model.ModerationHateSeverityThreshold);
+            Assert.Contains(ModerationSettingsConstants.Namespace, upserted);
+        }
         Assert.True(sut.ModelState.IsValid);
         Assert.NotEmpty(upserted);
-        Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
             server.GameServerId, ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }
