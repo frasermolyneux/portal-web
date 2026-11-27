@@ -57,7 +57,7 @@
             return {
                 ...series,
                 label: labels[series.key] || series.label,
-                periodLabel: series.role === 'comparison' ? 'Latest seen: ' + series.periodLabel : series.periodLabel
+                periodLabel: series.role === 'comparison' && series.periodLabel ? 'Latest seen: ' + series.periodLabel : series.periodLabel
             };
         });
         const hasTrackedStarts = ts.trackingCoverage === 'unknown' && ts.points?.length > 0 &&

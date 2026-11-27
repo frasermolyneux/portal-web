@@ -106,6 +106,51 @@ public sealed class AnalyticsLabelsBrowserTests
     }
 
     [Theory]
+    [InlineData("missing", "Previous observations")]
+    [InlineData("null", "Previous observations")]
+    [InlineData("present", "Latest seen: Previous 7 days")]
+    public async Task PlayerComparisonUsesAvailablePeriodLabel(string labelMode, string expectedLabel)
+    {
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin);
+        await browser.Page.RouteAsync("**/api/Analytics/**", route =>
+        {
+            var path = new Uri(route.Request.Url).AbsolutePath;
+            object response;
+            if (path.EndsWith("/player/timeseries", StringComparison.OrdinalIgnoreCase))
+            {
+                var values = new[] { new { bucketStartUtc = "2026-11-25T00:00:00Z", value = 2 } };
+                var comparison = new Dictionary<string, object?>
+                {
+                    ["key"] = "activePlayers_cmp1",
+                    ["role"] = "comparison",
+                    ["label"] = "Previous observations",
+                    ["values"] = values,
+                };
+                if (labelMode != "missing")
+                    comparison["periodLabel"] = labelMode == "present" ? "Previous 7 days" : null;
+                response = new
+                {
+                    bucket = "OneDay",
+                    labels = new[] { "2026-11-25T00:00:00Z" },
+                    series = new object[] { new { key = "activePlayers", label = "Active", values }, comparison },
+                };
+            }
+            else
+            {
+                response = new { items = Array.Empty<object>() };
+            }
+
+            return route.FulfillAsync(new() { ContentType = "application/json", Body = JsonSerializer.Serialize(response) });
+        });
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/Analytics/Player").AbsoluteUri);
+        await browser.Page.WaitForFunctionAsync("() => !!Chart.getChart('player-trend')");
+        var labels = await browser.Page.Locator("#player-trend").EvaluateAsync<string[]>(
+            "canvas => Chart.getChart(canvas).data.datasets.map(dataset => dataset.label)");
+        Assert.Contains(expectedLabel, labels);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
     [InlineData(null, "\u2014")]
     [InlineData(0, "\u2014")]
     [InlineData(1, "0")]
