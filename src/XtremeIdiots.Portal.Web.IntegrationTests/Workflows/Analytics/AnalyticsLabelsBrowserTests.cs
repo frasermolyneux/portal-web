@@ -9,11 +9,13 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.Analytics;
 public sealed class AnalyticsLabelsBrowserTests
 {
     [Theory]
-    [InlineData("Global", false)]
-    [InlineData("Game", false)]
-    [InlineData("Player", false)]
-    [InlineData("Player", true)]
-    public async Task AnalyticsDistinguishesRecordedDataFromPlayerActivity(string page, bool trackedDataAvailable)
+    [InlineData("Global", false, false)]
+    [InlineData("Game", false, false)]
+    [InlineData("Player", false, false)]
+    [InlineData("Player", true, true)]
+    [InlineData("Player", true, false)]
+    [InlineData("Player", false, true)]
+    public async Task AnalyticsDistinguishesRecordedDataFromPlayerActivity(string page, bool trackedOverviewAvailable, bool trackedTrendAvailable)
     {
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin);
         var requests = new List<string>();
@@ -27,12 +29,12 @@ public sealed class AnalyticsLabelsBrowserTests
             {
                 "/api/analytics/global/overview" => new { onlineServers = 1, totalServers = 2, totalPlayersOnline = 3, uniquePlayersWindow = 4, totalEvents = 5, totalChatMessages = 6, openReports = 7, activeBans = 8 },
                 "/api/analytics/game/overview" => new { serverCount = 1, avgPlayers = 2.5, peakPlayers = 8, uniquePlayers = 4, moderationActions = 3 },
-                "/api/analytics/player/overview" => trackedDataAvailable
+                "/api/analytics/player/overview" => trackedOverviewAvailable
                     ? new { activePlayers = 4, newPlayers = 2, returningPlayers = 2, totalPlayers = 4, observedPlayerRecords = 12, recordedPlayers = 0, sessionStarts = 0, trackingCoverage = "unknown" }
                     : new { activePlayers = 4, newPlayers = 2, returningPlayers = 2, totalPlayers = 4 },
                 "/api/analytics/global/timeseries" => Trend("avgPlayers", "Average Players", "peakPlayers", "Peak Players"),
                 "/api/analytics/game/timeseries" => Trend("avgPlayers", "Average Players"),
-                "/api/analytics/player/timeseries" => PlayerTrend(trackedDataAvailable),
+                "/api/analytics/player/timeseries" => PlayerTrend(trackedTrendAvailable),
                 "/api/analytics/global/players" or "/api/analytics/game/players" => new { items = new[] { new { displayName = "Example", gameType = "Game", activityCount = 13 } } },
                 "/api/analytics/global/geo" => new { items = new[] { new { countryCode = "GB", playerCount = 4, percentage = 100 } } },
                 "/api/analytics/global/moderation" => new { summary = new { totalActions = 3, openReports = 2, closedReports = 1 } },
@@ -69,18 +71,24 @@ public sealed class AnalyticsLabelsBrowserTests
             await Assertions.Expect(browser.Page.Locator("#player-by-game")).ToContainTextAsync("First and latest seen in range");
             await Assertions.Expect(browser.Page.Locator("#player-by-server")).ToContainTextAsync("Latest observations");
             await Assertions.Expect(browser.Page.Locator("#player-kpis")).Not.ToContainTextAsync("Total");
-            if (trackedDataAvailable)
-            {
+            if (trackedOverviewAvailable)
                 await Assertions.Expect(browser.Page.Locator("#player-kpis")).ToContainTextAsync("Tracked session starts");
-                await Assertions.Expect(browser.Page.Locator("#player-tracking-coverage")).ToBeVisibleAsync();
+            else
+                await Assertions.Expect(browser.Page.Locator("#player-kpis")).Not.ToContainTextAsync("Tracked session starts");
+
+            if (trackedTrendAvailable)
                 await Assertions.Expect(browser.Page.Locator("#player-trend-title")).ToContainTextAsync("tracked session starts");
+            else
+                await Assertions.Expect(browser.Page.Locator("#player-trend-title")).ToHaveTextAsync("First and latest observations");
+
+            if (trackedOverviewAvailable || trackedTrendAvailable)
+            {
+                await Assertions.Expect(browser.Page.Locator("#player-tracking-coverage")).ToBeVisibleAsync();
+                await Assertions.Expect(browser.Page.Locator("#player-tracking-coverage")).ToContainTextAsync("only currently non-deleted servers");
+                await Assertions.Expect(browser.Page.Locator("#player-tracking-coverage")).ToContainTextAsync("Counts can change when a server is deleted; coverage is unknown");
             }
             else
-            {
-                await Assertions.Expect(browser.Page.Locator("#player-kpis")).Not.ToContainTextAsync("Tracked session starts");
                 await Assertions.Expect(browser.Page.Locator("#player-tracking-coverage")).ToBeHiddenAsync();
-                await Assertions.Expect(browser.Page.Locator("#player-trend-title")).ToHaveTextAsync("First and latest observations");
-            }
             Assert.Equal(0, await browser.Page.Locator("#player-top").CountAsync());
             lock (requests)
                 Assert.DoesNotContain("/api/analytics/player/top", requests);
@@ -89,9 +97,10 @@ public sealed class AnalyticsLabelsBrowserTests
         var chart = browser.Page.Locator($"#{page.ToLowerInvariant()}-trend");
         await Assertions.Expect(chart).ToBeVisibleAsync();
         await Assertions.Expect(browser.Page.Locator($"#{page.ToLowerInvariant()}-trend-fallback")).ToBeHiddenAsync();
+        await browser.Page.WaitForFunctionAsync($"() => !!Chart.getChart('{page.ToLowerInvariant()}-trend')");
         var labels = await chart.EvaluateAsync<string[]>("canvas => Chart.getChart(canvas).data.datasets.map(dataset => dataset.label)");
         Assert.Contains(page == "Player" ? "Latest seen" : "Average sampled occupancy", labels);
-        if (page == "Player" && trackedDataAvailable)
+        if (page == "Player" && trackedTrendAvailable)
             Assert.Contains("Tracked session starts (coverage unknown)", labels);
         browser.AssertNoBrowserErrors();
     }

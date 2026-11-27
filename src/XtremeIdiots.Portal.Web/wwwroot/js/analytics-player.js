@@ -6,6 +6,12 @@
 
     const tz = A.browserTimezone();
     let trendChart = null;
+    let overviewHasTracking = false;
+    let trendHasTracking = false;
+
+    function updateTrackingCoverage() {
+        document.getElementById('player-tracking-coverage').hidden = !(overviewHasTracking || trendHasTracking);
+    }
 
     function controls() {
         const r = A.range(document.getElementById('af-range').value);
@@ -39,7 +45,8 @@
         if (hasTracking && Number.isFinite(o.sessionStarts)) {
             kpis.push({ label: 'Tracked session starts', value: A.fmtNumber(o.sessionStarts) });
         }
-        document.getElementById('player-tracking-coverage').hidden = !hasTracking;
+        overviewHasTracking = hasTracking && (Number.isFinite(o.recordedPlayers) || Number.isFinite(o.sessionStarts));
+        updateTrackingCoverage();
         A.renderKpis('player-kpis', kpis);
     }
 
@@ -55,6 +62,8 @@
         });
         const hasTrackedStarts = ts.trackingCoverage === 'unknown' && ts.points?.length > 0 &&
             ts.points.every(function (point) { return Number.isFinite(point.sessionStarts); });
+        trendHasTracking = hasTrackedStarts;
+        updateTrackingCoverage();
         document.getElementById('player-trend-title').textContent = hasTrackedStarts
             ? 'First, latest and tracked session starts' : 'First and latest observations';
         if (hasTrackedStarts) {
