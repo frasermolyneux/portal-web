@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
@@ -23,6 +24,101 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 [Trait("Category", "Browser")]
 public sealed class WelcomeRulesEditorBrowserTests
 {
+    [Theory]
+    [InlineData("protected")]
+    [InlineData("transition")]
+    [InlineData("changed")]
+    [InlineData("legacy")]
+    public async Task ModerationEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
+    {
+        const string unsupported = /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"futureRules":{"enabled":false}}""";
+        const string legacy = /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":"false","contentSafetySeverityThreshold":3}""";
+        const string separate = /*lang=json,strict*/ """{"schemaVersion":1,"rules":[{"id":"future"}]}""";
+        var scenario = new FileTransportScenario();
+        var serverJson = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        serverJson["AgentEnabled"] = true;
+        var server = serverJson.ToObject<GameServerDto>()!;
+        Mock.Get(scenario.RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        var currentModerationJson = scenarioType is "legacy" or "changed" ? legacy : unsupported;
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.GetConfigurations(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                var moderation = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = ModerationSettingsConstants.Namespace,
+                    Configuration = currentModerationJson
+                }))!;
+                var rules = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = "chatModerationRules",
+                    Configuration = separate
+                }))!;
+                return new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                    new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([scenario.SftpConfiguration, moderation, rules])));
+            });
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.DeleteConfiguration(scenario.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#moderation-tab-btn").ClickAsync();
+        var hate = page.Locator("#ModerationHateSeverityThreshold");
+        var protectedName = page.Locator("#ModerationProtectedNameEnforcementEnabled");
+        if (scenarioType is "legacy" or "changed")
+        {
+            await Assertions.Expect(hate).ToBeEnabledAsync();
+            await hate.SelectOptionAsync("4");
+            if (scenarioType == "changed")
+                currentModerationJson = unsupported;
+        }
+        else
+        {
+            await Assertions.Expect(page.Locator("#moderation-tab .alert-warning")).ToContainTextAsync("will be preserved");
+            await Assertions.Expect(hate).ToBeDisabledAsync();
+            await Assertions.Expect(protectedName).ToBeDisabledAsync();
+            if (scenarioType == "transition")
+                currentModerationJson = legacy;
+        }
+
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.Locator("#GameServer_Title").FillAsync("Updated Server");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(302, response.Status);
+        Assert.Contains(scenario.UpdatedGameServers, entry => entry.Title == "Updated Server");
+        Assert.DoesNotContain(scenario.UpsertedConfigurations, entry => entry.Namespace == "chatModerationRules");
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1).Verify(
+            api => api.DeleteConfiguration(scenario.GameServerId, "chatModerationRules", It.IsAny<CancellationToken>()),
+            Times.Never);
+        if (scenarioType == "legacy")
+        {
+            var saved = Assert.Single(scenario.UpsertedConfigurations, entry => entry.Namespace == ModerationSettingsConstants.Namespace);
+            using var document = JsonDocument.Parse(saved.Configuration);
+            Assert.Equal(4, document.RootElement.GetProperty("contentSafetyHateSeverityThreshold").GetInt32());
+            Assert.False(document.RootElement.GetProperty("protectedNameEnforcementEnabled").GetBoolean());
+        }
+        else
+        {
+            Assert.DoesNotContain(scenario.UpsertedConfigurations, entry => entry.Namespace == ModerationSettingsConstants.Namespace);
+            Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1).Verify(
+                api => api.DeleteConfiguration(scenario.GameServerId, ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
     [Theory]
     [InlineData("protected")]
     [InlineData("transition")]

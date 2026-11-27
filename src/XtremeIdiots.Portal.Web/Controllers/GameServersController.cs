@@ -13,6 +13,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
@@ -374,6 +375,8 @@ public class GameServersController(
                             editModel.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
                         if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                             editModel.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType);
+                        if (string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                            editModel.ModerationReadOnly = ModerationEditorCompatibility.RequiresReadOnly(config.Configuration);
 
                         PopulateConfigFromNamespace(editModel, config);
                     }
@@ -491,6 +494,21 @@ public class GameServersController(
                 || savedConfigurations.Result.Data.Items.Any(config =>
                 string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType));
+
+            model.ModerationReadOnly = !ModelState.ContainsKey(nameof(GameServerEditViewModel.ModerationMinMessageLength))
+                || savedConfigurations.Result.Data.Items.Any(config =>
+                string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                ModerationEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            if (model.ModerationReadOnly)
+            {
+                ModerationEditorCompatibility.ClearSubmittedModelState(ModelState);
+                var savedModeration = new GameServerEditViewModel();
+                foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                    string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    PopulateConfigFromNamespace(savedModeration, config);
+                ModerationEditorCompatibility.Restore(model, savedModeration);
+            }
 
             if (model.ChatCommandsReadOnly)
             {

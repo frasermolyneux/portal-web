@@ -6,6 +6,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -48,6 +49,8 @@ public class GlobalSettingsController(
                     model.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
                 if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                     model.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration);
+                if (string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                    model.ModerationReadOnly = ModerationEditorCompatibility.RequiresReadOnly(config.Configuration, global: true);
             }
 
             return View(model);
@@ -87,6 +90,21 @@ public class GlobalSettingsController(
                 || currentConfigurations!.Any(config =>
                 string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            model.ModerationReadOnly = !ModelState.ContainsKey(nameof(GlobalSettingsViewModel.ModerationMinMessageLength))
+                || currentConfigurations!.Any(config =>
+                string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                ModerationEditorCompatibility.RequiresReadOnly(config.Configuration, global: true));
+
+            if (model.ModerationReadOnly)
+            {
+                ModerationEditorCompatibility.ClearSubmittedModelState(ModelState);
+                var savedModeration = new GlobalSettingsViewModel();
+                foreach (var config in currentConfigurations!.Where(static config =>
+                    string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    PopulateModelFromNamespace(savedModeration, config);
+                ModerationEditorCompatibility.Restore(model, savedModeration);
+            }
 
             if (model.ChatCommandsReadOnly)
             {

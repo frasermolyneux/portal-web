@@ -28,6 +28,13 @@ command policies and replies. Saving other settings leaves that namespace
 unchanged. Editing those settings requires a compatible editor; the read-only
 warning does not indicate whether a command is enabled at runtime.
 
+### Moderation
+
+The global and server editors make the existing moderation namespace read-only
+when its saved document contains unsupported fields or values. Saving other
+settings leaves that namespace unchanged, including protected-name settings.
+This does not affect a separate rules namespace.
+
 ### VPN and Siege rules
 
 VPN Protection and Siege Mode use the shared rules-engine contracts and editor.

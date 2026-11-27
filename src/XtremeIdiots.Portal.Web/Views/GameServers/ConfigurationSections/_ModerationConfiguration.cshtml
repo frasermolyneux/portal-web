@@ -1,6 +1,11 @@
 @using XtremeIdiots.Portal.Web.ViewModels
 @model GameServerEditViewModel
 
+@if (Model.ModerationReadOnly)
+{
+    <div class="alert alert-warning">These moderation settings contain fields or values this editor cannot safely change. They will be preserved when other settings are saved.</div>
+}
+<fieldset disabled="@Model.ModerationReadOnly">
 <div class="ibox">
     <div class="ibox-title">
         <h5>Player Protection</h5>
@@ -74,3 +79,4 @@
                                 </div>
                             </div>
                         </div>
+</fieldset>

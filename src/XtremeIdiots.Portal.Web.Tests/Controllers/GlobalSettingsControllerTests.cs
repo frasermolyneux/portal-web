@@ -18,6 +18,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
@@ -45,7 +46,8 @@ public class GlobalSettingsControllerTests
             ["WelcomeRules.ConnectionDelaySeconds"] = model.WelcomeRules.ConnectionDelaySeconds.ToString(),
             ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds.ToString(),
             ["WelcomeRules.RulesJson"] = model.WelcomeRules.RulesJson,
-            ["ChatCommands.DefaultFreshnessSeconds"] = model.ChatCommands.DefaultFreshnessSeconds.ToString()
+            ["ChatCommands.DefaultFreshnessSeconds"] = model.ChatCommands.DefaultFreshnessSeconds.ToString(),
+            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength.ToString()
         };
         foreach (var (key, value) in fields)
         {
@@ -254,6 +256,44 @@ public class GlobalSettingsControllerTests
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
             BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Index_Post_PreservesUnsupportedOrOmittedModerationAndSavesOtherSettings(bool editableAtPost)
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ModerationSettingsConstants.Namespace,
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7}"""
+                : /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7,"futureRules":{"enabled":false}}"""
+        }))!);
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        var model = new GlobalSettingsViewModel { ModerationHateSeverityThreshold = 6, ModerationReadOnly = false };
+        PrepareSiegeSubmission(sut, model);
+        if (editableAtPost)
+            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
+        sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+
+        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+        Assert.True(model.ModerationReadOnly);
+        Assert.Equal(2, model.ModerationHateSeverityThreshold);
+        Assert.Equal(7, model.ModerationMinMessageLength);
+        Assert.True(sut.ModelState.IsValid);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
+            ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

@@ -114,6 +114,9 @@ public class GameServerEditViewModel : IValidatableObject
 
     // Moderation configuration (parsed from "moderation" config namespace)
 
+    [BindNever]
+    public bool ModerationReadOnly { get; set; }
+
     [DisplayName("Protected Name Enforcement")]
     public bool ModerationProtectedNameEnforcementEnabled { get; set; } = true;
 

@@ -12,6 +12,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -23,6 +24,60 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 [Trait("Category", "Browser")]
 public sealed class SiegeModeSettingsBrowserTests
 {
+    [Theory]
+    [InlineData("protected")]
+    [InlineData("transition")]
+    [InlineData("changed")]
+    [InlineData("legacy")]
+    public async Task ModerationEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
+    {
+        const string unsupported = /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7,"futureRules":{"enabled":false}}""";
+        const string legacy = /*lang=json,strict*/ """{"contentSafetySeverityThreshold":3,"minMessageLength":5}""";
+        const string separate = /*lang=json,strict*/ """{"schemaVersion":1,"rules":[{"id":"future"}]}""";
+        var scenario = new SettingsScenario();
+        scenario.SetConfiguration(ModerationSettingsConstants.Namespace, scenarioType is "legacy" or "changed" ? legacy : unsupported);
+        scenario.SetConfiguration("chatModerationRules", separate);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        await page.Locator("#moderation-tab-btn").ClickAsync();
+        var hate = page.Locator("#ModerationHateSeverityThreshold");
+        if (scenarioType is "legacy" or "changed")
+        {
+            await Assertions.Expect(hate).ToBeEnabledAsync();
+            await hate.SelectOptionAsync("4");
+            if (scenarioType == "changed")
+                scenario.SetConfiguration(ModerationSettingsConstants.Namespace, unsupported);
+        }
+        else
+        {
+            await Assertions.Expect(page.Locator("#moderation-tab .alert-warning")).ToContainTextAsync("will be preserved");
+            await Assertions.Expect(hate).ToBeDisabledAsync();
+            await Assertions.Expect(page.Locator("#ModerationMinMessageLength")).ToBeDisabledAsync();
+            if (scenarioType == "transition")
+                scenario.SetConfiguration(ModerationSettingsConstants.Namespace, legacy);
+        }
+
+        await page.Locator("#siege-mode-tab-btn").ClickAsync();
+        await page.Locator("#SiegeMode_DurationMinutes").FillAsync("90");
+        await SaveSettings(page);
+        Assert.Equal(separate, scenario.GetConfiguration("chatModerationRules"));
+        using var siege = JsonDocument.Parse(scenario.SiegeJson!);
+        Assert.Equal(90, siege.RootElement.GetProperty("durationMinutes").GetInt32());
+        if (scenarioType == "legacy")
+        {
+            using var saved = JsonDocument.Parse(scenario.GetConfiguration(ModerationSettingsConstants.Namespace)!);
+            Assert.Equal(4, saved.RootElement.GetProperty("contentSafetyHateSeverityThreshold").GetInt32());
+        }
+        else
+        {
+            Assert.Equal(scenarioType == "transition" ? legacy : unsupported,
+                scenario.GetConfiguration(ModerationSettingsConstants.Namespace));
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
     [Theory]
     [InlineData("protected")]
     [InlineData("transition")]
@@ -522,6 +577,8 @@ public sealed class SiegeModeSettingsBrowserTests
         public string? ChatCommandsJson => configurations.GetValueOrDefault(ChatCommandSettingsConstants.Namespace);
         public string? VpnJson => configurations.GetValueOrDefault(VpnProtectionSettingsConstants.Namespace);
         public string? WelcomeJson => configurations.GetValueOrDefault(WelcomeRulesSettingsConstants.Namespace);
+
+        public string? GetConfiguration(string ns) => configurations.GetValueOrDefault(ns);
 
         public void SetConfiguration(string ns, string configuration) => configurations[ns] = configuration;
 
