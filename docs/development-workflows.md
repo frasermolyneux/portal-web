@@ -59,8 +59,10 @@ These widgets use the Repository SDK's nullable `RecordedActivity` buckets, neve
 legacy latest-presence trends as historical activity. Older API hosts without
 that field display unavailable history. Deploy the compatible Repository API and
 SDK before the Web update. Recorded players overlap the clipped UTC bucket;
-session starts occur within it, and player-hours distinguish known-map from
-unknown-map recorded segment time. Known bots are excluded, but unclassified
+session starts occur within it, and observed session-interval player-hours use
+clipped duration through the last confirmation, including intervals between
+confirmations and unknown-map time. They are not profile measured map-segment
+playtime, server uptime, or average session length. Known bots are excluded, but unclassified
 sessions remain. Neither returned buckets nor status samples prove complete
 coverage. Status-sample map averages/peaks/shares are not map plays or elapsed time.
 The admin server embed loads history on tab activation and event/chat/map

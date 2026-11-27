@@ -46,22 +46,23 @@ function settled() { return new Promise(resolve => setImmediate(resolve)); }
 
 const recordedActivity = [{
     bucketStartUtc: '2026-11-01T00:00:00Z', bucketEndUtc: '2026-11-02T00:00:00Z',
-    recordedPlayers: 7, sessionStarts: 4, measuredSeconds: 7200, unknownMapSeconds: 1800
+    recordedPlayers: 7, sessionStarts: 4, observedSeconds: 9000
 }];
 
-test('Dashboard uses recorded players and separate known/unknown time, not legacy presence', async () => {
+test('Dashboard uses recorded players and observed interval duration, not legacy presence', async () => {
     const h = harness('analytics-embed-dashboard.js', { recordedActivity, trendPoints: [{ value: 999 }], summary: { uniquePlayersCount: 999 } });
     await settled();
     assert.equal(h.calls.length, 1);
     assert.equal(h.charts[0].timezone, 'UTC');
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
-    assert.equal(h.tables.get('dashboard-analytics-activity').rows[0][4], '2.00');
-    assert.equal(h.tables.get('dashboard-analytics-activity').rows[0][5], '0.50');
+    assert.equal(h.tables.get('dashboard-analytics-activity').rows[0][4], '2.50');
     assert.equal(h.kpis[0][0].value, '4');
 });
 
 test('Old API or absent recording does not render legacy values or invented zero activity', async () => {
-    for (const payload of [{ trendPoints: [{ value: 999 }] }, { recordedActivity: [] }, { recordedActivity: null }]) {
+    for (const payload of [{ trendPoints: [{ value: 999 }] }, { recordedActivity: [] }, { recordedActivity: null },
+        { recordedActivity: [{ ...recordedActivity[0], observedSeconds: undefined }] },
+        { recordedActivity: [{ ...recordedActivity[0], observedSeconds: null }] }]) {
         for (const script of ['analytics-embed-dashboard.js', 'analytics-embed-server.js', 'analytics-server.js']) {
             const h = harness(script, payload);
             await settled();
@@ -81,7 +82,7 @@ test('Admin embed initially requests only recorded history, without comparisons;
     assert.equal(h.calls.length, 1);
     assert.match(h.calls[0], /compareMode=None/);
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
-    assert.equal(h.tables.get('analytics-embed-server-summary').rows[0][5], '0.50');
+    assert.equal(h.tables.get('analytics-embed-server-summary').rows[0][4], '2.50');
     const details = h.node('analytics-embed-server-details');
     details.open = true;
     details.listeners.toggle();

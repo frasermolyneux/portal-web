@@ -40,6 +40,10 @@
                 : 'Recorded session activity is unavailable from this API version.');
             return;
         }
+        if (points.some(function (p) { return !Number.isFinite(p.observedSeconds) || p.observedSeconds < 0; })) {
+            A.showFallback('server-trend-fallback', 'Observed session duration is unavailable from this API version.');
+            return;
+        }
         trendChart = A.renderComparisonChart({
             canvasId: 'server-trend', fallbackId: 'server-trend-fallback',
             timeseries: { bucket: ts.bucket, labels: points.map(function (p) { return p.bucketStartUtc; }),
@@ -47,9 +51,9 @@
                     values: points.map(function (p) { return { bucketStartUtc: p.bucketStartUtc, value: p.recordedPlayers }; }) }] },
             timezone: tz, index100: false, chart: trendChart
         });
-        A.renderTable('server-trend-summary', ['UTC bucket start', 'UTC bucket end', 'Recorded players', 'Session starts', 'Known-map player-hours', 'Unknown-map player-hours'],
+        A.renderTable('server-trend-summary', ['UTC bucket start', 'UTC bucket end', 'Recorded players', 'Session starts', 'Observed session-interval player-hours'],
             points.map(function (p) { return [p.bucketStartUtc, p.bucketEndUtc, A.fmtNumber(p.recordedPlayers), A.fmtNumber(p.sessionStarts),
-                (p.measuredSeconds / 3600).toFixed(2), (p.unknownMapSeconds / 3600).toFixed(2)]; }));
+                (p.observedSeconds / 3600).toFixed(2)]; }));
     }
 
     async function loadLive(c) {

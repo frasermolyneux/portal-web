@@ -35,7 +35,7 @@ public sealed class OverviewPanelTests
                 ? /*lang=json,strict*/ """
                   {"bucket":"OneDay","series":[{"values":[{"value":999}]}],"recordedActivity":[
                     {"bucketStartUtc":"2026-11-01T00:00:00Z","bucketEndUtc":"2026-11-02T00:00:00Z",
-                     "recordedPlayers":7,"sessionStarts":4,"measuredSeconds":7200,"unknownMapSeconds":1800}]}
+                     "recordedPlayers":7,"sessionStarts":4,"observedSeconds":9000}]}
                   """
                 : /*lang=json,strict*/ """{"lastUpdatedUtc":null,"byType":[],"topChatters":[],"maps":[]}""";
             return route.FulfillAsync(new() { ContentType = "application/json", Body = body });
@@ -45,7 +45,7 @@ public sealed class OverviewPanelTests
         Assert.True(response?.Ok);
         var row = browser.Page.Locator("#server-trend-summary tbody tr");
         await Assertions.Expect(row).ToHaveCountAsync(1);
-        await Assertions.Expect(row.Locator("td")).ToHaveTextAsync(["2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z", "7", "4", "2.00", "0.50"]);
+        await Assertions.Expect(row.Locator("td")).ToHaveTextAsync(["2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z", "7", "4", "2.50"]);
         await Assertions.Expect(browser.Page.Locator("#server-live")).ToContainTextAsync("Live status has not been observed.");
         await Assertions.Expect(browser.Page.Locator("#server-maps")).ToContainTextAsync("No data");
         Assert.Equal(7, await browser.Page.EvaluateAsync<int>("Chart.getChart('server-trend').data.datasets[0].data[0]"));

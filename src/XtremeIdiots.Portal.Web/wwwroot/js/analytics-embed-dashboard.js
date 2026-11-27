@@ -21,10 +21,13 @@
                 A.showFallback('dashboard-analytics-trend-fallback', 'No recorded session activity was returned. Coverage is not known.');
                 return;
             }
+            if (points.some(function (p) { return !Number.isFinite(p.observedSeconds) || p.observedSeconds < 0; })) {
+                A.showFallback('dashboard-analytics-trend-fallback', 'Observed session duration is unavailable from this API version.');
+                return;
+            }
             A.renderKpis('dashboard-analytics-kpis', [
                 { label: 'Recorded session starts (30d)', value: A.fmtNumber(points.reduce(function (sum, p) { return sum + p.sessionStarts; }, 0)) },
-                { label: 'Known-map player-hours (30d)', value: (points.reduce(function (sum, p) { return sum + p.measuredSeconds; }, 0) / 3600).toFixed(1) },
-                { label: 'Unknown-map player-hours (30d)', value: (points.reduce(function (sum, p) { return sum + p.unknownMapSeconds; }, 0) / 3600).toFixed(1) }
+                { label: 'Observed session-interval player-hours (30d)', value: (points.reduce(function (sum, p) { return sum + p.observedSeconds; }, 0) / 3600).toFixed(1) }
             ]);
 
             const series = [{
@@ -37,9 +40,9 @@
                 timezone: tz, index100: false, chart: trendChart
             });
 
-            A.renderTable('dashboard-analytics-activity', ['UTC bucket start', 'UTC bucket end', 'Recorded players', 'Session starts', 'Known-map player-hours', 'Unknown-map player-hours'],
+            A.renderTable('dashboard-analytics-activity', ['UTC bucket start', 'UTC bucket end', 'Recorded players', 'Session starts', 'Observed session-interval player-hours'],
                 points.map(function (p) { return [p.bucketStartUtc, p.bucketEndUtc, A.fmtNumber(p.recordedPlayers), A.fmtNumber(p.sessionStarts),
-                    (p.measuredSeconds / 3600).toFixed(2), (p.unknownMapSeconds / 3600).toFixed(2)]; }));
+                    (p.observedSeconds / 3600).toFixed(2)]; }));
         } catch (e) {
             A.showFallback('dashboard-analytics-trend-fallback', String(e));
         }

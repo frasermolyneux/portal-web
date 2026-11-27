@@ -60,7 +60,7 @@
         <div class="ibox">
             <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Recorded Player Activity</h5></div>
             <div class="ibox-content">
-                <p class="text-muted small">Distinct recorded players overlapping each UTC bucket, and sessions starting within it. Player-hours are recorded map-segment time, not average session length. Known bots are excluded; unclassified sessions remain. Recording is partial; missing history is not zero activity. Boundary buckets may be partial.</p>
+                <p class="text-muted small">Distinct recorded players overlapping each UTC bucket, and sessions starting within it. Observed session-interval player-hours are clipped durations through the last confirmation, including time between confirmations and unknown-map time, not measured map-segment playtime or average session length. Known bots are excluded; unclassified sessions remain. Recording is partial; missing history is not zero activity. Boundary buckets may be partial.</p>
                 <div style="position: relative; height: 320px;"><canvas id="server-trend"></canvas></div>
                 <pre id="server-trend-fallback" class="mt-2 analytics-fallback"></pre>
                 <div id="server-trend-summary" class="mt-2 table-responsive"></div>
