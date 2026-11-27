@@ -3,6 +3,8 @@ $(document).ready(function () {
     const timeRangeSel = document.getElementById('filterTimeRange');
     const categorySel = document.getElementById('filterCategory');
     const eventNameSel = document.getElementById('filterEventName');
+    const userInput = document.getElementById('filterUser');
+    const userIdInput = document.getElementById('filterUserId');
 
     const categoryBadgeClasses = {
         'Authentication': 'text-bg-primary',
@@ -101,11 +103,17 @@ $(document).ready(function () {
             if (timeRangeSel) data.timeRange = timeRangeSel.value;
             if (categorySel) data.categories = getSelectedValues(categorySel);
             if (eventNameSel) data.eventNames = getSelectedValues(eventNameSel);
+            data.actorId = userIdInput.value;
+            data.actorName = userIdInput.value ? userInput.value : '';
         },
         stateLoadParams: function (settings, data) {
             if (data._activityLogVersion !== 3) return false;
             if (timeRangeSel && data.timeRange) timeRangeSel.value = data.timeRange;
             if (categorySel && data.categories) setSelectedValues(categorySel, data.categories);
+            if (data.actorId && data.actorName) {
+                userIdInput.value = data.actorId;
+                userInput.value = data.actorName;
+            }
         },
         columnDefs: [
             { targets: 0, responsivePriority: 1 },
@@ -136,6 +144,8 @@ $(document).ready(function () {
 
                 var evts = getSelectedValues(eventNameSel);
                 if (evts.length) qs.push('eventNames=' + encodeURIComponent(evts.join(',')));
+
+                if (userIdInput.value) qs.push('actorId=' + encodeURIComponent(userIdInput.value));
 
                 this.url = baseUrl + (qs.length ? ('?' + qs.join('&')) : '');
             }
@@ -228,8 +238,28 @@ $(document).ready(function () {
         table.page('first').draw(false);
     });
 
+    userInput.addEventListener('input', function () {
+        if (userIdInput.value) {
+            userIdInput.value = '';
+            table.page('first').draw(false);
+        }
+    });
+    const userSearch = window.initUserSearchAutocomplete({
+        inputSelector: '#filterUser',
+        hiddenSelector: '#filterUserId',
+        searchUrl: '/User/GetActivityLogUsers',
+        minLength: 2,
+        onResults: function () { document.getElementById('filterUserError').classList.add('d-none'); },
+        onError: function () { document.getElementById('filterUserError').classList.remove('d-none'); },
+        onSelect: function () { table.page('first').draw(false); }
+    });
+
     document.getElementById('resetFilters')?.addEventListener('click', function () {
         timeRangeSel.value = '24h';
+        userInput.value = '';
+        userIdInput.value = '';
+        userSearch.clear();
+        document.getElementById('filterUserError').classList.add('d-none');
         setSelectedValues(categorySel, []);
         table.search('');
         loadEventNames([], false);

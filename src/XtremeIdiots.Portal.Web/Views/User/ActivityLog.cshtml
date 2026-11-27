@@ -5,7 +5,7 @@
 
 <div class="wrapper wrapper-content animated fadeInRight">
     <div class="alert alert-info" role="alert">
-        <i class="fa-solid fa-fw fa-circle-info"></i> Activity log shows user actions tracked via Application Insights. Data is subject to the configured retention period.
+        <i class="fa-solid fa-fw fa-circle-info"></i> Activity log shows user actions tracked via Application Insights. Data is subject to the configured retention period. User filtering only includes events recorded with that user's actor ID.
     </div>
 
     <div class="activity-log-filters mb-3" id="activityLogFilters">
@@ -19,6 +19,13 @@
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
             </select>
+        </div>
+
+        <div class="filter-group position-relative">
+            <label for="filterUser" class="form-label">User</label>
+            <input id="filterUser" type="text" class="form-control" placeholder="Search user..." autocomplete="off" />
+            <input id="filterUserId" type="hidden" />
+            <div id="filterUserError" class="text-danger d-none" role="status">User search is unavailable. Try again.</div>
         </div>
 
         <div class="filter-group">
@@ -68,5 +75,6 @@
 
 @section Scripts {
     <form id="__af" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+    <script src="~/js/user-search.js" asp-append-version="true"></script>
     <script src="~/js/activity-log.js" asp-append-version="true"></script>
 }

@@ -1134,7 +1134,7 @@ public sealed class ForumIntegrationHttpTests
     {
         var activity = new Mock<IActivityLogService>();
         activity.Setup(service => service.QueryEventsAsync(TimeSpan.FromHours(24), It.IsAny<IReadOnlyList<ActivityLogCategory>>(),
-                It.IsAny<IReadOnlyList<string>>(), "audit", 10, 5, "timestamp", "desc", It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyList<string>>(), "audit", 10, 5, "timestamp", "desc", null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ActivityLogQueryResult
             {
                 TotalCount = 20,
