@@ -60,6 +60,30 @@ public class GlobalSettingsControllerTests
         }
     }
 
+    private static void PrepareBroadcastSubmission(GlobalSettingsController controller, GlobalSettingsViewModel model)
+    {
+        model.BroadcastMessagesCount = model.BroadcastMessages.Count;
+        var fields = new Dictionary<string, string>
+        {
+            [nameof(model.BroadcastsEnabled)] = model.BroadcastsEnabled.ToString(),
+            [nameof(model.BroadcastsIntervalSeconds)] = model.BroadcastsIntervalSeconds.ToString(),
+            [nameof(model.BroadcastMessagesCount)] = model.BroadcastMessages.Count.ToString()
+        };
+        for (var i = 0; i < model.BroadcastMessages.Count; i++)
+        {
+            var message = model.BroadcastMessages[i];
+            fields[$"BroadcastMessages[{i}].Id"] = message.Id ?? string.Empty;
+            fields[$"BroadcastMessages[{i}].Message"] = message.Message;
+            fields[$"BroadcastMessages[{i}].Enabled"] = message.Enabled.ToString();
+        }
+
+        foreach (var (key, value) in fields)
+        {
+            controller.ModelState.SetModelValue(key, value, value);
+            controller.ModelState.MarkFieldValid(key);
+        }
+    }
+
     private readonly Mock<IRepositoryApiClient> mockRepositoryApiClient = new(MockBehavior.Default) { DefaultValue = DefaultValue.Mock };
     private readonly TelemetryClient telemetryClient = new(new TelemetryConfiguration());
     private readonly Mock<ILogger<GlobalSettingsController>> mockLogger = new();
@@ -239,7 +263,7 @@ public class GlobalSettingsControllerTests
         SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = BroadcastSettingsConstants.Namespace,
-            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}"""
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[],"future":true}"""
         }))!);
         var upserted = new List<string>();
         mockRepositoryApiClient
@@ -251,11 +275,61 @@ public class GlobalSettingsControllerTests
             });
         var model = new GlobalSettingsViewModel { BroadcastsReadOnly = false, BroadcastsEnabled = true };
         PrepareSiegeSubmission(sut, model);
-        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
-        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+        PrepareBroadcastSubmission(sut, model);
 
         Assert.IsType<RedirectToActionResult>(await sut.Index(model));
         Assert.True(model.BroadcastsReadOnly);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
+            BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(nameof(GlobalSettingsViewModel.BroadcastsEnabled))]
+    [InlineData(nameof(GlobalSettingsViewModel.BroadcastsIntervalSeconds))]
+    [InlineData(nameof(GlobalSettingsViewModel.BroadcastMessagesCount))]
+    [InlineData("BroadcastMessages[0].Id")]
+    [InlineData("BroadcastMessages[0].Message")]
+    [InlineData("BroadcastMessages[0].Enabled")]
+    [InlineData("count-mismatch")]
+    public async Task Index_Post_PreservesBroadcastsWhenSubmissionIsIncomplete(string omittedField)
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace.ToUpperInvariant(),
+            Configuration = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":750,"messages":[{"id":"saved","message":"Saved","enabled":false}]}"""
+        }))!);
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        var model = new GlobalSettingsViewModel
+        {
+            BroadcastsEnabled = false,
+            BroadcastsIntervalSeconds = 600,
+            BroadcastMessages = [new BroadcastMessageViewModel { Id = "changed", Message = "Changed" }]
+        };
+        PrepareSiegeSubmission(sut, model);
+        PrepareBroadcastSubmission(sut, model);
+        if (omittedField == "count-mismatch")
+            model.BroadcastMessagesCount = 2;
+        else
+            sut.ModelState.Remove(omittedField);
+
+        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+        Assert.True(model.BroadcastsReadOnly);
+        Assert.True(model.BroadcastsEnabled);
+        Assert.Equal(750, model.BroadcastsIntervalSeconds);
+        var message = Assert.Single(model.BroadcastMessages);
+        Assert.Equal("saved", message.Id);
+        Assert.Equal("Saved", message.Message);
+        Assert.False(message.Enabled);
         Assert.NotEmpty(upserted);
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
@@ -806,8 +880,7 @@ public class GlobalSettingsControllerTests
         };
 
         PrepareSiegeSubmission(sut, model);
-        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "900", "900");
-        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+        PrepareBroadcastSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -870,7 +943,6 @@ public class GlobalSettingsControllerTests
     public async Task Index_Post_InvalidBroadcastMessage_DoesNotCallUpsert()
     {
         var sut = CreateSut();
-        sut.ModelState.AddModelError("BroadcastMessages[0].Message", "Broadcast message is required.");
 
         var model = new GlobalSettingsViewModel
         {
@@ -887,6 +959,8 @@ public class GlobalSettingsControllerTests
         };
 
         PrepareSiegeSubmission(sut, model);
+        PrepareBroadcastSubmission(sut, model);
+        sut.ModelState.AddModelError("BroadcastMessages[0].Message", "Broadcast message is required.");
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);

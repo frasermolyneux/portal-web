@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
@@ -155,6 +157,20 @@ public class GameServerEditViewModel : IValidatableObject
     [BindNever]
     public bool BroadcastsReadOnly { get; set; }
 
+    [BindNever]
+    public bool GlobalBroadcastsReadOnly { get; set; }
+
+    [BindNever, ValidateNever]
+    public BroadcastSettingsDocument? SavedBroadcastSettings { get; set; }
+
+    [BindNever, ValidateNever]
+    public BroadcastSettingsDocument? GlobalBroadcastSettings { get; set; }
+
+    [BindNever, ValidateNever]
+    public EffectiveBroadcastSettings? EffectiveBroadcastSettings => BroadcastsReadOnly || GlobalBroadcastsReadOnly
+        ? null
+        : BroadcastSettingsResolver.Resolve(GlobalBroadcastSettings, SavedBroadcastSettings, BroadcastSettingsResolutionMode.GlobalInheritance);
+
     [DisplayName("Enabled Override")]
     public TriStateOverrideValue BroadcastsEnabledOverride { get; set; } = TriStateOverrideValue.Inherit();
 
@@ -163,7 +179,13 @@ public class GameServerEditViewModel : IValidatableObject
 
     [DisplayName("Interval (seconds)")]
     [Range(1, 86400, ErrorMessage = "Broadcast interval must be between 1 and 86400 seconds.")]
-    public int? BroadcastsIntervalSeconds { get; set; } = DefaultBroadcastIntervalSeconds;
+    public int? BroadcastsIntervalSeconds { get; set; }
+
+    [DisplayName("Message source")]
+    [EnumDataType(typeof(BroadcastMessagesMode))]
+    public BroadcastMessagesMode BroadcastsMessagesMode { get; set; } = BroadcastMessagesMode.Inherit;
+
+    public int? BroadcastMessagesCount { get; set; }
 
     public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
 
@@ -371,7 +393,12 @@ public class GameServerEditViewModel : IValidatableObject
             {
                 if (string.IsNullOrWhiteSpace(BroadcastMessages[i].Message))
                     yield return new ValidationResult("Broadcast message is required.", [$"BroadcastMessages[{i}].Message"]);
+                else if (BroadcastMessageViewModel.HasNonRoundTrippableCharacters(BroadcastMessages[i].Message))
+                    yield return new ValidationResult("Broadcast messages must not contain line breaks or null characters.", [$"BroadcastMessages[{i}].Message"]);
             }
+
+            foreach (var validationResult in BroadcastMessageViewModel.ValidateIds(BroadcastMessages))
+                yield return validationResult;
         }
 
         if (FunnyMessages is not null)
@@ -484,9 +511,29 @@ public class GameServerEditViewModel : IValidatableObject
 
 public class BroadcastMessageViewModel
 {
+    [StringLength(BroadcastSettingsConstants.MaximumMessageIdLength)]
+    public string? Id { get; set; }
+
     [DisplayName("Message")]
     public string Message { get; set; } = string.Empty;
 
     [DisplayName("Enabled")]
     public bool Enabled { get; set; } = true;
+
+    internal static bool HasNonRoundTrippableCharacters(string? value) => value is not null
+        && (value.Contains('\r') || value.Contains('\n') || value.Contains('\0'));
+
+    internal static IEnumerable<ValidationResult> ValidateIds(IReadOnlyList<BroadcastMessageViewModel> messages)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < messages.Count; i++)
+        {
+            if (messages[i].Id is not { } id)
+                continue;
+
+            if (string.IsNullOrWhiteSpace(id) || id.Length > BroadcastSettingsConstants.MaximumMessageIdLength
+                || id != id.Trim() || HasNonRoundTrippableCharacters(id) || !seen.Add(id))
+                yield return new ValidationResult("Broadcast message IDs must be unique, trimmed, and 1 to 128 characters without line breaks or null characters.", [$"BroadcastMessages[{i}].Id"]);
+        }
+    }
 }

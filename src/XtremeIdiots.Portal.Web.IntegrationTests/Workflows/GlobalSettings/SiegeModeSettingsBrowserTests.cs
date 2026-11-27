@@ -162,10 +162,10 @@ public sealed class SiegeModeSettingsBrowserTests
     }
 
     [Fact]
-    public async Task BroadcastEditor_ProtectsNewDocumentsWhileSavingOtherSettings()
+    public async Task BroadcastEditor_ProtectsUnsupportedDocumentsWhileSavingOtherSettings()
     {
         var scenario = new SettingsScenario();
-        const string existing = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","enabled":true,"intervalSeconds":500,"messages":[{"id":"one","message":"Hello","enabled":true}]}""";
+        const string existing = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","enabled":true,"intervalSeconds":500,"messages":[{"id":"one","message":"Hello","enabled":true}],"future":true}""";
         scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, existing);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
@@ -187,7 +187,7 @@ public sealed class SiegeModeSettingsBrowserTests
     public async Task BroadcastEditor_DoesNotOverwriteWhenDocumentBecomesEditableDuringEdit()
     {
         var scenario = new SettingsScenario();
-        scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}""");
+        scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[],"future":true}""");
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
         await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
@@ -197,6 +197,37 @@ public sealed class SiegeModeSettingsBrowserTests
         scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, replacement);
         await SaveSettings(page);
         Assert.Equal(replacement, scenario.BroadcastJson);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task BroadcastEditor_ReordersMessagesWithoutLosingIdsOrStoredDefaults()
+    {
+        var scenario = new SettingsScenario();
+        scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, /*lang=json,strict*/ """
+            {"enabled":null,"intervalSeconds":null,"messagesMode":"Replace","messages":[
+              {"id":"one","message":"First","enabled":true},
+              {"id":"two","message":"Second","enabled":false}
+            ]}
+            """);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
+        var rows = page.Locator("#global-broadcast-messages-container [data-message-row]");
+        await Assertions.Expect(rows).ToHaveCountAsync(2);
+        await rows.First.Locator("[data-action='move-down']").ClickAsync();
+        await SaveSettings(page);
+
+        using var saved = JsonDocument.Parse(scenario.BroadcastJson!);
+        Assert.Equal(JsonValueKind.Null, saved.RootElement.GetProperty("enabled").ValueKind);
+        Assert.Equal(JsonValueKind.Null, saved.RootElement.GetProperty("intervalSeconds").ValueKind);
+        Assert.Equal("Replace", saved.RootElement.GetProperty("messagesMode").GetString());
+        var messages = saved.RootElement.GetProperty("messages");
+        Assert.Equal("two", messages[0].GetProperty("id").GetString());
+        Assert.Equal("Second", messages[0].GetProperty("message").GetString());
+        Assert.Equal("one", messages[1].GetProperty("id").GetString());
+        Assert.Equal("First", messages[1].GetProperty("message").GetString());
         browser.AssertNoBrowserErrors();
     }
 

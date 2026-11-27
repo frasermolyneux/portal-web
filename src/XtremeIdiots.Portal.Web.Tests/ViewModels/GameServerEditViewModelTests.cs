@@ -24,11 +24,68 @@ public class GameServerEditViewModelTests
     }
 
     [Fact]
-    public void BroadcastsIntervalSeconds_DefaultsTo500()
+    public void BroadcastsIntervalSeconds_DefaultsToInherit()
     {
         var model = new GameServerEditViewModel();
 
-        Assert.Equal(500, model.BroadcastsIntervalSeconds);
+        Assert.Null(model.BroadcastsIntervalSeconds);
+    }
+
+    [Fact]
+    public void Validate_DuplicateBroadcastIds_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.BroadcastMessages =
+        [
+            new BroadcastMessageViewModel { Id = "same", Message = "One" },
+            new BroadcastMessageViewModel { Id = "same", Message = "Two" }
+        ];
+        var results = new List<ValidationResult>();
+
+        Assert.False(Validator.TryValidateObject(model, new ValidationContext(model), results, true));
+        Assert.Contains(results, result => result.MemberNames.Contains("BroadcastMessages[1].Id"));
+    }
+
+    [Theory]
+    [InlineData(" leading")]
+    [InlineData("line\nbreak")]
+    [InlineData("null\0character")]
+    public void Validate_UnsafeBroadcastId_ReturnsValidationError(string id)
+    {
+        var model = CreateValidModel();
+        model.BroadcastMessages = [new BroadcastMessageViewModel { Id = id, Message = "Message" }];
+        var results = new List<ValidationResult>();
+
+        Assert.False(Validator.TryValidateObject(model, new ValidationContext(model), results, true));
+        Assert.Contains(results, result => result.MemberNames.Contains("BroadcastMessages[0].Id"));
+    }
+
+    [Fact]
+    public void Validate_OverlongBroadcastId_ReturnsValidationError()
+    {
+        var model = CreateValidModel();
+        model.BroadcastMessages = [new BroadcastMessageViewModel { Id = new string('a', 129), Message = "Message" }];
+        var results = new List<ValidationResult>();
+
+        Assert.False(Validator.TryValidateObject(model, new ValidationContext(model), results, true));
+        Assert.Contains(results, result => result.MemberNames.Contains("BroadcastMessages[0].Id"));
+    }
+
+    [Theory]
+    [InlineData("first\nsecond")]
+    [InlineData("first\0second")]
+    public void Validate_UnsafeBroadcastText_ReturnsValidationError(string text)
+    {
+        var server = CreateValidModel();
+        server.BroadcastMessages = [new BroadcastMessageViewModel { Message = text }];
+        var global = new GlobalSettingsViewModel { BroadcastMessages = [new BroadcastMessageViewModel { Message = text }] };
+        var serverResults = new List<ValidationResult>();
+        var globalResults = new List<ValidationResult>();
+
+        Assert.False(Validator.TryValidateObject(server, new ValidationContext(server), serverResults, true));
+        Assert.Contains(serverResults, result => result.MemberNames.Contains("BroadcastMessages[0].Message"));
+        Assert.False(Validator.TryValidateObject(global, new ValidationContext(global), globalResults, true));
+        Assert.Contains(globalResults, result => result.MemberNames.Contains("BroadcastMessages[0].Message"));
     }
 
     [Fact]

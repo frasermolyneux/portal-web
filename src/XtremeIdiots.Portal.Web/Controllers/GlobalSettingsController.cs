@@ -46,7 +46,7 @@ public class GlobalSettingsController(
             {
                 PopulateModelFromNamespace(model, config);
                 if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
-                    model.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+                    model.BroadcastsReadOnly |= BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration, global: true);
                 if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                     model.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration);
                 if (string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
@@ -81,10 +81,25 @@ public class GlobalSettingsController(
             if (configurationError is not null)
                 return configurationError;
 
-            model.BroadcastsReadOnly = !ModelState.ContainsKey(nameof(GlobalSettingsViewModel.BroadcastsIntervalSeconds))
+            var savedBroadcasts = new GlobalSettingsViewModel();
+            foreach (var config in currentConfigurations!.Where(static config =>
+                string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                PopulateModelFromNamespace(savedBroadcasts, config);
+            model.SavedBroadcastSettings = savedBroadcasts.SavedBroadcastSettings;
+
+            model.BroadcastsReadOnly = !BroadcastEditorCompatibility.HasCompleteSubmission(
+                ModelState, model.BroadcastMessagesCount, model.BroadcastMessages)
                 || currentConfigurations!.Any(config =>
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
-                BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
+                BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration, global: true));
+
+            if (model.BroadcastsReadOnly)
+            {
+                BroadcastEditorCompatibility.ClearSubmittedModelState(ModelState, global: true);
+                model.BroadcastsEnabled = savedBroadcasts.BroadcastsEnabled;
+                model.BroadcastsIntervalSeconds = savedBroadcasts.BroadcastsIntervalSeconds;
+                model.BroadcastMessages = savedBroadcasts.BroadcastMessages;
+            }
 
             model.ChatCommandsReadOnly = !ModelState.ContainsKey("ChatCommands.DefaultFreshnessSeconds")
                 || currentConfigurations!.Any(config =>

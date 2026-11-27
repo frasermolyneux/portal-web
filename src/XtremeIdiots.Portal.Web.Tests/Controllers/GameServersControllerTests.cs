@@ -117,6 +117,31 @@ public class GameServersControllerTests
         }
     }
 
+    private static void PrepareBroadcastSubmission(GameServersController controller, GameServerEditViewModel model)
+    {
+        model.BroadcastMessagesCount = model.BroadcastMessages.Count;
+        var fields = new Dictionary<string, string>
+        {
+            [nameof(model.BroadcastsEnabled)] = model.BroadcastsEnabled?.ToString() ?? string.Empty,
+            [nameof(model.BroadcastsIntervalSeconds)] = model.BroadcastsIntervalSeconds?.ToString() ?? string.Empty,
+            [nameof(model.BroadcastsMessagesMode)] = model.BroadcastsMessagesMode.ToString(),
+            [nameof(model.BroadcastMessagesCount)] = model.BroadcastMessages.Count.ToString()
+        };
+        for (var i = 0; i < model.BroadcastMessages.Count; i++)
+        {
+            var message = model.BroadcastMessages[i];
+            fields[$"BroadcastMessages[{i}].Id"] = message.Id ?? string.Empty;
+            fields[$"BroadcastMessages[{i}].Message"] = message.Message;
+            fields[$"BroadcastMessages[{i}].Enabled"] = message.Enabled.ToString();
+        }
+
+        foreach (var (key, value) in fields)
+        {
+            controller.ModelState.SetModelValue(key, value, value);
+            controller.ModelState.MarkFieldValid(key);
+        }
+    }
+
     [Fact]
     public void Constructor_WithValidDependencies_DoesNotThrow()
     {
@@ -803,6 +828,7 @@ public class GameServersControllerTests
             },
             BroadcastsEnabled = true,
             BroadcastsIntervalSeconds = null,
+            BroadcastsMessagesMode = BroadcastMessagesMode.Replace,
             BroadcastMessages =
             [
                 new BroadcastMessageViewModel { Message = "^1Welcome", Enabled = true },
@@ -820,7 +846,8 @@ public class GameServersControllerTests
         var root = doc.RootElement;
 
         Assert.True(root.GetProperty("enabled").GetBoolean());
-        Assert.Equal(500, root.GetProperty("intervalSeconds").GetInt32());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, root.GetProperty("intervalSeconds").ValueKind);
+        Assert.Equal("Replace", root.GetProperty("messagesMode").GetString());
         Assert.Equal(2, root.GetProperty("messages").GetArrayLength());
         Assert.False(root.GetProperty("messages")[1].GetProperty("enabled").GetBoolean());
         Assert.Equal("^2Rules", root.GetProperty("messages")[1].GetProperty("message").GetString());
@@ -829,7 +856,7 @@ public class GameServersControllerTests
     }
 
     [Fact]
-    public async Task SaveConfigNamespacesAsync_AgentEnabled_BroadcastsDisabled_DeletesBroadcastsNamespace()
+    public async Task SaveConfigNamespacesAsync_AgentEnabled_BroadcastsInherit_RetainsServerMessages()
     {
         var sut = CreateSut();
         var method = GetPrivateInstanceMethod("SaveConfigNamespacesAsync");
@@ -878,8 +905,10 @@ public class GameServersControllerTests
         var task = (Task)method.Invoke(sut, [model, gameServerId, false, false, false, new List<string>(), CancellationToken.None])!;
         await task;
 
-        Assert.False(upsertPayloads.ContainsKey("broadcasts"));
-        Assert.Contains("broadcasts", deletedNamespaces);
+        using var saved = System.Text.Json.JsonDocument.Parse(upsertPayloads["broadcasts"]);
+        Assert.Equal("Inherit", saved.RootElement.GetProperty("messagesMode").GetString());
+        Assert.Equal("^1Welcome", saved.RootElement.GetProperty("messages")[0].GetProperty("message").GetString());
+        Assert.DoesNotContain("broadcasts", deletedNamespaces);
     }
 
     [Fact]
@@ -1576,6 +1605,8 @@ public class GameServersControllerTests
 
         var result = Assert.IsType<ViewResult>(await sut.Edit(model));
 
+        Assert.True(model.GlobalBroadcastsReadOnly);
+        Assert.Null(model.EffectiveBroadcastSettings);
         Assert.Contains(sut.ModelState.Values.SelectMany(static value => value.Errors),
             error => error.ErrorMessage.Contains("Global settings could not be loaded", StringComparison.Ordinal));
         mockRepositoryApiClient.Verify(
@@ -1603,7 +1634,7 @@ public class GameServersControllerTests
             Namespace = BroadcastSettingsConstants.Namespace,
             Configuration = editableAtPost
                 ? /*lang=json,strict*/ """{"schemaVersion":1,"enabled":true,"intervalSeconds":500,"messages":[]}"""
-                : /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","messages":[]}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","messages":[],"future":true}"""
         }))!;
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
@@ -1634,13 +1665,79 @@ public class GameServersControllerTests
         var sut = CreateSut();
         PrepareRulesSettingsSubmission(sut, model);
         if (!editableAtPost)
-        {
-            sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
-            sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
-        }
+            PrepareBroadcastSubmission(sut, model);
 
         Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
         Assert.True(model.BroadcastsReadOnly);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(nameof(GameServerEditViewModel.BroadcastsEnabled))]
+    [InlineData(nameof(GameServerEditViewModel.BroadcastsIntervalSeconds))]
+    [InlineData(nameof(GameServerEditViewModel.BroadcastsMessagesMode))]
+    [InlineData(nameof(GameServerEditViewModel.BroadcastMessagesCount))]
+    [InlineData("BroadcastMessages[0].Id")]
+    [InlineData("BroadcastMessages[0].Message")]
+    [InlineData("BroadcastMessages[0].Enabled")]
+    [InlineData("count-mismatch")]
+    public async Task Edit_Post_PreservesBroadcastsWhenSubmissionIsIncomplete(string omittedField)
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace.ToUpperInvariant(),
+            Configuration = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":750,"messagesMode":"Replace","messages":[{"id":"saved","message":"Saved","enabled":false}]}"""
+        }))!;
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([config]))));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = server.GameServerId, Title = server.Title, GameType = server.GameType,
+                Platform = server.Platform, Hostname = server.Hostname, QueryPort = server.QueryPort, AgentEnabled = true
+            },
+            BroadcastsEnabled = false,
+            BroadcastsIntervalSeconds = 600,
+            BroadcastsMessagesMode = BroadcastMessagesMode.Inherit,
+            BroadcastMessages = [new BroadcastMessageViewModel { Id = "changed", Message = "Changed" }]
+        };
+        var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+        PrepareBroadcastSubmission(sut, model);
+        if (omittedField == "count-mismatch")
+            model.BroadcastMessagesCount = 2;
+        else
+            sut.ModelState.Remove(omittedField);
+
+        Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
+        Assert.True(model.BroadcastsReadOnly);
+        Assert.True(model.BroadcastsEnabled);
+        Assert.Equal(750, model.BroadcastsIntervalSeconds);
+        Assert.Equal(BroadcastMessagesMode.Replace, model.BroadcastsMessagesMode);
+        var message = Assert.Single(model.BroadcastMessages);
+        Assert.Equal("saved", message.Id);
+        Assert.Equal("Saved", message.Message);
+        Assert.False(message.Enabled);
         Assert.NotEmpty(upserted);
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
