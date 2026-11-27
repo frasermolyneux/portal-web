@@ -25,22 +25,26 @@
 
     async function loadOverview(c) {
         const o = await A.fetchJson('/api/Analytics/game/overview' + A.buildQuery({ gameType: c.gameType, from: c.from, to: c.to }));
+        const hasSamples = o.statsSampleCount > 0;
+        const hasUnknownSamples = o.statsSampleCount == null;
         A.renderKpis('game-kpis', [
             { label: 'Servers', value: A.fmtNumber(o.serverCount) },
-            { label: 'Avg players', value: Math.round(o.avgPlayers * 10) / 10 },
-            { label: 'Peak players', value: A.fmtNumber(o.peakPlayers) },
-            { label: 'Unique players', value: A.fmtNumber(o.uniquePlayers) },
+            { label: 'Average sampled occupancy', value: hasSamples || (hasUnknownSamples && o.avgPlayers > 0) ? Math.round(o.avgPlayers * 10) / 10 : '\u2014' },
+            { label: 'Peak sampled server occupancy', value: hasSamples || (hasUnknownSamples && o.peakPlayers > 0) ? A.fmtNumber(o.peakPlayers) : '\u2014' },
+            { label: 'Latest seen in range', value: A.fmtNumber(o.uniquePlayers) },
             { label: 'Moderation', value: A.fmtNumber(o.moderationActions) }
         ]);
     }
 
     async function loadTrend(c) {
-        const ts = await A.fetchJson('/api/Analytics/game/timeseries' + A.buildQuery(c));
+        const ts = A.maskUnobservedOccupancy(await A.fetchJson('/api/Analytics/game/timeseries' + A.buildQuery(c)));
+        ts.series = (ts.series || []).map(function (series) {
+            return series.key === 'avgPlayers' ? { ...series, label: 'Average sampled occupancy' } : series;
+        });
         trendChart = A.renderComparisonChart({
             canvasId: 'game-trend', fallbackId: 'game-trend-fallback',
             timeseries: ts, timezone: tz, index100: c.normalize, chart: trendChart
         });
-        A.renderDeltaSummary('game-trend-summary', ts.summary);
     }
 
     async function loadServers(c) {
@@ -50,19 +54,19 @@
             canvasId: 'game-servers', fallbackId: 'game-servers-fallback',
             labels: items.map(function (i) { return i.title; }),
             data: items.map(function (i) { return Math.round(i.avgPlayers * 10) / 10; }),
-            label: 'Avg players', horizontal: true, chart: serversChart
+            label: 'Average sampled occupancy', horizontal: true, chart: serversChart
         });
     }
 
     async function loadPlayers(c) {
         const d = await A.fetchJson('/api/Analytics/game/players' + A.buildQuery({ gameType: c.gameType, from: c.from, to: c.to, top: 10 }));
-        A.renderTable('game-players', ['Player', 'Activity'],
+        A.renderTable('game-players', ['Player', 'Chat messages'],
             (d.items || []).map(function (i) { return [i.displayName, A.fmtNumber(i.activityCount)]; }));
     }
 
     async function loadMaps(c) {
         const d = await A.fetchJson('/api/Analytics/game/maps' + A.buildQuery({ gameType: c.gameType, from: c.from, to: c.to, top: 15 }));
-        A.renderTable('game-maps', ['Map', 'Plays', 'Up', 'Down', 'Score'],
+        A.renderTable('game-maps', ['Map', 'Samples', 'Up', 'Down', 'Score'],
             (d.items || []).map(function (i) { return [i.mapName, A.fmtNumber(i.plays), A.fmtNumber(i.upVotes), A.fmtNumber(i.downVotes), Math.round(i.score * 10) / 10]; }));
     }
 

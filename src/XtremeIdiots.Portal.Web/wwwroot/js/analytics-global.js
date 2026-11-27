@@ -25,23 +25,26 @@
     async function loadOverview(c) {
         const o = await A.fetchJson('/api/Analytics/global/overview' + A.buildQuery({ from: c.from, to: c.to }));
         A.renderKpis('global-kpis', [
-            { label: 'Online servers', value: o.onlineServers + ' / ' + o.totalServers },
+            { label: 'Online servers', value: A.fmtNumber(o.onlineServers) },
             { label: 'Players online', value: A.fmtNumber(o.totalPlayersOnline) },
-            { label: 'Unique players', value: A.fmtNumber(o.uniquePlayersWindow) },
+            { label: 'Latest seen in range', value: A.fmtNumber(o.uniquePlayersWindow) },
             { label: 'Events', value: A.fmtNumber(o.totalEvents) },
             { label: 'Chat messages', value: A.fmtNumber(o.totalChatMessages) },
-            { label: 'Open reports', value: A.fmtNumber(o.openReports) },
-            { label: 'Active bans', value: A.fmtNumber(o.activeBans) }
+            { label: 'Open reports created in range', value: A.fmtNumber(o.openReports) },
+            { label: 'Bans active at range end', value: A.fmtNumber(o.activeBans) }
         ]);
     }
 
     async function loadTrend(c) {
-        const ts = await A.fetchJson('/api/Analytics/global/timeseries' + A.buildQuery(c));
+        const ts = A.maskUnobservedOccupancy(await A.fetchJson('/api/Analytics/global/timeseries' + A.buildQuery(c)));
+        ts.series = (ts.series || []).map(function (series) {
+            const labels = { avgPlayers: 'Average sampled occupancy', peakPlayers: 'Peak sampled server occupancy' };
+            return { ...series, label: labels[series.key] || series.label };
+        });
         trendChart = A.renderComparisonChart({
             canvasId: 'global-trend', fallbackId: 'global-trend-fallback',
             timeseries: ts, timezone: tz, index100: c.normalize, chart: trendChart
         });
-        A.renderDeltaSummary('global-trend-summary', ts.summary);
     }
 
     async function loadGames(c) {
@@ -51,7 +54,7 @@
             canvasId: 'global-games', fallbackId: 'global-games-fallback',
             labels: items.map(function (i) { return i.gameType; }),
             data: items.map(function (i) { return Math.round(i.avgPlayers * 10) / 10; }),
-            label: 'Avg players', horizontal: true, chart: gamesChart
+            label: 'Average sampled occupancy', horizontal: true, chart: gamesChart
         });
     }
 
@@ -62,20 +65,20 @@
             canvasId: 'global-servers', fallbackId: 'global-servers-fallback',
             labels: items.map(function (i) { return i.title; }),
             data: items.map(function (i) { return Math.round(i.avgPlayers * 10) / 10; }),
-            label: 'Avg players', horizontal: true, chart: serversChart
+            label: 'Average sampled occupancy', horizontal: true, chart: serversChart
         });
     }
 
     async function loadPlayers(c) {
         const d = await A.fetchJson('/api/Analytics/global/players' + A.buildQuery({ from: c.from, to: c.to, top: 10 }));
-        A.renderTable('global-players', ['Player', 'Game', 'Activity'],
+        A.renderTable('global-players', ['Player', 'Game', 'Chat messages'],
             (d.items || []).map(function (i) { return [i.displayName, i.gameType, A.fmtNumber(i.activityCount)]; }));
     }
 
     async function loadGeo(c) {
         const d = await A.fetchJson('/api/Analytics/global/geo' + A.buildQuery({ from: c.from, to: c.to, top: 10 }));
-        A.renderTable('global-geo', ['Country', 'Players', '%'],
-            (d.items || []).map(function (i) { return [i.countryCode, A.fmtNumber(i.playerCount), (Math.round(i.percentage * 10) / 10) + '%']; }));
+        A.renderTable('global-geo', ['Country', 'Latest observations'],
+            (d.items || []).map(function (i) { return [i.countryCode, A.fmtNumber(i.playerCount)]; }));
     }
 
     async function loadModeration(c) {
@@ -83,8 +86,8 @@
         const s = d.summary || {};
         A.renderTable('global-moderation', ['Metric', 'Value'], [
             ['Total actions', A.fmtNumber(s.totalActions)],
-            ['Open reports', A.fmtNumber(s.openReports)],
-            ['Closed reports', A.fmtNumber(s.closedReports)]
+            ['Open reports created in range', A.fmtNumber(s.openReports)],
+            ['Closed reports created in range', A.fmtNumber(s.closedReports)]
         ]);
     }
 
