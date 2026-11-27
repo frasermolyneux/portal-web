@@ -101,9 +101,31 @@
     function indexTo100(values) {
         const base = values.find(function (v) { return v && v !== 0; });
         if (!base) {
-            return values.map(function () { return 0; });
+            return values.map(function (v) { return v == null ? null : 0; });
         }
-        return values.map(function (v) { return Math.round((v / base) * 1000) / 10; });
+        return values.map(function (v) { return v == null ? null : Math.round((v / base) * 1000) / 10; });
+    }
+
+    function maskUnobservedOccupancy(timeseries) {
+        const samples = new Map((timeseries.points || []).map(function (p) {
+            return [p.bucketStartUtc, p.statsSampleCount];
+        }));
+        return {
+            ...timeseries,
+            series: (timeseries.series || []).map(function (series) {
+                if (!/^(avgPlayers|peakPlayers)(?:_cmp\d+)?$/.test(series.key)) return series;
+                return {
+                    ...series,
+                    values: (series.values || []).map(function (point) {
+                        const count = samples.get(point.bucketStartUtc);
+                        const missing = series.role === 'comparison'
+                            ? point.value === 0
+                            : count === 0 || (count == null && point.value === 0);
+                        return missing ? { ...point, value: null } : point;
+                    })
+                };
+            })
+        };
     }
 
     function showFallback(fallbackId, payload) {
@@ -318,6 +340,7 @@
         fetchJson: fetchJson,
         formatLabel: formatLabel,
         renderComparisonChart: renderComparisonChart,
+        maskUnobservedOccupancy: maskUnobservedOccupancy,
         renderBarChart: renderBarChart,
         renderDeltaSummary: renderDeltaSummary,
         renderKpis: renderKpis,
