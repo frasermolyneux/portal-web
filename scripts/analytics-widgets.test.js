@@ -18,6 +18,11 @@ function harness(script, payload, mode = 'light') {
             nodes.set(id, {
                 value: id === 'af-server' ? 'first' : id === 'af-bucket' ? 'OneDay' : '30d',
                 dataset: {}, listeners: {}, open: false,
+                options: id === 'af-bucket' ? [
+                    { value: 'FifteenMinutes', dataset: { maxDays: '3' } },
+                    { value: 'OneHour', dataset: { maxDays: '31' } },
+                    { value: 'OneDay', dataset: { maxDays: '366' } }
+                ] : [],
                 addEventListener(event, callback) { this.listeners[event] = callback; },
                 replaceChildren() {},
                 getAttribute(name) { return name === 'data-server-id' ? 'server' : mode; },
@@ -27,7 +32,11 @@ function harness(script, payload, mode = 'light') {
         return nodes.get(id);
     }
     const analytics = {
-        range() { return { from: '2026-11-01T00:00:00Z', to: '2026-11-02T00:00:00Z' }; },
+        range(preset) {
+            const days = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, '180d': 180, '365d': 365 }[preset] || 1;
+            const to = new Date('2026-11-02T00:00:00Z');
+            return { from: new Date(to.getTime() - days * 86400000).toISOString(), to: to.toISOString() };
+        },
         buildQuery(params) { return '?' + new URLSearchParams(params); },
         async fetchJson(url) { calls.push(url); return typeof payload === 'function' ? payload(url) : payload; },
         renderKpis(id, items) { kpis.push(items); },
@@ -122,4 +131,23 @@ test('Server selection changes cannot render a late response from the old server
     assert.equal(h.charts.length, 1);
     assert.equal(h.charts[0].timeseries.series[0].values[0].value, 7);
     assert.equal(h.node('server-trend-coverage').textContent, 'Recorded activity coverage: unknown.');
+});
+
+test('Server bucket choices follow SDK range limits', async () => {
+    const h = harness('analytics-server.js', { recordedActivity, bucket: 'OneDay' });
+    await settled();
+    const range = h.node('af-range');
+    const bucket = h.node('af-bucket');
+    assert.equal(bucket.options[0].disabled, true);
+    assert.equal(bucket.options[1].disabled, false);
+    range.value = '24h';
+    range.listeners.change();
+    assert.equal(bucket.options[0].disabled, false);
+    bucket.value = 'FifteenMinutes';
+    range.value = '90d';
+    range.listeners.change();
+    assert.equal(bucket.value, 'OneDay');
+    assert.equal(bucket.options[0].disabled, true);
+    assert.equal(bucket.options[1].disabled, true);
+    assert.equal(bucket.options[2].disabled, false);
 });

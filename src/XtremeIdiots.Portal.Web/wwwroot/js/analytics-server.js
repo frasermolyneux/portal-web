@@ -13,6 +13,21 @@
         return el ? el.value : '';
     }
 
+    function updateBuckets() {
+        const range = A.range(document.getElementById('af-range').value);
+        const days = (new Date(range.to) - new Date(range.from)) / 86400000;
+        const bucket = document.getElementById('af-bucket');
+        let currentAllowed = false;
+        Array.from(bucket.options).forEach(function (option) {
+            option.disabled = days > Number(option.dataset.maxDays);
+            if (option.value === bucket.value && !option.disabled) { currentAllowed = true; }
+        });
+        if (!currentAllowed) {
+            const firstAllowed = Array.from(bucket.options).find(function (option) { return !option.disabled; });
+            if (firstAllowed) { bucket.value = firstAllowed.value; }
+        }
+    }
+
     function controls() {
         const r = A.range(document.getElementById('af-range').value);
         return {
@@ -122,7 +137,9 @@
     }
 
     document.getElementById('af-refresh').addEventListener('click', refresh);
+    document.getElementById('af-range').addEventListener('change', updateBuckets);
     const serverSelect = document.getElementById('af-server');
     if (serverSelect) { serverSelect.addEventListener('change', refresh); }
+    updateBuckets();
     refresh();
 })();

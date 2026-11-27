@@ -54,6 +54,13 @@ public sealed class OverviewPanelTests
         Assert.DoesNotContain(requests, url => url.Contains("/overview", StringComparison.Ordinal));
         Assert.Contains(requests, url => url.Contains("compareMode=None", StringComparison.Ordinal));
         await Assertions.Expect(browser.Page.Locator("#af-compare")).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.Locator("#af-bucket option[value='FifteenMinutes']")).ToBeDisabledAsync();
+        await browser.Page.SelectOptionAsync("#af-range", "24h");
+        await Assertions.Expect(browser.Page.Locator("#af-bucket option[value='FifteenMinutes']")).ToBeEnabledAsync();
+        await browser.Page.SelectOptionAsync("#af-bucket", "FifteenMinutes");
+        await browser.Page.SelectOptionAsync("#af-range", "90d");
+        await Assertions.Expect(browser.Page.Locator("#af-bucket")).ToHaveValueAsync("OneDay");
+        await Assertions.Expect(browser.Page.Locator("#af-bucket option[value='OneHour']")).ToBeDisabledAsync();
         browser.AssertNoBrowserErrors();
     }
 

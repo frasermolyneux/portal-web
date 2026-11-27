@@ -1,4 +1,5 @@
 @model XtremeIdiots.Portal.Web.ViewModels.Analytics.AnalyticsServerViewModel
+@using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1.Analytics
 @{
     ViewData["Title"] = "Server Analytics";
 }
@@ -44,11 +45,12 @@
             </div>
             <div class="col-auto">
                 <label for="af-bucket" class="form-label mb-1">UTC bucket</label>
-                <select id="af-bucket" class="form-select form-select-sm">
-                    <option value="FifteenMinutes">15 minutes</option>
-                    <option value="OneHour">Hourly</option>
-                    <option value="OneDay" selected>Daily</option>
+                <select id="af-bucket" class="form-select form-select-sm" aria-describedby="af-bucket-help">
+                    <option value="FifteenMinutes" data-max-days="@AnalyticsQueryDefaults.FifteenMinuteMaxDays">15 minutes</option>
+                    <option value="OneHour" data-max-days="@AnalyticsQueryDefaults.OneHourMaxDays">Hourly</option>
+                    <option value="OneDay" data-max-days="@AnalyticsQueryDefaults.OneDayMaxDays" selected>Daily</option>
                 </select>
+                <div id="af-bucket-help" class="form-text">Available buckets depend on the selected range.</div>
             </div>
             <div class="col-auto"><button id="af-refresh" type="button" class="btn btn-primary btn-sm">Refresh</button></div>
         </div>
