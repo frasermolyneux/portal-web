@@ -22,6 +22,24 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 public sealed class SiegeModeSettingsBrowserTests
 {
     [Fact]
+    public async Task ServerFeatures_NavigationOpensExistingEditorsAndExplainsBroadcastOwnership()
+    {
+        var scenario = new SettingsScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        var tabs = page.Locator("#globalSettingsTabs");
+        await Assertions.Expect(tabs).ToContainTextAsync("Messages");
+        await Assertions.Expect(tabs).ToContainTextAsync("Access Protection");
+        await Assertions.Expect(tabs).ToContainTextAsync("Server Operations");
+        await tabs.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("do not currently provide agent inheritance");
+        await tabs.GetByRole(AriaRole.Tab, new() { Name = "CoD4x Integration" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#cod4x-tab")).ToContainTextAsync("not Portal chat command rules");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task WelcomeEditor_PreservesTemplateAndSavesTiming()
     {
         var scenario = new SettingsScenario();

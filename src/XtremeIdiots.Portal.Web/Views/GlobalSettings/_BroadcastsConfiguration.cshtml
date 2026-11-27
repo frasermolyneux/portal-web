@@ -6,14 +6,14 @@
 
 <div class="ibox">
     <div class="ibox-title">
-        <h5><i class="fa-solid fa-fw fa-bullhorn" aria-hidden="true"></i> Broadcasts</h5>
+        <h5><i class="fa-solid fa-fw fa-bullhorn" aria-hidden="true"></i> Broadcast Messages</h5>
     </div>
     <div class="ibox-content">
         <div class="form-check mb-3">
             <input class="form-check-input" asp-for="BroadcastsEnabled" />
             <label class="form-check-label" asp-for="BroadcastsEnabled"></label>
-            <small class="form-text text-muted d-block">Fleet-wide default for periodic server broadcast
-                messages.</small>
+            <small class="form-text text-muted d-block">Saved as a fleet-wide setting. The current agent reads
+                broadcasts from server configuration; these settings do not currently provide agent inheritance.</small>
             </div>
 
             <div class="mb-3">

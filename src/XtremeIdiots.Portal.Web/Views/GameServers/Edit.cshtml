@@ -44,6 +44,47 @@
                             <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab" data-bs-target="#agent-tab"
                                     type="button" role="tab" aria-controls="agent-tab" aria-selected="false">Agent</button>
                         </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Messages</li>
+                        @if (Model.GameServer.AgentEnabled)
+                        {
+                            <li class="nav-item" role="presentation" id="broadcasts-tab-item">
+                                <button class="nav-link" id="broadcasts-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
+                                        aria-selected="false">Broadcast Messages</button>
+                            </li>
+                        }
+                        <li class="nav-item" role="presentation" id="welcome-messages-tab-item">
+                            <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#welcome-messages-tab" type="button" role="tab"
+                                    aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
+                        </li>
+                        @if (Model.GameServer.AgentEnabled)
+                        {
+                            <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Commands</li>
+                            <li class="nav-item" role="presentation" id="chat-commands-tab-item">
+                                <button class="nav-link" id="chat-commands-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#chat-commands-tab" type="button" role="tab"
+                                        aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
+                            </li>
+                            <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Moderation</li>
+                            <li class="nav-item" role="presentation" id="moderation-tab-item">
+                                <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
+                                        data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
+                                        aria-selected="false">Chat Moderation</button>
+                            </li>
+                        }
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Access Protection</li>
+                        <li class="nav-item" role="presentation" id="vpn-protection-tab-item">
+                            <button class="nav-link" id="vpn-protection-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#vpn-protection-tab" type="button" role="tab"
+                                    aria-controls="vpn-protection-tab" aria-selected="false">VPN Protection</button>
+                        </li>
+                        <li class="nav-item" role="presentation" id="siege-mode-tab-item">
+                            <button class="nav-link" id="siege-mode-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#siege-mode-tab" type="button" role="tab"
+                                    aria-controls="siege-mode-tab" aria-selected="false">Siege Mode</button>
+                        </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Server Operations</li>
                         @if (Model.CanConfigureScreenshots)
                         {
                             <li class="nav-item @(Model.GameServer.AgentEnabled ? "" : "d-none")" role="presentation"
@@ -55,59 +96,29 @@
                         }
                         @if (Model.GameServer.AgentEnabled)
                         {
-                            <li class="nav-item" role="presentation" id="broadcasts-tab-item">
-                                <button class="nav-link" id="broadcasts-tab-btn" data-bs-toggle="tab"
-                                        data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
-                                        aria-selected="false">Broadcasts</button>
-                            </li>
-                            <li class="nav-item" role="presentation" id="chat-commands-tab-item">
-                                <button class="nav-link" id="chat-commands-tab-btn" data-bs-toggle="tab"
-                                        data-bs-target="#chat-commands-tab" type="button" role="tab"
-                                        aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
-                            </li>
-                            <li class="nav-item" role="presentation" id="moderation-tab-item">
-                                <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
-                                        data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
-                                        aria-selected="false">Chat Moderation</button>
-                            </li>
                             <li class="nav-item" role="presentation" id="events-tab-item">
                                 <button class="nav-link" id="events-tab-btn" data-bs-toggle="tab"
                                         data-bs-target="#events-tab" type="button" role="tab" aria-controls="events-tab"
                                         aria-selected="false">Event Processing</button>
                             </li>
                         }
-                        <li class="nav-item" role="presentation" id="welcome-messages-tab-item">
-                            <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#welcome-messages-tab" type="button" role="tab"
-                                    aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
-                        </li>
                         <li class="nav-item @(Model.GameServer.BanFileSyncEnabled ? "" : "d-none")" role="presentation"
                             id="banfilesync-tab-item">
                             <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#banfilesync-tab" type="button" role="tab"
-                                    aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
+                                    aria-controls="banfilesync-tab" aria-selected="false">Ban Synchronization</button>
                         </li>
                         <li class="nav-item @(Model.GameServer.ServerListEnabled ? "" : "d-none")" role="presentation"
                             id="serverlist-tab-item">
                             <button class="nav-link" id="serverlist-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#serverlist-tab" type="button" role="tab" aria-controls="serverlist-tab"
-                                    aria-selected="false">Server List</button>
-                        </li>
-                        <li class="nav-item" role="presentation" id="vpn-protection-tab-item">
-                            <button class="nav-link" id="vpn-protection-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#vpn-protection-tab" type="button" role="tab"
-                                    aria-controls="vpn-protection-tab" aria-selected="false">VPN Protection</button>
-                        </li>
-                        <li class="nav-item" role="presentation" id="siege-mode-tab-item">
-                            <button class="nav-link" id="siege-mode-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#siege-mode-tab" type="button" role="tab"
-                                    aria-controls="siege-mode-tab" aria-selected="false">Siege Mode</button>
+                                    aria-selected="false">Server Listing</button>
                         </li>
                         @if (Model.IsCod4xGameServer)
                         {
                             <li class="nav-item" role="presentation" id="cod4x-tab-item">
                                 <button class="nav-link" id="cod4x-tab-btn" data-bs-toggle="tab" data-bs-target="#cod4x-tab"
-                                        type="button" role="tab" aria-controls="cod4x-tab" aria-selected="false">CoD4x</button>
+                                        type="button" role="tab" aria-controls="cod4x-tab" aria-selected="false">CoD4x Integration</button>
                             </li>
                         }
                     </ul>

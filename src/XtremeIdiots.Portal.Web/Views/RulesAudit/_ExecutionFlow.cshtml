@@ -74,7 +74,7 @@
                             }
                             else
                             {
-                                <span class="badge text-bg-secondary">Match outcome unknown</span>
+                                <span class="badge text-bg-secondary">No match outcome recorded</span>
                             }
                             @if (waiting is not null)
                             {
@@ -118,7 +118,7 @@
                                         }
                                         @if (!recorded.Any())
                                         {
-                                            <span class="badge text-bg-secondary">Action outcome unknown</span>
+                                            <span class="badge text-bg-secondary">No action outcome recorded</span>
                                         }
                                         @foreach (var preparation in prepared)
                                         {
@@ -131,7 +131,7 @@
                                             {
                                                 RuleActionExecutionOutcome.Applied => "Applied as recorded",
                                                 RuleActionExecutionOutcome.Dispatched => "Dispatched - application not confirmed",
-                                                RuleActionExecutionOutcome.OutcomeUnknown => "Outcome unknown (recorded)",
+                                                RuleActionExecutionOutcome.OutcomeUnknown => "Outcome unknown - may have run",
                                                 _ => outcome.Outcome.ToString()
                                             };
                                             var style = simulated || outcome.Outcome == RuleActionExecutionOutcome.Dispatched ? "text-bg-info"
