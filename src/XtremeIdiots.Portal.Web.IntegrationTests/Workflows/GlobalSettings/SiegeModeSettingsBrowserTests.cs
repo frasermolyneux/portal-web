@@ -26,7 +26,7 @@ public sealed class SiegeModeSettingsBrowserTests
     public async Task BroadcastEditor_ProtectsNewDocumentsWhileSavingOtherSettings()
     {
         var scenario = new SettingsScenario();
-        const string existing = """{"schemaVersion":1,"messagesMode":"Replace","enabled":true,"intervalSeconds":500,"messages":[{"id":"one","message":"Hello","enabled":true}]}""";
+        const string existing = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","enabled":true,"intervalSeconds":500,"messages":[{"id":"one","message":"Hello","enabled":true}]}""";
         scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, existing);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;

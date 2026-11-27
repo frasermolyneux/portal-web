@@ -39,7 +39,6 @@ internal static class BroadcastEditorCompatibility
             throw new JsonException("Expected a boolean value.");
         }
 
-        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) =>
-            writer.WriteBooleanValue(value);
+        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) => writer.WriteBooleanValue(value);
     }
 }

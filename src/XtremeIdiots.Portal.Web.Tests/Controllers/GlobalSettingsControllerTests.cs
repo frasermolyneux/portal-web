@@ -232,7 +232,7 @@ public class GlobalSettingsControllerTests
         SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = BroadcastSettingsConstants.Namespace,
-            Configuration = """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}"""
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}"""
         }))!);
         var upserted = new List<string>();
         mockRepositoryApiClient

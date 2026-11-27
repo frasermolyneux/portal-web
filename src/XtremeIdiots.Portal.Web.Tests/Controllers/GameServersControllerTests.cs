@@ -1592,7 +1592,7 @@ public class GameServersControllerTests
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = BroadcastSettingsConstants.Namespace,
-            Configuration = """{"schemaVersion":1,"messagesMode":"Replace","messages":[]}"""
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","messages":[]}"""
         }))!;
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
