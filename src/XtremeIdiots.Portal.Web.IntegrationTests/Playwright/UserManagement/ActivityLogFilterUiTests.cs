@@ -49,10 +49,24 @@ public sealed class ActivityLogFilterUiTests
             response => IsActivityResponse(response, null));
         await fixture.Page.Locator("#filterUser").FillAsync("Member");
         await Assertions.Expect(fixture.Page.GetByRole(AriaRole.Option, new() { Name = "Member One" })).ToBeVisibleAsync();
+        var picker = fixture.Page.Locator("#filterUser");
+        var suggestions = fixture.Page.Locator("#filterUser-suggestions");
+        await Assertions.Expect(picker).ToHaveAttributeAsync("role", "combobox");
+        await Assertions.Expect(picker).ToHaveAttributeAsync("aria-controls", "filterUser-suggestions");
+        await Assertions.Expect(picker).ToHaveAttributeAsync("aria-expanded", "true");
+        var inputBox = await picker.BoundingBoxAsync();
+        var suggestionsBox = await suggestions.BoundingBoxAsync();
+        Assert.NotNull(inputBox);
+        Assert.NotNull(suggestionsBox);
+        Assert.InRange(suggestionsBox.Y - (inputBox.Y + inputBox.Height), 0, 3);
+        await picker.PressAsync("ArrowDown");
+        await Assertions.Expect(picker).ToHaveAttributeAsync("aria-activedescendant", "filterUser-suggestions-0");
+        await Assertions.Expect(fixture.Page.Locator("#filterUser-suggestions-0")).ToHaveAttributeAsync("aria-selected", "true");
         await fixture.Page.RunAndWaitForResponseAsync(
-            () => fixture.Page.GetByRole(AriaRole.Option, new() { Name = "Member One" }).ClickAsync(),
+            () => picker.PressAsync("Enter"),
             response => IsActivityResponse(response, "123"));
         await Assertions.Expect(fixture.Page.Locator("#filterUserId")).ToHaveValueAsync("123");
+        await Assertions.Expect(picker).ToHaveAttributeAsync("aria-expanded", "false");
 
         await fixture.Page.RunAndWaitForResponseAsync(
             () => fixture.Page.ReloadAsync(),
