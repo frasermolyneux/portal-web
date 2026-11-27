@@ -42,6 +42,7 @@ public sealed class ServerStatisticsService(
                             timeline.Add(new MapTimelineDataPoint(current.MapName, current.Timestamp, last.Timestamp));
                         current = stat;
                     }
+
                     last = stat;
                 }
 

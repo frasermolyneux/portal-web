@@ -17,8 +17,8 @@ public sealed class ServerStatisticsServiceTests
     {
         var serverId = Guid.NewGuid();
         var start = DateTime.UtcNow.AddHours(-3);
-        static GameServerStatDto Sample(string map, DateTime timestamp, int players) =>
-            JsonConvert.DeserializeObject<GameServerStatDto>(JsonConvert.SerializeObject(new { MapName = map, Timestamp = timestamp, PlayerCount = players }))!;
+        static GameServerStatDto Sample(string map, DateTime timestamp, int players)
+            => JsonConvert.DeserializeObject<GameServerStatDto>(JsonConvert.SerializeObject(new { MapName = map, Timestamp = timestamp, PlayerCount = players }))!;
         GameServerStatDto[] samples =
         [
             Sample("a", start, 1),
@@ -43,8 +43,18 @@ public sealed class ServerStatisticsServiceTests
         Assert.NotNull(result.Data);
         Assert.Equal(5, result.Data.PlayerCounts.Count);
         Assert.Collection(result.Data.MapTimeline,
-            span => { Assert.Equal("a", span.MapName); Assert.Equal(start, span.Start); Assert.Equal(start.AddMinutes(5), span.End); },
-            span => { Assert.Equal("b", span.MapName); Assert.Equal(start.AddMinutes(10), span.Start); Assert.Equal(start.AddMinutes(15), span.End); });
+            span =>
+            {
+                Assert.Equal("a", span.MapName);
+                Assert.Equal(start, span.Start);
+                Assert.Equal(start.AddMinutes(5), span.End);
+            },
+            span =>
+            {
+                Assert.Equal("b", span.MapName);
+                Assert.Equal(start.AddMinutes(10), span.Start);
+                Assert.Equal(start.AddMinutes(15), span.End);
+            });
     }
 
     [Fact]
@@ -55,7 +65,11 @@ public sealed class ServerStatisticsServiceTests
         var release = new TaskCompletionSource<ApiResult<CollectionModel<GameServerStatDto>>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var repository = new Mock<IRepositoryApiClient> { DefaultValue = DefaultValue.Mock };
         repository.Setup(r => r.GameServersStats.V1.GetGameServerStatusStats(serverId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Returns(() => { entered.TrySetResult(); return release.Task; });
+            .Returns(() =>
+            {
+                entered.TrySetResult();
+                return release.Task;
+            });
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var coordinator = new DependencyReadCoordinator();
         ServerStatisticsService Create() => new(repository.Object, cache, coordinator, NullLogger<ServerStatisticsService>.Instance);

@@ -284,6 +284,7 @@ public class ServersController(
             {
                 return Json(new { players = Array.Empty<object>() });
             }
+
             if (!gameServerApiResponse.IsSuccess || gameServerApiResponse.Result?.Data is null)
             {
                 Logger.LogWarning("Public server metadata unavailable for recent player map {ServerId}", id);
