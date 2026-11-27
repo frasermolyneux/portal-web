@@ -479,7 +479,8 @@ public class GameServersController(
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            model.BroadcastsReadOnly = savedConfigurations.Result.Data.Items.Any(config =>
+            model.BroadcastsReadOnly = !ModelState.ContainsKey(nameof(GameServerEditViewModel.BroadcastsIntervalSeconds))
+                || savedConfigurations.Result.Data.Items.Any(config =>
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
 

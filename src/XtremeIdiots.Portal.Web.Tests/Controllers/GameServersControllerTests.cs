@@ -1580,9 +1580,10 @@ public class GameServersControllerTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(null)]
-    public async Task Edit_Post_PreservesNewBroadcastDocumentAndSavesOtherSettings(bool? requestedEnabled)
+    [InlineData(true, false)]
+    [InlineData(null, false)]
+    [InlineData(null, true)]
+    public async Task Edit_Post_PreservesNewBroadcastDocumentAndSavesOtherSettings(bool? requestedEnabled, bool editableAtPost)
     {
         var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
         mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
@@ -1592,7 +1593,9 @@ public class GameServersControllerTests
         var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = BroadcastSettingsConstants.Namespace,
-            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","messages":[]}"""
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"schemaVersion":1,"enabled":true,"intervalSeconds":500,"messages":[]}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Replace","messages":[]}"""
         }))!;
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
@@ -1622,6 +1625,11 @@ public class GameServersControllerTests
         };
         var sut = CreateSut();
         PrepareRulesSettingsSubmission(sut, model);
+        if (!editableAtPost)
+        {
+            sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
+            sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+        }
 
         Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
         Assert.True(model.BroadcastsReadOnly);

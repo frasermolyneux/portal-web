@@ -45,6 +45,23 @@ public sealed class SiegeModeSettingsBrowserTests
     }
 
     [Fact]
+    public async Task BroadcastEditor_DoesNotOverwriteWhenDocumentBecomesEditableDuringEdit()
+    {
+        var scenario = new SettingsScenario();
+        scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}""");
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#BroadcastsIntervalSeconds")).ToBeDisabledAsync();
+        const string replacement = /*lang=json,strict*/ """{"schemaVersion":1,"enabled":true,"intervalSeconds":800,"messages":[{"message":"Keep","enabled":true}]}""";
+        scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, replacement);
+        await SaveSettings(page);
+        Assert.Equal(replacement, scenario.BroadcastJson);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task ServerFeatures_NavigationOpensExistingEditorsAndExplainsBroadcastOwnership()
     {
         var scenario = new SettingsScenario();

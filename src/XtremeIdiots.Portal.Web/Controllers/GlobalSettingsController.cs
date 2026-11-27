@@ -76,7 +76,8 @@ public class GlobalSettingsController(
             if (configurationError is not null)
                 return configurationError;
 
-            model.BroadcastsReadOnly = currentConfigurations!.Any(config =>
+            model.BroadcastsReadOnly = !ModelState.ContainsKey(nameof(GlobalSettingsViewModel.BroadcastsIntervalSeconds))
+                || currentConfigurations!.Any(config =>
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
 

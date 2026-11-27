@@ -244,6 +244,8 @@ public class GlobalSettingsControllerTests
             });
         var model = new GlobalSettingsViewModel { BroadcastsReadOnly = false, BroadcastsEnabled = true };
         PrepareSiegeSubmission(sut, model);
+        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
+        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
 
         Assert.IsType<RedirectToActionResult>(await sut.Index(model));
         Assert.True(model.BroadcastsReadOnly);
@@ -686,6 +688,8 @@ public class GlobalSettingsControllerTests
         };
 
         PrepareSiegeSubmission(sut, model);
+        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "900", "900");
+        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
