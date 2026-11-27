@@ -161,7 +161,7 @@
     server.addEventListener('change', load);
     window.addEventListener('pagehide', () => controller?.abort());
     window.addEventListener('pageshow', event => {
-        if (event.persisted) load();
+        if (event.persisted) void load();
     });
     load();
 })();
