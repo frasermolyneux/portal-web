@@ -18,11 +18,11 @@ public sealed class AnalyticsProxyBrowserTests
         {
             if (resource.EndsWith("/overview", StringComparison.OrdinalIgnoreCase))
                 return page == "Game" && supported
-                    ? """{"avgPlayers":0,"statsSampleCount":3}"""
+                    ? /*lang=json,strict*/ """{"avgPlayers":0,"statsSampleCount":3}"""
                     : page == "Game" ? AnalyticsProxyHttpTests.Response("game/overview", false) : "{}";
             if (resource.EndsWith("/timeseries", StringComparison.OrdinalIgnoreCase))
                 return AnalyticsProxyHttpTests.Response($"{page.ToLowerInvariant()}/timeseries", supported);
-            return """{"items":[]}""";
+            return /*lang=json,strict*/ """{"items":[]}""";
         });
         var repository = AnalyticsProxyHttpTests.CreateRepository(transport);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin,
@@ -52,7 +52,7 @@ public sealed class AnalyticsProxyBrowserTests
                 return AnalyticsProxyHttpTests.Response("player/overview", supported);
             if (resource.EndsWith("/timeseries", StringComparison.OrdinalIgnoreCase))
                 return AnalyticsProxyHttpTests.Response("player/timeseries", supported);
-            return """{"items":[]}""";
+            return /*lang=json,strict*/ """{"items":[]}""";
         });
         var repository = AnalyticsProxyHttpTests.CreateRepository(transport);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin,
@@ -81,6 +81,7 @@ public sealed class AnalyticsProxyBrowserTests
                 "canvas => Chart.getChart(canvas).data.datasets.map(dataset => dataset.label)");
             Assert.DoesNotContain("Tracked session starts (coverage unknown)", labels);
         }
+
         browser.AssertNoBrowserErrors();
     }
 }

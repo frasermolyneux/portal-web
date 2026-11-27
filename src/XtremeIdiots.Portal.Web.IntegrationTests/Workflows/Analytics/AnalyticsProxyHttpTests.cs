@@ -91,18 +91,18 @@ public sealed class AnalyticsProxyHttpTests
     {
         if (endpoint == "player/overview")
             return supported
-                ? """{"activePlayers":4,"observedPlayerRecords":12,"recordedPlayers":0,"sessionStarts":2,"trackingCoverage":"unknown"}"""
-                : """{"activePlayers":4}""";
+                ? /*lang=json,strict*/ """{"activePlayers":4,"observedPlayerRecords":12,"recordedPlayers":0,"sessionStarts":2,"trackingCoverage":"unknown"}"""
+                : /*lang=json,strict*/ """{"activePlayers":4}""";
         if (endpoint == "game/overview")
-            return supported ? """{"avgPlayers":0,"statsSampleCount":0}""" : """{"avgPlayers":0}""";
+            return supported ? /*lang=json,strict*/ """{"avgPlayers":0,"statsSampleCount":0}""" : /*lang=json,strict*/ """{"avgPlayers":0}""";
 
         var points = endpoint == "player/timeseries"
             ? supported
-                ? """[{"bucketStartUtc":"2026-11-01T00:00:00Z","sessionStarts":0},{"bucketStartUtc":"2026-11-02T00:00:00Z","sessionStarts":2}]"""
-                : """[{"bucketStartUtc":"2026-11-01T00:00:00Z"},{"bucketStartUtc":"2026-11-02T00:00:00Z"}]"""
+                ? /*lang=json,strict*/ """[{"bucketStartUtc":"2026-11-01T00:00:00Z","sessionStarts":0},{"bucketStartUtc":"2026-11-02T00:00:00Z","sessionStarts":2}]"""
+                : /*lang=json,strict*/ """[{"bucketStartUtc":"2026-11-01T00:00:00Z"},{"bucketStartUtc":"2026-11-02T00:00:00Z"}]"""
             : supported
-                ? """[{"bucketStartUtc":"2026-11-01T00:00:00Z","statsSampleCount":0},{"bucketStartUtc":"2026-11-02T00:00:00Z","statsSampleCount":3},{"bucketStartUtc":"2026-11-03T00:00:00Z","statsSampleCount":null}]"""
-                : """[{"bucketStartUtc":"2026-11-01T00:00:00Z"},{"bucketStartUtc":"2026-11-02T00:00:00Z"},{"bucketStartUtc":"2026-11-03T00:00:00Z"}]""";
+                ? /*lang=json,strict*/ """[{"bucketStartUtc":"2026-11-01T00:00:00Z","statsSampleCount":0},{"bucketStartUtc":"2026-11-02T00:00:00Z","statsSampleCount":3},{"bucketStartUtc":"2026-11-03T00:00:00Z","statsSampleCount":null}]"""
+                : /*lang=json,strict*/ """[{"bucketStartUtc":"2026-11-01T00:00:00Z"},{"bucketStartUtc":"2026-11-02T00:00:00Z"},{"bucketStartUtc":"2026-11-03T00:00:00Z"}]""";
         var player = endpoint == "player/timeseries";
         var coverage = player && supported ? ""","trackingCoverage":"unknown" """ : "";
         var key = player ? "activePlayers" : "avgPlayers";
