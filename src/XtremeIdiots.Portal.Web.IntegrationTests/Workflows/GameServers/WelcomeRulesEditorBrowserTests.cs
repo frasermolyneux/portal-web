@@ -9,6 +9,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -21,6 +22,30 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 [Trait("Category", "Browser")]
 public sealed class WelcomeRulesEditorBrowserTests
 {
+    [Fact]
+    public async Task ServerFeatures_NavigationKeepsExistingEditorsAndClarifiesBroadcasts()
+    {
+        var scenario = new FileTransportScenario();
+        var serverJson = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        serverJson["AgentEnabled"] = true;
+        serverJson["RconEnabled"] = true;
+        var server = serverJson.ToObject<GameServerDto>()!;
+        Mock.Get(scenario.RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/GameServers/Edit/{scenario.GameServerId}").AbsoluteUri);
+        var tabs = page.Locator("#serverConfigTabs");
+        await Assertions.Expect(tabs).ToContainTextAsync("Messages");
+        await Assertions.Expect(tabs).ToContainTextAsync("Access Protection");
+        await Assertions.Expect(tabs).ToContainTextAsync("Server Operations");
+        await tabs.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("agent inheritance is not currently supported");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("removes this server's broadcast configuration");
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task Editor_DisclosuresPreserveStateAndRevealInvalidFields()
     {
@@ -620,6 +645,11 @@ public sealed class WelcomeRulesEditorBrowserTests
                 {
                     RuleId = "welcome", ActionId = "simulate", RuleIndex = 0, ActionIndex = 2,
                     Outcome = RuleActionExecutionOutcome.WouldExecute, Mode = RuleExecutionMode.DryRun
+                },
+                new RuleExecutionAuditActionDto
+                {
+                    RuleId = "welcome", ActionId = "uncertain", RuleIndex = 0, ActionIndex = 3,
+                    Outcome = RuleActionExecutionOutcome.OutcomeUnknown, Mode = RuleExecutionMode.Enforce
                 }
             ]
         };
@@ -656,7 +686,8 @@ public sealed class WelcomeRulesEditorBrowserTests
                     [
                         new RuleExecutionFlowActionDto { Id = "greet", TypeId = "message.private", DependsOnActionIds = [] },
                         new RuleExecutionFlowActionDto { Id = "ungated", ActionIndex = 1, TypeId = "message.private" },
-                        new RuleExecutionFlowActionDto { Id = "simulate", ActionIndex = 2, TypeId = "message.private" }
+                        new RuleExecutionFlowActionDto { Id = "simulate", ActionIndex = 2, TypeId = "message.private" },
+                        new RuleExecutionFlowActionDto { Id = "uncertain", ActionIndex = 3, TypeId = "message.private" }
                     ]
                 },
                 new RuleExecutionFlowRuleDto
@@ -692,17 +723,18 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(rule.Locator(".rules-flow__condition .badge")).ToHaveCountAsync(0);
         await Assertions.Expect(rule).ToContainTextAsync("Duration: 7.00:00:00");
         await Assertions.Expect(rule).ToContainTextAsync("Some condition values are unavailable");
-        await Assertions.Expect(rule).ToContainTextAsync("Match outcome unknown");
+        await Assertions.Expect(rule).ToContainTextAsync("No match outcome recorded");
         await Assertions.Expect(rule.Locator(".rules-flow__decision")).ToContainTextAsync("Waiting for rule context recorded");
         await Assertions.Expect(rule.Locator(".rules-flow__decision")).ToContainTextAsync("Rule freshness window expiry recorded");
         await Assertions.Expect(page.Locator("[data-rule-id='other']")).ToContainTextAsync("No match recorded");
         await Assertions.Expect(rule).ToContainTextAsync("Dispatched - application not confirmed");
         await Assertions.Expect(rule.Locator("[data-action-id='greet']")).ToContainTextAsync("Recorded diagnostic: WaitingForContext");
         await Assertions.Expect(rule.Locator("[data-action-id='greet']")).ToContainTextAsync("Recorded diagnostic: Expired");
-        await Assertions.Expect(rule.Locator("[data-action-id='ungated']")).ToContainTextAsync("Action outcome unknown");
+        await Assertions.Expect(rule.Locator("[data-action-id='ungated']")).ToContainTextAsync("No action outcome recorded");
         await Assertions.Expect(rule.Locator("[data-action-id='ungated']")).Not.ToContainTextAsync("Recorded diagnostic");
+        await Assertions.Expect(rule.Locator("[data-action-id='uncertain']")).ToContainTextAsync("Outcome unknown - may have run");
         var onlyActionRule = page.Locator("[data-rule-id='only-action']");
-        await Assertions.Expect(onlyActionRule.Locator(".rules-flow__decision")).ToContainTextAsync("Match outcome unknown");
+        await Assertions.Expect(onlyActionRule.Locator(".rules-flow__decision")).ToContainTextAsync("No match outcome recorded");
         await Assertions.Expect(onlyActionRule.Locator(".rules-flow__decision")).Not.ToContainTextAsync("Waiting for rule context recorded");
         await Assertions.Expect(onlyActionRule.Locator("[data-action-id='send']")).ToContainTextAsync("Recorded diagnostic: WaitingForContext");
         await Assertions.Expect(rule).ToContainTextAsync("<script>unsafe</script>");
@@ -718,6 +750,41 @@ public sealed class WelcomeRulesEditorBrowserTests
         await toggle.ClickAsync();
         await Assertions.Expect(path).ToBeVisibleAsync();
         audit.Verify(api => api.GetRuleExecutionFlow(execution.ExecutionId, It.IsAny<CancellationToken>()), Times.Once);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task RulesAudit_DoesNotInferActionOutcomeFromNoMatchDiagnostic()
+    {
+        var scenario = new FileTransportScenario();
+        var id = Guid.NewGuid();
+        var flow = new RuleExecutionFlowDto
+        {
+            Execution = new RuleExecutionAuditDto
+            {
+                ExecutionId = id,
+                State = RuleFeatureExecutionState.Completed,
+                MatchStatus = RuleExecutionMatchStatus.NoMatch,
+                Diagnostics = [new RuleExecutionDiagnostic { Code = RuleExecutionDiagnosticCode.NoMatch, RuleId = "rule", ObservedAtUtc = DateTimeOffset.UtcNow }]
+            },
+            StructureStatus = RuleExecutionStructureStatus.Available,
+            Rules =
+            [
+                new RuleExecutionFlowRuleDto
+                {
+                    Id = "rule",
+                    Condition = new RuleExecutionFlowConditionDto { ConditionId = "condition" },
+                    Actions = [new RuleExecutionFlowActionDto { Id = "send", TypeId = "message.private" }]
+                }
+            ]
+        };
+        Mock.Get(scenario.RepositoryClient.Object.RuleExecutions.V1)
+            .Setup(api => api.GetRuleExecutionFlow(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<RuleExecutionFlowDto>(HttpStatusCode.OK, new ApiResponse<RuleExecutionFlowDto>(flow)));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/RulesAudit/Execution/{id}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("[data-rule-id='rule'] .rules-flow__decision")).ToContainTextAsync("No match recorded");
+        await Assertions.Expect(browser.Page.Locator("[data-action-id='send']")).ToContainTextAsync("No action outcome recorded");
         browser.AssertNoBrowserErrors();
     }
 

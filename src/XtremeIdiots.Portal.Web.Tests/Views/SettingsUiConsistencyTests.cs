@@ -35,10 +35,10 @@ public class SettingsUiConsistencyTests
         var globalServerList = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GlobalSettings/_ServerListConfiguration.cshtml");
         var serverServerList = ReadRepoFile("src/XtremeIdiots.Portal.Web/Views/GameServers/ConfigurationSections/_ServerListConfiguration.cshtml");
 
-        Assert.Contains("<h5><i class=\"fa-solid fa-fw fa-bullhorn\" aria-hidden=\"true\"></i> Broadcasts</h5>", globalBroadcasts);
-        Assert.Contains("<h5>Broadcasts</h5>", serverBroadcasts);
-        Assert.Contains("Server List", globalServerList);
-        Assert.Contains("<h5>Server List</h5>", serverServerList);
+        Assert.Contains("<h5><i class=\"fa-solid fa-fw fa-bullhorn\" aria-hidden=\"true\"></i> Broadcast Messages</h5>", globalBroadcasts);
+        Assert.Contains("<h5>Broadcast Messages</h5>", serverBroadcasts);
+        Assert.Contains("Server Listing", globalServerList);
+        Assert.Contains("<h5>Server Listing</h5>", serverServerList);
     }
 
     [Fact]
@@ -60,13 +60,13 @@ public class SettingsUiConsistencyTests
         Assert.Contains("id=\"globalSettingsTabs\"", viewMarkup);
         Assert.Contains("General", viewMarkup);
         Assert.Contains("Agent", viewMarkup);
-        Assert.Contains("Broadcasts", viewMarkup);
+        Assert.Contains("Broadcast Messages", viewMarkup);
         Assert.Contains("Chat Commands", viewMarkup);
         Assert.Contains("Welcome Messages", viewMarkup);
         Assert.Contains("Chat Moderation", viewMarkup);
         Assert.Contains("Event Processing", viewMarkup);
-        Assert.Contains("Ban File Sync", viewMarkup);
-        Assert.Contains("Server List", viewMarkup);
+        Assert.Contains("Ban Synchronization", viewMarkup);
+        Assert.Contains("Server Listing", viewMarkup);
     }
 
     [Fact]

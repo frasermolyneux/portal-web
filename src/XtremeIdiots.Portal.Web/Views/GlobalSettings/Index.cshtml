@@ -19,21 +19,30 @@
                             <button class="nav-link" id="agent-tab-btn" data-bs-toggle="tab" data-bs-target="#agent-tab"
                                     type="button" role="tab" aria-controls="agent-tab" aria-selected="false">Agent</button>
                         </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Messages</li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="broadcasts-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#broadcasts-tab" type="button" role="tab" aria-controls="broadcasts-tab"
-                                    aria-selected="false">Broadcasts</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="chat-commands-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#chat-commands-tab" type="button" role="tab"
-                                    aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
+                                    aria-selected="false">Broadcast Messages</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="welcome-messages-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#welcome-messages-tab" type="button" role="tab"
                                     aria-controls="welcome-messages-tab" aria-selected="false">Welcome Messages</button>
                         </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Commands</li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="chat-commands-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#chat-commands-tab" type="button" role="tab"
+                                    aria-controls="chat-commands-tab" aria-selected="false">Chat Commands</button>
+                        </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Moderation</li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
+                                    data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
+                                    aria-selected="false">Chat Moderation</button>
+                        </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Access Protection</li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="vpn-protection-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#vpn-protection-tab" type="button" role="tab"
@@ -44,11 +53,7 @@
                                     data-bs-target="#siege-mode-tab" type="button" role="tab"
                                     aria-controls="siege-mode-tab" aria-selected="false">Siege Mode</button>
                         </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="moderation-tab-btn" data-bs-toggle="tab"
-                                    data-bs-target="#moderation-tab" type="button" role="tab" aria-controls="moderation-tab"
-                                    aria-selected="false">Chat Moderation</button>
-                        </li>
+                        <li class="nav-item d-flex align-items-center px-2 text-muted small" role="presentation">Server Operations</li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="events-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#events-tab" type="button" role="tab" aria-controls="events-tab"
@@ -57,16 +62,16 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="banfilesync-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#banfilesync-tab" type="button" role="tab"
-                                    aria-controls="banfilesync-tab" aria-selected="false">Ban File Sync</button>
+                                    aria-controls="banfilesync-tab" aria-selected="false">Ban Synchronization</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="serverlist-tab-btn" data-bs-toggle="tab"
                                     data-bs-target="#serverlist-tab" type="button" role="tab" aria-controls="serverlist-tab"
-                                    aria-selected="false">Server List</button>
+                                    aria-selected="false">Server Listing</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="cod4x-tab-btn" data-bs-toggle="tab" data-bs-target="#cod4x-tab"
-                                    type="button" role="tab" aria-controls="cod4x-tab" aria-selected="false">CoD4x</button>
+                                    type="button" role="tab" aria-controls="cod4x-tab" aria-selected="false">CoD4x Integration</button>
                         </li>
                     </ul>
 
@@ -75,8 +80,7 @@
                              aria-labelledby="general-tab-btn">
                             <div class="ibox">
                                 <div class="ibox-title">
-                                    <h5><i class="fa-solid fa-fw fa-sliders" aria-hidden="true"></i> Global Defaults
-                                        Overview</h5>
+                                    <h5><i class="fa-solid fa-fw fa-sliders" aria-hidden="true"></i> Server Features and Global Defaults</h5>
                                     </div>
                                     <div class="ibox-content">
                                         <p class="text-muted mb-0">Configure fleet-wide defaults that server-level settings
@@ -300,7 +304,7 @@
                                                                                      aria-labelledby="banfilesync-tab-btn">
                                                                                     <div class="ibox">
                                                                                         <div class="ibox-title">
-                                                                                            <h5><i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban File Sync Defaults
+                                                                                            <h5><i class="fa-solid fa-fw fa-ban" aria-hidden="true"></i> Ban Synchronization Defaults
                                                                                             </h5>
                                                                                         </div>
                                                                                         <div class="ibox-content">
