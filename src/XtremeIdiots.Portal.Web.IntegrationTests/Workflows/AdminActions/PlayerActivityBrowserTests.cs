@@ -78,6 +78,8 @@ public sealed class PlayerActivityBrowserTests
         Assert.Equal(JsonValueKind.Null, values[0].ValueKind);
         Assert.Equal(JsonValueKind.Null, values[1].ValueKind);
         Assert.Equal(1.25m, values[2].GetDecimal());
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-trend")).ToHaveAttributeAsync(
+            "aria-label", "Daily measured play time (UTC). 2026-11-22: unknown; 2026-11-23: unknown; 2026-11-24: 1.25 h");
         await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-server-rows")).ToContainTextAsync("1.25 h");
 
         var server = browser.Page.Locator("#analytics-embed-player-server");
@@ -101,8 +103,10 @@ public sealed class PlayerActivityBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
-    [Fact]
-    public async Task ChangingRangeCancelsThePreviousActivityRequest()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SupersededOrRestoredActivityCancelsThePreviousRequest(bool restorePage)
     {
         var scenario = new AdminActionScenario();
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
@@ -123,7 +127,20 @@ public sealed class PlayerActivityBrowserTests
         Assert.True(response?.Ok);
         await browser.Page.WaitForFunctionAsync("() => window.activitySignals.length === 1");
         await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-status")).ToHaveTextAsync("Loading activity\u2026");
-        await browser.Page.Locator("#analytics-embed-player-range").SelectOptionAsync("30d");
+        if (restorePage)
+        {
+            await browser.Page.EvaluateAsync("""
+                () => {
+                    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+                    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+                }
+                """);
+        }
+        else
+        {
+            await browser.Page.Locator("#analytics-embed-player-range").SelectOptionAsync("30d");
+        }
+
         await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-kpis")).ToContainTextAsync("1.25 h");
         Assert.True(await browser.Page.EvaluateAsync<bool>("() => window.activitySignals[0].aborted"));
         await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-status")).ToBeHiddenAsync();

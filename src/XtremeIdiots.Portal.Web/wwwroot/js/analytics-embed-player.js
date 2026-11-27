@@ -45,6 +45,7 @@
         const recorded = new Map(data.daily.map(day => [day.dateUtc.slice(0, 10), day.measuredSeconds]));
         const labels = [];
         const values = [];
+        const accessibleDays = [];
         const start = new Date(data.fromUtc.slice(0, 10) + 'T00:00:00Z').getTime();
         const end = utcDate(data.toUtc).getTime();
         for (let dayMillis = start; dayMillis < end; dayMillis += 24 * 60 * 60 * 1000) {
@@ -53,8 +54,10 @@
             const seconds = recorded.get(day) ?? null;
             labels.push(dayLabel.format(date));
             values.push(seconds === null ? null : seconds / 3600);
+            accessibleDays.push(`${day}: ${seconds === null ? 'unknown' : duration(seconds)}`);
         }
 
+        el('trend').setAttribute('aria-label', 'Daily measured play time (UTC). ' + accessibleDays.join('; '));
         el('chart').hidden = !window.Chart;
         el('chart-unavailable').hidden = !!window.Chart;
         if (window.Chart) {
@@ -157,5 +160,8 @@
     range.addEventListener('change', load);
     server.addEventListener('change', load);
     window.addEventListener('pagehide', () => controller?.abort());
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) load();
+    });
     load();
 })();
