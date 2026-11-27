@@ -56,17 +56,6 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 }, configJsonOptions)
             ),
             (
-                ModerationSettingsConstants.Namespace,
-                JsonSerializer.Serialize(new ModerationSettingsDocument
-                {
-                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
-                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
-                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
-                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
-                    MinMessageLength = model.ModerationMinMessageLength
-                }, configJsonOptions)
-            ),
-            (
                 EventSettingsConstants.Namespace,
                 JsonSerializer.Serialize(new EventSettingsDocument
                 {
@@ -75,6 +64,20 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 }, configJsonOptions)
             )
         ];
+
+        if (!model.ModerationReadOnly)
+        {
+            configurations.Add((
+                ModerationSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new ModerationSettingsDocument
+                {
+                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
+                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
+                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
+                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
+                    MinMessageLength = model.ModerationMinMessageLength
+                }, configJsonOptions)));
+        }
 
         if (!model.ChatCommandsReadOnly)
         {
@@ -252,55 +255,19 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     }, configJsonOptions)));
             }
 
-            var hasModerationOverrides = model.ModerationHateSeverityThreshold.HasValue
-                || model.ModerationViolenceSeverityThreshold.HasValue
-                || model.ModerationSexualSeverityThreshold.HasValue
-                || model.ModerationSelfHarmSeverityThreshold.HasValue
-                || model.ModerationMinMessageLength.HasValue
-                || !model.ModerationProtectedNameEnforcementEnabled;
-
-            if (hasModerationOverrides)
+            if (!model.ModerationReadOnly)
             {
                 var moderationConfig = new ModerationSettingsDocument
                 {
-                    ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
+                    ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled,
+                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
+                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
+                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
+                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
+                    MinMessageLength = model.ModerationMinMessageLength
                 };
 
-                if (model.ModerationHateSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold.Value;
-                }
-
-                if (model.ModerationViolenceSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold.Value;
-                }
-
-                if (model.ModerationSexualSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold.Value;
-                }
-
-                if (model.ModerationSelfHarmSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold.Value;
-                }
-
-                if (model.ModerationMinMessageLength.HasValue)
-                {
-                    moderationConfig.MinMessageLength = model.ModerationMinMessageLength.Value;
-                }
-
                 configurations.Add((ModerationSettingsConstants.Namespace, JsonSerializer.Serialize(moderationConfig, configJsonOptions)));
-            }
-            else
-            {
-                configurations.Add((
-                    ModerationSettingsConstants.Namespace,
-                    JsonSerializer.Serialize(new ModerationSettingsDocument
-                    {
-                        ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
-                    }, configJsonOptions)));
             }
 
             var hasEventsOverrides = model.EventsStaleThresholdSeconds.HasValue

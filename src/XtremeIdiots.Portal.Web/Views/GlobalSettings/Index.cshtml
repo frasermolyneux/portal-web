@@ -188,6 +188,11 @@
 
                                                     <div class="tab-pane fade" id="moderation-tab" role="tabpanel"
                                                          aria-labelledby="moderation-tab-btn">
+                                                        @if (Model.ModerationReadOnly)
+                                                        {
+                                                            <div class="alert alert-warning">These moderation settings contain fields or values this editor cannot safely change. They will be preserved when other settings are saved.</div>
+                                                        }
+                                                        <fieldset disabled="@Model.ModerationReadOnly">
                                                         <div class="ibox">
                                                             <div class="ibox-title">
                                                                 <h5><i class="fa-solid fa-fw fa-shield" aria-hidden="true"></i> Chat Moderation</h5>
@@ -262,6 +267,7 @@
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
+                                                        </fieldset>
                                                                         </div>
 
                                                                         <div class="tab-pane fade" id="events-tab" role="tabpanel" aria-labelledby="events-tab-btn">

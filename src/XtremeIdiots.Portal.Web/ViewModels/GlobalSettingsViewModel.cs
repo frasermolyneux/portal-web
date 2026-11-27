@@ -45,6 +45,9 @@ public class GlobalSettingsViewModel : IValidatableObject
     public int BanFileSyncCheckIntervalSeconds { get; set; } = 60;
 
     // Moderation defaults
+    [BindNever]
+    public bool ModerationReadOnly { get; set; }
+
     [DisplayName("Hate Threshold")]
     [Range(-1, 6, ErrorMessage = "Hate threshold must be Disabled or between 0 and 6.")]
     public int ModerationHateSeverityThreshold { get; set; } = DisabledSeverityThreshold;

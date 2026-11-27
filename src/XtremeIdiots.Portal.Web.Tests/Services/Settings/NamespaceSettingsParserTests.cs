@@ -1033,6 +1033,18 @@ public class NamespaceSettingsParserTests
         Assert.Equal(0, headAdmin.Power);
     }
 
+    [Fact]
+    public void ModerationMapping_MixedCaseNamespacePopulatesGlobalDefaults()
+    {
+        var model = new GameServerEditViewModel();
+        var config = BuildConfiguration("MoDeRaTiOn", /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7}""");
+
+        parser.PopulateGameServerGlobalDefaults(model, config, logger);
+
+        Assert.Equal(2, model.GlobalModerationHateSeverityThreshold);
+        Assert.Equal(7, model.GlobalModerationMinMessageLength);
+    }
+
     private static ConfigurationDto BuildConfiguration(string ns, string configuration)
     {
         return JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new

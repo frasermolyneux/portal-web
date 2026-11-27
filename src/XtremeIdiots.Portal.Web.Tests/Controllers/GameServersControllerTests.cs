@@ -23,6 +23,7 @@ using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Shared;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
@@ -101,7 +102,13 @@ public class GameServersControllerTests
             ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds?.ToString() ?? string.Empty,
             ["WelcomeRules.LocalRulesJson"] = model.WelcomeRules.LocalRulesJson,
             ["WelcomeRules.RuleOverridesJson"] = model.WelcomeRules.RuleOverridesJson,
-            ["ChatCommands.Commands[0].Name"] = "commands"
+            ["ChatCommands.Commands[0].Name"] = "commands",
+            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength?.ToString() ?? string.Empty,
+            [nameof(model.ModerationHateSeverityThreshold)] = model.ModerationHateSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationViolenceSeverityThreshold)] = model.ModerationViolenceSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationSexualSeverityThreshold)] = model.ModerationSexualSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationSelfHarmSeverityThreshold)] = model.ModerationSelfHarmSeverityThreshold?.ToString() ?? string.Empty,
+            [nameof(model.ModerationProtectedNameEnforcementEnabled)] = model.ModerationProtectedNameEnforcementEnabled.ToString()
         };
         foreach (var (key, value) in fields)
         {
@@ -1638,6 +1645,102 @@ public class GameServersControllerTests
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
             server.GameServerId, BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationProtectedNameEnforcementEnabled))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationHateSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationViolenceSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationSexualSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationSelfHarmSeverityThreshold))]
+    [InlineData(true, nameof(GameServerEditViewModel.ModerationMinMessageLength))]
+    [InlineData(true, "redisplay")]
+    public async Task Edit_Post_ProtectsUnsupportedOrIncompleteModerationAndSavesOtherSettings(bool editableAtPost, string? omittedField)
+    {
+        var server = CreateGameServerDto(ftpEnabled: false, fileTransportEnabled: false, fileTransportType: "Ftp");
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.GetGameServer(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var config = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ModerationSettingsConstants.Namespace.ToUpperInvariant(),
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7}"""
+                : /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7,"futureRules":{"enabled":false}}"""
+        }))!;
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([config]))));
+        mockRepositoryApiClient.Setup(x => x.GameServers.V1.UpdateGameServer(It.IsAny<EditGameServerDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.OK, new ApiResponse()));
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.UpsertConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        var model = new GameServerEditViewModel
+        {
+            GameServer = new GameServerViewModel
+            {
+                GameServerId = server.GameServerId, Title = server.Title, GameType = server.GameType,
+                Platform = server.Platform, Hostname = server.Hostname, QueryPort = server.QueryPort, AgentEnabled = true
+            },
+            ModerationProtectedNameEnforcementEnabled = true,
+            ModerationHateSeverityThreshold = 6,
+            ModerationReadOnly = false
+        };
+        var sut = CreateSut();
+        PrepareRulesSettingsSubmission(sut, model);
+        var preservesModeration = !editableAtPost || omittedField is not null;
+        if (preservesModeration)
+            sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+        if (omittedField == "redisplay")
+        {
+            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
+            sut.ModelState.AddModelError("GameServer.QueryPort", "Invalid query port");
+        }
+        else if (omittedField is not null)
+            sut.ModelState.Remove(omittedField);
+
+        var result = await sut.Edit(model);
+        if (omittedField == "redisplay")
+            Assert.IsType<ViewResult>(result);
+        else
+            Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(preservesModeration, model.ModerationReadOnly);
+        if (preservesModeration)
+        {
+            Assert.False(model.ModerationProtectedNameEnforcementEnabled);
+            Assert.Equal(2, model.ModerationHateSeverityThreshold);
+            Assert.Equal(4, model.ModerationViolenceSeverityThreshold);
+            Assert.Equal(6, model.ModerationSexualSeverityThreshold);
+            Assert.Equal(0, model.ModerationSelfHarmSeverityThreshold);
+            Assert.Equal(7, model.ModerationMinMessageLength);
+            Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
+        }
+        else
+        {
+            Assert.True(model.ModerationProtectedNameEnforcementEnabled);
+            Assert.Equal(6, model.ModerationHateSeverityThreshold);
+            Assert.Contains(ModerationSettingsConstants.Namespace, upserted);
+        }
+
+        Assert.Equal(omittedField != "redisplay", sut.ModelState.IsValid);
+        if (omittedField == "redisplay")
+            Assert.Empty(upserted);
+        else
+            Assert.NotEmpty(upserted);
+        mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(
+            server.GameServerId, ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
