@@ -74,7 +74,6 @@ public class GlobalSettingsController(
             }
 
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
-            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var (currentConfigurations, configurationError) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
             if (configurationError is not null)
                 return configurationError;
@@ -89,6 +88,16 @@ public class GlobalSettingsController(
                 string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration));
 
+            if (model.ChatCommandsReadOnly)
+            {
+                ChatCommandEditorCompatibility.ClearSubmittedModelState(ModelState);
+                model.ChatCommands = new ChatCommandGlobalSettingsViewModel();
+                foreach (var config in currentConfigurations!.Where(static config =>
+                    string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    PopulateModelFromNamespace(model, config);
+            }
+
+            model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
             var modelStateResult = CheckModelState(model);
             if (modelStateResult is not null)
                 return modelStateResult;

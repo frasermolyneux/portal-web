@@ -267,7 +267,7 @@ public class GlobalSettingsControllerTests
             Namespace = ChatCommandSettingsConstants.Namespace,
             Configuration = editableAtPost
                 ? /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}"""
-                : /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}"""
         }))!;
         SetupConfigurations(configuration);
         var upserted = new List<string>();
@@ -283,9 +283,14 @@ public class GlobalSettingsControllerTests
         PrepareSiegeSubmission(sut, model);
         if (editableAtPost)
             sut.ModelState.Remove("ChatCommands.DefaultFreshnessSeconds");
+        sut.ModelState.AddModelError("ChatCommands.Commands[3].FreshnessSeconds", "Invalid value");
+        sut.ModelState.AddModelError("Commands[3].Messages[0].Message", "Invalid value");
+        sut.ModelState.AddModelError("DefaultRequiredTags", "Invalid value");
 
         Assert.IsType<RedirectToActionResult>(await sut.Index(model));
         Assert.True(model.ChatCommandsReadOnly);
+        Assert.True(model.ChatCommands.Commands.Single(command => command.Name == "fu").Enabled);
+        Assert.True(sut.ModelState.IsValid);
         Assert.NotEmpty(upserted);
         Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(

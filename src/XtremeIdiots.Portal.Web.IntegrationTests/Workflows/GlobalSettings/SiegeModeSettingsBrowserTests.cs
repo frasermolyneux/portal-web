@@ -28,13 +28,17 @@ public sealed class SiegeModeSettingsBrowserTests
     [InlineData("transition")]
     [InlineData("legacy")]
     [InlineData("changed")]
+    [InlineData("multiline")]
+    [InlineData("redisplay")]
     public async Task ChatCommandEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
     {
-        const string unsupported = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}""";
+        const string unsupported = /*lang=json,strict*/ """{"schemaVersion":1,"defaults":{"enabled":false},"commands":{"fu":{"enabled":false,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}""";
         const string legacy = /*lang=json,strict*/ """{"schemaVersion":1,"defaults":{"enabled":"false"},"commands":{"fu":{"enabled":"true","settings":{"messages":[{"message":"true","enabled":"false"}]}}}}""";
+        const string multiline = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"settings":{"messages":[{"message":"first\nsecond","enabled":true}]}}}}""";
         const string replacement = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}""";
         var scenario = new SettingsScenario();
-        scenario.SetConfiguration(ChatCommandSettingsConstants.Namespace, scenarioType is "legacy" or "changed" ? legacy : unsupported);
+        var initial = scenarioType switch { "legacy" or "changed" => legacy, "multiline" => multiline, _ => unsupported };
+        scenario.SetConfiguration(ChatCommandSettingsConstants.Namespace, initial);
         await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
         var page = browser.Page;
         await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
@@ -57,6 +61,31 @@ public sealed class SiegeModeSettingsBrowserTests
 
         await page.Locator("#siege-mode-tab-btn").ClickAsync();
         await page.Locator("#SiegeMode_DurationMinutes").FillAsync("90");
+        if (scenarioType is "changed" or "redisplay")
+        {
+            var fieldName = scenarioType == "changed" ? "ChatCommands.DefaultFreshnessSeconds" : "SiegeMode.DurationMinutes";
+            await page.EvaluateAsync("""
+                name => {
+                    const field = document.querySelector(`[name="${name}"]`);
+                    field.form.addEventListener('submit', () => { field.type = 'text'; field.value = 'invalid'; }, { once: true });
+                }
+                """, fieldName);
+        }
+
+        if (scenarioType == "redisplay")
+        {
+            var response = await page.RunAndWaitForResponseAsync(
+                () => page.GetByRole(AriaRole.Button, new() { Name = "Save Settings", Exact = true }).ClickAsync(),
+                result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath == "/GlobalSettings");
+            Assert.Equal(200, response.Status);
+            await page.Locator("#chat-commands-tab-btn").ClickAsync();
+            await Assertions.Expect(page.Locator("#ChatCommands_DefaultsEnabled")).Not.ToBeCheckedAsync();
+            await Assertions.Expect(page.Locator("#ChatCommands_DefaultsEnabled")).ToBeDisabledAsync();
+            Assert.Equal(unsupported, scenario.ChatCommandsJson);
+            browser.AssertNoBrowserErrors();
+            return;
+        }
+
         await SaveSettings(page);
         using var siege = JsonDocument.Parse(scenario.SiegeJson!);
         Assert.Equal(90, siege.RootElement.GetProperty("durationMinutes").GetInt32());
@@ -70,7 +99,8 @@ public sealed class SiegeModeSettingsBrowserTests
         }
         else
         {
-            Assert.Equal(scenarioType == "transition" ? replacement : unsupported, scenario.ChatCommandsJson);
+            var expected = scenarioType switch { "transition" => replacement, "multiline" => multiline, _ => unsupported };
+            Assert.Equal(expected, scenario.ChatCommandsJson);
         }
 
         browser.AssertNoBrowserErrors();

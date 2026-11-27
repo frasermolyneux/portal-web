@@ -492,6 +492,15 @@ public class GameServersController(
                 string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType));
 
+            if (model.ChatCommandsReadOnly)
+            {
+                ChatCommandEditorCompatibility.ClearSubmittedModelState(ModelState);
+                model.ChatCommands = new ChatCommandServerSettingsViewModel();
+                foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                    string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                    PopulateConfigFromNamespace(model, config);
+            }
+
             foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
                 string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
             {

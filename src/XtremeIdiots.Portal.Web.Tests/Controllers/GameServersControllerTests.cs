@@ -1656,7 +1656,7 @@ public class GameServersControllerTests
             Namespace = ChatCommandSettingsConstants.Namespace,
             Configuration = editableAtPost
                 ? /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}"""
-                : /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}"""
+                : /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}"""
         }))!;
         mockRepositoryApiClient.Setup(x => x.GameServerConfigurations.V1.GetConfigurations(server.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
@@ -1689,9 +1689,13 @@ public class GameServersControllerTests
         PrepareRulesSettingsSubmission(sut, model);
         if (editableAtPost)
             sut.ModelState.Remove("ChatCommands.Commands[0].Name");
+        sut.ModelState.AddModelError("ChatCommands.Commands[3].FreshnessSeconds", "Invalid value");
+        sut.ModelState.AddModelError("Commands[3].Messages[0].Message", "Invalid value");
 
         Assert.IsType<RedirectToActionResult>(await sut.Edit(model));
         Assert.True(model.ChatCommandsReadOnly);
+        Assert.True(model.ChatCommands.Commands.Single(command => command.Name == "fu").Enabled);
+        Assert.True(sut.ModelState.IsValid);
         Assert.NotEmpty(upserted);
         Assert.DoesNotContain(ChatCommandSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GameServerConfigurations.V1.DeleteConfiguration(

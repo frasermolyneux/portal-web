@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
@@ -29,6 +30,18 @@ internal static class ChatCommandEditorCompatibility
     }
 
     public static ChatCommandSettingsDocument? Deserialize(string json) => JsonSerializer.Deserialize<ChatCommandSettingsDocument>(json, NamespaceSettingsParser.LegacyBooleanSerializerOptions);
+
+    public static void ClearSubmittedModelState(ModelStateDictionary modelState)
+    {
+        var keys = modelState.Keys.Where(static key =>
+            key.Equals("ChatCommands", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith("ChatCommands.", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith("ChatCommands[", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith("Commands[", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("DefaultRequiredTags", StringComparison.OrdinalIgnoreCase)).ToArray();
+        foreach (var key in keys)
+            modelState.Remove(key);
+    }
 
     private static string ProjectGlobal(ChatCommandSettingsDocument document)
     {
@@ -89,6 +102,10 @@ internal static class ChatCommandEditorCompatibility
 
             return true;
         }
+
+        if (opaqueSettings && source.ValueKind == JsonValueKind.String
+            && source.GetString() is { } text && (text.Contains('\r') || text.Contains('\n')))
+            return false;
 
         if (source.ValueKind == JsonValueKind.String
             && projected.ValueKind is JsonValueKind.True or JsonValueKind.False

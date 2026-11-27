@@ -28,10 +28,13 @@ public sealed class WelcomeRulesEditorBrowserTests
     [InlineData("transition")]
     [InlineData("legacy")]
     [InlineData("changed")]
+    [InlineData("multiline")]
+    [InlineData("redisplay")]
     public async Task ChatCommandEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
     {
-        const string unsupported = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}""";
+        const string unsupported = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":false,"policy":{"rules":[],"defaultDecision":"Deny"},"replies":{"denied":["No"]}}}}""";
         const string legacy = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true,"settings":{"messages":[{"message":"true","enabled":"false"}]}}}}""";
+        const string multiline = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"settings":{"messages":[{"message":"first\rsecond","enabled":true}]}}}}""";
         const string replacement = /*lang=json,strict*/ """{"schemaVersion":1,"commands":{"fu":{"enabled":true}}}""";
         var scenario = new FileTransportScenario();
         var serverJson = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
@@ -40,7 +43,7 @@ public sealed class WelcomeRulesEditorBrowserTests
         Mock.Get(scenario.RepositoryClient.Object.GameServers.V1)
             .Setup(api => api.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
-        var currentChatJson = scenarioType is "legacy" or "changed" ? legacy : unsupported;
+        var currentChatJson = scenarioType switch { "legacy" or "changed" => legacy, "multiline" => multiline, _ => unsupported };
         Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
             .Setup(api => api.GetConfigurations(scenario.GameServerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
@@ -84,9 +87,31 @@ public sealed class WelcomeRulesEditorBrowserTests
 
         await page.Locator("#general-tab-btn").ClickAsync();
         await page.Locator("#GameServer_Title").FillAsync("Updated Server");
+        if (scenarioType is "changed" or "redisplay")
+        {
+            var fieldName = scenarioType == "changed" ? "ChatCommands.Commands[3].FreshnessSeconds" : "GameServer.QueryPort";
+            await page.EvaluateAsync("""
+                name => {
+                    const field = document.querySelector(`[name="${name}"]`);
+                    field.form.addEventListener('submit', () => { field.type = 'text'; field.value = 'invalid'; }, { once: true });
+                }
+                """, fieldName);
+        }
+
         var response = await page.RunAndWaitForResponseAsync(
             () => page.GetByTestId("game-server-save").ClickAsync(),
             result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (scenarioType == "redisplay")
+        {
+            Assert.Equal(200, response.Status);
+            await page.Locator("#chat-commands-tab-btn").ClickAsync();
+            await Assertions.Expect(enabled).ToHaveValueAsync("false");
+            await Assertions.Expect(enabled).ToBeDisabledAsync();
+            Assert.Empty(scenario.UpsertedConfigurations);
+            browser.AssertNoBrowserErrors();
+            return;
+        }
+
         Assert.Equal(302, response.Status);
         Assert.Contains(scenario.UpdatedGameServers, entry => entry.Title == "Updated Server");
         if (scenarioType == "legacy")

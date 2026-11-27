@@ -26,6 +26,8 @@ public class ChatCommandEditorCompatibilityTests
     [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[{"message":"Hello","future":true}]}}}}""", true, true)]
     [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[{"message":"Hello","Enabled":true}]}}}}""", true, true)]
     [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[{"Message":""}]}}}}""", true, true)]
+    [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[{"message":"first\nsecond"}]}}}}""", true, true)]
+    [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[{"message":"first\rsecond"}]}}}}""", true, true)]
     [InlineData(/*lang=json,strict*/ """{"commands":{"commands":{"settings":{"messages":[{"message":"not shown"}]}}}}""", true, true)]
     [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[]}}}}""", true, true)]
     [InlineData(/*lang=json,strict*/ """{"commands":{"fu":{"settings":{"messages":[{"message":false}]}}}}""", true, true)]
