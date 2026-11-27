@@ -244,11 +244,13 @@ public class ServersController(
             var publicServersResponse = await publicServersTask.ConfigureAwait(false);
             var recentPlayersResponse = await recentPlayersTask.ConfigureAwait(false);
 
-            if (recentPlayersResponse.Result?.Data?.Items is null)
+            if (!recentPlayersResponse.IsSuccess || recentPlayersResponse.Result?.Data?.Items is null
+                || !publicServersResponse.IsSuccess || publicServersResponse.Result?.Data?.Items is null)
             {
                 Logger.LogWarning("Failed to retrieve recent players for map view. API Success: {IsSuccess}",
                     recentPlayersResponse.IsSuccess);
-                return View(Array.Empty<PublicPlayerMapPointViewModel>());
+                ViewData["MapUnavailable"] = true;
+                return View(new List<PublicPlayerMapPointViewModel>());
             }
 
             var publicServerIds = publicServersResponse.IsSuccess && publicServersResponse.Result?.Data?.Items is not null
@@ -278,21 +280,28 @@ public class ServersController(
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
             var gameServerApiResponse = await repositoryApiClient.GameServers.V1.GetGameServer(id, cancellationToken).ConfigureAwait(false);
-            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is null || !gameServerApiResponse.Result.Data.ServerListEnabled)
+            if (gameServerApiResponse.IsNotFound || gameServerApiResponse.Result?.Data is { ServerListEnabled: false })
             {
                 return Json(new { players = Array.Empty<object>() });
+            }
+            if (!gameServerApiResponse.IsSuccess || gameServerApiResponse.Result?.Data is null)
+            {
+                Logger.LogWarning("Public server metadata unavailable for recent player map {ServerId}", id);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Recent player observations are unavailable." });
             }
 
             var response = await repositoryApiClient.RecentPlayers.V1.GetRecentPlayers(
                 null, id, DateTime.UtcNow.AddHours(-48), RecentPlayersFilter.GeoLocated,
                 0, 200, null, cancellationToken).ConfigureAwait(false);
 
-            if (response.Result?.Data?.Items is null)
+            if (!response.IsSuccess || response.Result?.Data?.Items is null)
             {
-                return Json(new { players = Array.Empty<object>() });
+                Logger.LogWarning("Recent player map observations unavailable for {ServerId}", id);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Recent player observations are unavailable." });
             }
 
             var players = response.Result.Data.Items
+                .Where(p => p.Lat.HasValue && p.Long.HasValue)
                 .Select(p => new
                 {
                     lat = p.Lat,

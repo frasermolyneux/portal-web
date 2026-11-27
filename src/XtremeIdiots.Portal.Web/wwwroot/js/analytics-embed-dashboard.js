@@ -4,31 +4,32 @@
     const A = window.Analytics;
     if (!A) { return; }
 
-    const tz = A.browserTimezone();
+    const tz = 'UTC';
     let trendChart = null;
-
-    function compositionTable(containerId, items) {
-        A.renderTable(containerId, ['Name', 'Count'],
-            (items || []).map(function (i) { return [i.label || i.key, A.fmtNumber(i.count)]; }));
-    }
 
     async function load() {
         const r = A.range('30d');
         try {
             const d = await A.fetchJson('/api/Analytics/dashboard/home' + A.buildQuery({ from: r.from, to: r.to, bucket: 'OneDay', top: 6 }));
 
-            const s = d.summary || {};
+            const points = d.recordedActivity;
+            if (!Array.isArray(points)) {
+                A.showFallback('dashboard-analytics-trend-fallback', 'Recorded session activity is unavailable from this API version.');
+                return;
+            }
+            if (!points.length) {
+                A.showFallback('dashboard-analytics-trend-fallback', 'No recorded session activity was returned. Coverage is not known.');
+                return;
+            }
             A.renderKpis('dashboard-analytics-kpis', [
-                { label: 'Active games', value: A.fmtNumber(s.activeGamesCount) },
-                { label: 'Active servers', value: A.fmtNumber(s.activeServersCount) },
-                { label: 'Unique players (30d)', value: A.fmtNumber(s.uniquePlayersCount) },
-                { label: 'Reports', value: A.fmtNumber(s.reportsCount) }
+                { label: 'Recorded session starts (30d)', value: A.fmtNumber(points.reduce(function (sum, p) { return sum + p.sessionStarts; }, 0)) },
+                { label: 'Known-map player-hours (30d)', value: (points.reduce(function (sum, p) { return sum + p.measuredSeconds; }, 0) / 3600).toFixed(1) },
+                { label: 'Unknown-map player-hours (30d)', value: (points.reduce(function (sum, p) { return sum + p.unknownMapSeconds; }, 0) / 3600).toFixed(1) }
             ]);
 
-            const points = d.trendPoints || [];
             const series = [{
-                key: 'players', label: 'Unique players', role: 'current', periodLabel: '',
-                values: points.map(function (p) { return { bucketStartUtc: p.bucketStartUtc, value: p.value }; })
+                key: 'players', label: 'Recorded players overlapping day (UTC)', role: 'current', periodLabel: '',
+                values: points.map(function (p) { return { bucketStartUtc: p.bucketStartUtc, value: p.recordedPlayers }; })
             }];
             trendChart = A.renderComparisonChart({
                 canvasId: 'dashboard-analytics-trend', fallbackId: 'dashboard-analytics-trend-fallback',
@@ -36,10 +37,9 @@
                 timezone: tz, index100: false, chart: trendChart
             });
 
-            const comp = d.composition || {};
-            compositionTable('dashboard-analytics-games', comp.topGames);
-            compositionTable('dashboard-analytics-servers', comp.topServers);
-            compositionTable('dashboard-analytics-maps', comp.topMaps);
+            A.renderTable('dashboard-analytics-activity', ['UTC bucket start', 'UTC bucket end', 'Recorded players', 'Session starts', 'Known-map player-hours', 'Unknown-map player-hours'],
+                points.map(function (p) { return [p.bucketStartUtc, p.bucketEndUtc, A.fmtNumber(p.recordedPlayers), A.fmtNumber(p.sessionStarts),
+                    (p.measuredSeconds / 3600).toFixed(2), (p.unknownMapSeconds / 3600).toFixed(2)]; }));
         } catch (e) {
             A.showFallback('dashboard-analytics-trend-fallback', String(e));
         }

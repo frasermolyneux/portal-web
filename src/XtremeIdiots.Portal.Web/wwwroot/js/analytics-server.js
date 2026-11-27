@@ -4,8 +4,9 @@
     const A = window.Analytics;
     if (!A) { return; }
 
-    const tz = A.browserTimezone();
+    const tz = 'UTC';
     let trendChart = null;
+    let generation = 0;
 
     function serverId() {
         const el = document.getElementById('af-server');
@@ -14,46 +15,54 @@
 
     function controls() {
         const r = A.range(document.getElementById('af-range').value);
-        const periods = parseInt(document.getElementById('af-compare').value, 10) || 0;
         return {
             id: serverId(),
             from: r.from,
             to: r.to,
             bucket: document.getElementById('af-bucket').value,
-            compareMode: periods > 0 ? 'RollingPeriods' : 'None',
-            comparePeriods: periods > 0 ? periods : 1,
-            alignMode: document.getElementById('af-alignMode').value,
-            normalize: document.getElementById('af-normalize').checked,
-            timezone: tz
+            compareMode: 'None',
+            alignMode: 'None',
+            normalize: false,
+            timezone: tz,
+            generation: generation
         };
     }
 
-    async function loadOverview(c) {
-        const o = await A.fetchJson('/api/Analytics/server/overview' + A.buildQuery({ id: c.id, from: c.from, to: c.to }));
-        A.renderKpis('server-kpis', [
-            { label: 'Avg players', value: Math.round(o.avgPlayers * 10) / 10 },
-            { label: 'Peak players', value: A.fmtNumber(o.peakPlayers) },
-            { label: 'Events', value: A.fmtNumber(o.eventsCount) },
-            { label: 'Chat', value: A.fmtNumber(o.chatCount) },
-            { label: 'Admin actions', value: A.fmtNumber(o.adminActionsCount) }
-        ]);
-    }
-
     async function loadTrend(c) {
-        const ts = await A.fetchJson('/api/Analytics/server/timeseries' + A.buildQuery(c));
+        const query = Object.assign({}, c);
+        delete query.generation;
+        const ts = await A.fetchJson('/api/Analytics/server/timeseries' + A.buildQuery(query));
+        if (c.generation !== generation) { return; }
+        const points = ts.recordedActivity;
+        if (!Array.isArray(points) || !points.length) {
+            A.showFallback('server-trend-fallback', Array.isArray(points)
+                ? 'No recorded session activity returned. Coverage is not known.'
+                : 'Recorded session activity is unavailable from this API version.');
+            return;
+        }
         trendChart = A.renderComparisonChart({
             canvasId: 'server-trend', fallbackId: 'server-trend-fallback',
-            timeseries: ts, timezone: tz, index100: c.normalize, chart: trendChart
+            timeseries: { bucket: ts.bucket, labels: points.map(function (p) { return p.bucketStartUtc; }),
+                series: [{ label: 'Recorded players overlapping bucket (UTC)', role: 'current',
+                    values: points.map(function (p) { return { bucketStartUtc: p.bucketStartUtc, value: p.recordedPlayers }; }) }] },
+            timezone: tz, index100: false, chart: trendChart
         });
-        A.renderDeltaSummary('server-trend-summary', ts.summary);
+        A.renderTable('server-trend-summary', ['UTC bucket start', 'UTC bucket end', 'Recorded players', 'Session starts', 'Known-map player-hours', 'Unknown-map player-hours'],
+            points.map(function (p) { return [p.bucketStartUtc, p.bucketEndUtc, A.fmtNumber(p.recordedPlayers), A.fmtNumber(p.sessionStarts),
+                (p.measuredSeconds / 3600).toFixed(2), (p.unknownMapSeconds / 3600).toFixed(2)]; }));
     }
 
     async function loadLive(c) {
         const d = await A.fetchJson('/api/Analytics/server/players-current' + A.buildQuery({ id: c.id }));
+        if (c.generation !== generation) { return; }
+        if (!d.lastUpdatedUtc) {
+            A.showFallback('server-live', 'Live status has not been observed.');
+            return;
+        }
         const badge = d.online
             ? '<span class="badge bg-success">Online</span>'
             : '<span class="badge bg-secondary">Offline</span>';
-        const head = '<p class="mb-2">' + badge +
+        const head = '<p class="text-muted small">Status snapshot updated ' + A.escapeHtml(d.lastUpdatedUtc) + ' (UTC). Not historical activity.</p><p class="mb-2">' + badge +
             ' <strong>' + A.fmtNumber(d.currentPlayers) + ' / ' + A.fmtNumber(d.maxPlayers) + '</strong> players' +
             (d.mapName ? ' &middot; <span class="text-muted">' + A.escapeHtml(d.mapName) + '</span>' : '') + '</p>';
         document.getElementById('server-live').innerHTML = head + '<div id="server-live-table"></div>';
@@ -63,33 +72,47 @@
 
     async function loadEvents(c) {
         const d = await A.fetchJson('/api/Analytics/server/events' + A.buildQuery({ id: c.id, from: c.from, to: c.to }));
+        if (c.generation !== generation) { return; }
         A.renderTable('server-events', ['Event type', 'Count'],
             (d.byType || []).map(function (i) { return [i.eventType, A.fmtNumber(i.count)]; }));
     }
 
     async function loadChat(c) {
         const d = await A.fetchJson('/api/Analytics/server/chat' + A.buildQuery({ id: c.id, from: c.from, to: c.to, top: 10 }));
+        if (c.generation !== generation) { return; }
         A.renderTable('server-chat', ['Player', 'Messages'],
             (d.topChatters || []).map(function (i) { return [i.username, A.fmtNumber(i.count)]; }));
     }
 
     async function loadMaps(c) {
         const d = await A.fetchJson('/api/Analytics/server/map-rotation' + A.buildQuery({ id: c.id, from: c.from, to: c.to }));
-        A.renderTable('server-maps', ['Map', 'Avg', 'Peak', 'Share'],
+        if (c.generation !== generation) { return; }
+        A.renderTable('server-maps', ['Map', 'Sample avg players', 'Sample peak', 'Sample share'],
             (d.maps || []).map(function (i) { return [i.mapName, Math.round(i.avgPlayers * 10) / 10, A.fmtNumber(i.peakPlayers), (Math.round(i.sharePercent * 10) / 10) + '%']; }));
     }
 
     async function refresh() {
+        generation++;
         const c = controls();
         if (!c.id) { return; }
+        if (trendChart) { trendChart.destroy(); trendChart = null; }
+        ['server-live', 'server-events', 'server-chat', 'server-maps', 'server-trend-summary'].forEach(function (id) {
+            document.getElementById(id).replaceChildren();
+        });
+        A.showFallback('server-trend-fallback', 'Loading recorded activity...');
+        const button = document.getElementById('af-refresh');
+        button.disabled = true;
+        function failed(id, e) {
+            if (c.generation === generation) { A.showFallback(id, 'Data unavailable: ' + String(e)); }
+        }
         await Promise.all([
-            loadOverview(c).catch(function (e) { A.showFallback('server-trend-fallback', String(e)); }),
-            loadTrend(c).catch(function (e) { A.showFallback('server-trend-fallback', String(e)); }),
-            loadLive(c).catch(function () { }),
-            loadEvents(c).catch(function () { }),
-            loadChat(c).catch(function () { }),
-            loadMaps(c).catch(function () { })
+            loadTrend(c).catch(function (e) { failed('server-trend-fallback', e); }),
+            loadLive(c).catch(function (e) { failed('server-live', e); }),
+            loadEvents(c).catch(function (e) { failed('server-events', e); }),
+            loadChat(c).catch(function (e) { failed('server-chat', e); }),
+            loadMaps(c).catch(function (e) { failed('server-maps', e); })
         ]);
+        if (c.generation === generation) { button.disabled = false; }
     }
 
     document.getElementById('af-refresh').addEventListener('click', refresh);

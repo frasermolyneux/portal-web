@@ -28,24 +28,48 @@
     </div>
 </div>
 
-<partial name="_AnalyticsControls" />
-
-<div class="row row-cols-2 row-cols-md-5 g-2 my-1" id="server-kpis"></div>
+<div class="ibox">
+    <div class="ibox-content">
+        <div class="row g-2 align-items-end list-filters">
+            <div class="col-auto">
+                <label for="af-range" class="form-label mb-1">Range</label>
+                <select id="af-range" class="form-select form-select-sm">
+                    <option value="24h">Last 24 hours</option>
+                    <option value="7d" selected>Last 7 days</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                    <option value="180d">Last 180 days</option>
+                    <option value="365d">Last 365 days</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="af-bucket" class="form-label mb-1">UTC bucket</label>
+                <select id="af-bucket" class="form-select form-select-sm">
+                    <option value="FifteenMinutes">15 minutes</option>
+                    <option value="OneHour">Hourly</option>
+                    <option value="OneDay" selected>Daily</option>
+                </select>
+            </div>
+            <div class="col-auto"><button id="af-refresh" type="button" class="btn btn-primary btn-sm">Refresh</button></div>
+        </div>
+    </div>
+</div>
 
 <div class="row">
     <div class="col-lg-8">
         <div class="ibox">
-            <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Player count trend</h5></div>
+            <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-chart-line" aria-hidden="true"></i> Recorded Player Activity</h5></div>
             <div class="ibox-content">
-                <div id="server-trend-summary" class="mb-2"></div>
+                <p class="text-muted small">Distinct recorded players overlapping each UTC bucket, and sessions starting within it. Player-hours are recorded map-segment time, not average session length. Known bots are excluded; unclassified sessions remain. Recording is partial; missing history is not zero activity. Boundary buckets may be partial.</p>
                 <div style="position: relative; height: 320px;"><canvas id="server-trend"></canvas></div>
                 <pre id="server-trend-fallback" class="mt-2 analytics-fallback"></pre>
+                <div id="server-trend-summary" class="mt-2 table-responsive"></div>
             </div>
         </div>
     </div>
     <div class="col-lg-4">
         <div class="ibox">
-            <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-signal" aria-hidden="true"></i> Live now</h5></div>
+            <div class="ibox-title"><h5><i class="fa-solid fa-fw fa-signal" aria-hidden="true"></i> Live Status Snapshot</h5></div>
             <div class="ibox-content" id="server-live"></div>
         </div>
     </div>
@@ -66,7 +90,8 @@
     </div>
     <div class="col-lg-4">
         <div class="ibox">
-            <div class="ibox-title"><h5>Map rotation</h5></div>
+            <div class="ibox-title"><h5>Sampled Maps</h5></div>
+            <div class="ibox-content"><p class="text-muted small">Average, peak and share of recorded status samples, not map plays or elapsed time. Coverage gaps are unknown.</p></div>
             <div class="ibox-content" id="server-maps"></div>
         </div>
     </div>
