@@ -20,5 +20,6 @@ public interface IActivityLogService
         int take,
         string sortColumn,
         string sortDirection,
+        string? actorId,
         CancellationToken cancellationToken = default);
 }

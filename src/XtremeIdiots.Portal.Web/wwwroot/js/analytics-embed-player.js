@@ -13,8 +13,10 @@
     const results = el('results');
     const dayLabel = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
     const timestamp = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' });
+    const hours = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
     let chart;
     let request = 0;
+    let controller;
 
     function utcDate(value) {
         return new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : value + 'Z');
@@ -22,11 +24,8 @@
 
     function duration(seconds) {
         if (seconds == null) return '\u2014';
-        if (seconds === 0) return '0 min';
-        const minutes = Math.floor(seconds / 60);
-        if (minutes === 0) return '<1 min';
-        const hours = Math.floor(minutes / 60);
-        return hours > 0 ? `${A.fmtNumber(hours)} h ${minutes % 60} min` : `${minutes} min`;
+        if (seconds > 0 && seconds < 36) return '<0.01 h';
+        return `${hours.format(seconds / 3600)} h`;
     }
 
     function appendRow(table, values) {
@@ -40,14 +39,13 @@
     }
 
     function renderDaily(data) {
-        const rows = el('daily-rows');
-        rows.replaceChildren();
         el('playtime').hidden = data.daily.length === 0;
         if (!data.daily.length) return;
 
         const recorded = new Map(data.daily.map(day => [day.dateUtc.slice(0, 10), day.measuredSeconds]));
         const labels = [];
         const values = [];
+        const accessibleDays = [];
         const start = new Date(data.fromUtc.slice(0, 10) + 'T00:00:00Z').getTime();
         const end = utcDate(data.toUtc).getTime();
         for (let dayMillis = start; dayMillis < end; dayMillis += 24 * 60 * 60 * 1000) {
@@ -55,15 +53,16 @@
             const day = date.toISOString().slice(0, 10);
             const seconds = recorded.get(day) ?? null;
             labels.push(dayLabel.format(date));
-            values.push(seconds === null ? null : seconds / 60);
-            appendRow(rows, [day, duration(seconds)]);
+            values.push(seconds === null ? null : seconds / 3600);
+            accessibleDays.push(`${day}: ${seconds === null ? 'unknown' : duration(seconds)}`);
         }
 
+        el('trend').setAttribute('aria-label', 'Daily measured play time (UTC). ' + accessibleDays.join('; '));
         el('chart').hidden = !window.Chart;
-        el('daily').open = !window.Chart;
+        el('chart-unavailable').hidden = !!window.Chart;
         if (window.Chart) {
             chart = A.renderBarChart({
-                canvasId: id('trend'), labels, data: values, label: 'Play time (min)', singleColor: true
+                canvasId: id('trend'), labels, data: values, label: 'Play time (hours)', singleColor: true
             });
         }
     }
@@ -119,6 +118,8 @@
 
     async function load() {
         const generation = ++request;
+        controller?.abort();
+        controller = new AbortController();
         const serverId = server.value;
         const dates = A.range(range.value);
         results.hidden = true;
@@ -130,7 +131,7 @@
         }
         try {
             const response = await A.fetchJson('/api/Analytics/player/' + encodeURIComponent(playerId) + '/activity' +
-                A.buildQuery({ from: dates.from, to: dates.to, serverId }));
+                A.buildQuery({ from: dates.from, to: dates.to, serverId }), controller.signal);
             if (generation !== request) return;
             const data = response.activity;
             if (!serverId) {
@@ -149,7 +150,7 @@
             render(data);
             status.hidden = true;
         } catch (error) {
-            if (generation !== request) return;
+            if (generation !== request || error.name === 'AbortError') return;
             console.error('Failed to load player activity.', error);
             results.hidden = true;
             status.textContent = 'Player activity unavailable.';
@@ -158,5 +159,9 @@
 
     range.addEventListener('change', load);
     server.addEventListener('change', load);
+    window.addEventListener('pagehide', () => controller?.abort());
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) void load();
+    });
     load();
 })();

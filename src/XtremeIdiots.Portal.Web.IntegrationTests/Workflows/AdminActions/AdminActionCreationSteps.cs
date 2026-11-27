@@ -234,7 +234,7 @@ public sealed class AdminActionCreationSteps
             browserResponse => browserResponse.Request.Method == "GET" &&
                 new Uri(browserResponse.Url).AbsolutePath == $"/api/Analytics/player/{Scenario.PlayerId}/activity");
         Assert.True(analyticsResponse.Ok);
-        await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-kpis")).ToContainTextAsync("1 h 15 min");
+        await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-kpis")).ToContainTextAsync("1.25 h");
         await Assertions.Expect(Browser.Page.Locator("#analytics-embed-player-server-rows")).ToContainTextAsync("Activity server");
     }
 
