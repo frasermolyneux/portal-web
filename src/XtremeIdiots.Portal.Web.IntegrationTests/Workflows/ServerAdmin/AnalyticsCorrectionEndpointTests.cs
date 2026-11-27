@@ -5,6 +5,7 @@ using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RecentPlayers;
+using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Hosting;
 
 namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
@@ -12,6 +13,22 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.ServerAdmin;
 [Trait("Category", "HttpIntegration")]
 public sealed class AnalyticsCorrectionEndpointTests
 {
+    [Theory]
+    [InlineData("/api/Analytics/dashboard/home")]
+    [InlineData("/api/Analytics/server/timeseries")]
+    public async Task RecordedAnalyticsEndpointsRequireDashboardRead(string path)
+    {
+        var scenario = new MapControlScenario();
+        await using var host = await PortalWebTestHost.CreateAsync(scenario.ConfigureServices);
+
+        using var anonymous = await host.Client.GetAsync(path);
+        Assert.True(anonymous.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.Unauthorized);
+        using var restrictedRequest = new HttpRequestMessage(HttpMethod.Get, path);
+        restrictedRequest.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameServerWriterWithoutRcon);
+        using var restricted = await host.Client.SendAsync(restrictedRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, restricted.StatusCode);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
