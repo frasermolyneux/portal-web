@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -40,7 +41,11 @@ public class GlobalSettingsController(
                 return error;
 
             foreach (var config in configs!)
+            {
                 PopulateModelFromNamespace(model, config);
+                if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                    model.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+            }
 
             return View(model);
         }, nameof(Index)).ConfigureAwait(false);
@@ -67,13 +72,17 @@ public class GlobalSettingsController(
 
             var (requiredTagOptions, isRequiredTagsCatalogAvailable) = await GetAvailableRequiredTagsAsync(cancellationToken).ConfigureAwait(false);
             model.ApplyAvailableRequiredTags(requiredTagOptions, isRequiredTagsCatalogAvailable);
-            var modelStateResult = CheckModelState(model);
-            if (modelStateResult is not null)
-                return modelStateResult;
-
             var (currentConfigurations, configurationError) = await GetCurrentConfigurationsAsync(cancellationToken).ConfigureAwait(false);
             if (configurationError is not null)
                 return configurationError;
+
+            model.BroadcastsReadOnly = currentConfigurations!.Any(config =>
+                string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            var modelStateResult = CheckModelState(model);
+            if (modelStateResult is not null)
+                return modelStateResult;
 
             var authoritative = new GlobalSettingsViewModel();
             foreach (var config in currentConfigurations!.Where(static config =>

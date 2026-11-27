@@ -9,6 +9,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPlugin;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.FileTransport;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
@@ -368,6 +369,9 @@ public class GameServersController(
                         if (config.Namespace == "rcon" && !editModel.CanEditRcon)
                             continue;
 
+                        if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
+                            editModel.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+
                         PopulateConfigFromNamespace(editModel, config);
                     }
                 }
@@ -474,6 +478,10 @@ public class GameServersController(
                 Logger.LogWarning("Failed to retrieve server configurations for {GameServerId}", gameServerData.GameServerId);
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
+
+            model.BroadcastsReadOnly = savedConfigurations.Result.Data.Items.Any(config =>
+                string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
+                BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
 
             foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
                 string.Equals(config.Namespace, VpnProtectionSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))

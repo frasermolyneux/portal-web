@@ -10,6 +10,7 @@ using System.Text.Json;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Tags;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
@@ -22,6 +23,28 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GlobalSettings;
 public sealed class SiegeModeSettingsBrowserTests
 {
     [Fact]
+    public async Task BroadcastEditor_ProtectsNewDocumentsWhileSavingOtherSettings()
+    {
+        var scenario = new SettingsScenario();
+        const string existing = """{"schemaVersion":1,"messagesMode":"Replace","enabled":true,"intervalSeconds":500,"messages":[{"id":"one","message":"Hello","enabled":true}]}""";
+        scenario.SetConfiguration(BroadcastSettingsConstants.Namespace, existing);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        var page = browser.Page;
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, "/GlobalSettings").AbsoluteUri);
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#broadcasts-tab .alert-warning")).ToContainTextAsync("will be preserved");
+        await Assertions.Expect(page.Locator("#BroadcastsIntervalSeconds")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("#add-global-broadcast-message")).ToBeDisabledAsync();
+        await page.Locator("#siege-mode-tab-btn").ClickAsync();
+        await page.Locator("#SiegeMode_DurationMinutes").FillAsync("90");
+        await SaveSettings(page);
+        Assert.Equal(existing, scenario.BroadcastJson);
+        using var siege = JsonDocument.Parse(scenario.SiegeJson!);
+        Assert.Equal(90, siege.RootElement.GetProperty("durationMinutes").GetInt32());
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
     public async Task ServerFeatures_NavigationOpensExistingEditorsAndExplainsBroadcastOwnership()
     {
         var scenario = new SettingsScenario();
@@ -33,7 +56,7 @@ public sealed class SiegeModeSettingsBrowserTests
         await Assertions.Expect(tabs).ToContainTextAsync("Access Protection");
         await Assertions.Expect(tabs).ToContainTextAsync("Server Operations");
         await tabs.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
-        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("do not currently provide agent inheritance");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Older agents default to disabled");
         await tabs.GetByRole(AriaRole.Tab, new() { Name = "CoD4x Integration" }).ClickAsync();
         await Assertions.Expect(page.Locator("#cod4x-tab")).ToContainTextAsync("not Portal chat command rules");
         browser.AssertNoBrowserErrors();
@@ -394,6 +417,7 @@ public sealed class SiegeModeSettingsBrowserTests
         }
 
         public string? SiegeJson => configurations.GetValueOrDefault(SiegeModeSettingsConstants.Namespace);
+        public string? BroadcastJson => configurations.GetValueOrDefault(BroadcastSettingsConstants.Namespace);
         public string? VpnJson => configurations.GetValueOrDefault(VpnProtectionSettingsConstants.Namespace);
         public string? WelcomeJson => configurations.GetValueOrDefault(WelcomeRulesSettingsConstants.Namespace);
 
