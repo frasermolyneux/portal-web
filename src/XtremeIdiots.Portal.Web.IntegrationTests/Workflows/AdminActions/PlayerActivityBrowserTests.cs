@@ -56,17 +56,29 @@ public sealed class PlayerActivityBrowserTests
             });
         });
 
-        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Players/Details?id={scenario.PlayerId}").AbsoluteUri);
-        Assert.True(response?.Ok);
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Players/Details?id={scenario.PlayerId}").AbsoluteUri),
+            activityResponse => new Uri(activityResponse.Url).AbsolutePath == $"/api/Analytics/player/{scenario.PlayerId}/activity");
+        Assert.True(response.Ok);
+        var initialQuery = QueryHelpers.ParseQuery(new Uri(response.Url).Query);
+        Assert.Equal(TimeSpan.FromDays(7),
+            DateTimeOffset.Parse(initialQuery["to"].ToString(), CultureInfo.InvariantCulture) -
+            DateTimeOffset.Parse(initialQuery["from"].ToString(), CultureInfo.InvariantCulture));
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-range")).ToHaveValueAsync("7d");
         var cards = browser.Page.Locator("#analytics-embed-player-kpis .col");
-        await Assertions.Expect(cards.Nth(0)).ToContainTextAsync("1 h 15 min");
+        await Assertions.Expect(cards.Nth(0)).ToContainTextAsync("1.25 h");
         await Assertions.Expect(cards.Nth(3).Locator(".h3")).ToHaveTextAsync("\u2014");
         await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-observation")).ToContainTextAsync("Coverage unknown");
-        await browser.Page.Locator("#analytics-embed-player-daily summary").ClickAsync();
-        var days = browser.Page.Locator("#analytics-embed-player-daily-rows tr");
-        await Assertions.Expect(days).ToHaveCountAsync(3);
-        await Assertions.Expect(days.Nth(0)).ToContainTextAsync("\u2014");
-        await Assertions.Expect(days.Nth(2)).ToContainTextAsync("1 h 15 min");
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-playtime")).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-playtime table, #analytics-embed-player-playtime details")).ToHaveCountAsync(0);
+        var chart = await browser.Page.EvaluateAsync<JsonElement>("() => Chart.getChart('analytics-embed-player-trend').data.datasets[0]");
+        Assert.Equal("Play time (hours)", chart.GetProperty("label").GetString());
+        var values = chart.GetProperty("data").EnumerateArray().ToArray();
+        Assert.Equal(3, values.Length);
+        Assert.Equal(JsonValueKind.Null, values[0].ValueKind);
+        Assert.Equal(JsonValueKind.Null, values[1].ValueKind);
+        Assert.Equal(1.25m, values[2].GetDecimal());
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-server-rows")).ToContainTextAsync("1.25 h");
 
         var server = browser.Page.Locator("#analytics-embed-player-server");
         await Assertions.Expect(server.Locator("option")).ToHaveCountAsync(3);
@@ -79,13 +91,61 @@ public sealed class PlayerActivityBrowserTests
         await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-breakdown")).ToBeHiddenAsync();
 
         var rangeResponse = await browser.Page.RunAndWaitForResponseAsync(
-            async () => await browser.Page.Locator("#analytics-embed-player-range").SelectOptionAsync("7d"),
+            async () => await browser.Page.Locator("#analytics-embed-player-range").SelectOptionAsync("30d"),
             activityResponse => activityResponse.Request.Url.Contains($"serverId={ChatOnlyServerId}", StringComparison.OrdinalIgnoreCase));
         var rangeQuery = QueryHelpers.ParseQuery(new Uri(rangeResponse.Url).Query);
         var from = DateTimeOffset.Parse(rangeQuery["from"].ToString(), CultureInfo.InvariantCulture);
         var to = DateTimeOffset.Parse(rangeQuery["to"].ToString(), CultureInfo.InvariantCulture);
-        Assert.Equal(TimeSpan.FromDays(7), to - from);
+        Assert.Equal(TimeSpan.FromDays(30), to - from);
         await Assertions.Expect(server).ToHaveValueAsync(ChatOnlyServerId.ToString());
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task ChangingRangeCancelsThePreviousActivityRequest()
+    {
+        var scenario = new AdminActionScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        await browser.Page.AddInitScriptAsync("""
+            window.activitySignals = [];
+            const originalFetch = window.fetch;
+            window.fetch = (url, options) => {
+                if (!String(url).includes('/api/Analytics/player/')) return originalFetch(url, options);
+                window.activitySignals.push(options?.signal);
+                if (window.activitySignals.length > 1) return originalFetch(url, options);
+                return new Promise((resolve, reject) => {
+                    options?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+                });
+            };
+            """);
+
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Players/Details/{scenario.PlayerId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+        await browser.Page.WaitForFunctionAsync("() => window.activitySignals.length === 1");
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-status")).ToHaveTextAsync("Loading activity\u2026");
+        await browser.Page.Locator("#analytics-embed-player-range").SelectOptionAsync("30d");
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-kpis")).ToContainTextAsync("1.25 h");
+        Assert.True(await browser.Page.EvaluateAsync<bool>("() => window.activitySignals[0].aborted"));
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-status")).ToBeHiddenAsync();
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task MissingChartShowsUnavailableWithoutADailyTable()
+    {
+        var scenario = new AdminActionScenario();
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.SeniorAdmin, scenario.ConfigureServices);
+        await browser.Page.RouteAsync("**/chart.umd.js*", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/javascript",
+            Body = "",
+        }));
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Players/Details/{scenario.PlayerId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-chart-unavailable")).ToBeVisibleAsync();
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-chart")).ToBeHiddenAsync();
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-playtime table, #analytics-embed-player-playtime details")).ToHaveCountAsync(0);
+        await Assertions.Expect(browser.Page.Locator("#analytics-embed-player-server-rows")).ToContainTextAsync("Activity server");
         browser.AssertNoBrowserErrors();
     }
 
