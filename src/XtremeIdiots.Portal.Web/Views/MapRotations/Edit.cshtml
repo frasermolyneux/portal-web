@@ -36,34 +36,7 @@
                             <div class="mb-3">
                                 <label asp-for="@Model.GameMode" class="form-label"></label>
                                 <select asp-for="@Model.GameMode" class="form-select">
-                                    <option value="">-- Select Mode --</option>
-                                    <optgroup label="Standard Modes">
-                                        <option value="dm">Free for All / Deathmatch (dm)</option>
-                                        <option value="tdm">Team Deathmatch (tdm)</option>
-                                        <option value="war">War / Team Deathmatch (war)</option>
-                                        <option value="sd">Search &amp; Destroy (sd)</option>
-                                        <option value="dom">Domination (dom)</option>
-                                        <option value="sab">Sabotage (sab)</option>
-                                        <option value="koth">Headquarters (koth)</option>
-                                        <option value="ctf">Capture the Flag (ctf)</option>
-                                    </optgroup>
-                                    <optgroup label="OpenWarfare Modes">
-                                        <option value="ftag">Freeze Tag (ftag)</option>
-                                        <option value="ass">Assassination (ass)</option>
-                                        <option value="bel">Behind Enemy Lines (bel)</option>
-                                        <option value="ch">Capture and Hold (ch)</option>
-                                        <option value="gr">Greed (gr)</option>
-                                        <option value="gg">Gun Game (gg)</option>
-                                        <option value="hns">Hide and Seek (hns)</option>
-                                        <option value="lms">Last Man Standing (lms)</option>
-                                        <option value="lts">Last Team Standing (lts)</option>
-                                        <option value="oitc">One In The Chamber (oitc)</option>
-                                        <option value="re">Retrieval (re)</option>
-                                        <option value="ss">Sharp Shooter (ss)</option>
-                                        <option value="tgr">Team Greed (tgr)</option>
-                                        <option value="twar">War (twar)</option>
-                                        <option value="cooperative">Cooperative / Zombie (cooperative)</option>
-                                    </optgroup>
+                                    <partial name="_GameModeOptions" model="@(Model.GameMode ?? string.Empty)" />
                                 </select>
                                 <span asp-validation-for="@Model.GameMode" class="text-danger"></span>
                             </div>
@@ -97,7 +70,8 @@
                             <div class="mb-3">
                                 <label class="form-label">Maps</label>
                                 <input type="text" id="mapSearch" class="form-control" placeholder="Search for maps by name..." autocomplete="off" />
-                                <small class="form-text text-muted">Search by name, then drag maps into order.</small>
+                                <small class="form-text text-muted">Search by name, then drag maps into order. Leave a map's game mode blank to use the rotation's default.</small>
+                                <span asp-validation-for="@Model.EntryGameModes" class="text-danger"></span>
                             </div>
                             <div id="selectedMapsList" class="mb-3"></div>
                             <div id="mapIdsContainer">
@@ -106,6 +80,7 @@
                                     for (var i = 0; i < Model.MapIds.Count; i++)
                                     {
                                         <input type="hidden" name="MapIds[@i]" value="@Model.MapIds[i]" />
+                                        <input type="hidden" name="EntryGameModes[@i]" value="@(i < Model.EntryGameModes.Count ? Model.EntryGameModes[i] : null)" />
                                     }
                                 }
                             </div>

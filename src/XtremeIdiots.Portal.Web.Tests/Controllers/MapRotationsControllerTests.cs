@@ -318,10 +318,60 @@ public class MapRotationsControllerTests
         Assert.Equal(0, result.FailedCount);
         Assert.NotNull(imported);
         Assert.Equal(gameType, imported.GameType);
-        Assert.Equal(maps.Where(map => map.GameType == gameType).Select(map => map.MapId), imported.MapIds);
+        Assert.Equal(maps.Where(map => map.GameType == gameType).Select(map => map.MapId), imported.Entries!.Select(entry => entry.MapId));
+        Assert.All(imported.Entries!, entry => Assert.Equal("dm", entry.GameMode));
         mockRepositoryApiClient.Verify(x => x.Maps.V1.GetMaps(gameType, It.IsAny<string[]?>(), null, null,
             100, 100, MapsOrder.MapNameAsc, It.IsAny<CancellationToken>()), Times.Exactly(2));
         mockRepositoryApiClient.Verify(x => x.Maps.V1.CreateMaps(It.IsAny<List<CreateMapDto>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Import_PreservesRepeatedMapsAndChangingGameModes()
+    {
+        var (_, model) = SetupServerImport();
+        model.FromGameServer = false;
+        model.CfgContent = "set sv_maprotation \"gametype war map mp_alpha gametype dm map mp_alpha\"";
+        var mapId = Guid.NewGuid();
+        var map = Newtonsoft.Json.JsonConvert.DeserializeObject<MapDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { MapId = mapId, MapName = "mp_alpha", GameType = GameType.CallOfDuty4 }))!;
+        mockRepositoryApiClient.Setup(x => x.Maps.V1.GetMaps(It.IsAny<GameType?>(), It.IsAny<string[]?>(), It.IsAny<MapsFilter?>(),
+            It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<MapsOrder?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapDto>>(new CollectionModel<MapDto>([map]))));
+        CreateMapRotationDto? imported = null;
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()))
+            .Callback<CreateMapRotationDto, CancellationToken>((dto, _) => imported = dto)
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK,
+                new ApiResponse<MapRotationDto>(CreateRotation(Guid.NewGuid(), GameType.CallOfDuty4))));
+        var sut = CreateSut();
+        var preview = Assert.IsType<ImportMapRotationsPreviewViewModel>(Assert.IsType<ViewResult>(await sut.Import(model)).Model);
+        Assert.Equal(["mp_alpha (war)", "mp_alpha (dm)"], Assert.Single(preview.Rotations).MapEntries);
+
+        var result = Assert.IsType<ImportMapRotationsResultViewModel>(Assert.IsType<ViewResult>(
+            await sut.ImportConfirm(new() { DraftId = preview.DraftId, SelectedIndices = [0] })).Model);
+
+        Assert.Equal(1, result.ImportedCount);
+        Assert.Equal([mapId, mapId], imported!.Entries!.Select(entry => entry.MapId));
+        Assert.Equal(["war", "dm"], imported.Entries!.Select(entry => entry.GameMode));
+        Assert.Empty(imported.MapIds);
+    }
+
+    [Fact]
+    public async Task Import_RejectsUnknownInitialGameModeWithoutCreatingMaps()
+    {
+        var (_, model) = SetupServerImport();
+        model.FromGameServer = false;
+        model.CfgContent = "set sv_maprotation \"map mp_unknown gametype war map mp_alpha\"";
+        var sut = CreateSut();
+        var preview = Assert.IsType<ImportMapRotationsPreviewViewModel>(Assert.IsType<ViewResult>(await sut.Import(model)).Model);
+
+        var result = Assert.IsType<ImportMapRotationsResultViewModel>(Assert.IsType<ViewResult>(
+            await sut.ImportConfirm(new() { DraftId = preview.DraftId, SelectedIndices = [0] })).Model);
+
+        Assert.Equal(1, result.FailedCount);
+        Assert.Contains("before the first gametype", Assert.Single(result.Results).Error, StringComparison.Ordinal);
+        mockRepositoryApiClient.Verify(x => x.Maps.V1.CreateMaps(It.IsAny<List<CreateMapDto>>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -625,6 +675,169 @@ public class MapRotationsControllerTests
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<CreateMapRotationViewModel>(view.Model);
         Assert.Equal(MapRotationStatus.Draft, model.Status);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EditAndClone_LoadOrderedDuplicateEntriesWithTheirModes(bool clone)
+    {
+        var id = Guid.NewGuid();
+        var mapId = Guid.NewGuid();
+        var rotation = CreateRotation(id, GameType.CallOfDuty4) with
+        {
+            MapRotationMaps =
+            [
+                new() { MapId = mapId, SortOrder = 1, GameMode = "dm" },
+                new() { MapId = mapId, SortOrder = 0, GameMode = "war" },
+                new() { MapId = mapId, SortOrder = 2, GameMode = null }
+            ]
+        };
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.MapRotations_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var sut = CreateSut();
+
+        var view = Assert.IsType<ViewResult>(clone ? await sut.Clone(id) : await sut.Edit(id));
+        if (clone)
+        {
+            var model = Assert.IsType<CreateMapRotationViewModel>(view.Model);
+            Assert.Equal([mapId, mapId, mapId], model.MapIds);
+            Assert.Equal(["war", "dm", null], model.EntryGameModes);
+        }
+        else
+        {
+            var model = Assert.IsType<EditMapRotationViewModel>(view.Model);
+            Assert.Equal([mapId, mapId, mapId], model.MapIds);
+            Assert.Equal(["war", "dm", null], model.EntryGameModes);
+        }
+
+        Assert.Contains("war", (string)sut.ViewBag.InitialMaps, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Edit_PostSendsOrderedEntriesWithoutLegacyMapIds()
+    {
+        var id = Guid.NewGuid();
+        var mapId = Guid.NewGuid();
+        var rotation = CreateRotation(id, GameType.CallOfDuty4);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.MapRotations_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+        UpdateMapRotationDto? update = null;
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.UpdateMapRotation(It.IsAny<UpdateMapRotationDto>(), It.IsAny<CancellationToken>()))
+            .Callback<UpdateMapRotationDto, CancellationToken>((dto, _) => update = dto)
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+
+        await CreateSut().Edit(new EditMapRotationViewModel
+        {
+            MapRotationId = id, Title = "Rotation", GameMode = "war",
+            MapIds = [mapId, mapId], EntryGameModes = ["war", "dm"]
+        });
+
+        Assert.NotNull(update);
+        Assert.Null(update.MapIds);
+        Assert.Equal([mapId, mapId], update.Entries!.Select(entry => entry.MapId));
+        Assert.Equal(["war", "dm"], update.Entries!.Select(entry => entry.GameMode));
+    }
+
+    [Fact]
+    public async Task Edit_RejectsMissingEntryModesInsteadOfDiscardingThem()
+    {
+        var id = Guid.NewGuid();
+        var rotation = CreateRotation(id, GameType.CallOfDuty4);
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        mockAuthorizationService.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), GameType.CallOfDuty4, AuthPolicies.MapRotations_Write))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var sut = CreateSut();
+
+        await sut.Edit(new EditMapRotationViewModel
+        {
+            MapRotationId = id, Title = "Rotation", GameMode = "war", MapIds = [Guid.NewGuid()]
+        });
+
+        Assert.False(sut.ModelState.IsValid);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateMapRotation(It.IsAny<UpdateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ObservedRotation_CannotBeEditedOrCloned()
+    {
+        var id = Guid.NewGuid();
+        var rotation = CreateRotation(id, GameType.CallOfDuty4) with { Source = RotationSource.ServerObserved };
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        var sut = CreateSut();
+
+        Assert.IsType<NotFoundResult>(await sut.Edit(id));
+        Assert.IsType<NotFoundResult>(await sut.Clone(id));
+        Assert.IsType<NotFoundResult>(await sut.Edit(new EditMapRotationViewModel
+        {
+            MapRotationId = id, Title = "Observed", GameMode = "war"
+        }));
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateMapRotation(It.IsAny<UpdateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ObservedRotation_CannotBeAssignedOrDeleted()
+    {
+        var id = Guid.NewGuid();
+        var rotation = CreateRotation(id, GameType.CallOfDuty4) with { Source = RotationSource.ServerObserved };
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        var sut = CreateSut();
+
+        Assert.IsType<NotFoundResult>(await sut.CreateAssignment(id));
+        Assert.IsType<NotFoundResult>(await sut.CreateAssignment(new CreateMapRotationAssignmentViewModel { MapRotationId = id }));
+        Assert.IsType<NotFoundResult>(await sut.Delete(id));
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.CreateServerAssignment(It.IsAny<CreateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.DeleteMapRotation(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(RotationSource.ServerObserved, RotationSource.ServerObserved)]
+    [InlineData(RotationSource.ServerObserved, RotationSource.PortalManaged)]
+    [InlineData(RotationSource.PortalManaged, RotationSource.ServerObserved)]
+    public async Task NonManagedAssignment_CannotUseManagedActions(RotationSource rotationSource, RotationSource assignmentSource)
+    {
+        var (sut, assignment) = SetupRecovery();
+        assignment.Source = assignmentSource;
+        var rotation = CreateRotation(assignment.MapRotationId, GameType.CallOfDuty4, serverAssignments: [assignment]) with { Source = rotationSource };
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetMapRotation(rotation.MapRotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        var id = assignment.MapRotationServerAssignmentId;
+        var instanceId = $"maprot-apply-{id}";
+
+        Assert.IsType<NotFoundResult>(await sut.EditAssignment(id));
+        Assert.IsType<NotFoundResult>(await sut.EditAssignment(new EditMapRotationAssignmentViewModel { MapRotationServerAssignmentId = id }));
+        Assert.IsType<NotFoundResult>(await sut.AssignmentStatus(id));
+        Assert.IsType<NotFoundResult>(await sut.DeleteAssignment(id, rotation.MapRotationId));
+        Assert.IsType<NotFoundResult>(await sut.ApplyAssignment(id, rotation.MapRotationId));
+        Assert.IsType<NotFoundResult>(await sut.SyncAssignment(id, rotation.MapRotationId));
+        Assert.IsType<NotFoundResult>(await sut.ActivateAssignment(id, rotation.MapRotationId));
+        Assert.IsType<NotFoundResult>(await sut.DeactivateAssignment(id, rotation.MapRotationId));
+        Assert.IsType<NotFoundResult>(await sut.VerifyAssignment(id, rotation.MapRotationId));
+        Assert.IsType<NotFoundResult>(await sut.GetSyncProgress(instanceId));
+        Assert.IsType<NotFoundResult>(await sut.CancelOperation(Guid.NewGuid(), id, instanceId));
+        Assert.IsType<NotFoundResult>(await sut.TerminateOrchestration(instanceId, id));
+        mockSyncApiClient.VerifyNoOtherCalls();
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.DeleteServerAssignment(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ManagedAssignment_WithObservedLinkedTarget_CannotBeEditedOrApplied()
+    {
+        var (sut, main, picker) = SetupCombined();
+        picker.Source = RotationSource.ServerObserved;
+
+        Assert.IsType<NotFoundResult>(await sut.EditAssignment(main.MapRotationServerAssignmentId));
+        Assert.IsType<NotFoundResult>(await sut.ApplyAssignment(main.MapRotationServerAssignmentId, main.MapRotationId));
+        mockSyncApiClient.VerifyNoOtherCalls();
+        mockRepositoryApiClient.Verify(x => x.MapRotations.V1.UpdateServerAssignment(It.IsAny<UpdateMapRotationServerAssignmentDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

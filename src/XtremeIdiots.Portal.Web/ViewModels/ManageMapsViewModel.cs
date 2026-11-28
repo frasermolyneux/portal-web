@@ -1,6 +1,4 @@
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Maps;
-using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
-using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -14,7 +12,7 @@ public class ManageMapsViewModel(GameServerDto gameServer)
     public GameServerLiveStatusDto? LiveStatus { get; set; }
     public List<MapDto> Maps { get; set; } = [];
     public List<ServerMapDto> ServerMaps { get; set; } = [];
-    public List<RconMapDto> RconMaps { get; set; } = [];
+    public PublicServerRotationDto? EffectiveRotation { get; set; }
     public List<MapRotationServerAssignmentDto> RotationAssignments { get; set; } = [];
     public Dictionary<Guid, MapRotationDto> Rotations { get; set; } = [];
 
@@ -22,7 +20,7 @@ public class ManageMapsViewModel(GameServerDto gameServer)
     /// The currently active portal-managed rotation assignment (if any).
     /// </summary>
     public MapRotationServerAssignmentDto? ActiveAssignment => RotationAssignments
-        .FirstOrDefault(a => a.ActivationState == ActivationState.Active);
+        .FirstOrDefault(a => a.MapRotationServerAssignmentId == EffectiveRotation?.MapRotationServerAssignmentId);
 
     /// <summary>
     /// The rotation DTO for the active assignment (if any).
@@ -32,10 +30,6 @@ public class ManageMapsViewModel(GameServerDto gameServer)
     /// <summary>
     /// All map names in the active rotation (portal-managed), used for "In Rotation" checks.
     /// </summary>
-    public HashSet<string> ActiveRotationMapNames => ActiveRotation?.MapRotationMaps?
-        .Select(m => Maps.FirstOrDefault(map => map.MapId == m.MapId)?.MapName)
-        .Where(n => n != null)
-        .Select(n => n!)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase)
-        ?? [];
+    public HashSet<string> ActiveRotationMapNames => EffectiveRotation?.Maps
+        .Select(map => map.MapName).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
 }

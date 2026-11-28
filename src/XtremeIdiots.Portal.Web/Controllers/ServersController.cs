@@ -208,6 +208,7 @@ public class ServersController(
                 maps = rotation.Maps.Select(map => new
                 {
                     map.MapName,
+                    map.GameMode,
                     mapTitle = map.MapName,
                     map.MapImageUri,
                     hasImage = !string.IsNullOrWhiteSpace(map.MapImageUri),

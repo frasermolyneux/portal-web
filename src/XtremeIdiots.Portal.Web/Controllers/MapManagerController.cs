@@ -2,7 +2,6 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MX.Observability.ApplicationInsights.Auditing;
-using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Rcon;
 using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
@@ -58,14 +57,16 @@ public class MapManagerController(
 
             var getLoadedServerMapsFromHostResult = await serversApiClient.Maps.V1.GetLoadedServerMapsFromHost(id).ConfigureAwait(false);
 
-            var rconMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?
-                .Select(m => new RconMapDto(gameServerData!.GameType.ToString(), m.Name))
-                .ToList() ?? [];
+            var serverMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?.ToList() ?? [];
 
             var mapsCollectionApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
                 gameServerData!.GameType,
-                [.. rconMaps.Select(m => m.MapName)],
+                [.. serverMaps.Select(m => m.Name)],
                 null, null, 0, 50, MapsOrder.MapNameAsc).ConfigureAwait(false);
+
+            var effectiveResponse = await repositoryApiClient.MapRotations.V1.GetEffectiveServerRotation(id, cancellationToken).ConfigureAwait(false);
+            if (!effectiveResponse.IsSuccess || effectiveResponse.Result?.Data is not { } effectiveRotation)
+                throw new InvalidOperationException("The effective map rotation is unavailable.");
 
             // Fetch rotation assignments for this server
             var assignmentsResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignments(
@@ -89,26 +90,19 @@ public class MapManagerController(
                     Logger.LogWarning("Map rotation metadata unavailable with status {StatusCode}", rotationResponse.StatusCode);
             }
 
-            // Also fetch map DTOs for maps in the active rotation (they may not be in the RCON set)
+            // Also fetch metadata for rotation entries not present in the host map list.
             var allMaps = mapsCollectionApiResponse.Result?.Data?.Items?.ToList() ?? [];
             var existingMapIds = allMaps.Select(m => m.MapId).ToHashSet();
-            var activeAssignment = assignments.FirstOrDefault(a => a.ActivationState == ActivationState.Active);
-            if (activeAssignment != null && rotations.TryGetValue(activeAssignment.MapRotationId, out var activeRotation))
-            {
-                var missingMapIds = (activeRotation.MapRotationMaps ?? [])
-                    .Select(m => m.MapId)
-                    .Where(id => !existingMapIds.Contains(id))
-                    .ToList();
-
-                var missingMaps = await mapMetadataService.GetAsync(missingMapIds, cancellationToken).ConfigureAwait(false);
-                allMaps.AddRange(missingMaps.Values);
-            }
+            var missingMapIds = effectiveRotation.Maps.Where(map => map.MapId.HasValue)
+                .Select(map => map.MapId!.Value).Where(mapId => !existingMapIds.Contains(mapId)).Distinct().ToList();
+            var missingMaps = await mapMetadataService.GetAsync(missingMapIds, cancellationToken).ConfigureAwait(false);
+            allMaps.AddRange(missingMaps.Values);
 
             var viewModel = new ManageMapsViewModel(gameServerData)
             {
                 Maps = allMaps,
-                ServerMaps = getLoadedServerMapsFromHostResult.Result?.Data?.Items?.ToList() ?? [],
-                RconMaps = rconMaps,
+                ServerMaps = serverMaps,
+                EffectiveRotation = effectiveRotation,
                 RotationAssignments = assignments,
                 Rotations = rotations
             };

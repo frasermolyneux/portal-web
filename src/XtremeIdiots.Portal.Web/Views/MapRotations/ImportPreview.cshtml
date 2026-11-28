@@ -105,8 +105,8 @@
                                                 <td>
                                                     <span class="badge bg-secondary">@item.MapCount maps</span>
                                                     <br />
-                                                    <small class="text-muted" title="@string.Join(", ", item.MapNames)">
-                                                        @string.Join(", ", item.MapNames.Take(5))@(item.MapNames.Count > 5 ? $" +{item.MapNames.Count - 5} more" : "")
+                                                    <small class="text-muted" title="@string.Join(", ", item.MapEntries)">
+                                                        @string.Join(", ", item.MapEntries.Take(5))@(item.MapEntries.Count > 5 ? $" +{item.MapEntries.Count - 5} more" : "")
                                                     </small>
                                                 </td>
                                                 <td><code>@item.ConfigVariableName</code></td>

@@ -113,10 +113,10 @@
 
                 <div class="ibox">
                     <div class="ibox-title">
-                        <h5>Maps (@Model.Maps.Count)</h5>
+                        <h5>Maps (@(Model.Rotation.MapRotationMaps?.Count ?? 0))</h5>
                     </div>
                     <div class="ibox-content">
-                        @if (Model.Maps.Count == 0)
+                        @if (Model.Rotation.MapRotationMaps is not { Count: > 0 })
                         {
                             <div class="empty-state">
                                 <i class="fa-regular fa-map empty-state-icon" aria-hidden="true"></i>
@@ -134,14 +134,13 @@
                                 {
                                     var rotationMap = sortedMaps[i];
                                     var mapDto = Model.Maps.FirstOrDefault(m => m.MapId == rotationMap.MapId);
-                                    if (mapDto != null)
-                                    {
-                                        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-2 text-center">
-                                            <img src="@(mapDto.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid rounded" alt="Map image for @mapDto.MapName" loading="lazy" onerror="this.onerror=null;this.src='/images/noimage.jpg';" />
-                                            <small class="text-muted d-block">#@(i + 1)</small>
-                                            <small class="fw-bold">@mapDto.MapName</small>
-                                        </div>
-                                    }
+                                    var mapName = mapDto?.MapName ?? rotationMap.MapId.ToString();
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-4 col-6 mb-2 text-center">
+                                        <img src="@(mapDto?.MapImageUri ?? "/images/noimage.jpg")" class="map-image img-fluid rounded" alt="Map image for @mapName" loading="lazy" onerror="this.onerror=null;this.src='/images/noimage.jpg';" />
+                                        <small class="text-muted d-block">#@(i + 1)</small>
+                                        <small class="fw-bold">@mapName</small>
+                                        <small class="text-muted d-block">@(rotationMap.GameMode ?? Model.Rotation.GameMode)</small>
+                                    </div>
                                 }
                             </div>
                         }

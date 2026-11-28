@@ -7,6 +7,7 @@ using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Config;
 using XtremeIdiots.Portal.Integrations.Servers.Abstractions.Models.V1.Files;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
 using XtremeIdiots.Portal.Web.IntegrationTests.Playwright;
 using XtremeIdiots.Portal.Web.Services;
@@ -297,6 +298,128 @@ public sealed class MapRotationRecoveryBrowserTests
         await browser.Page.Locator("#mapSearch").PressAsync("ArrowDown");
         await browser.Page.Locator("#mapSearch").PressAsync("Enter");
         await Assertions.Expect(browser.Page.Locator("#selectedMapsList")).ToContainTextAsync("mp_test_0");
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task MapEditor_AllowsRepeatedMapsWithIndependentModes()
+    {
+        var scenario = new MapRotationRecoveryScenario();
+        CreateMapRotationDto? submitted = null;
+        scenario.Repository.Setup(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()))
+            .Callback<CreateMapRotationDto, CancellationToken>((dto, _) => submitted = dto)
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(
+                new MapRotationDto(scenario.RotationId, GameType.CallOfDuty4, "Rotation", null, "war",
+                    1, null, DateTime.UtcNow, DateTime.UtcNow, [], []))));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        var mapId = Guid.NewGuid().ToString();
+        await browser.Page.RouteAsync("**/MapSearch/Maps?**", route => route.FulfillAsync(new()
+        {
+            ContentType = "application/json",
+            Body = System.Text.Json.JsonSerializer.Serialize(new[] { new { id = mapId, text = "mp_repeat", imageUrl = "/images/noimage.jpg" } })
+        }));
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, "/MapRotations/Create").AbsoluteUri);
+        await browser.Page.Locator("#GameType").SelectOptionAsync("CallOfDuty4");
+        await browser.Page.Locator("#Title").FillAsync("Rotation");
+        await browser.Page.Locator("#GameMode").SelectOptionAsync("war");
+        for (var i = 0; i < 2; i++)
+        {
+            await browser.Page.Locator("#mapSearch").FillAsync("mp_repeat");
+            await browser.Page.GetByRole(AriaRole.Option, new() { Name = "mp_repeat", Exact = true }).ClickAsync();
+        }
+
+        await browser.Page.GetByLabel("Game mode for mp_repeat, entry 1").FillAsync("war");
+        await browser.Page.GetByLabel("Game mode for mp_repeat, entry 2").FillAsync("dm");
+        await Assertions.Expect(browser.Page.Locator("#mapIdsContainer input")).ToHaveCountAsync(2);
+        await browser.Page.Locator(".map-rotation-item").Nth(1).DragToAsync(browser.Page.Locator(".map-rotation-item").Nth(0));
+        await Assertions.Expect(browser.Page.GetByLabel("Game mode for mp_repeat, entry 1")).ToHaveValueAsync("dm");
+        await Assertions.Expect(browser.Page.GetByLabel("Game mode for mp_repeat, entry 2")).ToHaveValueAsync("war");
+        await Assertions.Expect(browser.Page.Locator("#mapIdsContainer input").First).ToHaveValueAsync(mapId);
+        await Assertions.Expect(browser.Page.Locator("#mapIdsContainer input").Last).ToHaveValueAsync(mapId);
+        await browser.Page.GetByLabel("Game mode for mp_repeat, entry 2").FillAsync("");
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = "Create", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == "/MapRotations/Create");
+        Assert.Equal(302, response.Status);
+        Assert.NotNull(submitted);
+        Assert.Equal([Guid.Parse(mapId), Guid.Parse(mapId)], submitted.Entries!.Select(entry => entry.MapId));
+        Assert.Equal(["dm", null], submitted.Entries!.Select(entry => entry.GameMode));
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(false, "custom_mode")]
+    [InlineData(true, "custom_mode")]
+    [InlineData(false, "WaR")]
+    [InlineData(true, "WaR")]
+    public async Task MapEditor_PreservesExistingDefaultModeAndEntryOverrides(bool clone, string defaultMode)
+    {
+        var scenario = new MapRotationRecoveryScenario();
+        var mapId = Guid.NewGuid();
+        var rotation = new MapRotationDto(scenario.RotationId, GameType.CallOfDuty4, "Rotation", null, defaultMode,
+            1, null, DateTime.UtcNow, DateTime.UtcNow,
+            [new() { MapId = mapId, SortOrder = 0 }, new() { MapId = mapId, SortOrder = 1, GameMode = "dm" }], []);
+        scenario.Repository.Setup(x => x.MapRotations.V1.GetMapRotation(scenario.RotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        scenario.Repository.Setup(x => x.Maps.V1.GetMap(mapId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapDto>(HttpStatusCode.NotFound));
+        CreateMapRotationDto? created = null;
+        UpdateMapRotationDto? updated = null;
+        scenario.Repository.Setup(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()))
+            .Callback<CreateMapRotationDto, CancellationToken>((dto, _) => created = dto)
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        scenario.Repository.Setup(x => x.MapRotations.V1.UpdateMapRotation(It.IsAny<UpdateMapRotationDto>(), It.IsAny<CancellationToken>()))
+            .Callback<UpdateMapRotationDto, CancellationToken>((dto, _) => updated = dto)
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        var action = clone ? "Clone" : "Edit";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/{action}/{scenario.RotationId}").AbsoluteUri);
+        await Assertions.Expect(browser.Page.Locator("#GameMode")).ToHaveValueAsync(defaultMode);
+        await Assertions.Expect(browser.Page.Locator("input[name='EntryGameModes[0]']")).ToHaveValueAsync("");
+        await Assertions.Expect(browser.Page.Locator("input[name='EntryGameModes[1]']")).ToHaveValueAsync("dm");
+
+        var postPath = clone ? "/MapRotations/Create" : $"/MapRotations/Edit/{scenario.RotationId}";
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = clone ? "Create" : "Save Changes", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == postPath);
+
+        Assert.Equal(302, response.Status);
+        Assert.Equal(defaultMode, clone ? created!.GameMode : updated!.GameMode);
+        var entries = clone ? created!.Entries! : updated!.Entries!;
+        Assert.Equal([mapId, mapId], entries.Select(entry => entry.MapId));
+        Assert.Equal([null, "dm"], entries.Select(entry => entry.GameMode));
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MapEditor_ShowsMismatchedEntryModesError(bool clone)
+    {
+        var scenario = new MapRotationRecoveryScenario();
+        var mapId = Guid.NewGuid();
+        var rotation = new MapRotationDto(scenario.RotationId, GameType.CallOfDuty4, "Rotation", null, "war",
+            1, null, DateTime.UtcNow, DateTime.UtcNow, [new() { MapId = mapId, SortOrder = 0 }], []);
+        scenario.Repository.Setup(x => x.MapRotations.V1.GetMapRotation(scenario.RotationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapRotationDto>(HttpStatusCode.OK, new ApiResponse<MapRotationDto>(rotation)));
+        scenario.Repository.Setup(x => x.Maps.V1.GetMap(mapId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapDto>(HttpStatusCode.NotFound));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.MapRotationDeployer, scenario.ConfigureServices);
+        var action = clone ? "Clone" : "Edit";
+        await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/MapRotations/{action}/{scenario.RotationId}").AbsoluteUri);
+        await browser.Page.Locator("input[name='EntryGameModes[0]']").EvaluateAsync("element => element.remove()");
+
+        var postPath = clone ? "/MapRotations/Create" : $"/MapRotations/Edit/{scenario.RotationId}";
+        var response = await browser.Page.RunAndWaitForResponseAsync(
+            () => browser.Page.GetByRole(AriaRole.Button, new() { Name = clone ? "Create" : "Save Changes", Exact = true }).ClickAsync(),
+            response => response.Request.Method == "POST" && new Uri(response.Url).AbsolutePath == postPath);
+
+        Assert.Equal(200, response.Status);
+        var error = browser.Page.Locator("[data-valmsg-for='EntryGameModes']");
+        await Assertions.Expect(error).ToBeVisibleAsync();
+        await Assertions.Expect(error).ToContainTextAsync("Each map entry must include its game mode value.");
+        scenario.Repository.Verify(x => x.MapRotations.V1.CreateMapRotation(It.IsAny<CreateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        scenario.Repository.Verify(x => x.MapRotations.V1.UpdateMapRotation(It.IsAny<UpdateMapRotationDto>(), It.IsAny<CancellationToken>()), Times.Never);
         browser.AssertNoBrowserErrors();
     }
 

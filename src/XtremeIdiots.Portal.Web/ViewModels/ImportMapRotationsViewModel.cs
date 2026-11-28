@@ -51,6 +51,7 @@ public class ImportRotationPreviewItem
     public string GameMode { get; set; } = "";
     public int MapCount { get; set; }
     public List<string> MapNames { get; set; } = [];
+    public List<string> MapEntries { get; set; } = [];
     public string ConfigVariableName { get; set; } = "";
     public bool IsActive { get; set; }
     public string? Author { get; set; }

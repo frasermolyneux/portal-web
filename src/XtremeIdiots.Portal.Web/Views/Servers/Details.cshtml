@@ -329,14 +329,13 @@
                 url: '/Servers/GetPublicMapRotation/' + serverId,
                 success: function(result) {
                     if (result.success && result.maps && result.maps.length > 0) {
-                        $('#si-rotationTitle').text(result.isObservedHistory ? 'Recent map history (48 hours)' : 'Map Rotation: ' + result.rotationTitle);
-                        if (result.isObservedHistory) $('#si-rotationDownload').text('Download recent maps ZIP');
+                        $('#si-rotationTitle').text(result.rotationTitle ? 'Map Rotation: ' + result.rotationTitle : 'Map Rotation');
                         var carousel = $('#si-mapRotationCarousel');
                         carousel.empty();
 
                         result.maps.forEach(function(map) {
                             var imgSrc = map.hasImage && map.mapImageUri ? map.mapImageUri : '/images/noimage.jpg';
-                            var isCurrent = map.mapName === currentMap;
+                            var isCurrent = currentMap && map.mapName.toLowerCase() === currentMap.toLowerCase();
 
                             var card = $('<div>', { class: 'map-card' + (isCurrent ? ' border border-success border-2 rounded' : '') });
                             var img = $('<img>', {
@@ -354,6 +353,7 @@
                             }
 
                             body.append(title);
+                            if (map.gameMode) body.append($('<div>', { class: 'small text-muted' }).text(map.gameMode));
                             body.append($('<div>', { class: 'small' }).text(
                                 map.likes + ' likes · ' + map.dislikes + ' dislikes · ' + map.votes + ' votes'));
                             body.append($('<div>', { class: 'small text-muted' }).text(
@@ -371,7 +371,7 @@
                         }
                     } else {
                         $('#si-mapRotationLoading').hide();
-                        $('#si-mapRotationError').text('No applied rotation or maps observed in the last 48 hours').show();
+                        $('#si-mapRotationError').text('No applied or server-observed rotation is available.').show();
                         $('#si-rotationDownload').hide();
                     }
                 },

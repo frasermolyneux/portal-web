@@ -41,16 +41,40 @@ public class MapRotationsController(
     private const string ConfigTargetErrorKey = "ConfigTargetError_";
     private const int MaxConfigFileBytes = 1_000_000;
 
-    private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default)
+    private static List<MapRotationEntryDto> RotationEntries(List<Guid> mapIds, IReadOnlyList<string?> modes)
+    {
+        return [.. mapIds.Select((id, index) => new MapRotationEntryDto
+        {
+            MapId = id,
+            GameMode = index < modes.Count && !string.IsNullOrWhiteSpace(modes[index]) ? modes[index]!.Trim() : null
+        })];
+    }
+
+    private static bool IsManagedAssignment(MapRotationDto rotation, MapRotationServerAssignmentDto assignment)
+    {
+        return rotation.Source == RotationSource.PortalManaged
+            && assignment.Source == RotationSource.PortalManaged
+            && rotation.AssignmentGroup(assignment).Targets.All(target => target.Source == RotationSource.PortalManaged);
+    }
+
+    private async Task PopulateInitialMapsViewBag(List<Guid> mapIds, CancellationToken cancellationToken = default,
+        IReadOnlyList<string?>? entryGameModes = null)
     {
         var initialMaps = new List<object>();
         var maps = await mapMetadataService.GetAsync(mapIds, cancellationToken).ConfigureAwait(false);
-        foreach (var mapId in mapIds)
+        for (var index = 0; index < mapIds.Count; index++)
         {
-            if (maps.TryGetValue(mapId, out var map))
+            var mapId = mapIds[index];
+            maps.TryGetValue(mapId, out var map);
+            if (map is null)
+                Logger.LogWarning("Map metadata unavailable for rotation entry {MapId}", mapId);
+            initialMaps.Add(new
             {
-                initialMaps.Add(new { id = map.MapId.ToString(), text = map.MapName, imageUrl = !string.IsNullOrEmpty(map.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg" });
-            }
+                id = mapId.ToString(),
+                text = map?.MapName ?? mapId.ToString(),
+                imageUrl = !string.IsNullOrEmpty(map?.MapImageUri) ? map.MapImageUri : "/images/noimage.jpg",
+                gameMode = entryGameModes is not null && index < entryGameModes.Count ? entryGameModes[index] : null
+            });
         }
 
         ViewBag.InitialMaps = System.Text.Json.JsonSerializer.Serialize(initialMaps);
@@ -103,7 +127,7 @@ public class MapRotationsController(
         if (!supportedGameTypes.Contains(model.GameType))
         {
             ModelState.AddModelError(nameof(model.GameType), "Only Call of Duty 4, Call of Duty 4x, and Call of Duty 5 are supported.");
-            await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
+            await PopulateInitialMapsViewBag(model.MapIds, cancellationToken, model.EntryGameModes).ConfigureAwait(false);
             return View(model);
         }
 
@@ -119,9 +143,15 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            if (model.EntryGameModes.Count != model.MapIds.Count)
+                ModelState.AddModelError(nameof(model.EntryGameModes), "Each map entry must include its game mode value.");
+
             var modelValidationResult = CheckModelState(model);
             if (modelValidationResult != null)
+            {
+                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken, model.EntryGameModes).ConfigureAwait(false);
                 return modelValidationResult;
+            }
 
             var createDto = new CreateMapRotationDto(model.GameType, model.Title, model.GameMode)
             {
@@ -130,7 +160,7 @@ public class MapRotationsController(
                 Category = model.Category,
                 SequenceOrder = model.SequenceOrder,
                 CreatedByUserId = Guid.TryParse(User.UserProfileId(), out var upId) ? upId : null,
-                MapIds = model.MapIds
+                Entries = RotationEntries(model.MapIds, model.EntryGameModes)
             };
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.CreateMapRotation(createDto, cancellationToken).ConfigureAwait(false);
@@ -149,7 +179,7 @@ public class MapRotationsController(
                     ModelState.AddModelError(string.Empty, "An error occurred while creating the map rotation");
                 }
 
-                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
+                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken, model.EntryGameModes).ConfigureAwait(false);
                 return View(model);
             }
 
@@ -179,6 +209,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = apiResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -190,9 +222,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            await PopulateInitialMapsViewBag(
-                rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? [],
-                cancellationToken).ConfigureAwait(false);
+            var entries = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? [];
+            var mapIds = entries.Select(m => m.MapId).ToList();
+            var modes = entries.Select(m => m.GameMode).ToList();
+            await PopulateInitialMapsViewBag(mapIds, cancellationToken, modes).ConfigureAwait(false);
 
             return View("Create", new CreateMapRotationViewModel
             {
@@ -202,7 +235,8 @@ public class MapRotationsController(
                 GameMode = rotation.GameMode,
                 Status = MapRotationStatus.Draft,
                 Category = rotation.Category,
-                MapIds = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? []
+                MapIds = mapIds,
+                EntryGameModes = modes
             });
         }, nameof(Clone)).ConfigureAwait(false);
     }
@@ -218,6 +252,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = apiResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -229,9 +265,10 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
-            await PopulateInitialMapsViewBag(
-                rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? [],
-                cancellationToken).ConfigureAwait(false);
+            var entries = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).ToList() ?? [];
+            var mapIds = entries.Select(m => m.MapId).ToList();
+            var modes = entries.Select(m => m.GameMode).ToList();
+            await PopulateInitialMapsViewBag(mapIds, cancellationToken, modes).ConfigureAwait(false);
 
             return View(new EditMapRotationViewModel
             {
@@ -244,7 +281,8 @@ public class MapRotationsController(
                 SequenceOrder = rotation.SequenceOrder,
                 GameType = rotation.GameType,
                 Version = rotation.Version,
-                MapIds = rotation.MapRotationMaps?.OrderBy(m => m.SortOrder).Select(m => m.MapId).ToList() ?? []
+                MapIds = mapIds,
+                EntryGameModes = modes
             });
         }, nameof(Edit)).ConfigureAwait(false);
     }
@@ -262,6 +300,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -273,9 +313,15 @@ public class MapRotationsController(
             if (authResult != null)
                 return authResult;
 
+            if (model.EntryGameModes.Count != model.MapIds.Count)
+                ModelState.AddModelError(nameof(model.EntryGameModes), "Each map entry must include its game mode value.");
+
             var modelValidationResult = CheckModelState(model);
             if (modelValidationResult != null)
+            {
+                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken, model.EntryGameModes).ConfigureAwait(false);
                 return modelValidationResult;
+            }
 
             var updateDto = new UpdateMapRotationDto(model.MapRotationId)
             {
@@ -286,7 +332,7 @@ public class MapRotationsController(
                 Category = model.Category,
                 SequenceOrder = model.SequenceOrder,
                 LastModifiedByUserId = Guid.TryParse(User.UserProfileId(), out var editUpId) ? editUpId : null,
-                MapIds = model.MapIds
+                Entries = RotationEntries(model.MapIds, model.EntryGameModes)
             };
 
             var apiResponse = await repositoryApiClient.MapRotations.V1.UpdateMapRotation(updateDto, cancellationToken).ConfigureAwait(false);
@@ -305,7 +351,7 @@ public class MapRotationsController(
                     ModelState.AddModelError(string.Empty, "An error occurred while updating the map rotation");
                 }
 
-                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken).ConfigureAwait(false);
+                await PopulateInitialMapsViewBag(model.MapIds, cancellationToken, model.EntryGameModes).ConfigureAwait(false);
                 return View(model);
             }
 
@@ -332,6 +378,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = apiResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -412,6 +460,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = apiResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -465,6 +515,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             var authorizedServers = await GetAuthorizedServersAsync(rotation.GameType, cancellationToken).ConfigureAwait(false);
 
@@ -495,6 +547,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (rotation.Source != RotationSource.PortalManaged)
+                return NotFound();
 
             // Validate the submitted form before hitting the repository or authorization so that a
             // missing/invalid GameServerId redisplays the form with validation errors rather than a 404.
@@ -638,6 +692,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -704,6 +760,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -950,6 +1008,8 @@ public class MapRotationsController(
                 return BadRequest("The specified assignment does not belong to this rotation.");
 
             var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -1011,6 +1071,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             // Resource-based auth check against the rotation's game type
             var authResult = await CheckAuthorizationAsync(
@@ -1067,6 +1129,8 @@ public class MapRotationsController(
             var assignment = rotation.ServerAssignments?.FirstOrDefault(a => a.MapRotationServerAssignmentId == assignmentId);
             if (assignment == null)
                 return BadRequest("The specified assignment does not belong to this rotation.");
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(authorizationService,
                 (rotation.GameType, assignment.GameServerId), AuthPolicies.MapRotations_Deploy,
@@ -1150,6 +1214,8 @@ public class MapRotationsController(
                 return BadRequest("The specified assignment does not belong to this rotation.");
 
             var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -1202,6 +1268,8 @@ public class MapRotationsController(
                 return BadRequest("The specified assignment does not belong to this rotation.");
 
             var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -1258,6 +1326,8 @@ public class MapRotationsController(
                 return BadRequest("The specified assignment does not belong to this rotation.");
 
             var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -1310,6 +1380,8 @@ public class MapRotationsController(
                 return BadRequest("The specified assignment does not belong to this rotation.");
 
             var assignment = rotation.ServerAssignments.First(a => a.MapRotationServerAssignmentId == assignmentId);
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -1359,6 +1431,8 @@ public class MapRotationsController(
         var rotation = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignment.Result.Data.MapRotationId, cancellationToken).ConfigureAwait(false);
         if (!rotation.IsSuccess || rotation.Result?.Data == null)
             return StatusCode(502, "Unable to resolve the rotation for progress.");
+        if (!IsManagedAssignment(rotation.Result.Data, assignment.Result.Data))
+            return NotFound();
         var authResult = await CheckAuthorizationAsync(authorizationService,
             rotation.Result.Data.GameType,
             AuthPolicies.MapRotations_Read, nameof(GetSyncProgress), "MapRotation").ConfigureAwait(false);
@@ -1404,6 +1478,8 @@ public class MapRotationsController(
                 return NotFound();
 
             var rotation = rotationResponse.Result.Data;
+            if (!IsManagedAssignment(rotation, assignment))
+                return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
                 authorizationService,
@@ -1434,7 +1510,8 @@ public class MapRotationsController(
             return false;
 
         var sourceResponse = await repositoryApiClient.MapRotations.V1.GetServerAssignment(initiatingAssignmentId, cancellationToken).ConfigureAwait(false);
-        return sourceResponse.IsSuccess && sourceResponse.Result?.Data is { } source && source.GameServerId == assignment.GameServerId
+        return sourceResponse.IsSuccess && sourceResponse.Result?.Data is { Source: RotationSource.PortalManaged } source
+            && source.GameServerId == assignment.GameServerId
             && source.MapRotationId == assignment.MapRotationId
             && ((source.IsMainRotation() && assignment.IsAacpMapPicker())
                 || (source.IsAacpMapPicker() && assignment.IsMainRotation()));
@@ -1497,6 +1574,8 @@ public class MapRotationsController(
             var rotationResponse = await repositoryApiClient.MapRotations.V1.GetMapRotation(assignmentResponse.Result.Data.MapRotationId, cancellationToken).ConfigureAwait(false);
 
             if (rotationResponse.IsNotFound || rotationResponse.Result?.Data is null)
+                return NotFound();
+            if (!IsManagedAssignment(rotationResponse.Result.Data, assignmentResponse.Result.Data))
                 return NotFound();
 
             var authResult = await CheckAuthorizationAsync(
@@ -1621,6 +1700,8 @@ public class MapRotationsController(
                     GameMode = rotation.GameMode,
                     MapCount = rotation.MapNames.Count,
                     MapNames = rotation.MapNames,
+                    MapEntries = [.. rotation.Entries.Select(entry => entry.GameMode is null
+                        ? entry.MapName : $"{entry.MapName} ({entry.GameMode})")],
                     ConfigVariableName = rotation.ConfigVariableName,
                     IsActive = rotation.IsActive,
                     Author = rotation.Author,
@@ -1846,11 +1927,15 @@ public class MapRotationsController(
 
             // Step 1: Create missing maps (batch, best-effort — may fail on concurrent imports)
             var mapsCreated = 0;
-            if (draft.NewMapNames.Count > 0)
+            var importable = selectedRotationsWithIndex.Where(x =>
+                string.IsNullOrEmpty(x.Rotation.GameMode) || x.Rotation.Entries.All(entry => entry.GameMode is not null)).ToList();
+            var neededNames = importable.SelectMany(x => x.Rotation.MapNames).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newMapNames = draft.NewMapNames.Where(neededNames.Contains).ToList();
+            if (newMapNames.Count > 0)
             {
                 try
                 {
-                    var mapDtos = draft.NewMapNames
+                    var mapDtos = newMapNames
                         .Select(name => new CreateMapDto(draft.GameType, name))
                         .ToList();
 
@@ -1865,7 +1950,7 @@ public class MapRotationsController(
             }
 
             // Step 2: Resolve ALL map names to GUIDs (always re-resolve after creation attempt)
-            var allMapNames = selectedRotationsWithIndex.SelectMany(x => x.Rotation.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var allMapNames = importable.SelectMany(x => x.Rotation.MapNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var mapLookup = await ResolveImportMaps(draft.GameType, allMapNames, cancellationToken).ConfigureAwait(false);
 
             // Step 3: Create rotations
@@ -1875,10 +1960,16 @@ public class MapRotationsController(
             {
                 try
                 {
-                    var mapIds = rotation.MapNames
-                        .Where(m => mapLookup.ContainsKey(m))
-                        .Select(m => mapLookup[m])
-                        .ToList();
+                    if (!string.IsNullOrEmpty(rotation.GameMode) && rotation.Entries.Any(entry => entry.GameMode is null))
+                    {
+                        results.Add(new ImportResultItem
+                        {
+                            Title = rotation.Title,
+                            Status = "Failed",
+                            Error = "A map appears before the first gametype. Specify its gametype in the config before importing."
+                        });
+                        continue;
+                    }
 
                     var unresolvedMaps = rotation.MapNames.Where(m => !mapLookup.ContainsKey(m)).ToList();
                     if (unresolvedMaps.Count > 0)
@@ -1911,7 +2002,11 @@ public class MapRotationsController(
                     {
                         Description = description,
                         CreatedByUserId = Guid.TryParse(User.UserProfileId(), out var importUpId) ? importUpId : null,
-                        MapIds = mapIds
+                        Entries = [.. rotation.Entries.Select(entry => new MapRotationEntryDto
+                        {
+                            MapId = mapLookup[entry.MapName],
+                            GameMode = entry.GameMode
+                        })]
                     };
 
                     var createResult = await repositoryApiClient.MapRotations.V1

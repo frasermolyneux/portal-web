@@ -31,4 +31,5 @@ public class CreateMapRotationViewModel
     public int? SequenceOrder { get; set; }
 
     public List<Guid> MapIds { get; set; } = [];
+    public List<string?> EntryGameModes { get; set; } = [];
 }

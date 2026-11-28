@@ -5,6 +5,7 @@ using MX.Api.Abstractions;
 using System.Net;
 using XtremeIdiots.Portal.Repository.Abstractions.Constants.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Analytics.Maps;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.LiveStatus;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
@@ -143,6 +144,58 @@ public sealed class PublicMapsBrowserTests
         browser.AssertNoBrowserErrors();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ServerDetails_ShowsObservedCurrentMapOrUnavailableRotation(bool hasRotation)
+    {
+        var repository = Repository();
+        var server = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                GameServerId = serverId,
+                GameType = GameType.CallOfDuty4x,
+                Title = "Public server",
+                Hostname = "192.0.2.10",
+                QueryPort = 28960,
+                ServerListEnabled = true
+            }))!;
+        var status = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerLiveStatusDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { ServerId = serverId, Map = "mp_custom" }))!;
+        repository.Setup(r => r.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        repository.Setup(r => r.LiveStatus.V1.GetGameServerLiveStatus(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerLiveStatusDto>(HttpStatusCode.OK, new ApiResponse<GameServerLiveStatusDto>(status)));
+        await using var browser = await BrowserFixture.CreateAsync(null, services => services.AddSingleton(repository.Object));
+        await browser.Page.RouteAsync("**/Servers/GetOverviewStatistics/*", route =>
+            route.FulfillAsync(new() { ContentType = "text/html", Body = "<p>No statistics</p>" }));
+        await browser.Page.RouteAsync("**/Servers/GetLivePlayers/*", route => Json(route, new { data = Array.Empty<object>() }));
+        await browser.Page.RouteAsync("**/Servers/GetPublicMapRotation/*", route => Json(route, new
+        {
+            success = hasRotation,
+            maps = hasRotation
+                ? new[] { new { mapName = "Mp_CuStOm", mapTitle = "Custom", hasImage = false, gameMode = "DM", votes = 0 } }
+                : []
+        }));
+        var response = await browser.Page.GotoAsync(new Uri(browser.Host.BaseAddress, $"/Servers/Details/{serverId}").AbsoluteUri);
+        Assert.True(response?.Ok);
+        await browser.Page.Locator("#maps-tab").ClickAsync();
+
+        if (hasRotation)
+        {
+            await Assertions.Expect(browser.Page.Locator("#si-mapRotationCarousel .map-card")).ToContainTextAsync("Mp_CuStOm");
+            await Assertions.Expect(browser.Page.Locator("#si-mapRotationCarousel .map-card .badge")).ToHaveTextAsync("Current");
+        }
+        else
+        {
+            await Assertions.Expect(browser.Page.Locator("#si-mapRotationError"))
+                .ToHaveTextAsync("No applied or server-observed rotation is available.");
+            await Assertions.Expect(browser.Page.Locator("#si-rotationDownload")).ToBeHiddenAsync();
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
     [Fact]
     public async Task PublicRotations_ShowGlobalAndServerPopularity_AndOnlyExplicitAuthenticatedZipCreation()
     {
@@ -162,7 +215,7 @@ public sealed class PublicMapsBrowserTests
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Public COD4x" }))
             .ToContainTextAsync("This server's map rotation");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD5" }))
-            .ToContainTextAsync("Recently played on this server (last 2 days)");
+            .ToContainTextAsync("This server's map rotation");
         var assignedMap = browser.Page.GetByRole(AriaRole.Region, new() { Name = "Public COD4x" })
             .Locator(".public-map-card");
         await Assertions.Expect(assignedMap).ToContainTextAsync("Global");
@@ -170,9 +223,9 @@ public sealed class PublicMapsBrowserTests
         await Assertions.Expect(assignedMap).ToContainTextAsync("This server");
         await Assertions.Expect(assignedMap).ToContainTextAsync("Lifetime: 1 likes · 1 dislikes");
         await Assertions.Expect(assignedMap).ToContainTextAsync("50% liked this map on this server");
-        var historyMap = browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD5" })
+        var observedMap = browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD5" })
             .Locator(".public-map-card");
-        await Assertions.Expect(historyMap).ToContainTextAsync("No votes on this server yet");
+        await Assertions.Expect(observedMap).ToContainTextAsync("No votes on this server yet");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD2" })
             .Locator(".public-map-card")).ToContainTextAsync("Server-specific popularity is unavailable.");
         await Assertions.Expect(browser.Page.GetByRole(AriaRole.Region, new() { Name = "Synthetic COD2" })
@@ -219,9 +272,9 @@ public sealed class PublicMapsBrowserTests
                         new() { GameServerId = serverId, Title = "Synthetic COD4x", GameType = GameType.CallOfDuty4x, RotationTitle = "Normal",
                             Maps = [new() { MapName = "mp_custom", Likes = 2, ServerLikes = 1, ServerDislikes = 1 }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD5", GameType = GameType.CallOfDuty5,
-                            IsObservedHistory = true, Maps = [new() { MapName = "mp_history", Likes = 5, Dislikes = 1, ServerLikes = 0, ServerDislikes = 0 }] },
+                            Maps = [new() { MapName = "mp_observed", Likes = 5, Dislikes = 1, ServerLikes = 0, ServerDislikes = 0 }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Synthetic COD2", GameType = GameType.CallOfDuty2,
-                            IsObservedHistory = true, Maps = [new() { MapName = "mp_cod2" }] },
+                            Maps = [new() { MapName = "mp_cod2" }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Teamspeak", GameType = GameType.Unknown,
                             Maps = [new() { MapName = "not-a-game-map" }] },
                         new() { GameServerId = Guid.NewGuid(), Title = "Empty server", GameType = GameType.CallOfDuty4 }

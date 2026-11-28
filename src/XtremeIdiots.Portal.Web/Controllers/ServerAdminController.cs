@@ -751,43 +751,27 @@ public class ServerAdminController(
     {
         return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var (actionResult, gameServerData) = await GetAuthorizedGameServerAsync(id, nameof(GetMapRotation), cancellationToken).ConfigureAwait(false);
+            var (actionResult, _) = await GetAuthorizedGameServerAsync(id, nameof(GetMapRotation), cancellationToken).ConfigureAwait(false);
             if (actionResult is not null)
                 return actionResult;
 
-            var getServerMapsResult = await GetServerMapsAsync(id, gameServerData!.GameType).ConfigureAwait(false);
-
-            if (!getServerMapsResult.IsSuccess || getServerMapsResult.Result?.Data?.Items is null)
+            var response = await repositoryApiClient.MapRotations.V1.GetEffectiveServerRotation(id, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccess || response.Result?.Data is not { } rotation)
             {
                 Logger.LogWarning("Failed to get map rotation for server {ServerId}", id);
                 return Json(new { success = false, maps = Array.Empty<object>() });
             }
 
-            var rconMaps = getServerMapsResult.Result.Data.Items;
-
-            // Get map details from repository for images and metadata
-            var mapNames = rconMaps.Select(m => m.MapName).ToArray();
-            var mapsApiResponse = await repositoryApiClient.Maps.V1.GetMaps(
-                gameServerData!.GameType,
-                mapNames,
-                null, null, 0, 100, MapsOrder.MapNameAsc, cancellationToken).ConfigureAwait(false);
-
-            var mapDetails = mapsApiResponse.Result?.Data?.Items?.ToDictionary(m => m.MapName, m => m)
-                ?? [];
-
-            var enrichedMaps = rconMaps.Select(rconMap =>
+            var entries = rotation.Maps.Select(map => new
             {
-                var mapDetail = mapDetails.GetValueOrDefault(rconMap.MapName);
-                return new
-                {
-                    mapName = rconMap.MapName,
-                    mapTitle = mapDetail?.MapName ?? rconMap.MapName,
-                    mapImageUri = mapDetail?.MapImageUri,
-                    hasImage = mapDetail?.MapImageUri is not null
-                };
+                map.MapName,
+                mapTitle = map.MapName,
+                map.MapImageUri,
+                map.GameMode,
+                hasImage = !string.IsNullOrWhiteSpace(map.MapImageUri)
             }).ToList();
 
-            return Json(new { success = true, maps = enrichedMaps });
+            return Json(new { success = true, maps = entries });
         }, nameof(GetMapRotation)).ConfigureAwait(false);
     }
 
@@ -2269,18 +2253,6 @@ public class ServerAdminController(
     {
         var result = await apiResultTask.ConfigureAwait(false);
         return new ApiResult(result.StatusCode, new ApiResponse(result.Result?.Errors?.ToArray() ?? []));
-    }
-
-    private Task<ApiResult<RconMapCollectionDto>> GetServerMapsAsync(Guid serverId, GameType gameType)
-    {
-        return (int)gameType switch
-        {
-            (int)GameType.CallOfDuty2 => serversApiClient.Cod2Rcon.V1.GetMaps(serverId),
-            (int)GameType.CallOfDuty4 => serversApiClient.Cod4Rcon.V1.GetMaps(serverId),
-            (int)GameType.CallOfDuty5 => serversApiClient.Cod5Rcon.V1.GetMaps(serverId),
-            (int)GameType.CallOfDuty4x => serversApiClient.CoD4xRcon.V1.GetMaps(serverId),
-            _ => throw CreateUnsupportedGameTypeException(nameof(GetServerMapsAsync), gameType),
-        };
     }
 
     private async Task<ApiResult> ChangeMapAsync(Guid serverId, GameType gameType, string mapName, CancellationToken cancellationToken)

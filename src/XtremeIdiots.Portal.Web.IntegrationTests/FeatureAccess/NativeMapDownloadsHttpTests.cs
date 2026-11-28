@@ -25,14 +25,14 @@ public sealed partial class NativeMapDownloadsHttpTests
     private readonly static string[] untrustedPaths = ["redirect/cod4/mods/untrusted"];
 
     [Fact]
-    public async Task ServerDetails_LinksToServerDerivedZip_AndUsesSharedObservedMapPopularity()
+    public async Task ServerDetails_LinksToServerDerivedZip_AndUsesSharedMapPopularity()
     {
         await using var host = await CreateHost();
         var id = Guid.NewGuid();
         SetRotation(host, new PublicServerRotationDto
         {
-            GameServerId = id, GameType = GameType.CallOfDuty4x, IsObservedHistory = true,
-            Maps = [new() { MapName = "mp_history", Likes = 2, Dislikes = 1 }]
+            GameServerId = id, GameType = GameType.CallOfDuty4x,
+            Maps = [new() { MapName = "mp_rotation", Likes = 2, Dislikes = 1 }]
         });
         var server = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(
             Newtonsoft.Json.JsonConvert.SerializeObject(new
@@ -55,10 +55,34 @@ public sealed partial class NativeMapDownloadsHttpTests
         using var response = await host.Client.GetAsync($"/Servers/GetPublicMapRotation/{id}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var projection = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.True(projection.RootElement.GetProperty("isObservedHistory").GetBoolean());
+        Assert.False(projection.RootElement.GetProperty("isObservedHistory").GetBoolean());
         var map = Assert.Single(projection.RootElement.GetProperty("maps").EnumerateArray());
-        Assert.Equal("mp_history", map.GetProperty("mapName").GetString());
+        Assert.Equal("mp_rotation", map.GetProperty("mapName").GetString());
         Assert.Equal(3, map.GetProperty("votes").GetInt32());
+    }
+
+    [Fact]
+    public async Task ServerRotation_PreservesRepositoryEntryOrderAndDuplicates()
+    {
+        await using var host = await CreateHost();
+        var id = Guid.NewGuid();
+        SetRotation(host, new PublicServerRotationDto
+        {
+            GameServerId = id, GameType = GameType.CallOfDuty4x,
+            Maps = [new() { MapName = "Mp_First", GameMode = "War" }, new() { MapName = "mp_second", GameMode = null },
+                new() { MapName = "Mp_First", GameMode = "DM" }]
+        });
+
+        using var response = await host.Client.GetAsync($"/Servers/GetPublicMapRotation/{id}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var projection = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(["Mp_First", "mp_second", "Mp_First"],
+            projection.RootElement.GetProperty("maps").EnumerateArray()
+                .Select(map => map.GetProperty("mapName").GetString()!).ToArray());
+        var entries = projection.RootElement.GetProperty("maps").EnumerateArray().ToArray();
+        Assert.Equal("War", entries[0].GetProperty("gameMode").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, entries[1].GetProperty("gameMode").ValueKind);
+        Assert.Equal("DM", entries[2].GetProperty("gameMode").GetString());
     }
 
     [Fact]
@@ -92,8 +116,8 @@ public sealed partial class NativeMapDownloadsHttpTests
         SetRotation(host, new PublicServerRotationDto
         {
             GameServerId = serverId, GameType = GameType.CallOfDuty4x,
-            Maps = [new() { MapName = "mp_crash" }, new() { MapName = "mp_custom" },
-                new() { MapName = "MP_CUSTOM" }, new() { MapName = "mp_missing" }]
+            Maps = [new() { MapName = "MP_CRASH" }, new() { MapName = "MP_CUSTOM" },
+                new() { MapName = "mp_custom" }, new() { MapName = "mp_missing" }]
         });
         var fake = host.Services.GetRequiredService<FakeRedirectApiClient>();
         var folder = new ContentEntry("redirect/cod4/usermaps/mp_custom", "mp_custom", true, 100,

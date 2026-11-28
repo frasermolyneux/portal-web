@@ -14,6 +14,10 @@
                  alt="@map.MapName" loading="lazy" width="240" height="180" />
             <div class="p-2">
                 <h6>@map.MapName</h6>
+                @if (!string.IsNullOrWhiteSpace(map.GameMode))
+                {
+                    <p class="small text-muted">@map.GameMode</p>
+                }
                 <section class="map-popularity-scope">
                     <p class="map-popularity-title">Global</p>
                     <p class="small mb-1">Lifetime: @map.Likes likes &middot; @map.Dislikes dislikes</p>
