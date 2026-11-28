@@ -1,0 +1,11 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@model RuleActionDecisionStatus
+@{
+    var label = Model switch
+    {
+        RuleActionDecisionStatus.NotRun => "Not run (recorded)",
+        RuleActionDecisionStatus.Skipped => "Skipped (recorded)",
+        _ => "Unrecognized recorded decision"
+    };
+}
+<span class="badge text-bg-secondary">@label</span>
