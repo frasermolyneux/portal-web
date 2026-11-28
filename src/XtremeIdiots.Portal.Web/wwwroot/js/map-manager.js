@@ -17,10 +17,11 @@ $(document).ready(function () {
             columnDefs: [
                 { targets: 0, responsivePriority: 2, orderable: true },  // # (sort order)
                 { targets: 1, responsivePriority: 1, orderable: true },  // Name - always visible
-                { targets: 2, responsivePriority: 5, orderable: false }, // Map Files
-                { targets: 3, responsivePriority: 3, orderable: false }, // Remote Status
-                { targets: 4, responsivePriority: 6, orderable: false }, // Popularity
-                { targets: 5, responsivePriority: 7, orderable: false }  // Image
+                { targets: 2, responsivePriority: 4, orderable: false }, // Game Mode
+                { targets: 3, responsivePriority: 5, orderable: false }, // Map Files
+                { targets: 4, responsivePriority: 3, orderable: false }, // Remote Status
+                { targets: 5, responsivePriority: 6, orderable: false }, // Popularity
+                { targets: 6, responsivePriority: 7, orderable: false }  // Image
             ]
         });
     }

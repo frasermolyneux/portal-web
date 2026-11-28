@@ -69,14 +69,22 @@
                 @{
                     var mapsById = Model.Maps.ToDictionary(m => m.MapId);
                     var mapsByName = Model.Maps.GroupBy(m => m.MapName, StringComparer.OrdinalIgnoreCase)
-                        .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+                        .ToDictionary(group => group.Key,
+                            group => group.FirstOrDefault(map => map.GameType == Model.GameServer.GameType) ?? group.First(),
+                            StringComparer.OrdinalIgnoreCase);
                     var serverMapNames = Model.ServerMaps.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     var serverMapsByName = Model.ServerMaps.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
 
-                    var activeRotMaps = Model.EffectiveRotation?.Maps ?? [];
-                    var missingFromHost = activeRotMaps.Count(rm => !serverMapNames.Contains(rm.MapName));
-                    var problematicCount = activeRotMaps.Count(rm => mapsByName.TryGetValue(rm.MapName, out var m) && m.MapStatus == MapHealthStatus.Problematic);
-                    var blacklistedCount = activeRotMaps.Count(rm => mapsByName.TryGetValue(rm.MapName, out var m) && m.MapStatus == MapHealthStatus.Blacklisted);
+                    var activeRotMaps = (Model.EffectiveRotation?.Maps ?? []).Select(entry => new
+                    {
+                        Entry = entry,
+                        Map = entry.MapId is { } mapId
+                            ? mapsById.GetValueOrDefault(mapId)
+                            : mapsByName.GetValueOrDefault(entry.MapName)
+                    }).ToList();
+                    var missingFromHost = activeRotMaps.Count(item => !serverMapNames.Contains(item.Entry.MapName));
+                    var problematicCount = activeRotMaps.Count(item => item.Map?.MapStatus == MapHealthStatus.Problematic);
+                    var blacklistedCount = activeRotMaps.Count(item => item.Map?.MapStatus == MapHealthStatus.Blacklisted);
                 }
 
                 @* Tab 1: Current Rotation *@
@@ -143,9 +151,9 @@
                                 <tbody>
                                     @for (var i = 0; i < activeRotMaps.Count; i++)
                                     {
-                                        var rotMap = activeRotMaps[i];
+                                        var rotMap = activeRotMaps[i].Entry;
                                         var mapName = rotMap.MapName;
-                                        mapsByName.TryGetValue(mapName, out var map);
+                                        var map = activeRotMaps[i].Map;
                                         var remoteMatch = serverMapsByName.ContainsKey(mapName);
                                         <tr>
                                             <td><small class="text-muted">@(i + 1)</small></td>

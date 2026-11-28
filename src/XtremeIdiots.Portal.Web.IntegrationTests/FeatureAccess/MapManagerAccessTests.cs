@@ -135,6 +135,99 @@ public sealed class MapManagerAccessTests : IAsyncLifetime
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public async Task Manage_UsesEntryIdOrNativeGameTypeForSharedMapNames(bool hasEntryId)
+    {
+        var server = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { GameServerId = serverId, GameType = GameType.CallOfDuty4x, Title = "Synthetic server" }));
+        var selected = Newtonsoft.Json.JsonConvert.DeserializeObject<MapDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                MapId = Guid.NewGuid(),
+                GameType = hasEntryId ? GameType.CallOfDuty4 : GameType.CallOfDuty4x,
+                MapName = "mp_shared",
+                MapStatus = MapHealthStatus.Blacklisted,
+                MapImageUri = "https://example.test/selected.png"
+            }))!;
+        var other = Newtonsoft.Json.JsonConvert.DeserializeObject<MapDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                MapId = Guid.NewGuid(),
+                GameType = hasEntryId ? GameType.CallOfDuty4x : GameType.CallOfDuty4,
+                MapName = "MP_SHARED",
+                MapStatus = MapHealthStatus.OK,
+                MapImageUri = "https://example.test/other.png"
+            }))!;
+        repository.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        repository.Setup(x => x.Maps.V1.GetMaps(It.IsAny<GameType?>(), It.IsAny<string[]?>(), null,
+            null, 0, 50, MapsOrder.MapNameAsc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapDto>>(new CollectionModel<MapDto>([other, selected]))));
+        repository.Setup(x => x.MapRotations.V1.GetEffectiveServerRotation(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationDto>(new PublicServerRotationDto
+                {
+                    GameServerId = serverId,
+                    IsAvailable = true,
+                    Source = RotationSource.ServerObserved,
+                    Maps = [new() { MapId = hasEntryId ? selected.MapId : null, MapName = "Mp_Shared" }]
+                })));
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/MapManager/Manage/{serverId}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameAdmin);
+
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Contains("1 Blacklisted", html, StringComparison.Ordinal);
+        Assert.Contains("https://example.test/selected.png", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("https://example.test/other.png", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Manage_DoesNotSubstituteSameNamedMetadataWhenEntryIdIsUnavailable()
+    {
+        var missingId = Guid.NewGuid();
+        var server = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new { GameServerId = serverId, GameType = GameType.CallOfDuty4x, Title = "Synthetic server" }));
+        var other = Newtonsoft.Json.JsonConvert.DeserializeObject<MapDto>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                MapId = Guid.NewGuid(),
+                GameType = GameType.CallOfDuty4x,
+                MapName = "mp_shared",
+                MapStatus = MapHealthStatus.Blacklisted,
+                MapImageUri = "https://example.test/other.png"
+            }))!;
+        repository.Setup(x => x.GameServers.V1.GetGameServer(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        repository.Setup(x => x.Maps.V1.GetMaps(It.IsAny<GameType?>(), It.IsAny<string[]?>(), null,
+            null, 0, 50, MapsOrder.MapNameAsc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<MapDto>>(new CollectionModel<MapDto>([other]))));
+        repository.Setup(x => x.Maps.V1.GetMap(missingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<MapDto>(HttpStatusCode.NotFound));
+        repository.Setup(x => x.MapRotations.V1.GetEffectiveServerRotation(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK,
+                new ApiResponse<PublicServerRotationDto>(new PublicServerRotationDto
+                {
+                    GameServerId = serverId,
+                    IsAvailable = true,
+                    Source = RotationSource.PortalManaged,
+                    Maps = [new() { MapId = missingId, MapName = "mp_shared" }]
+                })));
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/MapManager/Manage/{serverId}");
+        request.Headers.Add(TestAuthenticationDefaults.HeaderName, TestPrincipalProfiles.GameAdmin);
+
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Blacklisted", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("https://example.test/other.png", html, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public async Task Manage_UsesEffectiveRotationWithoutInventingAnActiveAssignment(bool available)
     {
         var server = Newtonsoft.Json.JsonConvert.DeserializeObject<GameServerDto>(
