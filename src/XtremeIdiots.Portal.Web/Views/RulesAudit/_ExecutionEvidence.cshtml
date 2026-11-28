@@ -1,5 +1,12 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
 @model RuleExecutionAuditDto
+@{
+    var evidence = Model.EvaluationEvidence is { HasSupportedSchema: true } supportedEvidence ? supportedEvidence : null;
+    var claimedCoordinates = Model.Actions.Select(item => (item.RuleIndex, item.ActionIndex)).ToHashSet();
+    var decisions = evidence?.ActionDecisions
+        .Where(item => !claimedCoordinates.Contains((item.RuleIndex, item.ActionIndex))).ToArray() ?? [];
+    var supersededDecisionCount = evidence is null ? 0 : evidence.ActionDecisions.Length - decisions.Length;
+}
 
 <p class="text-muted mt-2">These stages group recorded evidence; they do not establish the order of every internal step.</p>
 <ol class="list-group list-group-numbered mt-2">
@@ -24,7 +31,65 @@
     </li>
     <li class="list-group-item">
         <strong>Condition evaluation</strong>
-        <p class="mb-0">Individual condition results are not available in the recorded execution evidence.</p>
+        @if (Model.EvaluationEvidence is not null && evidence is null)
+        {
+            <p class="mb-0">Evaluation evidence schema version @Model.EvaluationEvidence.SchemaVersion is not supported.</p>
+        }
+        else if (evidence is null || evidence.Nodes.Length == 0)
+        {
+            <p class="mb-0">Individual condition results are not available in the recorded execution evidence.</p>
+        }
+        else
+        {
+            @foreach (var node in evidence.Nodes)
+            {
+                var path = node.ConditionPath is null ? null : node.ConditionPath.Length == 0
+                    ? "root" : string.Join(".", node.ConditionPath.Select(index => index + 1));
+                <div class="border-bottom py-2">
+                    <strong>Rule @(node.RuleIndex + 1): @node.RuleId &middot; @node.Kind</strong>
+                    <partial name="_EvaluationNodeStatus" model="node.Status" />
+                    @if (path is not null) { <div>Condition path: @path</div> }
+                    @if (node.ConditionId is not null) { <div>Condition: @node.ConditionId</div> }
+                    @if (node.CheckId is not null) { <div>Check: @node.CheckId</div> }
+                    @if (node.ReasonCode is not null) { <div>Reason: @node.ReasonCode</div> }
+                    @if (node.Source is not null) { <div>Source: @node.Source</div> }
+                    @if (node.SourceVersion is not null) { <div>Source version: @node.SourceVersion</div> }
+                    <div class="small text-muted">Observed <time time-ago utc="@node.ObservedAtUtc.UtcDateTime"></time></div>
+                </div>
+            }
+        }
+        @if (evidence is { OmittedNodeCount: > 0 })
+        {
+            <div class="alert alert-warning mt-2">@evidence.OmittedNodeCount additional evaluation results omitted.</div>
+        }
+    </li>
+    <li class="list-group-item">
+        <strong>Recorded action decisions</strong>
+        @if (Model.EvaluationEvidence is not null && evidence is null)
+        {
+            <p class="mb-0">Action decisions use an unsupported evidence version.</p>
+        }
+        else if (decisions.Length == 0 && supersededDecisionCount == 0)
+        {
+            <p class="mb-0">No action decisions recorded.</p>
+        }
+        @foreach (var decision in decisions)
+        {
+            <div class="border-bottom py-2">
+                <strong>@decision.RuleId / @decision.ActionId</strong> (rule @(decision.RuleIndex + 1), action @(decision.ActionIndex + 1))
+                <partial name="_ActionDecisionStatus" model="decision.Status" />
+                @if (decision.ReasonCode is not null) { <div>Reason: @decision.ReasonCode</div> }
+                <div class="small text-muted">Observed <time time-ago utc="@decision.ObservedAtUtc.UtcDateTime"></time></div>
+            </div>
+        }
+        @if (supersededDecisionCount > 0)
+        {
+            <div class="text-muted">Earlier decisions were superseded by recorded action outcomes.</div>
+        }
+        @if (evidence is { OmittedActionDecisionCount: > 0 })
+        {
+            <div class="alert alert-warning mt-2">@evidence.OmittedActionDecisionCount additional action decisions omitted.</div>
+        }
     </li>
     <li class="list-group-item">
         <strong>Recorded diagnostics</strong>
@@ -84,6 +149,10 @@
                 else if (action.Outcome == RuleActionExecutionOutcome.Dispatched)
                 {
                     <div class="text-muted">Dispatched; application is not confirmed.</div>
+                }
+                else if (action.Outcome == RuleActionExecutionOutcome.OutcomeUnknown)
+                {
+                    <div class="text-muted">Outcome unknown; the action may have run.</div>
                 }
                 else if (action.Outcome == RuleActionExecutionOutcome.Applied)
                 {

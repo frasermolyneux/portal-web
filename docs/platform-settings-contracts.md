@@ -90,16 +90,20 @@ Both segmentation and display honor the returned budget's CoD colour mode;
 literal caret-digit text is retained when that mode is disabled. This does not
 enable any additional rules-native provider.
 
-The server welcome settings link to **Welcome execution diagnostics**, protected
-by the same game-scoped server-write policy. The page defaults to the last 24
-hours and queries 20 executions at a time, including waiting and no-action
-executions. UTC created-time bounds are inclusive from/exclusive to. Typed
-diagnostic codes expose recorded waiting, protection, expiry and token fallback
-reasons; `DiagnosticsOmitted` is shown as a warning with the omitted count.
-Prepared action windows, frozen fragments and individual outcomes provide
-delivery evidence without parsing the processor's opaque decision snapshot.
-Waiting text is current only while the execution state is `Waiting`; empty
-diagnostics or action collections do not imply no match or suppression.
+**Rules Engine Audit** under Server Admin is protected by the global settings
+admin policy. It queries executions across servers, with server, feature,
+match-status and UTC created-time filters, 20 at a time. The time bounds are
+inclusive from/exclusive to. Executions can be reused for a connection and do
+not represent every event or action; other features may use separate histories.
+
+Supported typed evidence shows recorded rule, condition and check results and
+explicit not-run or skipped action decisions. Action claims and outcomes take
+precedence over earlier decisions. Missing, omitted or unsupported evidence does
+not prove that an action did not run; a no-match diagnostic alone may describe
+an earlier attempt. Dispatched and unknown outcomes do not confirm application,
+and dry-run outcomes are simulated. Typed diagnostics and prepared action
+windows remain available without parsing the processor's opaque snapshot.
+Waiting text is current only while the execution state is `Waiting`.
 
 ### Settings loading and runtime behavior
 

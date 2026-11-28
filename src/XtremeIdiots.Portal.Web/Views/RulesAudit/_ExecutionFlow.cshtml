@@ -1,7 +1,9 @@
 @using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@using XtremeIdiots.Portal.Web.ViewModels
 @model RuleExecutionFlowDto
 @{
     var execution = Model.Execution;
+    var evidence = execution.EvaluationEvidence is { HasSupportedSchema: true } supportedEvidence ? supportedEvidence : null;
     var ruleDiagnostics = execution.Diagnostics
         .Where(diagnostic => diagnostic.RuleId is not null && diagnostic.ActionId is null &&
             (diagnostic.Code == RuleExecutionDiagnosticCode.NoMatch ||
@@ -10,10 +12,25 @@
         .ToLookup(diagnostic => diagnostic.RuleId, StringComparer.OrdinalIgnoreCase);
     var outcomes = execution.Actions.ToLookup(item => (item.RuleIndex, item.ActionIndex, item.RuleId, item.ActionId));
     var preparations = execution.PreparedActions.ToLookup(item => (item.RuleIndex, item.ActionIndex, item.ActionId));
+    var claimedCoordinates = execution.Actions.Select(item => (item.RuleIndex, item.ActionIndex)).ToHashSet();
 }
 
 <div class="rules-flow" data-execution-flow>
-    <p class="text-muted">Arrows show the configured path, not an execution timeline. Individual condition results are not recorded.</p>
+    <p class="text-muted">
+        Arrows show the configured path, not an execution timeline.
+        @if (execution.EvaluationEvidence is not null && evidence is null)
+        {
+            <span>Recorded evaluation evidence uses an unsupported format.</span>
+        }
+        else if (evidence?.Nodes.Any(item => item.Kind is RuleEvidenceNodeKind.Condition or RuleEvidenceNodeKind.Check) == true)
+        {
+            <span>Condition badges show recorded results where available.</span>
+        }
+        else
+        {
+            <span>Individual condition results are not recorded.</span>
+        }
+    </p>
     @if (!string.IsNullOrEmpty(Model.RuleSetRevision))
     {
         <p class="small text-muted">Rule set revision: @Model.RuleSetRevision</p>
@@ -54,6 +71,9 @@
                     .MaxBy(diagnostic => diagnostic.ObservedAtUtc);
                 var expired = diagnostics.Where(diagnostic => diagnostic.Code == RuleExecutionDiagnosticCode.Expired)
                     .MaxBy(diagnostic => diagnostic.ObservedAtUtc);
+                var ruleEvidence = evidence?.Nodes.Where(item => item.RuleIndex == rule.RuleIndex &&
+                    string.Equals(item.RuleId, rule.Id, StringComparison.Ordinal)).ToArray() ?? [];
+                var ruleDecision = ruleEvidence.FirstOrDefault(item => item.Kind == RuleEvidenceNodeKind.Rule);
                 <li class="rules-flow__rule" data-rule-id="@rule.Id">
                     <div class="rules-flow__rule-title">
                         <strong>Rule @(rule.RuleIndex + 1): @(rule.DisplayName ?? rule.Id)</strong>
@@ -62,12 +82,21 @@
                     <div class="rules-flow__path">
                         <div class="rules-flow__node">
                             <div class="rules-flow__label"><i class="fa-solid fa-fw fa-code-branch" aria-hidden="true"></i> If &middot; Conditions</div>
-                            <ul class="rules-flow__conditions"><partial name="_FlowCondition" model="rule.Condition" /></ul>
+                            <ul class="rules-flow__conditions"><partial name="_FlowCondition" model="new RuleConditionFlowViewModel(rule.Condition, ruleEvidence, [])" /></ul>
                         </div>
                         <span class="rules-flow__arrow" aria-hidden="true">&#8594;</span>
                         <div class="rules-flow__node rules-flow__decision">
                             <div class="rules-flow__label"><i class="fa-solid fa-fw fa-diamond" aria-hidden="true"></i> Decision</div>
-                            @if (noMatch is not null)
+                            @if (ruleDecision is not null)
+                            {
+                                <partial name="_EvaluationNodeStatus" model="ruleDecision.Status" />
+                                <div class="small mt-2">Observed <time time-ago utc="@ruleDecision.ObservedAtUtc.UtcDateTime"></time></div>
+                                @if (!string.IsNullOrEmpty(ruleDecision.ReasonCode))
+                                {
+                                    <div class="small">Reason: @ruleDecision.ReasonCode</div>
+                                }
+                            }
+                            else if (noMatch is not null)
                             {
                                 <span class="badge text-bg-info">No match recorded</span>
                                 <div class="small mt-2">Observed <time time-ago utc="@noMatch.ObservedAtUtc.UtcDateTime"></time></div>
@@ -101,6 +130,11 @@
                                 {
                                     var recorded = outcomes[(rule.RuleIndex, action.ActionIndex, rule.Id, action.Id)];
                                     var prepared = preparations[(rule.RuleIndex, action.ActionIndex, action.Id)];
+                                    var decision = claimedCoordinates.Contains((rule.RuleIndex, action.ActionIndex)) ? null :
+                                        evidence?.ActionDecisions.FirstOrDefault(item =>
+                                            item.RuleIndex == rule.RuleIndex && item.ActionIndex == action.ActionIndex &&
+                                            string.Equals(item.RuleId, rule.Id, StringComparison.Ordinal) &&
+                                            string.Equals(item.ActionId, action.Id, StringComparison.Ordinal));
                                     var actionDiagnostics = execution.Diagnostics.Where(diagnostic =>
                                         diagnostic.RuleId is not null && diagnostic.ActionId is not null &&
                                         string.Equals(diagnostic.RuleId, rule.Id, StringComparison.OrdinalIgnoreCase) &&
@@ -116,7 +150,16 @@
                                         {
                                             <div class="small text-muted">Dependencies unknown</div>
                                         }
-                                        @if (!recorded.Any())
+                                        @if (decision is not null)
+                                        {
+                                            <partial name="_ActionDecisionStatus" model="decision.Status" />
+                                            @if (!string.IsNullOrEmpty(decision.ReasonCode))
+                                            {
+                                                <div class="small">Reason: @decision.ReasonCode</div>
+                                            }
+                                            <div class="small">Observed <time time-ago utc="@decision.ObservedAtUtc.UtcDateTime"></time></div>
+                                        }
+                                        else if (!recorded.Any())
                                         {
                                             <span class="badge text-bg-secondary">No action outcome recorded</span>
                                         }
