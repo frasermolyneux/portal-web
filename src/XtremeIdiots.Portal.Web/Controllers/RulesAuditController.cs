@@ -87,7 +87,7 @@ public sealed class RulesAuditController(
         if (!response.IsSuccess || response.Result?.Data is not { } flow ||
             flow.Execution is null || flow.Execution.ExecutionId != id || !Enum.IsDefined(flow.Execution.MatchStatus) ||
             flow.Execution.Diagnostics is null || flow.Execution.Actions is null ||
-            flow.Execution.PreparedActions is null || flow.Rules is null ||
+            flow.Execution.PreparedActions is null || !ValidEvidence(flow.Execution.EvaluationEvidence) || flow.Rules is null ||
             !Enum.IsDefined(flow.StructureStatus) ||
             flow.Rules.Any(rule => rule is null || rule.Condition is null || rule.Actions is null))
             return Unavailable("load execution flow");
@@ -97,6 +97,10 @@ public sealed class RulesAuditController(
 
         return View(flow);
     }
+
+    private static bool ValidEvidence(RuleEvaluationEvidence? evidence) => evidence is null || !evidence.HasSupportedSchema ||
+        evidence.Nodes is not null && evidence.ActionDecisions is not null &&
+        evidence.Nodes.All(node => node is not null) && evidence.ActionDecisions.All(decision => decision is not null);
 
     private static bool TryParseUtc(string? value, out DateTime? utc)
     {

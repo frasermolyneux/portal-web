@@ -27,7 +27,7 @@ public class NamespaceSettingsParserTests
     public void BroadcastMapping_LegacyBooleanStrings_DoNotConvertMessageText()
     {
         const string json = /*lang=json,strict*/ """{"enabled":"false","intervalSeconds":500,"messages":[{"message":"true","enabled":"true"}]}""";
-        var config = BuildConfiguration(BroadcastSettingsConstants.Namespace, json);
+        var config = BuildConfiguration(BroadcastSettingsConstants.Namespace.ToUpperInvariant(), json);
         var global = new GlobalSettingsViewModel();
         var server = new GameServerEditViewModel();
         parser.PopulateGlobalSettingsViewModel(global, config, logger);
@@ -41,6 +41,38 @@ public class NamespaceSettingsParserTests
         Assert.Equal("true", Assert.Single(server.BroadcastMessages).Message);
         Assert.False(server.GlobalBroadcastsEnabled);
         Assert.Equal("true", Assert.Single(server.GlobalBroadcastMessages).Message);
+    }
+
+    [Theory]
+    [InlineData(/*lang=json,strict*/ """{"messages":[{"id":"local","message":"Local"}]}""", BroadcastMessagesMode.Replace, "Local")]
+    [InlineData(/*lang=json,strict*/ """{"messagesMode":"Inherit","messages":[{"id":"local","message":"Local"}]}""", BroadcastMessagesMode.Inherit, "Global")]
+    [InlineData(/*lang=json,strict*/ """{"messagesMode":"Replace","messages":[{"id":"local","message":"Local"}]}""", BroadcastMessagesMode.Replace, "Local")]
+    public void BroadcastMapping_UsesSavedModeAndTheSharedResolver(string serverJson, BroadcastMessagesMode mode, string effectiveMessage)
+    {
+        var model = new GameServerEditViewModel();
+        parser.PopulateGameServerGlobalDefaults(model, BuildConfiguration(BroadcastSettingsConstants.Namespace,
+            /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":900,"messages":[{"id":"global","message":"Global"}]}"""), logger);
+        parser.PopulateGameServerSettingsViewModel(model, BuildConfiguration(BroadcastSettingsConstants.Namespace, serverJson), logger);
+
+        Assert.Equal(mode, model.BroadcastsMessagesMode);
+        Assert.Null(model.BroadcastsEnabled);
+        Assert.Null(model.BroadcastsIntervalSeconds);
+        Assert.Equal("local", Assert.Single(model.BroadcastMessages).Id);
+        var effective = Assert.IsType<EffectiveBroadcastSettings>(model.EffectiveBroadcastSettings);
+        Assert.True(effective.Enabled);
+        Assert.Equal(900, effective.IntervalSeconds);
+        Assert.Equal(effectiveMessage, Assert.Single(effective.Messages).Message);
+    }
+
+    [Fact]
+    public void BroadcastMapping_AbsentServerNamespaceInheritsGlobalMessages()
+    {
+        var model = new GameServerEditViewModel();
+        parser.PopulateGameServerGlobalDefaults(model, BuildConfiguration(BroadcastSettingsConstants.Namespace,
+            /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":900,"messages":[{"message":"Global"}]}"""), logger);
+
+        Assert.Equal(BroadcastMessagesMode.Inherit, model.BroadcastsMessagesMode);
+        Assert.Equal("Global", Assert.Single(model.EffectiveBroadcastSettings!.Messages).Message);
     }
 
     [Fact]
@@ -1031,6 +1063,18 @@ public class NamespaceSettingsParserTests
 
         var headAdmin = Assert.Single(model.Cod4xPowerTagMappings, static mapping => string.Equals(mapping.Tag, "HeadAdmin", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(0, headAdmin.Power);
+    }
+
+    [Fact]
+    public void ModerationMapping_MixedCaseNamespacePopulatesGlobalDefaults()
+    {
+        var model = new GameServerEditViewModel();
+        var config = BuildConfiguration("MoDeRaTiOn", /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"minMessageLength":7}""");
+
+        parser.PopulateGameServerGlobalDefaults(model, config, logger);
+
+        Assert.Equal(2, model.GlobalModerationHateSeverityThreshold);
+        Assert.Equal(7, model.GlobalModerationMinMessageLength);
     }
 
     private static ConfigurationDto BuildConfiguration(string ns, string configuration)

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xPower;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
@@ -45,6 +47,9 @@ public class GlobalSettingsViewModel : IValidatableObject
     public int BanFileSyncCheckIntervalSeconds { get; set; } = 60;
 
     // Moderation defaults
+    [BindNever]
+    public bool ModerationReadOnly { get; set; }
+
     [DisplayName("Hate Threshold")]
     [Range(-1, 6, ErrorMessage = "Hate threshold must be Disabled or between 0 and 6.")]
     public int ModerationHateSeverityThreshold { get; set; } = DisabledSeverityThreshold;
@@ -78,12 +83,17 @@ public class GlobalSettingsViewModel : IValidatableObject
     [BindNever]
     public bool BroadcastsReadOnly { get; set; }
 
+    [BindNever, ValidateNever]
+    public BroadcastSettingsDocument? SavedBroadcastSettings { get; set; }
+
     [DisplayName("Enabled")]
     public bool BroadcastsEnabled { get; set; }
 
     [DisplayName("Interval (seconds)")]
     [Range(1, 86400, ErrorMessage = "Broadcast interval must be between 1 and 86400 seconds.")]
     public int BroadcastsIntervalSeconds { get; set; } = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+
+    public int? BroadcastMessagesCount { get; set; }
 
     public List<BroadcastMessageViewModel> BroadcastMessages { get; set; } = [];
 
@@ -157,10 +167,15 @@ public class GlobalSettingsViewModel : IValidatableObject
         {
             if (string.IsNullOrWhiteSpace(broadcastMessages[i].Message))
                 yield return new ValidationResult("Broadcast message is required.", [$"BroadcastMessages[{i}].Message"]);
+            else if (BroadcastMessageViewModel.HasNonRoundTrippableCharacters(broadcastMessages[i].Message))
+                yield return new ValidationResult("Broadcast messages must not contain line breaks or null characters.", [$"BroadcastMessages[{i}].Message"]);
 
             if (broadcastMessages[i].Message?.Length > MaxFunnyMessageLength)
                 yield return new ValidationResult($"Broadcast message cannot exceed {MaxFunnyMessageLength} characters.", [$"BroadcastMessages[{i}].Message"]);
         }
+
+        foreach (var validationResult in BroadcastMessageViewModel.ValidateIds(broadcastMessages))
+            yield return validationResult;
 
         foreach (var validationResult in ChatCommands.Validate(validationContext))
         {

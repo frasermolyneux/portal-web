@@ -72,10 +72,14 @@
     }
 
     function updateMessageEmptyState(container, emptyStateId) {
+        var count = container.querySelectorAll('[data-message-row]').length;
+        var countInput = container.dataset.messageCountId && document.getElementById(container.dataset.messageCountId);
+        if (countInput) countInput.value = count.toString();
+
         var emptyState = document.getElementById(emptyStateId);
         if (!emptyState) return;
 
-        emptyState.classList.toggle('d-none', container.querySelectorAll('[data-message-row]').length > 0);
+        emptyState.classList.toggle('d-none', count > 0);
     }
 
     function reindexRowsByFieldPrefix(container, fieldNamePrefix, normalizeIdPrefix) {
@@ -87,6 +91,7 @@
             var enabledHidden = row.querySelector('[data-field="enabled-hidden"]');
             var enabled = row.querySelector('[data-field="enabled"]');
             var enabledLabel = row.querySelector('[data-field="enabled-label"]');
+            var messageId = row.querySelector('[data-field="id"]');
             var message = row.querySelector('[data-field="message"]');
             var validation = row.querySelector('[data-field="validation"]');
 
@@ -96,6 +101,7 @@
                 enabled.id = idPrefix + '_' + index + '__Enabled';
             }
             if (enabledLabel && enabled) enabledLabel.htmlFor = enabled.id;
+            if (messageId) messageId.name = fieldNamePrefix + '[' + index + '].Id';
             if (message) {
                 message.name = fieldNamePrefix + '[' + index + '].Message';
                 message.id = idPrefix + '_' + index + '__Message';

@@ -15,3 +15,8 @@ public sealed class RulesAuditViewModel
     public bool HasNext { get; init; }
     public IReadOnlyList<RuleExecutionAuditDto> Executions { get; init; } = [];
 }
+
+public sealed record RuleConditionFlowViewModel(
+    RuleExecutionFlowConditionDto Condition,
+    IReadOnlyList<RuleEvaluationNodeEvidence> Evidence,
+    int[] Path);

@@ -56,17 +56,6 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 }, configJsonOptions)
             ),
             (
-                ModerationSettingsConstants.Namespace,
-                JsonSerializer.Serialize(new ModerationSettingsDocument
-                {
-                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
-                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
-                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
-                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
-                    MinMessageLength = model.ModerationMinMessageLength
-                }, configJsonOptions)
-            ),
-            (
                 EventSettingsConstants.Namespace,
                 JsonSerializer.Serialize(new EventSettingsDocument
                 {
@@ -75,6 +64,20 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 }, configJsonOptions)
             )
         ];
+
+        if (!model.ModerationReadOnly)
+        {
+            configurations.Add((
+                ModerationSettingsConstants.Namespace,
+                JsonSerializer.Serialize(new ModerationSettingsDocument
+                {
+                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
+                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
+                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
+                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
+                    MinMessageLength = model.ModerationMinMessageLength
+                }, configJsonOptions)));
+        }
 
         if (!model.ChatCommandsReadOnly)
         {
@@ -102,12 +105,19 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 BroadcastSettingsConstants.Namespace,
                 JsonSerializer.Serialize(new BroadcastSettingsDocument
                 {
-                    Enabled = model.BroadcastsEnabled,
-                    IntervalSeconds = model.BroadcastsIntervalSeconds,
+                    Enabled = model.SavedBroadcastSettings is { Enabled: null } && !model.BroadcastsEnabled
+                        ? null
+                        : model.BroadcastsEnabled,
+                    IntervalSeconds = model.SavedBroadcastSettings is { IntervalSeconds: null }
+                        && model.BroadcastsIntervalSeconds == BroadcastSettingsConstants.DefaultIntervalSeconds
+                        ? null
+                        : model.BroadcastsIntervalSeconds,
+                    MessagesMode = model.SavedBroadcastSettings?.MessagesMode,
                     Messages =
                     [
                         .. (model.BroadcastMessages ?? []).Select(message => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
                         {
+                            Id = message.Id,
                             Message = message.Message,
                             Enabled = message.Enabled
                         })
@@ -252,55 +262,19 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                     }, configJsonOptions)));
             }
 
-            var hasModerationOverrides = model.ModerationHateSeverityThreshold.HasValue
-                || model.ModerationViolenceSeverityThreshold.HasValue
-                || model.ModerationSexualSeverityThreshold.HasValue
-                || model.ModerationSelfHarmSeverityThreshold.HasValue
-                || model.ModerationMinMessageLength.HasValue
-                || !model.ModerationProtectedNameEnforcementEnabled;
-
-            if (hasModerationOverrides)
+            if (!model.ModerationReadOnly)
             {
                 var moderationConfig = new ModerationSettingsDocument
                 {
-                    ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
+                    ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled,
+                    ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold,
+                    ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold,
+                    ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold,
+                    ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold,
+                    MinMessageLength = model.ModerationMinMessageLength
                 };
 
-                if (model.ModerationHateSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetyHateSeverityThreshold = model.ModerationHateSeverityThreshold.Value;
-                }
-
-                if (model.ModerationViolenceSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetyViolenceSeverityThreshold = model.ModerationViolenceSeverityThreshold.Value;
-                }
-
-                if (model.ModerationSexualSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetySexualSeverityThreshold = model.ModerationSexualSeverityThreshold.Value;
-                }
-
-                if (model.ModerationSelfHarmSeverityThreshold.HasValue)
-                {
-                    moderationConfig.ContentSafetySelfHarmSeverityThreshold = model.ModerationSelfHarmSeverityThreshold.Value;
-                }
-
-                if (model.ModerationMinMessageLength.HasValue)
-                {
-                    moderationConfig.MinMessageLength = model.ModerationMinMessageLength.Value;
-                }
-
                 configurations.Add((ModerationSettingsConstants.Namespace, JsonSerializer.Serialize(moderationConfig, configJsonOptions)));
-            }
-            else
-            {
-                configurations.Add((
-                    ModerationSettingsConstants.Namespace,
-                    JsonSerializer.Serialize(new ModerationSettingsDocument
-                    {
-                        ProtectedNameEnforcementEnabled = model.ModerationProtectedNameEnforcementEnabled
-                    }, configJsonOptions)));
             }
 
             var hasEventsOverrides = model.EventsStaleThresholdSeconds.HasValue
@@ -341,26 +315,33 @@ public sealed class NamespaceSettingsSerializer : INamespaceSettingsSerializer
                 }
             }
 
-            var broadcastsIntervalSeconds = model.BroadcastsIntervalSeconds.GetValueOrDefault(GameServerEditViewModel.DefaultBroadcastIntervalSeconds);
-            if (broadcastsIntervalSeconds <= 0)
-            {
-                broadcastsIntervalSeconds = GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
-            }
+            if (!model.BroadcastsReadOnly && !Enum.IsDefined(model.BroadcastsMessagesMode))
+                throw new ArgumentOutOfRangeException(nameof(model), "Broadcast message source is invalid.");
 
-            var hasBroadcastOverrides = model.BroadcastsEnabled.HasValue;
+            var hasBroadcastOverrides = model.BroadcastsEnabled.HasValue
+                || model.BroadcastsIntervalSeconds.HasValue
+                || model.BroadcastsMessagesMode == BroadcastMessagesMode.Replace
+                || model.BroadcastMessages is { Count: > 0 };
 
             if (!model.BroadcastsReadOnly && hasBroadcastOverrides)
             {
+                if (model.BroadcastsIntervalSeconds is <= 0 or > 86400)
+                    throw new ArgumentOutOfRangeException(nameof(model), "Broadcast interval must be between 1 and 86400 seconds.");
                 configurations.Add((
                     BroadcastSettingsConstants.Namespace,
                     JsonSerializer.Serialize(new BroadcastSettingsDocument
                     {
                         Enabled = model.BroadcastsEnabled,
-                        IntervalSeconds = broadcastsIntervalSeconds,
+                        IntervalSeconds = model.BroadcastsIntervalSeconds,
+                        MessagesMode = model.BroadcastsMessagesMode == BroadcastMessagesMode.Replace
+                            && model.SavedBroadcastSettings is { MessagesMode: null }
+                                ? null
+                                : model.BroadcastsMessagesMode,
                         Messages =
                         [
                             .. (model.BroadcastMessages ?? []).Select(m => (BroadcastSettingsMessage?)new BroadcastSettingsMessage
                             {
+                                Id = m.Id,
                                 Message = m.Message,
                                 Enabled = m.Enabled
                             })

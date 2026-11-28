@@ -20,6 +20,20 @@ This document describes the current settings architecture used by `portal-web` a
 
 ## Troubleshooting Runbook
 
+### Broadcast messages
+
+The server editor resolves saved effective settings with the shared broadcast
+resolver. Enablement, interval and message source can inherit independently.
+An absent server namespace inherits global messages; an existing legacy
+namespace with no message mode uses its server list, even when empty. Selecting
+an empty server list explicitly replaces the global list with no messages.
+Resetting to global retains server messages for later use.
+
+Unsupported or incomplete broadcast documents and incomplete form submissions
+are preserved when other settings are saved. Effective values are unavailable
+when the saved global or server document cannot be interpreted safely. Older
+agents that lack inheritance default to disabled when no server settings exist.
+
 ### Chat commands
 
 The global and server editors make chat-command settings read-only when the
@@ -27,6 +41,14 @@ saved document contains fields or values they cannot preserve, including newer
 command policies and replies. Saving other settings leaves that namespace
 unchanged. Editing those settings requires a compatible editor; the read-only
 warning does not indicate whether a command is enabled at runtime.
+
+### Moderation
+
+The global and server editors make the existing moderation namespace read-only
+when its saved document contains unsupported fields or values, or any of the
+section's fields are omitted from a submission. Saving other settings leaves
+that namespace unchanged, including protected-name settings. This does not affect
+a separate rules namespace.
 
 ### VPN and Siege rules
 
@@ -68,16 +90,20 @@ Both segmentation and display honor the returned budget's CoD colour mode;
 literal caret-digit text is retained when that mode is disabled. This does not
 enable any additional rules-native provider.
 
-The server welcome settings link to **Welcome execution diagnostics**, protected
-by the same game-scoped server-write policy. The page defaults to the last 24
-hours and queries 20 executions at a time, including waiting and no-action
-executions. UTC created-time bounds are inclusive from/exclusive to. Typed
-diagnostic codes expose recorded waiting, protection, expiry and token fallback
-reasons; `DiagnosticsOmitted` is shown as a warning with the omitted count.
-Prepared action windows, frozen fragments and individual outcomes provide
-delivery evidence without parsing the processor's opaque decision snapshot.
-Waiting text is current only while the execution state is `Waiting`; empty
-diagnostics or action collections do not imply no match or suppression.
+**Rules Engine Audit** under Server Admin is protected by the global settings
+admin policy. It queries executions across servers, with server, feature,
+match-status and UTC created-time filters, 20 at a time. The time bounds are
+inclusive from/exclusive to. Executions can be reused for a connection and do
+not represent every event or action; other features may use separate histories.
+
+Supported typed evidence shows recorded rule, condition and check results and
+explicit not-run or skipped action decisions. Action claims and outcomes take
+precedence over earlier decisions. Missing, omitted or unsupported evidence does
+not prove that an action did not run; a no-match diagnostic alone may describe
+an earlier attempt. Dispatched and unknown outcomes do not confirm application,
+and dry-run outcomes are simulated. Typed diagnostics and prepared action
+windows remain available without parsing the processor's opaque snapshot.
+Waiting text is current only while the execution state is `Waiting`.
 
 ### Settings loading and runtime behavior
 

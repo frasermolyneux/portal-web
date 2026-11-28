@@ -18,6 +18,7 @@ using XtremeIdiots.Portal.Repository.Api.Client.V1;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Cod4xCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ServerList;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.SiegeMode;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.VpnProtection;
@@ -45,8 +46,37 @@ public class GlobalSettingsControllerTests
             ["WelcomeRules.ConnectionDelaySeconds"] = model.WelcomeRules.ConnectionDelaySeconds.ToString(),
             ["WelcomeRules.FreshnessSeconds"] = model.WelcomeRules.FreshnessSeconds.ToString(),
             ["WelcomeRules.RulesJson"] = model.WelcomeRules.RulesJson,
-            ["ChatCommands.DefaultFreshnessSeconds"] = model.ChatCommands.DefaultFreshnessSeconds.ToString()
+            ["ChatCommands.DefaultFreshnessSeconds"] = model.ChatCommands.DefaultFreshnessSeconds.ToString(),
+            [nameof(model.ModerationMinMessageLength)] = model.ModerationMinMessageLength.ToString(),
+            [nameof(model.ModerationHateSeverityThreshold)] = model.ModerationHateSeverityThreshold.ToString(),
+            [nameof(model.ModerationViolenceSeverityThreshold)] = model.ModerationViolenceSeverityThreshold.ToString(),
+            [nameof(model.ModerationSexualSeverityThreshold)] = model.ModerationSexualSeverityThreshold.ToString(),
+            [nameof(model.ModerationSelfHarmSeverityThreshold)] = model.ModerationSelfHarmSeverityThreshold.ToString()
         };
+        foreach (var (key, value) in fields)
+        {
+            controller.ModelState.SetModelValue(key, value, value);
+            controller.ModelState.MarkFieldValid(key);
+        }
+    }
+
+    private static void PrepareBroadcastSubmission(GlobalSettingsController controller, GlobalSettingsViewModel model)
+    {
+        model.BroadcastMessagesCount = model.BroadcastMessages.Count;
+        var fields = new Dictionary<string, string>
+        {
+            [nameof(model.BroadcastsEnabled)] = model.BroadcastsEnabled.ToString(),
+            [nameof(model.BroadcastsIntervalSeconds)] = model.BroadcastsIntervalSeconds.ToString(),
+            [nameof(model.BroadcastMessagesCount)] = model.BroadcastMessages.Count.ToString()
+        };
+        for (var i = 0; i < model.BroadcastMessages.Count; i++)
+        {
+            var message = model.BroadcastMessages[i];
+            fields[$"BroadcastMessages[{i}].Id"] = message.Id ?? string.Empty;
+            fields[$"BroadcastMessages[{i}].Message"] = message.Message;
+            fields[$"BroadcastMessages[{i}].Enabled"] = message.Enabled.ToString();
+        }
+
         foreach (var (key, value) in fields)
         {
             controller.ModelState.SetModelValue(key, value, value);
@@ -233,7 +263,7 @@ public class GlobalSettingsControllerTests
         SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
         {
             Namespace = BroadcastSettingsConstants.Namespace,
-            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[]}"""
+            Configuration = /*lang=json,strict*/ """{"schemaVersion":1,"messagesMode":"Inherit","messages":[],"future":true}"""
         }))!);
         var upserted = new List<string>();
         mockRepositoryApiClient
@@ -245,8 +275,7 @@ public class GlobalSettingsControllerTests
             });
         var model = new GlobalSettingsViewModel { BroadcastsReadOnly = false, BroadcastsEnabled = true };
         PrepareSiegeSubmission(sut, model);
-        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "500", "500");
-        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+        PrepareBroadcastSubmission(sut, model);
 
         Assert.IsType<RedirectToActionResult>(await sut.Index(model));
         Assert.True(model.BroadcastsReadOnly);
@@ -254,6 +283,127 @@ public class GlobalSettingsControllerTests
         Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
         mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
             BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(nameof(GlobalSettingsViewModel.BroadcastsEnabled))]
+    [InlineData(nameof(GlobalSettingsViewModel.BroadcastsIntervalSeconds))]
+    [InlineData(nameof(GlobalSettingsViewModel.BroadcastMessagesCount))]
+    [InlineData("BroadcastMessages[0].Id")]
+    [InlineData("BroadcastMessages[0].Message")]
+    [InlineData("BroadcastMessages[0].Enabled")]
+    [InlineData("count-mismatch")]
+    public async Task Index_Post_PreservesBroadcastsWhenSubmissionIsIncomplete(string omittedField)
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = BroadcastSettingsConstants.Namespace.ToUpperInvariant(),
+            Configuration = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":750,"messages":[{"id":"saved","message":"Saved","enabled":false}]}"""
+        }))!);
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        var model = new GlobalSettingsViewModel
+        {
+            BroadcastsEnabled = false,
+            BroadcastsIntervalSeconds = 600,
+            BroadcastMessages = [new BroadcastMessageViewModel { Id = "changed", Message = "Changed" }]
+        };
+        PrepareSiegeSubmission(sut, model);
+        PrepareBroadcastSubmission(sut, model);
+        if (omittedField == "count-mismatch")
+            model.BroadcastMessagesCount = 2;
+        else
+            sut.ModelState.Remove(omittedField);
+
+        Assert.IsType<RedirectToActionResult>(await sut.Index(model));
+        Assert.True(model.BroadcastsReadOnly);
+        Assert.True(model.BroadcastsEnabled);
+        Assert.Equal(750, model.BroadcastsIntervalSeconds);
+        var message = Assert.Single(model.BroadcastMessages);
+        Assert.Equal("saved", message.Id);
+        Assert.Equal("Saved", message.Message);
+        Assert.False(message.Enabled);
+        Assert.NotEmpty(upserted);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, upserted);
+        mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
+            BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationHateSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationViolenceSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationSexualSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationSelfHarmSeverityThreshold))]
+    [InlineData(true, nameof(GlobalSettingsViewModel.ModerationMinMessageLength))]
+    [InlineData(true, "redisplay")]
+    public async Task Index_Post_ProtectsUnsupportedOrIncompleteModerationAndSavesOtherSettings(bool editableAtPost, string? omittedField)
+    {
+        var sut = CreateSut();
+        SetupConfigurations(JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+        {
+            Namespace = ModerationSettingsConstants.Namespace.ToUpperInvariant(),
+            Configuration = editableAtPost
+                ? /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7}"""
+                : /*lang=json,strict*/ """{"contentSafetyHateSeverityThreshold":2,"contentSafetyViolenceSeverityThreshold":4,"contentSafetySexualSeverityThreshold":6,"contentSafetySelfHarmSeverityThreshold":0,"minMessageLength":7,"futureRules":{"enabled":false}}"""
+        }))!);
+        var upserted = new List<string>();
+        mockRepositoryApiClient.Setup(x => x.GlobalConfigurations.V1.UpsertConfiguration(
+            It.IsAny<string>(), It.IsAny<UpsertConfigurationDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ns, UpsertConfigurationDto _, CancellationToken _) =>
+            {
+                upserted.Add(ns);
+                return new ApiResult(HttpStatusCode.OK, new ApiResponse());
+            });
+        var model = new GlobalSettingsViewModel { ModerationHateSeverityThreshold = 6, ModerationReadOnly = false };
+        PrepareSiegeSubmission(sut, model);
+        var preservesModeration = !editableAtPost || omittedField is not null;
+        if (preservesModeration)
+            sut.ModelState.AddModelError(nameof(model.ModerationHateSeverityThreshold), "Invalid value");
+        if (omittedField == "redisplay")
+        {
+            sut.ModelState.Remove(nameof(model.ModerationMinMessageLength));
+            sut.ModelState.AddModelError(nameof(model.AgentName), "Invalid agent name");
+        }
+        else if (omittedField is not null)
+            sut.ModelState.Remove(omittedField);
+
+        var result = await sut.Index(model);
+        if (omittedField == "redisplay")
+            Assert.IsType<ViewResult>(result);
+        else
+            Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(preservesModeration, model.ModerationReadOnly);
+        if (preservesModeration)
+        {
+            Assert.Equal(2, model.ModerationHateSeverityThreshold);
+            Assert.Equal(4, model.ModerationViolenceSeverityThreshold);
+            Assert.Equal(6, model.ModerationSexualSeverityThreshold);
+            Assert.Equal(0, model.ModerationSelfHarmSeverityThreshold);
+            Assert.Equal(7, model.ModerationMinMessageLength);
+            Assert.DoesNotContain(ModerationSettingsConstants.Namespace, upserted);
+        }
+        else
+        {
+            Assert.Equal(6, model.ModerationHateSeverityThreshold);
+            Assert.Contains(ModerationSettingsConstants.Namespace, upserted);
+        }
+
+        Assert.Equal(omittedField != "redisplay", sut.ModelState.IsValid);
+        if (omittedField == "redisplay")
+            Assert.Empty(upserted);
+        else
+            Assert.NotEmpty(upserted);
+        mockRepositoryApiClient.Verify(x => x.GlobalConfigurations.V1.DeleteConfiguration(
+            ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
@@ -730,8 +880,7 @@ public class GlobalSettingsControllerTests
         };
 
         PrepareSiegeSubmission(sut, model);
-        sut.ModelState.SetModelValue(nameof(model.BroadcastsIntervalSeconds), "900", "900");
-        sut.ModelState.MarkFieldValid(nameof(model.BroadcastsIntervalSeconds));
+        PrepareBroadcastSubmission(sut, model);
         var result = await sut.Index(model);
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -794,7 +943,6 @@ public class GlobalSettingsControllerTests
     public async Task Index_Post_InvalidBroadcastMessage_DoesNotCallUpsert()
     {
         var sut = CreateSut();
-        sut.ModelState.AddModelError("BroadcastMessages[0].Message", "Broadcast message is required.");
 
         var model = new GlobalSettingsViewModel
         {
@@ -811,6 +959,8 @@ public class GlobalSettingsControllerTests
         };
 
         PrepareSiegeSubmission(sut, model);
+        PrepareBroadcastSubmission(sut, model);
+        sut.ModelState.AddModelError("BroadcastMessages[0].Message", "Broadcast message is required.");
         var result = await sut.Index(model);
 
         Assert.IsType<ViewResult>(result);

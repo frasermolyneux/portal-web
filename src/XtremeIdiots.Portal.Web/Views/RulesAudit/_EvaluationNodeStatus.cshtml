@@ -1,0 +1,17 @@
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@model RuleEvaluationNodeStatus
+@{
+    var (label, style) = Model switch
+    {
+        RuleEvaluationNodeStatus.Matched => ("Matched", "text-bg-success"),
+        RuleEvaluationNodeStatus.DidNotMatch => ("Did not match", "text-bg-info"),
+        RuleEvaluationNodeStatus.NotReached => ("Not reached", "text-bg-secondary"),
+        RuleEvaluationNodeStatus.Skipped => ("Skipped", "text-bg-secondary"),
+        RuleEvaluationNodeStatus.Waiting => ("Waiting", "text-bg-secondary"),
+        RuleEvaluationNodeStatus.Expired => ("Expired", "text-bg-secondary"),
+        RuleEvaluationNodeStatus.CheckFailed => ("Check failed", "text-bg-warning"),
+        RuleEvaluationNodeStatus.Unknown => ("Unknown", "text-bg-secondary"),
+        _ => ("Unrecognized status", "text-bg-secondary")
+    };
+}
+<span class="badge @style">@label</span>

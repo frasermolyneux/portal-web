@@ -1,21 +1,69 @@
 @using XtremeIdiots.Portal.Web.ViewModels
+@using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts
 @model GameServerEditViewModel
 @{
     var broadcastMessages = Model.BroadcastMessages ?? [];
+    var effective = Model.EffectiveBroadcastSettings;
+    var globalMessages = Model.SavedBroadcastSettings is null ||
+        Model.SavedBroadcastSettings.MessagesMode == BroadcastMessagesMode.Inherit;
 }
 
 @if (Model.BroadcastsReadOnly)
 {
-    <div class="alert alert-warning">These broadcast settings use fields this editor cannot safely change. They will be preserved when other settings are saved.</div>
+    <div class="alert alert-warning">These broadcast settings contain fields or values this editor cannot safely change. They will be preserved when other settings are saved.</div>
 }
-<fieldset disabled="@Model.BroadcastsReadOnly">
 <div class="ibox">
     <div class="ibox-title">
-        <h5>Broadcast Messages</h5>
+        <h5>Saved effective settings</h5>
     </div>
     <div class="ibox-content">
-        <p class="text-muted mb-3">Agents that support broadcast inheritance use global defaults when a server has
-            no broadcast settings. Older agents default to disabled.</p>
+        @if (effective is null)
+        {
+            <p class="text-muted">Effective broadcast settings are unavailable because saved settings cannot be interpreted safely.</p>
+        }
+        else
+        {
+            <p class="text-muted">Settings at page load. Save changes to refresh.</p>
+            <dl class="detail-fields row">
+                <div class="detail-field col-sm-4">
+                    <dt class="detail-label">Enabled</dt>
+                    <dd class="detail-value">@(effective.Enabled ? "Enabled" : "Disabled")</dd>
+                </div>
+                <div class="detail-field col-sm-4">
+                    <dt class="detail-label">Interval</dt>
+                    <dd class="detail-value">@effective.IntervalSeconds seconds</dd>
+                </div>
+                <div class="detail-field col-sm-4">
+                    <dt class="detail-label">Message source</dt>
+                    <dd class="detail-value">@(globalMessages ? "Global" : "Server")</dd>
+                </div>
+            </dl>
+            @if (effective.Messages.Count == 0)
+            {
+                <p class="text-muted">No effective broadcast messages.</p>
+            }
+            else
+            {
+                <ul>
+                    @foreach (var message in effective.Messages)
+                    {
+                        <li>@message.Message (@(message.Enabled ? "Enabled" : "Disabled"))</li>
+                    }
+                </ul>
+            }
+        }
+    </div>
+</div>
+<fieldset disabled="@Model.BroadcastsReadOnly">
+<div class="ibox">
+    <div class="ibox-title d-flex justify-content-between align-items-center">
+        <h5>Broadcast Messages</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="reset-broadcasts-to-global">Reset to global</button>
+    </div>
+    <div class="ibox-content">
+        <p class="text-muted mb-3">Each setting can inherit independently. Reset to global keeps server messages
+            for later use; save settings to apply the reset. Older agents default to disabled when no server
+            settings exist.</p>
 
             @await Html.PartialAsync("~/Views/Shared/Components/TriStateOverrideSelect.cshtml", new
             TriStateOverrideSelectViewModel
@@ -23,16 +71,27 @@
                 FieldName = "BroadcastsEnabled",
                 Label = Html.DisplayNameFor(m => m.BroadcastsEnabled).ToString(),
                 Value = Model.BroadcastsEnabled,
-                InheritLabel = $"Not set (global: {(Model.GlobalBroadcastsEnabled ? "Enabled" : "Disabled")})",
-                HelpText = "Choose Enabled or Disabled to save this server's interval and messages. Not set removes this server's broadcast configuration when saved."
+                InheritLabel = Model.GlobalBroadcastsReadOnly ? "Use global (unavailable)" : $"Use global ({(Model.GlobalBroadcastsEnabled ? "Enabled" : "Disabled")})",
+                HelpText = "Choose whether this server inherits the global enabled setting."
             })
 
             <div class="mb-3">
                 <label asp-for="BroadcastsIntervalSeconds" class="form-label"></label>
-                <input asp-for="BroadcastsIntervalSeconds" class="form-control" type="number" min="1" max="86400" />
+                <input asp-for="BroadcastsIntervalSeconds" class="form-control" type="number" min="1" max="86400"
+                       placeholder="@(Model.GlobalBroadcastsReadOnly ? "Unavailable" : Model.GlobalBroadcastsIntervalSeconds.ToString())" />
                 <span asp-validation-for="BroadcastsIntervalSeconds" class="text-danger"></span>
-                <small class="form-text text-muted">Interval between broadcasts in seconds. Default:
-                    @GameServerEditViewModel.DefaultBroadcastIntervalSeconds seconds.</small>
+                <small class="form-text text-muted">Leave empty to use the global interval
+                    (@(Model.GlobalBroadcastsReadOnly ? "unavailable" : $"{Model.GlobalBroadcastsIntervalSeconds} seconds")).</small>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="BroadcastsMessagesMode" class="form-label"></label>
+                    <select asp-for="BroadcastsMessagesMode" class="form-select">
+                        <option value="Inherit">Use global messages</option>
+                        <option value="Replace">Use server messages</option>
+                    </select>
+                    <span asp-validation-for="BroadcastsMessagesMode" class="text-danger"></span>
+                    <small class="form-text text-muted">Server messages are retained but inactive while global messages are selected.
+                        An empty server list replaces the global list with no messages.</small>
                 </div>
             </div>
         </div>
@@ -46,13 +105,15 @@
             </div>
             <div class="ibox-content">
                 <p id="broadcast-messages-empty" class="text-muted @(broadcastMessages.Count > 0 ? "d-none" : string.Empty)">
-                    No broadcast messages configured.
+                    No server broadcast messages configured.
                 </p>
 
-                <div id="broadcast-messages-container">
+                <input asp-for="BroadcastMessagesCount" type="hidden" value="@broadcastMessages.Count" />
+                <div id="broadcast-messages-container" data-message-count-id="BroadcastMessagesCount">
                     @for (var i = 0; i < broadcastMessages.Count; i++)
                     {
                         <div class="border rounded p-3 mb-3" data-message-row="broadcast">
+                            <input type="hidden" data-field="id" asp-for="BroadcastMessages[i].Id" />
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div class="form-check mb-0">
                                     @if (broadcastMessages[i].Enabled)
@@ -98,6 +159,7 @@
 
         <template id="broadcast-message-template">
             <div class="border rounded p-3 mb-3" data-message-row="broadcast">
+                <input type="hidden" data-field="id" />
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="form-check mb-0">
                         <input class="form-check-input" data-field="enabled" type="checkbox" value="true" checked="checked" />

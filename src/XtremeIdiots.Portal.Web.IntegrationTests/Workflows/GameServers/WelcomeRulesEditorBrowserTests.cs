@@ -11,7 +11,9 @@ using XtremeIdiots.Portal.Integrations.Servers.Api.Client.V1;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Broadcasts;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.ChatCommands;
+using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.Moderation;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.RulesEngine;
 using XtremeIdiots.Portal.Settings.Contracts.V1.Contracts.WelcomeMessages;
 using XtremeIdiots.Portal.Web.IntegrationTests.Authentication;
@@ -23,6 +25,101 @@ namespace XtremeIdiots.Portal.Web.IntegrationTests.Workflows.GameServers;
 [Trait("Category", "Browser")]
 public sealed class WelcomeRulesEditorBrowserTests
 {
+    [Theory]
+    [InlineData("protected")]
+    [InlineData("transition")]
+    [InlineData("changed")]
+    [InlineData("legacy")]
+    public async Task ModerationEditor_PreservesUnsupportedDocumentsAndKeepsLegacyEditing(string scenarioType)
+    {
+        const string unsupported = /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":false,"contentSafetyHateSeverityThreshold":2,"futureRules":{"enabled":false}}""";
+        const string legacy = /*lang=json,strict*/ """{"protectedNameEnforcementEnabled":"false","contentSafetySeverityThreshold":3}""";
+        const string separate = /*lang=json,strict*/ """{"schemaVersion":1,"rules":[{"id":"future"}]}""";
+        var scenario = new FileTransportScenario();
+        var serverJson = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        serverJson["AgentEnabled"] = true;
+        var server = serverJson.ToObject<GameServerDto>()!;
+        Mock.Get(scenario.RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server)));
+        var currentModerationJson = scenarioType is "legacy" or "changed" ? legacy : unsupported;
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.GetConfigurations(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                var moderation = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = ModerationSettingsConstants.Namespace,
+                    Configuration = currentModerationJson
+                }))!;
+                var rules = JsonConvert.DeserializeObject<ConfigurationDto>(JsonConvert.SerializeObject(new
+                {
+                    Namespace = "chatModerationRules",
+                    Configuration = separate
+                }))!;
+                return new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                    new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([scenario.SftpConfiguration, moderation, rules])));
+            });
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.DeleteConfiguration(scenario.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#moderation-tab-btn").ClickAsync();
+        var hate = page.Locator("#ModerationHateSeverityThreshold");
+        var protectedName = page.Locator("#ModerationProtectedNameEnforcementEnabled");
+        if (scenarioType is "legacy" or "changed")
+        {
+            await Assertions.Expect(hate).ToBeEnabledAsync();
+            await hate.SelectOptionAsync("4");
+            if (scenarioType == "changed")
+                currentModerationJson = unsupported;
+        }
+        else
+        {
+            await Assertions.Expect(page.Locator("#moderation-tab .alert-warning")).ToContainTextAsync("will be preserved");
+            await Assertions.Expect(hate).ToBeDisabledAsync();
+            await Assertions.Expect(protectedName).ToBeDisabledAsync();
+            if (scenarioType == "transition")
+                currentModerationJson = legacy;
+        }
+
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.Locator("#GameServer_Title").FillAsync("Updated Server");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(302, response.Status);
+        Assert.Contains(scenario.UpdatedGameServers, entry => entry.Title == "Updated Server");
+        Assert.DoesNotContain(scenario.UpsertedConfigurations, entry => entry.Namespace == "chatModerationRules");
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1).Verify(
+            api => api.DeleteConfiguration(scenario.GameServerId, "chatModerationRules", It.IsAny<CancellationToken>()),
+            Times.Never);
+        if (scenarioType == "legacy")
+        {
+            var saved = Assert.Single(scenario.UpsertedConfigurations, entry => entry.Namespace == ModerationSettingsConstants.Namespace);
+            using var document = JsonDocument.Parse(saved.Configuration);
+            Assert.Equal(4, document.RootElement.GetProperty("contentSafetyHateSeverityThreshold").GetInt32());
+            Assert.False(document.RootElement.GetProperty("protectedNameEnforcementEnabled").GetBoolean());
+        }
+        else
+        {
+            Assert.DoesNotContain(scenario.UpsertedConfigurations, entry => entry.Namespace == ModerationSettingsConstants.Namespace);
+            Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1).Verify(
+                api => api.DeleteConfiguration(scenario.GameServerId, ModerationSettingsConstants.Namespace, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        browser.AssertNoBrowserErrors();
+    }
+
     [Theory]
     [InlineData("protected")]
     [InlineData("transition")]
@@ -153,8 +250,194 @@ public sealed class WelcomeRulesEditorBrowserTests
         await Assertions.Expect(tabs).ToContainTextAsync("Server Operations");
         await tabs.GetByRole(AriaRole.Tab, new() { Name = "Broadcast Messages" }).ClickAsync();
         await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Older agents default to disabled");
-        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("removes this server's broadcast configuration");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Reset to global keeps server messages");
         browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task BroadcastEditor_ResetRetainsReorderedServerMessagesAndIds()
+    {
+        const string global = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":900,"messages":[{"message":"Global"}]}""";
+        const string local = /*lang=json,strict*/ """
+            {"enabled":false,"intervalSeconds":750,"messages":[
+              {"id":"one","message":"First","enabled":true},
+              {"id":"two","message":"Second","enabled":false}
+            ]}
+            """;
+        var scenario = CreateBroadcastScenario(() => local, global);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#broadcasts-tab-btn").ClickAsync();
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Saved effective settings");
+        await Assertions.Expect(page.Locator("#broadcasts-tab .detail-fields")).ToContainTextAsync("Server");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("First");
+        var rows = page.Locator("#broadcast-messages-container [data-message-row]");
+        await rows.First.GetByRole(AriaRole.Button, new() { Name = "Move message down" }).ClickAsync();
+        await page.Locator("#reset-broadcasts-to-global").ClickAsync();
+        await Assertions.Expect(page.Locator("#BroadcastsEnabled")).ToHaveValueAsync("");
+        await Assertions.Expect(page.Locator("#BroadcastsIntervalSeconds")).ToHaveValueAsync("");
+        await Assertions.Expect(page.Locator("#BroadcastsMessagesMode")).ToHaveValueAsync("Inherit");
+        await Assertions.Expect(page.Locator("#BroadcastMessagesCount")).ToHaveValueAsync("2");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal(302, response.Status);
+        var saved = Assert.Single(scenario.UpsertedConfigurations, entry => entry.Namespace == BroadcastSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(saved.Configuration);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("enabled").ValueKind);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("intervalSeconds").ValueKind);
+        Assert.Equal("Inherit", document.RootElement.GetProperty("messagesMode").GetString());
+        var messages = document.RootElement.GetProperty("messages");
+        Assert.Equal("two", messages[0].GetProperty("id").GetString());
+        Assert.Equal("Second", messages[0].GetProperty("message").GetString());
+        Assert.False(messages[0].GetProperty("enabled").GetBoolean());
+        Assert.Equal("one", messages[1].GetProperty("id").GetString());
+        Assert.Equal("First", messages[1].GetProperty("message").GetString());
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task BroadcastEditor_EmptyServerReplacementIsExplicit()
+    {
+        const string global = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":900,"messages":[{"message":"Global"}]}""";
+        var scenario = CreateBroadcastScenario(() => null, global);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#broadcasts-tab-btn").ClickAsync();
+        await Assertions.Expect(page.Locator("#broadcasts-tab .detail-fields")).ToContainTextAsync("Global");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Global");
+        await page.Locator("#add-broadcast-message").ClickAsync();
+        await Assertions.Expect(page.Locator("#BroadcastMessagesCount")).ToHaveValueAsync("1");
+        await page.Locator("#broadcast-messages-container").GetByRole(AriaRole.Button, new() { Name = "Remove message" }).ClickAsync();
+        await Assertions.Expect(page.Locator("#BroadcastMessagesCount")).ToHaveValueAsync("0");
+        await page.Locator("#BroadcastsMessagesMode").SelectOptionAsync("Replace");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal(302, response.Status);
+        var saved = Assert.Single(scenario.UpsertedConfigurations, entry => entry.Namespace == BroadcastSettingsConstants.Namespace);
+        using var document = JsonDocument.Parse(saved.Configuration);
+        Assert.Equal("Replace", document.RootElement.GetProperty("messagesMode").GetString());
+        Assert.Empty(document.RootElement.GetProperty("messages").EnumerateArray());
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Fact]
+    public async Task BroadcastEditor_InvalidMessageIdDoesNotSaveAndShowsSavedEffectiveSettings()
+    {
+        const string global = /*lang=json,strict*/ """{"messages":[{"message":"Global"}]}""";
+        const string local = /*lang=json,strict*/ """{"messages":[{"id":"saved","message":"Saved"}]}""";
+        var scenario = CreateBroadcastScenario(() => local, global);
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#broadcasts-tab-btn").ClickAsync();
+        await page.Locator("#broadcast-messages-container [data-field='id']").EvaluateAsync("field => field.value = ' invalid '");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal(200, response.Status);
+        await Assertions.Expect(page.Locator("[data-valmsg-summary]")).ToContainTextAsync("Broadcast message IDs must be unique");
+        await page.Locator("#broadcasts-tab-btn").ClickAsync();
+        await Assertions.Expect(page.Locator("#broadcasts-tab .detail-fields")).ToContainTextAsync("Server");
+        await Assertions.Expect(page.Locator("#broadcasts-tab")).ToContainTextAsync("Saved");
+        Assert.Empty(scenario.UpdatedGameServers);
+        Assert.Empty(scenario.UpsertedConfigurations);
+        browser.AssertNoBrowserErrors();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task BroadcastEditor_PreservesSettingsWhenCompatibilityChangesDuringEdit(bool initiallyEditable)
+    {
+        const string editable = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":750,"messages":[{"id":"saved","message":"Saved"}]}""";
+        const string unsupported = /*lang=json,strict*/ """{"enabled":true,"intervalSeconds":750,"messages":[{"id":"saved","message":"Saved"}],"future":true}""";
+        var current = initiallyEditable ? editable : unsupported;
+        var scenario = CreateBroadcastScenario(() => current, /*lang=json,strict*/ """{"messages":[]}""");
+        await using var browser = await BrowserFixture.CreateAsync(TestPrincipalProfiles.HeadAdmin, services =>
+        {
+            scenario.ConfigureServices(services);
+            services.RemoveAll<IGameServerSettingsService>();
+            services.AddScoped<IGameServerSettingsService, GameServerSettingsService>();
+        });
+        var page = browser.Page;
+        var path = $"/GameServers/Edit/{scenario.GameServerId}";
+        await page.GotoAsync(new Uri(browser.Host.BaseAddress, path).AbsoluteUri);
+        await page.Locator("#broadcasts-tab-btn").ClickAsync();
+        if (initiallyEditable)
+            await Assertions.Expect(page.Locator("#BroadcastsIntervalSeconds")).ToBeEnabledAsync();
+        else
+            await Assertions.Expect(page.Locator("#BroadcastsIntervalSeconds")).ToBeDisabledAsync();
+        current = initiallyEditable ? unsupported : editable;
+        await page.Locator("#general-tab-btn").ClickAsync();
+        await page.Locator("#GameServer_Title").FillAsync("Updated Server");
+        var response = await page.RunAndWaitForResponseAsync(
+            () => page.GetByTestId("game-server-save").ClickAsync(),
+            result => result.Request.Method == "POST" && new Uri(result.Url).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal(302, response.Status);
+        Assert.Contains(scenario.UpdatedGameServers, entry => entry.Title == "Updated Server");
+        Assert.DoesNotContain(scenario.UpsertedConfigurations, entry => entry.Namespace == BroadcastSettingsConstants.Namespace);
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1).Verify(
+            api => api.DeleteConfiguration(scenario.GameServerId, BroadcastSettingsConstants.Namespace, It.IsAny<CancellationToken>()),
+            Times.Never);
+        browser.AssertNoBrowserErrors();
+    }
+
+    private static FileTransportScenario CreateBroadcastScenario(Func<string?> serverJson, string globalJson)
+    {
+        static ConfigurationDto Configuration(string json) => JsonConvert.DeserializeObject<ConfigurationDto>(
+            JsonConvert.SerializeObject(new { Namespace = BroadcastSettingsConstants.Namespace, Configuration = json }))!;
+
+        var scenario = new FileTransportScenario();
+        var server = Newtonsoft.Json.Linq.JObject.FromObject(scenario.GameServer);
+        server["AgentEnabled"] = true;
+        Mock.Get(scenario.RepositoryClient.Object.GameServers.V1)
+            .Setup(api => api.GetGameServer(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<GameServerDto>(HttpStatusCode.OK, new ApiResponse<GameServerDto>(server.ToObject<GameServerDto>()!)));
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.GetConfigurations(scenario.GameServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                var json = serverJson();
+                var configurations = json is null
+                    ? new[] { scenario.SftpConfiguration }
+                    : new[] { scenario.SftpConfiguration, Configuration(json) };
+                return new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                    new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>(configurations)));
+            });
+        Mock.Get(scenario.RepositoryClient.Object.GameServerConfigurations.V1)
+            .Setup(api => api.DeleteConfiguration(scenario.GameServerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult(HttpStatusCode.NoContent));
+        Mock.Get(scenario.RepositoryClient.Object.GlobalConfigurations.V1)
+            .Setup(api => api.GetConfigurations(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<CollectionModel<ConfigurationDto>>(HttpStatusCode.OK,
+                new ApiResponse<CollectionModel<ConfigurationDto>>(new CollectionModel<ConfigurationDto>([Configuration(globalJson)]))));
+        return scenario;
     }
 
     [Fact]

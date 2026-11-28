@@ -1,24 +1,39 @@
-@model XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine.RuleExecutionFlowConditionDto
+@using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.RulesEngine
+@using XtremeIdiots.Portal.Web.ViewModels
+@model RuleConditionFlowViewModel
+@{
+    var condition = Model.Condition;
+    var evidence = Model.Evidence.FirstOrDefault(item =>
+        item.Kind == RuleEvidenceNodeKind.Condition && item.ConditionPath is not null &&
+        item.ConditionPath.SequenceEqual(Model.Path) &&
+        (item.ConditionId is null || string.Equals(item.ConditionId, condition.ConditionId, StringComparison.Ordinal)));
+}
 
-<li class="rules-flow__condition">
-    @if (Model.GroupOperator is not null)
+<li class="rules-flow__condition" data-condition-path="@string.Join(".", Model.Path)">
+    @if (condition.GroupOperator is not null)
     {
-        <strong>@Model.GroupOperator</strong>
+        <strong>@condition.GroupOperator</strong>
+        @if (evidence is not null) { <partial name="_EvaluationNodeStatus" model="evidence.Status" /> }
         <ul class="rules-flow__conditions">
-            @foreach (var child in Model.Conditions)
+            @for (var index = 0; index < condition.Conditions.Length; index++)
             {
-                <partial name="_FlowCondition" model="child" />
+                <partial name="_FlowCondition" model="new RuleConditionFlowViewModel(condition.Conditions[index], Model.Evidence, [.. Model.Path, index])" />
             }
         </ul>
     }
     else
     {
-        <strong>@(Model.DisplayName ?? Model.ConditionId ?? "Unknown condition")</strong>
-        @if (Model.Operator is not null) { <span> - @Model.Operator</span> }
-        @foreach (var parameter in Model.SafeParameters)
+        <strong>@(condition.DisplayName ?? condition.ConditionId ?? "Unknown condition")</strong>
+        @if (condition.Operator is not null) { <span> - @condition.Operator</span> }
+        @if (evidence is not null) { <partial name="_EvaluationNodeStatus" model="evidence.Status" /> }
+        @foreach (var parameter in condition.SafeParameters)
         {
             <div>@parameter.Name: @parameter.Value</div>
         }
-        @if (Model.HasUnavailableParameters) { <div class="text-muted">Some condition values are unavailable.</div> }
+        @if (condition.HasUnavailableParameters) { <div class="text-muted">Some condition values are unavailable.</div> }
+    }
+    @if (!string.IsNullOrEmpty(evidence?.ReasonCode))
+    {
+        <div class="small text-muted">Reason: @evidence.ReasonCode</div>
     }
 </li>
