@@ -27,6 +27,7 @@ using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.AdminActions;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.ChatMessages;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Configurations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.GameServers;
+using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.MapRotations;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Maps;
 using XtremeIdiots.Portal.Repository.Abstractions.Models.V1.Players;
 using XtremeIdiots.Portal.Repository.Api.Client.V1;
@@ -82,6 +83,24 @@ public class ServerAdminControllerTests
         controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
         return controller;
+    }
+
+    [Fact]
+    public async Task GetMapRotation_UsesRepositoryEntriesIncludingRepeatedMapsAndModes()
+    {
+        var id = ConfigureEnrichmentTarget();
+        mockRepositoryApiClient.Setup(x => x.MapRotations.V1.GetEffectiveServerRotation(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationDto>(HttpStatusCode.OK, new ApiResponse<PublicServerRotationDto>(
+                new PublicServerRotationDto
+                {
+                    GameServerId = id, IsAvailable = true, Source = RotationSource.ServerObserved,
+                    Maps = [new() { MapName = "mp_repeat", GameMode = "war" }, new() { MapName = "mp_repeat", GameMode = "dm" }]
+                })));
+
+        var json = JObject.FromObject(Assert.IsType<JsonResult>(await CreateSut().GetMapRotation(id)).Value!);
+        Assert.True(json.Value<bool>("success"));
+        Assert.Equal(["war", "dm"], json["maps"]!.Select(map => map.Value<string>("GameMode")!).ToArray());
+        mockServersApiClient.Verify(x => x.Cod4Rcon.V1.GetMaps(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -1616,7 +1635,7 @@ public class ServerAdminControllerTests
     }
 
     [Fact]
-    public async Task GetMapRotation_Cod4x_UsesCod4xMapsEndpoint()
+    public async Task GetMapRotation_Cod4x_ReturnsEmptyWhenNoEffectiveRotation()
     {
         var serverId = Guid.NewGuid();
 
@@ -1628,27 +1647,11 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
-        mockServersApiClient
-            .Setup(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<RconMapCollectionDto>(
-                HttpStatusCode.OK,
-                new ApiResponse<RconMapCollectionDto>(new RconMapCollectionDto([
-                    new RconMapDto("war", "mp_crash")
-                ]))));
-
         mockRepositoryApiClient
-            .Setup(x => x.Maps.V1.GetMaps(
-                It.IsAny<GameType?>(),
-                It.IsAny<string[]?>(),
-                It.IsAny<MapsFilter?>(),
-                It.IsAny<string?>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<MapsOrder?>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<CollectionModel<MapDto>>(
+            .Setup(x => x.MapRotations.V1.GetEffectiveServerRotation(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationDto>(
                 HttpStatusCode.OK,
-                new ApiResponse<CollectionModel<MapDto>>(new CollectionModel<MapDto>([]))));
+                new ApiResponse<PublicServerRotationDto>(new PublicServerRotationDto { GameServerId = serverId })));
 
         var sut = CreateSut();
 
@@ -1657,12 +1660,12 @@ public class ServerAdminControllerTests
         var jsonResult = Assert.IsType<JsonResult>(result);
         var payload = JObject.Parse(JsonConvert.SerializeObject(jsonResult.Value));
         Assert.True(payload.Value<bool>("success"));
-
-        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Empty(payload["maps"]!);
+        mockServersApiClient.Verify(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task GetMapRotation_Cod4x_WhenMapsRequestFails_ReturnsFailurePayload()
+    public async Task GetMapRotation_Cod4x_WhenRepositoryRequestFails_ReturnsFailurePayload()
     {
         var serverId = Guid.NewGuid();
 
@@ -1674,9 +1677,9 @@ public class ServerAdminControllerTests
             .Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<string>()))
             .ReturnsAsync(AuthorizationResult.Success());
 
-        mockServersApiClient
-            .Setup(x => x.CoD4xRcon.V1.GetMaps(serverId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<RconMapCollectionDto>(HttpStatusCode.InternalServerError));
+        mockRepositoryApiClient
+            .Setup(x => x.MapRotations.V1.GetEffectiveServerRotation(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ApiResult<PublicServerRotationDto>(HttpStatusCode.InternalServerError));
 
         var sut = CreateSut();
 

@@ -53,6 +53,7 @@ var RconMapControl = (function () {
                         var mapTitle = $('<div>', { class: 'map-card-title', title: map.mapTitle }).text(map.mapTitle);
 
                         cardBody.append(mapTitle);
+                        if (map.gameMode) cardBody.append($('<div>', { class: 'small text-muted' }).text(map.gameMode));
                         if (_canChangeMap) {
                             var loadBtn = $('<button>', {
                                 class: 'btn btn-sm btn-primary map-card-btn load-map-btn',

@@ -321,6 +321,23 @@ public class MapRotationCfgParserTests
         Assert.Equal(["mp_backlot", "mp_crash", "mp_strike"], rotation.MapNames);
     }
 
+    [Fact]
+    public void Parse_PreservesEntryModesAndDuplicatesAcrossContinuations()
+    {
+        var cfg = """
+            set sv_maprotation "map mp_unset gametype war map mp_crash gametype dm map mp_crash"
+            set sv_maprotation_1 "map mp_strike gametype war map mp_crash"
+            set sv_maprotation_2 "map mp_backlot"
+            """;
+
+        var rotation = Assert.Single(MapRotationCfgParser.Parse(cfg));
+
+        Assert.Equal(
+            [new("mp_unset", null), new("mp_crash", "war"), new("mp_crash", "dm"),
+                new("mp_strike", "dm"), new("mp_crash", "war"), new("mp_backlot", "war")],
+            rotation.Entries);
+    }
+
     [Theory]
     [InlineData("sv_maprotation")]
     [InlineData("scr_small_rotation")]

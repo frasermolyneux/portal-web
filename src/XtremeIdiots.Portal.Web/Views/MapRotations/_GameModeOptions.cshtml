@@ -1,0 +1,53 @@
+@model string
+
+@{
+    var groups = new[]
+    {
+        (Label: "Standard Modes", Modes: new (string Value, string Label)[]
+        {
+            ("dm", "Free for All / Deathmatch (dm)"),
+            ("tdm", "Team Deathmatch (tdm)"),
+            ("war", "War / Team Deathmatch (war)"),
+            ("sd", "Search & Destroy (sd)"),
+            ("dom", "Domination (dom)"),
+            ("sab", "Sabotage (sab)"),
+            ("koth", "Headquarters (koth)"),
+            ("ctf", "Capture the Flag (ctf)")
+        }),
+        (Label: "OpenWarfare Modes", Modes: new (string Value, string Label)[]
+        {
+            ("ftag", "Freeze Tag (ftag)"),
+            ("ass", "Assassination (ass)"),
+            ("bel", "Behind Enemy Lines (bel)"),
+            ("ch", "Capture and Hold (ch)"),
+            ("gr", "Greed (gr)"),
+            ("gg", "Gun Game (gg)"),
+            ("hns", "Hide and Seek (hns)"),
+            ("lms", "Last Man Standing (lms)"),
+            ("lts", "Last Team Standing (lts)"),
+            ("oitc", "One In The Chamber (oitc)"),
+            ("re", "Retrieval (re)"),
+            ("ss", "Sharp Shooter (ss)"),
+            ("tgr", "Team Greed (tgr)"),
+            ("twar", "War (twar)"),
+            ("cooperative", "Cooperative / Zombie (cooperative)")
+        })
+    };
+}
+
+<option value="">-- Select Mode --</option>
+@foreach (var group in groups)
+{
+    <optgroup label="@group.Label">
+        @foreach (var mode in group.Modes)
+        {
+            var value = string.Equals(mode.Value, Model, StringComparison.OrdinalIgnoreCase) ? Model : mode.Value;
+            <option value="@value" selected="@(string.Equals(value, Model, StringComparison.Ordinal))">@mode.Label</option>
+        }
+    </optgroup>
+}
+@if (!string.IsNullOrEmpty(Model) && !groups.SelectMany(group => group.Modes)
+    .Any(mode => string.Equals(mode.Value, Model, StringComparison.OrdinalIgnoreCase)))
+{
+    <option value="@Model" selected>@Model</option>
+}

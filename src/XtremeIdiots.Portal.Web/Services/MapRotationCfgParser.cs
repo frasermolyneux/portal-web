@@ -10,7 +10,12 @@ public record ParsedRotation(
     bool IsActive,
     string? Author,
     string? DateText,
-    string? RawComment);
+    string? RawComment)
+{
+    public List<ParsedRotationEntry> Entries { get; init; } = [];
+}
+
+public record ParsedRotationEntry(string MapName, string? GameMode);
 
 public static partial class MapRotationCfgParser
 {
@@ -80,7 +85,7 @@ public static partial class MapRotationCfgParser
             var (title, author, dateText, rawComment) = ExtractMetadata(lines, i);
 
             // Parse the rotation value
-            var (gameMode, mapNames) = ParseRotationValue(varName, value);
+            var (gameMode, entries) = ParseRotationValue(varName, value);
 
             if (string.IsNullOrEmpty(title))
             {
@@ -88,8 +93,9 @@ public static partial class MapRotationCfgParser
             }
 
             rotations.Add(new ParsedRotation(
-                title, gameMode, mapNames, varName,
-                IsActive: !isCommented, author, dateText, rawComment));
+                title, gameMode, entries.Select(entry => entry.MapName).ToList(), varName,
+                IsActive: !isCommented, author, dateText, rawComment)
+            { Entries = entries });
         }
 
         // Merge continuation parts into their parent rotations
@@ -98,13 +104,16 @@ public static partial class MapRotationCfgParser
             var rotation = rotations[i];
             if (continuationParts.TryGetValue(rotation.ConfigVariableName, out var parts))
             {
+                var currentGameMode = rotation.GameMode;
                 foreach (var part in parts.OrderBy(p => p.Index))
                 {
-                    var (gameMode, additionalMaps) = ParseRotationValue(rotation.ConfigVariableName, part.Value);
+                    var (gameMode, additionalEntries) = ParseRotationValue(rotation.ConfigVariableName, part.Value, currentGameMode);
                     if (string.IsNullOrEmpty(rotation.GameMode) && !string.IsNullOrEmpty(gameMode))
                         rotation = rotation with { GameMode = gameMode };
 
-                    rotation.MapNames.AddRange(additionalMaps);
+                    currentGameMode = gameMode;
+                    rotation.Entries.AddRange(additionalEntries);
+                    rotation.MapNames.AddRange(additionalEntries.Select(entry => entry.MapName));
                 }
 
                 rotations[i] = rotation;
@@ -150,10 +159,11 @@ public static partial class MapRotationCfgParser
         return (varName, 0);
     }
 
-    private static (string GameMode, List<string> MapNames) ParseRotationValue(string varName, string value)
+    private static (string GameMode, List<ParsedRotationEntry> Entries) ParseRotationValue(
+        string varName, string value, string initialGameMode = "")
     {
         if (string.IsNullOrWhiteSpace(value))
-            return ("", []);
+            return (initialGameMode, []);
 
         // AACP format: semicolon-separated map names
         if (varName.StartsWith("scr_aacp_maps_", StringComparison.OrdinalIgnoreCase))
@@ -162,12 +172,12 @@ public static partial class MapRotationCfgParser
                 .Select(m => m.Trim())
                 .Where(m => !string.IsNullOrEmpty(m))
                 .ToList();
-            return ("", maps);
+            return ("", maps.Select(map => new ParsedRotationEntry(map, null)).ToList());
         }
 
         // Standard format: gametype {mode} map {map1} map {map2} ...
-        var gameMode = "";
-        var mapNames = new List<string>();
+        var gameMode = initialGameMode;
+        var entries = new List<ParsedRotationEntry>();
         var tokens = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 
         for (var j = 0; j < tokens.Length; j++)
@@ -184,12 +194,12 @@ public static partial class MapRotationCfgParser
             }
             else if (tokens[j].Equals("map", StringComparison.OrdinalIgnoreCase))
             {
-                mapNames.Add(tokens[j + 1]);
+                entries.Add(new ParsedRotationEntry(tokens[j + 1], string.IsNullOrEmpty(gameMode) ? null : gameMode));
                 j++;
             }
         }
 
-        return (gameMode, mapNames);
+        return (gameMode, entries);
     }
 
     private static (string Title, string? Author, string? DateText, string? RawComment) ExtractMetadata(string[] lines, int rotationLineIndex)

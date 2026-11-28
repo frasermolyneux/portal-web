@@ -6,7 +6,7 @@
             hiddenContainerId: 'mapIdsContainer',
             searchUrl: '/MapSearch/Maps',
             gameType: '',
-            initialMaps: [] // Array of { id, text, imageUrl }
+            initialMaps: [] // Array of { id, text, imageUrl, gameMode }
         }, options || {});
 
         const $searchInput = $('#' + cfg.searchInputId);
@@ -15,7 +15,7 @@
 
         if ($searchInput.length === 0) return;
 
-        let selectedMaps = []; // Array of { id, text, imageUrl }
+        let selectedMaps = [];
         let timer = null;
 
         // Suggestions dropdown
@@ -47,6 +47,15 @@
                 $card.append('<span class="badge bg-secondary me-2" style="min-width:28px;">' + (index + 1) + '</span>');
                 $card.append($('<img>').attr('src', map.imageUrl || '/images/noimage.jpg').attr('alt', map.text).css({ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px' }).addClass('me-2'));
                 $card.append($('<span>').addClass('flex-grow-1').text(map.text));
+
+                const $gameMode = $('<input>').attr({
+                    type: 'text',
+                    name: 'EntryGameModes[' + index + ']',
+                    'aria-label': 'Game mode for ' + map.text + ', entry ' + (index + 1),
+                    placeholder: 'Default mode'
+                }).addClass('form-control form-control-sm w-auto ms-2').val(map.gameMode || '');
+                $gameMode.on('input', function () { map.gameMode = $(this).val(); });
+                $card.append($gameMode);
 
                 const $removeBtn = $('<button type="button" class="btn btn-outline-danger btn-sm ms-2"><i class="fa-solid fa-fw fa-times"></i></button>');
                 $removeBtn.on('click', function () {
@@ -91,7 +100,6 @@
         }
 
         function addMap(map) {
-            if (selectedMaps.some(m => m.id === map.id)) return; // prevent duplicates
             selectedMaps.push(map);
             renderList();
             $searchInput.val('');
@@ -117,9 +125,6 @@
                     if (!Array.isArray(results) || results.length === 0) { clearSuggestions(); return; }
 
                     results.forEach((r, i) => {
-                        // Skip already selected
-                        if (selectedMaps.some(m => m.id === r.id)) return;
-
                         const $item = $('<button type="button" class="list-group-item list-group-item-action py-2 px-3 d-flex align-items-center" role="option"></button>');
                         $item.attr('data-value', r.id);
                         $item.append($('<img>').attr('src', r.imageUrl || '/images/noimage.jpg').css({ width: '40px', height: '28px', objectFit: 'cover', borderRadius: '3px' }).addClass('me-2'));
