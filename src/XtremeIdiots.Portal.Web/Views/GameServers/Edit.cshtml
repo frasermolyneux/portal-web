@@ -529,6 +529,12 @@
         serverSettingsEditors.push(broadcastEditor);
         }
 
+        document.getElementById('reset-broadcasts-to-global')?.addEventListener('click', function () {
+        document.getElementById('BroadcastsEnabled').value = '';
+        document.getElementById('BroadcastsIntervalSeconds').value = '';
+        document.getElementById('BroadcastsMessagesMode').value = 'Inherit';
+        });
+
         document.querySelectorAll('[data-chat-command-messages-container]').forEach(function (container) {
         var editor = XISettingsRowManager.initializeMessageList({
         container: container,

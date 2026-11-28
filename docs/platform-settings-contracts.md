@@ -20,6 +20,20 @@ This document describes the current settings architecture used by `portal-web` a
 
 ## Troubleshooting Runbook
 
+### Broadcast messages
+
+The server editor resolves saved effective settings with the shared broadcast
+resolver. Enablement, interval and message source can inherit independently.
+An absent server namespace inherits global messages; an existing legacy
+namespace with no message mode uses its server list, even when empty. Selecting
+an empty server list explicitly replaces the global list with no messages.
+Resetting to global retains server messages for later use.
+
+Unsupported or incomplete broadcast documents and incomplete form submissions
+are preserved when other settings are saved. Effective values are unavailable
+when the saved global or server document cannot be interpreted safely. Older
+agents that lack inheritance default to disabled when no server settings exist.
+
 ### Chat commands
 
 The global and server editors make chat-command settings read-only when the

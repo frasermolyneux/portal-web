@@ -566,12 +566,13 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
-    public void Broadcasts_DisableThenReenable_DeletesThenRecreatesNamespaceWithSamePayload()
+    public void Broadcasts_EnabledOverrideCanInheritWithoutDiscardingOtherOverrides()
     {
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = true;
         model.BroadcastsEnabled = true;
         model.BroadcastsIntervalSeconds = 750;
+        model.BroadcastsMessagesMode = BroadcastMessagesMode.Replace;
         model.BroadcastMessages =
         [
             new BroadcastMessageViewModel
@@ -586,15 +587,98 @@ public class NamespaceSettingsSerializerTests
 
         model.BroadcastsEnabled = null;
 
-        var disabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
-        Assert.DoesNotContain(disabledConfigurations, x => x.Namespace == BroadcastSettingsConstants.Namespace);
-        Assert.Contains(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
+        var inheritedConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
+        using var inherited = JsonDocument.Parse(Assert.Single(inheritedConfigurations, x => x.Namespace == BroadcastSettingsConstants.Namespace).Configuration);
+        Assert.Equal(JsonValueKind.Null, inherited.RootElement.GetProperty("enabled").ValueKind);
+        Assert.Equal(750, inherited.RootElement.GetProperty("intervalSeconds").GetInt32());
+        Assert.Equal("Replace", inherited.RootElement.GetProperty("messagesMode").GetString());
+        Assert.Single(inherited.RootElement.GetProperty("messages").EnumerateArray());
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
 
         model.BroadcastsEnabled = true;
 
         var reenabledConfigurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
         var reenabledJson = Assert.Single(reenabledConfigurations, x => x.Namespace == BroadcastSettingsConstants.Namespace).Configuration;
         Assert.Equal(enabledJson, reenabledJson);
+    }
+
+    [Fact]
+    public void Broadcasts_ResetToGlobalRetainsServerMessagesAndIds()
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.AgentEnabled = true;
+        model.SavedBroadcastSettings = new BroadcastSettingsDocument
+        {
+            Enabled = true,
+            IntervalSeconds = 750,
+            Messages = [new BroadcastSettingsMessage { Id = "local-id", Message = "Local" }]
+        };
+        model.BroadcastsMessagesMode = BroadcastMessagesMode.Inherit;
+        model.BroadcastMessages = [new BroadcastMessageViewModel { Id = "local-id", Message = "Local" }];
+
+        var configurations = serializer.BuildGameServerConfigurations(model, false, false, false);
+        var json = Assert.Single(configurations, entry => entry.Namespace == BroadcastSettingsConstants.Namespace).Configuration;
+        using var saved = JsonDocument.Parse(json);
+        Assert.Equal(JsonValueKind.Null, saved.RootElement.GetProperty("enabled").ValueKind);
+        Assert.Equal(JsonValueKind.Null, saved.RootElement.GetProperty("intervalSeconds").ValueKind);
+        Assert.Equal("Inherit", saved.RootElement.GetProperty("messagesMode").GetString());
+        Assert.Equal("local-id", saved.RootElement.GetProperty("messages")[0].GetProperty("id").GetString());
+
+        var global = new BroadcastSettingsDocument
+        {
+            Enabled = true,
+            IntervalSeconds = 900,
+            Messages = [new BroadcastSettingsMessage { Message = "Global" }]
+        };
+        var server = BroadcastEditorCompatibility.Deserialize(json);
+        var effective = BroadcastSettingsResolver.Resolve(global, server, BroadcastSettingsResolutionMode.GlobalInheritance);
+        Assert.True(effective.Enabled);
+        Assert.Equal(900, effective.IntervalSeconds);
+        Assert.Equal("Global", Assert.Single(effective.Messages).Message);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void Broadcasts_EmptyServerReplacementIsNotTreatedAsInheritance()
+    {
+        var model = BuildDefaultModel();
+        model.GameServer.AgentEnabled = true;
+        model.BroadcastsMessagesMode = BroadcastMessagesMode.Replace;
+
+        var configurations = serializer.BuildGameServerConfigurations(model, false, false, false);
+        var json = Assert.Single(configurations, entry => entry.Namespace == BroadcastSettingsConstants.Namespace).Configuration;
+        var global = new BroadcastSettingsDocument { Messages = [new BroadcastSettingsMessage { Message = "Global" }] };
+        var effective = BroadcastSettingsResolver.Resolve(global, BroadcastEditorCompatibility.Deserialize(json), BroadcastSettingsResolutionMode.GlobalInheritance);
+        Assert.Empty(effective.Messages);
+        Assert.DoesNotContain(BroadcastSettingsConstants.Namespace, serializer.DeletedNamespaces);
+    }
+
+    [Fact]
+    public void Broadcasts_LegacyOmittedModeAndGlobalNullableDefaultsArePreserved()
+    {
+        var server = BuildDefaultModel();
+        server.GameServer.AgentEnabled = true;
+        server.SavedBroadcastSettings = new BroadcastSettingsDocument();
+        server.BroadcastsMessagesMode = BroadcastMessagesMode.Replace;
+        server.BroadcastMessages = [new BroadcastMessageViewModel { Id = "server-id", Message = "Local" }];
+        var serverJson = Assert.Single(serializer.BuildGameServerConfigurations(server, false, false, false),
+            entry => entry.Namespace == BroadcastSettingsConstants.Namespace).Configuration;
+        using var serverDocument = JsonDocument.Parse(serverJson);
+        Assert.False(serverDocument.RootElement.TryGetProperty("messagesMode", out _));
+        Assert.Equal("server-id", serverDocument.RootElement.GetProperty("messages")[0].GetProperty("id").GetString());
+
+        var global = new GlobalSettingsViewModel
+        {
+            SavedBroadcastSettings = new BroadcastSettingsDocument { MessagesMode = BroadcastMessagesMode.Inherit },
+            BroadcastMessages = [new BroadcastMessageViewModel { Id = "global-id", Message = "Global" }]
+        };
+        var globalJson = Assert.Single(serializer.BuildGlobalSettingsConfigurations(global),
+            entry => entry.Namespace == BroadcastSettingsConstants.Namespace).Configuration;
+        using var globalDocument = JsonDocument.Parse(globalJson);
+        Assert.Equal(JsonValueKind.Null, globalDocument.RootElement.GetProperty("enabled").ValueKind);
+        Assert.Equal(JsonValueKind.Null, globalDocument.RootElement.GetProperty("intervalSeconds").ValueKind);
+        Assert.Equal("Inherit", globalDocument.RootElement.GetProperty("messagesMode").GetString());
+        Assert.Equal("global-id", globalDocument.RootElement.GetProperty("messages")[0].GetProperty("id").GetString());
     }
 
     [Fact]
@@ -709,6 +793,7 @@ public class NamespaceSettingsSerializerTests
         server.GameServer.AgentEnabled = true;
         server.BroadcastsEnabled = true;
         server.BroadcastsIntervalSeconds = interval;
+        server.BroadcastsMessagesMode = BroadcastMessagesMode.Replace;
         server.BroadcastMessages =
         [
             new BroadcastMessageViewModel
@@ -730,7 +815,7 @@ public class NamespaceSettingsSerializerTests
     [Fact]
     public void Broadcasts_ServerInheritGlobal_DeletesNamespaceForParityWithInheritState()
     {
-        // Test inherit parity: server broadcasts disabled should delete namespace (inherit global)
+        // With no overrides or retained messages, the namespace can be removed.
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = true;
         model.BroadcastsEnabled = null;  // inherit global broadcasts
@@ -781,19 +866,15 @@ public class NamespaceSettingsSerializerTests
     }
 
     [Fact]
-    public void Broadcasts_InvalidInterval_UsesDefaultIntervalInServerConfiguration()
+    public void Broadcasts_InvalidInterval_IsRejected()
     {
         var model = BuildDefaultModel();
         model.GameServer.AgentEnabled = true;
         model.BroadcastsEnabled = true;
         model.BroadcastsIntervalSeconds = 0;
 
-        var configurations = serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false);
-        var (_, broadcastsConfiguration) = Assert.Single(configurations, x => x.Namespace == BroadcastSettingsConstants.Namespace);
-        using var doc = JsonDocument.Parse(broadcastsConfiguration);
-
-        Assert.Equal(GameServerEditViewModel.DefaultBroadcastIntervalSeconds, doc.RootElement.GetProperty("intervalSeconds").GetInt32());
-        Assert.True(doc.RootElement.GetProperty("intervalSeconds").GetInt32() > 0, "Default broadcast interval must be positive");
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            serializer.BuildGameServerConfigurations(model, canEditFileTransport: false, canEditRcon: false, canConfigureScreenshots: false));
     }
 
     [Fact]

@@ -372,7 +372,7 @@ public class GameServersController(
                             continue;
 
                         if (string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
-                            editModel.BroadcastsReadOnly = BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
+                            editModel.BroadcastsReadOnly |= BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration);
                         if (string.Equals(config.Namespace, ChatCommandSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
                             editModel.ChatCommandsReadOnly = ChatCommandEditorCompatibility.RequiresReadOnly(config.Configuration, gameServerData.GameType);
                         if (string.Equals(config.Namespace, ModerationSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase))
@@ -485,10 +485,26 @@ public class GameServersController(
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            model.BroadcastsReadOnly = !ModelState.ContainsKey(nameof(GameServerEditViewModel.BroadcastsIntervalSeconds))
+            var savedBroadcasts = new GameServerEditViewModel();
+            foreach (var config in savedConfigurations.Result.Data.Items.Where(static config =>
+                string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase)))
+                PopulateConfigFromNamespace(savedBroadcasts, config);
+            model.SavedBroadcastSettings = savedBroadcasts.SavedBroadcastSettings;
+
+            model.BroadcastsReadOnly = !BroadcastEditorCompatibility.HasCompleteSubmission(
+                ModelState, model.BroadcastMessagesCount, model.BroadcastMessages, server: true)
                 || savedConfigurations.Result.Data.Items.Any(config =>
                 string.Equals(config.Namespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase) &&
                 BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration));
+
+            if (model.BroadcastsReadOnly)
+            {
+                BroadcastEditorCompatibility.ClearSubmittedModelState(ModelState);
+                model.BroadcastsEnabled = savedBroadcasts.BroadcastsEnabled;
+                model.BroadcastsIntervalSeconds = savedBroadcasts.BroadcastsIntervalSeconds;
+                model.BroadcastsMessagesMode = savedBroadcasts.BroadcastsMessagesMode;
+                model.BroadcastMessages = savedBroadcasts.BroadcastMessages;
+            }
 
             model.ChatCommandsReadOnly = !ModelState.ContainsKey("ChatCommands.Commands[0].Name")
                 || savedConfigurations.Result.Data.Items.Any(config =>
@@ -581,7 +597,11 @@ public class GameServersController(
             await PopulateRuleCapabilitiesAsync(model, gameServerData.GameServerId, gameServerData.GameType, cancellationToken).ConfigureAwait(false);
             var globalDefaultsLoaded = await PopulateGlobalDefaultsAsync(model, cancellationToken).ConfigureAwait(false);
             if (!globalDefaultsLoaded)
+            {
+                model.GlobalBroadcastsReadOnly = true;
                 ModelState.AddModelError(string.Empty, "Global settings could not be loaded. Retry before saving.");
+            }
+
             if (!ModelState.ContainsKey("VpnProtection.Enabled")
                 || !ModelState.ContainsKey("VpnProtection.InheritGlobalRules")
                 || !ModelState.ContainsKey("VpnProtection.LocalRulesJson")

@@ -277,9 +277,10 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case BroadcastSettingsConstants.Namespace:
+            case var broadcastNamespace when string.Equals(broadcastNamespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase):
                 if (TryDeserializeBroadcast(config, logger, out var broadcastDocument) && broadcastDocument is not null)
                 {
+                    model.SavedBroadcastSettings = broadcastDocument;
                     model.BroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
                     model.BroadcastMessages =
@@ -288,6 +289,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                             .Where(message => message is not null)
                             .Select(message => new BroadcastMessageViewModel
                             {
+                                Id = message?.Id,
                                 Message = message?.Message ?? string.Empty,
                                 Enabled = message?.Enabled ?? true
                             })
@@ -478,17 +480,20 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case BroadcastSettingsConstants.Namespace:
+            case var broadcastNamespace when string.Equals(broadcastNamespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase):
                 if (TryDeserializeBroadcast(config, logger, out var broadcastDocument) && broadcastDocument is not null)
                 {
+                    model.SavedBroadcastSettings = broadcastDocument;
                     model.BroadcastsEnabled = broadcastDocument.Enabled;
-                    model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? GameServerEditViewModel.DefaultBroadcastIntervalSeconds;
+                    model.BroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds;
+                    model.BroadcastsMessagesMode = broadcastDocument.MessagesMode ?? BroadcastMessagesMode.Replace;
                     model.BroadcastMessages =
                     [
                         .. (broadcastDocument.Messages ?? [])
                             .Where(message => message is not null)
                             .Select(message => new BroadcastMessageViewModel
                             {
+                                Id = message?.Id,
                                 Message = message?.Message ?? string.Empty,
                                 Enabled = message?.Enabled ?? true
                             })
@@ -611,9 +616,11 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                 }
 
                 break;
-            case BroadcastSettingsConstants.Namespace:
+            case var broadcastNamespace when string.Equals(broadcastNamespace, BroadcastSettingsConstants.Namespace, StringComparison.OrdinalIgnoreCase):
+                model.GlobalBroadcastsReadOnly |= BroadcastEditorCompatibility.RequiresReadOnly(config.Configuration, global: true);
                 if (TryDeserializeBroadcast(config, logger, out var broadcastDocument) && broadcastDocument is not null)
                 {
+                    model.GlobalBroadcastSettings = broadcastDocument;
                     model.GlobalBroadcastsEnabled = broadcastDocument.Enabled ?? false;
                     model.GlobalBroadcastsIntervalSeconds = broadcastDocument.IntervalSeconds ?? model.GlobalBroadcastsIntervalSeconds;
                     model.GlobalBroadcastMessages =
@@ -622,6 +629,7 @@ public sealed class NamespaceSettingsParser : INamespaceSettingsParser
                             .Where(message => message is not null)
                             .Select(message => new BroadcastMessageViewModel
                             {
+                                Id = message?.Id,
                                 Message = message?.Message ?? string.Empty,
                                 Enabled = message?.Enabled ?? true
                             })
