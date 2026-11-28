@@ -148,6 +148,31 @@ public sealed class RulesAuditAccessTests
         Assert.DoesNotContain("Not run (recorded)", html);
     }
 
+    [Fact]
+    public async Task ExecutionFlow_MissingStructureExplainsUnknownActionOutcome()
+    {
+        var flow = CreateFlow(null);
+        flow = flow with
+        {
+            StructureStatus = RuleExecutionStructureStatus.Missing,
+            Rules = [],
+            Execution = flow.Execution with
+            {
+                Actions =
+                [
+                    new() { RuleId = "rule", ActionId = "send", Outcome = RuleActionExecutionOutcome.OutcomeUnknown }
+                ]
+            }
+        };
+
+        var (status, html, _) = await RenderFlowAsync(flow);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("Historical rule structure was not recorded", html);
+        Assert.Contains("Outcome unknown; the action may have run.", html);
+        Assert.DoesNotContain("Not run (recorded)", html);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

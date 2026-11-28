@@ -150,6 +150,10 @@
                 {
                     <div class="text-muted">Dispatched; application is not confirmed.</div>
                 }
+                else if (action.Outcome == RuleActionExecutionOutcome.OutcomeUnknown)
+                {
+                    <div class="text-muted">Outcome unknown; the action may have run.</div>
+                }
                 else if (action.Outcome == RuleActionExecutionOutcome.Applied)
                 {
                     <div class="text-muted">Applied, as recorded by the execution service.</div>
